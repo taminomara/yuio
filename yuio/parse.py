@@ -95,6 +95,35 @@ class Parser(_t.Generic[T], abc.ABC):
 
         """
 
+    @classmethod
+    @_t.no_type_check
+    def from_type_hint(cls, ty: _t.Type[T]) -> 'Parser[T]':
+        """Create a parser based on a type annotation.
+
+        """
+
+        origin = _t.get_origin(ty)
+        args = _t.get_args(ty)
+
+        if origin is _t.Optional:
+            return cls.from_type_hint(args[0])
+        elif origin is _t.Union and len(args) == 2 and args[1] is type(None):
+            return cls.from_type_hint(args[0])
+        elif origin is _t.Union and len(args) == 2 and args[0] is type(None):
+            return cls.from_type_hint(args[1])
+        elif ty is str:
+            return parse_str()
+        elif ty is int:
+            return parse_int()
+        elif ty is float:
+            return parse_float()
+        elif ty is bool:
+            return parse_bool()
+        elif issubclass(ty, enum.Enum):
+            return parse_enum(ty)
+        else:
+            raise TypeError(f'unsupported type {ty}')
+
     def bound(
         self: 'Parser[C]',
         *,
