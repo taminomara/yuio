@@ -3,7 +3,7 @@
 This is a lightweight, no-dependency python module for building simple human-friendly CLIs
 with python. 
 
-Yuio features are:
+Yuio's features are:
 
 - small, no-dependencies;
 - colored output;
@@ -23,9 +23,9 @@ and be done with it.
 
 ---
 
-- [Documentation](https://yuio.readthedocs.io/en/latest/index.html)
-- [Installation](https://yuio.readthedocs.io/en/latest/index.html#installation)
-- [Examples](https://yuio.readthedocs.io/en/latest/index.html#features)
+- [Source](https://github.com/taminomara/yuio/)
+- [Documentation](https://yuio.readthedocs.io/en/stable/)
+- [Issues](https://github.com/taminomara/yuio/issues)
 
 ## Requirements
 

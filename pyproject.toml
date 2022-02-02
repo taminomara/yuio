@@ -1,19 +1,27 @@
-[tool.poetry]
+[project]
 name = "yuio"
-version = "0.1.0"
+version = "0.0.2"
 description = "Building friendly CLIs with python: colored output, user interactions, configs and more"
-authors = ["Tamika Nomara <taminomara@gmail.com>"]
-license = "MIT"
+authors = [{name = "Tamika Nomara", email = "taminomara@gmail.com"}]
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
 
-[tool.poetry.dependencies]
-python = "^3.8"
+[project.optional-dependencies]
+test = [
+    "pytest~=6.2",
+    "pytest-mypy~=0.9",
+]
+doc = [
+    "sphinx~=4.4",
+    "sphinx-rtd-theme~=1.0",
+]
 
-[tool.poetry.dev-dependencies]
-pytest = "^6.2"
-pytest-mypy = "^0.9"
-sphinx = "^4.4"
-sphinx-rtd-theme = "^1.0"
+[project.urls]
+Source = "https://github.com/taminomara/yuio/"
+Documentation = "https://yuio.readthedocs.io/en/stable/"
+Issues = "https://github.com/taminomara/yuio/issues"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["flit_core>=3.2,<4"]
+build-backend = "flit_core.buildapi"
