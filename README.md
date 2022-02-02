@@ -23,7 +23,7 @@ and be done with it.
 
 ---
 
-- [Source](https://github.com/taminomara/yuio/)
+- [PyPi](https://pypi.org/project/yuio/)
 - [Documentation](https://yuio.readthedocs.io/en/stable/)
 - [Issues](https://github.com/taminomara/yuio/issues)
 
