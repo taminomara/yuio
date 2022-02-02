@@ -9,7 +9,28 @@ Without dependencies, it is easy to use it in places where you either don't or d
 access to dependency management systems. Just copy-paste its source files into your project,
 and be done with it.
 
-.. _features:
+----
+
+.. image:: _static/yuio_small.png
+
+----
+
+
+Requirements
+------------
+
+The only requirement is ``python >= 3.8``.
+
+
+Installation
+------------
+
+Install ``yuio`` with pip:
+
+.. code-block:: sh
+
+    pip3 install yuio
+
 
 Features
 --------
@@ -36,19 +57,6 @@ Features
 
 - More is coming!
 
-Requirements
-------------
-
-The only requirement is ``python >= 3.8``.
-
-Installation
-------------
-
-Install ``yuio`` with pip:
-
-.. code-block:: sh
-
-    pip3 install yuio
 
 Contents
 --------

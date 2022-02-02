@@ -19,14 +19,13 @@ and be done with it.
 
 ---
 
-![A light-purple-haired catgirl smiling at you and showing heart with her hands](./.github/yuio_small.png "Picture of Yuio")
+![A light-purple-haired catgirl smiling at you and showing heart with her hands](./docs/_static/yuio_small.png "Picture of Yuio")
 
 ---
 
-- [Documentation](https://taminomara.github.io/yuio/)
-- [Installation](https://taminomara.github.io/yuio/#installation)
-- [Quickstart](https://taminomara.github.io/yuio/#quickstart)
-- [Example](https://taminomara.github.io/yuio/#example)
+- [Documentation](https://yuio.readthedocs.io/en/latest/index.html)
+- [Installation](https://yuio.readthedocs.io/en/latest/index.html#installation)
+- [Examples](https://yuio.readthedocs.io/en/latest/index.html#features)
 
 ## Requirements
 
