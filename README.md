@@ -19,7 +19,7 @@ and be done with it.
 
 ---
 
-![A light-purple-haired catgirl smiling at you and showing heart with her hands](./docs/_static/yuio_small.png "Picture of Yuio")
+![A light-purple-haired catgirl smiling at you and showing heart with her hands](./docs/source/_static/yuio_small.png "Picture of Yuio")
 
 ---
 
