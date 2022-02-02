@@ -1,11 +1,19 @@
 # Yuio
 
 This is a lightweight, no-dependency python module for building simple human-friendly CLIs
-with python. It features colored output, user input parsing, building configs and loading them from
-file system, env vars or command line arguments, and more.
+with python. 
 
-It is ideal for small things such as automation  scripts, utilities for CI, or any other tools.
-Without dependencies, it is easy to use it in places where  you either don't or don't want to have
+Yuio features are:
+
+- small, no-dependencies;
+- colored output;
+- status indication with progress bars;
+- user interactions and input parsing;
+- building configs and loading them from file system, env vars or command line arguments;
+- and more.
+
+It is ideal for small things such as automation scripts, utilities for CI, or any other tools.
+Without dependencies, it is easy to use it in places where you either don't or don't want to have
 access to dependency management systems. Just copy-paste its source files into your project,
 and be done with it.
 

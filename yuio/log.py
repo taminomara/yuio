@@ -5,97 +5,304 @@
 # You're free to copy this file to your project and edit it for your needs,
 # just keep this copyright line please :3
 
-"""Logging, pretty printing, and user interactions.
-
+"""
 This module implements user-friendly output on top of the python's
 standard logging library. It adds several special logging levels
 for printing tasks with progress bars and other useful things.
 
-Usage:
+Setup
+-----
 
-Init this module using the `setup` function. Preferably, init this in the very
-beginning of your main method, before any code had a change to log anything.
-You can update the parameters later by calling `setup` second time.
+To init the logging system, call the :func:`setup` function. Ideally,
+this function should be called at the very beginning of the program execution,
+before any code had a chance to log anything. Calling :func:`setup` function
+multiple times completely overrides all previous settings.
 
-Use either logging functions from this module, or the standard functions
-from the `logging` module to emit messages.
+By default, :func:`setup` determines logging level and whether ANSI color codes
+should be used based on environment variables and the state of the output
+stream:
 
-Use the `Task` context manager to print on-going tasks and their progress.
+- ``DEBUG``: print debug-level messages,
+- ``QUIET``: only print warnings, errors, and input prompts,
+- ``NO_COLORS``: disable colored output,
+- ``FORCE_COLORS``: enable colored output.
 
-Use the `ask` method to request user input.
+You can override this logic by providing your own arguments
+to the :func:`setup` function.
+
+.. autofunction:: setup
+
+
+Log messages
+------------
+
+Use logging functions from this module (or from the python's :mod:`logging`
+module):
+
+.. autofunction:: debug
+
+.. autofunction:: info
+
+.. autofunction:: warning
+
+.. autofunction:: error
+
+.. autofunction:: exception
+
+.. autofunction:: critical
+
+
+Color the output
+----------------
+
+By default, all log messages are colored according to their level.
+
+If you need inline colors, you can use special tags in your log messages::
+
+    yuio.log.info('Using the <c:code>code</c> tag.')
+
+You can combine multiple colors in the same tag::
+
+    yuio.log.info('<c:bold,green>Success!</c>')
+
+To disable tags processing, pass `no_color_tags` flag
+to the logging's `extra` object::
+
+    yuio.log.info(
+        'this tag --> <c:color> is printed as-is',
+        extra=dict(no_color_tags=True)
+    )
+
+List of all tags available by default:
+
+- ``code``: for inline code,
+- ``note``: for notes, such as default values in user prompts,
+- ``success``, ``failure``: for indicating outcome of the program,
+- ``question``, ``critical``, ``error``, ``warning``, ``task``,
+  ``task_done``, ``task_error``, ``info``, ``debug``:
+  used to color log messages,
+- ``bold``, ``dim``: font styles,
+- ``red``, ``green``, ``yellow``, ``blue``, ``magenta``, ``cyan``, ``normal``:
+  font colors.
+
+You can add more tags or change colors of the existing ones by supplying
+the `colors` argument to the :func:`setup` function. This argument
+is a mapping from a tag name to a :class:`Color` instance::
+
+    yuio.log.setup(
+        colors=dict(
+            success=yuio.log.FORE_BLUE | yuio.log.STYLE_BOLD
+        )
+    )
+
+.. autoclass:: Color
+
+List of all pre-defined codes:
+
+.. autodata:: STYLE_BOLD
+
+.. autodata:: STYLE_DIM
+
+.. autodata:: FORE_NORMAL
+
+.. autodata:: FORE_BLACK
+
+.. autodata:: FORE_RED
+
+.. autodata:: FORE_GREEN
+
+.. autodata:: FORE_YELLOW
+
+.. autodata:: FORE_BLUE
+
+.. autodata:: FORE_MAGENTA
+
+.. autodata:: FORE_CYAN
+
+.. autodata:: FORE_WHITE
+
+.. autodata:: BACK_NORMAL
+
+.. autodata:: BACK_BLACK
+
+.. autodata:: BACK_RED
+
+.. autodata:: BACK_GREEN
+
+.. autodata:: BACK_YELLOW
+
+.. autodata:: BACK_BLUE
+
+.. autodata:: BACK_MAGENTA
+
+.. autodata:: BACK_CYAN
+
+.. autodata:: BACK_WHITE
+
+
+Indicate progress
+-----------------
+
+You can use the :class:`Task` class to indicate status and progress
+of some task:
+
+.. autoclass:: Task
+   :members:
+
+
+Query user input
+----------------
+
+To query some input from a user, there's the :func:`ask` function:
+
+.. autofunction:: ask
+
 
 """
 
+import getpass
 import logging
 import os
+import re
 import sys
 import threading
 import typing as _t
+from dataclasses import dataclass
 
-__all__ = (
-    'USER_IO',
-    'CRITICAL',
-    'ERROR',
-    'WARNING',
-    'TASK_BEGIN',
-    'TASK_PROGRESS',
-    'TASK_DONE',
-    'TASK_ERROR',
-    'INFO',
-    'DEBUG',
-    'NOTSET',
+import yuio.parse
 
-    'DEFAULT_FORMATTER',
-    'DEFAULT_COLORS',
+QUESTION = 100
+CRITICAL = 50
+ERROR = 40
+WARNING = 30
+TASK_BEGIN = 24
+TASK_PROGRESS = 23
+TASK_DONE = 22
+TASK_ERROR = 21
+INFO = 20
+DEBUG = 10
+NOTSET = 0
 
-    'setup',
-    'debug',
-    'info',
-    'warning',
-    'error',
-    'exception',
-    'critical',
-    'task_begin',
-    'task_progress',
-    'task_done',
-    'task_error',
-    'task_exception',
-    'user_io',
 
-    'Task',
+@dataclass(frozen=True)
+class Color:
+    """ANSI color code.
 
-    'ask',
+    See the list of all available codes
+    at `Wikipedia <https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters>`_.
+
+    Example::
+
+        # 31 is a color code for red
+        BOLD_RED = Color(fore=31, bold=True)
+
+    You can combine multiple colors::
+
+        BOLD_RED = FORE_RED | STYLE_BOLD
+
+    """
+
+    # Note: other font styles besides bold and dim are not implemented
+    # because their support in terminals is limited.
+
+    fore: _t.Optional[int] = None
+    back: _t.Optional[int] = None
+    bold: bool = False
+    dim: bool = False
+
+    def __or__(self, other: 'Color'):
+        return Color(
+            other.fore if other.fore is not None else self.fore,
+            other.back if other.back is not None else self.back,
+            self.bold or other.bold,
+            self.dim or other.dim,
+        )
+
+    def __str__(self):
+        codes = ['0']
+        if self.fore is not None:
+            codes.append(str(self.fore))
+        if self.back is not None:
+            codes.append(str(self.back))
+        if self.bold:
+            codes.append('1')
+        if self.dim:
+            codes.append('2')
+        return '\033[' + ';'.join(codes) + 'm'
+
+
+#: Bold font style.
+STYLE_BOLD = Color(bold=True)
+#: Dim font style.
+STYLE_DIM = Color(dim=True)
+
+#: Normal foreground color.
+FORE_NORMAL = Color(fore=39)
+#: Black foreground color.
+FORE_BLACK = Color(fore=30)
+#: Red foreground color.
+FORE_RED = Color(fore=31)
+#: Green foreground color.
+FORE_GREEN = Color(fore=32)
+#: Yellow foreground color.
+FORE_YELLOW = Color(fore=33)
+#: Blue foreground color.
+FORE_BLUE = Color(fore=34)
+#: Magenta foreground color.
+FORE_MAGENTA = Color(fore=35)
+#: Cyan foreground color.
+FORE_CYAN = Color(fore=36)
+#: White foreground color.
+FORE_WHITE = Color(fore=37)
+
+#: Normal background color.
+BACK_NORMAL = Color(back=49)
+#: Black background color.
+BACK_BLACK = Color(back=40)
+#: Red background color.
+BACK_RED = Color(back=41)
+#: Green background color.
+BACK_GREEN = Color(back=42)
+#: Yellow background color.
+BACK_YELLOW = Color(back=43)
+#: Blue background color.
+BACK_BLUE = Color(back=44)
+#: Magenta background color.
+BACK_MAGENTA = Color(back=45)
+#: Cyan background color.
+BACK_CYAN = Color(back=46)
+#: White background color.
+BACK_WHITE = Color(back=47)
+
+DEFAULT_FORMATTER = logging.Formatter(
+    '%(message)s'
 )
 
-USER_IO: _t.Final[int] = 100
-CRITICAL: _t.Final[int] = 50
-ERROR: _t.Final[int] = 40
-WARNING: _t.Final[int] = 30
-TASK_BEGIN: _t.Final[int] = 24
-TASK_PROGRESS: _t.Final[int] = 23
-TASK_DONE: _t.Final[int] = 22
-TASK_ERROR: _t.Final[int] = 22
-INFO: _t.Final[int] = 20
-DEBUG: _t.Final[int] = 10
-NOTSET: _t.Final[int] = 0
+DEFAULT_COLORS = {
+    'code': FORE_MAGENTA,
+    'note': FORE_GREEN,
+    'success': FORE_GREEN | STYLE_BOLD,
+    'failure': FORE_RED | STYLE_BOLD,
 
-DEFAULT_FORMATTER: _t.Final[logging.Formatter] = logging.Formatter(
-    '-> %(message)s'
-)
+    'question': FORE_BLUE,
+    'critical': FORE_WHITE | BACK_RED,
+    'error': FORE_RED,
+    'warning': FORE_YELLOW,
+    'task': FORE_BLUE,
+    'task_done': FORE_BLUE,
+    'task_error': FORE_RED,
+    'info': FORE_NORMAL,
+    'debug': STYLE_DIM,
 
-DEFAULT_COLORS: _t.Final[_t.Dict[int, str]] = {
-    CRITICAL: '\033[31m',  # red
-    ERROR: '\033[31m',  # red
-    WARNING: '\033[33m',  # yellow
-    INFO: '\033[0m',  # normal
-    DEBUG: '\033[2m',  # dim
-    NOTSET: '\033[0m',  # normal
-
-    USER_IO: '\033[1m',  # bold
-    TASK_BEGIN: '\033[1m',  # bold
-    TASK_PROGRESS: '\033[1m',  # bold
-    TASK_DONE: '\033[1;32m',  # bold green
-    TASK_ERROR: '\033[1;31m',  # bold red
+    'bold': STYLE_BOLD,
+    'dim': STYLE_DIM,
+    'red': FORE_RED,
+    'green': FORE_GREEN,
+    'yellow': FORE_YELLOW,
+    'blue': FORE_BLUE,
+    'magenta': FORE_MAGENTA,
+    'cyan': FORE_CYAN,
+    'normal': FORE_NORMAL,
 }
 
 T = _t.TypeVar('T')
@@ -109,29 +316,24 @@ def setup(
     stream: _t.Any = sys.stderr,
     use_colors: _t.Optional[bool] = None,
     formatter: logging.Formatter = DEFAULT_FORMATTER,
-    colors: _t.Dict[int, str] = DEFAULT_COLORS,
+    colors: _t.Optional[_t.Dict[str, Color]] = None,
 ):
     """Initial setup of the logging facilities.
 
-    Ideally, this function should be called at the very beginning
-    of the program execution.
-
-    Calling this function multiple times completely overrides
-    all previous settings.
-
     :param level:
-        log output level. If not given, will use `INFO` or `DEBUG`, depending
-        on whether there is a `DEBUG_OUT` environment variable present.
+        log output level. If not given, will check ``DEBUG`` and ``QUIET``
+        environment variables to determine an appropriate logging level.
     :param stream:
         a stream where to output messages. Uses `stderr` by default.
     :param use_colors:
         use ANSI escape sequences to color the output. If not given, will
-        detect whether the given `stream` is a tty one, and enable colors
-        accordingly.
+        check ``NO_COLORS`` and ``FORCE_COLORS`` environment variables,
+        and also if the given `stream` is a tty one.
     :param formatter:
         formatter for log messages.
     :param colors:
-        mapping from logging level to ANSI escape code with its color.
+        mapping from tag name or logging level name to a :class:`Color`.
+        Logging level names and tag names are all lowercase.
 
     """
 
@@ -145,25 +347,37 @@ def setup(
             logger.addHandler(_HANDLER)
             logger.setLevel(NOTSET)
 
-            logging.addLevelName(USER_IO, "USER_IO")
-            logging.addLevelName(TASK_BEGIN, "INFO")
-            logging.addLevelName(TASK_PROGRESS, "INFO")
-            logging.addLevelName(TASK_DONE, "INFO")
-            logging.addLevelName(TASK_ERROR, "INFO")
+            logging.addLevelName(QUESTION, "QUESTION")
+            logging.addLevelName(TASK_BEGIN, "TASK")
+            logging.addLevelName(TASK_PROGRESS, "TASK")
+            logging.addLevelName(TASK_DONE, "TASK_DONE")
+            logging.addLevelName(TASK_ERROR, "TASK_ERROR")
 
         if level is None:
-            if 'DEBUG_OUT' in os.environ:
+            if 'DEBUG' in os.environ:
                 level = DEBUG
+            elif 'QUIET' in os.environ:
+                level = WARNING
             else:
                 level = INFO
 
         _HANDLER.setLevel(level)
         _HANDLER.setFormatter(formatter)
         _HANDLER.setStream(stream)
-        _HANDLER.setColors(colors)
+
+        full_colors = DEFAULT_COLORS.copy()
+        if colors is not None:
+            full_colors.update(colors)
+
+        _HANDLER.setColors(full_colors)
 
         if use_colors is None:
-            use_colors = stream.isatty()
+            if 'NO_COLORS' in os.environ:
+                use_colors = False
+            elif 'FORCE_COLORS' in os.environ:
+                use_colors = True
+            else:
+                use_colors = stream.isatty()
 
         _HANDLER.setUseColors(use_colors)
 
@@ -223,7 +437,8 @@ def critical(msg: str, *args, **kwargs):
 def task_begin(msg: str, *args):
     """Indicate beginning of some task.
 
-    Note: prefer using the `Task` context manager instead of this function.
+    Note: prefer using the :class:`Task` context manager
+    instead of this function.
 
     """
 
@@ -233,11 +448,12 @@ def task_begin(msg: str, *args):
 def task_progress(msg: str, *args, progress: float):
     """Indicate progress of some task.
 
-    If this function is called after `task_begin`, the task message will
+    If this function is called after :func:`task_begin`, the task message will
     be updated with a progress bar. If there were other log messages
-    between `task_begin` and call to this function, nothing will happen.
+    between :meth:`task_begin` and call to this function, nothing will happen.
 
-    Note: prefer using the `Task` context manager instead of this function.
+    Note: prefer using the :class:`Task` context manager
+    instead of this function.
 
     """
 
@@ -248,7 +464,8 @@ def task_progress(msg: str, *args, progress: float):
 def task_done(msg: str, *args):
     """Indicate that some task is finished successfully.
 
-    Note: prefer using the `Task` context manager instead of this function.
+    Note: prefer using the :class:`Task` context manager
+    instead of this function.
 
     """
 
@@ -258,7 +475,8 @@ def task_done(msg: str, *args):
 def task_error(msg: str, *args):
     """Indicate that some task is finished with an error.
 
-    Note: prefer using the `Task` context manager instead of this function.
+    Note: prefer using the :class:`Task` context manager
+    instead of this function.
 
     """
 
@@ -268,23 +486,23 @@ def task_error(msg: str, *args):
 def task_exception(msg: str, *args):
     """Indicate that some task is finished, capture current exception.
 
-    Note: prefer using the `Task` context manager instead of this function.
+    Note: prefer using the :class:`Task` context manager
+    instead of this function.
 
     """
 
     logging.log(TASK_ERROR, msg, *args, exc_info=True)
 
 
-def user_io(msg: str, *args):
+def question(msg: str, *args):
     """Log a message with input prompts and other user communications.
 
-    These messages have high priority, so they will not be filtered
-    by log level settings. Thus, it is safe to use them for messages
-    that should be shown to a user no matter what.
+    These messages don't end with newline. They also have high priority,
+    so they will not be filtered by log level settings.
 
     """
 
-    logging.log(USER_IO, msg, *args)
+    logging.log(QUESTION, msg, *args)
 
 
 class Task:
@@ -307,6 +525,25 @@ class Task:
                 url.fetch()
                 task.progress(float(i) / len(urls))
 
+    This will output the following:
+
+    .. code-block:: text
+
+       Fetching data... [=====>              ] 30%
+
+    Note that you don't have to use it in a context::
+
+        task = Task('Fetching data')
+        task.begin()
+
+        for i, url in enumerate(urls):
+            url.fetch()
+            task.progress(float(i) / len(urls))
+
+        task.done()
+
+    In this case, however, it's up to you to catch and report errors.
+
     """
 
     def __init__(self, msg: str, *args):
@@ -314,40 +551,52 @@ class Task:
             msg = msg % args
         self._msg = msg
 
+        self._started = False
+        self._finished = False
+
     def begin(self):
         """Emit a message about task being in progress.
 
         """
 
-        task_begin(self._msg)
+        if not self._started:
+            task_begin(self._msg)
+            self._started = True
 
     def progress(self, progress: float):
-        """Indicate progress of ths task, measured from `0` to `1`.
+        """Indicate progress of ths task, measured from ``0`` to ``1``.
 
         """
 
-        task_progress(self._msg, progress=progress)
+        if self._started and not self._finished:
+            task_progress(self._msg, progress=progress)
 
     def done(self):
         """Emit a message that the task is finished successfully.
 
         """
 
-        task_done(self._msg)
+        if self._started and not self._finished:
+            task_done(self._msg)
+            self._finished = True
 
     def error(self):
         """Emit a message that the task is finished with an error.
 
         """
 
-        task_error(self._msg)
+        if self._started and not self._finished:
+            task_error(self._msg)
+            self._finished = True
 
     def exception(self):
         """Emit a message that the task is finished, capture current exception.
 
         """
 
-        task_exception(self._msg)
+        if self._started and not self._finished:
+            task_exception(self._msg)
+            self._finished = True
 
     def __enter__(self):
         self.begin()
@@ -360,41 +609,115 @@ class Task:
             self.error()
 
 
+@_t.overload
 def ask(
-    parser: _t.Callable[[str], T],
-    msg: str, *args,
-    default: _t.Optional[str] = None
-) -> T:
+    msg: str,
+    *args,
+    default: _t.Optional[str] = None,
+    input_description: _t.Optional[str] = None,
+    default_description: _t.Optional[str] = None,
+    hidden: bool = False,
+) -> str: ...
+
+
+@_t.overload
+def ask(
+    msg: str,
+    *args,
+    parser: yuio.parse.Parser[T],
+    default: _t.Optional[T] = None,
+    input_description: _t.Optional[str] = None,
+    default_description: _t.Optional[str] = None,
+    hidden: bool = False,
+) -> T: ...
+
+
+def ask(
+    msg,
+    *args,
+    parser=None,
+    default=None,
+    input_description=None,
+    default_description=None,
+    hidden=False,
+):
     """Ask user to provide an input, then parse it and return a value.
 
-    :param parser:
-        how to parse and verify the input.
+    Example::
+
+        answer = ask(
+            'Do you want a choco bar?',
+            parser=yuio.parse.Bool(),
+            default=True,
+        )
+
     :param msg:
         prompt that will be sent to the user.
     :param args:
         arguments for prompt formatting.
+    :param parser:
+        how to parse and verify the input. See :mod:`yuio.parse` for more
+        info.
     :param default:
-        if given, default input will be passed to the parser if user sends
-        an empty string.
+        if given, this value will be returned if no input is provided.
+    :param input_description:
+        a string that describes expected input, like ``'yes/no'`` for boolean
+        inputs. By default, inferred from the given parser.
+    :param default_description:
+        a string that describes the `default` value. By default,
+        inferred from the given parser and `repr` of the default value.
+    :param hidden:
+        if enabled, treats input as password, and uses secure input methods.
+        This option also hides errors from the parser, because they may contain
+        user input.
 
     """
 
+    if parser is None:
+        parser = str
+
+    desc = ''
+
+    if input_description is None and hasattr(parser, 'describe'):
+        input_description = getattr(parser, 'describe')()
+    if input_description:
+        desc += f' ({input_description})'
+
     if default is not None:
-        desc = f' [default={default}]:'
+        if default_description is None and hasattr(parser, 'describe_value'):
+            default_description = getattr(parser, 'describe_value')(default)
+        if default_description is None:
+            default_description = str(default)
+        if default_description:
+            desc += f' [<c:note>{default_description}</c>]'
+
+    if desc:
+        desc += ': '
     else:
-        desc = ':'
+        desc = ' '
+
+    if args:
+        msg = msg % args
+    msg = msg + desc
+
     while True:
-        user_io(msg + desc, *args)
-        answer = input().strip()
+        question(msg)
+        if hidden:
+            answer = getpass.getpass(prompt='')
+        else:
+            answer = input()
         if not answer and default is not None:
-            return parser(default)
+            return default
         elif not answer:
-            user_io('Input is required')
+            error('Input is required.')
         else:
             try:
                 return parser(answer)
-            except ValueError as e:
-                user_io(f'Error: {e}')
+            except Exception as e:
+                if hidden:
+                    error('Error: invalid value.')
+                else:
+                    error(f'Error: {e}.')
 
 
 class _Handler(logging.Handler):
@@ -414,7 +737,7 @@ class _Handler(logging.Handler):
     def setUseColors(self, use_colors: bool):
         self._use_colors = use_colors
 
-    def setColors(self, colors: _t.Dict[int, str]):
+    def setColors(self, colors: _t.Dict[str, Color]):
         self._colors = colors
 
     def flush(self):
@@ -427,7 +750,7 @@ class _Handler(logging.Handler):
     def emit(self, record: logging.LogRecord):
         record.message = record.getMessage()
 
-        message = self.format(record)
+        message = self._colorize(self.format(record), record)
         is_current_task = (
             record.levelno in (TASK_PROGRESS, TASK_DONE, TASK_ERROR)
             and self._current_task is not None
@@ -479,7 +802,6 @@ class _Handler(logging.Handler):
             else:
                 # Redraw the current task.
                 self._clear_line()
-                self._set_color(record.levelno)
                 is_multiline = self._print_task(message, status, progress)
 
                 if record.levelno != TASK_PROGRESS or is_multiline:
@@ -490,7 +812,7 @@ class _Handler(logging.Handler):
                     self._current_task = None
         elif record.levelno == TASK_PROGRESS:
             # We can't update status of a non-current task, so just ignore it.
-            pass
+            return
         else:
             if self._current_task is not None:
                 # We need to clear current task before printing
@@ -499,15 +821,16 @@ class _Handler(logging.Handler):
                 if self._use_colors:
                     # If we are using colors, we want to clear progress bar
                     # and leave just a task description with an ellipsis.
-                    current_task_message = self.format(self._current_task)
+                    current_task_message = self._colorize(
+                        self.format(self._current_task),
+                        self._current_task)
                     self._clear_line()
-                    self._set_color(TASK_PROGRESS)
                     self._print_task(current_task_message, '', None)
 
                 self._stream.write('\n')
                 self._current_task = None
+                self._reset_color()
 
-            self._set_color(record.levelno)
             is_multiline = self._print_task(message, status, progress)
 
             if record.levelno == TASK_BEGIN and not is_multiline:
@@ -516,7 +839,7 @@ class _Handler(logging.Handler):
                 # don't mark it as current, and treat it as a regular
                 # log message, though, because we can't redraw multiline tasks.
                 self._current_task = record
-            else:
+            elif record.levelno != QUESTION:
                 self._stream.write('\n')
 
         self._reset_color()
@@ -557,13 +880,47 @@ class _Handler(logging.Handler):
         if self._use_colors:
             self._stream.write(f'\033[2K\r')
 
-    def _set_color(self, level: int):
-        if self._use_colors:
-            self._stream.write(self._colors.get(level, ''))
-
     def _reset_color(self):
         if self._use_colors:
-            self._stream.write('\033[0m')
+            self._stream.write(str(Color()))
+
+    _TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _-]+)>|</c>')
+
+    def _colorize(self, msg: str, record: logging.LogRecord):
+        if getattr(record, 'no_color_tags', False):
+            return msg
+
+        if not self._use_colors:
+            return self._TAG_RE.sub('', msg)
+
+        default_color = self._colors.get(record.levelname.lower(), Color())
+        default_color = FORE_NORMAL | BACK_NORMAL | default_color
+
+        out = ''
+        last_pos = 0
+        stack = [default_color]
+
+        out += str(default_color)
+
+        for tag in self._TAG_RE.finditer(msg):
+            out += msg[last_pos:tag.span()[0]]
+            last_pos = tag.span()[1]
+
+            name = tag.group('name')
+            if name:
+                color = stack[-1]
+                for sub_name in name.split(','):
+                    sub_name = sub_name.strip()
+                    color = color | self._colors.get(sub_name, Color())
+                out += str(color)
+                stack.append(color)
+            elif len(stack) > 1:
+                stack.pop()
+                out += str(stack[-1])
+
+        out += msg[last_pos:]
+
+        return out
 
     @staticmethod
     def _make_progress_bar(progress: float):

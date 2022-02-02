@@ -5,49 +5,89 @@
 # You're free to copy this file to your project and edit it for your needs,
 # just keep this copyright line please :3
 
-"""Parsing user input.
-
+"""
 This module provides several parsers that convert (usually user-provided)
-strings to python objects, or check user input, and throw `ValueError`s
-in case of any issue.
+strings to python objects, or check user input, and throw
+:class:`ValueError` in case of any issue.
 
-All parsers are descendants of the `Parser` class. On the surface, they are
-just callables that take a string and return a python object. That is, you
-can use them in any place that expects such callable, for example
-in flags in argparse, or in `ask` method from `yuio.log`.
+All parsers are descendants of the :class:`Parser` class.
+On the surface, they are just callables that take a string and return a python
+object. That is, you can use them in any place that expects such callable,
+for example in flags in argparse, or in :func:`~yuio.log.ask` method
+from :mod:`yuio.log`.
+
+
+Base parser
+-----------
+
+.. autoclass:: Parser
+
+   .. automethod:: parse
+
+   .. automethod:: parse_config
+
+   .. automethod:: validate
+
+   .. automethod:: describe
+
+   .. automethod:: describe_value
+
+
+Value parsers
+-------------
+
+.. autoclass:: Str
+
+.. autoclass:: StrLower
+
+.. autoclass:: StrUpper
+
+.. autoclass:: Int
+
+.. autoclass:: Float
+
+.. autoclass:: Bool
+
+.. autoclass:: Enum
+
+
+File system path parsers
+------------------------
+
+.. autoclass:: Path
+
+.. autoclass:: NonExistentPath
+
+.. autoclass:: ExistingPath
+
+.. autoclass:: File
+
+.. autoclass:: Dir
+
+.. autoclass:: GitRepo
+
+
+Validators
+----------
+
+.. autoclass:: Bound
+
+   .. automethod:: lower_bound
+
+   .. automethod:: lower_bound_inclusive
+
+   .. automethod:: upper_bound
+
+   .. automethod:: upper_bound_inclusive
+
+.. autoclass:: OneOf
 
 """
 
 import abc
 import enum
+import pathlib
 import typing as _t
-
-
-__all__ = (
-    'Parser',
-    'Str',
-    'Int',
-    'Float',
-    'Bool',
-    'Enum',
-    'File',
-    'Dir',
-    'GitRepo',
-    'Bound',
-    'OneOf',
-    'Map',
-    'Lower',
-    'Upper',
-
-    'parse_str',
-    'parse_int',
-    'parse_float',
-    'parse_bool',
-    'parse_enum',
-    'parse_file',
-    'parse_dir',
-    'parse_git_repo',
-)
 
 
 class _Comparable(_t.Protocol):
@@ -89,116 +129,96 @@ class Parser(_t.Generic[T], abc.ABC):
         # ```
         pass
 
-    @abc.abstractmethod
     def __call__(self, value: str) -> T:
-        """Parse and verify user input, raise `ValueError` on failure.
+        """Parse and verify user input, raise :class:`ValueError` on failure.
 
         """
 
-    @classmethod
-    @_t.no_type_check
-    def from_type_hint(cls, ty: _t.Type[T]) -> 'Parser[T]':
-        """Create a parser based on a type annotation.
+        parsed = self.parse(value)
+        self.validate(parsed)
+        return parsed
+
+    @abc.abstractmethod
+    def parse(self, value: str) -> T:
+        """Parse user input, raise :class:`ValueError` on failure.
 
         """
 
-        origin = _t.get_origin(ty)
-        args = _t.get_args(ty)
+    @abc.abstractmethod
+    def parse_config(self, value: _t.Any) -> T:
+        """Parse value from a config, raise :class:`ValueError` on failure.
 
-        if origin is _t.Optional:
-            return cls.from_type_hint(args[0])
-        elif origin is _t.Union and len(args) == 2 and args[1] is type(None):
-            return cls.from_type_hint(args[0])
-        elif origin is _t.Union and len(args) == 2 and args[0] is type(None):
-            return cls.from_type_hint(args[1])
-        elif ty is str:
-            return parse_str()
-        elif ty is int:
-            return parse_int()
-        elif ty is float:
-            return parse_float()
-        elif ty is bool:
-            return parse_bool()
-        elif issubclass(ty, enum.Enum):
-            return parse_enum(ty)
-        else:
-            raise TypeError(f'unsupported type {ty}')
-
-    def bound(
-        self: 'Parser[C]',
-        *,
-        lower: _t.Optional[C] = None,
-        lower_inclusive: _t.Optional[C] = None,
-        upper: _t.Optional[C] = None,
-        upper_inclusive: _t.Optional[C] = None
-    ) -> 'Bound[C]':
-        """Check that value is upper- or lower-bound by some constraints.
-
-        See `Bound` for more info.
+        This method accepts python values, i.e. when parsing a json config.
 
         """
 
-        return Bound(
-            self,
-            lower=lower,
-            lower_inclusive=lower_inclusive,
-            upper=upper,
-            upper_inclusive=upper_inclusive
-        )
-
-    def one_of(self, values: _t.Collection[T]) -> 'OneOf[T]':
-        """Check if the parsed value is one of the given set of values.
-
-        See `OneOf` for more info.
+    @abc.abstractmethod
+    def validate(self, value: T):
+        """Verify parsed value, raise :class:`ValueError` on failure.
 
         """
 
-        return OneOf(self, values)
-
-    def map(self, mapper: _t.Callable[[str], str]) -> 'Map[T]':
-        """Apply a callable to a string before passing it to another parser.
-
-        See `Map` for more info.
+    def describe(self) -> _t.Optional[str]:
+        """Return a human-readable description of an expected input.
 
         """
 
-        return Map(self, mapper)
+        return None
 
-    def lower(self) -> 'Lower[T]':
-        """Convert string to lowercase before passing it to another parser.
-
-        See `Lower` for more info.
+    def describe_value(self, value: T) -> _t.Optional[str]:
+        """Return a human-readable description of a given value.
 
         """
 
-        return Lower(self)
-
-    def upper(self) -> 'Upper[T]':
-        """Convert string to uppercase before passing it to another parser.
-
-        See `Upper` for more info.
-
-        """
-
-        return Upper(self)
-
-    def strip(self) -> 'Strip[T]':
-        """Remove whitespaces from string ends before passing it to another parser.
-
-        See `Strip` for more info.
-
-        """
-
-        return Strip(self)
+        return None
 
 
 class Str(Parser[str]):
-    """Parser for str values (does nothing).
+    """Parser for str values.
+
+    Applies a `modifier` to the value, if one is given.
 
     """
 
-    def __call__(self, value: str) -> str:
-        return value
+    def __init__(self, modifier: _t.Optional[_t.Callable[[str], str]] = None):
+        super().__init__()
+
+        self._modifier = modifier
+
+    def parse(self, value: str) -> str:
+        if self._modifier is not None:
+            return self._modifier(value)
+        else:
+            return value
+
+    def parse_config(self, value: _t.Any) -> str:
+        if not isinstance(value, str):
+            raise ValueError('expected a string')
+        if self._modifier is not None:
+            return self._modifier(value)
+        else:
+            return value
+
+    def validate(self, value: str):
+        pass
+
+
+class StrLower(Str):
+    """Parser for str values that converts them to lowercase.
+
+    """
+
+    def __init__(self):
+        super().__init__(str.lower)
+
+
+class StrUpper(Str):
+    """Parser for str values that converts them to uppercase.
+
+    """
+
+    def __init__(self):
+        super().__init__(str.upper)
 
 
 class Int(Parser[int]):
@@ -206,11 +226,23 @@ class Int(Parser[int]):
 
     """
 
-    def __call__(self, value: str) -> int:
+    def parse(self, value: str) -> int:
         try:
             return int(value)
         except ValueError:
-            raise ValueError(f'could not parse value {value!r} as int')
+            raise ValueError(f'could not parse value {value!r} as an int')
+
+    def parse_config(self, value: _t.Any) -> int:
+        if isinstance(value, float):
+            if value != int(value):
+                raise ValueError('expected an int, got a float instead')
+            value = int(value)
+        if not isinstance(value, int):
+            raise ValueError('expected an int')
+        return value
+
+    def validate(self, value: int):
+        pass
 
 
 class Float(Parser[float]):
@@ -218,11 +250,19 @@ class Float(Parser[float]):
 
     """
 
-    def __call__(self, value: str) -> float:
+    def parse(self, value: str) -> float:
         try:
             return float(value)
         except ValueError:
-            raise ValueError(f'could not parse value {value!r} as float')
+            raise ValueError(f'could not parse value {value!r} as a float')
+
+    def parse_config(self, value: _t.Any) -> float:
+        if not isinstance(value, (float, int)):
+            raise ValueError('expected a float')
+        return value
+
+    def validate(self, value: float):
+        pass
 
 
 class Bool(Parser[bool]):
@@ -230,7 +270,7 @@ class Bool(Parser[bool]):
 
     """
 
-    def __call__(self, value: str) -> bool:
+    def parse(self, value: str) -> bool:
         value = value.lower()
 
         if value in ('y', 'yes', 'true', '1'):
@@ -241,9 +281,23 @@ class Bool(Parser[bool]):
             raise ValueError(f'could not parse value {value!r},'
                              f' enter either \'yes\' or \'no\'')
 
+    def parse_config(self, value: _t.Any) -> bool:
+        if not isinstance(value, bool):
+            raise ValueError('expected a bool')
+        return value
+
+    def validate(self, value: bool):
+        pass
+
+    def describe(self) -> _t.Optional[str]:
+        return 'yes/no'
+
+    def describe_value(self, value: bool) -> _t.Optional[str]:
+        return 'yes' if value else 'no'
+
 
 class Enum(Parser[E]):
-    """Parse an enum, as defined in the standard `enum` module.
+    """Parser for enums, as defined in the standard :mod:`enum` module.
 
     """
 
@@ -252,7 +306,7 @@ class Enum(Parser[E]):
 
         self._enum_type: _t.Type[E] = enum_type
 
-    def __call__(self, value: str) -> E:
+    def parse(self, value: str) -> E:
         try:
             return self._enum_type[value.upper()]
         except KeyError:
@@ -262,9 +316,27 @@ class Enum(Parser[E]):
                 f' as {self._enum_type.__name__},'
                 f' should be one of {enum_values}')
 
+    def parse_config(self, value: _t.Any) -> E:
+        if not isinstance(value, str):
+            raise ValueError('expected a string')
+        return self.parse(value)
 
-class File(Parser[str]):
-    """Check that the given string is a path to a file.
+    def validate(self, value: E):
+        pass
+
+    def describe(self) -> _t.Optional[str]:
+        desc = '/'.join(e.name for e in self._enum_type)
+        if len(desc) < 80:
+            return desc
+        else:
+            return None
+
+    def describe_value(self, value: E) -> _t.Optional[str]:
+        return value.name
+
+
+class Path(Parser[pathlib.Path]):
+    """Parse a file system path, return a :class:`pathlib.Path`.
 
     """
 
@@ -279,54 +351,91 @@ class File(Parser[str]):
 
         self._extensions = extensions
 
-    def __call__(self, value: str) -> str:
-        import os
+    def parse(self, value: str) -> pathlib.Path:
+        return pathlib.Path(value).expanduser().resolve()
 
-        value = os.path.expanduser(value)
-        value = os.path.abspath(value)
+    def parse_config(self, value: _t.Any) -> pathlib.Path:
+        if not isinstance(value, str):
+            raise ValueError('expected a string')
+        return self.parse(value)
 
-        if not os.path.exists(value):
-            raise ValueError(f'{value} doesn\'t exist')
-        if not os.path.isfile(value):
-            raise ValueError(f'{value} is not a file')
+    def validate(self, value: pathlib.Path):
         if self._extensions is not None:
-            if not any(value.endswith(ext) for ext in self._extensions):
+            if not any(value.name.endswith(ext) for ext in self._extensions):
                 exts = ', '.join(self._extensions)
                 raise ValueError(f'{value} should have extension {exts}')
 
-        return value
+    def describe(self) -> _t.Optional[str]:
+        if self._extensions is not None:
+            return '/'.join(self._extensions)
+        else:
+            return None
 
 
-class Dir(Parser[str]):
-    """Check that the given string is a path to a dir.
+class NonExistentPath(Path):
+    """Parse a file system path and verify that it doesn't exist.
 
     """
 
-    def __call__(self, value: str) -> str:
-        import os
+    def validate(self, value: pathlib.Path):
+        super().validate(value)
 
-        value = os.path.expanduser(value)
-        value = os.path.abspath(value)
+        if value.exists():
+            raise ValueError(f'{value} already exist')
 
-        if not os.path.exists(value):
+
+class ExistingPath(Path):
+    """Parse a file system path and verify that it exists.
+
+    """
+
+    def validate(self, value: pathlib.Path):
+        super().validate(value)
+
+        if not value.exists():
             raise ValueError(f'{value} doesn\'t exist')
-        if not os.path.isdir(value):
-            raise ValueError(f'{value} is not a directory')
 
-        return value
+
+class File(ExistingPath):
+    """Parse path to a file.
+
+    """
+
+    def validate(self, value: pathlib.Path):
+        super().validate(value)
+
+        if not value.is_file():
+            raise ValueError(f'{value} is not a file')
+
+
+class Dir(ExistingPath):
+    """Parse path to a directory.
+
+    """
+
+    def __init__(self):
+        # Disallow passing `extensions`.
+        super().__init__()
+
+    def validate(self, value: pathlib.Path):
+        super().validate(value)
+
+        if not value.is_dir():
+            raise ValueError(f'{value} is not a directory')
 
 
 class GitRepo(Dir):
-    """Check that the given string is a path to a git repository.
+    """Parse path to a git repository.
+
+    This parser just checks that the given directory has
+    a subdirectory named ``.git``.
 
     """
 
-    def __call__(self, value: str) -> str:
-        import os
+    def validate(self, value: pathlib.Path):
+        super().validate(value)
 
-        value = super().__call__(value)
-
-        if not os.path.isdir(os.path.join(value, '.git')):
+        if not value.joinpath('.git').is_dir():
             raise ValueError(f'{value} is not a git repository')
 
         return value
@@ -334,6 +443,22 @@ class GitRepo(Dir):
 
 class Bound(Parser[C]):
     """Check that value is upper- or lower-bound by some constraints.
+
+    :param inner:
+        inner parser that will be used to actually parse a value before
+        checking its bounds.
+    :param lower:
+        set lower bound for value, so we require that ``value > lower``.
+        Can't be given if `lower_inclusive` is also given.
+    :param lower_inclusive:
+        set lower bound for value, so we require that ``value >= lower``.
+        Can't be given if `lower` is also given.
+    :param upper:
+        set upper bound for value, so we require that ``value < upper``.
+        Can't be given if `upper_inclusive` is also given.
+    :param upper_inclusive:
+        set upper bound for value, so we require that ``value <= upper``.
+        Can't be given if `upper` is also given.
 
     """
 
@@ -360,26 +485,6 @@ class Bound(Parser[C]):
         upper: _t.Optional[C] = None,
         upper_inclusive: _t.Optional[C] = None
     ):
-        """Init the class.
-
-        :param inner:
-            inner parser that will be used to actually parse a value before
-            checking its bounds.
-        :param lower:
-            set lower bound for value, so we require that `value > lower`.
-            Can't be given if `lower_inclusive` is also given.
-        :param lower_inclusive:
-            set lower bound for value, so we require that `value >= lower`.
-            Can't be given if `lower` is also given.
-        :param upper:
-            set upper bound for value, so we require that `value < upper`.
-            Can't be given if `upper_inclusive` is also given.
-        :param upper_inclusive:
-            set upper bound for value, so we require that `value <= upper`.
-            Can't be given if `upper` is also given.
-
-        """
-
         super().__init__()
 
         self._inner: Parser[C] = inner
@@ -436,30 +541,34 @@ class Bound(Parser[C]):
         self._upper_inclusive = True
         return self
 
-    def __call__(self, value: str) -> C:
-        parsed = self._inner(value)
+    def parse(self, value: str) -> C:
+        return self._inner.parse(value)
+
+    def parse_config(self, value: _t.Any) -> C:
+        return self._inner.parse_config(value)
+
+    def validate(self, value: C):
+        self._inner.validate(value)
 
         if self._lower is not None:
-            if self._lower_inclusive and parsed < self._lower:
+            if self._lower_inclusive and value < self._lower:
                 raise ValueError(
                     f'value should be greater or equal to {self._lower},'
-                    f' got {parsed} instead')
-            elif not self._lower_inclusive and parsed <= self._lower:
+                    f' got {value} instead')
+            elif not self._lower_inclusive and value <= self._lower:
                 raise ValueError(
                     f'value should be greater than {self._lower},'
-                    f' got {parsed} instead')
+                    f' got {value} instead')
 
         if self._upper is not None:
-            if self._upper_inclusive and parsed > self._upper:
+            if self._upper_inclusive and value > self._upper:
                 raise ValueError(
                     f'value should be lesser or equal to {self._upper},'
-                    f' got {parsed} instead')
-            elif not self._upper_inclusive and parsed >= self._upper:
+                    f' got {value} instead')
+            elif not self._upper_inclusive and value >= self._upper:
                 raise ValueError(
                     f'value should be lesser than {self._upper},'
-                    f' got {parsed} instead')
-
-        return parsed
+                    f' got {value} instead')
 
 
 class OneOf(Parser[T]):
@@ -473,122 +582,24 @@ class OneOf(Parser[T]):
         self._inner = inner
         self._allowed_values = values
 
-    def __call__(self, value: str) -> T:
-        parsed = self._inner(value)
+    def parse(self, value: str) -> T:
+        return self._inner.parse(value)
 
-        if parsed not in self._allowed_values:
-            values = ', '.join(map(repr, self._allowed_values))
+    def parse_config(self, value: _t.Any) -> T:
+        return self._inner.parse_config(value)
+
+    def validate(self, value: T):
+        self._inner.validate(value)
+
+        if value not in self._allowed_values:
+            values = ', '.join(map(str, self._allowed_values))
             raise ValueError(
                 f'could not parse value {value!r},'
                 f' should be one of {values}')
 
-        return parsed
-
-
-class Map(Parser[T]):
-    """Apply a callable to a string before passing it to another parser.
-
-    """
-
-    def __init__(self, inner: Parser[T], mapper: _t.Callable[[str], str]):
-        super().__init__()
-
-        self._inner = inner
-        self._mapper = mapper
-
-    def __call__(self, value: str) -> T:
-        return self._inner(self._mapper(value))
-
-
-class Lower(Map[T]):
-    """Convert string to lowercase before passing it to another parser.
-
-    """
-
-    def __init__(self, inner: Parser[T]):
-        super().__init__(inner, str.lower)
-
-
-class Upper(Map[T]):
-    """Convert string to uppercase before passing it to another parser.
-
-    """
-
-    def __init__(self, inner: Parser[T]):
-        super().__init__(inner, str.lower)
-
-
-class Strip(Map[T]):
-    """Remove whitespaces from string ends before passing it to another parser.
-
-    """
-
-    def __init__(self, inner: Parser[T]):
-        super().__init__(inner, str.strip)
-
-
-# Helper constructors
-
-
-def parse_str() -> Str:
-    """Parser for str values (does nothing).
-
-    """
-
-    return Str()
-
-
-def parse_int() -> Int:
-    """Parser for int values.
-
-    """
-
-    return Int()
-
-
-def parse_float() -> Float:
-    """Parser for float values.
-
-    """
-
-    return Float()
-
-
-def parse_bool() -> Bool:
-    """Parser for bool values, such as `'yes'` or `'no'`.
-
-    """
-
-    return Bool()
-
-
-def parse_enum(enum_type: _t.Type[E]) -> Enum[E]:
-    """Parse an enum, as defined in the standard `enum` module.
-
-    """
-
-    return Enum(enum_type)
-
-
-def parse_file(extensions: _t.Optional[_t.Collection[str]] = None) -> File:
-    """Check that the given string is a path to a file.
-
-    """
-
-    return File(extensions)
-
-
-def parse_dir() -> Dir:
-    """Check that the given string is a path to a dir.
-
-    """
-
-    return Dir()
-
-
-def parse_git_repo() -> GitRepo:
-    """Check that the given string is a path to a git repository.
-
-    """
-
-    return GitRepo()
+    def describe(self) -> _t.Optional[str]:
+        desc = '/'.join(str(e) for e in self._allowed_values)
+        if len(desc) < 80:
+            return desc
+        else:
+            return super().describe()
