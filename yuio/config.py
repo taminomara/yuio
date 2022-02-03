@@ -110,14 +110,59 @@ def disabled() -> _t.Any:
     return _DISABLED
 
 
-@dataclass
-class _Field:
+@dataclass(frozen=True)
+class _FieldSettings:
     default: _t.Any = _MISSING
     parser: _t.Optional[yuio.parse.Parser] = None
     help: _t.Optional[str] = None
     env: _t.Optional[str] = None
     flag: _t.Optional[_t.Union[str, _t.List[str]]] = None
-    dest: _t.Optional[str] = None
+
+    def _update_defaults(self, qualname, name, ty) -> '_Field':
+        default = self.default
+
+        parser = self.parser
+        if parser is None:
+            try:
+                parser = yuio.parse.Parser.from_type_hint(ty)
+            except TypeError:
+                raise TypeError(
+                    f'can\'t derive parser for {qualname}.{name}')
+
+        help = self.help
+        if help is None:
+            help = 'undocumented.'
+
+        env = self.env
+        if env is None:
+            env = name.upper()
+
+        flag = self.flag
+        if flag is None:
+            flag = '--' + name.replace('_', '-')
+        if not isinstance(flag, list):
+            flag = [flag]
+
+        dest = qualname.replace('.', '__') + '__' + name
+
+        return _Field(
+            default,
+            parser,
+            help,
+            env,
+            flag,
+            dest
+        )
+
+
+@dataclass(frozen=True)
+class _Field:
+    default: _t.Any
+    parser: yuio.parse.Parser
+    help: str
+    env: str
+    flag: _t.List[str]
+    dest: str
 
 
 def field(
@@ -150,7 +195,7 @@ def field(
 
     """
 
-    return _Field(
+    return _FieldSettings(
         default=default,
         parser=parser,
         help=help,
@@ -179,28 +224,13 @@ class _ConfigMeta(type):
                 continue
 
             value = getattr(cls, name, _MISSING)
-            if isinstance(value, _Field):
+            if isinstance(value, _FieldSettings):
                 field = value
             else:
-                field = _Field(default=value)
+                field = _FieldSettings(default=value)
             setattr(cls, name, field.default)
 
-            if field.parser is None:
-                try:
-                    field.parser = yuio.parse.Parser.from_type_hint(ty)
-                except TypeError:
-                    raise TypeError(
-                        f'can\'t derive parser for {cls.__qualname__}.{name}')
-
-            if field.env is None:
-                field.env = name.upper()
-
-            if field.flag is None:
-                field.flag = '--' + name.replace('_', '-')
-
-            field.dest = cls.__qualname__.replace('.', '__') + '__' + name
-
-            fields[name] = field
+            fields[name] = field._update_defaults(cls.__qualname__, name, ty)
 
         cls._fields = fields
 
@@ -341,10 +371,6 @@ class Config(metaclass=_ConfigMeta):
             if field.flag is _DISABLED:
                 continue
 
-            flag = field.flag
-            if not isinstance(flag, list):
-                flag = [flag]
-
             metavar = field.parser.describe()
             if metavar:
                 metavar = '{' + metavar + '}'
@@ -352,7 +378,7 @@ class Config(metaclass=_ConfigMeta):
                 metavar = '<' + name.replace('_', '-') + '>'
 
             parser.add_argument(
-                *flag,
+                *field.flag,
                 type=field.parser,
                 default=_MISSING,
                 help=field.help or 'not documented',

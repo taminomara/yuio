@@ -74,7 +74,7 @@ def test_bool():
     with pytest.raises(ValueError, match='expected a bool'):
         parser.parse_config('x')
 
-    assert parser.describe() == 'yes/no'
+    assert parser.describe() == 'yes|no'
     assert parser.describe_value(True) == 'yes'
     assert parser.describe_value(False) == 'no'
 
@@ -96,7 +96,7 @@ def test_enum():
     with pytest.raises(ValueError, match='expected a string'):
         parser.parse_config(10)
 
-    assert parser.describe() == 'CATS/DOGS/BLAHAJ'
+    assert parser.describe() == 'CATS|DOGS|BLAHAJ'
     assert parser.describe_value(Cuteness.BLAHAJ) == 'BLAHAJ'
 
 
@@ -117,7 +117,7 @@ def test_int_enum():
     with pytest.raises(ValueError, match='expected a string'):
         parser.parse_config(10)
 
-    assert parser.describe() == 'RED/GREEN/BLUE'
+    assert parser.describe() == 'RED|GREEN|BLUE'
     assert parser.describe_value(Colors.RED) == 'RED'
 
 
@@ -250,7 +250,7 @@ def test_one_of():
     with pytest.raises(ValueError, match="qux, duo"):
         parser('Duo')
 
-    assert parser.describe() == 'qux/duo'
+    assert parser.describe() == 'qux|duo'
 
     parser = OneOf(StrLower(), ['qux', 'duo'])
     assert parser('Qux') == 'qux'
