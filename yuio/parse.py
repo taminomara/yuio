@@ -21,16 +21,7 @@ Base parser
 -----------
 
 .. autoclass:: Parser
-
-   .. automethod:: parse
-
-   .. automethod:: parse_config
-
-   .. automethod:: validate
-
-   .. automethod:: describe
-
-   .. automethod:: describe_value
+   :members:
 
 
 Value parsers
@@ -142,6 +133,8 @@ class Parser(_t.Generic[T], abc.ABC):
     def parse(self, value: str) -> T:
         """Parse user input, raise :class:`ValueError` on failure.
 
+        Don't forget to call :meth:`Parser.validate` after parsing a value.
+
         """
 
     @abc.abstractmethod
@@ -149,6 +142,8 @@ class Parser(_t.Generic[T], abc.ABC):
         """Parse value from a config, raise :class:`ValueError` on failure.
 
         This method accepts python values, i.e. when parsing a json config.
+
+        Don't forget to call :meth:`Parser.validate` after parsing a value.
 
         """
 
@@ -171,6 +166,35 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
         return None
+
+    @classmethod
+    @_t.no_type_check
+    def from_type_hint(cls, ty: _t.Any) -> 'Parser[_t.Any]':
+        """Create parser from a type hint.
+
+        """
+
+        origin = _t.get_origin(ty)
+        args = _t.get_args(ty)
+
+        if origin is _t.Optional:
+            return cls.from_type_hint(args[0])
+        elif origin is _t.Union and len(args) == 2 and args[1] is type(None):
+            return cls.from_type_hint(args[0])
+        elif origin is _t.Union and len(args) == 2 and args[0] is type(None):
+            return cls.from_type_hint(args[1])
+        elif ty is str:
+            return Str()
+        elif ty is int:
+            return Int()
+        elif ty is float:
+            return Float()
+        elif ty is bool:
+            return Bool()
+        elif isinstance(ty, type) and issubclass(ty, enum.Enum):
+            return Enum(ty)
+        else:
+            raise TypeError(f'unsupported type {ty}')
 
 
 class Str(Parser[str]):
@@ -290,7 +314,7 @@ class Bool(Parser[bool]):
         pass
 
     def describe(self) -> _t.Optional[str]:
-        return 'yes/no'
+        return 'yes|no'
 
     def describe_value(self, value: bool) -> _t.Optional[str]:
         return 'yes' if value else 'no'
@@ -325,11 +349,8 @@ class Enum(Parser[E]):
         pass
 
     def describe(self) -> _t.Optional[str]:
-        desc = '/'.join(e.name for e in self._enum_type)
-        if len(desc) < 80:
-            return desc
-        else:
-            return None
+        desc = '|'.join(e.name for e in self._enum_type)
+        return desc
 
     def describe_value(self, value: E) -> _t.Optional[str]:
         return value.name
@@ -367,7 +388,7 @@ class Path(Parser[pathlib.Path]):
 
     def describe(self) -> _t.Optional[str]:
         if self._extensions is not None:
-            return '/'.join(self._extensions)
+            return '|'.join('*' + e for e in self._extensions)
         else:
             return None
 
@@ -598,7 +619,7 @@ class OneOf(Parser[T]):
                 f' should be one of {values}')
 
     def describe(self) -> _t.Optional[str]:
-        desc = '/'.join(str(e) for e in self._allowed_values)
+        desc = '|'.join(str(e) for e in self._allowed_values)
         if len(desc) < 80:
             return desc
         else:

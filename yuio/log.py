@@ -33,8 +33,8 @@ to the :func:`setup` function.
 .. autofunction:: setup
 
 
-Log messages
-------------
+Logging messages
+----------------
 
 Use logging functions from this module (or from the python's :mod:`logging`
 module):
@@ -52,8 +52,8 @@ module):
 .. autofunction:: critical
 
 
-Color the output
-----------------
+Coloring the output
+-------------------
 
 By default, all log messages are colored according to their level.
 
@@ -140,8 +140,8 @@ List of all pre-defined codes:
 .. autodata:: BACK_WHITE
 
 
-Indicate progress
------------------
+Indicating progress
+-------------------
 
 You can use the :class:`Task` class to indicate status and progress
 of some task:
@@ -150,8 +150,8 @@ of some task:
    :members:
 
 
-Query user input
-----------------
+Querying user input
+-------------------
 
 To query some input from a user, there's the :func:`ask` function:
 

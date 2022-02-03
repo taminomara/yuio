@@ -24,7 +24,7 @@ intersphinx_mapping = {
 }
 
 autodoc_typehints_format = 'short'
-
+autodoc_member_order = 'bysource'
 
 # -- Options for HTML output -------------------------------------------------
 

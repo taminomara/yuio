@@ -1,4 +1,4 @@
-Logging
-=======
+Log
+===
 
 .. automodule:: yuio.log
