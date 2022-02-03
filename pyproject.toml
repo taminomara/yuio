@@ -1,11 +1,26 @@
 [project]
 name = "yuio"
 version = "0.0.4"
-description = "Building friendly CLIs with python: colored output, user interactions, configs and more"
+description = "Lite and user-friendly CLI library"
 authors = [{name = "Tamika Nomara", email = "taminomara@gmail.com"}]
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: System :: Logging",
+    "Intended Audience :: Developers",
+    "Environment :: Console",
+    "Typing :: Typed",
+]
 
 [project.optional-dependencies]
 test = [
@@ -18,9 +33,9 @@ doc = [
 ]
 
 [project.urls]
-Source = "https://github.com/taminomara/yuio/"
 Documentation = "https://yuio.readthedocs.io/en/stable/"
 Issues = "https://github.com/taminomara/yuio/issues"
+Source = "https://github.com/taminomara/yuio/"
 
 [build-system]
 requires = ["flit_core>=3.2,<4"]
