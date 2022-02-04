@@ -82,6 +82,9 @@ from dataclasses import dataclass
 import yuio.parse
 
 
+T = _t.TypeVar('T')
+
+
 class _Placeholder:
     def __init__(self, what: str):
         self._what = what
@@ -93,8 +96,8 @@ class _Placeholder:
         return f'<{self._what}>'
 
 
-_MISSING = _Placeholder('value is missing')
-_DISABLED = _Placeholder('option is disabled')
+_MISSING: _t.Any = _Placeholder('value is missing')
+_DISABLED: _t.Any = _Placeholder('option is disabled')
 
 
 def disabled() -> _t.Any:
@@ -165,14 +168,34 @@ class _Field:
     dest: str
 
 
+@_t.overload
 def field(
-    default: _t.Any = _MISSING,
     *,
-    parser: _t.Optional[yuio.parse.Parser] = None,
     help: _t.Optional[str] = None,
     env: _t.Optional[str] = None,
     flag: _t.Optional[_t.Union[str, _t.List[str]]] = None,
-) -> _t.Any:
+) -> _t.Any: pass
+
+
+@_t.overload
+def field(
+    default: T = _MISSING,
+    *,
+    parser: yuio.parse.Parser[T],
+    help: _t.Optional[str] = None,
+    env: _t.Optional[str] = None,
+    flag: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+) -> T: pass
+
+
+def field(
+    default: T = _MISSING,
+    *,
+    parser: _t.Optional[yuio.parse.Parser[T]] = None,
+    help: _t.Optional[str] = None,
+    env: _t.Optional[str] = None,
+    flag: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+) -> T:
     """Field descriptor, used for additional configuration of fields.
 
     This is similar to what :func:`dataclasses.field` does.
@@ -195,13 +218,13 @@ def field(
 
     """
 
-    return _FieldSettings(
+    return _t.cast(_t.Any, _FieldSettings(
         default=default,
         parser=parser,
         help=help,
         env=env,
         flag=flag
-    )
+    ))
 
 
 class _ConfigMeta(type):
