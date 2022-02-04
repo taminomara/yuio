@@ -303,7 +303,10 @@ class Config(metaclass=_ConfigMeta):
         return cls(**fields)
 
     @classmethod
-    def load_from_args(cls: _t.Type[_Self], args: argparse.Namespace) -> _Self:
+    def load_from_args(
+        cls: _t.Type[_Self],
+        args: _t.Optional[argparse.Namespace] = None
+    ) -> _Self:
         """Load config from parsed command line arguments.
 
         This method assumes that arguments parser was configured
@@ -311,7 +314,13 @@ class Config(metaclass=_ConfigMeta):
 
         Use :meth:`Config.update` to merge several loaded configs into one.
 
+        If `args` is not given, will create a parser and parse arguments
+        from :data:`sys.argv`.
+
         """
+
+        if args is None:
+            args = cls.setup_parser().parse_args()
 
         fields = {}
 
@@ -380,10 +389,18 @@ class Config(metaclass=_ConfigMeta):
         return cls.load_from_config(loaded, ignore_unknown_fields)
 
     @classmethod
-    def setup_parser(cls, parser: argparse.ArgumentParser):
+    def setup_parser(
+        cls,
+        parser: _t.Optional[argparse.ArgumentParser] = None
+    ) -> argparse.ArgumentParser:
         """Add fields from this config as flags to an argparse parser.
 
+        If parser is not given, will create one.
+
         """
+
+        if parser is None:
+            parser = argparse.ArgumentParser()
 
         for name, field in cls._fields.items():
             if field.flag is _DISABLED:
@@ -403,6 +420,8 @@ class Config(metaclass=_ConfigMeta):
                 metavar=metavar,
                 dest=field.dest
             )
+
+        return parser
 
     def __getattribute__(self, item):
         value = super().__getattribute__(item)
