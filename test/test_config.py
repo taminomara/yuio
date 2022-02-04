@@ -102,9 +102,9 @@ def test_repr():
         f1: str = '1'
         f2: str
 
-    assert repr(Config()) == 'Config()'
-    assert repr(Config(f1='x')) == "Config(f1='x')"
-    assert repr(Config(f2='y')) == "Config(f2='y')"
+    assert repr(Config()) == "Config(\n  f1='1'\n)"
+    assert repr(Config(f1='x')) == "Config(\n  f1='x'\n)"
+    assert repr(Config(f2='y')) == "Config(\n  f1='1',\n  f2='y'\n)"
 
 
 def test_inheritance():

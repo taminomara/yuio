@@ -433,9 +433,9 @@ class Config(metaclass=_ConfigMeta):
     def __repr__(self):
         field_reprs = []
         for name in self._fields:
-            # We don't want to show missing values or default values,
-            # so we only show those that appear in our __dict__.
-            value = self.__dict__.get(name, _MISSING)
+            value = getattr(self, name, _MISSING)
             if value is not _MISSING:
                 field_reprs.append(f'{name}={value!r}')
-        return f'{self.__class__.__name__}({", ".join(field_reprs)})'
+        if field_reprs:
+            field_desc = ",\n  ".join(field_reprs)
+            return f'{self.__class__.__name__}(\n  {field_desc}\n)'
