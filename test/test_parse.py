@@ -255,3 +255,11 @@ def test_one_of():
     parser = OneOf(StrLower(), ['qux', 'duo'])
     assert parser('Qux') == 'qux'
     assert parser('Duo') == 'duo'
+
+
+def test_regex():
+    parser = Regex(Str(), r'^a|b$')
+    assert parser('a') == 'a'
+    assert parser('b') == 'b'
+    with pytest.raises(ValueError, match=r"should match regex '\^a\|b\$'"):
+        parser('foo')

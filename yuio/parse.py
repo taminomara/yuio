@@ -73,11 +73,14 @@ Validators
 
 .. autoclass:: OneOf
 
+.. autoclass:: Regex
+
 """
 
 import abc
 import enum
 import pathlib
+import re
 import typing as _t
 
 
@@ -624,3 +627,31 @@ class OneOf(Parser[T]):
             return desc
         else:
             return super().describe()
+
+
+class Regex(Parser[str]):
+    """Check if the parsed value is one of the given set of values.
+
+    """
+
+    def __init__(self, inner: Parser[str], regex: _t.Union[str, re.Pattern]):
+        super().__init__()
+
+        if isinstance(regex, str):
+            regex = re.compile(regex)
+
+        self._inner = inner
+        self._regex = regex
+
+    def parse(self, value: str) -> str:
+        return self._inner.parse(value)
+
+    def parse_config(self, value: _t.Any) -> str:
+        return self._inner.parse_config(value)
+
+    def validate(self, value: str):
+        self._inner.validate(value)
+
+        if self._regex.match(value) is None:
+            raise ValueError(
+                f'value should match regex \'{self._regex.pattern}\'')
