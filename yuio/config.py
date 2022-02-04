@@ -131,7 +131,7 @@ class _FieldSettings:
 
         help = self.help
         if help is None:
-            help = 'undocumented.'
+            help = 'not documented.'
 
         env = self.env
         if env is None:
@@ -205,25 +205,20 @@ def field(
 
 
 class _ConfigMeta(type):
-    def __init__(cls, *args, **kwargs):
-        type.__init__(cls, *args, **kwargs)
-
-        annotations = {}
-
-        for base in reversed(cls.__mro__):
-            if hasattr(base, '__annotations__'):
-                annotations.update(getattr(base, '__annotations__'))
-
-        if hasattr(cls, '__annotations__'):
-            annotations.update(getattr(cls, '__annotations__'))
+    def __init__(cls, name, bases, namespace):
+        super().__init__(name, bases, namespace)
 
         fields = {}
 
-        for name, ty in annotations.items():
+        for base in reversed(cls.__mro__):
+            if hasattr(base, '_fields'):
+                fields.update(getattr(base, '_fields'))
+
+        for name, ty in cls.__annotations__.items():
             if name.startswith('_'):
                 continue
 
-            value = getattr(cls, name, _MISSING)
+            value = namespace.get(name, _MISSING)
             if isinstance(value, _FieldSettings):
                 field = value
             else:
@@ -279,7 +274,7 @@ class Config(metaclass=_ConfigMeta):
             if field.env is _DISABLED:
                 continue
 
-            if field.env and field.env in os.environ:
+            if field.env in os.environ:
                 fields[name] = field.parser(os.environ[field.env])
 
         return cls(**fields)
@@ -381,7 +376,7 @@ class Config(metaclass=_ConfigMeta):
                 *field.flag,
                 type=field.parser,
                 default=_MISSING,
-                help=field.help or 'not documented',
+                help=field.help,
                 metavar=metavar,
                 dest=field.dest
             )

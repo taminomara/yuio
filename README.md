@@ -5,7 +5,8 @@ with python.
 
 Yuio's features are:
 
-- small, no-dependencies;
+- small, light, no-dependencies library;
+- mypy-friendly;
 - colored output;
 - status indication with progress bars;
 - user interactions and input parsing;
