@@ -164,6 +164,7 @@ import getpass
 import logging
 import os
 import re
+import string
 import sys
 import threading
 import typing as _t
@@ -633,13 +634,13 @@ def ask(
 
 
 def ask(
-    msg,
+    msg: str,
     *args,
-    parser=None,
-    default=None,
-    input_description=None,
-    default_description=None,
-    hidden=False,
+    parser: _t.Optional[yuio.parse.Parser[T]] = None,
+    default: _t.Optional[T] = None,
+    input_description: _t.Optional[str] = None,
+    default_description: _t.Optional[str] = None,
+    hidden: bool = False,
 ):
     """Ask user to provide an input, then parse it and return a value.
 
@@ -674,7 +675,7 @@ def ask(
     """
 
     if parser is None:
-        parser = str
+        parser = _t.cast(yuio.parse.Parser[T], str)
 
     desc = ''
 
@@ -691,14 +692,13 @@ def ask(
         if default_description:
             desc += f' [<c:note>{default_description}</c>]'
 
-    if desc:
-        desc += ': '
-    else:
-        desc = ' '
-
     if args:
         msg = msg % args
-    msg = msg + desc
+
+    if desc or not msg.endswith(tuple(string.punctuation)):
+        msg += ': '
+    else:
+        msg += ' '
 
     while True:
         question(msg)
