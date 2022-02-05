@@ -1,9 +1,11 @@
+import yuio.git
+import yuio.config
 import yuio.log
 import yuio.parse
-import yuio.config
 
 __all__ = (
+    'git',
+    'config',
     'log',
     'parse',
-    'config',
 )
