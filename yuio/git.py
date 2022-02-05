@@ -125,7 +125,8 @@ class Repo:
             if line.startswith('# branch.oid'):
                 status.commit = line[13:]
             elif line.startswith('# branch.head'):
-                status.branch = line[14:]
+                if line[14:] != '(detached)':
+                    status.branch = line[14:]
             elif line.startswith('# branch.upstream'):
                 status.upstream = line[18:]
             elif line.startswith('# branch.ab'):
