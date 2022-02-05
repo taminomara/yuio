@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install '.[test]'
       - name: Test package
-        run: pytest --mypy --doctest-modules yuio test
+        run: pytest --mypy --doctest-modules yuio test examples
   publish:
     name: Publish to PyPi
     runs-on: ubuntu-latest
