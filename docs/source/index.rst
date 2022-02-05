@@ -28,7 +28,7 @@ Features
 - Colored output with inline tags built on top of the :mod:`logging` module::
 
     yuio.log.setup()
-    yuio.log.info('<c:bold>Yuio</c>: a user-friendly io!')
+    yuio.log.info('<c:bold>Yuio</c>: a user-friendly io library!')
 
 - Status indication with progress bars::
 
@@ -45,7 +45,14 @@ Features
         default=True,
     )
 
-- More is coming!
+- Interactions with git::
+
+   repo = yuio.git.Repo('.')
+   status = repo.status()
+   yuio.log.info(
+       'At branch <c:code>%s</c>, commit <c:code>%s</c>',
+       status.branch, status.commit
+   )
 
 
 Requirements
@@ -62,6 +69,16 @@ Install ``yuio`` with pip:
 .. code-block:: sh
 
     pip3 install yuio
+
+Or just copy-paste the ``yuio`` directory to somewhere in the ``PYTHONPATH`` of your project.
+
+
+Use cases
+---------
+
+- `Example`_: a script that cuts Yuio's releases.
+
+.. _Example: https://github.com/taminomara/yuio/blob/main/examples/release.py
 
 
 Contents

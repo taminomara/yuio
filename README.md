@@ -30,9 +30,11 @@ Yuio is MyPy-friendly!
 
 ## Requirements
 
-- python >= 3.8
+The only requirement is `python >= 3.8`.
 
 ## Installation
+
+Install `yuio` with pip:
 
 ```sh
 pip3 install yuio
@@ -42,7 +44,7 @@ Or just copy-paste the `yuio` directory to somewhere in the `PYTHONPATH` of your
 
 ## Use cases
 
-- See the `examples/` directory. 
+- See the [example](https://github.com/taminomara/yuio/blob/main/examples/release.py). 
 
 ## Changelog
 
