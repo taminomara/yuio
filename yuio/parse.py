@@ -16,12 +16,16 @@ object. That is, you can use them in any place that expects such callable,
 for example in flags in argparse, or in :func:`~yuio.log.ask` method
 from :mod:`yuio.log`.
 
+When parsing fails, we raise :class:`ParsingError`.
+
 
 Base parser
 -----------
 
 .. autoclass:: Parser
    :members:
+
+.. autoclass:: ParsingError
 
 
 Value parsers
@@ -78,6 +82,7 @@ Validators
 """
 
 import abc
+import argparse
 import enum
 import pathlib
 import re
@@ -106,6 +111,16 @@ C = _t.TypeVar('C', bound=_Comparable)
 E = _t.TypeVar('E', bound=enum.Enum)
 
 
+class ParsingError(ValueError, argparse.ArgumentTypeError):
+    """Raised when parsing or validation fails.
+
+    This exception is derived from both :class:`ValueError`
+    and :class:`argparse.ArgumentTypeError` to ensure that error messages
+    are displayed nicely with argparse, and handled correctly in other places.
+
+    """
+
+
 class Parser(_t.Generic[T], abc.ABC):
     """Base class for parsers.
 
@@ -124,7 +139,7 @@ class Parser(_t.Generic[T], abc.ABC):
         pass
 
     def __call__(self, value: str) -> T:
-        """Parse and verify user input, raise :class:`ValueError` on failure.
+        """Parse and verify user input, raise :class:`ParsingError` on failure.
 
         """
 
@@ -134,7 +149,7 @@ class Parser(_t.Generic[T], abc.ABC):
 
     @abc.abstractmethod
     def parse(self, value: str) -> T:
-        """Parse user input, raise :class:`ValueError` on failure.
+        """Parse user input, raise :class:`ParsingError` on failure.
 
         Don't forget to call :meth:`Parser.validate` after parsing a value.
 
@@ -142,7 +157,7 @@ class Parser(_t.Generic[T], abc.ABC):
 
     @abc.abstractmethod
     def parse_config(self, value: _t.Any) -> T:
-        """Parse value from a config, raise :class:`ValueError` on failure.
+        """Parse value from a config, raise :class:`ParsingError` on failure.
 
         This method accepts python values, i.e. when parsing a json config.
 
@@ -152,7 +167,7 @@ class Parser(_t.Generic[T], abc.ABC):
 
     @abc.abstractmethod
     def validate(self, value: T):
-        """Verify parsed value, raise :class:`ValueError` on failure.
+        """Verify parsed value, raise :class:`ParsingError` on failure.
 
         """
 
@@ -220,7 +235,7 @@ class Str(Parser[str]):
 
     def parse_config(self, value: _t.Any) -> str:
         if not isinstance(value, str):
-            raise ValueError('expected a string')
+            raise ParsingError('expected a string')
         if self._modifier is not None:
             return self._modifier(value)
         else:
@@ -257,15 +272,15 @@ class Int(Parser[int]):
         try:
             return int(value)
         except ValueError:
-            raise ValueError(f'could not parse value {value!r} as an int')
+            raise ParsingError(f'could not parse value {value!r} as an int')
 
     def parse_config(self, value: _t.Any) -> int:
         if isinstance(value, float):
             if value != int(value):
-                raise ValueError('expected an int, got a float instead')
+                raise ParsingError('expected an int, got a float instead')
             value = int(value)
         if not isinstance(value, int):
-            raise ValueError('expected an int')
+            raise ParsingError('expected an int')
         return value
 
     def validate(self, value: int):
@@ -281,11 +296,11 @@ class Float(Parser[float]):
         try:
             return float(value)
         except ValueError:
-            raise ValueError(f'could not parse value {value!r} as a float')
+            raise ParsingError(f'could not parse value {value!r} as a float')
 
     def parse_config(self, value: _t.Any) -> float:
         if not isinstance(value, (float, int)):
-            raise ValueError('expected a float')
+            raise ParsingError('expected a float')
         return value
 
     def validate(self, value: float):
@@ -305,12 +320,12 @@ class Bool(Parser[bool]):
         elif value in ('n', 'no', 'false', '0'):
             return False
         else:
-            raise ValueError(f'could not parse value {value!r},'
+            raise ParsingError(f'could not parse value {value!r},'
                              f' enter either \'yes\' or \'no\'')
 
     def parse_config(self, value: _t.Any) -> bool:
         if not isinstance(value, bool):
-            raise ValueError('expected a bool')
+            raise ParsingError('expected a bool')
         return value
 
     def validate(self, value: bool):
@@ -338,14 +353,14 @@ class Enum(Parser[E]):
             return self._enum_type[value.upper()]
         except KeyError:
             enum_values = ', '.join(e.name for e in self._enum_type)
-            raise ValueError(
+            raise ParsingError(
                 f'could not parse value {value!r}'
                 f' as {self._enum_type.__name__},'
                 f' should be one of {enum_values}')
 
     def parse_config(self, value: _t.Any) -> E:
         if not isinstance(value, str):
-            raise ValueError('expected a string')
+            raise ParsingError('expected a string')
         return self.parse(value)
 
     def validate(self, value: E):
@@ -380,14 +395,14 @@ class Path(Parser[pathlib.Path]):
 
     def parse_config(self, value: _t.Any) -> pathlib.Path:
         if not isinstance(value, str):
-            raise ValueError('expected a string')
+            raise ParsingError('expected a string')
         return self.parse(value)
 
     def validate(self, value: pathlib.Path):
         if self._extensions is not None:
             if not any(value.name.endswith(ext) for ext in self._extensions):
                 exts = ', '.join(self._extensions)
-                raise ValueError(f'{value} should have extension {exts}')
+                raise ParsingError(f'{value} should have extension {exts}')
 
     def describe(self) -> _t.Optional[str]:
         if self._extensions is not None:
@@ -405,7 +420,7 @@ class NonExistentPath(Path):
         super().validate(value)
 
         if value.exists():
-            raise ValueError(f'{value} already exist')
+            raise ParsingError(f'{value} already exist')
 
 
 class ExistingPath(Path):
@@ -417,7 +432,7 @@ class ExistingPath(Path):
         super().validate(value)
 
         if not value.exists():
-            raise ValueError(f'{value} doesn\'t exist')
+            raise ParsingError(f'{value} doesn\'t exist')
 
 
 class File(ExistingPath):
@@ -429,7 +444,7 @@ class File(ExistingPath):
         super().validate(value)
 
         if not value.is_file():
-            raise ValueError(f'{value} is not a file')
+            raise ParsingError(f'{value} is not a file')
 
 
 class Dir(ExistingPath):
@@ -445,7 +460,7 @@ class Dir(ExistingPath):
         super().validate(value)
 
         if not value.is_dir():
-            raise ValueError(f'{value} is not a directory')
+            raise ParsingError(f'{value} is not a directory')
 
 
 class GitRepo(Dir):
@@ -460,7 +475,7 @@ class GitRepo(Dir):
         super().validate(value)
 
         if not value.joinpath('.git').is_dir():
-            raise ValueError(f'{value} is not a git repository')
+            raise ParsingError(f'{value} is not a git repository')
 
         return value
 
@@ -576,21 +591,21 @@ class Bound(Parser[C]):
 
         if self._lower is not None:
             if self._lower_inclusive and value < self._lower:
-                raise ValueError(
+                raise ParsingError(
                     f'value should be greater or equal to {self._lower},'
                     f' got {value} instead')
             elif not self._lower_inclusive and value <= self._lower:
-                raise ValueError(
+                raise ParsingError(
                     f'value should be greater than {self._lower},'
                     f' got {value} instead')
 
         if self._upper is not None:
             if self._upper_inclusive and value > self._upper:
-                raise ValueError(
+                raise ParsingError(
                     f'value should be lesser or equal to {self._upper},'
                     f' got {value} instead')
             elif not self._upper_inclusive and value >= self._upper:
-                raise ValueError(
+                raise ParsingError(
                     f'value should be lesser than {self._upper},'
                     f' got {value} instead')
 
@@ -617,7 +632,7 @@ class OneOf(Parser[T]):
 
         if value not in self._allowed_values:
             values = ', '.join(map(str, self._allowed_values))
-            raise ValueError(
+            raise ParsingError(
                 f'could not parse value {value!r},'
                 f' should be one of {values}')
 
@@ -653,5 +668,5 @@ class Regex(Parser[str]):
         self._inner.validate(value)
 
         if self._regex.match(value) is None:
-            raise ValueError(
+            raise ParsingError(
                 f'value should match regex \'{self._regex.pattern}\'')
