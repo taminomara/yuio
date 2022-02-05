@@ -27,7 +27,7 @@ def find_latest_version(repo: yuio.git.Git):
 
 
 def main():
-    yuio.log.setup(level=0)
+    yuio.log.setup()
 
     config = Config()
     config.update(Config.load_from_env())
