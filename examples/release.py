@@ -85,9 +85,9 @@ def main():
     yuio.log.info('Release changelog:')
     yuio.log.info('')
     if latest_version is not None:
-        for commit in repo.log(f'{latest_version}..{commit}', max_entries=None):
+        for entry in repo.log(f'{latest_version}..{commit}', max_entries=None):
             yuio.log.info(
-                '- %s (by <c:note>%s</c>)', commit.title, commit.author
+                '- %s (by <c:note>%s</c>)', entry.title, entry.author
             )
     yuio.log.info('')
 
@@ -99,16 +99,17 @@ def main():
         repo.git('checkout', commit.hash)
 
     with yuio.log.Task('Creating release branch'):
-        repo.git('branch', f'--set-upstream-to=origin/{branch}', branch)
+        repo.git('branch', branch)
         repo.git('checkout', branch)
 
     with yuio.log.Task('Modifying <c:code>pyproject.toml</c>'):
         pyproject = config.repo_path.joinpath('pyproject.toml')
         text = pyproject.read_text()
         text = re.sub(
-            r'^version = (?P<q>["\'])\d+\.\d+\.\d+(?P=q)$',
-            f'version = "{next_version}"',
-            text
+            r'^version\s*=\s*(?P<q>["\'])\d+\.\d+\.\d+(?P=q)$',
+            f'version = "{next_version[1:]}"',
+            text,
+            flags=re.MULTILINE
         )
         pyproject.write_text(text)
 
@@ -136,7 +137,7 @@ def main():
         exit(0)
 
     with yuio.log.Task('Pushing branch and tags to origin'):
-        repo.git('push', branch, next_version)
+        repo.git('push', '-u', 'origin', branch, next_version)
 
     yuio.log.info('<c:success>Release branch is published.</c>')
     yuio.log.info('You can view release progress in the github CI,')
