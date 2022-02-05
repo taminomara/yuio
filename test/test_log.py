@@ -1,6 +1,6 @@
 import io
 
-from yuio.log import *
+from yuio.io import *
 
 
 def test_color_output():

@@ -1,4 +1,0 @@
-Log
-===
-
-.. automodule:: yuio.log

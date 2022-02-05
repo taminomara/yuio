@@ -13,8 +13,8 @@ strings to python objects, or check user input, and throw
 All parsers are descendants of the :class:`Parser` class.
 On the surface, they are just callables that take a string and return a python
 object. That is, you can use them in any place that expects such callable,
-for example in flags in argparse, or in :func:`~yuio.log.ask` method
-from :mod:`yuio.log`.
+for example in flags in argparse, or in :func:`~yuio.io.ask` method
+from :mod:`yuio.io`.
 
 When parsing fails, we raise :class:`ParsingError`.
 

@@ -27,29 +27,40 @@ Features
 
 - Colored output with inline tags built on top of the :mod:`logging` module::
 
-    yuio.log.setup()
-    yuio.log.info('<c:bold>Yuio</c>: a user-friendly io library!')
+    yuio.io.setup()
+    yuio.io.info('<c:bold>Yuio</c>: a user-friendly io library!')
 
 - Status indication with progress bars::
 
-    with yuio.log.Task('Loading sources') as task:
+    with yuio.io.Task('Loading sources') as task:
         for i, source in enumerate(sources):
             source.load()
             task.progress(float(i) / len(sources))
 
 - User interactions and input parsing::
 
-    answer = yuio.log.ask(
+    answer = yuio.io.ask(
         'Do you want a choco bar?',
         parser=yuio.parse.Bool(),
         default=True,
     )
 
+- Tools to edit things in an external editor::
+
+    text = (
+        '\n'
+        '\n'
+        '// Please enter the commit message for your changes.\n'
+        '// Lines starting with "//" will be ignored,\n'
+        '// and an empty message aborts the commit.\n'
+    )
+    text = yuio.edit.edit(text, comment_marker='//')
+
 - Interactions with git::
 
    repo = yuio.git.Repo('.')
    status = repo.status()
-   yuio.log.info(
+   yuio.io.info(
        'At branch <c:code>%s</c>, commit <c:code>%s</c>',
        status.branch, status.commit
    )
@@ -87,7 +98,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   log
+   io
    parse
    config
    git

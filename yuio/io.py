@@ -6,7 +6,7 @@
 # just keep this copyright line please :3
 
 """
-This module implements user-friendly output on top of the python's
+This module implements user-friendly input and output on top of the python's
 standard logging library. It adds several special logging levels
 for printing tasks with progress bars and other useful things.
 
@@ -59,16 +59,16 @@ By default, all log messages are colored according to their level.
 
 If you need inline colors, you can use special tags in your log messages::
 
-    yuio.log.info('Using the <c:code>code</c> tag.')
+    info('Using the <c:code>code</c> tag.')
 
 You can combine multiple colors in the same tag::
 
-    yuio.log.info('<c:bold,green>Success!</c>')
+    info('<c:bold,green>Success!</c>')
 
 To disable tags processing, pass `no_color_tags` flag
 to the logging's `extra` object::
 
-    yuio.log.info(
+    info(
         'this tag --> <c:color> is printed as-is',
         extra=dict(no_color_tags=True)
     )
@@ -89,9 +89,9 @@ You can add more tags or change colors of the existing ones by supplying
 the `colors` argument to the :func:`setup` function. This argument
 is a mapping from a tag name to a :class:`Color` instance::
 
-    yuio.log.setup(
+    setup(
         colors=dict(
-            success=yuio.log.FORE_BLUE | yuio.log.STYLE_BOLD
+            success=FORE_BLUE | STYLE_BOLD
         )
     )
 
@@ -157,6 +157,21 @@ To query some input from a user, there's the :func:`ask` function:
 
 .. autofunction:: ask
 
+You can prompt user to edit something with the :func:`edit` function.
+Note that this function doesn't add any header with an explanation
+to the given text, so you will need to do it yourself:
+
+.. autofunction:: edit
+
+There are some helper functions and classes:
+
+.. autofunction:: is_interactive
+
+.. autofunction:: detect_editor
+
+.. autoclass:: UserIoError
+   :members:
+
 
 """
 
@@ -165,7 +180,9 @@ import logging
 import os
 import re
 import string
+import subprocess
 import sys
+import tempfile
 import threading
 import typing as _t
 from dataclasses import dataclass
@@ -309,7 +326,7 @@ DEFAULT_COLORS = {
 T = _t.TypeVar('T')
 
 _HANDLER_LOCK = threading.Lock()
-_HANDLER = None
+_HANDLER: _t.Optional['_Handler'] = None
 
 
 def setup(
@@ -610,118 +627,6 @@ class Task:
             self.error()
 
 
-@_t.overload
-def ask(
-    msg: str,
-    *args,
-    default: _t.Optional[str] = None,
-    input_description: _t.Optional[str] = None,
-    default_description: _t.Optional[str] = None,
-    hidden: bool = False,
-) -> str: ...
-
-
-@_t.overload
-def ask(
-    msg: str,
-    *args,
-    parser: yuio.parse.Parser[T],
-    default: _t.Optional[T] = None,
-    input_description: _t.Optional[str] = None,
-    default_description: _t.Optional[str] = None,
-    hidden: bool = False,
-) -> T: ...
-
-
-def ask(
-    msg: str,
-    *args,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    default: _t.Optional[T] = None,
-    input_description: _t.Optional[str] = None,
-    default_description: _t.Optional[str] = None,
-    hidden: bool = False,
-):
-    """Ask user to provide an input, then parse it and return a value.
-
-    Example::
-
-        answer = ask(
-            'Do you want a choco bar?',
-            parser=yuio.parse.Bool(),
-            default=True,
-        )
-
-    :param msg:
-        prompt that will be sent to the user.
-    :param args:
-        arguments for prompt formatting.
-    :param parser:
-        how to parse and verify the input. See :mod:`yuio.parse` for more
-        info.
-    :param default:
-        if given, this value will be returned if no input is provided.
-    :param input_description:
-        a string that describes expected input, like ``'yes/no'`` for boolean
-        inputs. By default, inferred from the given parser.
-    :param default_description:
-        a string that describes the `default` value. By default,
-        inferred from the given parser and `repr` of the default value.
-    :param hidden:
-        if enabled, treats input as password, and uses secure input methods.
-        This option also hides errors from the parser, because they may contain
-        user input.
-
-    """
-
-    if parser is None:
-        parser = _t.cast(yuio.parse.Parser[T], str)
-
-    desc = ''
-
-    if input_description is None and hasattr(parser, 'describe'):
-        input_description = getattr(parser, 'describe')()
-    if input_description:
-        desc += f' ({input_description})'
-
-    if default is not None:
-        if default_description is None and hasattr(parser, 'describe_value'):
-            default_description = getattr(parser, 'describe_value')(default)
-        if default_description is None:
-            default_description = str(default)
-        if default_description:
-            desc += f' [<c:note>{default_description}</c>]'
-
-    if args:
-        msg = msg % args
-
-    msg += desc
-
-    if desc or not msg.endswith(tuple(string.punctuation)):
-        msg += ': '
-    else:
-        msg += ' '
-
-    while True:
-        question(msg)
-        if hidden:
-            answer = getpass.getpass(prompt='')
-        else:
-            answer = input()
-        if not answer and default is not None:
-            return default
-        elif not answer:
-            error('Input is required.')
-        else:
-            try:
-                return parser(answer)
-            except Exception as e:
-                if hidden:
-                    error('Error: invalid value.')
-                else:
-                    error(f'Error: {e}.')
-
-
 class _Handler(logging.Handler):
     def __init__(self):
         super().__init__()
@@ -735,6 +640,9 @@ class _Handler(logging.Handler):
 
     def setStream(self, stream):
         self._stream = stream
+
+    def getStream(self):
+        return self._stream
 
     def setUseColors(self, use_colors: bool):
         self._use_colors = use_colors
@@ -945,3 +853,238 @@ class _Handler(logging.Handler):
                + ' ' * left \
                + ']' \
                + f' {progress:0.0%}'
+
+
+class UserIoError(IOError):
+    """Raised when interaction with user fails.
+
+    """
+
+
+def is_interactive() -> bool:
+    """Check if we're running in an interactive environment.
+
+    """
+
+    with _HANDLER_LOCK:
+        if _HANDLER is None:
+            return False
+
+        return _HANDLER.getStream().isatty() \
+            and os.environ.get('TERM', None) != 'dumb' \
+            and 'NON_INTERACTIVE' not in os.environ \
+            and 'CI' not in os.environ
+
+
+@_t.overload
+def ask(
+    msg: str,
+    *args,
+    default: _t.Optional[str] = None,
+    input_description: _t.Optional[str] = None,
+    default_description: _t.Optional[str] = None,
+    hidden: bool = False,
+) -> str: ...
+
+
+@_t.overload
+def ask(
+    msg: str,
+    *args,
+    parser: yuio.parse.Parser[T],
+    default: _t.Optional[T] = None,
+    input_description: _t.Optional[str] = None,
+    default_description: _t.Optional[str] = None,
+    hidden: bool = False,
+) -> T: ...
+
+
+def ask(
+    msg: str,
+    *args,
+    parser: _t.Optional[yuio.parse.Parser[T]] = None,
+    default: _t.Optional[T] = None,
+    input_description: _t.Optional[str] = None,
+    default_description: _t.Optional[str] = None,
+    hidden: bool = False,
+):
+    """Ask user to provide an input, then parse it and return a value.
+
+    If launched in a non-interactive environment, returns the default
+    if one is present, or raises a :class:`UserIoError`.
+
+    Example::
+
+        answer = ask(
+            'Do you want a choco bar?',
+            parser=yuio.parse.Bool(),
+            default=True,
+        )
+
+    :param msg:
+        prompt that will be sent to the user.
+    :param args:
+        arguments for prompt formatting.
+    :param parser:
+        how to parse and verify the input. See :mod:`yuio.parse` for more
+        info.
+    :param default:
+        if given, this value will be returned if no input is provided.
+    :param input_description:
+        a string that describes expected input, like ``'yes/no'`` for boolean
+        inputs. By default, inferred from the given parser.
+    :param default_description:
+        a string that describes the `default` value. By default,
+        inferred from the given parser and `repr` of the default value.
+    :param hidden:
+        if enabled, treats input as password, and uses secure input methods.
+        This option also hides errors from the parser, because they may contain
+        user input.
+
+    """
+
+    if not is_interactive():
+        if default is not None:
+            return default
+        else:
+            raise UserIoError(
+                'can\'t interact with user in non-interactive environment'
+            )
+
+    if parser is None:
+        parser = _t.cast(yuio.parse.Parser[T], str)
+
+    desc = ''
+
+    if input_description is None and hasattr(parser, 'describe'):
+        input_description = getattr(parser, 'describe')()
+    if input_description:
+        desc += f' ({input_description})'
+
+    if default is not None:
+        if default_description is None and hasattr(parser, 'describe_value'):
+            default_description = getattr(parser, 'describe_value')(default)
+        if default_description is None:
+            default_description = str(default)
+        if default_description:
+            desc += f' [<c:note>{default_description}</c>]'
+
+    if args:
+        msg = msg % args
+
+    msg += desc
+
+    if desc or not msg.endswith(tuple(string.punctuation)):
+        msg += ': '
+    else:
+        msg += ' '
+
+    while True:
+        question(msg)
+        try:
+            if hidden:
+                answer = getpass.getpass(prompt='')
+            else:
+                answer = input()
+        except EOFError:
+            raise UserIoError('unexpected end of input')
+        if not answer and default is not None:
+            return default
+        elif not answer:
+            error('Input is required.')
+        else:
+            try:
+                return parser(answer)
+            except Exception as e:
+                if hidden:
+                    error('Error: invalid value.')
+                else:
+                    error(f'Error: {e}.')
+
+
+def detect_editor() -> _t.Optional[str]:
+    """Detect an editor executable.
+
+    This function checks the ``EDITOR`` environment variable.
+    If it's not found, it checks whether ``nano`` or ``vi``
+    are available. Otherwise, it returns `None`.
+
+    """
+
+    if 'EDITOR' in os.environ:
+        return os.environ['EDITOR']
+    elif (
+        subprocess.run(
+            ['which', 'nano'], stdout=subprocess.DEVNULL
+        ).returncode == 0
+    ):
+        return 'nano'
+    elif (
+        subprocess.run(
+            ['which', 'vi'], stdout=subprocess.DEVNULL
+        ).returncode == 0
+    ):
+        return 'vi'
+    else:
+        return None
+
+
+def edit(
+    text: str,
+    comment_marker: _t.Optional[str] = '#'
+) -> str:
+    """Ask user to edit some text.
+
+    This function creates a temporary file with the given text
+    and opens it in an editor. After editing is done, it strips away
+    all lines that start with `comment_marker`, if one is given.
+
+    If editor is not available or returns a non-zero exit code,
+    a :class:`UserIoError` is raised.
+
+    If launched in a non-interactive environment, returns the text
+    unedited (comments are still removed, though).
+
+    """
+
+    if is_interactive():
+        editor = detect_editor()
+        if editor is None:
+            raise UserIoError(
+                'can\'t detect an editor, ensure that the $EDITOR environment '
+                'variable contains a correct path to an editor executable'
+            )
+
+        filepath = tempfile.mktemp()
+        with open(filepath, 'w') as file:
+            file.write(text)
+
+        try:
+            try:
+                res = subprocess.run([editor, filepath])
+            except FileNotFoundError:
+                raise UserIoError(
+                    'can\'t use this editor, ensure that the $EDITOR '
+                    'environment variable contains '
+                    'a correct path to an editor executable'
+                )
+
+            if res.returncode != 0:
+                raise UserIoError(
+                    'editing failed'
+                )
+
+            with open(filepath, 'r') as file:
+                text = file.read()
+        finally:
+            os.remove(filepath)
+
+    if comment_marker is not None:
+        text = re.sub(
+            r'^\s*' + re.escape(comment_marker) + r'.*\n',
+            '',
+            text,
+            flags=re.MULTILINE
+        )
+
+    return text.strip()

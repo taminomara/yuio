@@ -64,7 +64,7 @@ import yuio.parse
 
 
 class GitException(subprocess.SubprocessError):
-    """Raised when git returns non-zero exit code.
+    """Raised when git returns a non-zero exit code.
 
     """
 
