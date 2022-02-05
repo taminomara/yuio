@@ -7,6 +7,12 @@ import subprocess
 import yuio
 
 
+RELEASE_HEADER = """# Please enter the release changelog. Lines starting
+# with '#' will be ignored, and an empty changelog aborts the release.
+
+"""
+
+
 class Config(yuio.config.Config):
     repo_path: pathlib.Path = yuio.config.field(
         default=pathlib.Path(__file__).parent.parent.resolve(),
@@ -50,12 +56,12 @@ def main():
 
     repo = yuio.git.Repo(config.repo_path)
 
-    if repo.status().has_changes:
-        yuio.log.error(
-            'Your repository has uncommitted changes. '
-            'Either commit them or stash them.'
-        )
-        exit(1)
+    # if repo.status().has_changes:
+    #     yuio.log.error(
+    #         'Your repository has uncommitted changes. '
+    #         'Either commit them or stash them.'
+    #     )
+    #     exit(1)
 
     latest_version, next_version = find_latest_version(repo)
 
@@ -84,15 +90,15 @@ def main():
     yuio.log.info('')
     yuio.log.info('Release parameters:')
     yuio.log.info('')
-    yuio.log.info('Release version .. <c:code>%s</c>', next_version)
-    yuio.log.info('Release branch ... <c:code>%s</c>', branch)
-    yuio.log.info('Commit ........... <c:code>%s</c> (<c:code>%s</c>)',
+    yuio.log.info('Release version ..... <c:code>%s</c>', next_version)
+    yuio.log.info('Release branch ...... <c:code>%s</c>', branch)
+    yuio.log.info('Commit .............. <c:code>%s</c> (<c:code>%s</c>)',
                   commit.orig_ref, commit.short_hash)
     yuio.log.info('')
     yuio.log.info('Release changelog:')
     yuio.log.info('')
 
-    changelog = ''
+    changelog = RELEASE_HEADER
     if latest_version is not None:
         for entry in repo.log(f'{latest_version}..{commit}', max_entries=None):
             yuio.log.info(
@@ -102,8 +108,20 @@ def main():
     yuio.log.info('')
 
     if not yuio.log.ask('Do you want to proceed?', parser=yuio.parse.Bool()):
-        yuio.log.info('Aborting release.')
-        exit(0)
+        yuio.log.error('Aborting release.')
+        exit(1)
+
+    if yuio.log.ask(
+        'Do you want to edit changelog?',
+        parser=yuio.parse.Bool(),
+        default=True,
+    ):
+        changelog = yuio.editor.edit(changelog)
+        if not changelog:
+            yuio.log.error('Got empty changelog, aborting release.')
+            exit(1)
+        else:
+            yuio.log.info('Changelog edit successful.')
 
     with yuio.log.Task('Checking out <c:code>%s</c>', commit.short_hash):
         repo.git('checkout', commit.hash)
@@ -122,13 +140,6 @@ def main():
             flags=re.MULTILINE
         )
         file.write_text(text)
-
-    if yuio.log.ask(
-        'Do you want to edit changelog?',
-        parser=yuio.parse.Bool(),
-        default=True,
-    ):
-        subprocess.check_call(f'$EDITOR {file}', shell=True)
 
     with yuio.log.Task('Modifying <c:code>pyproject.toml</c>'):
         file = config.repo_path.joinpath('pyproject.toml')
