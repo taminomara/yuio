@@ -2,6 +2,7 @@
 
 import pathlib
 import re
+import subprocess
 
 import yuio
 
@@ -41,14 +42,20 @@ def main():
         )
         exit(1)
 
+    if not config.repo_path.joinpath('CHANGELOG.md').is_file():
+        yuio.log.error(
+            'File <c:code>CHANGELOG.md</c> wasn\'t found in the repository.'
+        )
+        exit(1)
+
     repo = yuio.git.Repo(config.repo_path)
 
-    # if repo.status().has_changes:
-    #     yuio.log.error(
-    #         'Your repository has uncommitted changes. '
-    #         'Either commit them or stash them.'
-    #     )
-    #     exit(1)
+    if repo.status().has_changes:
+        yuio.log.error(
+            'Your repository has uncommitted changes. '
+            'Either commit them or stash them.'
+        )
+        exit(1)
 
     latest_version, next_version = find_latest_version(repo)
 
@@ -84,11 +91,14 @@ def main():
     yuio.log.info('')
     yuio.log.info('Release changelog:')
     yuio.log.info('')
+
+    changelog = ''
     if latest_version is not None:
         for entry in repo.log(f'{latest_version}..{commit}', max_entries=None):
             yuio.log.info(
                 '- %s (by <c:note>%s</c>)', entry.title, entry.author
             )
+            changelog += f'- {entry.title} (by {entry.author})\n'
     yuio.log.info('')
 
     if not yuio.log.ask('Do you want to proceed?', parser=yuio.parse.Bool()):
@@ -102,19 +112,37 @@ def main():
         repo.git('branch', branch)
         repo.git('checkout', branch)
 
+    with yuio.log.Task('Modifying <c:code>CHANGELOG.md</c>'):
+        file = config.repo_path.joinpath('CHANGELOG.md')
+        text = file.read_text()
+        text = re.sub(
+            r'^# Changelog\n',
+            f'# Changelog\n\n*{next_version}:*\n\n{changelog}',
+            text,
+            flags=re.MULTILINE
+        )
+        file.write_text(text)
+
+    if yuio.log.ask(
+        'Do you want to edit changelog?',
+        parser=yuio.parse.Bool(),
+        default=True,
+    ):
+        subprocess.check_call(f'$EDITOR {file}', shell=True)
+
     with yuio.log.Task('Modifying <c:code>pyproject.toml</c>'):
-        pyproject = config.repo_path.joinpath('pyproject.toml')
-        text = pyproject.read_text()
+        file = config.repo_path.joinpath('pyproject.toml')
+        text = file.read_text()
         text = re.sub(
             r'^version\s*=\s*(?P<q>["\'])\d+\.\d+\.\d+(?P=q)$',
             f'version = "{next_version[1:]}"',
             text,
             flags=re.MULTILINE
         )
-        pyproject.write_text(text)
+        file.write_text(text)
 
     with yuio.log.Task('Committing <c:code>pyproject.toml</c>'):
-        repo.git('add', 'pyproject.toml')
+        repo.git('add', '.')
         repo.git('commit', '-m', f'Release {next_version}')
 
     with yuio.log.Task('Creating tag <c:code>%s</c>', next_version):

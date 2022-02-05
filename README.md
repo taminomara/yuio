@@ -45,9 +45,3 @@ Or just copy-paste the `yuio` directory to somewhere in the `PYTHONPATH` of your
 ## Use cases
 
 - See the [example](https://github.com/taminomara/yuio/blob/main/examples/release.py). 
-
-## Changelog
-
-*v1.0.0*:
-
-- Initial release.
