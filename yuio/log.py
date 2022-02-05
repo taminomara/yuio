@@ -695,6 +695,8 @@ def ask(
     if args:
         msg = msg % args
 
+    msg += desc
+
     if desc or not msg.endswith(tuple(string.punctuation)):
         msg += ': '
     else:
