@@ -1081,7 +1081,7 @@ def edit(
 
     if comment_marker is not None:
         text = re.sub(
-            r'^\s*' + re.escape(comment_marker) + r'.*\n',
+            r'^\s*' + re.escape(comment_marker) + r'.*?\n',
             '',
             text,
             flags=re.MULTILINE
