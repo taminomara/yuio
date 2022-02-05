@@ -73,3 +73,4 @@ Contents
    log
    parse
    config
+   git

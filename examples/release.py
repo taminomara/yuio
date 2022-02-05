@@ -14,7 +14,7 @@ class Config(yuio.config.Config):
     )
 
 
-def find_latest_version(repo: yuio.git.Git):
+def find_latest_version(repo: yuio.git.Repo):
     text = repo.git('tag', '--list', '--sort=-version:refname')
     tags = text.decode().split('\n')
 
@@ -41,7 +41,7 @@ def main():
         )
         exit(1)
 
-    repo = yuio.git.Git(config.repo_path)
+    repo = yuio.git.Repo(config.repo_path)
 
     # if repo.status().has_changes:
     #     yuio.log.error(

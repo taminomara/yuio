@@ -1,3 +1,56 @@
+# Yuio project, MIT licence.
+#
+# https://github.com/taminomara/yuio/
+#
+# You're free to copy this file to your project and edit it for your needs,
+# just keep this copyright line please :3
+
+"""
+This module provides basic functionality to interact with git.
+It comes in handy when writing deployment scripts.
+
+
+Interacting with a repository
+-----------------------------
+
+All repository interactions are done through the :class:`Repo` class
+and its methods. If an interaction fails, a :class:`GitException` is raised.
+
+.. autoclass:: Repo
+   :members:
+
+.. autoclass:: GitException
+   :members:
+
+
+Commit and status objects
+-------------------------
+
+Some of :class:`Repo` commands return parsed descriptions of git objects:
+
+.. autoclass:: Commit
+   :members:
+
+.. autoclass:: Status
+   :members:
+
+.. autoclass:: FileStatus
+   :members:
+
+.. autoclass:: Modification
+   :members:
+
+
+Parsing git refs
+----------------
+
+When you need to query a git ref from a user, :class:`RefParser` will ensure
+that the ref points to a valid git object:
+
+.. autoclass:: RefParser
+
+"""
+
 import dataclasses
 import enum
 import pathlib
@@ -10,11 +63,17 @@ from datetime import datetime
 import yuio.parse
 
 
-class GitException(Exception):
-    pass
+class GitException(subprocess.SubprocessError):
+    """Raised when git returns non-zero exit code.
+
+    """
 
 
-class Git:
+class Repo:
+    """A class that allows interactions with a git repository.
+
+    """
+
     def __init__(self, path: _t.Union[pathlib.Path, str]):
         self._path = pathlib.Path(path)
 
@@ -114,7 +173,7 @@ class Git:
         *refs: str,
         max_entries: _t.Optional[int] = 10
     ) -> _t.List['Commit']:
-        """Query log for given git objects.
+        """Query the log for given git objects.
 
         Note that by default log output is limited by ten entries.
 
@@ -292,7 +351,7 @@ class FileStatus:
     #: Path of the file.
     path: pathlib.Path
 
-    # If file was moved, path where it was moved from.
+    #: If file was moved, contains path where it was moved from.
     path_from: _t.Optional[pathlib.Path] = None
 
     #: File modification in the index (staged).
@@ -342,7 +401,11 @@ class Status:
 
 
 class RefParser(yuio.parse.Parser[Commit]):
-    def __init__(self, repo: Git):
+    """A parser for git refs (commits, tags, branches, and so on).
+
+    """
+
+    def __init__(self, repo: Repo):
         super().__init__()
 
         self._repo = repo
