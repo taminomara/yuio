@@ -1031,7 +1031,8 @@ def detect_editor() -> _t.Optional[str]:
 
 def edit(
     text: str,
-    comment_marker: _t.Optional[str] = '#'
+    comment_marker: _t.Optional[str] = '#',
+    editor: _t.Optional[str] = None,
 ) -> str:
     """Ask user to edit some text.
 
@@ -1048,7 +1049,9 @@ def edit(
     """
 
     if is_interactive():
-        editor = detect_editor()
+        if editor is None:
+            editor = detect_editor()
+
         if editor is None:
             raise UserIoError(
                 'can\'t detect an editor, ensure that the $EDITOR environment '
