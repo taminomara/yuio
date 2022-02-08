@@ -2,7 +2,6 @@
 
 import pathlib
 import re
-import subprocess
 
 import yuio
 
@@ -55,12 +54,12 @@ def main():
 
     repo = yuio.git.Repo(config.repo_path)
 
-    # if repo.status().has_changes:
-    #     yuio.io.error(
-    #         'Your repository has uncommitted changes. '
-    #         'Either commit them or stash them.'
-    #     )
-    #     exit(1)
+    if repo.status().has_changes:
+        yuio.io.error(
+            'Your repository has uncommitted changes. '
+            'Either commit them or stash them.'
+        )
+        exit(1)
 
     latest_version, next_version = find_latest_version(repo)
 
