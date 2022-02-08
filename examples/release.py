@@ -96,7 +96,7 @@ def main():
     yuio.io.info('Release changelog:')
     yuio.io.info('')
 
-    changelog = RELEASE_HEADER
+    changelog = ''
     if latest_version is not None:
         for entry in repo.log(f'{latest_version}..{commit}', max_entries=None):
             yuio.io.info(
@@ -114,7 +114,7 @@ def main():
         parser=yuio.parse.Bool(),
         default=True,
     ):
-        changelog = yuio.io.edit(changelog)
+        changelog = yuio.io.edit(RELEASE_HEADER + changelog)
         if not changelog:
             yuio.io.error('Got empty changelog, aborting release.')
             exit(1)
@@ -149,6 +149,13 @@ def main():
             flags=re.MULTILINE
         )
         file.write_text(text)
+
+    yuio.io.info('Ready to create a release commit and tag.')
+    yuio.io.info('Feel free to look around and add changes before proceeding.')
+
+    if not yuio.io.ask('Do you want to proceed?', parser=yuio.parse.Bool()):
+        yuio.io.error('Aborting release.')
+        exit(1)
 
     with yuio.io.Task('Committing <c:code>pyproject.toml</c>'):
         repo.git('add', '.')

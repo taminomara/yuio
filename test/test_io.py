@@ -272,3 +272,14 @@ def test_task_interrupt():
            f'\033[2K\r\033[0;34;49mtask message...\n\033[0m' \
            f'\033[0;39;49minfo message\n\033[0m' \
            f'\033[0;31;49mtask message... ERROR\n\033[0m'
+
+
+def test_edit():
+    os.environ['NON_INTERACTIVE'] = '1'
+
+    text = edit(
+        '# Comment\n'
+        'Text'
+    )
+
+    assert text == 'Text'
