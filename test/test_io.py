@@ -242,6 +242,46 @@ def test_task_logging_err():
            f'\033[2K\r\033[0;31;49mtask message... ERROR\n\033[0m'
 
 
+def test_task_logging_jobs():
+    stream = io.StringIO()
+    setup(use_colors=True, level=DEBUG, stream=stream)
+
+    task_begin('task message')
+    task_progress('task message', progress=(0, 10))
+    task_progress('task message', progress=(5, 10))
+    task_progress('task message', progress=(10, 10))
+    task_done('task message')
+
+    assert stream.getvalue() == \
+           f'\033[0;34;49mtask message...\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [                    ] 0% (0 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [=========>          ] 50% (5 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [====================] 100% (10 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... OK\n\033[0m'
+
+
+def test_task_logging_inflight_jobs():
+    stream = io.StringIO()
+    setup(use_colors=True, level=DEBUG, stream=stream)
+
+    task_begin('task message')
+    task_progress('task message', progress=(0, 0, 10))
+    task_progress('task message', progress=(0, 2, 10))
+    task_progress('task message', progress=(5, 0, 10))
+    task_progress('task message', progress=(5, 5, 10))
+    task_progress('task message', progress=(10, 0, 10))
+    task_done('task message')
+
+    assert stream.getvalue() == \
+           f'\033[0;34;49mtask message...\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [                    ] 0% (0 / 0 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [>>>>                ] 0% (0 / 2 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [==========          ] 50% (5 / 0 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [==========>>>>>>>>>>] 50% (5 / 5 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [====================] 100% (10 / 0 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... OK\n\033[0m'
+
+
 def test_multiline_task_logging():
     stream = io.StringIO()
     setup(use_colors=True, level=DEBUG, stream=stream)

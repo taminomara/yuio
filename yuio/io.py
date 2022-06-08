@@ -324,6 +324,7 @@ DEFAULT_COLORS = {
 }
 
 T = _t.TypeVar('T')
+_PROGRESS = _t.Union[int, float, _t.Tuple[int, int], _t.Tuple[int, int, int]]
 
 _HANDLER_LOCK = threading.Lock()
 _HANDLER: _t.Optional['_Handler'] = None
@@ -463,7 +464,7 @@ def task_begin(msg: str, *args):
     logging.log(TASK_BEGIN, msg, *args)
 
 
-def task_progress(msg: str, *args, progress: float):
+def task_progress(msg: str, *args, progress: _PROGRESS):
     """Indicate progress of some task.
 
     If this function is called after :func:`task_begin`, the task message will
@@ -541,13 +542,13 @@ class Task:
         with Task('Fetching data') as task:
             for i, url in enumerate(urls):
                 url.fetch()
-                task.progress(float(i) / len(urls))
+                task.progress((i, len(urls)))
 
     This will output the following:
 
     .. code-block:: text
 
-       Fetching data... [=====>              ] 30%
+       Fetching data... [=====>              ] 30% (3 / 10)
 
     Note that you don't have to use it in a context::
 
@@ -581,8 +582,18 @@ class Task:
             task_begin(self._msg)
             self._started = True
 
-    def progress(self, progress: float):
-        """Indicate progress of ths task, measured from ``0`` to ``1``.
+    def progress(self, progress: _PROGRESS):
+        """Indicate progress of ths task.
+
+        :param progress:
+            Progress of the task. Could be one of three things:
+
+            - a floating point number between ``0`` and ``1``;
+            - a tuple of two ints, first is the number of completed jobs,
+              and second is the total number of jobs;
+            - a tuple of three ints, first is the number of completed jobs,
+              second is the number of in-progress jobs, and the third
+              is the total number of jobs.
 
         """
 
@@ -666,6 +677,8 @@ class _Handler(logging.Handler):
             and self._current_task is not None
             and record.message == self._current_task.message
         )
+
+        progress: _t.Optional[_PROGRESS]
 
         if record.levelno == TASK_DONE:
             status = 'OK'
@@ -760,7 +773,7 @@ class _Handler(logging.Handler):
         self,
         message: str,
         status: _t.Optional[str],
-        progress: _t.Optional[float],
+        progress: _t.Optional[_PROGRESS],
     ) -> bool:
         lines = message.split('\n')
         is_multiline = len(lines) > 1
@@ -833,26 +846,57 @@ class _Handler(logging.Handler):
         return out
 
     @staticmethod
-    def _make_progress_bar(progress: float):
-        if progress < 0:
-            progress = 0
-        elif progress > 1:
-            progress = 1
+    def _make_progress_bar(progress: _PROGRESS):
+        width = 20
 
-        done = int(20 * progress)
-        infl = 0
-        left = 20 - done
+        progress_indicator = ''
 
-        if 0 < done < 20:
-            infl = 1
+        done_percentage = 0.0
+        inflight_percentage = 0.0
+        adjust_inflight = False
+
+        if isinstance(progress, tuple):
+            if len(progress) == 2:
+                progress = _t.cast(_t.Tuple[int, int], progress)
+                done_percentage = float(progress[0]) / float(progress[1])
+                progress_indicator = f' ({progress[0]} / {progress[1]})'
+            elif len(progress) == 3:
+                progress = _t.cast(_t.Tuple[int, int, int], progress)
+                done_percentage = float(progress[0]) / float(progress[2])
+                inflight_percentage = float(progress[1]) / float(progress[2])
+                progress_indicator = f' ({progress[0]} / {progress[1]} / {progress[2]})'
+        elif isinstance(progress, (float, int)):
+            done_percentage = float(progress)
+            adjust_inflight = True
+
+        if done_percentage < 0:
+            done_percentage = 0.0
+        elif done_percentage > 1:
+            done_percentage = 1.0
+
+        if inflight_percentage < 0:
+            inflight_percentage = 0.0
+        elif inflight_percentage > 1:
+            inflight_percentage = 1.0
+
+        if done_percentage + inflight_percentage > 1:
+            inflight_percentage = 1.0 - done_percentage
+
+        done = int(width * done_percentage)
+        inflight = int(width * inflight_percentage)
+
+        if adjust_inflight and inflight == 0 and 0 < done < width:
+            inflight = 1
             done -= 1
+
+        left = width - done - inflight
 
         return '[' \
                + '=' * done \
-               + '>' * infl \
+               + '>' * inflight \
                + ' ' * left \
                + ']' \
-               + f' {progress:0.0%}'
+               + f' {done_percentage:0.0%}{progress_indicator}'
 
 
 class UserIoError(IOError):
