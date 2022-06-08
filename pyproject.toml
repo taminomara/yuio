@@ -1,6 +1,6 @@
 [project]
 name = "yuio"
-version = "0.0.0"
+version = "1.0.1"
 description = "Lite and user-friendly CLI library"
 authors = [{name = "Tamika Nomara", email = "taminomara@gmail.com"}]
 readme = "README.md"
