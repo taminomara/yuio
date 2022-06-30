@@ -56,14 +56,18 @@ Features
     )
     text = yuio.edit.edit(text, comment_marker='//')
 
+- Tools to run commands::
+
+    yuio.exec.sh('ping 127.0.0.1 -c 5 1>&2')
+
 - Interactions with git::
 
-   repo = yuio.git.Repo('.')
-   status = repo.status()
-   yuio.io.info(
+    repo = yuio.git.Repo('.')
+    status = repo.status()
+    yuio.io.info(
        'At branch <c:code>%s</c>, commit <c:code>%s</c>',
        status.branch, status.commit
-   )
+    )
 
 
 Requirements
@@ -101,4 +105,5 @@ Contents
    io
    parse
    config
+   exec
    git
