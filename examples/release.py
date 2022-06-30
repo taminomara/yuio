@@ -18,6 +18,8 @@ class Config(yuio.config.Config):
         help='path to the git repo with project'
     )
 
+    dry_run: bool = False
+
 
 def find_latest_version(repo: yuio.git.Repo):
     text = repo.git('tag', '--list', '--sort=-version:refname')
@@ -85,41 +87,25 @@ def main():
         default=branch,
     )
 
-    yuio.io.info('')
-    yuio.io.info('Release parameters:')
-    yuio.io.info('')
-    yuio.io.info('Release version ..... <c:code>%s</c>', next_version)
-    yuio.io.info('Release branch ...... <c:code>%s</c>', branch)
-    yuio.io.info('Commit .............. <c:code>%s</c> (<c:code>%s</c>)',
-                 commit.orig_ref, commit.short_hash)
-    yuio.io.info('')
-    yuio.io.info('Release changelog:')
-    yuio.io.info('')
+    changelog = (
+        f'# Release parameters:\n'
+        f'# \n'
+        f'# Release version ..... {next_version}\n'
+        f'# Release branch ...... {branch}\n'
+        f'# Commit .............. {commit.orig_ref} ({commit.short_hash})\n'
+        f'\n'
+    )
 
-    changelog = ''
     if latest_version is not None:
         for entry in repo.log(f'{latest_version}..{commit}', max_entries=None):
-            yuio.io.info(
-                '- %s (by <c:note>%s</c>)', entry.title, entry.author
-            )
             changelog += f'- {entry.title} (by {entry.author})\n'
-    yuio.io.info('')
 
-    if not yuio.io.ask('Do you want to proceed?', parser=yuio.parse.Bool()):
-        yuio.io.error('Aborting release.')
+    changelog = yuio.io.edit(RELEASE_HEADER + changelog)
+    if not changelog:
+        yuio.io.error('Got empty changelog, aborting release.')
         exit(1)
-
-    if yuio.io.ask(
-        'Do you want to edit changelog?',
-        parser=yuio.parse.Bool(),
-        default=True,
-    ):
-        changelog = yuio.io.edit(RELEASE_HEADER + changelog)
-        if not changelog:
-            yuio.io.error('Got empty changelog, aborting release.')
-            exit(1)
-        else:
-            yuio.io.info('Changelog edit successful.')
+    else:
+        yuio.io.info('Changelog edit successful.')
 
     with yuio.io.Task('Checking out <c:code>%s</c>', commit.short_hash):
         repo.git('checkout', commit.hash)
@@ -133,7 +119,7 @@ def main():
         text = file.read_text()
         text = re.sub(
             r'^# Changelog\n',
-            f'# Changelog\n\n*{next_version}:*\n\n{changelog}',
+            f'# Changelog\n\n*{next_version}:*\n\n{changelog}\n',
             text,
             flags=re.MULTILINE
         )
@@ -150,46 +136,66 @@ def main():
         )
         file.write_text(text)
 
-    yuio.io.info('Ready to create a release commit and tag.')
-    yuio.io.info('Feel free to look around and add changes before proceeding.')
-
-    if not yuio.io.ask('Do you want to proceed?', parser=yuio.parse.Bool()):
-        yuio.io.error('Aborting release.')
-        exit(1)
-
-    with yuio.io.Task('Committing <c:code>pyproject.toml</c>'):
+    with yuio.io.Task('Committing changes'):
         repo.git('add', '.')
         repo.git('commit', '-m', f'Release {next_version}')
+
+    yuio.io.info('Ready to create a release tag.')
+    yuio.io.info('Feel free to look around and add changes before proceeding.')
+
+    while True:
+        if not yuio.io.ask('Do you want to proceed?', parser=yuio.parse.Bool()):
+            yuio.io.error('Aborting release.')
+            exit(1)
+
+        if not repo.status().has_changes:
+            break
+
+        yuio.io.error(
+            'Your repository has uncommitted changes. '
+            'Either commit them or stash them before proceeding.'
+        )
 
     with yuio.io.Task('Creating tag <c:code>%s</c>', next_version):
         repo.git('tag', next_version)
 
-    yuio.io.info('Release branch is ready to be published.')
+    yuio.io.info('Release branch and tag are ready to be published.')
 
-    if not yuio.io.ask(
-        'Do you want to push the release branch '
-        'to <c:code>origin</c>?',
-        parser=yuio.parse.Bool()
-    ):
+    if not config.dry_run:
+        with yuio.io.Task('Pushing branch and tags to origin'):
+            repo.git('push', '-u', 'origin', branch, next_version)
+
+        yuio.io.info('')
+        yuio.io.info('<c:success>Release branch is published.</c>')
+        yuio.io.info('')
+        yuio.io.info('You can view release progress in the github CI,')
         yuio.io.info(
-            'Nothing more to do. '
-            'Push the release branch <c:code>%s</c> and tag <c:code>%s</c> '
-            'to origin to start deployment.',
-            branch,
+            'see <c:code>'
+            'https://github.com/taminomara/yuio/actions?query=branch:%s</c>',
             next_version
         )
-        exit(0)
+        yuio.io.info('')
+    else:
+        yuio.io.info('<c:success>Dry run is completed successfully.</c>')
+        yuio.io.info('')
+        yuio.io.info('Release branch and tags were created,')
+        yuio.io.info('but were not pushed to the repo.')
+        yuio.io.info('')
+        yuio.io.info('To publish release to the repo, run:')
+        yuio.io.info('<c:code>git push -u origin %s %s</c>', branch, next_version)
+        yuio.io.info('')
+        yuio.io.info('To roll back the repository, run:')
+        yuio.io.info('<c:code>git checkout -f main</c>')
+        yuio.io.info('<c:code>git branch -D %s</c>', branch)
+        yuio.io.info('<c:code>git tag -d %s</c>', next_version)
+        yuio.io.info('')
 
-    with yuio.io.Task('Pushing branch and tags to origin'):
-        repo.git('push', '-u', 'origin', branch, next_version)
-
-    yuio.io.info('<c:success>Release branch is published.</c>')
-    yuio.io.info('You can view release progress in the github CI,')
-    yuio.io.info(
-        'see <c:code>'
-        'https://github.com/taminomara/yuio/actions?query=branch:%s</c>',
-        next_version
-    )
+    with yuio.io.Task('Cherry-picking changelog to main'):
+        repo.git('checkout', '--force', commit.hash)
+        repo.git('merge', next_version)
+        repo.git('reset', '--mixed', commit.hash)
+        repo.git('add', 'CHANGELOG.md', 'pyproject.toml')
+        repo.git('checkout', '.')
 
 
 if __name__ == '__main__':
