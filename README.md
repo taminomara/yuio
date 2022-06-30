@@ -27,6 +27,7 @@ Yuio is MyPy-friendly!
 - [Issues](https://github.com/taminomara/yuio/issues)
 - [Source](https://github.com/taminomara/yuio/)
 - [PyPi](https://pypi.org/project/yuio/)
+- [Changelog](https://github.com/taminomara/yuio/blob/main/CHANGELOG.md)
 
 ## Requirements
 
