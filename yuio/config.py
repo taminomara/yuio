@@ -412,13 +412,20 @@ class Config(metaclass=_ConfigMeta):
             else:
                 metavar = '<' + name.replace('_', '-') + '>'
 
+            kwargs = {}
+
+            if isinstance(field.parser, yuio.parse.Bool):
+                kwargs['nargs'] = '?'
+                kwargs['const'] = True
+
             parser.add_argument(
                 *field.flag,
                 type=field.parser,
                 default=_MISSING,
                 help=field.help,
                 metavar=metavar,
-                dest=field.dest
+                dest=field.dest,
+                **kwargs
             )
 
         return parser

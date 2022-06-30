@@ -321,7 +321,7 @@ class Bool(Parser[bool]):
             return False
         else:
             raise ParsingError(f'could not parse value {value!r},'
-                             f' enter either \'yes\' or \'no\'')
+                               f' enter either \'yes\' or \'no\'')
 
     def parse_config(self, value: _t.Any) -> bool:
         if not isinstance(value, bool):
