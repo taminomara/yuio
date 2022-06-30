@@ -190,13 +190,6 @@ def main():
         yuio.io.info('<c:code>git tag -d %s</c>', next_version)
         yuio.io.info('')
 
-    with yuio.io.Task('Cherry-picking changelog to main'):
-        repo.git('checkout', '--force', commit.hash)
-        repo.git('merge', next_version)
-        repo.git('reset', '--mixed', commit.hash)
-        repo.git('add', 'CHANGELOG.md', 'pyproject.toml')
-        repo.git('checkout', '.')
-
 
 if __name__ == '__main__':
     main()
