@@ -810,14 +810,16 @@ class _Handler(logging.Handler):
     _TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _-]+)>|</c>')
 
     def _colorize(self, msg: str, record: logging.LogRecord):
-        if getattr(record, 'no_color_tags', False):
-            return msg
-
-        if not self._use_colors:
-            return self._TAG_RE.sub('', msg)
-
         default_color = self._colors.get(record.levelname.lower(), Color())
         default_color = FORE_NORMAL | BACK_NORMAL | default_color
+
+        if getattr(record, 'no_color_tags', False):
+            if self._use_colors:
+                return str(default_color) + msg
+            else:
+                return msg
+        elif not self._use_colors:
+            return self._TAG_RE.sub('', msg)
 
         out = ''
         last_pos = 0
