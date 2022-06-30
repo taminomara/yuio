@@ -255,7 +255,7 @@ def test_task_logging_jobs():
     assert stream.getvalue() == \
            f'\033[0;34;49mtask message...\033[0m' \
            f'\033[2K\r\033[0;34;49mtask message... [                    ] 0% (0 / 10)\033[0m' \
-           f'\033[2K\r\033[0;34;49mtask message... [=========>          ] 50% (5 / 10)\033[0m' \
+           f'\033[2K\r\033[0;34;49mtask message... [==========          ] 50% (5 / 10)\033[0m' \
            f'\033[2K\r\033[0;34;49mtask message... [====================] 100% (10 / 10)\033[0m' \
            f'\033[2K\r\033[0;34;49mtask message... OK\n\033[0m'
 

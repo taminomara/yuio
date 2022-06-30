@@ -31,10 +31,9 @@ def exec(
     *args: str,
     cwd: _t.Union[None, str, pathlib.Path] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Union[None, str, bytes] = None,
+    input: _t.Optional[str] = None,
     level: int = yuio.io.INFO,
-    text: bool = True,
-) -> _t.Union[str, bytes]:
+) -> str:
     pass
 
 
@@ -43,9 +42,10 @@ def exec(
     *args: str,
     cwd: _t.Union[None, str, pathlib.Path] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Optional[str] = None,
+    input: _t.Union[None, str, bytes] = None,
     level: int = yuio.io.INFO,
-) -> str:
+    text: bool = True,
+) -> _t.Union[str, bytes]:
     pass
 
 
@@ -123,7 +123,7 @@ def exec(
             stderr_thread.daemon = True
             stderr_thread.start()
 
-        if input is not None:
+        if input is not None and process.stdin is not None:
             process.stdin.write(input)
 
         if process.stdout:
@@ -151,10 +151,9 @@ def sh(
     *,
     cwd: _t.Union[None, str, pathlib.Path] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Union[str, bytes] = None,
+    input: _t.Optional[str] = None,
     level: int = yuio.io.INFO,
-    text: bool = True,
-) -> _t.Union[str, bytes]:
+) -> str:
     pass
 
 
@@ -165,9 +164,10 @@ def sh(
     *,
     cwd: _t.Union[None, str, pathlib.Path] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Optional[str] = None,
+    input: _t.Union[str, bytes] = None,
     level: int = yuio.io.INFO,
-) -> str:
+    text: bool = True,
+) -> _t.Union[str, bytes]:
     pass
 
 
