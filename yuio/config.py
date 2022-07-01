@@ -412,7 +412,7 @@ class Config(metaclass=_ConfigMeta):
             else:
                 metavar = '<' + name.replace('_', '-') + '>'
 
-            kwargs = {}
+            kwargs: _t.Dict[str, _t.Any] = {}
 
             if isinstance(field.parser, yuio.parse.Bool):
                 kwargs['nargs'] = '?'
