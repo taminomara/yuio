@@ -303,7 +303,10 @@ class Config(metaclass=_ConfigMeta):
         return cls(**fields)
 
     @classmethod
-    def load_from_args(cls, args: _t.Optional[_t.List[str]] = None) -> _Self:
+    def load_from_args(
+        cls: _t.Type[_Self],
+        args: _t.Optional[_t.List[str]] = None
+    ) -> _Self:
         """Parse the given args and load config from them.
 
         If args are not given, will parse :data:`sys.argv`.
