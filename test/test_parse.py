@@ -121,6 +121,41 @@ def test_int_enum():
     assert parser.describe_value(Colors.RED) == 'RED'
 
 
+def test_list():
+    pass
+
+
+def test_set():
+    pass
+
+
+def test_frozenset():
+    pass
+
+
+def test_dict():
+    pass
+
+
+def test_pair():
+    parser = Pair(Int(), Str(), '-')
+    assert parser('10-abc') == (10, 'abc')
+    assert parser('10-abc-xyz') == (10, 'abc-xyz')
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('10')
+    assert parser.describe() == 'int-str'
+    assert parser.describe_value((-5, 'xyz')) == '-5-xyz'
+
+    parser = Pair(Int(), Pair(Str(), Str()))
+    assert parser('10:abc:xyz') == (10, ('abc', 'xyz'))
+    assert parser('10:abc::') == (10, ('abc', ':'))
+    assert parser('10::xyz') == (10, ('', 'xyz'))
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('10:abc')
+    assert parser.describe() == 'int:str:str'
+    assert parser.describe_value((-5, ('xyz', 'abc'))) == '-5:xyz:abc'
+
+
 def test_path():
     parser = Path()
     assert str(parser('/a/s/d')) == '/a/s/d'

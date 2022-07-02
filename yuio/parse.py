@@ -107,6 +107,8 @@ class _Comparable(_t.Protocol):
 
 
 T = _t.TypeVar('T')
+K = _t.TypeVar('K')
+V = _t.TypeVar('V')
 C = _t.TypeVar('C', bound=_Comparable)
 E = _t.TypeVar('E', bound=enum.Enum)
 
@@ -184,6 +186,22 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
         return None
+
+    def _describe_or_def(self) -> str:
+        """Like :py:meth:`~Parser.describe`,
+        but guaranteed to return something.
+
+        """
+
+        return self.describe() or self.__class__.__name__.lower()
+
+    def _describe_value_or_def(self, value: T) -> str:
+        """Like :py:meth:`~Parser.describe_value`,
+        but guaranteed to return something.
+
+        """
+
+        return self.describe_value(value) or str(value)
 
     @classmethod
     @_t.no_type_check
@@ -372,6 +390,279 @@ class Enum(Parser[E]):
 
     def describe_value(self, value: E) -> _t.Optional[str]:
         return value.name
+
+
+class List(Parser[_t.List[T]]):
+    """Parser for lists.
+
+    Will split a string by the given delimiter, and parse each item
+    using a subparser.
+
+    :param inner:
+        inner parser that will be used to parse list items.
+    :param delimiter:
+        delimiter that will be passed to :py:meth:`str.split`.
+
+    """
+
+    def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
+        super().__init__()
+
+        self._inner = inner
+        if delimiter == '':
+            raise ValueError('empty delimiter')
+        self._delimiter = delimiter
+
+    def parse(self, value: str) -> _t.List[T]:
+        return [
+            self._inner.parse(item)
+            for item in
+            value.split(self._delimiter)
+        ]
+
+    def parse_config(self, value: _t.Any) -> _t.List[T]:
+        if not isinstance(value, list):
+            raise ParsingError('expected a list')
+
+        return [
+            self._inner.parse_config(item)
+            for item in value
+        ]
+
+    def validate(self, value: _t.List[T]):
+        for item in value:
+            self._inner.validate(item)
+
+    def describe(self) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        value = self._inner._describe_or_def()
+
+        return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_value(self, value: _t.List[T]) -> _t.Optional[str]:
+        return (self._delimiter or ' ').join(
+            self._inner._describe_value_or_def(item) for item in value
+        )
+
+
+class Set(Parser[_t.Set[T]]):
+    """Parser for sets.
+
+    Will split a string by the given delimiter, and parse each item
+    using a subparser.
+
+    :param inner:
+        inner parser that will be used to parse set items.
+    :param delimiter:
+        delimiter that will be passed to :py:meth:`str.split`.
+
+    """
+
+    def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
+        super().__init__()
+
+        self._inner = inner
+        if delimiter == '':
+            raise ValueError('empty delimiter')
+        self._delimiter = delimiter
+
+    def parse(self, value: str) -> _t.Set[T]:
+        return set({
+            self._inner.parse(item)
+            for item in
+            value.split(self._delimiter)
+        })
+
+    def parse_config(self, value: _t.Any) -> _t.Set[T]:
+        if not isinstance(value, list):
+            raise ParsingError('expected a list')
+
+        return set({
+            self._inner.parse_config(item)
+            for item in value
+        })
+
+    def validate(self, value: _t.Set[T]):
+        for item in value:
+            self._inner.validate(item)
+
+    def describe(self) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        value = self._inner._describe_or_def()
+
+        return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_value(self, value: _t.Set[T]) -> _t.Optional[str]:
+        return (self._delimiter or ' ').join(
+            self._inner._describe_value_or_def(item) for item in value
+        )
+
+
+class FrozenSet(Parser[_t.FrozenSet[T]]):
+    """Parser for frozen sets.
+
+    Will split a string by the given delimiter, and parse each item
+    using a subparser.
+
+    :param inner:
+        inner parser that will be used to parse set items.
+    :param delimiter:
+        delimiter that will be passed to :py:meth:`str.split`.
+
+    """
+
+    def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
+        super().__init__()
+
+        self._inner = inner
+        if delimiter == '':
+            raise ValueError('empty delimiter')
+        self._delimiter = delimiter
+
+    def parse(self, value: str) -> _t.FrozenSet[T]:
+        return frozenset({
+            self._inner.parse(item)
+            for item in
+            value.split(self._delimiter)
+        })
+
+    def parse_config(self, value: _t.Any) -> _t.FrozenSet[T]:
+        if not isinstance(value, list):
+            raise ParsingError('expected a list')
+
+        return frozenset({
+            self._inner.parse_config(item)
+            for item in value
+        })
+
+    def validate(self, value: _t.FrozenSet[T]):
+        for item in value:
+            self._inner.validate(item)
+
+    def describe(self) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        value = self._inner._describe_or_def()
+
+        return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_value(self, value: _t.FrozenSet[T]) -> _t.Optional[str]:
+        return (self._delimiter or ' ').join(
+            self._inner._describe_value_or_def(item) for item in value
+        )
+
+
+class Dict(Parser[_t.Dict[K, V]]):
+    """Parser for dicts.
+
+    Will split a string by the given delimiter, and parse each item
+    using a :py:class:`Pair` parser.
+
+    :param key:
+        inner parser that will be used to parse dict keys.
+    :param value:
+        inner parser that will be used to parse dict values.
+    :param delimiter:
+        delimiter that will be passed to :py:meth:`str.split`.
+    :param pair_delimiter:
+        delimiter that will be used to split key-value elements.
+
+    """
+
+    def __init__(
+        self,
+        key: Parser[K],
+        value: Parser[V],
+        delimiter: _t.Optional[str] = None,
+        pair_delimiter: str = ':'
+    ):
+        super().__init__()
+
+        if delimiter == '':
+            raise ValueError('empty delimiter')
+        self._delimiter = delimiter
+
+        self._inner = Pair(key, value, pair_delimiter)
+
+    def parse(self, value: str) -> _t.Dict[K, V]:
+        return dict(self._inner.parse(item) for item in value.split(' '))
+
+    def parse_config(self, value: _t.Any) -> _t.Dict[K, V]:
+        if not isinstance(value, dict):
+            raise ParsingError('expected a dict')
+
+        return dict(self._inner.parse_config(item) for item in value)
+
+    def validate(self, value: _t.Dict[K, V]):
+        for item in value.items():
+            self._inner.validate(item)
+
+    def describe(self) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        value = self._inner._describe_or_def()
+
+        return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_value(self, value: _t.Dict[K, V]) -> _t.Optional[str]:
+        return (self._delimiter or ' ').join(
+            self._inner._describe_value_or_def(item) for item in value.items()
+        )
+
+
+class Pair(Parser[_t.Tuple[K, V]]):
+    """Parser for key-value pairs.
+
+    """
+
+    def __init__(
+        self,
+        key: Parser[K],
+        value: Parser[V],
+        delimiter: _t.Optional[str] = ':'
+    ):
+        super().__init__()
+
+        self._key = key
+        self._value = value
+        if delimiter == '':
+            raise ValueError('empty delimiter')
+        self._delimiter = delimiter
+
+    def parse(self, value: str) -> _t.Tuple[K, V]:
+        kv = value.split(self._delimiter, maxsplit=1)
+        if len(kv) != 2:
+            raise ParsingError('could not parse a key-value pair')
+
+        return (
+            self._key.parse(kv[0]),
+            self._value.parse(kv[1]),
+        )
+
+    def parse_config(self, value: _t.Any) -> _t.Tuple[K, V]:
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            raise ParsingError('expected a tuple of two elements')
+
+        return (
+            self._key.parse_config(value[0]),
+            self._value.parse_config(value[1]),
+        )
+
+    def validate(self, value: _t.Tuple[K, V]):
+        self._key.validate(value[0])
+        self._value.validate(value[1])
+
+    def describe(self) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        key = self._key._describe_or_def()
+        value = self._value._describe_or_def()
+
+        return f'{key}{delimiter}{value}'
+
+    def describe_value(self, value: _t.Tuple[K, V]) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        key_d = self._key._describe_value_or_def(value[0])
+        value_d = self._value._describe_value_or_def(value[1])
+
+        return f'{key_d}{delimiter}{value_d}'
 
 
 class Path(Parser[pathlib.Path]):
