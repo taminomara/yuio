@@ -303,9 +303,19 @@ class Config(metaclass=_ConfigMeta):
         return cls(**fields)
 
     @classmethod
-    def load_from_args(
+    def load_from_args(cls, args: _t.Optional[_t.List[str]] = None) -> _Self:
+        """Parse the given args and load config from them.
+
+        If args are not given, will parse :data:`sys.argv`.
+
+        """
+
+        return cls.load_from_namespace(cls.setup_parser().parse_args(args))
+
+    @classmethod
+    def load_from_namespace(
         cls: _t.Type[_Self],
-        args: _t.Optional[argparse.Namespace] = None
+        namespace: argparse.Namespace
     ) -> _Self:
         """Load config from parsed command line arguments.
 
@@ -314,13 +324,7 @@ class Config(metaclass=_ConfigMeta):
 
         Use :meth:`Config.update` to merge several loaded configs into one.
 
-        If `args` is not given, will create a parser and parse arguments
-        from :data:`sys.argv`.
-
         """
-
-        if args is None:
-            args = cls.setup_parser().parse_args()
 
         fields = {}
 
@@ -328,7 +332,7 @@ class Config(metaclass=_ConfigMeta):
             if field.flag is _DISABLED:
                 continue
 
-            value = getattr(args, field.dest, _MISSING)
+            value = getattr(namespace, field.dest, _MISSING)
             if value is not _MISSING:
                 fields[name] = value
 
