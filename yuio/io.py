@@ -7,13 +7,12 @@
 
 """
 This module implements user-friendly input and output on top of the python's
-standard logging library. It adds several special logging levels
-for printing tasks with progress bars and other useful things.
+standard logging library.
 
 Setup
 -----
 
-To init the logging system, call the :func:`setup` function. Ideally,
+To configure the logging system, call the :func:`setup` function. Ideally,
 this function should be called at the very beginning of the program execution,
 before any code had a chance to log anything. Calling :func:`setup` function
 multiple times completely overrides all previous settings.
@@ -36,8 +35,7 @@ to the :func:`setup` function.
 Logging messages
 ----------------
 
-Use logging functions from this module (or from the python's :mod:`logging`
-module):
+Use logging functions from this module:
 
 .. autofunction:: debug
 
@@ -72,6 +70,9 @@ to the logging's `extra` object::
         'this tag --> <c:color> is printed as-is',
         extra=dict(no_color_tags=True)
     )
+
+If you want to disable tags processing globally, pass `no_color_tags`
+to the :func:`setup` function.
 
 List of all tags available by default:
 
@@ -146,7 +147,7 @@ Indicating progress
 You can use the :class:`Task` class to indicate status and progress
 of some task:
 
-.. autoclass:: Task
+.. autoclass:: Task(msg: str, *args)
    :members:
 
 
@@ -172,34 +173,79 @@ There are some helper functions and classes:
 .. autoclass:: UserIoError
    :members:
 
+Suspending logging
+------------------
+
+You can temporarily disable logging and printing tasks
+using the :class:`SuspendLogging` context manager.
+
+.. autoclass:: SuspendLogging
+   :members:
+
+Python's `logging` and yuio
+---------------------------
+
+.. digraph:: logger_hierarchy
+   :caption: Logger hierarchy
+
+   rankdir="LR"
+   root[shape=plain label=<
+     <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="1">
+       <TR>
+         <TD PORT="r">root</TD>
+       </TR>
+       <TR>
+         <TD>
+           <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+             <TR>
+               <TD><FONT POINT-SIZE="10.0">yuio.io.Handler</FONT></TD>
+             </TR>
+           </TABLE>
+         </TD>
+       </TR>
+     </TABLE>
+   >]
+   root:r -> yuio -> msg -> exec;
+   root:r -> "...";
 
 """
 
+import enum
 import getpass
 import logging
 import os
+import queue
 import re
 import string
 import subprocess
-import sys
 import tempfile
 import threading
 import typing as _t
 from dataclasses import dataclass
 
+import atexit
+import sys
+import time
+
 import yuio.parse
 
-QUESTION = 100
-CRITICAL = 50
-ERROR = 40
-WARNING = 30
-TASK_BEGIN = 24
-TASK_PROGRESS = 23
-TASK_DONE = 22
-TASK_ERROR = 21
-INFO = 20
-DEBUG = 10
-NOTSET = 0
+
+T = _t.TypeVar('T')
+_PROGRESS = _t.Union[int, float, _t.Tuple[int, int], _t.Tuple[int, int, int]]
+
+
+class UserIoError(IOError):
+    """Raised when interaction with user fails.
+
+    """
+
+
+CRITICAL = logging.CRITICAL
+ERROR = logging.ERROR
+WARNING = logging.WARNING
+INFO = logging.INFO
+DEBUG = logging.DEBUG
+NOTSET = logging.NOTSET
 
 
 @dataclass(frozen=True)
@@ -307,12 +353,13 @@ DEFAULT_COLORS = {
     'error': FORE_RED,
     'warning': FORE_YELLOW,
     'task': FORE_BLUE,
-    'task_done': FORE_BLUE,
+    'task_done': FORE_GREEN,
     'task_error': FORE_RED,
     'info': FORE_NORMAL,
     'debug': STYLE_DIM,
 
     'bold': STYLE_BOLD,
+    'b': STYLE_BOLD,
     'dim': STYLE_DIM,
     'red': FORE_RED,
     'green': FORE_GREEN,
@@ -323,31 +370,28 @@ DEFAULT_COLORS = {
     'normal': FORE_NORMAL,
 }
 
-T = _t.TypeVar('T')
-_PROGRESS = _t.Union[int, float, _t.Tuple[int, int], _t.Tuple[int, int, int]]
 
-_HANDLER_LOCK = threading.Lock()
-_HANDLER: _t.Optional['_Handler'] = None
+_WORKER: '_Worker'
+_MSG_LOGGER: logging.Logger
 
 
 def setup(
     level: _t.Optional[int] = None,
-    stream: _t.Any = sys.stderr,
     use_colors: _t.Optional[bool] = None,
     formatter: logging.Formatter = DEFAULT_FORMATTER,
     colors: _t.Optional[_t.Dict[str, Color]] = None,
 ):
     """Initial setup of the logging facilities.
 
+    This function should be called
+
     :param level:
         log output level. If not given, will check ``DEBUG`` and ``QUIET``
         environment variables to determine an appropriate logging level.
-    :param stream:
-        a stream where to output messages. Uses `stderr` by default.
     :param use_colors:
         use ANSI escape sequences to color the output. If not given, will
         check ``NO_COLORS`` and ``FORCE_COLORS`` environment variables,
-        and also if the given `stream` is a tty one.
+        and also if the given `stderr` is a tty stream.
     :param formatter:
         formatter for log messages.
     :param colors:
@@ -356,49 +400,23 @@ def setup(
 
     """
 
-    global _HANDLER
+    if level is None:
+        if 'DEBUG' in os.environ:
+            level = DEBUG
+        elif 'QUIET' in os.environ:
+            level = WARNING
+        else:
+            level = INFO
 
-    with _HANDLER_LOCK:
-        if _HANDLER is None:
-            _HANDLER = _Handler()
+    if use_colors is None:
+        if 'NO_COLORS' in os.environ:
+            use_colors = False
+        elif 'FORCE_COLORS' in os.environ:
+            use_colors = True
+        else:
+            use_colors = sys.stderr.isatty()
 
-            logger = logging.getLogger()
-            logger.addHandler(_HANDLER)
-            logger.setLevel(NOTSET)
-
-            logging.addLevelName(QUESTION, "QUESTION")
-            logging.addLevelName(TASK_BEGIN, "TASK")
-            logging.addLevelName(TASK_PROGRESS, "TASK")
-            logging.addLevelName(TASK_DONE, "TASK_DONE")
-            logging.addLevelName(TASK_ERROR, "TASK_ERROR")
-
-        if level is None:
-            if 'DEBUG' in os.environ:
-                level = DEBUG
-            elif 'QUIET' in os.environ:
-                level = WARNING
-            else:
-                level = INFO
-
-        _HANDLER.setLevel(level)
-        _HANDLER.setFormatter(formatter)
-        _HANDLER.setStream(stream)
-
-        full_colors = DEFAULT_COLORS.copy()
-        if colors is not None:
-            full_colors.update(colors)
-
-        _HANDLER.setColors(full_colors)
-
-        if use_colors is None:
-            if 'NO_COLORS' in os.environ:
-                use_colors = False
-            elif 'FORCE_COLORS' in os.environ:
-                use_colors = True
-            else:
-                use_colors = stream.isatty()
-
-        _HANDLER.setUseColors(use_colors)
+    _WORKER.setup(level, use_colors, formatter, colors)
 
 
 def debug(msg: str, *args, **kwargs):
@@ -406,7 +424,7 @@ def debug(msg: str, *args, **kwargs):
 
     """
 
-    logging.debug(msg, *args, **kwargs)
+    _MSG_LOGGER.debug(msg, *args, **kwargs)
 
 
 def info(msg: str, *args, **kwargs):
@@ -414,7 +432,7 @@ def info(msg: str, *args, **kwargs):
 
     """
 
-    logging.info(msg, *args, **kwargs)
+    _MSG_LOGGER.info(msg, *args, **kwargs)
 
 
 def warning(msg: str, *args, **kwargs):
@@ -422,7 +440,7 @@ def warning(msg: str, *args, **kwargs):
 
     """
 
-    logging.warning(msg, *args, **kwargs)
+    _MSG_LOGGER.warning(msg, *args, **kwargs)
 
 
 def error(msg: str, *args, **kwargs):
@@ -430,7 +448,7 @@ def error(msg: str, *args, **kwargs):
 
     """
 
-    logging.error(msg, *args, **kwargs)
+    _MSG_LOGGER.error(msg, *args, **kwargs)
 
 
 def exception(msg: str, *args, exc_info=True, **kwargs):
@@ -442,7 +460,7 @@ def exception(msg: str, *args, exc_info=True, **kwargs):
 
     """
 
-    logging.exception(msg, *args, exc_info=exc_info, **kwargs)
+    _MSG_LOGGER.exception(msg, *args, exc_info=exc_info, **kwargs)
 
 
 def critical(msg: str, *args, **kwargs):
@@ -450,461 +468,7 @@ def critical(msg: str, *args, **kwargs):
 
     """
 
-    logging.critical(msg, *args, **kwargs)
-
-
-def task_begin(msg: str, *args):
-    """Indicate beginning of some task.
-
-    Note: prefer using the :class:`Task` context manager
-    instead of this function.
-
-    """
-
-    logging.log(TASK_BEGIN, msg, *args)
-
-
-def task_progress(msg: str, *args, progress: _PROGRESS):
-    """Indicate progress of some task.
-
-    If this function is called after :func:`task_begin`, the task message will
-    be updated with a progress bar. If there were other log messages
-    between :meth:`task_begin` and call to this function, nothing will happen.
-
-    Note: prefer using the :class:`Task` context manager
-    instead of this function.
-
-    """
-
-    extra = {'progress': progress}
-    logging.log(TASK_PROGRESS, msg, *args, extra=extra)
-
-
-def task_done(msg: str, *args):
-    """Indicate that some task is finished successfully.
-
-    Note: prefer using the :class:`Task` context manager
-    instead of this function.
-
-    """
-
-    logging.log(TASK_DONE, msg, *args)
-
-
-def task_error(msg: str, *args):
-    """Indicate that some task is finished with an error.
-
-    Note: prefer using the :class:`Task` context manager
-    instead of this function.
-
-    """
-
-    logging.log(TASK_ERROR, msg, *args)
-
-
-def task_exception(msg: str, *args):
-    """Indicate that some task is finished, capture current exception.
-
-    Note: prefer using the :class:`Task` context manager
-    instead of this function.
-
-    """
-
-    logging.log(TASK_ERROR, msg, *args, exc_info=True)
-
-
-def question(msg: str, *args):
-    """Log a message with input prompts and other user communications.
-
-    These messages don't end with newline. They also have high priority,
-    so they will not be filtered by log level settings.
-
-    """
-
-    logging.log(QUESTION, msg, *args)
-
-
-class Task:
-    """Context manager that automatically reports tasks and their progress.
-
-    This context manager accepts a name of the task being done,
-    along with all the usual logging parameters.
-
-    When context is entered, it emits a message that the task is in progress.
-
-    When context is exited, it emits a message that the task has finished.
-
-    If an exception is thrown out of context, it emits a message that the
-    task has failed.
-
-    Example::
-
-        with Task('Fetching data') as task:
-            for i, url in enumerate(urls):
-                url.fetch()
-                task.progress((i, len(urls)))
-
-    This will output the following:
-
-    .. code-block:: text
-
-       Fetching data... [=====>              ] 30% (3 / 10)
-
-    Note that you don't have to use it in a context::
-
-        task = Task('Fetching data')
-        task.begin()
-
-        for i, url in enumerate(urls):
-            url.fetch()
-            task.progress(float(i) / len(urls))
-
-        task.done()
-
-    In this case, however, it's up to you to catch and report errors.
-
-    """
-
-    def __init__(self, msg: str, *args):
-        if args:
-            msg = msg % args
-        self._msg = msg
-
-        self._started = False
-        self._finished = False
-
-    def begin(self):
-        """Emit a message about task being in progress.
-
-        """
-
-        if not self._started:
-            task_begin(self._msg)
-            self._started = True
-
-    def progress(self, progress: _PROGRESS):
-        """Indicate progress of ths task.
-
-        :param progress:
-            Progress of the task. Could be one of three things:
-
-            - a floating point number between ``0`` and ``1``;
-            - a tuple of two ints, first is the number of completed jobs,
-              and second is the total number of jobs;
-            - a tuple of three ints, first is the number of completed jobs,
-              second is the number of in-progress jobs, and the third
-              is the total number of jobs.
-
-        """
-
-        if self._started and not self._finished:
-            task_progress(self._msg, progress=progress)
-
-    def done(self):
-        """Emit a message that the task is finished successfully.
-
-        """
-
-        if self._started and not self._finished:
-            task_done(self._msg)
-            self._finished = True
-
-    def error(self):
-        """Emit a message that the task is finished with an error.
-
-        """
-
-        if self._started and not self._finished:
-            task_error(self._msg)
-            self._finished = True
-
-    def exception(self):
-        """Emit a message that the task is finished, capture current exception.
-
-        """
-
-        if self._started and not self._finished:
-            task_exception(self._msg)
-            self._finished = True
-
-    def __enter__(self):
-        self.begin()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_val is None:
-            self.done()
-        else:
-            self.error()
-
-
-class _Handler(logging.Handler):
-    def __init__(self):
-        super().__init__()
-
-        self._use_colors: bool = sys.stderr.isatty()
-        self._stream: _t.Any = sys.stderr
-        self._current_task: _t.Optional[logging.LogRecord] = None
-        self._colors = DEFAULT_COLORS
-
-        self.setFormatter(logging.Formatter('-> %(message)s'))
-
-    def setStream(self, stream):
-        self._stream = stream
-
-    def getStream(self):
-        return self._stream
-
-    def setUseColors(self, use_colors: bool):
-        self._use_colors = use_colors
-
-    def setColors(self, colors: _t.Dict[str, Color]):
-        self._colors = colors
-
-    def flush(self):
-        self.acquire()
-        try:
-            self._stream.flush()
-        finally:
-            self.release()
-
-    def emit(self, record: logging.LogRecord):
-        record.message = record.getMessage()
-
-        message = self._colorize(self.format(record), record)
-        is_current_task = (
-            record.levelno in (TASK_PROGRESS, TASK_DONE, TASK_ERROR)
-            and self._current_task is not None
-            and record.message == self._current_task.message
-        )
-
-        progress: _t.Optional[_PROGRESS]
-
-        if record.levelno == TASK_DONE:
-            status = 'OK'
-            progress = None
-        elif record.levelno == TASK_ERROR:
-            status = 'ERROR'
-            progress = None
-        elif record.levelno in (TASK_BEGIN, TASK_PROGRESS):
-            status = ''
-            progress = getattr(record, 'progress', None)
-        else:
-            status = None
-            progress = None
-
-        if is_current_task:
-            # When we're updating current task, the console looks something
-            # like this:
-            #
-            # ```
-            # -> Some previous message.
-            # -> Some previous message.
-            # -> Task description...|
-            # ```
-            #                       ^ cursor is at the end of the current line
-            #
-            # If we don't support colors, the only thing we can do is to print
-            # task's status after the ellipsis and be done with it.
-            #
-            # If we support colors, we clear the current line, and redraw
-            # the task message completely, including its current status
-            # and progress.
-            #
-            # If the new message is multiline, though, we won't be able
-            # to clear it and redraw next time. So we print it with a newline
-            # at the end and clear the current task.
-
-            if not self._use_colors and record.levelno == TASK_PROGRESS:
-                # There is nothing we can do to indicate progress w/o colors.
-                pass
-            elif not self._use_colors:
-                # Write status after the ellipsis and clear the task.
-                self._stream.write(f' {status}\n')
-                self._current_task = None
-            else:
-                # Redraw the current task.
-                self._clear_line()
-                is_multiline = self._print_task(message, status, progress)
-
-                if record.levelno != TASK_PROGRESS or is_multiline:
-                    # If new task record is multiline, we won't be able
-                    # to redraw it next time, so we need to clear the task.
-                    # If the task is finished, we also need to clear it.
-                    self._stream.write('\n')
-                    self._current_task = None
-        elif record.levelno == TASK_PROGRESS:
-            # We can't update status of a non-current task, so just ignore it.
-            return
-        else:
-            if self._current_task is not None:
-                # We need to clear current task before printing
-                # new log messages.
-
-                if self._use_colors:
-                    # If we are using colors, we want to clear progress bar
-                    # and leave just a task description with an ellipsis.
-                    current_task_message = self._colorize(
-                        self.format(self._current_task),
-                        self._current_task)
-                    self._clear_line()
-                    self._print_task(current_task_message, '', None)
-
-                self._stream.write('\n')
-                self._current_task = None
-                self._reset_color()
-
-            is_multiline = self._print_task(message, status, progress)
-
-            if record.levelno == TASK_BEGIN and not is_multiline:
-                # If we've started a new task, mark is as current.
-                # If this task's message is multiline, though,
-                # don't mark it as current, and treat it as a regular
-                # log message, though, because we can't redraw multiline tasks.
-                self._current_task = record
-            elif record.levelno != QUESTION:
-                self._stream.write('\n')
-
-        self._reset_color()
-
-        self.flush()
-
-    def _print_task(
-        self,
-        message: str,
-        status: _t.Optional[str],
-        progress: _t.Optional[_PROGRESS],
-    ) -> bool:
-        lines = message.split('\n')
-        is_multiline = len(lines) > 1
-
-        self._stream.write(lines[0])
-
-        if status is not None:
-            # Status is set for any task. If status is an empty line,
-            # the task is in progress, so we only need an ellipsis.
-            self._stream.write('...')
-            if status:
-                self._stream.write(' ' + status)
-
-        if progress is not None and not is_multiline:
-            # Never print progressbar for multiline messages because
-            # we won't be able to update this progress bar in the future.
-            self._stream.write(' ')
-            self._stream.write(self._make_progress_bar(progress))
-
-        if is_multiline:
-            self._stream.write('\n')
-            self._stream.write('\n'.join(lines[1:]))
-
-        return is_multiline
-
-    def _clear_line(self):
-        if self._use_colors:
-            self._stream.write(f'\033[2K\r')
-
-    def _reset_color(self):
-        if self._use_colors:
-            self._stream.write(str(Color()))
-
-    _TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _-]+)>|</c>')
-
-    def _colorize(self, msg: str, record: logging.LogRecord):
-        default_color = self._colors.get(record.levelname.lower(), Color())
-        default_color = FORE_NORMAL | BACK_NORMAL | default_color
-
-        if getattr(record, 'no_color_tags', False):
-            if self._use_colors:
-                return str(default_color) + msg
-            else:
-                return msg
-        elif not self._use_colors:
-            return self._TAG_RE.sub('', msg)
-
-        out = ''
-        last_pos = 0
-        stack = [default_color]
-
-        out += str(default_color)
-
-        for tag in self._TAG_RE.finditer(msg):
-            out += msg[last_pos:tag.span()[0]]
-            last_pos = tag.span()[1]
-
-            name = tag.group('name')
-            if name:
-                color = stack[-1]
-                for sub_name in name.split(','):
-                    sub_name = sub_name.strip()
-                    color = color | self._colors.get(sub_name, Color())
-                out += str(color)
-                stack.append(color)
-            elif len(stack) > 1:
-                stack.pop()
-                out += str(stack[-1])
-
-        out += msg[last_pos:]
-
-        return out
-
-    @staticmethod
-    def _make_progress_bar(progress: _PROGRESS):
-        width = 20
-
-        progress_indicator = ''
-
-        done_percentage = 0.0
-        inflight_percentage = 0.0
-        adjust_inflight = False
-
-        if isinstance(progress, tuple):
-            if len(progress) == 2:
-                progress = _t.cast(_t.Tuple[int, int], progress)
-                done_percentage = float(progress[0]) / float(progress[1])
-                progress_indicator = f' ({progress[0]} / {progress[1]})'
-            elif len(progress) == 3:
-                progress = _t.cast(_t.Tuple[int, int, int], progress)
-                done_percentage = float(progress[0]) / float(progress[2])
-                inflight_percentage = float(progress[1]) / float(progress[2])
-                progress_indicator = f' ({progress[0]} / {progress[1]} / {progress[2]})'
-        elif isinstance(progress, (float, int)):
-            done_percentage = float(progress)
-            adjust_inflight = True
-
-        if done_percentage < 0:
-            done_percentage = 0.0
-        elif done_percentage > 1:
-            done_percentage = 1.0
-
-        if inflight_percentage < 0:
-            inflight_percentage = 0.0
-        elif inflight_percentage > 1:
-            inflight_percentage = 1.0
-
-        if done_percentage + inflight_percentage > 1:
-            inflight_percentage = 1.0 - done_percentage
-
-        done = int(width * done_percentage)
-        inflight = int(width * inflight_percentage)
-
-        if adjust_inflight and inflight == 0 and 0 < done < width:
-            inflight = 1
-            done -= 1
-
-        left = width - done - inflight
-
-        return '[' \
-               + '=' * done \
-               + '>' * inflight \
-               + ' ' * left \
-               + ']' \
-               + f' {done_percentage:0.0%}{progress_indicator}'
-
-
-class UserIoError(IOError):
-    """Raised when interaction with user fails.
-
-    """
+    _MSG_LOGGER.critical(msg, *args, **kwargs)
 
 
 def is_interactive() -> bool:
@@ -912,14 +476,10 @@ def is_interactive() -> bool:
 
     """
 
-    with _HANDLER_LOCK:
-        if _HANDLER is None:
-            return False
-
-        return _HANDLER.getStream().isatty() \
-            and os.environ.get('TERM', None) != 'dumb' \
-            and 'NON_INTERACTIVE' not in os.environ \
-            and 'CI' not in os.environ
+    return sys.stderr.isatty() \
+        and os.environ.get('TERM', None) != 'dumb' \
+        and 'NON_INTERACTIVE' not in os.environ \
+        and 'CI' not in os.environ
 
 
 @_t.overload
@@ -954,7 +514,7 @@ def ask(
     default_description: _t.Optional[str] = None,
     hidden: bool = False,
 ):
-    """Ask user to provide an input, then parse it and return a value.
+    """Ask user to provide an input, parse it and return a value.
 
     If launched in a non-interactive environment, returns the default
     if one is present, or raises a :class:`UserIoError`.
@@ -1025,27 +585,28 @@ def ask(
     else:
         msg += ' '
 
-    while True:
-        question(msg)
-        try:
-            if hidden:
-                answer = getpass.getpass(prompt='')
-            else:
-                answer = input()
-        except EOFError:
-            raise UserIoError('unexpected end of input')
-        if not answer and default is not None:
-            return default
-        elif not answer:
-            error('Input is required.')
-        else:
+    with SuspendLogging() as s:
+        while True:
+            s.print(msg)
             try:
-                return parser(answer)
-            except Exception as e:
                 if hidden:
-                    error('Error: invalid value.')
+                    answer = getpass.getpass(prompt='')
                 else:
-                    error(f'Error: {e}.')
+                    answer = input()
+            except EOFError:
+                raise UserIoError('unexpected end of input')
+            if not answer and default is not None:
+                return default
+            elif not answer:
+                s.println('Input is required.', color='error')
+            else:
+                try:
+                    return parser(answer)
+                except Exception as e:
+                    if hidden:
+                        s.println('Error: invalid value.', color='error')
+                    else:
+                        s.println(f'Error: {e}.', color='error')
 
 
 def detect_editor() -> _t.Optional[str]:
@@ -1100,8 +661,9 @@ def edit(
 
         if editor is None:
             raise UserIoError(
-                'can\'t detect an editor, ensure that the $EDITOR environment '
-                'variable contains a correct path to an editor executable'
+                'can\'t detect an editor, ensure that the $EDITOR '
+                'environment variable contains '
+                'a correct path to an editor executable'
             )
 
         filepath = tempfile.mktemp()
@@ -1110,7 +672,8 @@ def edit(
 
         try:
             try:
-                res = subprocess.run([editor, filepath])
+                with SuspendLogging():
+                    res = subprocess.run([editor, filepath])
             except FileNotFoundError:
                 raise UserIoError(
                     'can\'t use this editor, ensure that the $EDITOR '
@@ -1137,3 +700,611 @@ def edit(
         )
 
     return text.strip()
+
+
+class SuspendLogging:
+    """A context manager for pausing log output.
+
+    This is handy for when you need to take control over the output stream.
+    For example, the :func:`ask` function uses this class internally.
+
+    """
+
+    def __init__(self):
+        self._resumed = False
+        _WORKER.suspend_sync()
+
+    def resume(self):
+        """Manually resume the logging process.
+
+        """
+
+        if not self._resumed:
+            _WORKER.resume_sync()
+            self._resumed = True
+
+    def print(
+        self,
+        msg: str, *args,
+        color: _t.Union[str, Color] = 'question',
+        no_color_tags: bool = False
+    ):
+        """Print text to the output stream, ignoring that output is suspended.
+
+        :param msg:
+            message to print.
+        :param args:
+            arguments for message formatting.
+        :param color:
+            name of color or a :class:`Color` that will be used for the message.
+        :param no_color_tags:
+            disable color tags processing for this message.
+
+        """
+
+        if args:
+            msg = msg % args
+
+        _WORKER.log_sync(msg, logging.makeLogRecord({
+            'color_name': color,
+            'ignore_suspended': True,
+            'no_color_tags': no_color_tags,
+        }))
+
+    def println(
+        self,
+        msg: str, *args,
+        color: _t.Union[str, Color] = 'question',
+        no_color_tags: bool = False
+    ):
+        """Print line to the output stream, ignoring that output is suspended.
+
+        This function is exactly like :meth:`~SuspendLogging.print`,
+        but adds a newline at the end of the given text.
+
+        """
+
+        self.print(msg + '\n', *args, color=color, no_color_tags=no_color_tags)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.resume()
+
+
+class Task:
+    """A class for indicating progress of some task.
+
+    You can have multiple tasks at the same time,
+    create subtasks, set task's progress or add a comment about
+    what's currently being done within a task.
+
+    This class can be used as a context manager:
+
+    Example::
+
+        with task('Fetching data') as t:
+            for i, url in enumerate(urls):
+                t.progress((i, len(urls)))
+                t.comment(url)
+                url.fetch()
+
+    This will output the following:
+
+    .. code-block:: text
+
+       Fetching data [---->          ] (3 / 10) - https://google.com
+
+    """
+
+    @_t.overload
+    def __init__(self, msg: str, *args): ...
+
+    @_t.overload
+    def __init__(self, handle: '_Worker.TaskHandle'): ...
+
+    def __init__(self, msg_or_handle: _t.Union[str, '_Worker.TaskHandle'], *args):
+        if not isinstance(msg_or_handle, _Worker.TaskHandle):
+            if args:
+                msg_or_handle = msg_or_handle % args
+            self._handle = _WORKER.task(msg_or_handle)
+        else:
+            self._handle = msg_or_handle
+
+    def progress(self, progress: _PROGRESS):
+        """Indicate progress of ths task.
+
+        :param progress:
+            Progress of the task. Could be one of three things:
+
+            - a floating point number between ``0`` and ``1``;
+            - a tuple of two ints, first is the number of completed jobs,
+              and second is the total number of jobs;
+            - a tuple of three ints, first is the number of completed jobs,
+              second is the number of in-progress jobs, and the third
+              is the total number of jobs.
+
+        """
+
+        _WORKER.progress(self._handle, progress)
+
+    def comment(self, comment: _t.Optional[str]):
+        """Set a comment for a task.
+
+        Comment is displayed after the progress.
+
+        """
+
+        _WORKER.comment(self._handle, comment)
+
+    def done(self):
+        """Indicate that this task has finished successfully.
+
+        """
+
+        _WORKER.done(self._handle)
+
+    def error(self):
+        """Indicate that this task has finished with an error.
+
+        """
+
+        _WORKER.error(self._handle)
+
+    def subtask(self, msg: str, *args) -> 'Task':
+        """Create a subtask within this task.
+
+        """
+
+        if args:
+            msg = msg % args
+        return Task(_WORKER.subtask(self._handle, msg))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_val is None:
+            self.done()
+        else:
+            self.error()
+
+
+class Handler(logging.Handler):
+    """Handler for :mod:`logging` that sends all records to :mod:`yuio.io`.
+
+    """
+
+    #: Handler that is attached to the root logger upon import.
+    ROOT_HANDLER: 'Handler'
+
+    #: Handler that is attached to the 'yuio.msg' logger upon import.
+    MSG_HANDLER: 'Handler'
+
+    def __init__(self, no_color_tags: bool = True):
+        super().__init__()
+
+        self._no_color_tags = no_color_tags
+
+    def createLock(self):
+        self.lock = None
+
+    def flush(self):
+        pass
+
+    def emit(self, record: logging.LogRecord):
+        if not hasattr(record, 'no_color_tags'):
+            setattr(record, 'no_color_tags', self._no_color_tags)
+        line = self.format(record)
+        if not line.endswith('\n'):
+            line += '\n'
+        _WORKER.log(line, record)
+
+
+class _Worker:
+    """A worker that reads messages from a queue and prints them to a stream.
+
+    This worker lives in a separate daemon thread, so keyboard interrupts
+    do not affect it.
+
+    """
+
+    class Promise:
+        def __init__(self):
+            self._cv = threading.Condition()
+            self._done = False
+
+        def wait(self):
+            with self._cv:
+                self._cv.wait_for(lambda: self._done)
+
+        def set(self):
+            with self._cv:
+                self._done = True
+                self._cv.notify_all()
+
+    class TaskHandle:
+        """An opaque handle which is used as a task identifier."""
+
+    class _Task(TaskHandle):
+        """Task internal data."""
+
+        def __init__(self, msg: str):
+            self.msg = msg
+
+            self.progress = None
+            self.comment = None
+
+            self.status = _Worker._TaskStatus.RUNNING
+
+            self.subtasks = []
+
+    class _TaskStatus(enum.Enum):
+        RUNNING = enum.auto()
+        DONE = enum.auto()
+        ERROR = enum.auto()
+
+    @dataclass(frozen=True)
+    class _Message:
+        action: str
+        arguments: _t.Tuple[_t.Any, ...]
+        promise: _t.Optional['_Worker.Promise'] = None
+
+    def __init__(self):
+        self._stream = sys.stderr
+        self._colors: _t.Dict[str, Color] = DEFAULT_COLORS
+        self._use_colors: bool = self._stream.isatty()
+        self._task_spinner = r'/-\|'
+        self._task_spinner_speed = 500
+
+        self._tasks: _t.List[_Worker._Task] = []
+
+        self._tasks_shown: int = 0
+
+        self._suspended: int = 0
+        self._suspended_lines: _t.List[str] = []
+
+        self._start_time = time.time_ns() // 1_000_000
+
+        self._queue: queue.SimpleQueue[_Worker._Message] = queue.SimpleQueue()
+
+        self._handler = Handler()
+
+        self._worker_thread = threading.Thread(
+            target=self._run, daemon=True, name='Yuio logging worker'
+        )
+        self._worker_thread.start()
+
+        atexit.register(self._terminate)
+
+    # Internal API, called from public API via message parsing
+
+    # def _run(self):
+    #     while True:
+    #         try:
+    #             # Do not redraw the screen when no tasks are shown.
+    #             if self._use_colors and self._tasks_shown:
+    #                 timeout = self._task_spinner_speed / 1000 / 3
+    #             else:
+    #                 timeout = None
+    #
+    #             message = self._queue.get(
+    #                 block=True,
+    #                 timeout=timeout
+    #             )
+    #
+    #             if message.action == 'setup':
+    #                 self._setup(*message.arguments)
+    #             elif message.action == 'reg_task':
+    #                 self._reg_task(*message.arguments)
+    #             elif message.action == 'reg_subtask':
+    #                 self._reg_subtask(*message.arguments)
+    #             elif message.action == 'set_progress':
+    #                 self._set_progress(*message.arguments)
+    #             elif message.action == 'set_comment':
+    #                 self._set_comment(*message.arguments)
+    #             elif message.action == 'set_status':
+    #                 self._set_status(*message.arguments)
+    #             elif message.action == 'log_record':
+    #                 self._log_record(*message.arguments)
+    #             elif message.action == 'suspend':
+    #                 self._suspend(*message.arguments)
+    #             elif message.action == 'resume':
+    #                 self._resume(*message.arguments)
+    #             elif message.action == 'terminate':
+    #                 return
+    #
+    #             if message.promise is not None:
+    #                 message.promise.set()
+    #         except queue.Empty:
+    #             if self._use_colors and not self._suspended:
+    #                 self._redraw()
+    #
+    # def _terminate(self):
+    #     self._queue.put(self._Message('terminate', ()))
+    #     self._worker_thread.join()
+
+    def _setup(
+        self,
+        level: _t.Optional[int],
+        use_colors: _t.Optional[bool],
+        formatter: logging.Formatter,
+        colors: _t.Optional[_t.Dict[str, Color]],
+        no_color_tags: bool
+    ):
+        self._handler.setLevel(level)
+        self._handler.setFormatter(formatter)
+        self._use_colors = use_colors
+        self._colors = DEFAULT_COLORS.copy()
+        if colors is not None:
+            self._colors.update(colors)
+
+    def _reg_task(self, task: _Task):
+        self._tasks.append(task)
+        self._display_task_status_change(task)
+
+    def _reg_subtask(self, parent: _Task, task: _Task):
+        parent.subtasks.append(task)
+        self._display_task_status_change(task)
+
+    def _set_progress(self, task: TaskHandle, progress: _PROGRESS):
+        assert isinstance(task, _Worker._Task)
+        task.progress = progress
+
+        if self._use_colors:
+            self._redraw()
+
+    def _set_comment(self, task: TaskHandle, comment: _t.Optional[str]):
+        assert isinstance(task, _Worker._Task)
+        task.comment = comment
+
+        if self._use_colors and not self._suspended:
+            self._redraw()
+
+    def _set_status(self, task: TaskHandle, status: _TaskStatus):
+        assert isinstance(task, _Worker._Task)
+        task.status = status
+        self._display_task_status_change(task)
+
+    def _log_record(self, msg: str, record: logging.LogRecord):
+        line = self._format_record(msg, record)
+        if self._suspended and not getattr(record, 'ignore_suspended', False):
+            self._suspended_lines.append(line)
+        elif self._suspended:
+            self._stream.write(line)
+        elif self._use_colors:
+            self._undraw()
+            self._stream.write(line)
+            self._draw()
+        else:
+            self._stream.write(line)
+
+    def _display_task_status_change(self, task: _Task):
+        if self._use_colors:
+            if not self._suspended:
+                self._redraw()
+        elif self._suspended:
+            self._suspended_lines.append(self._format_task(task))
+        else:
+            self._stream.write(self._format_task(task))
+
+    def _suspend(self):
+        self._suspended += 1
+
+        if self._suspended == 1:
+            self._undraw()
+            self._stream.flush()
+
+    def _resume(self):
+        self._suspended -= 1
+
+        if self._suspended == 0:
+            for line in self._suspended_lines:
+                self._stream.write(line)
+
+            self._suspended_lines.clear()
+
+            if self._use_colors:
+                self._cleanup_tasks()
+                self._draw()
+
+        if self._suspended < 0:
+            raise RuntimeError('unequal number of suspends and resumes')
+
+    # Private functions, called from internal API
+
+    def _redraw(self):
+        # Update currently printed tasks to their current status.
+        # Must not be called while output is suspended.
+
+        self._undraw()
+        self._cleanup_tasks()
+        self._draw()
+
+    def _undraw(self):
+        # Clear drawn tasks from the screen.
+        # Must not be called while output is suspended.
+
+        if self._tasks_shown > 0:
+            self._stream.write('\033[F\033[2K' * self._tasks_shown)
+            self._tasks_shown = 0
+
+    def _cleanup_tasks(self):
+        # Clean up finished tasks.
+        # Must not be called while output is suspended.
+        # Must be called after `_undraw`.
+
+        new_tasks = []
+        for task in self._tasks:
+            if task.status == _Worker._TaskStatus.RUNNING:
+                new_tasks.append(task)
+            else:
+                self._stream.write(self._format_task(task))
+        self._tasks = new_tasks
+
+    def _draw(self):
+        # Draw current tasks.
+        # Must not be called while output is suspended.
+        # Must be called after `_undraw` or `_cleanup_tasks`.
+
+        tasks = [(task, 0) for task in self._tasks]
+        while tasks:
+            task, indent = tasks.pop()
+
+            self._stream.write(self._format_task(task, indent))
+            self._tasks_shown += 1
+
+            indent += 1
+            tasks.extend([(subtask, indent) for subtask in task.subtasks])
+
+        self._stream.flush()
+
+    def _format_task(self, task: _Task, indent: int = 0) -> str:
+        # Format a task with respect to `_use_colors`.
+
+        if task.status == _Worker._TaskStatus.DONE:
+            color = self._colors['task_done']
+            status = ': OK'
+        elif task.status == _Worker._TaskStatus.ERROR:
+            color = self._colors['task_error']
+            status = ': ERROR'
+        else:
+            color = self._colors['task']
+            if not self._use_colors:
+                status = '...'
+            else:
+                status = ' ' + self._make_progress_bar(task.progress)
+
+        msg = '  ' * indent + task.msg + status
+
+        if (
+            task.status == _Worker._TaskStatus.RUNNING
+            and task.comment is not None
+        ):
+            msg += ' - ' + task.comment
+
+        return self._colorize(msg, color) + '\n'
+
+    def _format_record(self, msg: str, record: logging.LogRecord) -> str:
+        # Format a record with respect to `_use_colors`.
+
+        color_name = getattr(record, 'color_name', record.levelname.lower())
+        if isinstance(color_name, Color):
+            color = color_name
+        else:
+            color = self._colors.get(color_name, Color())
+        no_color_tags = getattr(record, 'no_color_tags', False)
+
+        line = self._colorize(msg, color, no_color_tags)
+
+        return line
+
+    _TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _-]+)>|</c>')
+
+    def _colorize(self, msg: str, default_color: Color, no_color_tags: bool = False):
+        # Colorize a message, process color tags if necessary.
+        # Respect `_use_colors`.
+
+        default_color = FORE_NORMAL | BACK_NORMAL | default_color
+
+        if no_color_tags:
+            if self._use_colors:
+                return str(default_color) + msg + str(Color())
+            else:
+                return msg
+        elif not self._use_colors:
+            return self._TAG_RE.sub('', msg)
+
+        out = ''
+        last_pos = 0
+        stack = [default_color]
+
+        out += str(default_color)
+
+        for tag in self._TAG_RE.finditer(msg):
+            out += msg[last_pos:tag.span()[0]]
+            last_pos = tag.span()[1]
+
+            name = tag.group('name')
+            if name:
+                color = stack[-1]
+                for sub_name in name.split(','):
+                    sub_name = sub_name.strip()
+                    color = color | self._colors.get(sub_name, Color())
+                out += str(color)
+                stack.append(color)
+            elif len(stack) > 1:
+                stack.pop()
+                out += str(stack[-1])
+
+        out += msg[last_pos:]
+
+        out += str(Color())
+
+        return out
+
+    def _make_progress_bar(self, progress: _t.Optional[_PROGRESS]) -> str:
+        if progress is None:
+            phase = time.time_ns() // 1_000_000 // self._task_spinner_speed
+            spinner = self._task_spinner[phase % len(self._task_spinner)]
+            return f'[{spinner}]'
+
+        width = 15
+
+        progress_indicator = ''
+
+        done_percentage = 0.0
+        inflight_percentage = 0.0
+        adjust_inflight = True
+
+        if isinstance(progress, tuple):
+            if len(progress) == 2:
+                progress = _t.cast(_t.Tuple[int, int], progress)
+                done_percentage = float(progress[0]) / float(progress[1])
+                progress_indicator = f'({progress[0]} / {progress[1]})'
+            elif len(progress) == 3:
+                progress = _t.cast(_t.Tuple[int, int, int], progress)
+                done_percentage = float(progress[0]) / float(progress[2])
+                inflight_percentage = float(progress[1]) / float(progress[2])
+                progress_indicator = f'({progress[0]} / {progress[1]} / {progress[2]})'
+                adjust_inflight = False
+        elif isinstance(progress, (float, int)):
+            done_percentage = float(progress)
+
+        if done_percentage < 0:
+            done_percentage = 0.0
+        elif done_percentage > 1:
+            done_percentage = 1.0
+
+        if inflight_percentage < 0:
+            inflight_percentage = 0.0
+        elif inflight_percentage > 1:
+            inflight_percentage = 1.0
+
+        if done_percentage + inflight_percentage > 1:
+            inflight_percentage = 1.0 - done_percentage
+
+        done = int(width * done_percentage)
+        inflight = int(width * inflight_percentage)
+
+        if adjust_inflight and inflight == 0 and 0 < done < width:
+            inflight = 1
+            done -= 1
+
+        left = width - done - inflight
+
+        if not progress_indicator:
+            progress_indicator = f'{done_percentage:0.0%}'
+
+        return '[' \
+               + '-' * done \
+               + '>' * inflight \
+               + ' ' * left \
+               + ']' \
+               + f' {progress_indicator}'
+
+
+# _WORKER = _Worker()
+# Handler.ROOT_HANDLER = Handler()
+# Handler.MSG_HANDLER = Handler()
