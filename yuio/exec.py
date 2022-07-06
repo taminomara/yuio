@@ -26,6 +26,9 @@ import typing as _t
 import yuio.io
 
 
+_LOGGER = logging.getLogger('yuio.io.msg.exec')
+
+
 @_t.overload
 def exec(
     *args: str,
@@ -103,11 +106,7 @@ def exec(
                     return
                 if isinstance(line, bytes):
                     line = line.decode()
-                logging.log(
-                    level,
-                    line.rstrip('\n'),
-                    extra=dict(no_color_tags=True)
-                )
+                _LOGGER.log(level, line.rstrip('\n'))
 
         def read_stdout(fh):
             stdout.append(fh.read())
