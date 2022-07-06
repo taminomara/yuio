@@ -12,6 +12,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinx.ext.graphviz',
 ]
 
 templates_path = ['_templates']
@@ -25,6 +26,8 @@ intersphinx_mapping = {
 
 autodoc_typehints_format = 'short'
 autodoc_member_order = 'bysource'
+
+graphviz_output_format = 'svg'
 
 # -- Options for HTML output -------------------------------------------------
 
