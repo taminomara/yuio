@@ -575,7 +575,7 @@ def ask(
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
     hidden: bool = False,
-):
+) -> T:
     """Ask user to provide an input, parse it and return a value.
 
     If launched in a non-interactive environment, returns the default
@@ -902,11 +902,11 @@ class Task:
         if args:
             msg = msg % args
 
-        self._msg = msg
-        self._progress = None
-        self._comment = None
-        self._status = Task._Status.RUNNING
-        self._subtasks = []
+        self._msg: str = msg
+        self._progress: _PROGRESS = None
+        self._comment: _t.Optional[str] = None
+        self._status: Task._Status = Task._Status.RUNNING
+        self._subtasks: _t.List[Task] = []
 
         if parent is None:
             _HANDLER_IMPL.reg_task(self)
@@ -1010,7 +1010,7 @@ class _HandlerImpl:
     def setup(
         self,
         stream: _t.IO,
-        use_colors: _t.Optional[bool],
+        use_colors: bool,
         colors: _t.Dict[str, Color],
     ):
         with self.lock:
