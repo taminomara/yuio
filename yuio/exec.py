@@ -32,10 +32,11 @@ _LOGGER = logging.getLogger('yuio.io.msg.exec')
 @_t.overload
 def exec(
     *args: str,
-    cwd: _t.Union[None, str, pathlib.Path] = None,
+    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
     level: int = yuio.io.INFO,
+    text: _t.Literal[True] = True,
 ) -> str:
     pass
 
@@ -43,12 +44,12 @@ def exec(
 @_t.overload
 def exec(
     *args: str,
-    cwd: _t.Union[None, str, pathlib.Path] = None,
+    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Union[None, str, bytes] = None,
+    input: _t.Optional[bytes] = None,
     level: int = yuio.io.INFO,
-    text: bool = True,
-) -> _t.Union[str, bytes]:
+    text: _t.Literal[False],
+) -> bytes:
     pass
 
 
@@ -111,36 +112,39 @@ def exec(
         def read_stdout(fh):
             stdout.append(fh.read())
 
-        if process.stdout:
-            stdout_thread = threading.Thread(
-                target=read_stdout, args=(process.stdout,))
-            stdout_thread.daemon = True
-            stdout_thread.start()
-        if process.stderr:
-            stderr_thread = threading.Thread(
-                target=read_stderr, args=(process.stderr,))
-            stderr_thread.daemon = True
-            stderr_thread.start()
+        process_desc = " ".join(args)
 
-        if input is not None and process.stdin is not None:
+        assert process.stdout
+        stdout_thread = threading.Thread(
+            target=read_stdout,
+            args=(process.stdout,),
+            name=f'yuio stdin handler for {process_desc}'
+        )
+        stdout_thread.daemon = True
+        stdout_thread.start()
+
+        assert process.stderr
+        stderr_thread = threading.Thread(
+            target=read_stderr,
+            args=(process.stderr,),
+            name=f'yuio stderr handler for {process_desc}'
+        )
+        stderr_thread.daemon = True
+        stderr_thread.start()
+
+        if input is not None:
+            assert process.stdin is not None
             process.stdin.write(input)
 
-        if process.stdout:
-            stdout_thread.join()
-        if process.stderr:
-            stderr_thread.join()
+        stdout_thread.join()
+        stderr_thread.join()
 
         process.wait()
 
         if process.returncode != 0:
             raise subprocess.CalledProcessError(process.returncode, args)
 
-        if stdout:
-            return stdout[0]
-        elif text:
-            return ''
-        else:
-            return b''
+        return stdout[0]
 
 
 @_t.overload
@@ -148,10 +152,11 @@ def sh(
     cmd: str,
     shell: str = '/bin/sh',
     *,
-    cwd: _t.Union[None, str, pathlib.Path] = None,
+    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
     level: int = yuio.io.INFO,
+    text: _t.Literal[True] = True,
 ) -> str:
     pass
 
@@ -161,24 +166,24 @@ def sh(
     cmd: str,
     shell: str = '/bin/sh',
     *,
-    cwd: _t.Union[None, str, pathlib.Path] = None,
+    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Union[str, bytes] = None,
+    input: _t.Optional[bytes] = None,
     level: int = yuio.io.INFO,
-    text: bool = True,
-) -> _t.Union[str, bytes]:
+    text: _t.Literal[False],
+) -> bytes:
     pass
 
 
 def sh(
     cmd: str,
-    shell: str = '/bin/sh',
+    shell='/bin/sh',
     *,
-    cwd: _t.Union[None, str, pathlib.Path] = None,
-    env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Union[str, bytes] = None,
-    level: int = yuio.io.INFO,
-    text: bool = True,
+    cwd=None,
+    env=None,
+    input=None,
+    level=yuio.io.INFO,
+    text=True,
 ):
     """Run command in a shell, returns its stdout.
 
