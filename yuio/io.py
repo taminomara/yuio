@@ -12,22 +12,19 @@ standard logging library.
 Setup
 -----
 
-To configure the logging system, call the :func:`setup` function. Ideally,
-this function should be called at the very beginning of the program execution,
-before any code had a chance to log anything. Calling :func:`setup` function
-multiple times completely overrides all previous settings.
+Yuio configures itself upon import, so you can just start using it.
 
-By default, :func:`setup` determines logging level and whether ANSI color codes
-should be used based on environment variables and the state of the output
-stream:
+By default, yuio determines logging level
+and whether ANSI color codes should be used
+based on state of the output stream
+and the following environment variables:
 
 - ``DEBUG``: print debug-level messages,
 - ``QUIET``: only print warnings, errors, and input prompts,
 - ``NO_COLORS``: disable colored output,
 - ``FORCE_COLORS``: enable colored output.
 
-You can override this logic by providing your own arguments
-to the :func:`setup` function.
+You can change defaults by calling the :func:`setup` function.
 
 .. autofunction:: setup
 
@@ -49,6 +46,8 @@ Use logging functions from this module:
 
 .. autofunction:: critical
 
+.. autofunction:: question
+
 
 Coloring the output
 -------------------
@@ -63,26 +62,24 @@ You can combine multiple colors in the same tag::
 
     info('<c:bold,green>Success!</c>')
 
-To disable tags processing, pass `no_color_tags` flag
+To disable tags processing, pass `process_color_tags`
 to the logging's `extra` object::
 
     info(
         'this tag --> <c:color> is printed as-is',
-        extra=dict(no_color_tags=True)
+        extra=dict(yuio_process_color_tags=False)
     )
 
-If you want to disable tags processing globally, pass `no_color_tags`
-to the :func:`setup` function.
-
-List of all tags available by default:
+List of all tags that are available by default:
 
 - ``code``: for inline code,
 - ``note``: for notes, such as default values in user prompts,
 - ``success``, ``failure``: for indicating outcome of the program,
-- ``question``, ``critical``, ``error``, ``warning``, ``task``,
-  ``task_done``, ``task_error``, ``info``, ``debug``:
+- ``question``, ``critical``, ``error``, ``warning``, ``info``, ``debug``:
   used to color log messages,
-- ``bold``, ``dim``: font styles,
+- ``task``, ``task_done``, ``task_error``:
+  used to color tasks,
+- ``bold``, ``b``, ``dim``: font styles,
 - ``red``, ``green``, ``yellow``, ``blue``, ``magenta``, ``cyan``, ``normal``:
   font colors.
 
@@ -147,7 +144,7 @@ Indicating progress
 You can use the :class:`Task` class to indicate status and progress
 of some task:
 
-.. autoclass:: Task(msg: str, *args)
+.. autoclass:: Task
    :members:
 
 
@@ -185,14 +182,22 @@ using the :class:`SuspendLogging` context manager.
 Python's `logging` and yuio
 ---------------------------
 
+Yuio uses :mod:`logging` to pass messages to the renderer.
+It sets up the following logger hierarchy:
+
 .. digraph:: logger_hierarchy
    :caption: Logger hierarchy
 
    rankdir="LR"
-   root[shape=plain label=<
+
+   node[shape=rect]
+
+   edge[dir=back]
+
+   msg[shape=plain label=<
      <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="1">
        <TR>
-         <TD PORT="r">root</TD>
+         <TD>msg</TD>
        </TR>
        <TR>
          <TD>
@@ -205,8 +210,28 @@ Python's `logging` and yuio
        </TR>
      </TABLE>
    >]
-   root:r -> yuio -> msg -> exec;
-   root:r -> "...";
+
+   root -> yuio
+   yuio -> msg [style=dashed label="propagate=False"]
+   msg -> {exec, question};
+   root -> "...";
+
+``yuio.msg`` collects everything that should be printed on the screen
+and passes it to a handler. It has its propagation disabled,
+so yuio's messages never reach the root logger. This means that you can set up
+other loggers and handlers without yuio interfering.
+
+If you want to direct yuio messages somewhere else (i.e to a file),
+either add a handler to ``yuio.msg`` or enable propagation for it.
+
+Since messages and questions from :mod:`yuio.exec` are logged to
+``yuio.msg.question`` and ``yuio.msg.exec``,
+you can filter them out from your handlers or the root logger.
+
+If you want to direct messages from some other logger into yuio,
+you can add a :class:`Handler`:
+
+.. autoclass:: Handler
 
 """
 
@@ -214,7 +239,6 @@ import enum
 import getpass
 import logging
 import os
-import queue
 import re
 import string
 import subprocess
@@ -222,16 +246,15 @@ import tempfile
 import threading
 import typing as _t
 from dataclasses import dataclass
+from logging import LogRecord
 
-import atexit
 import sys
-import time
 
 import yuio.parse
 
 
 T = _t.TypeVar('T')
-_PROGRESS = _t.Union[int, float, _t.Tuple[int, int], _t.Tuple[int, int, int]]
+_PROGRESS = _t.Union[None, int, float, _t.Tuple[int, int], _t.Tuple[int, int, int]]
 
 
 class UserIoError(IOError):
@@ -240,6 +263,7 @@ class UserIoError(IOError):
     """
 
 
+QUESTION = 100
 CRITICAL = logging.CRITICAL
 ERROR = logging.ERROR
 WARNING = logging.WARNING
@@ -371,14 +395,20 @@ DEFAULT_COLORS = {
 }
 
 
-_WORKER: '_Worker'
 _MSG_LOGGER: logging.Logger
+_MSG_HANDLER: 'Handler'
+
+_QUESTION_LOGGER: logging.Logger
+
+_HANDLER_IMPL: '_HandlerImpl'
 
 
 def setup(
     level: _t.Optional[int] = None,
+    stream: _t.IO = sys.stderr,
+    *,
     use_colors: _t.Optional[bool] = None,
-    formatter: logging.Formatter = DEFAULT_FORMATTER,
+    formatter: _t.Optional[logging.Formatter] = DEFAULT_FORMATTER,
     colors: _t.Optional[_t.Dict[str, Color]] = None,
 ):
     """Initial setup of the logging facilities.
@@ -388,12 +418,14 @@ def setup(
     :param level:
         log output level. If not given, will check ``DEBUG`` and ``QUIET``
         environment variables to determine an appropriate logging level.
+    :param stream:
+        a stream where to output messages. Uses `stderr` by default.
+    :param formatter:
+        formatter for log messages.
     :param use_colors:
         use ANSI escape sequences to color the output. If not given, will
         check ``NO_COLORS`` and ``FORCE_COLORS`` environment variables,
         and also if the given `stderr` is a tty stream.
-    :param formatter:
-        formatter for log messages.
     :param colors:
         mapping from tag name or logging level name to a :class:`Color`.
         Logging level names and tag names are all lowercase.
@@ -414,9 +446,25 @@ def setup(
         elif 'FORCE_COLORS' in os.environ:
             use_colors = True
         else:
-            use_colors = sys.stderr.isatty()
+            use_colors = stream.isatty()
 
-    _WORKER.setup(level, use_colors, formatter, colors)
+    if colors is None:
+        colors = DEFAULT_COLORS
+    else:
+        colors = dict(DEFAULT_COLORS, **colors)
+
+    _MSG_HANDLER.setLevel(level)
+    _MSG_HANDLER.setFormatter(formatter)
+    _HANDLER_IMPL.setup(stream, use_colors, colors)
+
+
+def log(level: int, msg: str, *args, **kwargs):
+    """Log a debug message.
+
+    """
+
+    kwargs.setdefault('extra', {}).setdefault('yuio_process_color_tags', True)
+    _MSG_LOGGER.log(level, msg, *args, **kwargs)
 
 
 def debug(msg: str, *args, **kwargs):
@@ -424,7 +472,7 @@ def debug(msg: str, *args, **kwargs):
 
     """
 
-    _MSG_LOGGER.debug(msg, *args, **kwargs)
+    log(DEBUG, msg, *args, **kwargs)
 
 
 def info(msg: str, *args, **kwargs):
@@ -432,7 +480,7 @@ def info(msg: str, *args, **kwargs):
 
     """
 
-    _MSG_LOGGER.info(msg, *args, **kwargs)
+    log(INFO, msg, *args, **kwargs)
 
 
 def warning(msg: str, *args, **kwargs):
@@ -440,7 +488,7 @@ def warning(msg: str, *args, **kwargs):
 
     """
 
-    _MSG_LOGGER.warning(msg, *args, **kwargs)
+    log(WARNING, msg, *args, **kwargs)
 
 
 def error(msg: str, *args, **kwargs):
@@ -448,7 +496,7 @@ def error(msg: str, *args, **kwargs):
 
     """
 
-    _MSG_LOGGER.error(msg, *args, **kwargs)
+    log(ERROR, msg, *args, **kwargs)
 
 
 def exception(msg: str, *args, exc_info=True, **kwargs):
@@ -460,7 +508,7 @@ def exception(msg: str, *args, exc_info=True, **kwargs):
 
     """
 
-    _MSG_LOGGER.exception(msg, *args, exc_info=exc_info, **kwargs)
+    log(ERROR, msg, *args, exc_info=exc_info, **kwargs)
 
 
 def critical(msg: str, *args, **kwargs):
@@ -468,7 +516,21 @@ def critical(msg: str, *args, **kwargs):
 
     """
 
-    _MSG_LOGGER.critical(msg, *args, **kwargs)
+    log(CRITICAL, msg, *args, **kwargs)
+
+
+def question(msg: str, *args, **kwargs):
+    """Log a message with input prompts and other user communications.
+
+    These messages don't end with newline. They also have high priority,
+    so they will not be filtered by log level settings.
+
+    """
+
+    extra = kwargs.setdefault('extra', {})
+    extra.setdefault('yuio_add_newline', False)
+    extra.setdefault('yuio_process_color_tags', True)
+    _QUESTION_LOGGER.log(QUESTION, msg, *args, **kwargs)
 
 
 def is_interactive() -> bool:
@@ -476,10 +538,10 @@ def is_interactive() -> bool:
 
     """
 
-    return sys.stderr.isatty() \
-        and os.environ.get('TERM', None) != 'dumb' \
-        and 'NON_INTERACTIVE' not in os.environ \
-        and 'CI' not in os.environ
+    return _HANDLER_IMPL._stream.isatty() \
+           and os.environ.get('TERM', None) != 'dumb' \
+           and 'NON_INTERACTIVE' not in os.environ \
+           and 'CI' not in os.environ
 
 
 @_t.overload
@@ -587,7 +649,7 @@ def ask(
 
     with SuspendLogging() as s:
         while True:
-            s.print(msg)
+            s.question(msg)
             try:
                 if hidden:
                     answer = getpass.getpass(prompt='')
@@ -598,15 +660,15 @@ def ask(
             if not answer and default is not None:
                 return default
             elif not answer:
-                s.println('Input is required.', color='error')
+                s.error('Input is required.')
             else:
                 try:
                     return parser(answer)
                 except Exception as e:
                     if hidden:
-                        s.println('Error: invalid value.', color='error')
+                        s.error('Error: invalid value.')
                     else:
-                        s.println(f'Error: {e}.', color='error')
+                        s.error(f'Error: {e}.')
 
 
 def detect_editor() -> _t.Optional[str]:
@@ -712,7 +774,7 @@ class SuspendLogging:
 
     def __init__(self):
         self._resumed = False
-        _WORKER.suspend_sync()
+        _HANDLER_IMPL.suspend()
 
     def resume(self):
         """Manually resume the logging process.
@@ -720,51 +782,80 @@ class SuspendLogging:
         """
 
         if not self._resumed:
-            _WORKER.resume_sync()
+            _HANDLER_IMPL.resume()
             self._resumed = True
 
-    def print(
-        self,
-        msg: str, *args,
-        color: _t.Union[str, Color] = 'question',
-        no_color_tags: bool = False
-    ):
-        """Print text to the output stream, ignoring that output is suspended.
-
-        :param msg:
-            message to print.
-        :param args:
-            arguments for message formatting.
-        :param color:
-            name of color or a :class:`Color` that will be used for the message.
-        :param no_color_tags:
-            disable color tags processing for this message.
+    @staticmethod
+    def log(level: int, msg: str, *args, **kwargs):
+        """Log a message, ignore suspended status.
 
         """
 
-        if args:
-            msg = msg % args
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        log(level, msg, *args, **kwargs)
 
-        _WORKER.log_sync(msg, logging.makeLogRecord({
-            'color_name': color,
-            'ignore_suspended': True,
-            'no_color_tags': no_color_tags,
-        }))
-
-    def println(
-        self,
-        msg: str, *args,
-        color: _t.Union[str, Color] = 'question',
-        no_color_tags: bool = False
-    ):
-        """Print line to the output stream, ignoring that output is suspended.
-
-        This function is exactly like :meth:`~SuspendLogging.print`,
-        but adds a newline at the end of the given text.
+    @staticmethod
+    def debug(msg: str, *args, **kwargs):
+        """Log a :func:`debug` message, ignore suspended status.
 
         """
 
-        self.print(msg + '\n', *args, color=color, no_color_tags=no_color_tags)
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        debug(msg, *args, **kwargs)
+
+    @staticmethod
+    def info(msg: str, *args, **kwargs):
+        """Log a :func:`info` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        info(msg, *args, **kwargs)
+
+    @staticmethod
+    def warning(msg: str, *args, **kwargs):
+        """Log a :func:`warning` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        warning(msg, *args, **kwargs)
+
+    @staticmethod
+    def error(msg: str, *args, **kwargs):
+        """Log a :func:`error` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        error(msg, *args, **kwargs)
+
+    @staticmethod
+    def exception(msg: str, *args, exc_info=True, **kwargs):
+        """Log a :func:`exception` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        error(msg, *args, exc_info, **kwargs)
+
+    @staticmethod
+    def critical(msg: str, *args, **kwargs):
+        """Log a :func:`critical` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        critical(msg, *args, **kwargs)
+
+    @staticmethod
+    def question(msg: str, *args, **kwargs):
+        """Log a :func:`question` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        question(msg, *args, **kwargs)
 
     def __enter__(self):
         return self
@@ -798,19 +889,29 @@ class Task:
 
     """
 
-    @_t.overload
-    def __init__(self, msg: str, *args): ...
+    class _Status(enum.Enum):
+        RUNNING = enum.auto()
+        DONE = enum.auto()
+        ERROR = enum.auto()
 
-    @_t.overload
-    def __init__(self, handle: '_Worker.TaskHandle'): ...
+    def __init__(self, msg: str, *args, parent: _t.Optional['Task'] = None):
+        # These should not be written to directly.
+        # Instead, task should be sent to a handler for modification.
+        # This ensures thread safety, because handler has a lock.
+        # See handler's implementation details.
+        if args:
+            msg = msg % args
 
-    def __init__(self, msg_or_handle: _t.Union[str, '_Worker.TaskHandle'], *args):
-        if not isinstance(msg_or_handle, _Worker.TaskHandle):
-            if args:
-                msg_or_handle = msg_or_handle % args
-            self._handle = _WORKER.task(msg_or_handle)
+        self._msg = msg
+        self._progress = None
+        self._comment = None
+        self._status = Task._Status.RUNNING
+        self._subtasks = []
+
+        if parent is None:
+            _HANDLER_IMPL.reg_task(self)
         else:
-            self._handle = msg_or_handle
+            _HANDLER_IMPL.reg_subtask(parent, self)
 
     def progress(self, progress: _PROGRESS):
         """Indicate progress of ths task.
@@ -827,7 +928,7 @@ class Task:
 
         """
 
-        _WORKER.progress(self._handle, progress)
+        _HANDLER_IMPL.set_progress(self, progress)
 
     def comment(self, comment: _t.Optional[str]):
         """Set a comment for a task.
@@ -836,30 +937,28 @@ class Task:
 
         """
 
-        _WORKER.comment(self._handle, comment)
+        _HANDLER_IMPL.set_comment(self, comment)
 
     def done(self):
         """Indicate that this task has finished successfully.
 
         """
 
-        _WORKER.done(self._handle)
+        _HANDLER_IMPL.set_status(self, Task._Status.DONE)
 
     def error(self):
         """Indicate that this task has finished with an error.
 
         """
 
-        _WORKER.error(self._handle)
+        _HANDLER_IMPL.set_status(self, Task._Status.ERROR)
 
     def subtask(self, msg: str, *args) -> 'Task':
         """Create a subtask within this task.
 
         """
 
-        if args:
-            msg = msg % args
-        return Task(_WORKER.subtask(self._handle, msg))
+        return Task(msg, *args, parent=self)
 
     def __enter__(self):
         return self
@@ -872,37 +971,21 @@ class Task:
 
 
 class Handler(logging.Handler):
-    """Handler for :mod:`logging` that sends all records to :mod:`yuio.io`.
+    """A handler that redirects all log messages to yuio.
+
+    Note that formatters set up via the :func:`setup` function
+    do not affect this handler.
 
     """
 
-    #: Handler that is attached to the root logger upon import.
-    ROOT_HANDLER: 'Handler'
-
-    #: Handler that is attached to the 'yuio.msg' logger upon import.
-    MSG_HANDLER: 'Handler'
-
-    def __init__(self, no_color_tags: bool = True):
-        super().__init__()
-
-        self._no_color_tags = no_color_tags
-
-    def createLock(self):
+    def createLock(self) -> None:
         self.lock = None
 
-    def flush(self):
-        pass
-
-    def emit(self, record: logging.LogRecord):
-        if not hasattr(record, 'no_color_tags'):
-            setattr(record, 'no_color_tags', self._no_color_tags)
-        line = self.format(record)
-        if not line.endswith('\n'):
-            line += '\n'
-        _WORKER.log(line, record)
+    def emit(self, record: LogRecord) -> None:
+        _HANDLER_IMPL.emit(self.format(record), record)
 
 
-class _Worker:
+class _HandlerImpl:
     """A worker that reads messages from a queue and prints them to a stream.
 
     This worker lives in a separate daemon thread, so keyboard interrupts
@@ -910,177 +993,104 @@ class _Worker:
 
     """
 
-    class Promise:
-        def __init__(self):
-            self._cv = threading.Condition()
-            self._done = False
-
-        def wait(self):
-            with self._cv:
-                self._cv.wait_for(lambda: self._done)
-
-        def set(self):
-            with self._cv:
-                self._done = True
-                self._cv.notify_all()
-
-    class TaskHandle:
-        """An opaque handle which is used as a task identifier."""
-
-    class _Task(TaskHandle):
-        """Task internal data."""
-
-        def __init__(self, msg: str):
-            self.msg = msg
-
-            self.progress = None
-            self.comment = None
-
-            self.status = _Worker._TaskStatus.RUNNING
-
-            self.subtasks = []
-
-    class _TaskStatus(enum.Enum):
-        RUNNING = enum.auto()
-        DONE = enum.auto()
-        ERROR = enum.auto()
-
-    @dataclass(frozen=True)
-    class _Message:
-        action: str
-        arguments: _t.Tuple[_t.Any, ...]
-        promise: _t.Optional['_Worker.Promise'] = None
-
     def __init__(self):
         self._stream = sys.stderr
         self._colors: _t.Dict[str, Color] = DEFAULT_COLORS
         self._use_colors: bool = self._stream.isatty()
-        self._task_spinner = r'/-\|'
-        self._task_spinner_speed = 500
 
-        self._tasks: _t.List[_Worker._Task] = []
+        self._tasks: _t.List[Task] = []
 
         self._tasks_shown: int = 0
 
         self._suspended: int = 0
         self._suspended_lines: _t.List[str] = []
 
-        self._start_time = time.time_ns() // 1_000_000
+        self.lock = threading.Lock()
 
-        self._queue: queue.SimpleQueue[_Worker._Message] = queue.SimpleQueue()
-
-        self._handler = Handler()
-
-        self._worker_thread = threading.Thread(
-            target=self._run, daemon=True, name='Yuio logging worker'
-        )
-        self._worker_thread.start()
-
-        atexit.register(self._terminate)
-
-    # Internal API, called from public API via message parsing
-
-    # def _run(self):
-    #     while True:
-    #         try:
-    #             # Do not redraw the screen when no tasks are shown.
-    #             if self._use_colors and self._tasks_shown:
-    #                 timeout = self._task_spinner_speed / 1000 / 3
-    #             else:
-    #                 timeout = None
-    #
-    #             message = self._queue.get(
-    #                 block=True,
-    #                 timeout=timeout
-    #             )
-    #
-    #             if message.action == 'setup':
-    #                 self._setup(*message.arguments)
-    #             elif message.action == 'reg_task':
-    #                 self._reg_task(*message.arguments)
-    #             elif message.action == 'reg_subtask':
-    #                 self._reg_subtask(*message.arguments)
-    #             elif message.action == 'set_progress':
-    #                 self._set_progress(*message.arguments)
-    #             elif message.action == 'set_comment':
-    #                 self._set_comment(*message.arguments)
-    #             elif message.action == 'set_status':
-    #                 self._set_status(*message.arguments)
-    #             elif message.action == 'log_record':
-    #                 self._log_record(*message.arguments)
-    #             elif message.action == 'suspend':
-    #                 self._suspend(*message.arguments)
-    #             elif message.action == 'resume':
-    #                 self._resume(*message.arguments)
-    #             elif message.action == 'terminate':
-    #                 return
-    #
-    #             if message.promise is not None:
-    #                 message.promise.set()
-    #         except queue.Empty:
-    #             if self._use_colors and not self._suspended:
-    #                 self._redraw()
-    #
-    # def _terminate(self):
-    #     self._queue.put(self._Message('terminate', ()))
-    #     self._worker_thread.join()
-
-    def _setup(
+    def setup(
         self,
-        level: _t.Optional[int],
+        stream: _t.IO,
         use_colors: _t.Optional[bool],
-        formatter: logging.Formatter,
-        colors: _t.Optional[_t.Dict[str, Color]],
-        no_color_tags: bool
+        colors: _t.Dict[str, Color],
     ):
-        self._handler.setLevel(level)
-        self._handler.setFormatter(formatter)
-        self._use_colors = use_colors
-        self._colors = DEFAULT_COLORS.copy()
-        if colors is not None:
-            self._colors.update(colors)
+        with self.lock:
+            self._stream = stream
+            self._use_colors = use_colors
+            self._colors = colors
 
-    def _reg_task(self, task: _Task):
-        self._tasks.append(task)
-        self._display_task_status_change(task)
+    def flush(self) -> None:
+        self._stream.flush()
 
-    def _reg_subtask(self, parent: _Task, task: _Task):
-        parent.subtasks.append(task)
-        self._display_task_status_change(task)
-
-    def _set_progress(self, task: TaskHandle, progress: _PROGRESS):
-        assert isinstance(task, _Worker._Task)
-        task.progress = progress
-
-        if self._use_colors:
-            self._redraw()
-
-    def _set_comment(self, task: TaskHandle, comment: _t.Optional[str]):
-        assert isinstance(task, _Worker._Task)
-        task.comment = comment
-
-        if self._use_colors and not self._suspended:
-            self._redraw()
-
-    def _set_status(self, task: TaskHandle, status: _TaskStatus):
-        assert isinstance(task, _Worker._Task)
-        task.status = status
-        self._display_task_status_change(task)
-
-    def _log_record(self, msg: str, record: logging.LogRecord):
+    def emit(self, msg, record: logging.LogRecord):
         line = self._format_record(msg, record)
-        if self._suspended and not getattr(record, 'ignore_suspended', False):
-            self._suspended_lines.append(line)
-        elif self._suspended:
-            self._stream.write(line)
+        if self._suspended:
+            if getattr(record, 'yuio_ignore_suspended', False):
+                self._stream.write(line)
+            else:
+                self._suspended_lines.append(line)
         elif self._use_colors:
             self._undraw()
             self._stream.write(line)
             self._draw()
         else:
             self._stream.write(line)
+        self._stream.flush()
 
-    def _display_task_status_change(self, task: _Task):
+    def reg_task(self, task: Task):
+        with self.lock:
+            self._tasks.append(task)
+            self._display_task_status_change(task)
+
+    def reg_subtask(self, parent: Task, task: Task):
+        with self.lock:
+            parent._subtasks.append(task)
+            self._display_task_status_change(task)
+
+    def set_progress(self, task: Task, progress: _PROGRESS):
+        with self.lock:
+            task._progress = progress
+
+            if self._use_colors:
+                self._redraw()
+
+    def set_comment(self, task: Task, comment: _t.Optional[str]):
+        with self.lock:
+            task._comment = comment
+
+            if self._use_colors and not self._suspended:
+                self._redraw()
+
+    def set_status(self, task: Task, status: Task._Status):
+        with self.lock:
+            task._status = status
+            self._display_task_status_change(task)
+
+    def suspend(self):
+        with self.lock:
+            self._suspended += 1
+
+            if self._suspended == 1:
+                self._undraw()
+                self._stream.flush()
+
+    def resume(self):
+        with self.lock:
+            self._suspended -= 1
+
+            if self._suspended == 0:
+                for line in self._suspended_lines:
+                    self._stream.write(line)
+
+                self._suspended_lines.clear()
+
+                if self._use_colors:
+                    self._cleanup_tasks()
+                    self._draw()
+
+            if self._suspended < 0:
+                raise RuntimeError('unequal number of suspends and resumes')
+
+    def _display_task_status_change(self, task: Task):
         if self._use_colors:
             if not self._suspended:
                 self._redraw()
@@ -1088,29 +1098,6 @@ class _Worker:
             self._suspended_lines.append(self._format_task(task))
         else:
             self._stream.write(self._format_task(task))
-
-    def _suspend(self):
-        self._suspended += 1
-
-        if self._suspended == 1:
-            self._undraw()
-            self._stream.flush()
-
-    def _resume(self):
-        self._suspended -= 1
-
-        if self._suspended == 0:
-            for line in self._suspended_lines:
-                self._stream.write(line)
-
-            self._suspended_lines.clear()
-
-            if self._use_colors:
-                self._cleanup_tasks()
-                self._draw()
-
-        if self._suspended < 0:
-            raise RuntimeError('unequal number of suspends and resumes')
 
     # Private functions, called from internal API
 
@@ -1137,7 +1124,7 @@ class _Worker:
 
         new_tasks = []
         for task in self._tasks:
-            if task.status == _Worker._TaskStatus.RUNNING:
+            if task._status == Task._Status.RUNNING:
                 new_tasks.append(task)
             else:
                 self._stream.write(self._format_task(task))
@@ -1156,59 +1143,56 @@ class _Worker:
             self._tasks_shown += 1
 
             indent += 1
-            tasks.extend([(subtask, indent) for subtask in task.subtasks])
+            tasks.extend(
+                [(subtask, indent) for subtask in reversed(task._subtasks)]
+            )
 
         self._stream.flush()
 
-    def _format_task(self, task: _Task, indent: int = 0) -> str:
+    def _format_task(self, task: Task, indent: int = 0) -> str:
         # Format a task with respect to `_use_colors`.
 
-        if task.status == _Worker._TaskStatus.DONE:
+        if task._status == Task._Status.DONE:
             color = self._colors['task_done']
             status = ': OK'
-        elif task.status == _Worker._TaskStatus.ERROR:
+        elif task._status == Task._Status.ERROR:
             color = self._colors['task_error']
             status = ': ERROR'
         else:
             color = self._colors['task']
-            if not self._use_colors:
+            if (
+                self._use_colors
+                and task._progress is None
+                and task._comment is not None
+            ):
+                status = ' - ' + task._comment + '...'
+            elif task._progress is None or not self._use_colors:
                 status = '...'
             else:
-                status = ' ' + self._make_progress_bar(task.progress)
+                status = ' ' + self._make_progress_bar(task._progress)
+                if task._comment is not None:
+                    status += ' - ' + task._comment
 
-        msg = '  ' * indent + task.msg + status
-
-        if (
-            task.status == _Worker._TaskStatus.RUNNING
-            and task.comment is not None
-        ):
-            msg += ' - ' + task.comment
-
-        return self._colorize(msg, color) + '\n'
+        return self._colorize('  ' * indent + task._msg + status, color) + '\n'
 
     def _format_record(self, msg: str, record: logging.LogRecord) -> str:
         # Format a record with respect to `_use_colors`.
 
-        color_name = getattr(record, 'color_name', record.levelname.lower())
-        if isinstance(color_name, Color):
-            color = color_name
-        else:
-            color = self._colors.get(color_name, Color())
-        no_color_tags = getattr(record, 'no_color_tags', False)
-
-        line = self._colorize(msg, color, no_color_tags)
-
-        return line
+        color = self._colors.get(record.levelname.lower(), Color())
+        process_color_tags = getattr(record, 'yuio_process_color_tags', False)
+        if getattr(record, 'yuio_add_newline', True):
+            msg += '\n'
+        return self._colorize(msg, color, process_color_tags)
 
     _TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _-]+)>|</c>')
 
-    def _colorize(self, msg: str, default_color: Color, no_color_tags: bool = False):
+    def _colorize(self, msg: str, default_color: Color, process_color_tags: bool = True):
         # Colorize a message, process color tags if necessary.
         # Respect `_use_colors`.
 
         default_color = FORE_NORMAL | BACK_NORMAL | default_color
 
-        if no_color_tags:
+        if not process_color_tags:
             if self._use_colors:
                 return str(default_color) + msg + str(Color())
             else:
@@ -1244,12 +1228,7 @@ class _Worker:
 
         return out
 
-    def _make_progress_bar(self, progress: _t.Optional[_PROGRESS]) -> str:
-        if progress is None:
-            phase = time.time_ns() // 1_000_000 // self._task_spinner_speed
-            spinner = self._task_spinner[phase % len(self._task_spinner)]
-            return f'[{spinner}]'
-
+    def _make_progress_bar(self, progress: _PROGRESS) -> str:
         width = 15
 
         progress_indicator = ''
@@ -1262,12 +1241,12 @@ class _Worker:
             if len(progress) == 2:
                 progress = _t.cast(_t.Tuple[int, int], progress)
                 done_percentage = float(progress[0]) / float(progress[1])
-                progress_indicator = f'({progress[0]} / {progress[1]})'
+                progress_indicator = f'{progress[0]} / {progress[1]}'
             elif len(progress) == 3:
                 progress = _t.cast(_t.Tuple[int, int, int], progress)
                 done_percentage = float(progress[0]) / float(progress[2])
                 inflight_percentage = float(progress[1]) / float(progress[2])
-                progress_indicator = f'({progress[0]} / {progress[1]} / {progress[2]})'
+                progress_indicator = f'{progress[0]} / {progress[1]} / {progress[2]}'
                 adjust_inflight = False
         elif isinstance(progress, (float, int)):
             done_percentage = float(progress)
@@ -1305,6 +1284,17 @@ class _Worker:
                + f' {progress_indicator}'
 
 
-# _WORKER = _Worker()
-# Handler.ROOT_HANDLER = Handler()
-# Handler.MSG_HANDLER = Handler()
+logging.addLevelName(QUESTION, 'question')
+
+_HANDLER_IMPL = _HandlerImpl()
+
+_MSG_HANDLER = Handler()
+
+_MSG_LOGGER = logging.getLogger('yuio.msg')
+_MSG_LOGGER.propagate = False
+_MSG_LOGGER.setLevel(1)  # ignore logging level of the root logger
+_MSG_LOGGER.addHandler(_MSG_HANDLER)
+
+_QUESTION_LOGGER = logging.getLogger('yuio.msg.question')
+
+setup()
