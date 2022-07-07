@@ -33,10 +33,6 @@ Value parsers
 
 .. autoclass:: Str
 
-.. autoclass:: StrLower
-
-.. autoclass:: StrUpper
-
 .. autoclass:: Int
 
 .. autoclass:: Float
@@ -99,6 +95,7 @@ import enum
 import pathlib
 import re
 import typing as _t
+import warnings
 
 
 class _Comparable(_t.Protocol):
@@ -252,6 +249,20 @@ class Parser(_t.Generic[T], abc.ABC):
             return Bool()
         elif isinstance(ty, type) and issubclass(ty, enum.Enum):
             return Enum(ty)
+        elif origin is _t.List:
+            return List(cls.from_type_hint(args[0]))
+        elif origin is _t.Set:
+            return Set(cls.from_type_hint(args[0]))
+        elif origin is _t.FrozenSet:
+            return FrozenSet(cls.from_type_hint(args[0]))
+        elif origin is _t.Dict:
+            return Dict(cls.from_type_hint(args[0]), cls.from_type_hint(args[1]))
+        elif origin is _t.Tuple and len(args) == 2 and ... not in args:
+            return Pair(cls.from_type_hint(args[0]), cls.from_type_hint(args[1]))
+        elif origin is _t.Tuple and ... not in args:
+            return Tuple(*map(cls.from_type_hint, args))
+        elif isinstance(ty, type) and issubclass(ty, pathlib.PurePath):
+            return Path()
         else:
             raise TypeError(f'unsupported type {ty}')
 
@@ -259,31 +270,71 @@ class Parser(_t.Generic[T], abc.ABC):
 class Str(Parser[str]):
     """Parser for str values.
 
-    Applies a `modifier` to the value, if one is given.
+    Applies a `modifiers` to the value, in order they are given.
 
     """
 
-    def __init__(self, modifier: _t.Optional[_t.Callable[[str], str]] = None):
+    _Self = _t.TypeVar('_Self', bound='Str')
+
+    def __init__(self, *modifiers: _t.Callable[[str], str]):
         super().__init__()
 
-        self._modifier = modifier
+        self._modifiers = list(modifiers)
 
     def parse(self, value: str) -> str:
-        if self._modifier is not None:
-            return self._modifier(value)
-        else:
-            return value
+        for modifier in self._modifiers:
+            value = modifier(value)
+        return value
 
     def parse_config(self, value: _t.Any) -> str:
         if not isinstance(value, str):
             raise ParsingError('expected a string')
-        if self._modifier is not None:
-            return self._modifier(value)
-        else:
-            return value
+        for modifier in self._modifiers:
+            value = modifier(value)
+        return value
 
     def validate(self, value: str):
         pass
+
+    def lower(self: _Self) -> _Self:
+        """Applies :meth:`str.lower` to all parsed strings.
+
+        """
+
+        self._modifiers.append(str.lower)
+        return self
+
+    def upper(self: _Self) -> _Self:
+        """Applies :meth:`str.upper` to all parsed strings.
+
+        """
+
+        self._modifiers.append(str.upper)
+        return self
+
+    def strip(self: _Self, char: _t.Optional[str] = None) -> _Self:
+        """Applies :meth:`str.strip` to all parsed strings.
+
+        """
+
+        self._modifiers.append(lambda s: s.strip(char))
+        return self
+
+    def lstrip(self: _Self, char: _t.Optional[str] = None) -> _Self:
+        """Applies :meth:`str.lstrip` to all parsed strings.
+
+        """
+
+        self._modifiers.append(lambda s: s.lstrip(char))
+        return self
+
+    def rstrip(self: _Self, char: _t.Optional[str] = None) -> _Self:
+        """Applies :meth:`str.rstrip` to all parsed strings.
+
+        """
+
+        self._modifiers.append(lambda s: s.rstrip(char))
+        return self
 
 
 class StrLower(Str):
@@ -292,6 +343,7 @@ class StrLower(Str):
     """
 
     def __init__(self):
+        warnings.warn('use Str().lower() instead', DeprecationWarning)
         super().__init__(str.lower)
 
 
@@ -301,7 +353,19 @@ class StrUpper(Str):
     """
 
     def __init__(self):
+        warnings.warn('use Str().lower() instead', DeprecationWarning)
         super().__init__(str.upper)
+
+
+if _t.TYPE_CHECKING:  # needed for PyCharm
+    _StrLower = StrLower
+    def StrLower() -> _StrLower:
+        warnings.warn('use Str().lower() instead', DeprecationWarning)
+        return _StrLower()
+    _StrUpper = StrUpper
+    def StrUpper() -> _StrUpper:
+        warnings.warn('use Str().upper() instead', DeprecationWarning)
+        return _StrUpper()
 
 
 class Int(Parser[int]):
