@@ -45,6 +45,18 @@ Value parsers
 
 .. autoclass:: Enum
 
+.. autoclass:: List
+
+.. autoclass:: Set
+
+.. autoclass:: Frozenset
+
+.. autoclass:: Dict
+
+.. autoclass:: Pair
+
+.. autoclass:: Tuple
+
 
 File system path parsers
 ------------------------
@@ -111,6 +123,17 @@ K = _t.TypeVar('K')
 V = _t.TypeVar('V')
 C = _t.TypeVar('C', bound=_Comparable)
 E = _t.TypeVar('E', bound=enum.Enum)
+TU = _t.TypeVar('TU', bound=tuple)
+T1 = _t.TypeVar('T1')
+T2 = _t.TypeVar('T2')
+T3 = _t.TypeVar('T3')
+T4 = _t.TypeVar('T4')
+T5 = _t.TypeVar('T5')
+T6 = _t.TypeVar('T6')
+T7 = _t.TypeVar('T7')
+T8 = _t.TypeVar('T8')
+T9 = _t.TypeVar('T9')
+T10 = _t.TypeVar('T10')
 
 
 class ParsingError(ValueError, argparse.ArgumentTypeError):
@@ -663,6 +686,92 @@ class Pair(Parser[_t.Tuple[K, V]]):
         value_d = self._value._describe_value_or_def(value[1])
 
         return f'{key_d}{delimiter}{value_d}'
+
+
+class Tuple(Parser[TU]):
+    """Parser for tuples of fixed lengths.
+
+    """
+
+    _parsers: _t.List[Parser[_t.Any]]
+    _delimiter: _t.Optional[str]
+
+    # We add this monstrosity for correct type inference
+    # with tuples up to length 10...
+    # Note that adding __init__ causes mypy to infer types incorrectly =(
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], _10: Parser[T10], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]': ...
+    @_t.overload
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], _10: Parser[T10], *args: Parser[_t.Any], delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Any]': ...
+
+    def __new__(cls, *parsers, delimiter):
+        self = super().__new__(cls)
+
+        if len(parsers) == 0:
+            raise ValueError('empty tuple')
+        self._parsers = parsers
+        if delimiter == '':
+            raise ValueError('empty delimiter')
+        self._delimiter = delimiter
+
+        return self
+
+    def parse(self, value: str) -> TU:
+        items = value.split(self._delimiter, maxsplit=len(self._parsers) - 1)
+        if len(items) != len(self._parsers):
+            raise ParsingError('could not parse a tuple')
+
+        return _t.cast(TU, tuple(
+            parser.parse(item) for parser, item in zip(self._parsers, items)
+        ))
+
+    def parse_config(self, value: _t.Any) -> TU:
+        if not isinstance(value, (list, tuple)):
+            raise ParsingError('expected a list or a tuple')
+        elif len(value) != len(self._parsers):
+            raise ParsingError(f'expected {len(self._parsers)} element(s)')
+
+        return _t.cast(TU, tuple(
+            parser.parse_config(item)
+            for parser, item in zip(self._parsers, value)
+        ))
+
+    def validate(self, value: TU):
+        for parser, item in zip(self._parsers, value):
+            parser.validate(item)
+
+    def describe(self) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        desc = [parser._describe_or_def() for parser in self._parsers]
+
+        return delimiter.join(desc)
+
+    def describe_value(self, value: TU) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        desc = [
+            parser._describe_value_or_def(item)
+            for parser, item in zip(self._parsers, value)
+        ]
+
+        return delimiter.join(desc)
 
 
 class Path(Parser[pathlib.Path]):
