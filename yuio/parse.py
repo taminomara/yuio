@@ -177,6 +177,23 @@ class Parser(_t.Generic[T], abc.ABC):
 
         """
 
+    def parse_many(self, value: _t.Sequence[str]) -> T:
+        """Parse a list of user strings.
+
+        Used with argparse for actions with ``nargs`` set to multiple values.
+
+        """
+
+        raise ParsingError('unable to parse multiple values')
+
+    def supports_parse_many(self) -> bool:
+        """Returns true if this parser returns a collection
+        and so supports :meth:`~Parser.parse_many`.
+
+        """
+
+        return False
+
     @abc.abstractmethod
     def parse_config(self, value: _t.Any) -> T:
         """Parse value from a config, raise :class:`ParsingError` on failure.
@@ -199,6 +216,14 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
         return None
+
+    def describe_many(self) -> _t.Optional[str]:
+        """Return a human-readable description of an expected input
+        for the case where :meth:`~Parser.parse_many` is used to parse values.
+
+        """
+
+        return self.describe()
 
     def describe_value(self, value: T) -> _t.Optional[str]:
         """Return a human-readable description of a given value.
@@ -501,11 +526,16 @@ class List(Parser[_t.List[T]]):
         self._delimiter = delimiter
 
     def parse(self, value: str) -> _t.List[T]:
+        return self.parse_many(value.split(self._delimiter))
+
+    def parse_many(self, value: _t.Sequence[str]) -> _t.List[T]:
         return [
             self._inner.parse(item)
-            for item in
-            value.split(self._delimiter)
+            for item in value
         ]
+
+    def supports_parse_many(self) -> bool:
+        return True
 
     def parse_config(self, value: _t.Any) -> _t.List[T]:
         if not isinstance(value, list):
@@ -525,6 +555,9 @@ class List(Parser[_t.List[T]]):
         value = self._inner._describe_or_def()
 
         return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe()
 
     def describe_value(self, value: _t.List[T]) -> _t.Optional[str]:
         return (self._delimiter or ' ').join(
@@ -554,20 +587,29 @@ class Set(Parser[_t.Set[T]]):
         self._delimiter = delimiter
 
     def parse(self, value: str) -> _t.Set[T]:
-        return set({
+        return {
             self._inner.parse(item)
             for item in
             value.split(self._delimiter)
-        })
+        }
+
+    def parse_many(self, value: _t.Sequence[str]) -> _t.Set[T]:
+        return {
+            self._inner.parse(item)
+            for item in value
+        }
+
+    def supports_parse_many(self) -> bool:
+        return True
 
     def parse_config(self, value: _t.Any) -> _t.Set[T]:
         if not isinstance(value, list):
             raise ParsingError('expected a list')
 
-        return set({
+        return {
             self._inner.parse_config(item)
             for item in value
-        })
+        }
 
     def validate(self, value: _t.Set[T]):
         for item in value:
@@ -578,6 +620,9 @@ class Set(Parser[_t.Set[T]]):
         value = self._inner._describe_or_def()
 
         return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe()
 
     def describe_value(self, value: _t.Set[T]) -> _t.Optional[str]:
         return (self._delimiter or ' ').join(
@@ -613,6 +658,15 @@ class FrozenSet(Parser[_t.FrozenSet[T]]):
             value.split(self._delimiter)
         })
 
+    def parse_many(self, value: _t.Sequence[str]) -> _t.FrozenSet[T]:
+        return frozenset({
+            self._inner.parse(item)
+            for item in value
+        })
+
+    def supports_parse_many(self) -> bool:
+        return True
+
     def parse_config(self, value: _t.Any) -> _t.FrozenSet[T]:
         if not isinstance(value, list):
             raise ParsingError('expected a list')
@@ -631,6 +685,9 @@ class FrozenSet(Parser[_t.FrozenSet[T]]):
         value = self._inner._describe_or_def()
 
         return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe()
 
     def describe_value(self, value: _t.FrozenSet[T]) -> _t.Optional[str]:
         return (self._delimiter or ' ').join(
@@ -671,7 +728,13 @@ class Dict(Parser[_t.Dict[K, V]]):
         self._inner = Pair(key, value, pair_delimiter)
 
     def parse(self, value: str) -> _t.Dict[K, V]:
-        return dict(self._inner.parse(item) for item in value.split(' '))
+        return self.parse_many(value.split(self._delimiter))
+
+    def parse_many(self, value: _t.Sequence[str]) -> _t.Dict[K, V]:
+        return dict(self._inner.parse(item) for item in value)
+
+    def supports_parse_many(self) -> bool:
+        return True
 
     def parse_config(self, value: _t.Any) -> _t.Dict[K, V]:
         if not isinstance(value, dict):
@@ -688,6 +751,9 @@ class Dict(Parser[_t.Dict[K, V]]):
         value = self._inner._describe_or_def()
 
         return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe()
 
     def describe_value(self, value: _t.Dict[K, V]) -> _t.Optional[str]:
         return (self._delimiter or ' ').join(
@@ -800,12 +866,18 @@ class Tuple(Parser[TU]):
 
     def parse(self, value: str) -> TU:
         items = value.split(self._delimiter, maxsplit=len(self._parsers) - 1)
-        if len(items) != len(self._parsers):
+        return self.parse_many(items)
+
+    def parse_many(self, value: _t.Sequence[str]) -> TU:
+        if len(value) != len(self._parsers):
             raise ParsingError('could not parse a tuple')
 
         return _t.cast(TU, tuple(
-            parser.parse(item) for parser, item in zip(self._parsers, items)
+            parser.parse(item) for parser, item in zip(self._parsers, value)
         ))
+
+    def supports_parse_many(self) -> bool:
+        return True
 
     def parse_config(self, value: _t.Any) -> TU:
         if not isinstance(value, (list, tuple)):
@@ -819,7 +891,7 @@ class Tuple(Parser[TU]):
         ))
 
     def validate(self, value: TU):
-        for parser, item in zip(self._parsers, value):
+        for parser, item in zip(self._parsers, _t.cast(tuple, value)):
             parser.validate(item)
 
     def describe(self) -> _t.Optional[str]:
@@ -828,11 +900,14 @@ class Tuple(Parser[TU]):
 
         return delimiter.join(desc)
 
+    def describe_many(self) -> _t.Optional[str]:
+        return None
+
     def describe_value(self, value: TU) -> _t.Optional[str]:
         delimiter = self._delimiter or ' '
         desc = [
             parser._describe_value_or_def(item)
-            for parser, item in zip(self._parsers, value)
+            for parser, item in zip(self._parsers, _t.cast(tuple, value))
         ]
 
         return delimiter.join(desc)
@@ -1025,7 +1100,13 @@ class _BoundImpl(Parser[T]):
     def parse(self, value: str) -> T:
         return self._inner.parse(value)
 
-    def parse_config(self, value: _t.Any) -> C:
+    def parse_many(self, value: _t.Sequence[str]) -> T:
+        return self._inner.parse_many(value)
+
+    def supports_parse_many(self) -> bool:
+        return self._inner.supports_parse_many()
+
+    def parse_config(self, value: _t.Any) -> T:
         return self._inner.parse_config(value)
 
     def validate(self, value: T):
@@ -1052,6 +1133,15 @@ class _BoundImpl(Parser[T]):
                 raise ParsingError(
                     f'{self._desc} should be lesser than {self._upper},'
                     f' got {value} instead')
+
+    def describe(self) -> _t.Optional[str]:
+        return self._inner.describe()
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe_many()
+
+    def describe_value(self, value: T) -> _t.Optional[str]:
+        return self._inner.describe_value(value)
 
 
 class Bound(_BoundImpl[Cmp]):
@@ -1169,6 +1259,9 @@ class OneOf(Parser[T]):
         else:
             return super().describe()
 
+    def describe_value(self, value: T) -> _t.Optional[str]:
+        return self._inner.describe_value(value)
+
 
 class Regex(Parser[str]):
     """Check if the parsed value is one of the given set of values.
@@ -1196,3 +1289,9 @@ class Regex(Parser[str]):
         if self._regex.match(value) is None:
             raise ParsingError(
                 f'value should match regex \'{self._regex.pattern}\'')
+
+    def describe(self) -> _t.Optional[str]:
+        return self._inner.describe()
+
+    def describe_value(self, value: str) -> _t.Optional[str]:
+        return self._inner.describe_value(value)
