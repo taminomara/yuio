@@ -11,7 +11,7 @@ if __name__ == '__main__':
         food = yuio.io.ask(
             'Actually... what would you like for dinner?',
             parser=yuio.parse.OneOf(
-                yuio.parse.StrLower(), ['fish', 'meet', 'vegan burger']
+                yuio.parse.Str().lower(), ['fish', 'meet', 'vegan burger']
             ),
             default='vegan burger'
         )
