@@ -944,7 +944,117 @@ class GitRepo(Dir):
         return value
 
 
-class Bound(Parser[C]):
+class _BoundImpl(Parser[T]):
+    _Self = _t.TypeVar('_Self', bound='_BoundImpl')
+
+    def __init__(
+        self,
+        inner: Parser[T],
+        *,
+        lower: _t.Optional[Cmp] = None,
+        lower_inclusive: _t.Optional[Cmp] = None,
+        upper: _t.Optional[Cmp] = None,
+        upper_inclusive: _t.Optional[Cmp] = None,
+        mapper: _t.Callable[[T], Cmp],
+        desc: str,
+    ):
+        super().__init__()
+
+        self._inner: Parser[T] = inner
+
+        self._lower: _t.Optional[Cmp] = None
+        self._lower_inclusive: bool = True
+        self._upper: _t.Optional[Cmp] = None
+        self._upper_inclusive: bool = True
+
+        if lower is not None and lower_inclusive is not None:
+            raise TypeError(
+                'lower and lower_inclusive cannot be given at the same time')
+        elif lower is not None:
+            self.lower_bound(lower)
+        elif lower_inclusive is not None:
+            self.lower_bound_inclusive(lower_inclusive)
+
+        if upper is not None and upper_inclusive is not None:
+            raise TypeError(
+                'upper and upper_inclusive cannot be given at the same time')
+        elif upper is not None:
+            self.upper_bound(upper)
+        elif upper_inclusive is not None:
+            self.upper_bound_inclusive(upper_inclusive)
+
+        self._mapper = mapper
+        self._desc = desc
+
+    def lower_bound(self: _Self, lower: Cmp) -> _Self:
+        """Set lower bound so we require that `value > lower`.
+
+        """
+
+        self._lower = lower
+        self._lower_inclusive = False
+        return self
+
+    def lower_bound_inclusive(self: _Self, lower: Cmp) -> _Self:
+        """Set lower bound so we require that `value >= lower`.
+
+        """
+
+        self._lower = lower
+        self._lower_inclusive = True
+        return self
+
+    def upper_bound(self: _Self, upper: Cmp) -> _Self:
+        """Set upper bound so we require that `value < upper`.
+
+        """
+
+        self._upper = upper
+        self._upper_inclusive = False
+        return self
+
+    def upper_bound_inclusive(self: _Self, upper: Cmp) -> _Self:
+        """Set upper bound so we require that `value <= upper`.
+
+        """
+
+        self._upper = upper
+        self._upper_inclusive = True
+        return self
+
+    def parse(self, value: str) -> T:
+        return self._inner.parse(value)
+
+    def parse_config(self, value: _t.Any) -> C:
+        return self._inner.parse_config(value)
+
+    def validate(self, value: T):
+        self._inner.validate(value)
+
+        mapped = self._mapper(value)
+
+        if self._lower is not None:
+            if self._lower_inclusive and mapped < self._lower:
+                raise ParsingError(
+                    f'{self._desc} should be greater or equal to {self._lower},'
+                    f' got {value} instead')
+            elif not self._lower_inclusive and mapped <= self._lower:
+                raise ParsingError(
+                    f'{self._desc} should be greater than {self._lower},'
+                    f' got {value} instead')
+
+        if self._upper is not None:
+            if self._upper_inclusive and mapped > self._upper:
+                raise ParsingError(
+                    f'{self._desc} should be lesser or equal to {self._upper},'
+                    f' got {value} instead')
+            elif not self._upper_inclusive and mapped >= self._upper:
+                raise ParsingError(
+                    f'{self._desc} should be lesser than {self._upper},'
+                    f' got {value} instead')
+
+
+class Bound(_BoundImpl[Cmp]):
     """Check that value is upper- or lower-bound by some constraints.
 
     :param inner:
@@ -965,113 +1075,65 @@ class Bound(Parser[C]):
 
     """
 
-    _Self = _t.TypeVar('_Self', bound='Bound')
+    def __init__(
+        self,
+        inner: Parser[Cmp],
+        *,
+        lower: _t.Optional[Cmp] = None,
+        lower_inclusive: _t.Optional[Cmp] = None,
+        upper: _t.Optional[Cmp] = None,
+        upper_inclusive: _t.Optional[Cmp] = None
+    ):
+        super().__init__(
+            inner,
+            lower=lower,
+            lower_inclusive=lower_inclusive,
+            upper=upper,
+            upper_inclusive=upper_inclusive,
+            mapper=lambda x: x,
+            desc='value'
+        )
 
-    _lower: _t.Optional[C] = None
-    """Lower bound."""
 
-    _lower_inclusive: bool = True
-    """True if lower bound is inclusive."""
+class BoundLen(_BoundImpl[Sz]):
+    """Check that length of a value is upper- or lower-bound by some constraints.
 
-    _upper: _t.Optional[C] = None
-    """Upper bound."""
+    :param inner:
+        inner parser that will be used to actually parse a value before
+        checking its bounds.
+    :param lower:
+        set lower bound for length, so we require that ``len(value) > lower``.
+        Can't be given if `lower_inclusive` is also given.
+    :param lower_inclusive:
+        set lower bound for length, so we require that ``len(value) >= lower``.
+        Can't be given if `lower` is also given.
+    :param upper:
+        set upper bound for length, so we require that ``len(value) < upper``.
+        Can't be given if `upper_inclusive` is also given.
+    :param upper_inclusive:
+        set upper bound for length, so we require that ``len(value) <= upper``.
+        Can't be given if `upper` is also given.
 
-    _upper_inclusive: bool = True
-    """True if upper bound is inclusive."""
+    """
 
     def __init__(
         self,
-        inner: Parser[C],
+        inner: Parser[Sz],
         *,
-        lower: _t.Optional[C] = None,
-        lower_inclusive: _t.Optional[C] = None,
-        upper: _t.Optional[C] = None,
-        upper_inclusive: _t.Optional[C] = None
+        lower: _t.Optional[int] = None,
+        lower_inclusive: _t.Optional[int] = None,
+        upper: _t.Optional[int] = None,
+        upper_inclusive: _t.Optional[int] = None
     ):
-        super().__init__()
-
-        self._inner: Parser[C] = inner
-
-        if lower is not None and lower_inclusive is not None:
-            raise TypeError(
-                'lower and lower_inclusive cannot be given at the same time')
-        elif lower is not None:
-            self.lower_bound(lower)
-        elif lower_inclusive is not None:
-            self.lower_bound_inclusive(lower_inclusive)
-
-        if upper is not None and upper_inclusive is not None:
-            raise TypeError(
-                'upper and upper_inclusive cannot be given at the same time')
-        elif upper is not None:
-            self.upper_bound(upper)
-        elif upper_inclusive is not None:
-            self.upper_bound_inclusive(upper_inclusive)
-
-    def lower_bound(self: _Self, lower: C) -> _Self:
-        """Set lower bound so we require that `value > lower`.
-
-        """
-
-        self._lower = lower
-        self._lower_inclusive = False
-        return self
-
-    def lower_bound_inclusive(self: _Self, lower: C) -> _Self:
-        """Set lower bound so we require that `value >= lower`.
-
-        """
-
-        self._lower = lower
-        self._lower_inclusive = True
-        return self
-
-    def upper_bound(self: _Self, upper: C) -> _Self:
-        """Set upper bound so we require that `value < upper`.
-
-        """
-
-        self._upper = upper
-        self._upper_inclusive = False
-        return self
-
-    def upper_bound_inclusive(self: _Self, upper: C) -> _Self:
-        """Set upper bound so we require that `value <= upper`.
-
-        """
-
-        self._upper = upper
-        self._upper_inclusive = True
-        return self
-
-    def parse(self, value: str) -> C:
-        return self._inner.parse(value)
-
-    def parse_config(self, value: _t.Any) -> C:
-        return self._inner.parse_config(value)
-
-    def validate(self, value: C):
-        self._inner.validate(value)
-
-        if self._lower is not None:
-            if self._lower_inclusive and value < self._lower:
-                raise ParsingError(
-                    f'value should be greater or equal to {self._lower},'
-                    f' got {value} instead')
-            elif not self._lower_inclusive and value <= self._lower:
-                raise ParsingError(
-                    f'value should be greater than {self._lower},'
-                    f' got {value} instead')
-
-        if self._upper is not None:
-            if self._upper_inclusive and value > self._upper:
-                raise ParsingError(
-                    f'value should be lesser or equal to {self._upper},'
-                    f' got {value} instead')
-            elif not self._upper_inclusive and value >= self._upper:
-                raise ParsingError(
-                    f'value should be lesser than {self._upper},'
-                    f' got {value} instead')
+        super().__init__(
+            inner,
+            lower=lower,
+            lower_inclusive=lower_inclusive,
+            upper=upper,
+            upper_inclusive=upper_inclusive,
+            mapper=len,
+            desc='length of a value'
+        )
 
 
 class OneOf(Parser[T]):
