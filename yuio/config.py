@@ -114,28 +114,42 @@ class _FieldSettings:
     parser: _t.Optional[yuio.parse.Parser] = None
     help: _t.Optional[str] = None
     env: _t.Optional[str] = None
-    flag: _t.Optional[_t.Union[str, _t.List[str]]] = None
+    flags: _t.Optional[_t.Union[str, _t.List[str]]] = None
+    required: bool = False
 
     def _update_defaults(self, qualname, name, ty) -> '_Field':
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
 
         help = self.help
         if help is None:
-            help = 'not documented.'
+            help = ''
 
         env = self.env
         if env is None:
             env = name.upper()
 
-        flag = self.flag
-        if flag is None:
-            flag = '--' + name.replace('_', '-')
-        if not isinstance(flag, list):
-            flag = [flag]
+        flags = self.flags
+        if flags is None:
+            flags = '--' + name.replace('_', '-')
+        if not isinstance(flags, list):
+            flags = [flags]
+        if not flags:
+            raise TypeError(
+                f'{qualname}.{name} should have at least one flag')
+        for flag in flags:
+            if flag and not flag.startswith('-'):
+                raise TypeError(
+                    f'{qualname}.{name}: positional arguments '
+                    f'are not supported')
+            if not flag and not is_subconfig:
+                raise TypeError(
+                    f'{qualname}.{name} got an empty flag')
 
         default = self.default
 
         parser = self.parser
+
+        required = self.required
 
         if is_subconfig:
             if default is not _MISSING:
@@ -146,13 +160,17 @@ class _FieldSettings:
                 raise TypeError(
                     f'{qualname}.{name} cannot have parsers')
 
-            if len(flag) > 1:
+            if len(flags) > 1:
                 raise TypeError(
                     f'{qualname}.{name} cannot have multiple flags')
 
-            if not flag[0].startswith('--'):
+            if flags[0] and not flags[0].startswith('--'):
                 raise TypeError(
-                    f'{qualname}.{name} cannot have a short flag')
+                    f'{qualname}.{name} cannot have a short flag ')
+
+            if required:
+                raise TypeError(
+                    f'{qualname}.{name} cannot be required')
         elif parser is None:
             try:
                 parser = yuio.parse.Parser.from_type_hint(ty)
@@ -160,17 +178,15 @@ class _FieldSettings:
                 raise TypeError(
                     f'can\'t derive parser for {qualname}.{name}')
 
-        dest = qualname.replace('.', '__') + '__' + name
-
         return _Field(
             default,
             parser,
             help,
             env,
-            flag,
-            dest,
+            flags,
             is_subconfig,
-            ty
+            ty,
+            required
         )
 
 
@@ -180,10 +196,10 @@ class _Field:
     parser: _t.Optional[yuio.parse.Parser]
     help: str
     env: str
-    flag: _t.List[str]
-    dest: str
+    flags: _t.List[str]
     is_subconfig: bool
     ty: _t.Type
+    required: bool
 
 
 @_t.overload
@@ -191,7 +207,8 @@ def field(
     *,
     help: _t.Optional[str] = None,
     env: _t.Optional[str] = None,
-    flag: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    flags: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    required: bool = False,
 ) -> _t.Any: pass
 
 
@@ -202,7 +219,8 @@ def field(
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Optional[str] = None,
     env: _t.Optional[str] = None,
-    flag: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    flags: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    required: bool = False,
 ) -> T: pass
 
 
@@ -212,7 +230,8 @@ def field(
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Optional[str] = None,
     env: _t.Optional[str] = None,
-    flag: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    flags: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    required: bool = False,
 ) -> T:
     """Field descriptor, used for additional configuration of fields.
 
@@ -229,10 +248,12 @@ def field(
         name of environment variable that will be used for this field.
         By default, it's inferred from field name.
         Set to :func:`disabled` to disable parsing from environment variable.
-    :param flag:
+    :param flags:
         name of a CLI flag (or a list of names) that will be used
         for this field. By default, it's inferred from field name.
         Set to :func:`disabled` to disable parsing from command line arguments.
+    :param required:
+        set this argument to be required when configuring CLI parser.
 
     """
 
@@ -241,7 +262,8 @@ def field(
         parser=parser,
         help=help,
         env=env,
-        flag=flag
+        flags=flags,
+        required=required,
     ))
 
 
@@ -269,6 +291,16 @@ class _ConfigMeta(type):
             fields[name] = field._update_defaults(cls.__qualname__, name, ty)
 
         cls._fields = fields
+
+
+def _parse_collection_action(parser: yuio.parse.Parser):
+    class Action(argparse.Action):
+        def __call__(self, _, namespace, values, option_string=None):
+            assert values is not None and not isinstance(values, str)
+
+            setattr(namespace, self.dest, parser.parse_many(values))
+
+    return Action
 
 
 class Config(metaclass=_ConfigMeta):
@@ -372,7 +404,7 @@ class Config(metaclass=_ConfigMeta):
 
         """
 
-        return cls._load_from_namespace(namespace, '')
+        return cls._load_from_namespace(namespace, cls.__qualname__ + ':')
 
     @classmethod
     def _load_from_namespace(
@@ -384,14 +416,14 @@ class Config(metaclass=_ConfigMeta):
         fields = {}
 
         for name, field in cls._fields.items():
-            if field.flag is _DISABLED:
+            if field.flags is _DISABLED:
                 continue
 
-            dest = prefix + field.dest
+            dest = prefix + name
 
             if field.is_subconfig:
                 fields[name] = field.ty._load_from_namespace(
-                    namespace, dest + '__')
+                    namespace, dest + '.')
             elif hasattr(namespace, dest):
                 fields[name] = getattr(namespace, dest)
 
@@ -474,50 +506,92 @@ class Config(metaclass=_ConfigMeta):
         if parser is None:
             parser = argparse.ArgumentParser()
 
-        cls._setup_parser(parser, '')
+        cls._setup_parser(parser, parser, '', cls.__qualname__ + ':')
 
         return parser
 
     @classmethod
     def _setup_parser(
         cls,
+        group: argparse.ArgumentParser,
         parser: argparse.ArgumentParser,
-        prefix: str
+        prefix: str,
+        dest_prefix: str,
     ):
         for name, field in cls._fields.items():
-            if field.flag is _DISABLED:
+            if field.flags is _DISABLED:
                 continue
 
-            flag = [prefix + flag for flag in field.flag]
+            dest = dest_prefix + name
+
+            flags = [prefix + flag for flag in field.flags]
 
             if field.is_subconfig:
-                group = parser.add_argument_group(name, field.help)
-                field.ty._setup_parser(group, flag[0] + '--')
+                group = _t.cast(_t.Any, parser.add_argument_group(
+                    field.help.rstrip('.') or name))
+                field.ty._setup_parser(
+                    group, parser, flags[0], dest + '.')
                 continue
 
             assert field.parser is not None
 
-            metavar = field.parser.describe()
+            if field.parser.supports_parse_many():
+                metavar = field.parser.describe_many()
+            else:
+                metavar = field.parser.describe()
             if metavar:
                 metavar = '{' + metavar + '}'
             else:
                 metavar = '<' + name.replace('_', '-') + '>'
 
-            kwargs: _t.Dict[str, _t.Any] = {}
-
             if isinstance(field.parser, yuio.parse.Bool):
-                kwargs['nargs'] = '?'
-                kwargs['const'] = True
+                mutex_group = group.add_mutually_exclusive_group(
+                    required=field.required)
 
-            parser.add_argument(
-                *flag,
-                type=field.parser,
-                default=_MISSING,
-                help=field.help,
-                metavar=metavar,
-                dest=field.dest,
-                **kwargs
-            )
+                for flag in flags:
+                    pos = flag.rfind('--')
+                    if flag.startswith('--') and pos >= 0:
+                        flag_neg = flag[:pos] + '--no-' + flag[pos + 2:]
+                        mutex_group.add_argument(
+                            flag_neg,
+                            default=_MISSING,
+                            help=f'set {flag} to be `false`',
+                            dest=dest,
+                            action='store_false',
+                        )
+                        break
+
+                mutex_group.add_argument(
+                    *flags,
+                    type=field.parser,
+                    default=_MISSING,
+                    help=field.help or 'not documented',
+                    metavar=metavar,
+                    dest=dest,
+                    nargs='?',
+                    const=True,
+                )
+            elif field.parser.supports_parse_many():
+                group.add_argument(
+                    *flags,
+                    default=_MISSING,
+                    help=field.help or 'not documented',
+                    metavar=metavar,
+                    dest=dest,
+                    required=field.required,
+                    nargs='*',
+                    action=_parse_collection_action(field.parser),
+                )
+            else:
+                group.add_argument(
+                    *flags,
+                    type=field.parser,
+                    default=_MISSING,
+                    help=field.help or 'not documented',
+                    metavar=metavar,
+                    dest=dest,
+                    required=field.required,
+                )
 
     def __getattribute__(self, item):
         value = super().__getattribute__(item)
