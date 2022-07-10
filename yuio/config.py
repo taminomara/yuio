@@ -58,7 +58,7 @@ If you need to override them, theres the :func:`field` function::
             default='ROLLING',
             help='strategy that will be used to deploy new pods.',
             parser=yuio.parse.OneOf(
-                yuio.parse.StrUpper(),
+                yuio.parse.Str().upper(),
                 ['ROLLING', 'READONLY', 'DOWNTIME']
             )
 

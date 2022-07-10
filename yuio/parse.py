@@ -364,37 +364,6 @@ class Str(Parser[str]):
         return self
 
 
-class StrLower(Str):
-    """Parser for str values that converts them to lowercase.
-
-    """
-
-    def __init__(self):
-        warnings.warn('use Str().lower() instead', DeprecationWarning)
-        super().__init__(str.lower)
-
-
-class StrUpper(Str):
-    """Parser for str values that converts them to uppercase.
-
-    """
-
-    def __init__(self):
-        warnings.warn('use Str().lower() instead', DeprecationWarning)
-        super().__init__(str.upper)
-
-
-if _t.TYPE_CHECKING:  # needed for PyCharm
-    _StrLower = StrLower
-    def StrLower() -> _StrLower:
-        warnings.warn('use Str().lower() instead', DeprecationWarning)
-        return _StrLower()
-    _StrUpper = StrUpper
-    def StrUpper() -> _StrUpper:
-        warnings.warn('use Str().upper() instead', DeprecationWarning)
-        return _StrUpper()
-
-
 class Int(Parser[int]):
     """Parser for int values.
 
