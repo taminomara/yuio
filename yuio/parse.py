@@ -118,8 +118,10 @@ class _Comparable(_t.Protocol):
 T = _t.TypeVar('T')
 K = _t.TypeVar('K')
 V = _t.TypeVar('V')
-C = _t.TypeVar('C', bound=_Comparable)
+Sz = _t.TypeVar('Sz', bound=_t.Sized)
+Cmp = _t.TypeVar('Cmp', bound=_Comparable)
 E = _t.TypeVar('E', bound=enum.Enum)
+
 TU = _t.TypeVar('TU', bound=tuple)
 T1 = _t.TypeVar('T1')
 T2 = _t.TypeVar('T2')
