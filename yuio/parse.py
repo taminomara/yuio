@@ -990,7 +990,7 @@ class GitRepo(Dir):
         return value
 
 
-class _BoundImpl(Parser[T]):
+class _BoundImpl(Parser[T], _t.Generic[T, Cmp]):
     _Self = _t.TypeVar('_Self', bound='_BoundImpl')
 
     def __init__(
@@ -1115,7 +1115,7 @@ class _BoundImpl(Parser[T]):
         return self._inner.describe_value(value)
 
 
-class Bound(_BoundImpl[Cmp]):
+class Bound(_BoundImpl[Cmp, Cmp]):
     """Check that value is upper- or lower-bound by some constraints.
 
     :param inner:
@@ -1156,7 +1156,7 @@ class Bound(_BoundImpl[Cmp]):
         )
 
 
-class BoundLen(_BoundImpl[Sz]):
+class BoundLen(_BoundImpl[Sz, int]):
     """Check that length of a value is upper- or lower-bound by some constraints.
 
     :param inner:

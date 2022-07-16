@@ -48,15 +48,8 @@ class AppConfig(yuio.config.Config):
         flags='',  # Disable prefixing executor flags with `--executor--...`
     )
 
-    stats: set = yuio.config.field(
+    stats: frozenset = yuio.config.field(
         default=frozenset({ModelStat.MSE, ModelStat.AUC}),
         parser=yuio.parse.FrozenSet(yuio.parse.Enum(ModelStat)),
         help='list of model statistics that needs to be exported',
     )
-
-
-if __name__ == '__main__':
-    config = AppConfig.load_from_args(
-        '-m asd.model -i asd.bin -t 16 --stats LL ROC AUC MSE'.split()
-    )
-    yuio.io.info('Config = %r', config)
