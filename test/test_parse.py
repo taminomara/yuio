@@ -137,6 +137,9 @@ def test_list():
 
     assert parser.describe() == 'int[ int[ ...]]'
 
+    with pytest.raises(ValueError, match='empty delimiter'):
+        List(Int(), delimiter='')
+
 
 def test_set():
     parser = Set(Int())
@@ -154,6 +157,9 @@ def test_set():
 
     assert parser.describe() == 'int[ int[ ...]]'
 
+    with pytest.raises(ValueError, match='empty delimiter'):
+        Set(Int(), delimiter='')
+
 
 def test_frozenset():
     parser = FrozenSet(Int())
@@ -170,6 +176,9 @@ def test_frozenset():
         parser.parse_config(10)
 
     assert parser.describe() == 'int[ int[ ...]]'
+
+    with pytest.raises(ValueError, match='empty delimiter'):
+        FrozenSet(Int(), delimiter='')
 
 
 def test_dict():
@@ -193,10 +202,22 @@ def test_pair():
         parser('10:abc')
     assert parser.describe() == 'int:str:str'
     assert parser.describe_value((-5, ('xyz', 'abc'))) == '-5:xyz:abc'
+    with pytest.raises(ValueError, match='empty delimiter'):
+        Pair(Int(), Int(), delimiter='')
 
 
 def test_tuple():
-    pass
+    parser = Tuple(Int(), Int(), Str())
+    assert parser('1 2 asd') == (1, 2, 'asd')
+    assert parser('1 2 asd dsa') == (1, 2, 'asd dsa')
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('1 2')
+    with pytest.raises(ValueError, match='as an int'):
+        parser('1 dsa asd')
+    with pytest.raises(ValueError, match='empty tuple'):
+        Tuple()
+    with pytest.raises(ValueError, match='empty delimiter'):
+        Tuple(Int(), delimiter='')
 
 
 def test_path():
