@@ -45,13 +45,13 @@ Value parsers
 
 .. autoclass:: Set
 
-.. autoclass:: Frozenset
+.. autoclass:: FrozenSet
 
 .. autoclass:: Dict
 
 .. autoclass:: Pair
 
-.. autoclass:: Tuple
+.. autoclass:: Tuple(*parsers: Parser[Tn], delimiter: _t.Optional[str] = None)
 
 
 File system path parsers
@@ -83,6 +83,8 @@ Validators
 
    .. automethod:: upper_bound_inclusive
 
+.. autoclass:: BoundLen
+
 .. autoclass:: OneOf
 
 .. autoclass:: Regex
@@ -95,7 +97,6 @@ import enum
 import pathlib
 import re
 import typing as _t
-import warnings
 
 
 class _Comparable(_t.Protocol):
@@ -371,7 +372,7 @@ class Int(Parser[int]):
 
     def parse(self, value: str) -> int:
         try:
-            return int(value)
+            return int(value.strip())
         except ValueError:
             raise ParsingError(f'could not parse value {value!r} as an int')
 
@@ -395,7 +396,7 @@ class Float(Parser[float]):
 
     def parse(self, value: str) -> float:
         try:
-            return float(value)
+            return float(value.strip())
         except ValueError:
             raise ParsingError(f'could not parse value {value!r} as a float')
 
@@ -414,7 +415,7 @@ class Bool(Parser[bool]):
     """
 
     def parse(self, value: str) -> bool:
-        value = value.lower()
+        value = value.strip().lower()
 
         if value in ('y', 'yes', 'true', '1'):
             return True
@@ -451,7 +452,7 @@ class Enum(Parser[E]):
 
     def parse(self, value: str) -> E:
         try:
-            return self._enum_type[value.upper()]
+            return self._enum_type[value.strip().upper()]
         except KeyError:
             enum_values = ', '.join(e.name for e in self._enum_type)
             raise ParsingError(
@@ -735,6 +736,13 @@ class Dict(Parser[_t.Dict[K, V]]):
 class Pair(Parser[_t.Tuple[K, V]]):
     """Parser for key-value pairs.
 
+    :param key:
+        inner parser that will be used to parse the first element of the pair.
+    :param value:
+        inner parser that will be used to parse the second element of the pair.
+    :param delimiter:
+        delimiter that will be passed to :py:meth:`str.split`.
+
     """
 
     def __init__(
@@ -792,6 +800,11 @@ class Pair(Parser[_t.Tuple[K, V]]):
 class Tuple(Parser[TU]):
     """Parser for tuples of fixed lengths.
 
+    :param parsers:
+        parsers for each tuple element.
+    :param delimiter:
+        delimiter that will be passed to :py:meth:`str.split`.
+
     """
 
     _parsers: _t.List[Parser[_t.Any]]
@@ -801,29 +814,29 @@ class Tuple(Parser[TU]):
     # with tuples up to length 10...
     # Note that adding __init__ causes mypy to infer types incorrectly =(
     @_t.overload
-    def __new__(cls, _1: Parser[T1], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1]]': ...
+    def __new__(cls, _1: Parser[T1], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], _10: Parser[T10], *, delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], _10: Parser[T10], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]': ...
     @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], _10: Parser[T10], *args: Parser[_t.Any], delimiter: _t.Optional[str] = ' ') -> 'Tuple[_t.Any]': ...
+    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], _10: Parser[T10], *args: Parser[_t.Any], delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Any]': ...
 
-    def __new__(cls, *parsers, delimiter):
+    def __new__(cls, *parsers, delimiter=None):
         self = super().__new__(cls)
 
         if len(parsers) == 0:
@@ -1159,21 +1172,7 @@ class Bound(_BoundImpl[Cmp, Cmp]):
 class BoundLen(_BoundImpl[Sz, int]):
     """Check that length of a value is upper- or lower-bound by some constraints.
 
-    :param inner:
-        inner parser that will be used to actually parse a value before
-        checking its bounds.
-    :param lower:
-        set lower bound for length, so we require that ``len(value) > lower``.
-        Can't be given if `lower_inclusive` is also given.
-    :param lower_inclusive:
-        set lower bound for length, so we require that ``len(value) >= lower``.
-        Can't be given if `lower` is also given.
-    :param upper:
-        set upper bound for length, so we require that ``len(value) < upper``.
-        Can't be given if `upper_inclusive` is also given.
-    :param upper_inclusive:
-        set upper bound for length, so we require that ``len(value) <= upper``.
-        Can't be given if `upper` is also given.
+    The interface is exactly like one of the :class:`Bound` parser.
 
     """
 
@@ -1235,7 +1234,7 @@ class OneOf(Parser[T]):
 
 
 class Regex(Parser[str]):
-    """Check if the parsed value is one of the given set of values.
+    """Check if the parsed value matches the given regular expression.
 
     """
 
