@@ -4,6 +4,7 @@ import typing
 import pytest
 
 from yuio.config import *
+import yuio.parse
 
 
 def test_default():
@@ -219,6 +220,22 @@ def test_load_from_env():
     assert c.f2 == 'f2.2'
 
 
+def test_load_from_env_prefix():
+    os.environ.clear()
+
+    class MyConfig(Config):
+        s: str
+
+    os.environ['S'] = 's.1'
+    os.environ['P_S'] = 's.2'
+
+    c = MyConfig.load_from_env(prefix='')
+    assert c.s == 's.1'
+
+    c = MyConfig.load_from_env(prefix='P_')
+    assert c.s == 's.2'
+
+
 def test_load_from_env_disabled():
     os.environ.clear()
 
@@ -234,7 +251,7 @@ def test_load_from_env_disabled():
     assert c.f_enabled == 'f_enabled.2'
 
 
-def test_load_from_env_configured():
+def test_load_from_env_configured_name():
     os.environ.clear()
 
     class MyConfig(Config):
@@ -248,8 +265,12 @@ def test_load_from_env_configured():
     c = MyConfig.load_from_env()
     assert c.f1 == 'f1.3'
 
+    with pytest.raises(TypeError, match='empty env variable name'):
+        class ErrConfig(Config):
+            a: str = field(env='')
 
-def test_load_from_env_parsers():
+
+def test_load_from_env_simple_parsers():
     os.environ.clear()
 
     class MyConfig(Config):
@@ -317,6 +338,58 @@ def test_load_from_env_parsers():
     assert c.e is E.B
 
 
+def test_load_from_env_collection_parsers():
+    os.environ.clear()
+
+    class MyConfig(Config):
+        b: list = field(
+            parser=yuio.parse.List(
+                yuio.parse.Pair(
+                    yuio.parse.Str(), yuio.parse.Int())))
+        s: typing.Set[int]
+        x: typing.Tuple[int, float]
+        d: typing.Dict[str, int]
+
+    os.environ['B'] = 'a:1 b:2'
+    os.environ['S'] = '1 2 3 5 3'
+    os.environ['X'] = '1 2'
+    os.environ['D'] = 'a:10 b:20'
+    c = MyConfig.load_from_env()
+    assert c.b == [('a', 1), ('b', 2)]
+    assert c.s == {1, 2, 3, 5}
+    assert c.x == (1, 2.0)
+    assert c.d == {'a': 10, 'b': 20}
+
+
+def test_load_from_env_subconfig():
+    os.environ.clear()
+
+    class SubConfig(Config):
+        a: str
+
+    class MyConfig(Config):
+        sub: SubConfig
+
+    os.environ['SUB_A'] = 'xxx1'
+    c = MyConfig.load_from_env()
+    assert c.sub.a == 'xxx1'
+
+
+def test_load_from_env_subconfig_no_prefix():
+    os.environ.clear()
+
+    class SubConfig(Config):
+        a: str
+
+    class MyConfig(Config):
+        sub: SubConfig = field(env='')
+
+    os.environ['SUB_A'] = 'xxx1'
+    os.environ['A'] = 'xxx2'
+    c = MyConfig.load_from_env()
+    assert c.sub.a == 'xxx2'
+
+
 def test_load_from_config():
     pass
 
@@ -330,6 +403,10 @@ def test_load_from_config_unknown_options_ignored():
 
 
 def test_load_from_config_parsers():
+    pass
+
+
+def test_load_from_config_subconfig():
     pass
 
 
@@ -351,11 +428,15 @@ def test_load_from_args():
     assert c.c == 5
 
 
-def test_load_from_args_configured():
+def test_load_from_args_configured_flags():
     pass
 
 
-def test_load_from_args_parsers():
+def test_load_from_args_simple_parsers():
+    pass
+
+
+def test_load_from_args_collection_parsers():
     pass
 
 
@@ -364,4 +445,8 @@ def test_load_from_args_bool_flag():
 
 
 def test_load_from_args_subconfig():
+    pass
+
+
+def test_load_from_args_subconfig_no_prefix():
     pass

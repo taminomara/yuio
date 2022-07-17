@@ -182,7 +182,22 @@ def test_frozenset():
 
 
 def test_dict():
-    pass
+    parser = Dict(Int(), Str(), '-')
+    assert parser('10:abc') == {10: 'abc'}
+    assert parser('10:abc-11:xyz') == {10: 'abc', 11: 'xyz'}
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('10')
+    assert parser.describe() == 'int:str[-int:str[-...]]'
+    assert parser.describe_value({1: 'z', 2: 'y'}) == '1:z-2:y'
+
+    parser = Dict(Int(), Pair(Str(), Str()))
+    assert parser('10:abc:xyz 11:abc::') \
+           == {10: ('abc', 'xyz'), 11: ('abc', ':')}
+    assert parser.describe() == 'int:str:str[ int:str:str[ ...]]'
+    assert parser.describe_value({-5: ('xyz', 'abc'), 10: ('a', 'b')}) \
+           == '-5:xyz:abc 10:a:b'
+    with pytest.raises(ValueError, match='empty delimiter'):
+        Dict(Int(), Int(), delimiter='')
 
 
 def test_pair():
