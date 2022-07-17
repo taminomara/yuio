@@ -2,7 +2,7 @@ import time
 import random
 import threading
 
-import yuio
+import yuio.io
 
 
 def install_package(package: str, task: yuio.io.Task):
@@ -27,8 +27,6 @@ def install_package(package: str, task: yuio.io.Task):
 
 
 if __name__ == '__main__':
-    yuio.io.setup()
-
     packages = [
         'htop',
         'pyenv',

@@ -1,7 +1,7 @@
 import time
 import random
 
-import yuio
+import yuio.io
 
 if __name__ == '__main__':
     packages = [

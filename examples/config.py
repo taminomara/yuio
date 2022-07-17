@@ -1,7 +1,8 @@
 import enum
 import pathlib
 
-import yuio
+import yuio.config
+import yuio.parse
 
 
 class ExecutorConfig(yuio.config.Config):

@@ -1,10 +1,9 @@
 import time
 
-import yuio
+import yuio.io
+import yuio.parse
 
 if __name__ == '__main__':
-    yuio.io.setup()
-
     with yuio.io.Task('Preparing your dinner') as task:
         time.sleep(5)
 
