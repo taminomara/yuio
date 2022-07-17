@@ -807,37 +807,8 @@ class Tuple(Parser[TU]):
 
     """
 
-    _parsers: _t.List[Parser[_t.Any]]
-    _delimiter: _t.Optional[str]
-
-    # We add this monstrosity for correct type inference
-    # with tuples up to length 10...
-    # Note that adding __init__ causes mypy to infer types incorrectly =(
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], _10: Parser[T10], *, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]': ...
-    @_t.overload
-    def __new__(cls, _1: Parser[T1], _2: Parser[T2], _3: Parser[T3], _4: Parser[T4], _5: Parser[T5], _6: Parser[T6], _7: Parser[T7], _8: Parser[T8], _9: Parser[T9], _10: Parser[T10], *args: Parser[_t.Any], delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Any]': ...
-
-    def __new__(cls, *parsers, delimiter=None):
-        self = super().__new__(cls)
+    def __init__(self, *parsers: Parser[_t.Any], delimiter: _t.Optional[str] = None):
+        super().__init__()
 
         if len(parsers) == 0:
             raise ValueError('empty tuple')
@@ -845,8 +816,6 @@ class Tuple(Parser[TU]):
         if delimiter == '':
             raise ValueError('empty delimiter')
         self._delimiter = delimiter
-
-        return self
 
     def parse(self, value: str) -> TU:
         items = value.split(self._delimiter, maxsplit=len(self._parsers) - 1)
