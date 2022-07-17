@@ -869,15 +869,11 @@ class Tuple(Parser[TU]):
 class Path(Parser[pathlib.Path]):
     """Parse a file system path, return a :class:`pathlib.Path`.
 
+    :param extensions: list of allowed file extensions.
+
     """
 
     def __init__(self, extensions: _t.Optional[_t.Collection[str]] = None):
-        """Init the class.
-
-        :param extensions: list of allowed file extensions.
-
-        """
-
         super().__init__()
 
         self._extensions = extensions
