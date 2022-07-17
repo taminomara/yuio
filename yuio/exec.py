@@ -150,6 +150,7 @@ def exec(
 @_t.overload
 def sh(
     cmd: str,
+    /,
     shell: str = '/bin/sh',
     *,
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
@@ -164,6 +165,7 @@ def sh(
 @_t.overload
 def sh(
     cmd: str,
+    /,
     shell: str = '/bin/sh',
     *,
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
@@ -177,6 +179,7 @@ def sh(
 
 def sh(
     cmd,
+    /,
     shell='/bin/sh',
     *,
     cwd=None,

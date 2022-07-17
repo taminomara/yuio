@@ -298,7 +298,7 @@ class Color:
     bold: bool = False
     dim: bool = False
 
-    def __or__(self, other: 'Color'):
+    def __or__(self, other: 'Color', /):
         return Color(
             other.fore if other.fore is not None else self.fore,
             other.back if other.back is not None else self.back,
@@ -458,7 +458,7 @@ def setup(
     _HANDLER_IMPL.setup(stream, use_colors, colors)
 
 
-def log(level: int, msg: str, *args, **kwargs):
+def log(level: int, msg: str, /, *args, **kwargs):
     """Log a debug message.
 
     """
@@ -467,7 +467,7 @@ def log(level: int, msg: str, *args, **kwargs):
     _MSG_LOGGER.log(level, msg, *args, **kwargs)
 
 
-def debug(msg: str, *args, **kwargs):
+def debug(msg: str, /, *args, **kwargs):
     """Log a debug message.
 
     """
@@ -475,7 +475,7 @@ def debug(msg: str, *args, **kwargs):
     log(DEBUG, msg, *args, **kwargs)
 
 
-def info(msg: str, *args, **kwargs):
+def info(msg: str, /, *args, **kwargs):
     """Log an info message.
 
     """
@@ -483,7 +483,7 @@ def info(msg: str, *args, **kwargs):
     log(INFO, msg, *args, **kwargs)
 
 
-def warning(msg: str, *args, **kwargs):
+def warning(msg: str, /, *args, **kwargs):
     """Log a warning message.
 
     """
@@ -491,7 +491,7 @@ def warning(msg: str, *args, **kwargs):
     log(WARNING, msg, *args, **kwargs)
 
 
-def error(msg: str, *args, **kwargs):
+def error(msg: str, /, *args, **kwargs):
     """Log an error message.
 
     """
@@ -499,7 +499,7 @@ def error(msg: str, *args, **kwargs):
     log(ERROR, msg, *args, **kwargs)
 
 
-def exception(msg: str, *args, exc_info=True, **kwargs):
+def exception(msg: str, /, *args, exc_info=True, **kwargs):
     """Log an error message and capture the current exception.
 
     Call this function in the `except` clause of a `try` block
@@ -511,7 +511,7 @@ def exception(msg: str, *args, exc_info=True, **kwargs):
     log(ERROR, msg, *args, exc_info=exc_info, **kwargs)
 
 
-def critical(msg: str, *args, **kwargs):
+def critical(msg: str, /, *args, **kwargs):
     """Log a critical error message.
 
     """
@@ -519,7 +519,7 @@ def critical(msg: str, *args, **kwargs):
     log(CRITICAL, msg, *args, **kwargs)
 
 
-def question(msg: str, *args, **kwargs):
+def question(msg: str, /, *args, **kwargs):
     """Log a message with input prompts and other user communications.
 
     These messages don't end with newline. They also have high priority,
@@ -547,6 +547,7 @@ def is_interactive() -> bool:
 @_t.overload
 def ask(
     msg: str,
+    /,
     *args,
     default: _t.Optional[str] = None,
     input_description: _t.Optional[str] = None,
@@ -558,6 +559,7 @@ def ask(
 @_t.overload
 def ask(
     msg: str,
+    /,
     *args,
     parser: yuio.parse.Parser[T],
     default: _t.Optional[T] = None,
@@ -569,6 +571,7 @@ def ask(
 
 def ask(
     msg: str,
+    /,
     *args,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     default: _t.Optional[T] = None,
@@ -700,6 +703,8 @@ def detect_editor() -> _t.Optional[str]:
 
 def edit(
     text: str,
+    /,
+    *,
     comment_marker: _t.Optional[str] = '#',
     editor: _t.Optional[str] = None,
 ) -> str:
@@ -786,7 +791,7 @@ class SuspendLogging:
             self._resumed = True
 
     @staticmethod
-    def log(level: int, msg: str, *args, **kwargs):
+    def log(level: int, msg: str, /, *args, **kwargs):
         """Log a message, ignore suspended status.
 
         """
@@ -795,7 +800,7 @@ class SuspendLogging:
         log(level, msg, *args, **kwargs)
 
     @staticmethod
-    def debug(msg: str, *args, **kwargs):
+    def debug(msg: str, /, *args, **kwargs):
         """Log a :func:`debug` message, ignore suspended status.
 
         """
@@ -804,7 +809,7 @@ class SuspendLogging:
         debug(msg, *args, **kwargs)
 
     @staticmethod
-    def info(msg: str, *args, **kwargs):
+    def info(msg: str, /, *args, **kwargs):
         """Log a :func:`info` message, ignore suspended status.
 
         """
@@ -813,7 +818,7 @@ class SuspendLogging:
         info(msg, *args, **kwargs)
 
     @staticmethod
-    def warning(msg: str, *args, **kwargs):
+    def warning(msg: str, /, *args, **kwargs):
         """Log a :func:`warning` message, ignore suspended status.
 
         """
@@ -822,7 +827,7 @@ class SuspendLogging:
         warning(msg, *args, **kwargs)
 
     @staticmethod
-    def error(msg: str, *args, **kwargs):
+    def error(msg: str, /, *args, **kwargs):
         """Log a :func:`error` message, ignore suspended status.
 
         """
@@ -831,7 +836,7 @@ class SuspendLogging:
         error(msg, *args, **kwargs)
 
     @staticmethod
-    def exception(msg: str, *args, exc_info=True, **kwargs):
+    def exception(msg: str, /, *args, exc_info=True, **kwargs):
         """Log a :func:`exception` message, ignore suspended status.
 
         """
@@ -840,7 +845,7 @@ class SuspendLogging:
         error(msg, *args, exc_info, **kwargs)
 
     @staticmethod
-    def critical(msg: str, *args, **kwargs):
+    def critical(msg: str, /, *args, **kwargs):
         """Log a :func:`critical` message, ignore suspended status.
 
         """
@@ -849,7 +854,7 @@ class SuspendLogging:
         critical(msg, *args, **kwargs)
 
     @staticmethod
-    def question(msg: str, *args, **kwargs):
+    def question(msg: str, /, *args, **kwargs):
         """Log a :func:`question` message, ignore suspended status.
 
         """
@@ -894,7 +899,7 @@ class Task:
         DONE = enum.auto()
         ERROR = enum.auto()
 
-    def __init__(self, msg: str, *args, parent: _t.Optional['Task'] = None):
+    def __init__(self, msg: str, /, *args, parent: _t.Optional['Task'] = None):
         # These should not be written to directly.
         # Instead, task should be sent to a handler for modification.
         # This ensures thread safety, because handler has a lock.
@@ -913,7 +918,7 @@ class Task:
         else:
             _HANDLER_IMPL.reg_subtask(parent, self)
 
-    def progress(self, progress: _PROGRESS):
+    def progress(self, progress: _PROGRESS, /):
         """Indicate progress of ths task.
 
         :param progress:
@@ -930,7 +935,7 @@ class Task:
 
         _HANDLER_IMPL.set_progress(self, progress)
 
-    def comment(self, comment: _t.Optional[str]):
+    def comment(self, comment: _t.Optional[str], /):
         """Set a comment for a task.
 
         Comment is displayed after the progress.
@@ -953,7 +958,7 @@ class Task:
 
         _HANDLER_IMPL.set_status(self, Task._Status.ERROR)
 
-    def subtask(self, msg: str, *args) -> 'Task':
+    def subtask(self, msg: str, /, *args) -> 'Task':
         """Create a subtask within this task.
 
         """

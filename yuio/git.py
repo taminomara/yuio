@@ -74,7 +74,7 @@ class Repo:
 
     """
 
-    def __init__(self, path: _t.Union[pathlib.Path, str]):
+    def __init__(self, path: _t.Union[pathlib.Path, str], /):
         self._path = pathlib.Path(path)
 
         if not self._path.joinpath('.git').is_dir():
@@ -197,7 +197,7 @@ class Repo:
 
         return commits
 
-    def show(self, ref) -> _t.Optional['Commit']:
+    def show(self, ref, /) -> _t.Optional['Commit']:
         """Query information for the given git object.
 
         Return `None` if object is not found.
@@ -411,16 +411,16 @@ class RefParser(yuio.parse.Parser[Commit]):
 
         self._repo = repo
 
-    def parse(self, value: str) -> Commit:
+    def parse(self, value: str, /) -> Commit:
         commit = self._repo.show(value)
         if commit is None:
             raise yuio.parse.ParsingError('invalid git ref')
         return commit
 
-    def parse_config(self, value: _t.Any) -> Commit:
+    def parse_config(self, value: _t.Any, /) -> Commit:
         if not isinstance(value, str):
             raise yuio.parse.ParsingError('expected a string')
         return self.parse(value)
 
-    def validate(self, value: Commit):
+    def validate(self, value: Commit, /):
         super().validate(value)

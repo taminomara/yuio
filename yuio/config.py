@@ -71,6 +71,7 @@ If you need to override them, theres the :func:`field` function::
 import argparse
 import json
 import os
+import pathlib
 import typing as _t
 from dataclasses import dataclass
 
@@ -323,7 +324,7 @@ class Config(metaclass=_ConfigMeta):
 
         self.update(kwargs)
 
-    def update(self: _Self, other: _t.Union[_t.Dict[str, _t.Any], _Self]):
+    def update(self: _Self, other: _t.Union[_t.Dict[str, _t.Any], _Self], /):
         """Update fields in this config with fields from another config.
 
         This function is similar to :meth:`dict.update`.
@@ -380,7 +381,8 @@ class Config(metaclass=_ConfigMeta):
     @classmethod
     def load_from_args(
         cls: _t.Type[_Self],
-        args: _t.Optional[_t.List[str]] = None
+        args: _t.Optional[_t.List[str]] = None,
+        /
     ) -> _Self:
         """Parse the given args and load config from them.
 
@@ -393,7 +395,8 @@ class Config(metaclass=_ConfigMeta):
     @classmethod
     def load_from_namespace(
         cls: _t.Type[_Self],
-        namespace: argparse.Namespace
+        namespace: argparse.Namespace,
+        /
     ) -> _Self:
         """Load config from parsed command line arguments.
 
@@ -433,6 +436,8 @@ class Config(metaclass=_ConfigMeta):
     def load_from_config(
         cls: _t.Type[_Self],
         config: _t.Any,
+        /,
+        *,
         ignore_unknown_fields: bool = False
     ) -> _Self:
         """Load config from parsed config file.
@@ -477,7 +482,9 @@ class Config(metaclass=_ConfigMeta):
     @classmethod
     def load_from_json(
         cls,
-        path: str,
+        path: _t.Union[str, pathlib.Path],
+        /,
+        *,
         ignore_unknown_fields: bool = False
     ):
         """Load config from a ``.json`` file.
@@ -490,12 +497,14 @@ class Config(metaclass=_ConfigMeta):
             except json.JSONDecodeError as e:
                 raise ValueError(f'invalid config {path}: {e}')
 
-        return cls.load_from_config(loaded, ignore_unknown_fields)
+        return cls.load_from_config(
+            loaded, ignore_unknown_fields=ignore_unknown_fields)
 
     @classmethod
     def setup_parser(
         cls,
-        parser: _t.Optional[argparse.ArgumentParser] = None
+        parser: _t.Optional[argparse.ArgumentParser] = None,
+        /
     ) -> argparse.ArgumentParser:
         """Add fields from this config as flags to an argparse parser.
 
