@@ -176,7 +176,7 @@ def sh(
 
 
 def sh(
-    cmd: str,
+    cmd,
     shell='/bin/sh',
     *,
     cwd=None,
@@ -212,5 +212,5 @@ def sh(
         env=env,
         input=input,
         level=level,
-        text=text,
+        text=text,  # type: ignore
     )

@@ -1135,7 +1135,7 @@ class _HandlerImpl:
         # Must not be called while output is suspended.
         # Must be called after `_undraw` or `_cleanup_tasks`.
 
-        tasks = [(task, 0) for task in self._tasks]
+        tasks: _t.List[_t.Tuple[Task, int]] = [(task, 0) for task in self._tasks]
         while tasks:
             task, indent = tasks.pop()
 
