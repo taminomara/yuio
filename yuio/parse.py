@@ -51,7 +51,7 @@ Value parsers
 
 .. autoclass:: Pair
 
-.. autoclass:: Tuple(*parsers: Parser[Tn], delimiter: _t.Optional[str] = None)
+.. autoclass:: Tuple
 
 
 File system path parsers
@@ -279,17 +279,15 @@ class Parser(_t.Generic[T], abc.ABC):
             return Bool()
         elif isinstance(ty, type) and issubclass(ty, enum.Enum):
             return Enum(ty)
-        elif origin is _t.List:
+        elif origin is list:
             return List(cls.from_type_hint(args[0]))
-        elif origin is _t.Set:
+        elif origin is set:
             return Set(cls.from_type_hint(args[0]))
-        elif origin is _t.FrozenSet:
+        elif origin is frozenset:
             return FrozenSet(cls.from_type_hint(args[0]))
-        elif origin is _t.Dict:
+        elif origin is dict:
             return Dict(cls.from_type_hint(args[0]), cls.from_type_hint(args[1]))
-        elif origin is _t.Tuple and len(args) == 2 and ... not in args:
-            return Pair(cls.from_type_hint(args[0]), cls.from_type_hint(args[1]))
-        elif origin is _t.Tuple and ... not in args:
+        elif origin is tuple and ... not in args:
             return Tuple(*map(cls.from_type_hint, args))
         elif isinstance(ty, type) and issubclass(ty, pathlib.PurePath):
             return Path()
@@ -491,7 +489,7 @@ class List(Parser[_t.List[T]]):
 
     """
 
-    def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
+    def __init__(self, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None):
         super().__init__()
 
         self._inner: Parser[T] = inner
@@ -552,7 +550,7 @@ class Set(Parser[_t.Set[T]]):
 
     """
 
-    def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
+    def __init__(self, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None):
         super().__init__()
 
         self._inner: Parser[T] = inner
@@ -617,7 +615,7 @@ class FrozenSet(Parser[_t.FrozenSet[T]]):
 
     """
 
-    def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
+    def __init__(self, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None):
         super().__init__()
 
         self._inner: Parser[T] = inner
