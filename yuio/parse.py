@@ -491,7 +491,7 @@ class List(Parser[_t.List[T]]):
     def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
         super().__init__()
 
-        self._inner = inner
+        self._inner: Parser[T] = inner
         if delimiter == '':
             raise ValueError('empty delimiter')
         self._delimiter = delimiter
@@ -552,7 +552,7 @@ class Set(Parser[_t.Set[T]]):
     def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
         super().__init__()
 
-        self._inner = inner
+        self._inner: Parser[T] = inner
         if delimiter == '':
             raise ValueError('empty delimiter')
         self._delimiter = delimiter
@@ -617,7 +617,7 @@ class FrozenSet(Parser[_t.FrozenSet[T]]):
     def __init__(self, inner: Parser[T], delimiter: _t.Optional[str] = None):
         super().__init__()
 
-        self._inner = inner
+        self._inner: Parser[T] = inner
         if delimiter == '':
             raise ValueError('empty delimiter')
         self._delimiter = delimiter
@@ -1205,7 +1205,7 @@ class OneOf(Parser[T]):
     def __init__(self, inner: Parser[T], values: _t.Collection[T]):
         super().__init__()
 
-        self._inner = inner
+        self._inner: Parser[T] = inner
         self._allowed_values = values
 
     def parse(self, value: str) -> T:
@@ -1245,7 +1245,7 @@ class Regex(Parser[str]):
         if isinstance(regex, str):
             regex = re.compile(regex)
 
-        self._inner = inner
+        self._inner: Parser[str] = inner
         self._regex = regex
 
     def parse(self, value: str) -> str:

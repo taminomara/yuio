@@ -15,7 +15,7 @@ def test_str():
 
 
 def test_str_lower():
-    parser = StrLower()
+    parser = Str().lower()
     assert parser('Test') == 'test'
     assert parser.parse('Test') == 'test'
     assert parser.parse_config('Test') == 'test'
@@ -24,7 +24,7 @@ def test_str_lower():
 
 
 def test_str_upper():
-    parser = StrUpper()
+    parser = Str().upper()
     assert parser('Test') == 'TEST'
     assert parser.parse('Test') == 'TEST'
     assert parser.parse_config('Test') == 'TEST'
@@ -122,15 +122,54 @@ def test_int_enum():
 
 
 def test_list():
-    pass
+    parser = List(Int())
+    assert parser('') == []
+    assert parser('1 2 3') == [1, 2, 3]
+    assert parser('1\n2') == [1, 2]
+    with pytest.raises(ValueError):
+        parser.parse('1:2')
+    assert parser.parse_many(['1', '2']) == [1, 2]
+    assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
+    with pytest.raises(ValueError, match='expected an int'):
+        parser.parse_config([2, '3'])
+    with pytest.raises(ValueError, match='expected a list'):
+        parser.parse_config(10)
+
+    assert parser.describe() == 'int[ int[ ...]]'
 
 
 def test_set():
-    pass
+    parser = Set(Int())
+    assert parser('') == set()
+    assert parser('1 2 3') == {1, 2, 3}
+    assert parser('1 2 1') == {1, 2}
+    with pytest.raises(ValueError):
+        parser.parse('1:2')
+    assert parser.parse_many(['1', '2']) == {1, 2}
+    assert parser.parse_config([1, 2, 1]) == {1, 2}
+    with pytest.raises(ValueError, match='expected an int'):
+        parser.parse_config([2, '3'])
+    with pytest.raises(ValueError, match='expected a list'):
+        parser.parse_config(10)
+
+    assert parser.describe() == 'int[ int[ ...]]'
 
 
 def test_frozenset():
-    pass
+    parser = FrozenSet(Int())
+    assert parser('') == frozenset()
+    assert parser('1 2 3') == frozenset({1, 2, 3})
+    assert parser('1 2 1') == frozenset({1, 2})
+    with pytest.raises(ValueError):
+        parser.parse('1:2')
+    assert parser.parse_many(['1', '2']) == frozenset({1, 2})
+    assert parser.parse_config([1, 2, 1]) == frozenset({1, 2})
+    with pytest.raises(ValueError, match='expected an int'):
+        parser.parse_config([2, '3'])
+    with pytest.raises(ValueError, match='expected a list'):
+        parser.parse_config(10)
+
+    assert parser.describe() == 'int[ int[ ...]]'
 
 
 def test_dict():
@@ -154,6 +193,10 @@ def test_pair():
         parser('10:abc')
     assert parser.describe() == 'int:str:str'
     assert parser.describe_value((-5, ('xyz', 'abc'))) == '-5:xyz:abc'
+
+
+def test_tuple():
+    pass
 
 
 def test_path():
@@ -287,7 +330,7 @@ def test_one_of():
 
     assert parser.describe() == 'qux|duo'
 
-    parser = OneOf(StrLower(), ['qux', 'duo'])
+    parser = OneOf(Str().lower(), ['qux', 'duo'])
     assert parser('Qux') == 'qux'
     assert parser('Duo') == 'duo'
 
