@@ -128,6 +128,9 @@ class _FieldSettings:
         env = self.env
         if env is None:
             env = name.upper()
+        if env == '' and not is_subconfig:
+            raise TypeError(
+                f'{qualname}.{name} got an empty env variable name')
 
         flags = self.flags
         if flags is None:
@@ -351,17 +354,17 @@ class Config(metaclass=_ConfigMeta):
             raise TypeError(f'unknown field(s): {unknown_fields}')
 
     @classmethod
-    def load_from_env(cls: _t.Type[_Self]) -> _Self:
+    def load_from_env(cls: _t.Type[_Self], *, prefix: str = '') -> _Self:
         """Load config from environment variables.
 
         Use :meth:`Config.update` to merge several loaded configs into one.
 
+        :param prefix:
+            Add this prefix to all environment variable names
+            before searching them in process environment.
+
         """
 
-        return cls._load_from_env('')
-
-    @classmethod
-    def _load_from_env(cls: _t.Type[_Self], prefix) -> _Self:
         fields = {}
 
         for name, field in cls._fields.items():
@@ -371,7 +374,9 @@ class Config(metaclass=_ConfigMeta):
             env = prefix + field.env
 
             if field.is_subconfig:
-                fields[name] = field.ty._load_from_env(env + '__')
+                if field.env:
+                    env += '_'
+                fields[name] = field.ty.load_from_env(prefix=env)
             elif env in os.environ:
                 assert field.parser is not None
                 fields[name] = field.parser(os.environ[env])
