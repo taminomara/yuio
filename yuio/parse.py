@@ -89,6 +89,18 @@ Validators
 
 .. autoclass:: Regex
 
+
+Deriving parsers from type hints
+--------------------------------
+
+There is a way to automatically derive basic parsers from type hints
+(used by :mod:`yuio.config`). To extend capabilities of the automatic converter,
+you can register your own types and parsers:
+
+.. autofunction:: from_type_hint
+
+.. autofunction:: register_type_hint_conversion
+
 """
 
 import abc
@@ -252,47 +264,6 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
         return self.describe_value(value) or str(value)
-
-    @classmethod
-    @_t.no_type_check
-    def from_type_hint(cls, ty: _t.Any, /) -> 'Parser[_t.Any]':
-        """Create parser from a type hint.
-
-        """
-
-        origin = _t.get_origin(ty)
-        args = _t.get_args(ty)
-
-        if origin is _t.Optional:
-            return cls.from_type_hint(args[0])
-        elif origin is _t.Union and len(args) == 2 and args[1] is type(None):
-            return cls.from_type_hint(args[0])
-        elif origin is _t.Union and len(args) == 2 and args[0] is type(None):
-            return cls.from_type_hint(args[1])
-        elif ty is str:
-            return Str()
-        elif ty is int:
-            return Int()
-        elif ty is float:
-            return Float()
-        elif ty is bool:
-            return Bool()
-        elif isinstance(ty, type) and issubclass(ty, enum.Enum):
-            return Enum(ty)
-        elif origin is list:
-            return List(cls.from_type_hint(args[0]))
-        elif origin is set:
-            return Set(cls.from_type_hint(args[0]))
-        elif origin is frozenset:
-            return FrozenSet(cls.from_type_hint(args[0]))
-        elif origin is dict:
-            return Dict(cls.from_type_hint(args[0]), cls.from_type_hint(args[1]))
-        elif origin is tuple and ... not in args:
-            return Tuple(*map(cls.from_type_hint, args))
-        elif isinstance(ty, type) and issubclass(ty, pathlib.PurePath):
-            return Path()
-        else:
-            raise TypeError(f'unsupported type {ty}')
 
 
 class Str(Parser[str]):
@@ -1230,3 +1201,146 @@ class Regex(Parser[str]):
 
     def describe_value(self, value: str, /) -> _t.Optional[str]:
         return self._inner.describe_value(value)
+
+
+_FROM_TYPE_HINT_CALLBACK_TYPE = _t.Callable[
+    [_t.Type, _t.Optional[_t.Any], _t.Tuple[_t.Any, ...]],
+    _t.Optional['Parser[_t.Any]']
+]
+
+_FROM_TYPE_HINT_CALLBACKS: _t.List[_FROM_TYPE_HINT_CALLBACK_TYPE] = []
+
+
+def from_type_hint(ty: _t.Type[T], /) -> 'Parser[T]':
+    """Create parser from a type hint.
+
+    """
+
+    origin = _t.get_origin(ty)
+    args = _t.get_args(ty)
+
+    for cb in reversed(_FROM_TYPE_HINT_CALLBACKS):
+        p = cb(ty, origin, args)
+        if p is not None:
+            return p
+
+    raise TypeError(f'unsupported type {ty}')
+
+
+def register_type_hint_conversion(
+    cb: _FROM_TYPE_HINT_CALLBACK_TYPE
+) -> _FROM_TYPE_HINT_CALLBACK_TYPE:
+    """Register a new converter from typehint to a parser.
+
+    This function takes a callback that accepts three positional arguments:
+
+    - a type hint,
+    - a type hint's origin (as defined by :func:`typing.get_origin`),
+    - a type hint's args (as defined by :func:`typing.get_args`).
+
+    The callback should return a parser if it can, or `None` otherwise.
+
+    All registered callbacks are tried in the reverse order
+    of their registration (that is, newer callbacks can potentially override
+    behaviour of older callbacks).
+
+    This function can be used as a decorator.
+
+    """
+
+    _FROM_TYPE_HINT_CALLBACKS.append(cb)
+    return cb
+
+
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        from_type_hint(args[0])
+        if origin is _t.Optional
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        from_type_hint(args[0])
+        if origin is _t.Union and len(args) == 2 and args[1] is type(None)
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        from_type_hint(args[1])
+        if origin is _t.Union and len(args) == 2 and args[0] is type(None)
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+    from_type_hint(ty.__supertype__)
+    if getattr(ty, '__module__') == 'typing' and hasattr(ty, '__supertype__')
+    else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Str()
+        if ty is str
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Int()
+        if ty is int
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Float()
+        if ty is float
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Bool()
+        if ty is bool
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Enum(ty)
+        if isinstance(ty, type) and issubclass(ty, enum.Enum)
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        List(from_type_hint(args[0]))
+        if origin is list
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Set(from_type_hint(args[0]))
+        if origin is set
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        FrozenSet(from_type_hint(args[0]))
+        if origin is frozenset
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Dict(from_type_hint(args[0]), from_type_hint(args[1]))
+        if origin is dict
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Tuple(*map(from_type_hint, args))
+        if origin is tuple and ... not in args
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Path()
+        if isinstance(ty, type) and issubclass(ty, pathlib.PurePath)
+        else None
+)
+
+_FROM_TYPE_HINT_CALLBACKS.reverse()
