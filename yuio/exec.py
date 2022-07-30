@@ -106,7 +106,14 @@ def exec(
                 if not line:
                     return
                 if isinstance(line, bytes):
-                    line = line.decode()
+                    try:
+                        line = line.decode()
+                    except UnicodeDecodeError:
+                        logging.getLogger('yuio.internal').exception(
+                            'unable to decode stderr line:\n%r',
+                            line,
+                        )
+                        line = line.decode(errors='replace')
                 _LOGGER.log(level, line.rstrip('\n'))
 
         def read_stdout(fh):
@@ -118,7 +125,7 @@ def exec(
         stdout_thread = threading.Thread(
             target=read_stdout,
             args=(process.stdout,),
-            name=f'yuio stdin handler for {process_desc}'
+            name=f'yuio stdout handler for {process_desc}'
         )
         stdout_thread.daemon = True
         stdout_thread.start()
