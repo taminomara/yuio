@@ -1,21 +1,23 @@
 import enum
 import pathlib
+from typing import *
 
 import yuio.config
+import yuio.io
 import yuio.parse
 
 
 class ExecutorConfig(yuio.config.Config):
+    #: number of threads to use for executing model
     threads: int = yuio.config.field(
         default=4,
         parser=yuio.parse.Bound(yuio.parse.Int(), lower_inclusive=1),
-        help='number of threads to use for executing model',
         flags=['-t', '--threads']
     )
 
+    #: enable or disable gpu (default is enable)
     use_gpu: bool = yuio.config.field(
         default=True,
-        help='enable or disable gpu (default is enable)',
         flags=['--gpu']
     )
 
@@ -30,27 +32,34 @@ class ModelStat(enum.Enum):
 
 
 class AppConfig(yuio.config.Config):
+    #: trained model to execute
     model: pathlib.Path = yuio.config.field(
         parser=yuio.parse.Path(extensions=['.model']),
-        help='trained model to execute',
         flags=['-m', '--model'],
         required=True,
     )
 
+    #: input data for the model
     data: pathlib.Path = yuio.config.field(
         parser=yuio.parse.Path(extensions=['.bin']),
-        help='input data for the model',
         flags=['-i', '--input'],
         required=True,
     )
 
+    #: executor arguments
     executor: ExecutorConfig = yuio.config.field(
-        help='executor arguments',
-        flags='',  # Disable prefixing executor flags with `--executor--...`
+        flags='',  # Disable prefixing executor flags with `--executor-...`
     )
 
-    stats: frozenset = yuio.config.field(
-        default=frozenset({ModelStat.MSE, ModelStat.AUC}),
-        parser=yuio.parse.FrozenSet(yuio.parse.Enum(ModelStat)),
-        help='list of model statistics that needs to be exported',
-    )
+    #: list of model statistics that needs to be exported
+    stats: FrozenSet[ModelStat] = frozenset({ModelStat.MSE, ModelStat.AUC})
+
+
+if __name__ == '__main__':
+    config_file = pathlib.Path(__file__).parent / 'config.json'
+
+    config = AppConfig.load_from_json_file(config_file)
+    config.update(AppConfig.load_from_env('YUIO'))
+    config.update(AppConfig.load_from_args())
+
+    yuio.io.info(f'{config!r}')

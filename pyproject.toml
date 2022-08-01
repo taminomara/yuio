@@ -26,6 +26,10 @@ classifiers = [
 test = [
     "pytest~=6.2",
     "pytest-mypy~=0.9",
+    "PyYaml~=5.3",
+    "types-PyYAML~=5.3",
+    "toml~=0.10",
+    "types-toml~=0.10",
 ]
 doc = [
     "sphinx~=4.4",

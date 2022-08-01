@@ -6,7 +6,7 @@
 # just keep this copyright line please :3
 
 """
-This module provides base a class for configs that can be loaded from
+This module provides a base class for configs that can be loaded from
 files, environment variables or command line arguments.
 
 
@@ -14,29 +14,48 @@ Creating and loading configs
 ----------------------------
 
 Derive your config from the :class:`Config` base class. Inside of its body,
-define config fields using type annotations. This is similar to how you
-create dataclasses::
+define config fields using type annotations, just like dataclasses::
 
     class AppConfig(Config):
-        app_version: str
-        deployment_strategy: str = 'ROLLING'
+        #: trained model to execute
+        model: pathlib.Path
 
-:class:`Config` defines `__init__` that takes keyword arguments for defined
-fields, as well as some constructors that load config from environment
+        #: input data for the model
+        data: pathlib.Path
+
+        #: enable or disable gpu (default is enable)
+        use_gpu: bool = True
+
+*Field names* are used to parse CLI arguments,
+configs and environment variables; *type hints* are used to derive
+:mod:`parsers <yuio.parse>`; *field comments* used as help messages
+for CLI arguments (only ``#:``-style comments are supported).
+
+:class:`Config` defines `__init__` that takes keyword arguments
+for fields. It also defines some constructors that load config from environment
 variables, files, and so on.
 
 Upon creation, all fields that aren't explicitly initialized and don't have
 defaults are considered missing. Accessing them
 will raise :class:`AttributeError`.
 
-Here's an example of loading our config from command line arguments
+Here's an example of loading our config from a file, command line arguments
 and environment variables::
 
-    # Load config from env.
-    config = AppConfig.load_from_env()
+    # Load config from a file.
+    # If file doesn't exist, return an empty config.
+    config = config.load_from_json_file(
+        '~/.my_app_cfg.json',
+        ignore_missing_file=True
+    )
 
-    # Parse arguments and update our config.
+    # Update config with values from env.
+    config.update(AppConfig.load_from_env())
+
+    # Update config with values from command line arguments.
     config.update(AppConfig.load_from_args())
+
+You can nest configs one into another. Nested configs are loaded recursively.
 
 .. autoclass:: Config
    :members:
@@ -47,20 +66,8 @@ Advanced field configuration
 
 By default, :class:`Config` infers names for env variables and flags,
 appropriate parsers, and other things from field's name and type hint.
-If you need to override them, theres the :func:`field` function::
 
-    class AppConfig(Config):
-        app_version: str = field(
-            default='HEAD',
-            help='git tag or commit hash at which a new version is built.',
-        )
-        deployment_strategy: str = field(
-            default='ROLLING',
-            help='strategy that will be used to deploy new pods.',
-            parser=yuio.parse.OneOf(
-                yuio.parse.Str().upper(),
-                ['ROLLING', 'READONLY', 'DOWNTIME']
-            )
+If you need to override them, theres the :func:`field` function:
 
 .. autofunction:: field
 
@@ -69,9 +76,10 @@ If you need to override them, theres the :func:`field` function::
 """
 
 import argparse
-import json
 import os
 import pathlib
+import re
+import logging
 import typing as _t
 from dataclasses import dataclass
 
@@ -92,17 +100,12 @@ class _Placeholder:
         return f'<{self._what}>'
 
 
-_MISSING: _t.Any = _Placeholder('value is missing')
-_DISABLED: _t.Any = _Placeholder('option is disabled')
+_MISSING: _t.Any = _Placeholder('missing')
+_DISABLED: _t.Any = _Placeholder('disabled')
 
 
 def disabled() -> _t.Any:
     """Placeholder indicating that some field's functionality is disabled.
-
-    Example::
-
-        class AppConfig(Config):
-            app_version: str = field(env=disabled())
 
     """
 
@@ -118,10 +121,11 @@ class _FieldSettings:
     flags: _t.Optional[_t.Union[str, _t.List[str]]] = None
     required: bool = False
 
-    def _update_defaults(self, qualname, name, ty) -> '_Field':
+    def _update_defaults(self, qualname, name, ty, help) -> '_Field':
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
 
-        help = self.help
+        if self.help is not None:
+            help = self.help
         if help is None:
             help = ''
 
@@ -133,21 +137,22 @@ class _FieldSettings:
                 f'{qualname}.{name} got an empty env variable name')
 
         flags = self.flags
-        if flags is None:
-            flags = '--' + name.replace('_', '-')
-        if not isinstance(flags, list):
-            flags = [flags]
-        if not flags:
-            raise TypeError(
-                f'{qualname}.{name} should have at least one flag')
-        for flag in flags:
-            if flag and not flag.startswith('-'):
+        if flags is not _DISABLED:
+            if flags is None:
+                flags = '--' + name.replace('_', '-')
+            if not isinstance(flags, list):
+                flags = [flags]
+            if not flags:
                 raise TypeError(
-                    f'{qualname}.{name}: positional arguments '
-                    f'are not supported')
-            if not flag and not is_subconfig:
-                raise TypeError(
-                    f'{qualname}.{name} got an empty flag')
+                    f'{qualname}.{name} should have at least one flag')
+            for flag in flags:
+                if flag and not flag.startswith('-'):
+                    raise TypeError(
+                        f'{qualname}.{name}: positional arguments '
+                        f'are not supported')
+                if not flag and not is_subconfig:
+                    raise TypeError(
+                        f'{qualname}.{name} got an empty flag')
 
         default = self.default
 
@@ -164,20 +169,21 @@ class _FieldSettings:
                 raise TypeError(
                     f'{qualname}.{name} cannot have parsers')
 
-            if len(flags) > 1:
-                raise TypeError(
-                    f'{qualname}.{name} cannot have multiple flags')
+            if flags is not _DISABLED:
+                if len(flags) > 1:
+                    raise TypeError(
+                        f'{qualname}.{name} cannot have multiple flags')
 
-            if flags[0] and not flags[0].startswith('--'):
-                raise TypeError(
-                    f'{qualname}.{name} cannot have a short flag ')
+                if flags[0] and not flags[0].startswith('--'):
+                    raise TypeError(
+                        f'{qualname}.{name} cannot have a short flag ')
 
             if required:
                 raise TypeError(
                     f'{qualname}.{name} cannot be required')
         elif parser is None:
             try:
-                parser = yuio.parse.Parser.from_type_hint(ty)
+                parser = yuio.parse.from_type_hint(ty)
             except TypeError:
                 raise TypeError(
                     f'can\'t derive parser for {qualname}.{name}')
@@ -239,25 +245,24 @@ def field(
 ) -> T:
     """Field descriptor, used for additional configuration of fields.
 
-    This is similar to what :func:`dataclasses.field` does.
-
     :param default:
         default value for config field, used if field is missing from config.
     :param parser:
         parser that will be used to parse env vars, configs and CLI arguments.
-        By default, it's inferred from type hint.
     :param help:
         help message that will be used in CLI argument description.
+        By default, this message is inferred from field's comments.
+        See :meth:`~Config.load_from_args` for more info.
     :param env:
         name of environment variable that will be used for this field.
-        By default, it's inferred from field name.
-        Set to :func:`disabled` to disable parsing from environment variable.
+        See :meth:`~Config.load_from_env` for more info.
     :param flags:
         name of a CLI flag (or a list of names) that will be used
-        for this field. By default, it's inferred from field name.
-        Set to :func:`disabled` to disable parsing from command line arguments.
+        for this field.
+        See :meth:`~Config.load_from_args` for more info.
     :param required:
         set this argument to be required when configuring CLI parser.
+        See :meth:`~Config.load_from_args` for more info.
 
     """
 
@@ -271,9 +276,37 @@ def field(
     ))
 
 
-class _ConfigMeta(type):
-    def __init__(cls, name, bases, namespace):
-        super().__init__(name, bases, namespace)
+def _parse_collection_action(parser: yuio.parse.Parser):
+    class Action(argparse.Action):
+        def __call__(self, _, namespace, values, option_string=None):
+            assert values is not None and not isinstance(values, str)
+
+            setattr(namespace, self.dest, parser.parse_many(values))
+
+    return Action
+
+
+class Config:
+    """Base class for configs.
+
+    """
+
+    _Self = _t.TypeVar('_Self', bound='Config')
+
+    # Value is generated by __init_subclass__.
+    _fields: _t.Dict[str, _Field]
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        try:
+            docs = cls._find_docs()
+        except Exception:
+            logging.getLogger('yuio.internal').exception(
+                'unable to get documentation for class %s',
+                cls.__qualname__,
+            )
+            docs = {}
 
         fields = {}
 
@@ -285,37 +318,58 @@ class _ConfigMeta(type):
             if name.startswith('_'):
                 continue
 
-            value = namespace.get(name, _MISSING)
+            value = cls.__dict__.get(name, _MISSING)
             if isinstance(value, _FieldSettings):
                 field = value
             else:
                 field = _FieldSettings(default=value)
             setattr(cls, name, field.default)
 
-            fields[name] = field._update_defaults(cls.__qualname__, name, ty)
+            fields[name] = field._update_defaults(
+                cls.__qualname__, name, ty, docs.get(name, None))
 
         cls._fields = fields
 
+    _COMMENT_RE = re.compile(r'^\s*#: ?(.*)\r?\n?$')
 
-def _parse_collection_action(parser: yuio.parse.Parser):
-    class Action(argparse.Action):
-        def __call__(self, _, namespace, values, option_string=None):
-            assert values is not None and not isinstance(values, str)
+    @classmethod
+    def _find_docs(cls) -> _t.Dict[str, str]:
+        # based on code from Sphinx
 
-            setattr(namespace, self.dest, parser.parse_many(values))
+        import inspect
+        import ast
 
-    return Action
+        if '<locals>' in cls.__qualname__:
+            # This will not work as expected!
+            raise OSError('source code not available')
 
+        sourcelines, _ = inspect.getsourcelines(cls)
 
-class Config(metaclass=_ConfigMeta):
-    """Base class for configs.
+        docs = {}
 
-    """
+        node = ast.parse(''.join(sourcelines))
+        assert isinstance(node, ast.Module)
+        assert len(node.body) == 1
+        cdef = node.body[0]
+        assert isinstance(cdef, ast.ClassDef)
 
-    _Self = _t.TypeVar('_Self', bound='Config')
+        for stmt in cdef.body:
+            if (
+                isinstance(stmt, ast.AnnAssign)
+                and isinstance(stmt.target, ast.Name)
+                and not stmt.target.id.startswith('_')
+            ):
+                comment_lines = []
+                for before_line in sourcelines[stmt.lineno - 2::-1]:
+                    if match := cls._COMMENT_RE.match(before_line):
+                        comment_lines.append(match.group(1))
+                    else:
+                        break
 
-    # Value is generated by metaclass.
-    _fields: _t.Dict[str, _Field]
+                if comment_lines:
+                    docs[stmt.target.id] = ' '.join(reversed(comment_lines))
+
+        return docs
 
     def __init__(self, *args, **kwargs):
         for name, field in self._fields.items():
@@ -332,10 +386,15 @@ class Config(metaclass=_ConfigMeta):
 
         This function is similar to :meth:`dict.update`.
 
+        Nested configs are updated recursively.
+
         """
 
+        if not other:
+            return
+
         if isinstance(other, Config):
-            other = other.__dict__
+            other = other.__dict__.copy()
         elif isinstance(other, dict):
             other = other.copy()
         else:
@@ -354,16 +413,50 @@ class Config(metaclass=_ConfigMeta):
             raise TypeError(f'unknown field(s): {unknown_fields}')
 
     @classmethod
-    def load_from_env(cls: _t.Type[_Self], *, prefix: str = '') -> _Self:
+    def load_from_env(cls: _t.Type[_Self], prefix: str = '') -> _Self:
         """Load config from environment variables.
 
-        Use :meth:`Config.update` to merge several loaded configs into one.
+        Names of environment variables are just capitalized field names.
+        Use the :func:`field` function to override them::
+
+            class Config(yuio.config.Config):
+                # Will be loaded from `SIGNAL`
+                signal: int
+
+                # Will be loaded from `PROCESS_ID`
+                pid: int = yuio.config.field(env='PROCESS_ID')
+
+        In nested configs, environment variable names are prefixed with name
+        of a field that contains the nested config::
+
+            class BigConfig(yuio.config.Config):
+                # `kill_cmd.signal` will be loaded from `KILL_CMD_SIGNAL`
+                kill_cmd: Config
+
+                # `copy_cmd_2.signal` will be loaded from `KILL_SIGNAL`
+                kill_cmd_2: Config = yuio.config.field(env='KILL')
+
+                # `kill_cmd_3.signal` will be loaded from `SIGNAL`
+                kill_cmd_3: Config = yuio.config.field(env='')
+
+        You can also disable loading a field from an environment altogether::
+
+            class Config(yuio.config.Config):
+                # Will not be loaded from env
+                pid: int = yuio.config.field(env=yuio.config.disabled())
 
         :param prefix:
             Add this prefix to all environment variable names
-            before searching them in process environment.
+            before loading::
+
+                # config.kill_cmd.field will be loaded
+                # from `MY_APP_KILL_CMD_SIGNAL`
+                config = BigConfig.load_from_env('MY_APP')
 
         """
+
+        if prefix:
+            prefix += '_'
 
         fields = {}
 
@@ -374,8 +467,6 @@ class Config(metaclass=_ConfigMeta):
             env = prefix + field.env
 
             if field.is_subconfig:
-                if field.env:
-                    env += '_'
                 fields[name] = field.ty.load_from_env(prefix=env)
             elif env in os.environ:
                 assert field.parser is not None
@@ -393,9 +484,58 @@ class Config(metaclass=_ConfigMeta):
 
         If args are not given, will parse :data:`sys.argv`.
 
+        Flag names are derived from field names;
+        in nested configs, flags are prefixed with name
+        of a field that contains the nested config.
+        Use the :func:`field` function to override them::
+
+            class Config(yuio.config.Config):
+                # Will be loaded from `--signal`
+                signal: int
+
+                # Will be loaded from `-p` or `--pid`
+                pid: int = yuio.config.field(flags=['-p', '--pid'])
+
+            class BigConfig(yuio.config.Config):
+                # `kill_cmd.signal` will be loaded from `--kill-cmd-signal`
+                kill_cmd: Config
+
+                # `copy_cmd_2.signal` will be loaded from `--kill-signal`
+                kill_cmd_2: Config = yuio.config.field(flags='--kill')
+
+                # `kill_cmd_3.signal` will be loaded from `--signal`
+                kill_cmd_3: Config = yuio.config.field(flags='')
+
+        You can also disable loading a field from CLI flags::
+
+            class Config(yuio.config.Config):
+                # Will not be loaded from args
+                pid: int = yuio.config.field(flags=yuio.config.disabled())
+
+        Help messages for the flags are parsed from the field comments.
+        The :func:`field` function allows overriding them.
+
+        If you need to make some flags required, use the `required` parameter
+        of the :func:`field` function. It will only affect CLI parsing.
+
+        Parsers for CLI argument values are derived from type hints.
+        Use the `parser` parameter of the :func:`field` function
+        to override them.
+
+        Arguments with bool parsers and parsers that support
+        :meth:`parsing collections <yuio.parse.Parser.supports_parse_many>`
+        are handled to provide better CLI experience::
+
+            class Config(yuio.config.Config):
+                # Will create flags `--verbose` and `--no-verbose`.
+                verbose: bool = True
+
+                # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`
+                inputs: List[Path]
+
         """
 
-        return cls.load_from_namespace(cls.setup_parser().parse_args(args))
+        return cls.load_from_namespace(cls.setup_arg_parser().parse_args(args))
 
     @classmethod
     def load_from_namespace(
@@ -406,9 +546,7 @@ class Config(metaclass=_ConfigMeta):
         """Load config from parsed command line arguments.
 
         This method assumes that arguments parser was configured
-        with :meth:`Config.setup_parser`.
-
-        Use :meth:`Config.update` to merge several loaded configs into one.
+        with :meth:`Config.setup_arg_parser`.
 
         """
 
@@ -438,80 +576,12 @@ class Config(metaclass=_ConfigMeta):
         return cls(**fields)
 
     @classmethod
-    def load_from_config(
-        cls: _t.Type[_Self],
-        config: _t.Any,
-        /,
-        *,
-        ignore_unknown_fields: bool = False
-    ) -> _Self:
-        """Load config from parsed config file.
-
-        This method takes a dict with arbitrary values that resulted from
-        parsing type-rich configs such as ``.yaml`` or ``.json``.
-
-        For example::
-
-            with open('conf.yml') as file:
-                config = Config.load_from_config(yaml.load(file))
-
-        Use :meth:`Config.update` to merge several loaded configs into one.
-
-        """
-
-        if not isinstance(config, dict):
-            raise TypeError('config should be a dict')
-
-        fields = {}
-
-        if not ignore_unknown_fields:
-            for name in config:
-                if name not in cls._fields:
-                    raise ValueError(f'unknown config field {name}')
-
-        for name, field in cls._fields.items():
-            if name in config:
-                if field.is_subconfig:
-                    fields[name] = field.ty.load_from_config(
-                        config[name],
-                        ignore_unknown_fields
-                    )
-                else:
-                    assert field.parser is not None
-                    value = field.parser.parse_config(config[name])
-                    field.parser.validate(value)
-                    fields[name] = value
-
-        return cls(**fields)
-
-    @classmethod
-    def load_from_json(
-        cls,
-        path: _t.Union[str, pathlib.Path],
-        /,
-        *,
-        ignore_unknown_fields: bool = False
-    ):
-        """Load config from a ``.json`` file.
-
-        """
-
-        with open(path, 'r') as file:
-            try:
-                loaded = json.load(file)
-            except json.JSONDecodeError as e:
-                raise ValueError(f'invalid config {path}: {e}')
-
-        return cls.load_from_config(
-            loaded, ignore_unknown_fields=ignore_unknown_fields)
-
-    @classmethod
-    def setup_parser(
+    def setup_arg_parser(
         cls,
         parser: _t.Optional[argparse.ArgumentParser] = None,
         /
     ) -> argparse.ArgumentParser:
-        """Add fields from this config as flags to an argparse parser.
+        """Add fields from this config as flags to an argument parser.
 
         If parser is not given, will create one.
 
@@ -520,30 +590,36 @@ class Config(metaclass=_ConfigMeta):
         if parser is None:
             parser = argparse.ArgumentParser()
 
-        cls._setup_parser(parser, parser, '', cls.__qualname__ + ':')
+        cls._setup_arg_parser(parser, parser, '', cls.__qualname__ + ':')
 
         return parser
 
     @classmethod
-    def _setup_parser(
+    def _setup_arg_parser(
         cls,
         group: argparse.ArgumentParser,
         parser: argparse.ArgumentParser,
         prefix: str,
         dest_prefix: str,
     ):
+        if prefix:
+            prefix += '-'
+
         for name, field in cls._fields.items():
             if field.flags is _DISABLED:
                 continue
 
             dest = dest_prefix + name
 
-            flags = [prefix + flag for flag in field.flags]
+            if prefix:
+                flags = [prefix + flag.lstrip('-') for flag in field.flags]
+            else:
+                flags = field.flags
 
             if field.is_subconfig:
                 group = _t.cast(_t.Any, parser.add_argument_group(
                     field.help.rstrip('.') or name))
-                field.ty._setup_parser(
+                field.ty._setup_arg_parser(
                     group, parser, flags[0], dest + '.')
                 continue
 
@@ -562,14 +638,14 @@ class Config(metaclass=_ConfigMeta):
                 mutex_group = group.add_mutually_exclusive_group(
                     required=field.required)
 
-                for flag in flags:
-                    pos = flag.rfind('--')
-                    if flag.startswith('--') and pos >= 0:
-                        flag_neg = flag[:pos] + '--no-' + flag[pos + 2:]
+                for flag in field.flags:
+                    if flag.startswith('--'):
+                        flag_pos = (prefix or "--") + flag[2:]
+                        flag_neg = (prefix or '--') + 'no-' + flag[2:]
                         mutex_group.add_argument(
                             flag_neg,
                             default=_MISSING,
-                            help=f'set {flag} to be `false`',
+                            help=f'set {flag_pos} to `false`',
                             dest=dest,
                             action='store_false',
                         )
@@ -579,7 +655,7 @@ class Config(metaclass=_ConfigMeta):
                     *flags,
                     type=field.parser,
                     default=_MISSING,
-                    help=field.help or 'not documented',
+                    help=field.help,
                     metavar=metavar,
                     dest=dest,
                     nargs='?',
@@ -589,7 +665,7 @@ class Config(metaclass=_ConfigMeta):
                 group.add_argument(
                     *flags,
                     default=_MISSING,
-                    help=field.help or 'not documented',
+                    help=field.help,
                     metavar=metavar,
                     dest=dest,
                     required=field.required,
@@ -601,11 +677,158 @@ class Config(metaclass=_ConfigMeta):
                     *flags,
                     type=field.parser,
                     default=_MISSING,
-                    help=field.help or 'not documented',
+                    help=field.help,
                     metavar=metavar,
                     dest=dest,
                     required=field.required,
                 )
+
+    @classmethod
+    def load_from_parsed_file(
+        cls: _t.Type[_Self],
+        parsed: dict,
+        /,
+        *,
+        ignore_unknown_fields: bool = False
+    ) -> _Self:
+        """Load config from parsed config file.
+
+        This method takes a dict with arbitrary values that resulted from
+        parsing type-rich configs such as ``.yaml`` or ``.json``.
+
+        For example::
+
+            with open('conf.yaml') as file:
+                config = Config.load_from_parsed_file(yaml.load(file))
+
+        """
+
+        return cls._load_from_parsed_file(parsed, ignore_unknown_fields, '')
+
+    @classmethod
+    def _load_from_parsed_file(
+        cls: _t.Type[_Self],
+        parsed: dict,
+        ignore_unknown_fields: bool = False,
+        field_prefix: str = '',
+    ) -> _Self:
+
+        if not isinstance(parsed, dict):
+            raise TypeError('config should be a dict')
+
+        fields = {}
+
+        if not ignore_unknown_fields:
+            for name in parsed:
+                if name not in cls._fields:
+                    raise ValueError(
+                        f'unknown config field {field_prefix}{name}')
+
+        for name, field in cls._fields.items():
+            if name in parsed:
+                if field.is_subconfig:
+                    fields[name] = field.ty._load_from_parsed_file(
+                        parsed[name],
+                        ignore_unknown_fields,
+                        field_prefix=name + '.'
+                    )
+                else:
+                    assert field.parser is not None
+                    try:
+                        value = field.parser.parse_config(parsed[name])
+                        field.parser.validate(value)
+                    except yuio.parse.ParsingError as e:
+                        raise yuio.parse.ParsingError(
+                            f'can\'t parse {field_prefix}{name}: {e}')
+                    fields[name] = value
+
+        return cls(**fields)
+
+    @classmethod
+    def load_from_json_file(
+        cls: _t.Type[_Self],
+        path: _t.Union[str, pathlib.Path],
+        /,
+        *,
+        ignore_unknown_fields: bool = False,
+        ignore_missing_file: bool = False,
+    ) -> _Self:
+        """Load config from a ``.json`` file.
+
+        """
+
+        import json
+
+        return cls._load_from_file(
+            path, json.loads, ignore_unknown_fields, ignore_missing_file)
+
+    @classmethod
+    def load_from_yaml_file(
+        cls: _t.Type[_Self],
+        path: _t.Union[str, pathlib.Path],
+        /,
+        *,
+        ignore_unknown_fields: bool = False,
+        ignore_missing_file: bool = False,
+    ) -> _Self:
+        """Load config from a ``.yaml`` file.
+
+        This requires `PyYaml <https://pypi.org/project/PyYAML/>`_ package
+        to be installed.
+
+        """
+
+        try:
+            import yaml
+        except ImportError:
+            raise ImportError('PyYaml is not available')
+
+        return cls._load_from_file(
+            path, yaml.safe_load, ignore_unknown_fields, ignore_missing_file)
+
+    @classmethod
+    def load_from_toml_file(
+        cls: _t.Type[_Self],
+        path: _t.Union[str, pathlib.Path],
+        /,
+        *,
+        ignore_unknown_fields: bool = False,
+        ignore_missing_file: bool = False,
+    ) -> _Self:
+        """Load config from a ``.toml`` file.
+
+        This requires `toml <https://pypi.org/project/toml/>`_ package
+        to be installed.
+
+        """
+
+        try:
+            import toml
+        except ImportError:
+            raise ImportError('toml is not available')
+
+        return cls._load_from_file(
+            path, toml.loads, ignore_unknown_fields, ignore_missing_file)
+
+    @classmethod
+    def _load_from_file(
+        cls: _t.Type[_Self],
+        path: _t.Union[str, pathlib.Path],
+        parser: _t.Callable[[str], _t.Any],
+        ignore_unknown_fields: bool = False,
+        ignore_missing_file: bool = False,
+    ) -> _Self:
+        if ignore_missing_file and not os.path.exists(path):
+            return cls()
+
+        try:
+            with open(path, 'r') as file:
+                loaded = parser(file.read())
+        except Exception as e:
+            raise ValueError(f'invalid config {path}: {e}')
+
+        return cls.load_from_parsed_file(
+            loaded, ignore_unknown_fields=ignore_unknown_fields)
 
     def __getattribute__(self, item):
         value = super().__getattribute__(item)
@@ -621,12 +844,11 @@ class Config(metaclass=_ConfigMeta):
         field_reprs = []
         for name in self._fields:
             value = getattr(self, name, _MISSING)
-            if value is not _MISSING:
-                if isinstance(value, Config):
-                    value_repr = value._repr(prefix + '  ')
-                else:
-                    value_repr = repr(value)
-                field_reprs.append(f'{prefix}  {name}={value_repr}')
+            if isinstance(value, Config):
+                value_repr = value._repr(prefix + '  ')
+            else:
+                value_repr = repr(value)
+            field_reprs.append(f'{prefix}  {name}={value_repr}')
         if field_reprs:
             field_desc = ",\n".join(field_reprs)
             return f'{self.__class__.__name__}(\n{field_desc}\n{prefix})'

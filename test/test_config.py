@@ -102,8 +102,8 @@ def test_repr():
         f1: str = '1'
         f2: str
 
-    assert repr(MyConfig()) == "MyConfig(\n  f1='1'\n)"
-    assert repr(MyConfig(f1='x')) == "MyConfig(\n  f1='x'\n)"
+    assert repr(MyConfig()) == "MyConfig(\n  f1='1',\n  f2=<missing>\n)"
+    assert repr(MyConfig(f1='x')) == "MyConfig(\n  f1='x',\n  f2=<missing>\n)"
     assert repr(MyConfig(f2='y')) == "MyConfig(\n  f1='1',\n  f2='y'\n)"
 
 
@@ -168,9 +168,22 @@ def test_subconfig():
         sub: SubConfig
         x: int
 
-    assert repr(MyConfig()) == "MyConfig(\n  sub=SubConfig(\n    a='a'\n  )\n)"
+    assert repr(MyConfig()) == \
+           "MyConfig(\n" \
+           "  sub=SubConfig(\n" \
+           "    a='a',\n" \
+           "    b=<missing>\n" \
+           "  ),\n" \
+           "  x=<missing>\n" \
+           ")"
     assert repr(MyConfig(sub=SubConfig(b='2'))) == \
-           "MyConfig(\n  sub=SubConfig(\n    a='a',\n    b='2'\n  )\n)"
+           "MyConfig(\n" \
+           "  sub=SubConfig(\n" \
+           "    a='a',\n" \
+           "    b='2'\n" \
+           "  ),\n" \
+           "  x=<missing>\n" \
+           ")"
 
 
 def test_update():
@@ -195,6 +208,23 @@ def test_update():
     c.update(MyConfig(f2='f2.2'))
     assert c.f1 == 'f1.2'
     assert c.f2 == 'f2.2'
+
+
+def test_update_recursive():
+    class SubConfig(Config):
+        a: str = 'a'
+        b: str
+
+    class MyConfig(Config):
+        sub: SubConfig
+        x: int
+
+    c = MyConfig(sub=dict(b='2'))
+    c.update(dict(x=2, sub=dict(a='a.2')))
+
+    assert c.x == 2
+    assert c.sub.a == 'a.2'
+    assert c.sub.b == '2'
 
 
 def test_load_from_env():
@@ -232,7 +262,7 @@ def test_load_from_env_prefix():
     c = MyConfig.load_from_env(prefix='')
     assert c.s == 's.1'
 
-    c = MyConfig.load_from_env(prefix='P_')
+    c = MyConfig.load_from_env(prefix='P')
     assert c.s == 's.2'
 
 
@@ -390,26 +420,6 @@ def test_load_from_env_subconfig_no_prefix():
     assert c.sub.a == 'xxx2'
 
 
-def test_load_from_config():
-    pass
-
-
-def test_load_from_config_unknown_options():
-    pass
-
-
-def test_load_from_config_unknown_options_ignored():
-    pass
-
-
-def test_load_from_config_parsers():
-    pass
-
-
-def test_load_from_config_subconfig():
-    pass
-
-
 def test_load_from_args():
     class MyConfig(Config):
         a: str
@@ -428,25 +438,173 @@ def test_load_from_args():
     assert c.c == 5
 
 
+def test_load_from_args_disabled(capsys):
+    class MyConfig(Config):
+        a: str = field(default='def', flags=disabled())
+
+    c = MyConfig.load_from_args(''.split())
+    assert c.a == 'def'
+
+    with pytest.raises(SystemExit):
+        MyConfig.load_from_args('--a asd'.split())
+    assert 'unrecognized arguments: --a asd' in capsys.readouterr().err
+
+
 def test_load_from_args_configured_flags():
-    pass
+    class MyConfig(Config):
+        a: str = field(flags=['-a', '--a-long'])
+
+    c = MyConfig.load_from_args('-a foo'.split())
+    assert c.a == 'foo'
+
+    c = MyConfig.load_from_args('--a-long bar'.split())
+    assert c.a == 'bar'
 
 
-def test_load_from_args_simple_parsers():
-    pass
+def test_load_from_args_configured_required(capsys):
+    class MyConfig(Config):
+        a: str = field(default='def', required=True)
+
+    c = MyConfig.load_from_args('--a foo'.split())
+    assert c.a == 'foo'
+
+    with pytest.raises(SystemExit):
+        MyConfig.load_from_args(''.split())
+    assert 'required: --a' in capsys.readouterr().err
+
+
+def test_load_from_args_simple_parsers(capsys):
+    class MyConfig(Config):
+        b: bool
+        s: str = field(
+            parser=yuio.parse.OneOf(yuio.parse.Str(), ['x', 'y'])
+        )
+
+    c = MyConfig.load_from_args('--b --s x'.split())
+    assert c.b is True
+    assert c.s is 'x'
+
+    with pytest.raises(SystemExit):
+        MyConfig.load_from_args('--s z'.split())
+    assert 'one of x, y' in capsys.readouterr().err
 
 
 def test_load_from_args_collection_parsers():
-    pass
+    os.environ.clear()
+
+    class MyConfig(Config):
+        b: list = field(
+            parser=yuio.parse.List(
+                yuio.parse.Pair(
+                    yuio.parse.Str(), yuio.parse.Int())))
+        s: typing.Set[int]
+        x: typing.Tuple[int, float]
+        d: typing.Dict[str, int]
+
+    c = MyConfig.load_from_args(
+        '--b a:1 b:2 --s 1 2 3 5 3 --x 1 2 --d a:10 b:20'.split())
+    assert c.b == [('a', 1), ('b', 2)]
+    assert c.s == {1, 2, 3, 5}
+    assert c.x == (1, 2.0)
+    assert c.d == {'a': 10, 'b': 20}
 
 
 def test_load_from_args_bool_flag():
-    pass
+    class MyConfig(Config):
+        a: bool
+        b: bool
+        c: bool
+        d: bool
+
+    c = MyConfig.load_from_args('--a --no-b --c yes --d no'.split())
+    assert c.a is True
+    assert c.b is False
+    assert c.c is True
+    assert c.d is False
 
 
 def test_load_from_args_subconfig():
-    pass
+    class SubConfig(Config):
+        a: str
+
+    class MyConfig(Config):
+        b: str
+        sub: SubConfig
+
+    c = MyConfig.load_from_args('--b foo --sub-a bar'.split())
+    assert c.b == 'foo'
+    assert c.sub.a == 'bar'
+
+
+def test_load_from_args_subconfig_custom_prefix():
+    class SubConfig(Config):
+        a: str
+
+    class MyConfig(Config):
+        b: str
+        sub: SubConfig = field(flags='--sub-sub')
+
+    c = MyConfig.load_from_args('--b foo --sub-sub-a bar'.split())
+    assert c.b == 'foo'
+    assert c.sub.a == 'bar'
 
 
 def test_load_from_args_subconfig_no_prefix():
+    class SubConfig(Config):
+        a: str
+
+    class MyConfig(Config):
+        b: str
+        sub: SubConfig = field(flags='')
+
+    c = MyConfig.load_from_args('--b foo --a bar'.split())
+    assert c.b == 'foo'
+    assert c.sub.a == 'bar'
+
+
+class DocSubConfig(Config):
+    #: help for `a`
+    a: str
+
+
+class DocConfig(Config):
+    #: help for `sub`
+    sub: DocSubConfig
+
+
+def test_load_from_args_help():
+    help = DocConfig.setup_arg_parser().format_help()
+    assert 'help for `sub`:' in help
+    assert 'help for `a`' in help
+
+
+def test_load_from_parsed_file():
+    pass
+
+
+def test_load_from_parsed_file_unknown_fields():
+    pass
+
+
+def test_load_from_parsed_file_unknown_fields_ignored():
+    pass
+
+
+def test_load_from_parsed_file_type_mismatch():
+    pass
+
+
+def test_load_from_parsed_file_subconfig():
+    pass
+
+
+def test_load_from_json_file():
+    pass
+
+
+def test_load_from_yaml_file():
+    pass
+
+
+def test_load_from_toml_file():
     pass
