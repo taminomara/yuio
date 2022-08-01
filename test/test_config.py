@@ -90,11 +90,8 @@ def test_init():
         f1: str
         f2: str
 
-    with pytest.raises(TypeError, match=r'unknown field\(s\): x'):
+    with pytest.raises(TypeError, match=r'unknown field: x'):
         MyConfig(x=1)
-
-    with pytest.raises(TypeError, match=r'unknown field\(s\): x, y'):
-        MyConfig(f1='a', x=1, y=2)
 
 
 def test_repr():
@@ -124,7 +121,7 @@ def test_inheritance():
 
         new_field: str = 'x'
 
-    with pytest.raises(TypeError, match=r'unknown field\(s\): new_field'):
+    with pytest.raises(TypeError, match=r'unknown field: new_field'):
         Parent(new_field='-_-')
 
     c = Child(
@@ -459,6 +456,14 @@ def test_load_from_args_configured_flags():
 
     c = MyConfig.load_from_args('--a-long bar'.split())
     assert c.a == 'bar'
+
+    with pytest.raises(TypeError, match='empty flag'):
+        class _ErrConfig1(Config):
+            a: str = field(flags='')
+
+    with pytest.raises(TypeError, match='empty flag'):
+        class _ErrConfig2(Config):
+            a: str = field(flags=[''])
 
 
 def test_load_from_args_configured_required(capsys):

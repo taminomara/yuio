@@ -80,6 +80,7 @@ import os
 import pathlib
 import re
 import logging
+import enum
 import typing as _t
 from dataclasses import dataclass
 
@@ -89,70 +90,82 @@ import yuio.parse
 T = _t.TypeVar('T')
 
 
-class _Placeholder:
-    def __init__(self, what: str):
-        self._what = what
-
-    def __bool__(self):
-        return False
+class _Placeholders(enum.Enum):
+    DISABLED = '<disabled>'
+    MISSING = '<missing>'
 
     def __repr__(self):
-        return f'<{self._what}>'
+        return self.value
 
 
-_MISSING: _t.Any = _Placeholder('missing')
-_DISABLED: _t.Any = _Placeholder('disabled')
+#: Type of a :func:`disabled` placeholder.
+Disabled = _t.Literal[_Placeholders.DISABLED]
 
 
-def disabled() -> _t.Any:
+def disabled() -> Disabled:
     """Placeholder indicating that some field's functionality is disabled.
 
     """
 
-    return _DISABLED
+    return _Placeholders.DISABLED
 
 
 @dataclass(frozen=True)
 class _FieldSettings:
-    default: _t.Any = _MISSING
+    default: _t.Any = _Placeholders.MISSING
     parser: _t.Optional[yuio.parse.Parser] = None
     help: _t.Optional[str] = None
-    env: _t.Optional[str] = None
-    flags: _t.Optional[_t.Union[str, _t.List[str]]] = None
+    env: _t.Optional[_t.Union[str, Disabled]] = None
+    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None
     required: bool = False
 
-    def _update_defaults(self, qualname, name, ty, help) -> '_Field':
+    def _update_defaults(
+        self,
+        qualname: str,
+        name: str,
+        ty: _t.Any,
+        parsed_help: _t.Optional[str],
+    ) -> '_Field':
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
 
+        help: str
         if self.help is not None:
             help = self.help
-        if help is None:
+        elif parsed_help is not None:
+            help = parsed_help
+        else:
             help = ''
 
-        env = self.env
-        if env is None:
+        env: _t.Union[str, Disabled]
+        if self.env is not None:
+            env = self.env
+        else:
             env = name.upper()
         if env == '' and not is_subconfig:
             raise TypeError(
-                f'{qualname}.{name} got an empty env variable name')
+                f'{qualname} got an empty env variable name')
 
-        flags = self.flags
-        if flags is not _DISABLED:
-            if flags is None:
-                flags = '--' + name.replace('_', '-')
-            if not isinstance(flags, list):
-                flags = [flags]
-            if not flags:
+        flags: _t.Union[_t.List[str], Disabled]
+        if self.flags is _Placeholders.DISABLED:
+            flags = _Placeholders.DISABLED
+        elif self.flags is None:
+            flags = ['--' + name.replace('_', '-')]
+        elif isinstance(self.flags, str):
+            flags = [self.flags]
+        else:
+            if not self.flags:
                 raise TypeError(
-                    f'{qualname}.{name} should have at least one flag')
+                    f'{qualname} should have at least one flag')
+            flags = self.flags
+        if flags is not _Placeholders.DISABLED:
             for flag in flags:
                 if flag and not flag.startswith('-'):
                     raise TypeError(
-                        f'{qualname}.{name}: positional arguments '
+                        f'{qualname}: positional arguments '
                         f'are not supported')
                 if not flag and not is_subconfig:
                     raise TypeError(
-                        f'{qualname}.{name} got an empty flag')
+                        f'{qualname} got an empty flag')
 
         default = self.default
 
@@ -161,32 +174,32 @@ class _FieldSettings:
         required = self.required
 
         if is_subconfig:
-            if default is not _MISSING:
+            if default is not _Placeholders.MISSING:
                 raise TypeError(
-                    f'{qualname}.{name} cannot have defaults')
+                    f'{qualname} cannot have defaults')
 
             if parser is not None:
                 raise TypeError(
-                    f'{qualname}.{name} cannot have parsers')
+                    f'{qualname} cannot have parsers')
 
-            if flags is not _DISABLED:
+            if flags is not _Placeholders.DISABLED:
                 if len(flags) > 1:
                     raise TypeError(
-                        f'{qualname}.{name} cannot have multiple flags')
+                        f'{qualname} cannot have multiple flags')
 
                 if flags[0] and not flags[0].startswith('--'):
                     raise TypeError(
-                        f'{qualname}.{name} cannot have a short flag ')
+                        f'{qualname} cannot have a short flag ')
 
             if required:
                 raise TypeError(
-                    f'{qualname}.{name} cannot be required')
+                    f'{qualname} cannot be required')
         elif parser is None:
             try:
                 parser = yuio.parse.from_type_hint(ty)
             except TypeError:
                 raise TypeError(
-                    f'can\'t derive parser for {qualname}.{name}')
+                    f'can\'t derive parser for {qualname}')
 
         return _Field(
             default,
@@ -205,8 +218,8 @@ class _Field:
     default: _t.Any
     parser: _t.Optional[yuio.parse.Parser]
     help: str
-    env: str
-    flags: _t.List[str]
+    env: _t.Union[str, Disabled]
+    flags: _t.Union[_t.List[str], Disabled]
     is_subconfig: bool
     ty: _t.Type
     required: bool
@@ -216,31 +229,31 @@ class _Field:
 def field(
     *,
     help: _t.Optional[str] = None,
-    env: _t.Optional[str] = None,
-    flags: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    env: _t.Optional[_t.Union[str, Disabled]] = None,
+    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
     required: bool = False,
 ) -> _t.Any: pass
 
 
 @_t.overload
 def field(
-    default: T = _MISSING,
+    default: _t.Union[T, _t.Literal[_Placeholders.MISSING]] = _Placeholders.MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Optional[str] = None,
-    env: _t.Optional[str] = None,
-    flags: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    env: _t.Optional[_t.Union[str, Disabled]] = None,
+    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
     required: bool = False,
 ) -> T: pass
 
 
 def field(
-    default: T = _MISSING,
+    default: _t.Any = _Placeholders.MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Optional[str] = None,
-    env: _t.Optional[str] = None,
-    flags: _t.Optional[_t.Union[str, _t.List[str]]] = None,
+    env: _t.Optional[_t.Union[str, Disabled]] = None,
+    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
     required: bool = False,
 ) -> T:
     """Field descriptor, used for additional configuration of fields.
@@ -318,7 +331,7 @@ class Config:
             if name.startswith('_'):
                 continue
 
-            value = cls.__dict__.get(name, _MISSING)
+            value = cls.__dict__.get(name, _Placeholders.MISSING)
             if isinstance(value, _FieldSettings):
                 field = value
             else:
@@ -326,7 +339,7 @@ class Config:
             setattr(cls, name, field.default)
 
             fields[name] = field._update_defaults(
-                cls.__qualname__, name, ty, docs.get(name, None))
+                f'{cls.__qualname__}.{name}', name, ty, docs.get(name))
 
         cls._fields = fields
 
@@ -394,23 +407,21 @@ class Config:
             return
 
         if isinstance(other, Config):
-            other = other.__dict__.copy()
+            ns = other.__dict__
         elif isinstance(other, dict):
-            other = other.copy()
+            ns = other
+            for name in ns:
+                if name not in self._fields:
+                    raise TypeError(f'unknown field: {name}')
         else:
             raise TypeError('expected a dict or a config class')
 
         for name, field in self._fields.items():
-            if name in other:
+            if name in ns:
                 if field.is_subconfig:
-                    getattr(self, name).update(other[name])
-                elif other[name] is not _MISSING:
-                    setattr(self, name, other[name])
-                other.pop(name)
-
-        if other:
-            unknown_fields = ', '.join(other)
-            raise TypeError(f'unknown field(s): {unknown_fields}')
+                    getattr(self, name).update(ns[name])
+                elif ns[name] is not _Placeholders.MISSING:
+                    setattr(self, name, ns[name])
 
     @classmethod
     def load_from_env(cls: _t.Type[_Self], prefix: str = '') -> _Self:
@@ -461,7 +472,7 @@ class Config:
         fields = {}
 
         for name, field in cls._fields.items():
-            if field.env is _DISABLED:
+            if field.env is _Placeholders.DISABLED:
                 continue
 
             env = prefix + field.env
@@ -562,7 +573,7 @@ class Config:
         fields = {}
 
         for name, field in cls._fields.items():
-            if field.flags is _DISABLED:
+            if field.flags is _Placeholders.DISABLED:
                 continue
 
             dest = prefix + name
@@ -606,7 +617,7 @@ class Config:
             prefix += '-'
 
         for name, field in cls._fields.items():
-            if field.flags is _DISABLED:
+            if field.flags is _Placeholders.DISABLED:
                 continue
 
             dest = dest_prefix + name
@@ -644,7 +655,7 @@ class Config:
                         flag_neg = (prefix or '--') + 'no-' + flag[2:]
                         mutex_group.add_argument(
                             flag_neg,
-                            default=_MISSING,
+                            default=_Placeholders.MISSING,
                             help=f'set {flag_pos} to `false`',
                             dest=dest,
                             action='store_false',
@@ -654,7 +665,7 @@ class Config:
                 mutex_group.add_argument(
                     *flags,
                     type=field.parser,
-                    default=_MISSING,
+                    default=_Placeholders.MISSING,
                     help=field.help,
                     metavar=metavar,
                     dest=dest,
@@ -664,7 +675,7 @@ class Config:
             elif field.parser.supports_parse_many():
                 group.add_argument(
                     *flags,
-                    default=_MISSING,
+                    default=_Placeholders.MISSING,
                     help=field.help,
                     metavar=metavar,
                     dest=dest,
@@ -676,7 +687,7 @@ class Config:
                 group.add_argument(
                     *flags,
                     type=field.parser,
-                    default=_MISSING,
+                    default=_Placeholders.MISSING,
                     help=field.help,
                     metavar=metavar,
                     dest=dest,
@@ -832,7 +843,7 @@ class Config:
 
     def __getattribute__(self, item):
         value = super().__getattribute__(item)
-        if value is _MISSING:
+        if value is _Placeholders.MISSING:
             raise AttributeError(f'{item} is not configured')
         else:
             return value
@@ -843,7 +854,7 @@ class Config:
     def _repr(self, prefix):
         field_reprs = []
         for name in self._fields:
-            value = getattr(self, name, _MISSING)
+            value = getattr(self, name, _Placeholders.MISSING)
             if isinstance(value, Config):
                 value_repr = value._repr(prefix + '  ')
             else:
