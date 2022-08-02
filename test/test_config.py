@@ -568,48 +568,194 @@ def test_load_from_args_subconfig_no_prefix():
 
 
 class DocSubConfig(Config):
-    #: help for `a`
+    #: help for `a`.
     a: str
 
 
 class DocConfig(Config):
-    #: help for `sub`
+    #: help for `sub`.
     sub: DocSubConfig
 
 
 def test_load_from_args_help():
     help = DocConfig.setup_arg_parser().format_help()
     assert 'help for `sub`:' in help
-    assert 'help for `a`' in help
+    assert 'help for `a`.' in help
 
 
 def test_load_from_parsed_file():
-    pass
+    class MyConfig(Config):
+        a: str
+        b: int
+        c: int = 5
+
+    c = MyConfig.load_from_parsed_file(dict(a='abc', b=10, c=11))
+    assert c.a == 'abc'
+    assert c.b == 10
+    assert c.c == 11
+
+    c = MyConfig.load_from_parsed_file(dict(a='abc'))
+    assert c.a == 'abc'
+    with pytest.raises(AttributeError, match='is not configured'):
+        _ = c.b
+    assert c.c == 5
 
 
 def test_load_from_parsed_file_unknown_fields():
-    pass
+    class MyConfig(Config):
+        a: str
+        b: int
+        c: int = 5
+
+    with pytest.raises(ValueError, match='unknown config field x'):
+        MyConfig.load_from_parsed_file(dict(a='abc', b=10, x=11))
 
 
 def test_load_from_parsed_file_unknown_fields_ignored():
-    pass
+    class MyConfig(Config):
+        a: str
+        b: int
+
+    c = MyConfig.load_from_parsed_file(
+        dict(a='abc', x=10), ignore_unknown_fields=True)
+    assert c.a == 'abc'
+    with pytest.raises(AttributeError, match='is not configured'):
+        _ = c.b
 
 
 def test_load_from_parsed_file_type_mismatch():
-    pass
+    class MyConfig(Config):
+        a: str
+
+    with pytest.raises(yuio.parse.ParsingError, match='expected a string'):
+        MyConfig.load_from_parsed_file(dict(a=10))
 
 
 def test_load_from_parsed_file_subconfig():
-    pass
+    class SubConfig(Config):
+        a: str
+
+    class MyConfig(Config):
+        b: str
+        c: SubConfig
+
+    c = MyConfig.load_from_parsed_file(dict(b='abc', c=dict(a='cde')))
+    assert c.b == 'abc'
+    assert c.c.a == 'cde'
+
+    with pytest.raises(ValueError, match='unknown config field c.x'):
+        MyConfig.load_from_parsed_file(dict(b='abc', c=dict(x='cde')))
 
 
-def test_load_from_json_file():
-    pass
+def test_load_from_json_file(tmp_path):
+    class MyConfig(Config):
+        a: str
+        b: int
+        c: int = 5
+
+    data_path = tmp_path / 'data.json'
+
+    with open(data_path, 'w') as f:
+        f.write('{"a": "abc", "b": 10}')
+
+    c = MyConfig.load_from_json_file(data_path)
+    assert c.a == 'abc'
+    assert c.b == 10
+    assert c.c == 5
+
+    data_path_2 = tmp_path / 'data_2.json'
+
+    with open(data_path_2, 'w') as f:
+        f.write('{"a": "abc", "b": 10, "x": 0}')
+
+    c = MyConfig.load_from_json_file(data_path_2, ignore_unknown_fields=True)
+    assert c.a == 'abc'
+    assert c.b == 10
+    assert c.c == 5
+
+    with pytest.raises(ValueError, match='unknown config field x'):
+        MyConfig.load_from_json_file(data_path_2)
+
+    c = MyConfig.load_from_json_file(
+        tmp_path / 'foo.json', ignore_missing_file=True)
+    with pytest.raises(AttributeError, match='is not configured'):
+        _ = c.a
+    with pytest.raises(AttributeError, match='is not configured'):
+        _ = c.b
+    assert c.c == 5
 
 
-def test_load_from_yaml_file():
-    pass
+def test_load_from_yaml_file(tmp_path):
+    class MyConfig(Config):
+        a: str
+        b: int
+        c: int = 5
+
+    data_path = tmp_path / 'data.yaml'
+
+    with open(data_path, 'w') as f:
+        f.write('a: abc\nb: 10')
+
+    c = MyConfig.load_from_yaml_file(data_path)
+    assert c.a == 'abc'
+    assert c.b == 10
+    assert c.c == 5
+
+    data_path_2 = tmp_path / 'data_2.yaml'
+
+    with open(data_path_2, 'w') as f:
+        f.write('a: abc\nb: 10\nx: 0')
+
+    c = MyConfig.load_from_yaml_file(data_path_2, ignore_unknown_fields=True)
+    assert c.a == 'abc'
+    assert c.b == 10
+    assert c.c == 5
+
+    with pytest.raises(ValueError, match='unknown config field x'):
+        MyConfig.load_from_yaml_file(data_path_2)
+
+    c = MyConfig.load_from_yaml_file(
+        tmp_path / 'foo.yaml', ignore_missing_file=True)
+    with pytest.raises(AttributeError, match='is not configured'):
+        _ = c.a
+    with pytest.raises(AttributeError, match='is not configured'):
+        _ = c.b
+    assert c.c == 5
 
 
-def test_load_from_toml_file():
-    pass
+def test_load_from_toml_file(tmp_path):
+    class MyConfig(Config):
+        a: str
+        b: int
+        c: int = 5
+
+    data_path = tmp_path / 'data.toml'
+
+    with open(data_path, 'w') as f:
+        f.write('a="abc"\nb=10')
+
+    c = MyConfig.load_from_toml_file(data_path)
+    assert c.a == 'abc'
+    assert c.b == 10
+    assert c.c == 5
+
+    data_path_2 = tmp_path / 'data_2.toml'
+
+    with open(data_path_2, 'w') as f:
+        f.write('a="abc"\nb=10\nx=0')
+
+    c = MyConfig.load_from_toml_file(data_path_2, ignore_unknown_fields=True)
+    assert c.a == 'abc'
+    assert c.b == 10
+    assert c.c == 5
+
+    with pytest.raises(ValueError, match='unknown config field x'):
+        MyConfig.load_from_toml_file(data_path_2)
+
+    c = MyConfig.load_from_toml_file(
+        tmp_path / 'foo.toml', ignore_missing_file=True)
+    with pytest.raises(AttributeError, match='is not configured'):
+        _ = c.a
+    with pytest.raises(AttributeError, match='is not configured'):
+        _ = c.b
+    assert c.c == 5
