@@ -121,6 +121,18 @@ def test_int_enum():
     assert parser.describe_value(Colors.RED) == 'RED'
 
 
+def test_optional():
+    parser = Optional(Int())
+    assert parser('') is None
+    assert parser('1') == 1
+    with pytest.raises(ValueError):
+        parser.parse('asd')
+    assert parser.parse_config(None) is None
+    assert parser.parse_config(1) == 1
+    with pytest.raises(ValueError, match='expected an int'):
+        parser.parse_config('3')
+
+
 def test_list():
     parser = List(Int())
     assert parser('') == []
