@@ -111,6 +111,11 @@ import re
 import typing as _t
 
 
+_TO_DASH_CASE_RE = re.compile(
+    r'(?<!^)((?=[A-Z]([^A-Z]|$))|(?<=\d)(?=[A-Z])|(?<!\d)(?=\d))'
+)
+
+
 class _Comparable(_t.Protocol):
     @abc.abstractmethod
     def __lt__(self, other, /) -> bool: ...
@@ -238,7 +243,10 @@ class Parser(_t.Generic[T], abc.ABC):
 
         """
 
-        return self.describe() or self.__class__.__name__.lower()
+        return (
+            self.describe()
+            or _TO_DASH_CASE_RE.sub('-', self.__class__.__name__).lower()
+        )
 
     def describe_many(self) -> _t.Optional[str]:
         """Return a human-readable description of a container element.
@@ -249,6 +257,17 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
         return self.describe()
+
+    def describe_many_or_def(self) -> str:
+        """Like :py:meth:`~Parser.describe_many`,
+        but guaranteed to return something.
+
+        """
+
+        return (
+            self.describe_many()
+            or _TO_DASH_CASE_RE.sub('-', self.__class__.__name__).lower()
+        )
 
     def describe_value(self, value: T, /) -> _t.Optional[str]:
         """Return a human-readable description of a given value.
