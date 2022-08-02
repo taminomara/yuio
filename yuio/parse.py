@@ -1327,12 +1327,6 @@ register_type_hint_conversion(
 )
 register_type_hint_conversion(
     lambda ty, origin, args:
-    from_type_hint(ty.__supertype__)
-    if getattr(ty, '__module__') == 'typing' and hasattr(ty, '__supertype__')
-    else None
-)
-register_type_hint_conversion(
-    lambda ty, origin, args:
         Str()
         if ty is str
         else None
