@@ -466,6 +466,50 @@ class Enum(Parser[E]):
         return value.name
 
 
+class Optional(Parser[_t.Optional[T]]):
+    """Parser for optional values.
+
+    Interprets empty strings as `None`s.
+
+    """
+
+    def __init__(self, inner: Parser[T]):
+        super().__init__()
+
+        self._inner: Parser[T] = inner
+
+    def parse(self, value: str, /) -> _t.Optional[T]:
+        if not value:
+            return None
+        return self._inner.parse(value)
+
+    def parse_many(self, value: _t.Sequence[str], /) -> _t.Optional[T]:
+        return self._inner.parse_many(value)
+
+    def supports_parse_many(self) -> bool:
+        return self._inner.supports_parse_many()
+
+    def parse_config(self, value: _t.Any, /) -> _t.Optional[T]:
+        if value is None:
+            return None
+        return self._inner.parse_config(value)
+
+    def validate(self, value: _t.Optional[T], /):
+        if value is not None:
+            self._inner.validate(value)
+
+    def describe(self) -> _t.Optional[str]:
+        return self._inner.describe()
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe_many()
+
+    def describe_value(self, value: _t.Optional[T], /) -> _t.Optional[str]:
+        if value is None:
+            return '<none>'
+        return self._inner.describe_value(value)
+
+
 class List(Parser[_t.List[T]]):
     """Parser for lists.
 
@@ -1272,20 +1316,8 @@ def register_type_hint_conversion(
 
 register_type_hint_conversion(
     lambda ty, origin, args:
-        from_type_hint(args[0])
-        if origin is _t.Optional
-        else None
-)
-register_type_hint_conversion(
-    lambda ty, origin, args:
-        from_type_hint(args[0])
-        if origin is _t.Union and len(args) == 2 and args[1] is type(None)
-        else None
-)
-register_type_hint_conversion(
-    lambda ty, origin, args:
-        from_type_hint(args[1])
-        if origin is _t.Union and len(args) == 2 and args[0] is type(None)
+        Optional(from_type_hint(args[1 - args.index(type(None))]))
+        if origin is _t.Union and len(args) == 2 and type(None) in args
         else None
 )
 register_type_hint_conversion(
