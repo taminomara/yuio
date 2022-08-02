@@ -1203,12 +1203,12 @@ class Regex(Parser[str]):
         return self._inner.describe_value(value)
 
 
-_FROM_TYPE_HINT_CALLBACK_TYPE = _t.Callable[
+_FromTypeHintCallback = _t.Callable[
     [_t.Type, _t.Optional[_t.Any], _t.Tuple[_t.Any, ...]],
     _t.Optional['Parser[_t.Any]']
 ]
 
-_FROM_TYPE_HINT_CALLBACKS: _t.List[_FROM_TYPE_HINT_CALLBACK_TYPE] = []
+_FROM_TYPE_HINT_CALLBACKS: _t.List[_FromTypeHintCallback] = []
 
 
 def from_type_hint(ty: _t.Type[T], /) -> 'Parser[T]':
@@ -1228,8 +1228,8 @@ def from_type_hint(ty: _t.Type[T], /) -> 'Parser[T]':
 
 
 def register_type_hint_conversion(
-    cb: _FROM_TYPE_HINT_CALLBACK_TYPE
-) -> _FROM_TYPE_HINT_CALLBACK_TYPE:
+    cb: _FromTypeHintCallback
+) -> _FromTypeHintCallback:
     """Register a new converter from typehint to a parser.
 
     This function takes a callback that accepts three positional arguments:
