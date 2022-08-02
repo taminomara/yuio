@@ -15,7 +15,7 @@ class ExecutorConfig(yuio.config.Config):
         flags=['-t', '--threads']
     )
 
-    #: enable or disable gpu (default is enable)
+    #: enable or disable gpu
     use_gpu: bool = yuio.config.field(
         default=True,
         flags=['--gpu']
@@ -47,6 +47,9 @@ class AppConfig(yuio.config.Config):
     )
 
     #: executor arguments
+    #:
+    #: arguments that control executor backend and how it interacts
+    #: with hardware
     executor: ExecutorConfig = yuio.config.field(
         flags='',  # Disable prefixing executor flags with `--executor-...`
     )
