@@ -114,7 +114,7 @@ def disabled() -> Disabled:
 class _FieldSettings:
     default: _t.Any = _Placeholders.MISSING
     parser: _t.Optional[yuio.parse.Parser] = None
-    help: _t.Optional[str] = None
+    help: _t.Optional[_t.Union[str, Disabled]] = None
     env: _t.Optional[_t.Union[str, Disabled]] = None
     flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None
     required: bool = False
@@ -128,7 +128,7 @@ class _FieldSettings:
     ) -> '_Field':
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
 
-        help: str
+        help: _t.Union[str, Disabled]
         if self.help is not None:
             help = self.help
         elif parsed_help is not None:
@@ -197,7 +197,7 @@ class _FieldSettings:
         elif parser is None:
             try:
                 parser = yuio.parse.from_type_hint(ty)
-            except TypeError:
+            except TypeError as e:
                 raise TypeError(
                     f'can\'t derive parser for {qualname}')
 
@@ -217,7 +217,7 @@ class _FieldSettings:
 class _Field:
     default: _t.Any
     parser: _t.Optional[yuio.parse.Parser]
-    help: str
+    help: _t.Union[str, Disabled]
     env: _t.Union[str, Disabled]
     flags: _t.Union[_t.List[str], Disabled]
     is_subconfig: bool
@@ -228,7 +228,7 @@ class _Field:
 @_t.overload
 def field(
     *,
-    help: _t.Optional[str] = None,
+    help: _t.Optional[_t.Union[str, Disabled]] = None,
     env: _t.Optional[_t.Union[str, Disabled]] = None,
     flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
     required: bool = False,
@@ -240,7 +240,7 @@ def field(
     default: _t.Union[T, _t.Literal[_Placeholders.MISSING]] = _Placeholders.MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[str] = None,
+    help: _t.Optional[_t.Union[str, Disabled]] = None,
     env: _t.Optional[_t.Union[str, Disabled]] = None,
     flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
     required: bool = False,
@@ -251,7 +251,7 @@ def field(
     default: _t.Any = _Placeholders.MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[str] = None,
+    help: _t.Optional[_t.Union[str, Disabled]] = None,
     env: _t.Optional[_t.Union[str, Disabled]] = None,
     flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
     required: bool = False,
@@ -380,7 +380,7 @@ class Config:
                         break
 
                 if comment_lines:
-                    docs[stmt.target.id] = ' '.join(reversed(comment_lines))
+                    docs[stmt.target.id] = '\n'.join(reversed(comment_lines))
 
         return docs
 
@@ -601,7 +601,7 @@ class Config:
         if parser is None:
             parser = argparse.ArgumentParser()
 
-        cls._setup_arg_parser(parser, parser, '', cls.__qualname__ + ':')
+        cls._setup_arg_parser(parser, parser, '', cls.__qualname__ + ':', False)
 
         return parser
 
@@ -612,6 +612,7 @@ class Config:
         parser: argparse.ArgumentParser,
         prefix: str,
         dest_prefix: str,
+        supress_help: bool,
     ):
         if prefix:
             prefix += '-'
@@ -622,16 +623,30 @@ class Config:
 
             dest = dest_prefix + name
 
+            if supress_help or field.help is _Placeholders.DISABLED:
+                help = argparse.SUPPRESS
+                supress_help = True
+            else:
+                help = field.help
+                if field.default is not _Placeholders.MISSING:
+                    default = field.parser.describe_value_or_def(field.default)
+                    help += f' [default: {default}]'
+
             if prefix:
                 flags = [prefix + flag.lstrip('-') for flag in field.flags]
             else:
                 flags = field.flags
 
             if field.is_subconfig:
-                group = _t.cast(_t.Any, parser.add_argument_group(
-                    field.help.rstrip('.') or name))
+                if supress_help:
+                    subgroup = group
+                else:
+                    lines = help.split('\n\n', 1)
+                    title = lines[0].replace('\n', ' ').rstrip('.') or name
+                    desc = lines[1] if len(lines) > 1 else None
+                    subgroup = parser.add_argument_group(title, desc)
                 field.ty._setup_arg_parser(
-                    group, parser, flags[0], dest + '.')
+                    subgroup, parser, flags[0], dest + '.', supress_help)
                 continue
 
             assert field.parser is not None
@@ -649,34 +664,37 @@ class Config:
                 mutex_group = group.add_mutually_exclusive_group(
                     required=field.required)
 
-                for flag in field.flags:
-                    if flag.startswith('--'):
-                        flag_pos = (prefix or "--") + flag[2:]
-                        flag_neg = (prefix or '--') + 'no-' + flag[2:]
-                        mutex_group.add_argument(
-                            flag_neg,
-                            default=_Placeholders.MISSING,
-                            help=f'set {flag_pos} to `false`',
-                            dest=dest,
-                            action='store_false',
-                        )
-                        break
-
                 mutex_group.add_argument(
                     *flags,
                     type=field.parser,
                     default=_Placeholders.MISSING,
-                    help=field.help,
+                    help=help,
                     metavar=metavar,
                     dest=dest,
                     nargs='?',
                     const=True,
                 )
+
+                for flag in field.flags:
+                    if flag.startswith('--'):
+                        flag_neg = (prefix or '--') + 'no-' + flag[2:]
+                        if supress_help:
+                            help = argparse.SUPPRESS
+                        else:
+                            help = f'set {(prefix or "--") + flag[2:]} to `no`'
+                        mutex_group.add_argument(
+                            flag_neg,
+                            default=_Placeholders.MISSING,
+                            help=help,
+                            dest=dest,
+                            action='store_false',
+                        )
+                        break
             elif field.parser.supports_parse_many():
                 group.add_argument(
                     *flags,
                     default=_Placeholders.MISSING,
-                    help=field.help,
+                    help=help,
                     metavar=metavar,
                     dest=dest,
                     required=field.required,
@@ -688,7 +706,7 @@ class Config:
                     *flags,
                     type=field.parser,
                     default=_Placeholders.MISSING,
-                    help=field.help,
+                    help=help,
                     metavar=metavar,
                     dest=dest,
                     required=field.required,
@@ -750,7 +768,7 @@ class Config:
                         field.parser.validate(value)
                     except yuio.parse.ParsingError as e:
                         raise yuio.parse.ParsingError(
-                            f'can\'t parse {field_prefix}{name}: {e}')
+                            f'can\'t parse {field_prefix}{name}: {e}') from None
                     fields[name] = value
 
         return cls(**fields)
@@ -836,7 +854,7 @@ class Config:
             with open(path, 'r') as file:
                 loaded = parser(file.read())
         except Exception as e:
-            raise ValueError(f'invalid config {path}: {e}')
+            raise ValueError(f'invalid config {path}: {e}') from None
 
         return cls.load_from_parsed_file(
             loaded, ignore_unknown_fields=ignore_unknown_fields)
