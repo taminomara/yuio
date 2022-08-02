@@ -629,6 +629,7 @@ class Config:
             else:
                 help = field.help
                 if field.default is not _Placeholders.MISSING:
+                    assert field.parser is not None
                     default = field.parser.describe_value_or_def(field.default)
                     help += f' [default: {default}]'
 
@@ -644,7 +645,7 @@ class Config:
                     lines = help.split('\n\n', 1)
                     title = lines[0].replace('\n', ' ').rstrip('.') or name
                     desc = lines[1] if len(lines) > 1 else None
-                    subgroup = parser.add_argument_group(title, desc)
+                    subgroup = parser.add_argument_group(title, desc)  # type: ignore
                 field.ty.__setup_arg_parser(
                     subgroup, parser, flags[0], dest + '.', supress_help)
                 continue
