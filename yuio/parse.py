@@ -198,9 +198,11 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
     def parse_many(self, value: _t.Sequence[str], /) -> T:
-        """Parse a list of user strings.
+        """Parse a list of user inputs by sending them to an inner parser
+        one-by-one, and then uniting parsed values into a collection.
 
-        Used with argparse for actions with ``nargs`` set to multiple values.
+        Used with argparse for actions with ``nargs`` set
+        to allow multiple values.
 
         """
 
