@@ -1219,7 +1219,7 @@ def from_type_hint(ty: _t.Type[T], /) -> 'Parser[T]':
     origin = _t.get_origin(ty)
     args = _t.get_args(ty)
 
-    for cb in reversed(_FROM_TYPE_HINT_CALLBACKS):
+    for cb in _FROM_TYPE_HINT_CALLBACKS:
         p = cb(ty, origin, args)
         if p is not None:
             return p
@@ -1240,9 +1240,8 @@ def register_type_hint_conversion(
 
     The callback should return a parser if it can, or `None` otherwise.
 
-    All registered callbacks are tried in the reverse order
-    of their registration (that is, newer callbacks can potentially override
-    behaviour of older callbacks).
+    All registered callbacks are tried in the same order
+    as the were registered.
 
     This function can be used as a decorator.
 
@@ -1342,5 +1341,3 @@ register_type_hint_conversion(
         if isinstance(ty, type) and issubclass(ty, pathlib.PurePath)
         else None
 )
-
-_FROM_TYPE_HINT_CALLBACKS.reverse()
