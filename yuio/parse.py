@@ -1281,6 +1281,9 @@ def from_type_hint(ty: _t.Type[T], /) -> 'Parser[T]':
 
     """
 
+    if isinstance(ty, str) or isinstance(ty, _t.ForwardRef):
+        raise TypeError(f'forward references are not supported: {ty}')
+
     origin = _t.get_origin(ty)
     args = _t.get_args(ty)
 

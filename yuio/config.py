@@ -199,7 +199,7 @@ class _FieldSettings:
                 parser = yuio.parse.from_type_hint(ty)
             except TypeError as e:
                 raise TypeError(
-                    f'can\'t derive parser for {qualname}')
+                    f'can\'t derive parser for {qualname}: {e}') from None
 
         return _Field(
             default,

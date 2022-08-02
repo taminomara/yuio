@@ -659,7 +659,7 @@ def ask(
                 else:
                     answer = input()
             except EOFError:
-                raise UserIoError('unexpected end of input')
+                raise UserIoError('unexpected end of input') from None
             if not answer and default is not None:
                 return default
             elif not answer:
