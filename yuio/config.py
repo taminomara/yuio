@@ -601,7 +601,7 @@ class Config:
         if parser is None:
             parser = argparse.ArgumentParser()
 
-        cls._setup_arg_parser(parser, parser, '', cls.__qualname__ + ':', False)
+        cls.__setup_arg_parser(parser, parser, '', cls.__qualname__ + ':', False)
 
         return parser
 
