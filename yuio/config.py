@@ -343,7 +343,7 @@ class Config:
 
         cls.__fields = fields
 
-    _COMMENT_RE = re.compile(r'^\s*#: ?(.*)\r?\n?$')
+    __COMMENT_RE = re.compile(r'^\s*#: ?(.*)\r?\n?$')
 
     @classmethod
     def __find_docs(cls) -> _t.Dict[str, str]:
@@ -374,7 +374,7 @@ class Config:
             ):
                 comment_lines = []
                 for before_line in sourcelines[stmt.lineno - 2::-1]:
-                    if match := cls._COMMENT_RE.match(before_line):
+                    if match := cls.__COMMENT_RE.match(before_line):
                         comment_lines.append(match.group(1))
                     else:
                         break
