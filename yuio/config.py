@@ -327,7 +327,13 @@ class Config:
             if hasattr(base, '_Config__fields'):
                 fields.update(getattr(base, '_Config__fields'))
 
-        for name, ty in cls.__annotations__.items():
+        types = _t.get_type_hints(
+            cls,
+            sys.modules[cls.__module__].__dict__,
+            cls.__dict__
+        )
+
+        for name in cls.__annotations__:
             if name.startswith('_'):
                 continue
 
@@ -339,7 +345,7 @@ class Config:
             setattr(cls, name, field.default)
 
             fields[name] = field._update_defaults(
-                f'{cls.__qualname__}.{name}', name, ty, docs.get(name))
+                f'{cls.__qualname__}.{name}', name, types[name], docs.get(name))
 
         cls.__fields = fields
 
