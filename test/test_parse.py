@@ -194,7 +194,7 @@ def test_frozenset():
 
 
 def test_dict():
-    parser = Dict(Int(), Str(), '-')
+    parser = Dict(Int(), Str(), delimiter='-')
     assert parser('10:abc') == {10: 'abc'}
     assert parser('10:abc-11:xyz') == {10: 'abc', 11: 'xyz'}
     with pytest.raises(ValueError, match='could not parse'):
@@ -213,7 +213,7 @@ def test_dict():
 
 
 def test_pair():
-    parser = Pair(Int(), Str(), '-')
+    parser = Pair(Int(), Str(), delimiter='-')
     assert parser('10-abc') == (10, 'abc')
     assert parser('10-abc-xyz') == (10, 'abc-xyz')
     with pytest.raises(ValueError, match='could not parse'):
@@ -245,6 +245,124 @@ def test_tuple():
         Tuple()
     with pytest.raises(ValueError, match='empty delimiter'):
         Tuple(Int(), delimiter='')
+
+
+def test_datetime():
+    parser = DateTime()
+
+    assert parser('2007-01-02T10:00:05.001') \
+           == datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
+    assert parser('2007-01-02 10:00:05.001') \
+           == datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
+    assert parser.parse_config('2007-01-02T10:00:05.001') \
+           == datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
+    assert parser.parse_config(datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)) \
+           == datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('2007 01 02')
+    with pytest.raises(ValueError, match='expected a datetime'):
+        parser.parse_config(10)
+
+
+def test_date():
+    parser = Date()
+
+    assert parser('2007-01-02') \
+           == datetime.date(2007, 1, 2)
+    assert parser.parse_config('2007-01-02') \
+           == datetime.date(2007, 1, 2)
+    assert parser.parse_config(datetime.date(2007, 1, 2)) \
+           == datetime.date(2007, 1, 2)
+    assert parser.parse_config(datetime.datetime(2007, 1, 2)) \
+           == datetime.date(2007, 1, 2)
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('2007 01 02')
+    with pytest.raises(ValueError, match='expected a date'):
+        parser.parse_config(10)
+    with pytest.raises(ValueError, match='expected a date'):
+        parser.parse_config(datetime.time(10, 1))
+
+
+def test_time():
+    parser = Time()
+
+    assert parser('10:05') \
+           == datetime.time(10, 5)
+    assert parser.parse_config('10:05') \
+           == datetime.time(10, 5)
+    assert parser.parse_config(datetime.time(10, 5)) \
+           == datetime.time(10, 5)
+    assert parser.parse_config(datetime.datetime(2007, 1, 2, 12, 30, 5)) \
+           == datetime.time(12, 30, 5)
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('10-05')
+    with pytest.raises(ValueError, match='expected a time'):
+        parser.parse_config(10)
+    with pytest.raises(ValueError, match='expected a time'):
+        parser.parse_config(datetime.date(1996, 1, 1))
+
+
+def test_timedelta():
+    parser = TimeDelta()
+
+    assert parser('1w') == datetime.timedelta(weeks=1)
+    assert parser('1week') == datetime.timedelta(weeks=1)
+    assert parser('5weeks') == datetime.timedelta(weeks=5)
+    assert parser('2d') == datetime.timedelta(days=2)
+    assert parser('1day') == datetime.timedelta(days=1)
+    assert parser('3days') == datetime.timedelta(days=3)
+    assert parser('5s') == datetime.timedelta(seconds=5)
+    assert parser('1sec') == datetime.timedelta(seconds=1)
+    assert parser('2second') == datetime.timedelta(seconds=2)
+    assert parser('3secs') == datetime.timedelta(seconds=3)
+    assert parser('4seconds') == datetime.timedelta(seconds=4)
+    assert parser('5m') == datetime.timedelta(minutes=5)
+    assert parser('1min') == datetime.timedelta(minutes=1)
+    assert parser('2minute') == datetime.timedelta(minutes=2)
+    assert parser('3mins') == datetime.timedelta(minutes=3)
+    assert parser('4minutes') == datetime.timedelta(minutes=4)
+    assert parser('5h') == datetime.timedelta(hours=5)
+    assert parser('1h') == datetime.timedelta(hours=1)
+    assert parser('1hr') == datetime.timedelta(hours=1)
+    assert parser('2hour') == datetime.timedelta(hours=2)
+    assert parser('3hrs') == datetime.timedelta(hours=3)
+    assert parser('4hours') == datetime.timedelta(hours=4)
+    assert parser('5ms') == datetime.timedelta(milliseconds=5)
+    assert parser('5l') == datetime.timedelta(milliseconds=5)
+    assert parser('1milli') == datetime.timedelta(milliseconds=1)
+    assert parser('2millis') == datetime.timedelta(milliseconds=2)
+    assert parser('3millisecond') == datetime.timedelta(milliseconds=3)
+    assert parser('4milliseconds') == datetime.timedelta(milliseconds=4)
+    assert parser('5us') == datetime.timedelta(microseconds=5)
+    assert parser('5u') == datetime.timedelta(microseconds=5)
+    assert parser('1micro') == datetime.timedelta(microseconds=1)
+    assert parser('2micros') == datetime.timedelta(microseconds=2)
+    assert parser('3microsecond') == datetime.timedelta(microseconds=3)
+    assert parser('4microseconds') == datetime.timedelta(microseconds=4)
+
+    assert parser('1d5secs') == datetime.timedelta(1, 5)
+    assert parser('1d 5secs') == datetime.timedelta(1, 5)
+    assert parser('-1d5secs') == -datetime.timedelta(1, 5)
+    assert parser('- 1d 5secs') == -datetime.timedelta(1, 5)
+
+    assert parser('10:00:01') == datetime.timedelta(hours=10, seconds=1)
+    assert parser('-10:00:01') == datetime.timedelta(hours=-10, seconds=-1)
+
+    assert parser('1d 05:00') == datetime.timedelta(days=1, hours=5)
+    assert parser('+1d +05:00') == datetime.timedelta(days=1, hours=5)
+    assert parser('-1d 05:00') == datetime.timedelta(days=-1, hours=5)
+    assert parser('-1d +05:00') == datetime.timedelta(days=-1, hours=5)
+    assert parser('-1d -05:00') == datetime.timedelta(days=-1, hours=-5)
+    assert parser('-1d2h +05:00') == datetime.timedelta(days=-1, hours=-2 + 5)
+
+    with pytest.raises(ValueError, match='empty timedelta'):
+        parser('')
+
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('-')
+
+    with pytest.raises(ValueError, match='could not parse'):
+        parser('00')
 
 
 def test_path():
@@ -316,33 +434,33 @@ def test_bound():
     with pytest.raises(TypeError, match='upper and upper_inclusive'):
         Bound(Int(), upper=0, upper_inclusive=1)
 
-    parser = Bound(Int())
+    parser = Int().bound()
 
     assert parser('0') == 0
     assert parser('-10') == -10
     assert parser('10') == 10
 
-    parser.lower_bound(0)
+    parser = Int().bound(lower=0)
     assert parser('10') == 10
     with pytest.raises(ValueError, match='should be greater than 0'):
         parser('-1')
     with pytest.raises(ValueError, match='should be greater than 0'):
         parser('0')
 
-    parser.lower_bound_inclusive(0)
+    parser = Int().bound(lower_inclusive=0)
     assert parser('10') == 10
     assert parser('0') == 0
     with pytest.raises(ValueError, match='should be greater or equal to 0'):
         parser('-1')
 
-    parser.upper_bound(10)
+    parser = Int().bound(upper=10)
     assert parser('5') == 5
     with pytest.raises(ValueError, match='should be lesser than 10'):
         parser('10')
     with pytest.raises(ValueError, match='should be lesser than 10'):
         parser('11')
 
-    parser.upper_bound_inclusive(10)
+    parser = Int().bound(upper_inclusive=10)
     assert parser('5') == 5
     assert parser('10') == 10
     with pytest.raises(ValueError, match='should be lesser or equal to 10'):

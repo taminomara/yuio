@@ -105,6 +105,7 @@ you can register your own types and parsers:
 
 import abc
 import argparse
+import datetime
 import enum
 import pathlib
 import re
@@ -139,18 +140,7 @@ V = _t.TypeVar('V')
 Sz = _t.TypeVar('Sz', bound=_t.Sized)
 Cmp = _t.TypeVar('Cmp', bound=_Comparable)
 E = _t.TypeVar('E', bound=enum.Enum)
-
 TU = _t.TypeVar('TU', bound=tuple)
-T1 = _t.TypeVar('T1')
-T2 = _t.TypeVar('T2')
-T3 = _t.TypeVar('T3')
-T4 = _t.TypeVar('T4')
-T5 = _t.TypeVar('T5')
-T6 = _t.TypeVar('T6')
-T7 = _t.TypeVar('T7')
-T8 = _t.TypeVar('T8')
-T9 = _t.TypeVar('T9')
-T10 = _t.TypeVar('T10')
 
 
 class ParsingError(ValueError, argparse.ArgumentTypeError):
@@ -285,6 +275,77 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
         return self.describe_value(value) or str(value)
+
+    def bound(
+        self: 'Parser[Cmp]',
+        *,
+        lower: _t.Optional[Cmp] = None,
+        lower_inclusive: _t.Optional[Cmp] = None,
+        upper: _t.Optional[Cmp] = None,
+        upper_inclusive: _t.Optional[Cmp] = None
+    ) -> 'Bound[Cmp]':
+        """Check that value is upper- or lower-bound by some constraints.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return Bound(
+            self,
+            lower=lower,
+            lower_inclusive=lower_inclusive,
+            upper=upper,
+            upper_inclusive=upper_inclusive,
+        )
+
+    def bound_len(
+        self: 'Parser[Sz]',
+        *,
+        lower: _t.Optional[int] = None,
+        lower_inclusive: _t.Optional[int] = None,
+        upper: _t.Optional[int] = None,
+        upper_inclusive: _t.Optional[int] = None
+    ) -> 'BoundLen[Sz]':
+        """Check that length of a value is upper- or lower-bound
+        by some constraints.
+
+        See :class:`BoundLen` for more info.
+
+        """
+
+        return BoundLen(
+            self,
+            lower=lower,
+            lower_inclusive=lower_inclusive,
+            upper=upper,
+            upper_inclusive=upper_inclusive,
+        )
+
+    def one_of(
+        self: 'Parser[T]',
+        values: _t.Collection[T],
+        /
+    ) -> 'OneOf[T]':
+        """Check that the parsed value is one of the given set of values.
+
+        See :class:`OneOf` for more info.
+
+        """
+
+        return OneOf(self, values)
+
+    def regex(
+        self: 'Parser[str]',
+        regex: _t.Union[str, re.Pattern],
+        /
+    ) -> 'Regex':
+        """Check that the parsed value matches the given regular expression.
+
+        See :class:`Regex` for more info.
+
+        """
+
+        return Regex(self, regex)
 
 
 class Str(Parser[str]):
@@ -437,7 +498,7 @@ class Enum(Parser[E]):
 
     """
 
-    def __init__(self, enum_type: _t.Type[E]):
+    def __init__(self, enum_type: _t.Type[E], /):
         super().__init__()
 
         self._enum_type: _t.Type[E] = enum_type
@@ -475,7 +536,7 @@ class Optional(Parser[_t.Optional[T]]):
 
     """
 
-    def __init__(self, inner: Parser[T]):
+    def __init__(self, inner: Parser[T], /):
         super().__init__()
 
         self._inner: Parser[T] = inner
@@ -724,6 +785,8 @@ class Dict(Parser[_t.Dict[K, V]]):
         self,
         key: Parser[K],
         value: Parser[V],
+        /,
+        *,
         delimiter: _t.Optional[str] = None,
         pair_delimiter: str = ':'
     ):
@@ -733,7 +796,7 @@ class Dict(Parser[_t.Dict[K, V]]):
             raise ValueError('empty delimiter')
         self._delimiter = delimiter
 
-        self._inner = Pair(key, value, pair_delimiter)
+        self._inner = Pair(key, value, delimiter=pair_delimiter)
 
     def parse(self, value: str, /) -> _t.Dict[K, V]:
         return self.parse_many(value.split(self._delimiter))
@@ -785,6 +848,8 @@ class Pair(Parser[_t.Tuple[K, V]]):
         self,
         key: Parser[K],
         value: Parser[V],
+        /,
+        *,
         delimiter: _t.Optional[str] = ':'
     ):
         super().__init__()
@@ -843,7 +908,11 @@ class Tuple(Parser[TU]):
 
     """
 
-    def __init__(self, *parsers: Parser[_t.Any], delimiter: _t.Optional[str] = None):
+    def __init__(
+        self,
+        *parsers: Parser[_t.Any],
+        delimiter: _t.Optional[str] = None
+    ):
         super().__init__()
 
         if len(parsers) == 0:
@@ -902,6 +971,165 @@ class Tuple(Parser[TU]):
         return delimiter.join(desc)
 
 
+class DateTime(Parser[datetime.datetime]):
+    """Parse a date in ISO ('YYYY-MM-DD HH:MM:SS') format.
+
+    """
+
+    def parse(self, value: str, /) -> datetime.datetime:
+        try:
+            return datetime.datetime.fromisoformat(value)
+        except ValueError:
+            raise ParsingError(f'could not parse value {value!r} as a datetime')
+
+    def parse_config(self, value: _t.Any, /) -> datetime.datetime:
+        if isinstance(value, datetime.datetime):
+            return value
+        elif isinstance(value, str):
+            return self.parse(value)
+        else:
+            raise ParsingError(f'expected a datetime')
+
+    def validate(self, value: datetime.datetime, /):
+        pass
+
+
+class Date(Parser[datetime.date]):
+    """Parse a date in ISO ('YYYY-MM-DD') format.
+
+    """
+
+    def parse(self, value: str, /) -> datetime.date:
+        try:
+            return datetime.date.fromisoformat(value)
+        except ValueError:
+            raise ParsingError(f'could not parse value {value!r} as a date')
+
+    def parse_config(self, value: _t.Any, /) -> datetime.date:
+        if isinstance(value, datetime.datetime):
+            return value.date()
+        elif isinstance(value, datetime.date):
+            return value
+        elif isinstance(value, str):
+            return self.parse(value)
+        else:
+            raise ParsingError(f'expected a date')
+
+    def validate(self, value: datetime.date, /):
+        pass
+
+
+class Time(Parser[datetime.time]):
+    """Parse a date in ISO ('HH:MM:SS') format.
+
+    """
+
+    def parse(self, value: str, /) -> datetime.time:
+        try:
+            return datetime.time.fromisoformat(value)
+        except ValueError:
+            raise ParsingError(f'could not parse value {value!r} as a time')
+
+    def parse_config(self, value: _t.Any, /) -> datetime.time:
+        if isinstance(value, datetime.datetime):
+            return value.time()
+        elif isinstance(value, datetime.time):
+            return value
+        elif isinstance(value, str):
+            return self.parse(value)
+        else:
+            raise ParsingError(f'expected a time')
+
+    def validate(self, value: datetime.time, /):
+        pass
+
+
+class TimeDelta(Parser[datetime.timedelta]):
+    """Parse a time delta.
+
+    """
+
+    _UNITS_MAP = (
+        ('days', ('d', 'day', 'days')),
+        ('seconds', ('s', 'sec', 'secs', 'second', 'seconds')),
+        ('microseconds', ('us', 'u', 'micro', 'micros', 'microsecond', 'microseconds')),
+        ('milliseconds', ('ms', 'l', 'milli', 'millis', 'millisecond', 'milliseconds')),
+        ('minutes', ('m', 'min', 'mins', 'minute', 'minutes')),
+        ('hours', ('h', 'hr', 'hrs', 'hour', 'hours')),
+        ('weeks', ('w', 'week', 'weeks')),
+    )
+
+    _UNITS = {unit: name for name, units in _UNITS_MAP for unit in units}
+
+    _TIMEDELTA_RE = re.compile(
+        r'^'
+        r'(?:([+-]?)\s*((?:\d+\s*[a-z]+\s*)+))?'
+        r'(?:([+-]?)\s*(\d\d:\d\d(?::\d\d(?:\.\d{3}\d{3}?)?)?))?'
+        r'$',
+        re.IGNORECASE,
+    )
+
+    _COMPONENT_RE = re.compile(
+        r'(\d+)\s*([a-z]+)\s*'
+    )
+
+    def parse(self, value: str, /) -> datetime.timedelta:
+        value = value.strip()
+
+        if not value:
+            raise ParsingError('got an empty timedelta')
+
+        if match := self._TIMEDELTA_RE.match(value):
+            c_sign_s, components_s, t_sign_s, time_s = match.groups()
+        else:
+            raise ParsingError(
+                f'could not parse value {value!r} as a timedelta'
+            )
+
+        c_sign_s = -1 if c_sign_s == '-' else 1
+        t_sign_s = -1 if t_sign_s == '-' else 1
+
+        kwargs = dict.fromkeys(
+            ('days', 'seconds', 'microseconds', 'milliseconds',
+             'minutes', 'hours', 'weeks'),
+            0
+        )
+
+        if components_s:
+            for (num, unit) in self._COMPONENT_RE.findall(components_s):
+                if unit_key := self._UNITS.get(unit.lower()):
+                    kwargs[unit_key] += int(num)
+                else:
+                    raise ParsingError(
+                        f'could not parse value {value!r} as a timedelta: '
+                        f'unknown unit {unit!r}'
+                    )
+
+        timedelta = c_sign_s * datetime.timedelta(**kwargs)
+
+        if time_s:
+            time = datetime.time.fromisoformat(time_s)
+            timedelta += t_sign_s * datetime.timedelta(
+                hours=time.hour,
+                minutes=time.minute,
+                seconds=time.second,
+                microseconds=time.microsecond
+            )
+
+        return timedelta
+
+    def parse_config(self, value: _t.Any, /) -> datetime.timedelta:
+        if isinstance(value, datetime.timedelta):
+            return value
+        elif isinstance(value, str):
+            return self.parse(value)
+        else:
+            raise ParsingError(f'expected a timedelta')
+
+    def validate(self, value: datetime.timedelta, /):
+        pass
+
+
 class Path(Parser[pathlib.Path]):
     """Parse a file system path, return a :class:`pathlib.Path`.
 
@@ -909,7 +1137,10 @@ class Path(Parser[pathlib.Path]):
 
     """
 
-    def __init__(self, extensions: _t.Optional[_t.Collection[str]] = None):
+    def __init__(
+        self,
+        extensions: _t.Optional[_t.Collection[str]] = None,
+    ):
         super().__init__()
 
         self._extensions = extensions
@@ -1010,6 +1241,7 @@ class _BoundImpl(Parser[T], _t.Generic[T, Cmp]):
     def __init__(
         self,
         inner: Parser[T],
+        /,
         *,
         lower: _t.Optional[Cmp] = None,
         lower_inclusive: _t.Optional[Cmp] = None,
@@ -1031,56 +1263,24 @@ class _BoundImpl(Parser[T], _t.Generic[T, Cmp]):
             raise TypeError(
                 'lower and lower_inclusive cannot be given at the same time')
         elif lower is not None:
-            self.lower_bound(lower)
+            self._lower = lower
+            self._lower_inclusive = False
         elif lower_inclusive is not None:
-            self.lower_bound_inclusive(lower_inclusive)
+            self._lower = lower_inclusive
+            self._lower_inclusive = True
 
         if upper is not None and upper_inclusive is not None:
             raise TypeError(
                 'upper and upper_inclusive cannot be given at the same time')
         elif upper is not None:
-            self.upper_bound(upper)
+            self._upper = upper
+            self._upper_inclusive = False
         elif upper_inclusive is not None:
-            self.upper_bound_inclusive(upper_inclusive)
+            self._upper = upper_inclusive
+            self._upper_inclusive = True
 
         self._mapper = mapper
         self._desc = desc
-
-    def lower_bound(self: _Self, lower: Cmp, /) -> _Self:
-        """Set lower bound so we require that `value > lower`.
-
-        """
-
-        self._lower = lower
-        self._lower_inclusive = False
-        return self
-
-    def lower_bound_inclusive(self: _Self, lower: Cmp, /) -> _Self:
-        """Set lower bound so we require that `value >= lower`.
-
-        """
-
-        self._lower = lower
-        self._lower_inclusive = True
-        return self
-
-    def upper_bound(self: _Self, upper: Cmp, /) -> _Self:
-        """Set upper bound so we require that `value < upper`.
-
-        """
-
-        self._upper = upper
-        self._upper_inclusive = False
-        return self
-
-    def upper_bound_inclusive(self: _Self, upper: Cmp, /) -> _Self:
-        """Set upper bound so we require that `value <= upper`.
-
-        """
-
-        self._upper = upper
-        self._upper_inclusive = True
-        return self
 
     def parse(self, value: str, /) -> T:
         return self._inner.parse(value)
@@ -1153,6 +1353,7 @@ class Bound(_BoundImpl[Cmp, Cmp]):
     def __init__(
         self,
         inner: Parser[Cmp],
+        /,
         *,
         lower: _t.Optional[Cmp] = None,
         lower_inclusive: _t.Optional[Cmp] = None,
@@ -1180,6 +1381,7 @@ class BoundLen(_BoundImpl[Sz, int]):
     def __init__(
         self,
         inner: Parser[Sz],
+        /,
         *,
         lower: _t.Optional[int] = None,
         lower_inclusive: _t.Optional[int] = None,
@@ -1198,11 +1400,11 @@ class BoundLen(_BoundImpl[Sz, int]):
 
 
 class OneOf(Parser[T]):
-    """Check if the parsed value is one of the given set of values.
+    """Check that the parsed value is one of the given set of values.
 
     """
 
-    def __init__(self, inner: Parser[T], values: _t.Collection[T]):
+    def __init__(self, inner: Parser[T], values: _t.Collection[T], /):
         super().__init__()
 
         self._inner: Parser[T] = inner
@@ -1235,11 +1437,11 @@ class OneOf(Parser[T]):
 
 
 class Regex(Parser[str]):
-    """Check if the parsed value matches the given regular expression.
+    """Check that the parsed value matches the given regular expression.
 
     """
 
-    def __init__(self, inner: Parser[str], regex: _t.Union[str, re.Pattern]):
+    def __init__(self, inner: Parser[str], regex: _t.Union[str, re.Pattern], /):
         super().__init__()
 
         if isinstance(regex, str):
@@ -1390,4 +1592,31 @@ register_type_hint_conversion(
         Path()
         if isinstance(ty, type) and issubclass(ty, pathlib.PurePath)
         else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+    DateTime()
+    if origin is datetime.datetime
+    else None
+)
+
+register_type_hint_conversion(
+    lambda ty, origin, args:
+    Date()
+    if origin is datetime.date
+    else None
+)
+
+register_type_hint_conversion(
+    lambda ty, origin, args:
+    Time()
+    if origin is datetime.time
+    else None
+)
+
+register_type_hint_conversion(
+    lambda ty, origin, args:
+    TimeDelta()
+    if origin is datetime.timedelta
+    else None
 )
