@@ -84,6 +84,8 @@ import enum
 import typing as _t
 from dataclasses import dataclass
 
+import sys
+
 import yuio.parse
 
 
@@ -294,7 +296,9 @@ def _parse_collection_action(parser: yuio.parse.Parser):
         def __call__(self, _, namespace, values, option_string=None):
             assert values is not None and not isinstance(values, str)
 
-            setattr(namespace, self.dest, parser.parse_many(values))
+            parsed = parser.parse_many(values)
+            parser.validate(parsed)
+            setattr(namespace, self.dest, parsed)
 
     return Action
 
