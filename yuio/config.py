@@ -880,17 +880,20 @@ class Config:
             return value
 
     def __repr__(self):
-        return self.__repr('')
+        return self.__repr(0)
 
-    def __repr(self, prefix):
+    def __repr(self, indent):
         field_reprs = []
+        prefix = ' ' * indent
         for name in self.__fields:
             value = getattr(self, name, _Placeholders.MISSING)
             if isinstance(value, Config):
-                value_repr = value.__repr(prefix + '  ')
+                value_repr = value.__repr(indent + 2)
             else:
                 value_repr = repr(value)
             field_reprs.append(f'{prefix}  {name}={value_repr}')
         if field_reprs:
             field_desc = ",\n".join(field_reprs)
             return f'{self.__class__.__name__}(\n{field_desc}\n{prefix})'
+        else:
+            return f'{self.__class__.__name__}()'
