@@ -726,67 +726,6 @@ class Config:
                 )
 
     @classmethod
-    def load_from_parsed_file(
-        cls: _t.Type[_Self],
-        parsed: dict,
-        /,
-        *,
-        ignore_unknown_fields: bool = False
-    ) -> _Self:
-        """Load config from parsed config file.
-
-        This method takes a dict with arbitrary values that resulted from
-        parsing type-rich configs such as ``.yaml`` or ``.json``.
-
-        For example::
-
-            with open('conf.yaml') as file:
-                config = Config.load_from_parsed_file(yaml.load(file))
-
-        """
-
-        return cls.__load_from_parsed_file(parsed, ignore_unknown_fields, '')
-
-    @classmethod
-    def __load_from_parsed_file(
-        cls: _t.Type[_Self],
-        parsed: dict,
-        ignore_unknown_fields: bool = False,
-        field_prefix: str = '',
-    ) -> _Self:
-
-        if not isinstance(parsed, dict):
-            raise TypeError('config should be a dict')
-
-        fields = {}
-
-        if not ignore_unknown_fields:
-            for name in parsed:
-                if name not in cls.__fields:
-                    raise ValueError(
-                        f'unknown config field {field_prefix}{name}')
-
-        for name, field in cls.__fields.items():
-            if name in parsed:
-                if field.is_subconfig:
-                    fields[name] = field.ty.__load_from_parsed_file(
-                        parsed[name],
-                        ignore_unknown_fields,
-                        field_prefix=name + '.'
-                    )
-                else:
-                    assert field.parser is not None
-                    try:
-                        value = field.parser.parse_config(parsed[name])
-                        field.parser.validate(value)
-                    except yuio.parse.ParsingError as e:
-                        raise yuio.parse.ParsingError(
-                            f'can\'t parse {field_prefix}{name}: {e}') from None
-                    fields[name] = value
-
-        return cls(**fields)
-
-    @classmethod
     def load_from_json_file(
         cls: _t.Type[_Self],
         path: _t.Union[str, pathlib.Path],
@@ -871,6 +810,67 @@ class Config:
 
         return cls.load_from_parsed_file(
             loaded, ignore_unknown_fields=ignore_unknown_fields)
+
+    @classmethod
+    def load_from_parsed_file(
+        cls: _t.Type[_Self],
+        parsed: dict,
+        /,
+        *,
+        ignore_unknown_fields: bool = False
+    ) -> _Self:
+        """Load config from parsed config file.
+
+        This method takes a dict with arbitrary values that resulted from
+        parsing type-rich configs such as ``.yaml`` or ``.json``.
+
+        For example::
+
+            with open('conf.yaml') as file:
+                config = Config.load_from_parsed_file(yaml.load(file))
+
+        """
+
+        return cls.__load_from_parsed_file(parsed, ignore_unknown_fields, '')
+
+    @classmethod
+    def __load_from_parsed_file(
+        cls: _t.Type[_Self],
+        parsed: dict,
+        ignore_unknown_fields: bool = False,
+        field_prefix: str = '',
+    ) -> _Self:
+
+        if not isinstance(parsed, dict):
+            raise TypeError('config should be a dict')
+
+        fields = {}
+
+        if not ignore_unknown_fields:
+            for name in parsed:
+                if name not in cls.__fields:
+                    raise ValueError(
+                        f'unknown config field {field_prefix}{name}')
+
+        for name, field in cls.__fields.items():
+            if name in parsed:
+                if field.is_subconfig:
+                    fields[name] = field.ty.__load_from_parsed_file(
+                        parsed[name],
+                        ignore_unknown_fields,
+                        field_prefix=name + '.'
+                    )
+                else:
+                    assert field.parser is not None
+                    try:
+                        value = field.parser.parse_config(parsed[name])
+                        field.parser.validate(value)
+                    except yuio.parse.ParsingError as e:
+                        raise yuio.parse.ParsingError(
+                            f'can\'t parse {field_prefix}{name}: {e}') from None
+                    fields[name] = value
+
+        return cls(**fields)
 
     def __getattribute__(self, item):
         value = super().__getattribute__(item)
