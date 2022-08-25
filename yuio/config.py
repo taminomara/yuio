@@ -622,7 +622,7 @@ class Config:
         parser: argparse.ArgumentParser,
         prefix: str,
         dest_prefix: str,
-        supress_help: bool,
+        suppress_help: bool,
     ):
         if prefix:
             prefix += '-'
@@ -633,11 +633,12 @@ class Config:
 
             dest = dest_prefix + name
 
-            if supress_help or field.help is _Placeholders.DISABLED:
+            if suppress_help or field.help is _Placeholders.DISABLED:
                 help = argparse.SUPPRESS
-                supress_help = True
+                current_suppress_help = True
             else:
                 help = field.help
+                current_suppress_help = False
                 if field.default is not _Placeholders.MISSING:
                     assert field.parser is not None
                     default = field.parser.describe_value_or_def(field.default)
@@ -649,15 +650,16 @@ class Config:
                 flags = field.flags
 
             if field.is_subconfig:
-                if supress_help:
+                if current_suppress_help:
                     subgroup = group
                 else:
                     lines = help.split('\n\n', 1)
                     title = lines[0].replace('\n', ' ').rstrip('.') or name
                     desc = lines[1] if len(lines) > 1 else None
-                    subgroup = parser.add_argument_group(title, desc)  # type: ignore
+                    subgroup = parser.add_argument_group(
+                        title, desc)  # type: ignore
                 field.ty.__setup_arg_parser(
-                    subgroup, parser, flags[0], dest + '.', supress_help)
+                    subgroup, parser, flags[0], dest + '.', current_suppress_help)
                 continue
 
             assert field.parser is not None
@@ -689,7 +691,7 @@ class Config:
                 for flag in field.flags:
                     if flag.startswith('--'):
                         flag_neg = (prefix or '--') + 'no-' + flag[2:]
-                        if supress_help:
+                        if current_suppress_help:
                             help = argparse.SUPPRESS
                         else:
                             help = f'set {(prefix or "--") + flag[2:]} to `no`'
