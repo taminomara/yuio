@@ -14,7 +14,8 @@ Creating and loading configs
 ----------------------------
 
 Derive your config from the :class:`Config` base class. Inside of its body,
-define config fields using type annotations, just like dataclasses::
+define config fields using type annotations,
+just like :mod:`dataclasses`::
 
     class AppConfig(Config):
         #: trained model to execute
@@ -23,39 +24,20 @@ define config fields using type annotations, just like dataclasses::
         #: input data for the model
         data: pathlib.Path
 
-        #: enable or disable gpu (default is enable)
+        #: enable or disable gpu
         use_gpu: bool = True
 
-*Field names* are used to parse CLI arguments,
-configs and environment variables; *type hints* are used to derive
-:mod:`parsers <yuio.parse>`; *field comments* used as help messages
-for CLI arguments (only ``#:``-style comments are supported).
-
-:class:`Config` defines `__init__` that takes keyword arguments
-for fields. It also defines some constructors that load config from environment
-variables, files, and so on.
-
-Upon creation, all fields that aren't explicitly initialized and don't have
-defaults are considered missing. Accessing them
-will raise :class:`AttributeError`.
-
-Here's an example of loading our config from a file, command line arguments
-and environment variables::
+Then use config's constructors and the :meth:`~Config.update` method
+to load it from various sources::
 
     # Load config from a file.
-    # If file doesn't exist, return an empty config.
-    config = config.load_from_json_file(
-        '~/.my_app_cfg.json',
-        ignore_missing_file=True
-    )
+    config = config.load_from_json_file('~/.my_app_cfg.json')
 
     # Update config with values from env.
     config.update(AppConfig.load_from_env())
 
     # Update config with values from command line arguments.
     config.update(AppConfig.load_from_args())
-
-You can nest configs one into another. Nested configs are loaded recursively.
 
 .. autoclass:: Config
    :members:
@@ -72,6 +54,101 @@ If you need to override them, theres the :func:`field` function:
 .. autofunction:: field
 
 .. autofunction:: disabled
+
+
+Parsing environment variables
+-----------------------------
+
+You can load config from environment through :meth:`~Config.load_from_env`.
+
+Names of environment variables are just capitalized field names.
+Use the :func:`field` function to override them::
+
+    class Config(yuio.config.Config):
+        # Will be loaded from `SIGNAL`
+        signal: int
+
+        # Will be loaded from `PROCESS_ID`
+        pid: int = yuio.config.field(env='PROCESS_ID')
+
+In nested configs, environment variable names are prefixed with name
+of a field that contains the nested config::
+
+    class BigConfig(yuio.config.Config):
+        # `kill_cmd.signal` will be loaded from `KILL_CMD_SIGNAL`
+        kill_cmd: Config
+
+        # `copy_cmd_2.signal` will be loaded from `KILL_SIGNAL`
+        kill_cmd_2: Config = yuio.config.field(env='KILL')
+
+        # `kill_cmd_3.signal` will be loaded from `SIGNAL`
+        kill_cmd_3: Config = yuio.config.field(env='')
+
+You can also disable loading a field from an environment altogether::
+
+    class Config(yuio.config.Config):
+        # Will not be loaded from env
+        pid: int = yuio.config.field(env=yuio.config.disabled())
+
+To prefix all variable names with some string, pass the `prefix` parameter
+to the :meth:`~Config.load_from_env` function::
+
+        # config.kill_cmd.field will be loaded
+        # from `MY_APP_KILL_CMD_SIGNAL`
+        config = BigConfig.load_from_env('MY_APP')
+
+
+Parsing CLI arguments
+---------------------
+
+Flag names are derived from field names;
+in nested configs, flags are prefixed with name
+of a field that contains the nested config.
+Use the :func:`field` function to override them::
+
+    class Config(yuio.config.Config):
+        # Will be loaded from `--signal`
+        signal: int
+
+        # Will be loaded from `-p` or `--pid`
+        pid: int = yuio.config.field(flags=['-p', '--pid'])
+
+    class BigConfig(yuio.config.Config):
+        # `kill_cmd.signal` will be loaded from `--kill-cmd-signal`
+        kill_cmd: Config
+
+        # `copy_cmd_2.signal` will be loaded from `--kill-signal`
+        kill_cmd_2: Config = yuio.config.field(flags='--kill')
+
+        # `kill_cmd_3.signal` will be loaded from `--signal`
+        kill_cmd_3: Config = yuio.config.field(flags='')
+
+You can also disable loading a field from CLI flags::
+
+    class Config(yuio.config.Config):
+        # Will not be loaded from args
+        pid: int = yuio.config.field(flags=yuio.config.disabled())
+
+Help messages for the flags are parsed from the field comments.
+The :func:`field` function allows overriding them.
+
+If you need to make some flags required, use the `required` parameter
+of the :func:`field` function. It will only affect CLI parsing.
+
+Parsers for CLI argument values are derived from type hints.
+Use the `parser` parameter of the :func:`field` function
+to override them.
+
+Arguments with bool parsers and parsers that support
+:meth:`parsing collections <yuio.parse.Parser.supports_parse_many>`
+are handled to provide better CLI experience::
+
+    class Config(yuio.config.Config):
+        # Will create flags `--verbose` and `--no-verbose`.
+        verbose: bool = True
+
+        # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`
+        inputs: List[Path]
 
 """
 
@@ -266,18 +343,12 @@ def field(
         parser that will be used to parse env vars, configs and CLI arguments.
     :param help:
         help message that will be used in CLI argument description.
-        By default, this message is inferred from field's comments.
-        See :meth:`~Config.load_from_args` for more info.
     :param env:
         name of environment variable that will be used for this field.
-        See :meth:`~Config.load_from_env` for more info.
     :param flags:
-        name of a CLI flag (or a list of names) that will be used
-        for this field.
-        See :meth:`~Config.load_from_args` for more info.
+        list of names of CLI flags that will be used for this field.
     :param required:
-        set this argument to be required when configuring CLI parser.
-        See :meth:`~Config.load_from_args` for more info.
+        require this flag when parsing CLI arguments.
 
     """
 
@@ -305,6 +376,14 @@ def _parse_collection_action(parser: yuio.parse.Parser):
 
 class Config:
     """Base class for configs.
+
+    Pass keyword args to set fields, or pass another config to copy it::
+
+        Config(config1, config2, ..., field1=value1, ...)
+
+    Upon creation, all fields that aren't explicitly initialized
+    and don't have defaults are considered missing.
+    Accessing them will raise :class:`AttributeError`.
 
     """
 
@@ -404,7 +483,11 @@ class Config:
 
         self.update(kwargs)
 
-    def update(self: _Self, other: _t.Union[_t.Dict[str, _t.Any], _Self], /):
+    def update(
+        self: _Self,
+        other: _t.Union[_t.Dict[str, _t.Any], _Self],
+        /
+    ):
         """Update fields in this config with fields from another config.
 
         This function is similar to :meth:`dict.update`.
@@ -434,45 +517,11 @@ class Config:
                     setattr(self, name, ns[name])
 
     @classmethod
-    def load_from_env(cls: _t.Type[_Self], prefix: str = '') -> _Self:
+    def load_from_env(
+        cls: _t.Type[_Self],
+        prefix: str = ''
+    ) -> _Self:
         """Load config from environment variables.
-
-        Names of environment variables are just capitalized field names.
-        Use the :func:`field` function to override them::
-
-            class Config(yuio.config.Config):
-                # Will be loaded from `SIGNAL`
-                signal: int
-
-                # Will be loaded from `PROCESS_ID`
-                pid: int = yuio.config.field(env='PROCESS_ID')
-
-        In nested configs, environment variable names are prefixed with name
-        of a field that contains the nested config::
-
-            class BigConfig(yuio.config.Config):
-                # `kill_cmd.signal` will be loaded from `KILL_CMD_SIGNAL`
-                kill_cmd: Config
-
-                # `copy_cmd_2.signal` will be loaded from `KILL_SIGNAL`
-                kill_cmd_2: Config = yuio.config.field(env='KILL')
-
-                # `kill_cmd_3.signal` will be loaded from `SIGNAL`
-                kill_cmd_3: Config = yuio.config.field(env='')
-
-        You can also disable loading a field from an environment altogether::
-
-            class Config(yuio.config.Config):
-                # Will not be loaded from env
-                pid: int = yuio.config.field(env=yuio.config.disabled())
-
-        :param prefix:
-            Add this prefix to all environment variable names
-            before loading::
-
-                # config.kill_cmd.field will be loaded
-                # from `MY_APP_KILL_CMD_SIGNAL`
-                config = BigConfig.load_from_env('MY_APP')
 
         """
 
@@ -504,55 +553,6 @@ class Config:
         """Parse the given args and load config from them.
 
         If args are not given, will parse :data:`sys.argv`.
-
-        Flag names are derived from field names;
-        in nested configs, flags are prefixed with name
-        of a field that contains the nested config.
-        Use the :func:`field` function to override them::
-
-            class Config(yuio.config.Config):
-                # Will be loaded from `--signal`
-                signal: int
-
-                # Will be loaded from `-p` or `--pid`
-                pid: int = yuio.config.field(flags=['-p', '--pid'])
-
-            class BigConfig(yuio.config.Config):
-                # `kill_cmd.signal` will be loaded from `--kill-cmd-signal`
-                kill_cmd: Config
-
-                # `copy_cmd_2.signal` will be loaded from `--kill-signal`
-                kill_cmd_2: Config = yuio.config.field(flags='--kill')
-
-                # `kill_cmd_3.signal` will be loaded from `--signal`
-                kill_cmd_3: Config = yuio.config.field(flags='')
-
-        You can also disable loading a field from CLI flags::
-
-            class Config(yuio.config.Config):
-                # Will not be loaded from args
-                pid: int = yuio.config.field(flags=yuio.config.disabled())
-
-        Help messages for the flags are parsed from the field comments.
-        The :func:`field` function allows overriding them.
-
-        If you need to make some flags required, use the `required` parameter
-        of the :func:`field` function. It will only affect CLI parsing.
-
-        Parsers for CLI argument values are derived from type hints.
-        Use the `parser` parameter of the :func:`field` function
-        to override them.
-
-        Arguments with bool parsers and parsers that support
-        :meth:`parsing collections <yuio.parse.Parser.supports_parse_many>`
-        are handled to provide better CLI experience::
-
-            class Config(yuio.config.Config):
-                # Will create flags `--verbose` and `--no-verbose`.
-                verbose: bool = True
-
-                # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`
-                inputs: List[Path]
 
         """
 
