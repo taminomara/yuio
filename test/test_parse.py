@@ -237,7 +237,7 @@ def test_tuple():
     parser = Tuple(Int(), Int(), Str())
     assert parser('1 2 asd') == (1, 2, 'asd')
     assert parser('1 2 asd dsa') == (1, 2, 'asd dsa')
-    with pytest.raises(ValueError, match='could not parse'):
+    with pytest.raises(ValueError, match='expected 3 element'):
         parser('1 2')
     with pytest.raises(ValueError, match='as an int'):
         parser('1 dsa asd')

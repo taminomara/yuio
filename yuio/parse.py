@@ -75,14 +75,6 @@ Validators
 
 .. autoclass:: Bound
 
-   .. automethod:: lower_bound
-
-   .. automethod:: lower_bound_inclusive
-
-   .. automethod:: upper_bound
-
-   .. automethod:: upper_bound_inclusive
-
 .. autoclass:: BoundLen
 
 .. autoclass:: OneOf
@@ -928,7 +920,7 @@ class Tuple(Parser[TU]):
 
     def parse_many(self, value: _t.Sequence[str], /) -> TU:
         if len(value) != len(self._parsers):
-            raise ParsingError('could not parse a tuple')
+            raise ParsingError(f'expected {len(self._parsers)} element(s)')
 
         return _t.cast(TU, tuple(
             parser.parse(item) for parser, item in zip(self._parsers, value)
@@ -972,7 +964,7 @@ class Tuple(Parser[TU]):
 
 
 class DateTime(Parser[datetime.datetime]):
-    """Parse a date in ISO ('YYYY-MM-DD HH:MM:SS') format.
+    """Parse a datetime in ISO ('YYYY-MM-DD HH:MM:SS') format.
 
     """
 
