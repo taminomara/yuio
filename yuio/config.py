@@ -157,7 +157,7 @@ import os
 import pathlib
 import re
 import logging
-import enum
+import textwrap
 import typing as _t
 from dataclasses import dataclass
 
@@ -205,6 +205,8 @@ class _FieldSettings:
             help = self.help
         elif parsed_help is not None:
             help = parsed_help
+        elif is_subconfig and ty.__doc__:
+            help = textwrap.dedent(ty.__doc__.strip())
         else:
             help = ''
 
