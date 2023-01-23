@@ -509,6 +509,11 @@ class Config:
             return
 
         if isinstance(other, Config):
+            if (
+                self.__class__ not in other.__class__.__mro__
+                and other.__class__ not in self.__class__.__mro__
+            ):
+                raise TypeError('updating from an incompatible config')
             ns = other.__dict__
         elif isinstance(other, dict):
             ns = other
