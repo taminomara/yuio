@@ -296,6 +296,8 @@ def test_load_from_env_configured_name():
         class ErrConfig(Config):
             a: str = field(env='')
 
+        ErrConfig.load_from_env()
+
 
 def test_load_from_env_simple_parsers():
     os.environ.clear()
@@ -413,8 +415,21 @@ def test_load_from_env_subconfig_no_prefix():
 
     os.environ['SUB_A'] = 'xxx1'
     os.environ['A'] = 'xxx2'
+    os.environ['P_SUB_A'] = 'xxx3'
+    os.environ['P_A'] = 'xxx4'
+
     c = MyConfig.load_from_env()
     assert c.sub.a == 'xxx2'
+
+    c = MyConfig.load_from_env(prefix='P')
+    assert c.sub.a == 'xxx4'
+
+
+@typing.no_type_check
+def load_from_args(cls: typing.Type[T], args: str) -> T:
+    parser = argparse.ArgumentParser()
+    cls.setup_arg_parser(parser)
+    return cls.load_from_namespace(parser.parse_args(args.split()))
 
 
 def test_load_from_args():
@@ -423,12 +438,12 @@ def test_load_from_args():
         b: int
         c: int = 5
 
-    c = MyConfig.load_from_args('--a abc --b 10 --c 11'.split())
+    c = load_from_args(MyConfig, '--a abc --b 10 --c 11')
     assert c.a == 'abc'
     assert c.b == 10
     assert c.c == 11
 
-    c = MyConfig.load_from_args('--a abc'.split())
+    c = load_from_args(MyConfig, '--a abc')
     assert c.a == 'abc'
     with pytest.raises(AttributeError, match='is not configured'):
         _ = c.b
@@ -439,11 +454,11 @@ def test_load_from_args_disabled(capsys):
     class MyConfig(Config):
         a: str = field(default='def', flags=disabled())
 
-    c = MyConfig.load_from_args(''.split())
+    c = load_from_args(MyConfig, '')
     assert c.a == 'def'
 
     with pytest.raises(SystemExit):
-        MyConfig.load_from_args('--a asd'.split())
+        load_from_args(MyConfig, '--a asd')
     assert 'unrecognized arguments: --a asd' in capsys.readouterr().err
 
 
@@ -451,30 +466,34 @@ def test_load_from_args_configured_flags():
     class MyConfig(Config):
         a: str = field(flags=['-a', '--a-long'])
 
-    c = MyConfig.load_from_args('-a foo'.split())
+    c = load_from_args(MyConfig, '-a foo')
     assert c.a == 'foo'
 
-    c = MyConfig.load_from_args('--a-long bar'.split())
+    c = load_from_args(MyConfig, '--a-long bar')
     assert c.a == 'bar'
 
     with pytest.raises(TypeError, match='empty flag'):
         class _ErrConfig1(Config):
             a: str = field(flags='')
 
+        load_from_args(_ErrConfig1, '')
+
     with pytest.raises(TypeError, match='empty flag'):
         class _ErrConfig2(Config):
             a: str = field(flags=[''])
+
+        load_from_args(_ErrConfig2, '')
 
 
 def test_load_from_args_configured_required(capsys):
     class MyConfig(Config):
         a: str = field(default='def', required=True)
 
-    c = MyConfig.load_from_args('--a foo'.split())
+    c = load_from_args(MyConfig, '--a foo')
     assert c.a == 'foo'
 
     with pytest.raises(SystemExit):
-        MyConfig.load_from_args(''.split())
+        load_from_args(MyConfig, '')
     assert 'required: --a' in capsys.readouterr().err
 
 
@@ -485,12 +504,12 @@ def test_load_from_args_simple_parsers(capsys):
             parser=yuio.parse.OneOf(yuio.parse.Str(), ['x', 'y'])
         )
 
-    c = MyConfig.load_from_args('--b --s x'.split())
+    c = load_from_args(MyConfig, '--b --s x')
     assert c.b is True
     assert c.s is 'x'
 
     with pytest.raises(SystemExit):
-        MyConfig.load_from_args('--s z'.split())
+        load_from_args(MyConfig, '--s z')
     assert 'one of x, y' in capsys.readouterr().err
 
 
@@ -506,8 +525,7 @@ def test_load_from_args_collection_parsers():
         x: typing.Tuple[int, float]
         d: typing.Dict[str, int]
 
-    c = MyConfig.load_from_args(
-        '--b a:1 b:2 --s 1 2 3 5 3 --x 1 2 --d a:10 b:20'.split())
+    c = load_from_args(MyConfig, '--b a:1 b:2 --s 1 2 3 5 3 --x 1 2 --d a:10 b:20')
     assert c.b == [('a', 1), ('b', 2)]
     assert c.s == {1, 2, 3, 5}
     assert c.x == (1, 2.0)
@@ -521,7 +539,7 @@ def test_load_from_args_bool_flag():
         c: bool
         d: bool
 
-    c = MyConfig.load_from_args('--a --no-b --c yes --d no'.split())
+    c = load_from_args(MyConfig, '--a --no-b --c yes --d no')
     assert c.a is True
     assert c.b is False
     assert c.c is True
@@ -536,7 +554,7 @@ def test_load_from_args_subconfig():
         b: str
         sub: SubConfig
 
-    c = MyConfig.load_from_args('--b foo --sub-a bar'.split())
+    c = load_from_args(MyConfig, '--b foo --sub-a bar')
     assert c.b == 'foo'
     assert c.sub.a == 'bar'
 
@@ -549,7 +567,7 @@ def test_load_from_args_subconfig_custom_prefix():
         b: str
         sub: SubConfig = field(flags='--sub-sub')
 
-    c = MyConfig.load_from_args('--b foo --sub-sub-a bar'.split())
+    c = load_from_args(MyConfig, '--b foo --sub-sub-a bar')
     assert c.b == 'foo'
     assert c.sub.a == 'bar'
 
@@ -562,7 +580,7 @@ def test_load_from_args_subconfig_no_prefix():
         b: str
         sub: SubConfig = field(flags='')
 
-    c = MyConfig.load_from_args('--b foo --a bar'.split())
+    c = load_from_args(MyConfig, '--b foo --a bar')
     assert c.b == 'foo'
     assert c.sub.a == 'bar'
 
@@ -578,7 +596,9 @@ class DocConfig(Config):
 
 
 def test_load_from_args_help():
-    help = DocConfig.setup_arg_parser().format_help()
+    parser = argparse.ArgumentParser()
+    DocConfig.setup_arg_parser(parser)
+    help = parser.format_help()
     assert 'help for `sub`:' in help
     assert 'help for `a`.' in help
 
@@ -607,7 +627,7 @@ def test_load_from_parsed_file_unknown_fields():
         b: int
         c: int = 5
 
-    with pytest.raises(ValueError, match='unknown config field x'):
+    with pytest.raises(ValueError, match='unknown field x'):
         MyConfig.load_from_parsed_file(dict(a='abc', b=10, x=11))
 
 
@@ -643,7 +663,7 @@ def test_load_from_parsed_file_subconfig():
     assert c.b == 'abc'
     assert c.c.a == 'cde'
 
-    with pytest.raises(ValueError, match='unknown config field c.x'):
+    with pytest.raises(ValueError, match='unknown field c.x'):
         MyConfig.load_from_parsed_file(dict(b='abc', c=dict(x='cde')))
 
 
@@ -673,7 +693,7 @@ def test_load_from_json_file(tmp_path):
     assert c.b == 10
     assert c.c == 5
 
-    with pytest.raises(ValueError, match='unknown config field x'):
+    with pytest.raises(ValueError, match='unknown field x'):
         MyConfig.load_from_json_file(data_path_2)
 
     c = MyConfig.load_from_json_file(
@@ -711,7 +731,7 @@ def test_load_from_yaml_file(tmp_path):
     assert c.b == 10
     assert c.c == 5
 
-    with pytest.raises(ValueError, match='unknown config field x'):
+    with pytest.raises(ValueError, match='unknown field x'):
         MyConfig.load_from_yaml_file(data_path_2)
 
     c = MyConfig.load_from_yaml_file(
@@ -749,7 +769,7 @@ def test_load_from_toml_file(tmp_path):
     assert c.b == 10
     assert c.c == 5
 
-    with pytest.raises(ValueError, match='unknown config field x'):
+    with pytest.raises(ValueError, match='unknown field x'):
         MyConfig.load_from_toml_file(data_path_2)
 
     c = MyConfig.load_from_toml_file(
