@@ -161,8 +161,6 @@ import textwrap
 import typing as _t
 from dataclasses import dataclass
 
-import sys
-
 import yuio.parse
 from yuio._utils import DISABLED as _DISABLED, MISSING as _MISSING, Disabled as _Disabled, Missing as _Missing
 
@@ -564,24 +562,12 @@ class Config:
         return cls(**fields)
 
     @classmethod
-    def load_from_args(
-        cls: _t.Type[_Self],
-        args: _t.Optional[_t.List[str]] = None,
-        /
-    ) -> _Self:
-        """Parse the given args and load config from them.
-
-        If args are not given, will parse :data:`sys.argv`.
-
-        """
-
-        return cls.load_from_namespace(cls.setup_arg_parser().parse_args(args))
-
-    @classmethod
     def load_from_namespace(
         cls: _t.Type[_Self],
         namespace: argparse.Namespace,
-        /
+        /,
+        *,
+        ns_prefix: str = '',
     ) -> _Self:
         """Load config from parsed command line arguments.
 
@@ -590,7 +576,7 @@ class Config:
 
         """
 
-        return cls.__load_from_namespace(namespace, cls.__qualname__ + ':')
+        return cls.__load_from_namespace(namespace, ns_prefix + ':')
 
     @classmethod
     def __load_from_namespace(
@@ -618,21 +604,19 @@ class Config:
     @classmethod
     def setup_arg_parser(
         cls,
-        parser: _t.Optional[argparse.ArgumentParser] = None,
-        /
-    ) -> argparse.ArgumentParser:
-        """Add fields from this config as flags to an argument parser.
+        parser: argparse.ArgumentParser,
+        /,
+        *,
+        ns_prefix: str = '',
+    ):
+        """Add fields from this config to the given arguments parser.
 
-        If parser is not given, will create one.
+        :param ns_prefix:
+            add this prefix to ``dest``s of all argparse actions.
 
         """
 
-        if parser is None:
-            parser = argparse.ArgumentParser()
-
-        cls.__setup_arg_parser(parser, parser, '', cls.__qualname__ + ':', False)
-
-        return parser
+        cls.__setup_arg_parser(parser, parser, '', ns_prefix + ':', False)
 
     @classmethod
     def __setup_arg_parser(
