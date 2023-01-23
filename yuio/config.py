@@ -825,10 +825,13 @@ class Config:
             with open(path, 'r') as file:
                 loaded = parser(file.read())
         except Exception as e:
-            raise ValueError(f'invalid config {path}: {e}') from None
+            raise yuio.parse.ParsingError(f'invalid config {path}: {e}') from None
 
-        return cls.load_from_parsed_file(
-            loaded, ignore_unknown_fields=ignore_unknown_fields)
+        try:
+            return cls.load_from_parsed_file(
+                loaded, ignore_unknown_fields=ignore_unknown_fields)
+        except yuio.parse.ParsingError as e:
+            raise yuio.parse.ParsingError(f'invalid config {path}: {e}') from None
 
     @classmethod
     def load_from_parsed_file(
@@ -868,8 +871,8 @@ class Config:
         if not ignore_unknown_fields:
             for name in parsed:
                 if name not in cls.__get_fields():
-                    raise ValueError(
-                        f'unknown config field {field_prefix}{name}')
+                    raise yuio.parse.ParsingError(
+                        f'unknown field {field_prefix}{name}')
 
         for name, field in cls.__get_fields().items():
             if name in parsed:
