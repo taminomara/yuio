@@ -539,16 +539,16 @@ class Config:
 
         """
 
-        if prefix:
-            prefix += '_'
-
         fields = {}
 
         for name, field in cls.__fields.items():
             if field.env is _DISABLED:
                 continue
 
-            env = prefix + field.env
+            if prefix and field.env:
+                env = f'{prefix}_{field.env}'
+            else:
+                env = f'{prefix}{field.env}'
 
             if field.is_subconfig:
                 fields[name] = field.ty.load_from_env(prefix=env)
