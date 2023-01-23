@@ -290,6 +290,42 @@ class Parser(_t.Generic[T], abc.ABC):
             upper_inclusive=upper_inclusive,
         )
 
+    def gt(self: 'Parser[Cmp]', bound: Cmp, /) -> 'Bound[Cmp]':
+        """Check that value is greater then the given bound.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return self.bound(lower=bound)
+
+    def ge(self: 'Parser[Cmp]', bound: Cmp, /) -> 'Bound[Cmp]':
+        """Check that value is greater then or equal to the given bound.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return self.bound(lower_inclusive=bound)
+
+    def lt(self: 'Parser[Cmp]', bound: Cmp, /) -> 'Bound[Cmp]':
+        """Check that value is lesser then the given bound.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return self.bound(upper=bound)
+
+    def le(self: 'Parser[Cmp]', bound: Cmp, /) -> 'Bound[Cmp]':
+        """Check that value is lesser then or equal to the given bound.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return self.bound(upper_inclusive=bound)
+
     def bound_len(
         self: 'Parser[Sz]',
         *,
@@ -312,6 +348,49 @@ class Parser(_t.Generic[T], abc.ABC):
             upper=upper,
             upper_inclusive=upper_inclusive,
         )
+
+    def len_gt(self: 'Parser[Sz]', bound: int, /) -> 'BoundLen[Sz]':
+        """Check that length of the value is greater then
+        the given bound.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return self.bound_len(lower=bound)
+
+    def len_ge(self: 'Parser[Sz]', bound: int, /) -> 'BoundLen[Sz]':
+        """Check that length of the value is greater then or equal to
+        the given bound.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return self.bound_len(lower_inclusive=bound)
+
+    def len_lt(self: 'Parser[Sz]', bound: int, /) -> 'BoundLen[Sz]':
+        """Check that length of the value is lesser then
+        the given bound.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return self.bound_len(upper=bound)
+
+    def len_le(self: 'Parser[Sz]', bound: int, /) -> 'BoundLen[Sz]':
+        """Check that length of the value is lesser then or equal to
+        the given bound.
+
+        See :class:`Bound` for more info.
+
+        """
+
+        return self.bound_len(upper_inclusive=bound)
+
+    def len_eq(self: 'Parser[Sz]', bound: int, /) -> 'BoundLen[Sz]':
+        return self.bound_len(lower_inclusive=bound, upper_inclusive=bound)
 
     def one_of(
         self: 'Parser[T]',
