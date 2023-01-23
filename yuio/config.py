@@ -358,6 +358,19 @@ def field(
     )
 
 
+def inline(
+    help: _t.Optional[_t.Union[str, Disabled]] = None,
+) -> _t.Any:
+    """A shortcut for inlining nested configs.
+
+    Equivalent to calling :func:`field` with ``env`` and ``flags``
+    set to an empty string.
+
+    """
+
+    return field(help, env='', flags='')
+
+
 def _parse_collection_action(parser: yuio.parse.Parser):
     class Action(argparse.Action):
         def __call__(self, _, namespace, values, option_string=None):
