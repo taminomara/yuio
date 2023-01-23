@@ -611,8 +611,6 @@ class Optional(Parser[_t.Optional[T]]):
         self._inner: Parser[T] = inner
 
     def parse(self, value: str, /) -> _t.Optional[T]:
-        if not value:
-            return None
         return self._inner.parse(value)
 
     def parse_many(self, value: _t.Sequence[str], /) -> _t.Optional[T]:
