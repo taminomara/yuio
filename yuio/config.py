@@ -264,10 +264,6 @@ class _FieldSettings:
                 if flags[0] and not flags[0].startswith('--'):
                     raise TypeError(
                         f'{qualname} cannot have a short flag ')
-
-            if required:
-                raise TypeError(
-                    f'{qualname} cannot be required')
         elif parser is None:
             try:
                 parser = yuio.parse.from_type_hint(ty)
@@ -305,7 +301,6 @@ def field(
     help: _t.Optional[_t.Union[str, Disabled]] = None,
     env: _t.Optional[_t.Union[str, Disabled]] = None,
     flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
-    required: bool = False,
 ) -> _t.Any: pass
 
 
@@ -317,7 +312,6 @@ def field(
     help: _t.Optional[_t.Union[str, Disabled]] = None,
     env: _t.Optional[_t.Union[str, Disabled]] = None,
     flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
-    required: bool = False,
 ) -> T: pass
 
 
@@ -328,7 +322,6 @@ def field(
     help: _t.Optional[_t.Union[str, Disabled]] = None,
     env: _t.Optional[_t.Union[str, Disabled]] = None,
     flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
-    required: bool = False,
 ) -> T:
     """Field descriptor, used for additional configuration of fields.
 
@@ -342,8 +335,6 @@ def field(
         name of environment variable that will be used for this field.
     :param flags:
         list of names of CLI flags that will be used for this field.
-    :param required:
-        require this flag when parsing CLI arguments.
 
     """
 
@@ -353,7 +344,6 @@ def field(
         help=help,
         env=env,
         flags=flags,
-        required=required,
     ))
 
 
