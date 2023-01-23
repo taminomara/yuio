@@ -123,8 +123,9 @@ def test_int_enum():
 
 def test_optional():
     parser = Optional(Int())
-    assert parser('') is None
     assert parser('1') == 1
+    with pytest.raises(ValueError):
+        parser.parse('')
     with pytest.raises(ValueError):
         parser.parse('asd')
     assert parser.parse_config(None) is None

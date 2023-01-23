@@ -591,11 +591,11 @@ def ask(
     /,
     *args,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    default: _t.Union[T, Disabled] = DISABLED,
+    default: _t.Any = DISABLED,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
     hidden: bool = False,
-) -> T:
+) -> _t.Any:
     """Ask user to provide an input, parse it and return a value.
 
     If launched in a non-interactive environment, returns the default
