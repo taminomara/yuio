@@ -1,6 +1,0 @@
-{
-  "stats": ["LL", "ROC", "AUC", "MSE"],
-  "executor": {
-    "threads": 16
-  }
-}

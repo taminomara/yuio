@@ -392,6 +392,10 @@ DEFAULT_COLORS = {
     'magenta': FORE_MAGENTA,
     'cyan': FORE_CYAN,
     'normal': FORE_NORMAL,
+
+    'cli-flag': FORE_GREEN,
+    'cli-default': FORE_MAGENTA,
+    'cli-section': FORE_BLUE,
 }
 
 
