@@ -251,7 +251,7 @@ from logging import LogRecord
 import sys
 
 import yuio.parse
-
+from yuio._utils import Disabled, DISABLED
 
 T = _t.TypeVar('T')
 _PROGRESS = _t.Union[None, int, float, _t.Tuple[int, int], _t.Tuple[int, int, int]]
@@ -562,11 +562,24 @@ def ask(
     /,
     *args,
     parser: yuio.parse.Parser[T],
-    default: _t.Optional[T] = None,
+    default: _t.Union[T, Disabled] = DISABLED,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
     hidden: bool = False,
 ) -> T: ...
+
+
+@_t.overload
+def ask(
+    msg: str,
+    /,
+    *args,
+    parser: yuio.parse.Parser[T],
+    default: None,
+    input_description: _t.Optional[str] = None,
+    default_description: _t.Optional[str] = None,
+    hidden: bool = False,
+) -> _t.Optional[T]: ...
 
 
 def ask(
@@ -574,7 +587,7 @@ def ask(
     /,
     *args,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    default: _t.Optional[T] = None,
+    default: _t.Union[T, Disabled] = DISABLED,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
     hidden: bool = False,
@@ -615,7 +628,7 @@ def ask(
     """
 
     if not is_interactive():
-        if default is not None:
+        if default is not DISABLED:
             return default
         else:
             raise UserIoError(
@@ -632,7 +645,7 @@ def ask(
     if input_description:
         desc += f' ({input_description})'
 
-    if default is not None:
+    if default is not DISABLED:
         if default_description is None and hasattr(parser, 'describe_value'):
             default_description = getattr(parser, 'describe_value')(default)
         if default_description is None:
@@ -660,7 +673,7 @@ def ask(
                     answer = input()
             except EOFError:
                 raise UserIoError('unexpected end of input') from None
-            if not answer and default is not None:
+            if not answer and default is not DISABLED:
                 return default
             elif not answer:
                 s.error('Input is required.')

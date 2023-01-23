@@ -315,6 +315,17 @@ def field(
 ) -> T: pass
 
 
+@_t.overload
+def field(
+    default: None,
+    *,
+    parser: _t.Optional[yuio.parse.Parser[T]] = None,
+    help: _t.Optional[_t.Union[str, Disabled]] = None,
+    env: _t.Optional[_t.Union[str, Disabled]] = None,
+    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
+) -> _t.Optional[T]: pass
+
+
 def field(
     default: _t.Any = _MISSING,
     *,
@@ -322,7 +333,7 @@ def field(
     help: _t.Optional[_t.Union[str, Disabled]] = None,
     env: _t.Optional[_t.Union[str, Disabled]] = None,
     flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
-) -> T:
+) -> _t.Any:
     """Field descriptor, used for additional configuration of fields.
 
     :param default:
@@ -338,13 +349,13 @@ def field(
 
     """
 
-    return _t.cast(_t.Any, _FieldSettings(
+    return _FieldSettings(
         default=default,
         parser=parser,
         help=help,
         env=env,
         flags=flags,
-    ))
+    )
 
 
 def _parse_collection_action(parser: yuio.parse.Parser):
