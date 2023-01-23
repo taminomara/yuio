@@ -164,21 +164,14 @@ from dataclasses import dataclass
 import sys
 
 import yuio.parse
+from yuio._utils import DISABLED as _DISABLED, MISSING as _MISSING, Disabled as _Disabled, Missing as _Missing
 
 
 T = _t.TypeVar('T')
 
 
-class _Placeholders(enum.Enum):
-    DISABLED = '<disabled>'
-    MISSING = '<missing>'
-
-    def __repr__(self):
-        return self.value
-
-
 #: Type of a :func:`disabled` placeholder.
-Disabled = _t.Literal[_Placeholders.DISABLED]
+Disabled = _Disabled
 
 
 def disabled() -> Disabled:
@@ -186,12 +179,12 @@ def disabled() -> Disabled:
 
     """
 
-    return _Placeholders.DISABLED
+    return _DISABLED
 
 
 @dataclass(frozen=True)
 class _FieldSettings:
-    default: _t.Any = _Placeholders.MISSING
+    default: _t.Any = _MISSING
     parser: _t.Optional[yuio.parse.Parser] = None
     help: _t.Optional[_t.Union[str, Disabled]] = None
     env: _t.Optional[_t.Union[str, Disabled]] = None
@@ -225,8 +218,8 @@ class _FieldSettings:
                 f'{qualname} got an empty env variable name')
 
         flags: _t.Union[_t.List[str], Disabled]
-        if self.flags is _Placeholders.DISABLED:
-            flags = _Placeholders.DISABLED
+        if self.flags is _DISABLED:
+            flags = _DISABLED
         elif self.flags is None:
             flags = ['--' + name.replace('_', '-')]
         elif isinstance(self.flags, str):
@@ -236,7 +229,7 @@ class _FieldSettings:
                 raise TypeError(
                     f'{qualname} should have at least one flag')
             flags = self.flags
-        if flags is not _Placeholders.DISABLED:
+        if flags is not _DISABLED:
             for flag in flags:
                 if flag and not flag.startswith('-'):
                     raise TypeError(
@@ -253,7 +246,7 @@ class _FieldSettings:
         required = self.required
 
         if is_subconfig:
-            if default is not _Placeholders.MISSING:
+            if default is not _MISSING:
                 raise TypeError(
                     f'{qualname} cannot have defaults')
 
@@ -261,7 +254,7 @@ class _FieldSettings:
                 raise TypeError(
                     f'{qualname} cannot have parsers')
 
-            if flags is not _Placeholders.DISABLED:
+            if flags is not _DISABLED:
                 if len(flags) > 1:
                     raise TypeError(
                         f'{qualname} cannot have multiple flags')
@@ -316,7 +309,7 @@ def field(
 
 @_t.overload
 def field(
-    default: _t.Union[T, _t.Literal[_Placeholders.MISSING]] = _Placeholders.MISSING,
+    default: _t.Union[T, _Missing] = _MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Optional[_t.Union[str, Disabled]] = None,
@@ -327,7 +320,7 @@ def field(
 
 
 def field(
-    default: _t.Any = _Placeholders.MISSING,
+    default: _t.Any = _MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Optional[_t.Union[str, Disabled]] = None,
@@ -420,7 +413,7 @@ class Config:
             if name.startswith('_'):
                 continue
 
-            value = cls.__dict__.get(name, _Placeholders.MISSING)
+            value = cls.__dict__.get(name, _MISSING)
             if isinstance(value, _FieldSettings):
                 field = value
             else:
@@ -513,7 +506,7 @@ class Config:
             if name in ns:
                 if field.is_subconfig:
                     getattr(self, name).update(ns[name])
-                elif ns[name] is not _Placeholders.MISSING:
+                elif ns[name] is not _MISSING:
                     setattr(self, name, ns[name])
 
     @classmethod
@@ -531,7 +524,7 @@ class Config:
         fields = {}
 
         for name, field in cls.__fields.items():
-            if field.env is _Placeholders.DISABLED:
+            if field.env is _DISABLED:
                 continue
 
             env = prefix + field.env
@@ -583,7 +576,7 @@ class Config:
         fields = {}
 
         for name, field in cls.__fields.items():
-            if field.flags is _Placeholders.DISABLED:
+            if field.flags is _DISABLED:
                 continue
 
             dest = prefix + name
@@ -628,18 +621,18 @@ class Config:
             prefix += '-'
 
         for name, field in cls.__fields.items():
-            if field.flags is _Placeholders.DISABLED:
+            if field.flags is _DISABLED:
                 continue
 
             dest = dest_prefix + name
 
-            if suppress_help or field.help is _Placeholders.DISABLED:
+            if suppress_help or field.help is _DISABLED:
                 help = argparse.SUPPRESS
                 current_suppress_help = True
             else:
                 help = field.help
                 current_suppress_help = False
-                if field.default is not _Placeholders.MISSING:
+                if field.default is not _MISSING:
                     assert field.parser is not None
                     default = field.parser.describe_value_or_def(field.default)
                     help += f' [default: {default}]'
@@ -680,7 +673,7 @@ class Config:
                 mutex_group.add_argument(
                     *flags,
                     type=field.parser,
-                    default=_Placeholders.MISSING,
+                    default=_MISSING,
                     help=help,
                     metavar=metavar,
                     dest=dest,
@@ -697,7 +690,7 @@ class Config:
                             help = f'set {(prefix or "--") + flag[2:]} to `no`'
                         mutex_group.add_argument(
                             flag_neg,
-                            default=_Placeholders.MISSING,
+                            default=_MISSING,
                             help=help,
                             dest=dest,
                             action='store_false',
@@ -706,7 +699,7 @@ class Config:
             elif field.parser.supports_parse_many():
                 group.add_argument(
                     *flags,
-                    default=_Placeholders.MISSING,
+                    default=_MISSING,
                     help=help,
                     metavar=metavar,
                     dest=dest,
@@ -718,7 +711,7 @@ class Config:
                 group.add_argument(
                     *flags,
                     type=field.parser,
-                    default=_Placeholders.MISSING,
+                    default=_MISSING,
                     help=help,
                     metavar=metavar,
                     dest=dest,
@@ -874,7 +867,7 @@ class Config:
 
     def __getattribute__(self, item):
         value = super().__getattribute__(item)
-        if value is _Placeholders.MISSING:
+        if value is _MISSING:
             raise AttributeError(f'{item} is not configured')
         else:
             return value
@@ -886,7 +879,7 @@ class Config:
         field_reprs = []
         prefix = ' ' * indent
         for name in self.__fields:
-            value = getattr(self, name, _Placeholders.MISSING)
+            value = getattr(self, name, _MISSING)
             if isinstance(value, Config):
                 value_repr = value.__repr(indent + 2)
             else:

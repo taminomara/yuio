@@ -104,9 +104,7 @@ import re
 import typing as _t
 
 
-_TO_DASH_CASE_RE = re.compile(
-    r'(?<!^)((?=[A-Z]([^A-Z]|$))|(?<=\d)(?=[A-Z])|(?<!\d)(?=\d))'
-)
+import yuio._utils
 
 
 class _Comparable(_t.Protocol):
@@ -229,7 +227,7 @@ class Parser(_t.Generic[T], abc.ABC):
 
         return (
             self.describe()
-            or _TO_DASH_CASE_RE.sub('-', self.__class__.__name__).lower()
+            or yuio._utils.to_dash_case(self.__class__.__name__)
         )
 
     def describe_many(self) -> _t.Optional[str]:
@@ -250,7 +248,7 @@ class Parser(_t.Generic[T], abc.ABC):
 
         return (
             self.describe_many()
-            or _TO_DASH_CASE_RE.sub('-', self.__class__.__name__).lower()
+            or yuio._utils.to_dash_case(self.__class__.__name__)
         )
 
     def describe_value(self, value: T, /) -> _t.Optional[str]:
