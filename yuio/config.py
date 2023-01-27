@@ -748,7 +748,9 @@ class Config:
     ) -> _Self:
         """Load config from a ``.toml`` file.
 
-        This requires `toml <https://pypi.org/project/toml/>`_ package
+        This requires
+        `tomllib <https://docs.python.org/3/library/tomllib.html>`_ or
+        `toml <https://pypi.org/project/toml/>`_ package
         to be installed.
 
         """
@@ -756,7 +758,10 @@ class Config:
         try:
             import toml
         except ImportError:
-            raise ImportError('toml is not available')
+            try:
+                import tomllib as toml  # type: ignore
+            except ImportError:
+                raise ImportError('toml is not available')
 
         return cls.__load_from_file(
             path, toml.loads, ignore_unknown_fields, ignore_missing_file)
