@@ -35,6 +35,58 @@ class _SubApp:
     is_primary: bool = False
 
 
+@_t.overload
+def app(
+    *,
+    prog: _t.Optional[str] = None,
+    usage: _t.Optional[str] = None,
+    help: _t.Optional[str] = None,
+    description: _t.Optional[str] = None,
+    epilog: _t.Optional[str] = None,
+) -> _t.Callable[[Command], 'App']:
+    pass
+
+
+@_t.overload
+def app(
+    command: Command,
+    /,
+    *,
+    prog: _t.Optional[str] = None,
+    usage: _t.Optional[str] = None,
+    help: _t.Optional[str] = None,
+    description: _t.Optional[str] = None,
+    epilog: _t.Optional[str] = None,
+) -> 'App':
+    pass
+
+
+def app(
+    command: _t.Optional[Command] = None,
+    /,
+    *,
+    prog: _t.Optional[str] = None,
+    usage: _t.Optional[str] = None,
+    help: _t.Optional[str] = None,
+    description: _t.Optional[str] = None,
+    epilog: _t.Optional[str] = None,
+):
+    def registrar(command: Command) -> App:
+        return App(
+            command,
+            prog=prog,
+            usage=usage,
+            help=help,
+            description=description,
+            epilog=epilog,
+        )
+
+    if command is None:
+        return registrar
+    else:
+        return registrar(command)
+
+
 class App:
     @dataclass(frozen=True)
     class SubCommand:
