@@ -264,6 +264,18 @@ class _FieldSettings:
                 raise TypeError(
                     f'can\'t derive parser for {qualname}: {e}') from None
 
+        if parser is not None:
+            origin = _t.get_origin(ty)
+            args = _t.get_args(ty)
+
+            is_optional = (
+                default is None
+                or origin is _t.Union and len(args) == 2 and type(None) in args
+            )
+
+            if is_optional and not isinstance(parser, yuio.parse.Optional):
+                parser = yuio.parse.Optional(parser)
+
         return _Field(
             default,
             parser,
