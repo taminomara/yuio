@@ -554,7 +554,7 @@ def ask(
     default: _t.Optional[str] = None,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
-    hidden: bool = False,
+    secure_input: bool = False,
 ) -> str: ...
 
 
@@ -567,7 +567,7 @@ def ask(
     default: _t.Union[T, Disabled] = DISABLED,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
-    hidden: bool = False,
+    secure_input: bool = False,
 ) -> T: ...
 
 
@@ -580,7 +580,7 @@ def ask(
     default: None,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
-    hidden: bool = False,
+    secure_input: bool = False,
 ) -> _t.Optional[T]: ...
 
 
@@ -592,7 +592,7 @@ def ask(
     default: _t.Any = DISABLED,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
-    hidden: bool = False,
+    secure_input: bool = False,
 ) -> _t.Any:
     """Ask user to provide an input, parse it and return a value.
 
@@ -622,7 +622,7 @@ def ask(
     :param default_description:
         a string that describes the `default` value. By default,
         inferred from the given parser and `repr` of the default value.
-    :param hidden:
+    :param secure_input:
         if enabled, treats input as password, and uses secure input methods.
         This option also hides errors from the parser, because they may contain
         user input.
@@ -669,7 +669,7 @@ def ask(
         while True:
             s.question(msg)
             try:
-                if hidden:
+                if secure_input:
                     answer = getpass.getpass(prompt='')
                 else:
                     answer = input()
@@ -682,8 +682,8 @@ def ask(
             else:
                 try:
                     return parser(answer)
-                except Exception as e:
-                    if hidden:
+                except yuio.parse.ParsingError as e:
+                    if secure_input:
                         s.error('Error: invalid value.')
                     else:
                         s.error(f'Error: {e}.')
