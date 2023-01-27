@@ -222,5 +222,5 @@ def sh(
         env=env,
         input=input,
         level=level,
-        text=text,  # type: ignore
+        text=text,
     )
