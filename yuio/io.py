@@ -886,6 +886,58 @@ class SuspendLogging:
         self.resume()
 
 
+class _IterTask(_t.Generic[T]):
+    def __init__(self, collection: _t.Collection[T], task: 'Task'):
+        self._iter = iter(collection)
+        self._task = task
+
+        self._i = 0
+        self._len = len(collection)
+
+    def __next__(self) -> T:
+        self._task.progress((self._i, self._len))
+        if self._i < self._len:
+            self._i += 1
+        return self._iter.__next__()
+
+    def __iter__(self) -> '_IterTask[T]':
+        return self
+
+    def __enter__(self):
+        self._task.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._task.__exit__(exc_type, exc_val, exc_tb)
+
+
+class _IterTaskLong(_t.Generic[T]):
+    def __init__(self, collection: _t.Collection[T], task: 'Task'):
+        self._iter = iter(collection)
+        self._task = task
+
+        self._i = 0
+        self._len = len(collection)
+        self._p = -1
+
+    def __next__(self) -> T:
+        p = self._i * 100 // self._len
+        if p > self._p:
+            self._task.progress(p / 100)
+            self._p = p
+        if self._i < self._len:
+            self._i += 1
+        return self._iter.__next__()
+
+    def __iter__(self) -> '_IterTaskLong[T]':
+        return self
+
+    def __enter__(self):
+        self._task.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._task.__exit__(exc_type, exc_val, exc_tb)
+
+
 class Task:
     """A class for indicating progress of some task.
 
@@ -893,15 +945,10 @@ class Task:
     create subtasks, set task's progress or add a comment about
     what's currently being done within a task.
 
-    This class can be used as a context manager:
-
-    Example::
+    This class can be used as a context manager::
 
         with task('Fetching data') as t:
-            for i, url in enumerate(urls):
-                t.progress((i, len(urls)))
-                t.comment(url)
-                url.fetch()
+            data = requests.get(url)
 
     This will output the following:
 
@@ -951,6 +998,30 @@ class Task:
         """
 
         _HANDLER_IMPL.set_progress(self, progress)
+
+    def iter(self, collection: _t.Collection[T]) -> _t.Iterable[T]:
+        """Helper for updating progress automatically
+        while iterating over a collection.
+
+        For example::
+
+            with Task('Fetching data') as t:
+                for url in t.iter(urls):
+                    url.fetch()
+
+        This will output the following:
+
+        .. code-block:: text
+
+           Fetching data [---->          ] (3 / 10)
+
+        """
+
+        if len(collection) <= 100:
+            return _IterTask(collection, self)
+        else:
+            # updating progress bar 100 times is slow...
+            return _IterTaskLong(collection, self)
 
     def comment(self, comment: _t.Optional[str], /):
         """Set a comment for a task.
