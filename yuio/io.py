@@ -691,6 +691,54 @@ def ask(
                         s.error(f'Error: {e}.')
 
 
+@_t.overload
+def ask_yn(
+    msg: str,
+    /,
+    *args,
+    default: _t.Union[bool, Disabled] = DISABLED,
+) -> bool: ...
+
+
+@_t.overload
+def ask_yn(
+    msg: str,
+    /,
+    *args,
+    default: None,
+) -> _t.Optional[bool]: ...
+
+
+def ask_yn(
+    msg: str,
+    /,
+    *args,
+    default: _t.Union[bool, None, Disabled] = DISABLED,
+) -> _t.Any:
+    """Shortcut to :func:`ask` for asking yes/no questions.
+
+    """
+
+    return ask(msg, *args, parser=yuio.parse.Bool(), default=default)
+
+
+def wait_for_user(
+    msg: str = 'Press enter to continue',
+    /,
+    *args,
+):
+    """A simple function to wait for user to press enter.
+
+    """
+
+    if not is_interactive():
+        return
+
+    with SuspendLogging() as s:
+        s.question(msg + '\n', *args)
+        input()
+
+
 def detect_editor() -> _t.Optional[str]:
     """Detect an editor executable.
 
