@@ -419,7 +419,16 @@ class Config:
             if base is not cls and hasattr(base, '_Config__get_fields'):
                 fields.update(getattr(base, '_Config__get_fields')())
 
-        types = _t.get_type_hints(cls)
+        try:
+            types = _t.get_type_hints(cls)
+        except NameError as e:
+            if '<locals>' in cls.__qualname__:
+                raise NameError(
+                    f'{e}. '
+                    f'Note: forward references do not work inside functions '
+                    f'(see https://github.com/python/typing/issues/797)'
+                ) from None
+            raise
 
         for name in cls.__annotations__:
             if name.startswith('_'):
