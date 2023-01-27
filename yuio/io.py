@@ -543,9 +543,7 @@ def is_interactive() -> bool:
     """
 
     return _HANDLER_IMPL._stream.isatty() \
-           and os.environ.get('TERM', None) != 'dumb' \
-           and 'NON_INTERACTIVE' not in os.environ \
-           and 'CI' not in os.environ
+        and os.environ.get('TERM', None) != 'dumb'
 
 
 @_t.overload
