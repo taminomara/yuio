@@ -9,22 +9,17 @@
 This module implements user-friendly input and output on top of the python's
 standard logging library.
 
-Setup
------
+Configuration
+-------------
 
-Yuio configures itself upon import, so you can just start using it.
-
-By default, yuio determines logging level
-and whether ANSI color codes should be used
-based on state of the output stream
-and the following environment variables:
+Yuio configures itself upon import using environment variables:
 
 - ``DEBUG``: print debug-level messages,
 - ``QUIET``: only print warnings, errors, and input prompts,
 - ``NO_COLORS``: disable colored output,
 - ``FORCE_COLORS``: enable colored output.
 
-You can change defaults by calling the :func:`setup` function.
+You can override this process by calling the :func:`setup` function.
 
 .. autofunction:: setup
 
@@ -82,6 +77,9 @@ List of all tags that are available by default:
 - ``bold``, ``b``, ``dim``: font styles,
 - ``red``, ``green``, ``yellow``, ``blue``, ``magenta``, ``cyan``, ``normal``:
   font colors.
+
+Custom colors
+-------------
 
 You can add more tags or change colors of the existing ones by supplying
 the `colors` argument to the :func:`setup` function. This argument
@@ -417,19 +415,14 @@ def setup(
 ):
     """Initial setup of the logging facilities.
 
-    This function should be called
-
     :param level:
-        log output level. If not given, will check ``DEBUG`` and ``QUIET``
-        environment variables to determine an appropriate logging level.
+        log output level.
     :param stream:
         a stream where to output messages. Uses `stderr` by default.
     :param formatter:
         formatter for log messages.
     :param use_colors:
-        use ANSI escape sequences to color the output. If not given, will
-        check ``NO_COLORS`` and ``FORCE_COLORS`` environment variables,
-        and also if the given `stderr` is a tty stream.
+        use ANSI escape sequences to color the output.
     :param colors:
         mapping from tag name or logging level name to a :class:`Color`.
         Logging level names and tag names are all lowercase.
@@ -463,7 +456,7 @@ def setup(
 
 
 def log(level: int, msg: str, /, *args, **kwargs):
-    """Log a debug message.
+    """Log a message.
 
     """
 
