@@ -392,7 +392,7 @@ DEFAULT_COLORS = {
     'normal': FORE_NORMAL,
 
     'cli-flag': FORE_GREEN,
-    'cli-default': FORE_MAGENTA,
+    'cli-default': FORE_NORMAL,
     'cli-section': FORE_BLUE,
 }
 

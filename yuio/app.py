@@ -392,14 +392,14 @@ class _HelpFormatter(argparse.HelpFormatter):
     def format_help(self):
         help = super().format_help().strip('\n')
         help = re.sub(r'^usage:', '<c:cli-section>usage:</c>', help)
-        help = re.sub(r':</c>:\n', r':</c>\n', help, flags=re.MULTILINE)
+        help = re.sub(r':@@section</c>:$', r':</c>\n', help, flags=re.MULTILINE)
         help = re.sub(r'(?<=\W)(-[a-zA-Z0-9]|--[a-zA-Z0-9-_]+)\b', r'<c:cli-flag>\g<0></c>', help, flags=re.MULTILINE)
-        help = re.sub(r'\[default: .*?]\n', r'<c:cli-default>\g<0></c>', help, flags=re.MULTILINE)
+        help = re.sub(r'\[default: (.*?)]$', r'<c:cli-default>[default: <c:code>\1</c>]</c>', help, flags=re.MULTILINE)
         help = help.replace('\n  <subcommand>\n', '\n')
         return yuio.io._HANDLER_IMPL._colorize(help, yuio.io.Color()) + '\n'
 
     def start_section(self, heading: _t.Optional[str]):
-        heading = f'<c:cli-section>{heading}:</c>'
+        heading = f'<c:cli-section>{heading}:@@section</c>'
         super().start_section(heading)
 
     def _iter_indented_subactions(self, action):
