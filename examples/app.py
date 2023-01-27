@@ -46,7 +46,7 @@ def main(_subcommand, config: Config = yuio.config.inline()):
     yuio.io.debug('global config is loaded: %s', CONFIG)
 
 
-@main.subcommand
+@main.subcommand(aliases=['r'])
 def run(
     #: trained model to execute
     model: pathlib.Path,

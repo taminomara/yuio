@@ -395,6 +395,7 @@ class _HelpFormatter(argparse.HelpFormatter):
         help = re.sub(r':@@section</c>:$', r':</c>\n', help, flags=re.MULTILINE)
         help = re.sub(r'(?<=\W)(-[a-zA-Z0-9]|--[a-zA-Z0-9-_]+)\b', r'<c:cli-flag>\g<0></c>', help, flags=re.MULTILINE)
         help = re.sub(r'\[default: (.*?)]$', r'<c:cli-default>[default: <c:code>\1</c>]</c>', help, flags=re.MULTILINE)
+        help = re.sub(r'`\b.*?\b`', r'<c:code>\g<0></c>', help, flags=re.MULTILINE)
         help = help.replace('\n  <subcommand>\n', '\n')
         return yuio.io._HANDLER_IMPL._colorize(help, yuio.io.Color()) + '\n'
 
