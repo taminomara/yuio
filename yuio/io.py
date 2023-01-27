@@ -563,7 +563,7 @@ def ask(
     msg: str,
     /,
     *args,
-    parser: yuio.parse.Parser[T],
+    parser: _t.Union[yuio.parse.Parser[T], _t.Type[T]],
     default: _t.Union[T, Disabled] = DISABLED,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
@@ -576,7 +576,7 @@ def ask(
     msg: str,
     /,
     *args,
-    parser: yuio.parse.Parser[T],
+    parser: _t.Union[yuio.parse.Parser[T], _t.Type[T]],
     default: None,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
@@ -588,7 +588,7 @@ def ask(
     msg: str,
     /,
     *args,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
+    parser: _t.Union[yuio.parse.Parser, _t.Type] = yuio.parse.Str(),
     default: _t.Any = DISABLED,
     input_description: _t.Optional[str] = None,
     default_description: _t.Optional[str] = None,
@@ -613,7 +613,7 @@ def ask(
         arguments for prompt formatting.
     :param parser:
         how to parse and verify the input. See :mod:`yuio.parse` for more
-        info.
+        info. Can also accept a type hint and turn it into a parser.
     :param default:
         if given, this value will be returned if no input is provided.
     :param input_description:
@@ -637,19 +637,21 @@ def ask(
                 'can\'t interact with user in non-interactive environment'
             )
 
-    if parser is None:
-        parser = _t.cast(yuio.parse.Parser[T], str)
+    if not isinstance(parser, yuio.parse.Parser):
+        parser = yuio.parse.from_type_hint(parser)
+    if default is None and not isinstance(parser, yuio.parse.Optional):
+        parser = yuio.parse.Optional(parser)
 
     desc = ''
 
-    if input_description is None and hasattr(parser, 'describe'):
-        input_description = getattr(parser, 'describe')()
+    if input_description is None:
+        input_description = parser.describe()
     if input_description:
         desc += f' ({input_description})'
 
     if default is not DISABLED:
-        if default_description is None and hasattr(parser, 'describe_value'):
-            default_description = getattr(parser, 'describe_value')(default)
+        if default_description is None:
+            default_description = parser.describe_value(default)
         if default_description is None:
             default_description = str(default)
         if default_description:
