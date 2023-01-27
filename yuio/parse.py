@@ -416,6 +416,13 @@ class Parser(_t.Generic[T], abc.ABC):
 
         return Regex(self, regex)
 
+    def optional(self) -> 'Optional[T]':
+        """Enable parsing optional values.
+
+        """
+
+        return Optional(self)
+
 
 class Str(Parser[str]):
     """Parser for str values.
@@ -423,8 +430,6 @@ class Str(Parser[str]):
     Applies a `modifiers` to the value, in order they are given.
 
     """
-
-    _Self = _t.TypeVar('_Self', bound='Str')
 
     def __init__(self, *modifiers: _t.Callable[[str], str]):
         super().__init__()
@@ -446,45 +451,40 @@ class Str(Parser[str]):
     def validate(self, value: str, /):
         pass
 
-    def lower(self: _Self) -> _Self:
+    def lower(self) -> 'Str':
         """Applies :meth:`str.lower` to all parsed strings.
 
         """
 
-        self._modifiers.append(str.lower)
-        return self
+        return Str(*self._modifiers, str.lower)
 
-    def upper(self: _Self) -> _Self:
+    def upper(self) -> 'Str':
         """Applies :meth:`str.upper` to all parsed strings.
 
         """
 
-        self._modifiers.append(str.upper)
-        return self
+        return Str(*self._modifiers, str.upper)
 
-    def strip(self: _Self, char: _t.Optional[str] = None, /) -> _Self:
+    def strip(self, char: _t.Optional[str] = None, /) -> 'Str':
         """Applies :meth:`str.strip` to all parsed strings.
 
         """
 
-        self._modifiers.append(lambda s: s.strip(char))
-        return self
+        return Str(*self._modifiers, lambda s: s.strip(char))
 
-    def lstrip(self: _Self, char: _t.Optional[str] = None, /) -> _Self:
+    def lstrip(self, char: _t.Optional[str] = None, /) -> 'Str':
         """Applies :meth:`str.lstrip` to all parsed strings.
 
         """
 
-        self._modifiers.append(lambda s: s.lstrip(char))
-        return self
+        return Str(*self._modifiers, lambda s: s.lstrip(char))
 
-    def rstrip(self: _Self, char: _t.Optional[str] = None, /) -> _Self:
+    def rstrip(self, char: _t.Optional[str] = None, /) -> 'Str':
         """Applies :meth:`str.rstrip` to all parsed strings.
 
         """
 
-        self._modifiers.append(lambda s: s.rstrip(char))
-        return self
+        return Str(*self._modifiers, lambda s: s.rstrip(char))
 
 
 class Int(Parser[int]):
