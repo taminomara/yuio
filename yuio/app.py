@@ -11,6 +11,7 @@ This module expands on :mod:`yuio.config` to build CLI apps.
 import argparse
 import dataclasses
 import inspect
+import logging
 import re
 import textwrap
 import types
@@ -23,7 +24,10 @@ import yuio.parse
 from yuio._utils import MISSING
 
 
-@dataclass
+Command = _t.Callable[..., None]
+
+
+@dataclass(frozen=True)
 class _SubApp:
     app: 'App'
     name: str
@@ -32,9 +36,45 @@ class _SubApp:
 
 
 class App:
+    @dataclass(frozen=True)
+    class SubCommand:
+        """Data about an invoked subcommand.
+
+        """
+
+        #: Name of the invoked subcommand.
+        #:
+        #: If subcommand was invoked by alias,
+        #: this will contains the primary command name.
+        name: str
+
+        #: Subcommand of this command that was invoked.
+        #:
+        #: If this command has no subcommands, or subcommand was not invoked,
+        #: this will be empty.
+        subcommand: _t.Optional['App.SubCommand']
+
+        # Internal, do not use
+        _data: _t.Any
+
+        def __call__(self):
+            """Execute this subcommand.
+
+            """
+
+            if self._data is not None:
+                should_invoke_subcommand = self._data._run(self.subcommand)
+                if should_invoke_subcommand is None:
+                    should_invoke_subcommand = True
+            else:
+                should_invoke_subcommand = True
+
+            if should_invoke_subcommand and self.subcommand is not None:
+                self.subcommand()
+
     def __init__(
         self,
-        command: _t.Optional[_t.Union[_t.Callable[..., None], _t.Type['Command']]] = None,
+        command: _t.Optional[Command] = None,
         prog: _t.Optional[str] = None,
         usage: _t.Optional[str] = None,
         help: _t.Optional[str] = None,
@@ -69,16 +109,13 @@ class App:
 
         self._sub_apps: _t.Dict[str, _SubApp] = {}
 
-        self.command: _t.Type[Command]
         if command is None:
-            self.command = Command
-        elif isinstance(command, type) and issubclass(command, Command):
-            self.command = command
+            self._config_type: _t.Type[yuio.config.Config] = yuio.config.Config
         elif callable(command):
-            self.command = _command_from_callable(command)
+            self._config_type = _command_from_callable(command)
         else:
             raise TypeError(
-                f'expected yuio.app.Command or function, got {command}')
+                f'expected a function, got {command}')
 
     @_t.overload
     def subcommand(
@@ -92,20 +129,28 @@ class App:
         help: _t.Optional[str] = None,
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
-    ) -> _t.Callable[[_t.Union[_t.Callable[..., None], _t.Type['Command']]], 'App']:
+    ) -> _t.Callable[[Command], 'App']:
         pass
 
     @_t.overload
     def subcommand(
         self,
-        cb: _t.Union[_t.Callable[..., None], _t.Type['Command']],
+        cb: Command,
         /,
+        *,
+        name: _t.Optional[str] = None,
+        aliases: _t.Optional[_t.List[str]] = None,
+        prog: _t.Optional[str] = None,
+        usage: _t.Optional[str] = None,
+        help: _t.Optional[str] = None,
+        description: _t.Optional[str] = None,
+        epilog: _t.Optional[str] = None,
     ) -> 'App':
         pass
 
     def subcommand(
         self,
-        cb_or_name: _t.Union[str, _t.Callable[..., None], _t.Type['Command'], None] = None,
+        cb_or_name: _t.Union[str, Command, None] = None,
         /,
         *,
         name: _t.Optional[str] = None,
@@ -122,7 +167,7 @@ class App:
         else:
             cb = cb_or_name
 
-        def registrar(cb):
+        def registrar(cb: Command) -> App:
             app = App(
                 prog=prog,
                 usage=usage,
@@ -155,21 +200,25 @@ class App:
             command()
         except argparse.ArgumentTypeError as e:
             parser.error(str(e))
+        except Exception as e:
+            yuio.io.exception('<c:failure>Error: %s</c>', e)
+            exit(1)
 
-    def _load_from_namespace(self, namespace: argparse.Namespace) -> 'Command':
+    def _load_from_namespace(self, namespace: argparse.Namespace) -> 'App.SubCommand':
         return self.__load_from_namespace(namespace, 'app')
 
-    def __load_from_namespace(self, namespace: argparse.Namespace, ns_prefix: str) -> 'Command':
-        command = self.command.load_from_namespace(namespace, ns_prefix=ns_prefix)
+    def __load_from_namespace(self, namespace: argparse.Namespace, ns_prefix: str) -> 'App.SubCommand':
+        data = self._config_type.load_from_namespace(namespace, ns_prefix=ns_prefix)
+        subcommand = None
 
         if ns_prefix + '@subcommand' in namespace:
             name = getattr(namespace, ns_prefix + '@subcommand')
             sub_app = self._sub_apps[name]
-            command._subcommand = sub_app.app.__load_from_namespace(
+            subcommand = dataclasses.replace(sub_app.app.__load_from_namespace(
                 namespace, f'{ns_prefix}/{sub_app.name}'
-            )
+            ), name=sub_app.name)
 
-        return command
+        return App.SubCommand('', subcommand, _data=data)
 
     def _setup_arg_parser(self) -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(
@@ -187,7 +236,7 @@ class App:
         return parser
 
     def __setup_arg_parser(self, parser: argparse.ArgumentParser, ns_prefix: str):
-        self.command.setup_arg_parser(parser, ns_prefix=ns_prefix)
+        self._config_type.setup_arg_parser(parser, ns_prefix=ns_prefix)
 
         if self._sub_apps:
             subparsers = parser.add_subparsers(
@@ -217,25 +266,13 @@ class App:
                 )
 
 
-class Command(yuio.config.Config):
-    _Self = _t.TypeVar('_Self', bound='Command')
-
-    _subcommand: _t.Optional['Command'] = None
-
-    def run(self):
-        pass
-
-    def __call__(self):
-        self.run()
-        if self._subcommand is not None:
-            self._subcommand()
-
-
-def _command_from_callable(cb: _t.Callable[..., None]) -> _t.Type[Command]:
+def _command_from_callable(cb: Command) -> _t.Type[yuio.config.Config]:
     sig = inspect.signature(cb)
 
     dct = {}
     annotations = {}
+
+    accepts_subcommand = False
 
     try:
         docs = yuio._utils.find_docs(cb)
@@ -252,6 +289,13 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> _t.Type[Command]:
                 'positional-only and variadic arguments are not supported'
             )
 
+        if name.startswith('_'):
+            if name == '_subcommand':
+                accepts_subcommand = True
+                continue
+            else:
+                raise TypeError(f'unknown special param {name}')
+
         if param.default is not param.empty:
             field = param.default
         else:
@@ -263,22 +307,32 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> _t.Type[Command]:
         if name in docs:
             field = dataclasses.replace(field, help=docs[name])
 
+        if param.annotation is param.empty:
+            raise TypeError(f'param {name} requires type annotation')
+
         dct[name] = field
         annotations[name] = param.annotation
 
-    dct['run'] = _command_from_callable_run_impl(cb, list(annotations.keys()))
+    dct['_run'] = _command_from_callable_run_impl(
+        cb, list(annotations.keys()), accepts_subcommand
+    )
     dct['__annotations__'] = annotations
+    dct['__module__'] = getattr(cb, '__module__', None)
+    dct['__doc__'] = getattr(cb, '__doc__', None)
 
     return types.new_class(
-        f'FnCommand__{cb.__name__}',
-        (Command,),
+        cb.__name__,
+        (yuio.config.Config,),
         exec_body=lambda ns: ns.update(dct)
     )
 
 
-def _command_from_callable_run_impl(cb: _t.Callable[..., None], params: _t.List[str]):
-    def run(self):
-        cb(**{name: getattr(self, name) for name in params})
+def _command_from_callable_run_impl(cb: Command, params: _t.List[str], accepts_subcommand):
+    def run(self, subcommand):
+        kw = {name: getattr(self, name) for name in params}
+        if accepts_subcommand:
+            kw['_subcommand'] = subcommand
+        return cb(**kw)
     return run
 
 
