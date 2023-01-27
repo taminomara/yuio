@@ -1,29 +1,27 @@
 import time
-import random
 import threading
 
 import yuio.io
 
 
 def install_package(package: str, task: yuio.io.Task):
-    time.sleep(random.randint(0, 30) / 10)
-
-    sleep_time = random.randint(2, 7) / 10
+    time.sleep(0.7)
 
     with task.subtask(package) as pkg_task:
+        # Set task's comment.
         pkg_task.comment('downloading')
 
         for i in range(10):
+            # Set progress as percentage.
             pkg_task.progress(i / 10)
-            time.sleep(sleep_time)
 
-            if random.randint(1, 70) <= 5:
-                yuio.io.warning('Warning: connection lost, retrying')
+            time.sleep(0.5)
 
+        # Clear progres, update task's comment.
         pkg_task.progress(None)
         pkg_task.comment('installing')
 
-        time.sleep(random.randint(10, 30) / 10)
+        time.sleep(1.3)
 
 
 if __name__ == '__main__':
@@ -41,7 +39,7 @@ if __name__ == '__main__':
                  'to demonstrate you progressbars!')
 
     with yuio.io.Task('Installing packages') as task:
-        time.sleep(random.randint(5, 20) / 10)
+        time.sleep(0.5)
 
         threads = []
 
@@ -50,6 +48,8 @@ if __name__ == '__main__':
                 target=install_package, args=(package, task))
             thread.start()
             threads.append(thread)
+
+            time.sleep(0.3)
 
         for thread in threads:
             thread.join()

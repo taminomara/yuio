@@ -436,32 +436,31 @@ def test_bound():
         Bound(Int(), upper=0, upper_inclusive=1)
 
     parser = Int().bound()
-
     assert parser('0') == 0
     assert parser('-10') == -10
     assert parser('10') == 10
 
-    parser = Int().bound(lower=0)
+    parser = Int().gt(0)
     assert parser('10') == 10
     with pytest.raises(ValueError, match='should be greater than 0'):
         parser('-1')
     with pytest.raises(ValueError, match='should be greater than 0'):
         parser('0')
 
-    parser = Int().bound(lower_inclusive=0)
+    parser = Int().ge(0)
     assert parser('10') == 10
     assert parser('0') == 0
     with pytest.raises(ValueError, match='should be greater or equal to 0'):
         parser('-1')
 
-    parser = Int().bound(upper=10)
+    parser = Int().lt(10)
     assert parser('5') == 5
     with pytest.raises(ValueError, match='should be lesser than 10'):
         parser('10')
     with pytest.raises(ValueError, match='should be lesser than 10'):
         parser('11')
 
-    parser = Int().bound(upper_inclusive=10)
+    parser = Int().le(10)
     assert parser('5') == 5
     assert parser('10') == 10
     with pytest.raises(ValueError, match='should be lesser or equal to 10'):

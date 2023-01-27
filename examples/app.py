@@ -1,6 +1,4 @@
-import enum
 import pathlib
-from typing import *
 
 import yuio.app
 import yuio.config
@@ -11,6 +9,9 @@ import yuio.io
 class Config(yuio.config.Config):
     """global configuration
 
+    global options are loaded from `app_config.json`,
+    from environment variables, and from CLI arguments.
+
     """
 
     #: number of threads to use for executing model
@@ -20,19 +21,28 @@ class Config(yuio.config.Config):
     gpu: bool = True
 
 
+# We will load values into this variable once the program starts.
 CONFIG = Config()
 
 
-@yuio.app.App
-def main(config: Config):
+@yuio.app.app
+def main(_subcommand, config: Config = yuio.config.inline()):
     """some ml stuff idk im not into ml
 
     """
 
+    # Load global config:
+
+    # From file...
     config_file = pathlib.Path(__file__).parent / 'app_config.json'
     CONFIG.update(Config.load_from_json_file(config_file))
+
+    # From environment variables...
     CONFIG.update(Config.load_from_env('YUIO'))
+
+    # From CLI arguments...
     CONFIG.update(config)
+
     yuio.io.debug('global config is loaded: %s', CONFIG)
 
 
@@ -40,9 +50,8 @@ def main(config: Config):
 def run(
     #: trained model to execute
     model: pathlib.Path,
-
     #: input data for the model
-    data: pathlib.Path
+    data: pathlib.Path,
 ):
     """apply trained model to a dataset.
 
@@ -52,37 +61,17 @@ def run(
 
 
 @main.subcommand(aliases=['t'])
-class Train(yuio.app.Command):
+def train(
+    #: input data for the model
+    data: pathlib.Path,
+    #: output data for the model
+    output: pathlib.Path = pathlib.Path('trained.bin'),
+):
     """train model on a dataset.
 
     """
 
-    #: input data for the model
-    data: pathlib.Path = yuio.config.field(
-        parser=yuio.parse.Path(extensions=['.bin']),
-        flags=['-i', '--input'],
-    )
-
-    #: output data for the model
-    output: Optional[pathlib.Path] = yuio.config.field(
-        parser=yuio.parse.Path(extensions=['.model']),
-        flags=['-o', '--output'],
-        default=None,
-    )
-
-    class ModelStat(enum.Enum):
-        LL = enum.auto()
-        ROC = enum.auto()
-        AUC = enum.auto()
-        F1 = enum.auto()
-        MAE = enum.auto()
-        MSE = enum.auto()
-
-    #: list of model statistics that needs to be exported
-    stats: FrozenSet[ModelStat] = frozenset({ModelStat.MSE, ModelStat.AUC})
-
-    def run(self):
-        yuio.io.info('training model <c:code>%s</c> on data <c:code>%s</c>', self.output, self.data)
+    yuio.io.info('training model <c:code>%s</c> on data <c:code>%s</c>', output, data)
 
 
 if __name__ == '__main__':
