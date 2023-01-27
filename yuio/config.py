@@ -405,7 +405,7 @@ class Config:
             return cls.__fields
 
         try:
-            docs = cls.__find_docs()
+            docs = yuio._utils.find_docs(cls)
         except Exception:
             logging.getLogger('yuio.internal').exception(
                 'unable to get documentation for class %s',

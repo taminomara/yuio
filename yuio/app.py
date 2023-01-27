@@ -237,6 +237,15 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> _t.Type[Command]:
     dct = {}
     annotations = {}
 
+    try:
+        docs = yuio._utils.find_docs(cb)
+    except Exception:
+        logging.getLogger('yuio.internal').exception(
+            'Unable to get documentation for %s',
+            cb.__qualname__,
+        )
+        docs = {}
+
     for name, param in sig.parameters.items():
         if param.kind not in (param.POSITIONAL_OR_KEYWORD, param.KEYWORD_ONLY):
             raise TypeError(
@@ -251,6 +260,8 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> _t.Type[Command]:
             field = yuio.config.field(field)
         if field.default is MISSING:
             field = dataclasses.replace(field, required=True)
+        if name in docs:
+            field = dataclasses.replace(field, help=docs[name])
 
         dct[name] = field
         annotations[name] = param.annotation
