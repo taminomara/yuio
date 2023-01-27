@@ -155,7 +155,6 @@ are handled to provide better CLI experience::
 import argparse
 import os
 import pathlib
-import re
 import logging
 import textwrap
 import typing as _t
@@ -452,47 +451,6 @@ class Config:
         super().__init_subclass__(**kwargs)
 
         cls.__fields = None
-
-    __COMMENT_RE = re.compile(r'^\s*#: ?(.*)\r?\n?$')
-
-    @classmethod
-    def __find_docs(cls) -> _t.Dict[str, str]:
-        # based on code from Sphinx
-
-        import inspect
-        import ast
-
-        if '<locals>' in cls.__qualname__:
-            # This will not work as expected!
-            raise OSError('source code not available')
-
-        sourcelines, _ = inspect.getsourcelines(cls)
-
-        docs = {}
-
-        node = ast.parse(''.join(sourcelines))
-        assert isinstance(node, ast.Module)
-        assert len(node.body) == 1
-        cdef = node.body[0]
-        assert isinstance(cdef, ast.ClassDef)
-
-        for stmt in cdef.body:
-            if (
-                isinstance(stmt, ast.AnnAssign)
-                and isinstance(stmt.target, ast.Name)
-                and not stmt.target.id.startswith('_')
-            ):
-                comment_lines = []
-                for before_line in sourcelines[stmt.lineno - 2::-1]:
-                    if match := cls.__COMMENT_RE.match(before_line):
-                        comment_lines.append(match.group(1))
-                    else:
-                        break
-
-                if comment_lines:
-                    docs[stmt.target.id] = '\n'.join(reversed(comment_lines))
-
-        return docs
 
     def __init__(self, *args, **kwargs):
         for name, field in self.__get_fields().items():
