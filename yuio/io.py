@@ -700,22 +700,27 @@ def detect_editor() -> _t.Optional[str]:
 
     """
 
-    if 'EDITOR' in os.environ:
+    if sys.platform == 'win':
+        return 'notepad'
+
+    if os.environ.get('EDITOR'):
         return os.environ['EDITOR']
-    elif (
-        subprocess.run(
-            ['which', 'nano'], stdout=subprocess.DEVNULL
+
+    def check_editor(name):
+        return subprocess.run(
+            ['which', name], stdout=subprocess.DEVNULL
         ).returncode == 0
-    ):
+
+    # if check_editor('code'):
+    #     return 'code -nw'
+    # if check_editor('subl'):
+    #     return 'subl -nw'
+    if check_editor('nano'):
         return 'nano'
-    elif (
-        subprocess.run(
-            ['which', 'vi'], stdout=subprocess.DEVNULL
-        ).returncode == 0
-    ):
+    if check_editor('vi'):
         return 'vi'
-    else:
-        return None
+
+    return None
 
 
 def edit(
@@ -757,7 +762,7 @@ def edit(
         try:
             try:
                 with SuspendLogging():
-                    res = subprocess.run([editor, filepath])
+                    res = subprocess.run(f'{editor} "{filepath}"', shell=True)
             except FileNotFoundError:
                 raise UserIoError(
                     'can\'t use this editor, ensure that the $EDITOR '
