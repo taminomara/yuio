@@ -1044,19 +1044,20 @@ class _HandlerImpl:
         self._stream.flush()
 
     def emit(self, msg, record: logging.LogRecord):
-        line = self._format_record(msg, record)
-        if self._suspended:
-            if getattr(record, 'yuio_ignore_suspended', False):
+        with self.lock:
+            line = self._format_record(msg, record)
+            if self._suspended:
+                if getattr(record, 'yuio_ignore_suspended', False):
+                    self._stream.write(line)
+                else:
+                    self._suspended_lines.append(line)
+            elif self._use_colors:
+                self._undraw()
                 self._stream.write(line)
+                self._draw()
             else:
-                self._suspended_lines.append(line)
-        elif self._use_colors:
-            self._undraw()
-            self._stream.write(line)
-            self._draw()
-        else:
-            self._stream.write(line)
-        self._stream.flush()
+                self._stream.write(line)
+            self._stream.flush()
 
     def reg_task(self, task: Task):
         with self.lock:
@@ -1120,12 +1121,14 @@ class _HandlerImpl:
             self._suspended_lines.append(self._format_task(task))
         else:
             self._stream.write(self._format_task(task))
+            if task._status != Task._Status.RUNNING and task in self._tasks:
+                self._tasks.remove(task)
 
     # Private functions, called from internal API
 
     def _redraw(self):
         # Update currently printed tasks to their current status.
-        # Must not be called while output is suspended.
+        # Must not be called while output is suspended or when not using colors.
 
         self._undraw()
         self._cleanup_tasks()
@@ -1133,15 +1136,15 @@ class _HandlerImpl:
 
     def _undraw(self):
         # Clear drawn tasks from the screen.
-        # Must not be called while output is suspended.
+        # Must not be called while output is suspended or when not using colors.
 
         if self._tasks_shown > 0:
-            self._stream.write('\033[F\033[2K' * self._tasks_shown)
+            self._stream.write(f'\033[{self._tasks_shown}F\033[J')
             self._tasks_shown = 0
 
     def _cleanup_tasks(self):
         # Clean up finished tasks.
-        # Must not be called while output is suspended.
+        # Must not be called while output is suspended or when not using colors.
         # Must be called after `_undraw`.
 
         new_tasks = []
@@ -1157,7 +1160,10 @@ class _HandlerImpl:
         # Must not be called while output is suspended.
         # Must be called after `_undraw` or `_cleanup_tasks`.
 
-        tasks: _t.List[_t.Tuple[Task, int]] = [(task, 0) for task in self._tasks]
+        tasks: _t.List[_t.Tuple[Task, int]] = [
+            (task, 0) for task in reversed(self._tasks)
+        ]
+
         while tasks:
             task, indent = tasks.pop()
 
