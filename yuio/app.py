@@ -149,7 +149,6 @@ class App:
 
         self.epilog: _t.Optional[str] = epilog
 
-        self.prefix_chars: str = '-'
         self.allow_abbrev: bool = True
         self.subcommand_required: bool = True
 
@@ -223,7 +222,6 @@ class App:
                 command=cb
             )
 
-            app.prefix_chars = self.prefix_chars
             app.allow_abbrev = self.allow_abbrev
 
             main_name = name or yuio._utils.to_dash_case(cb.__name__)
@@ -272,7 +270,6 @@ class App:
             usage=self.usage,
             description=self.description,
             epilog=self.epilog,
-            prefix_chars=self.prefix_chars,
             allow_abbrev=self.allow_abbrev,
             formatter_class=_HelpFormatter,
         )
@@ -302,7 +299,6 @@ class App:
                     help=sub_app.app.help,
                     description=sub_app.app.description,
                     epilog=sub_app.app.epilog,
-                    prefix_chars=self.prefix_chars,
                     allow_abbrev=self.allow_abbrev,
                     formatter_class=_HelpFormatter,
                 )
