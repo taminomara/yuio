@@ -543,14 +543,10 @@ class TestArgs:
         class MyConfig(Config):
             a: bool
             b: bool
-            c: bool
-            d: bool
 
-        c = self.load_from_args(MyConfig, '--a --no-b --c yes --d no')
+        c = self.load_from_args(MyConfig, '--a --no-b')
         assert c.a is True
         assert c.b is False
-        assert c.c is True
-        assert c.d is False
 
     def test_subconfig(self):
         class SubConfig(Config):

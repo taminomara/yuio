@@ -15,6 +15,7 @@ def to_dash_case(s: str) -> str:
 class Placeholders(enum.Enum):
     DISABLED = '<disabled>'
     MISSING = '<missing>'
+    POSITIONAL = '<positional>'
 
     def __repr__(self):
         return self.value
@@ -25,6 +26,9 @@ DISABLED: Disabled = Placeholders.DISABLED
 
 Missing = _t.Literal[Placeholders.MISSING]
 MISSING: Missing = Placeholders.MISSING
+
+Positional = _t.Literal[Placeholders.POSITIONAL]
+POSITIONAL: Positional = Placeholders.POSITIONAL
 
 
 _COMMENT_RE = re.compile(r'^\s*#: ?(.*)\r?\n?$')
@@ -73,7 +77,7 @@ def find_docs(obj: _t.Any) -> _t.Dict[str, str]:
         comment_lines = []
         for before_line in sourcelines[pos - 2::-1]:
             if match := _COMMENT_RE.match(before_line):
-                comment_lines.append(match.group(1))
+                comment_lines.append(textwrap.dedent(match.group(1)))
             else:
                 break
 
