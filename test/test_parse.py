@@ -296,7 +296,7 @@ def test_time():
     assert parser.parse_config(datetime.datetime(2007, 1, 2, 12, 30, 5)) \
            == datetime.time(12, 30, 5)
     with pytest.raises(ValueError, match='could not parse'):
-        parser('10-05')
+        parser('10?05')
     with pytest.raises(ValueError, match='expected a time'):
         parser.parse_config(10)
     with pytest.raises(ValueError, match='expected a time'):
