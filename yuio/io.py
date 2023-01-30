@@ -391,26 +391,33 @@ DEFAULT_COLORS = {
     'cyan': FORE_CYAN,
     'normal': FORE_NORMAL,
 
-    'cli-flag': FORE_GREEN,
-    'cli-default': FORE_NORMAL,
-    'cli-section': FORE_BLUE,
+    'cli_flag': FORE_GREEN,
+    'cli_default': FORE_NORMAL,
+    'cli_section': FORE_BLUE,
 }
 
+# Data flow:
+#
+#  _MSG_LOGGER ──────→╮
+#                     ├─→ _MSG_HANDLER ──→ _MSG_HANDLER_IMPL ──→ sys.stderr
+#  _QUESTION_LOGGER ─→╯
+#
+#  (passing LogRecord to impl)             (formatting)          (output)
 
-_MSG_LOGGER: logging.Logger
+_MSG_HANDLER_IMPL: '_HandlerImpl'
+
 _MSG_HANDLER: 'Handler'
 
+_MSG_LOGGER: logging.Logger
 _QUESTION_LOGGER: logging.Logger
-
-_HANDLER_IMPL: '_HandlerImpl'
 
 
 def setup(
     level: _t.Optional[int] = None,
-    stream: _t.IO = sys.stderr,
+    stream: _t.Optional[_t.IO] = None,
     *,
     use_colors: _t.Optional[bool] = None,
-    formatter: _t.Optional[logging.Formatter] = DEFAULT_FORMATTER,
+    formatter: _t.Optional[logging.Formatter] = None,
     colors: _t.Optional[_t.Dict[str, Color]] = None,
 ):
     """Initial setup of the logging facilities.
@@ -418,7 +425,8 @@ def setup(
     :param level:
         log output level.
     :param stream:
-        a stream where to output messages. Uses `stderr` by default.
+        a stream where to output messages. Uses :data:`~sys.stderr` by default.
+        Setting a stream disables colored output, unless `use_colors` is given.
     :param formatter:
         formatter for log messages.
     :param use_colors:
@@ -429,30 +437,17 @@ def setup(
 
     """
 
-    if level is None:
-        if 'DEBUG' in os.environ:
-            level = DEBUG
-        elif 'QUIET' in os.environ:
-            level = WARNING
-        else:
-            level = INFO
-
-    if use_colors is None:
-        if 'NO_COLORS' in os.environ:
-            use_colors = False
-        elif 'FORCE_COLORS' in os.environ:
-            use_colors = True
-        else:
-            use_colors = stream.isatty()
-
-    if colors is None:
-        colors = DEFAULT_COLORS
-    else:
-        colors = dict(DEFAULT_COLORS, **colors)
-
-    _MSG_HANDLER.setLevel(level)
-    _MSG_HANDLER.setFormatter(formatter)
-    _HANDLER_IMPL.setup(stream, use_colors, colors)
+    if level is not None:
+        _MSG_HANDLER.setLevel(level)
+    if formatter is not None:
+        _MSG_HANDLER.setFormatter(formatter)
+    if stream is not None:
+        _MSG_HANDLER_IMPL.stream = stream
+        _MSG_HANDLER_IMPL.use_colors = False
+    if use_colors is not None:
+        _MSG_HANDLER_IMPL.use_colors = use_colors
+    if colors is not None:
+        _MSG_HANDLER_IMPL.colors = dict(DEFAULT_COLORS, **colors)
 
 
 def log(level: int, msg: str, /, *args, **kwargs):
@@ -535,7 +530,7 @@ def is_interactive() -> bool:
 
     """
 
-    return _HANDLER_IMPL._stream.isatty() \
+    return _MSG_HANDLER_IMPL.stream.isatty() \
         and os.environ.get('TERM', None) != 'dumb'
 
 
@@ -823,7 +818,7 @@ def edit(
 
     if comment_marker is not None:
         text = re.sub(
-            r'^\s*' + re.escape(comment_marker) + r'.*?\n',
+            r'^\s*' + re.escape(comment_marker) + r'.*?(\n|\Z)',
             '',
             text,
             flags=re.MULTILINE
@@ -842,7 +837,7 @@ class SuspendLogging:
 
     def __init__(self):
         self._resumed = False
-        _HANDLER_IMPL.suspend()
+        _MSG_HANDLER_IMPL.suspend()
 
     def resume(self):
         """Manually resume the logging process.
@@ -850,7 +845,7 @@ class SuspendLogging:
         """
 
         if not self._resumed:
-            _HANDLER_IMPL.resume()
+            _MSG_HANDLER_IMPL.resume()
             self._resumed = True
 
     @staticmethod
@@ -1024,9 +1019,9 @@ class Task:
         self._subtasks: _t.List[Task] = []
 
         if parent is None:
-            _HANDLER_IMPL.reg_task(self)
+            _MSG_HANDLER_IMPL.reg_task(self)
         else:
-            _HANDLER_IMPL.reg_subtask(parent, self)
+            _MSG_HANDLER_IMPL.reg_subtask(parent, self)
 
     def progress(self, progress: _PROGRESS, /):
         """Indicate progress of ths task.
@@ -1043,7 +1038,7 @@ class Task:
 
         """
 
-        _HANDLER_IMPL.set_progress(self, progress)
+        _MSG_HANDLER_IMPL.set_progress(self, progress)
 
     def iter(self, collection: _t.Collection[T]) -> _t.Iterable[T]:
         """Helper for updating progress automatically
@@ -1076,21 +1071,21 @@ class Task:
 
         """
 
-        _HANDLER_IMPL.set_comment(self, comment)
+        _MSG_HANDLER_IMPL.set_comment(self, comment)
 
     def done(self):
         """Indicate that this task has finished successfully.
 
         """
 
-        _HANDLER_IMPL.set_status(self, Task._Status.DONE)
+        _MSG_HANDLER_IMPL.set_status(self, Task._Status.DONE)
 
     def error(self):
         """Indicate that this task has finished with an error.
 
         """
 
-        _HANDLER_IMPL.set_status(self, Task._Status.ERROR)
+        _MSG_HANDLER_IMPL.set_status(self, Task._Status.ERROR)
 
     def subtask(self, msg: str, /, *args) -> 'Task':
         """Create a subtask within this task.
@@ -1121,7 +1116,7 @@ class Handler(logging.Handler):
         self.lock = None
 
     def emit(self, record: LogRecord) -> None:
-        _HANDLER_IMPL.emit(self.format(record), record)
+        _MSG_HANDLER_IMPL.emit(self.format(record), record)
 
 
 class _HandlerImpl:
@@ -1133,9 +1128,15 @@ class _HandlerImpl:
     """
 
     def __init__(self):
-        self._stream = sys.stderr
-        self._colors: _t.Dict[str, Color] = DEFAULT_COLORS
-        self._use_colors: bool = self._stream.isatty()
+        self.stream = sys.stderr
+        self.colors: _t.Dict[str, Color] = DEFAULT_COLORS
+
+        if 'NO_COLORS' in os.environ:
+            self.use_colors = False
+        elif 'FORCE_COLORS' in os.environ:
+            self.use_colors = True
+        else:
+            self.use_colors: bool = self.stream.isatty()
 
         self._tasks: _t.List[Task] = []
 
@@ -1146,35 +1147,24 @@ class _HandlerImpl:
 
         self.lock = threading.Lock()
 
-    def setup(
-        self,
-        stream: _t.IO,
-        use_colors: bool,
-        colors: _t.Dict[str, Color],
-    ):
-        with self.lock:
-            self._stream = stream
-            self._use_colors = use_colors
-            self._colors = colors
-
     def flush(self) -> None:
-        self._stream.flush()
+        self.stream.flush()
 
     def emit(self, msg, record: logging.LogRecord):
         with self.lock:
             line = self._format_record(msg, record)
             if self._suspended:
                 if getattr(record, 'yuio_ignore_suspended', False):
-                    self._stream.write(line)
+                    self.stream.write(line)
                 else:
                     self._suspended_lines.append(line)
-            elif self._use_colors:
+            elif self.use_colors:
                 self._undraw()
-                self._stream.write(line)
+                self.stream.write(line)
                 self._draw()
             else:
-                self._stream.write(line)
-            self._stream.flush()
+                self.stream.write(line)
+            self.stream.flush()
 
     def reg_task(self, task: Task):
         with self.lock:
@@ -1190,14 +1180,14 @@ class _HandlerImpl:
         with self.lock:
             task._progress = progress
 
-            if self._use_colors:
+            if self.use_colors:
                 self._redraw()
 
     def set_comment(self, task: Task, comment: _t.Optional[str]):
         with self.lock:
             task._comment = comment
 
-            if self._use_colors and not self._suspended:
+            if self.use_colors and not self._suspended:
                 self._redraw()
 
     def set_status(self, task: Task, status: Task._Status):
@@ -1211,7 +1201,7 @@ class _HandlerImpl:
 
             if self._suspended == 1:
                 self._undraw()
-                self._stream.flush()
+                self.stream.flush()
 
     def resume(self):
         with self.lock:
@@ -1219,11 +1209,11 @@ class _HandlerImpl:
 
             if self._suspended == 0:
                 for line in self._suspended_lines:
-                    self._stream.write(line)
+                    self.stream.write(line)
 
                 self._suspended_lines.clear()
 
-                if self._use_colors:
+                if self.use_colors:
                     self._cleanup_tasks()
                     self._draw()
 
@@ -1231,13 +1221,13 @@ class _HandlerImpl:
                 raise RuntimeError('unequal number of suspends and resumes')
 
     def _display_task_status_change(self, task: Task):
-        if self._use_colors:
+        if self.use_colors:
             if not self._suspended:
                 self._redraw()
         elif self._suspended:
             self._suspended_lines.append(self._format_task(task))
         else:
-            self._stream.write(self._format_task(task))
+            self.stream.write(self._format_task(task))
             if task._status != Task._Status.RUNNING and task in self._tasks:
                 self._tasks.remove(task)
 
@@ -1256,7 +1246,7 @@ class _HandlerImpl:
         # Must not be called while output is suspended or when not using colors.
 
         if self._tasks_shown > 0:
-            self._stream.write(f'\033[{self._tasks_shown}F\033[J')
+            self.stream.write(f'\033[{self._tasks_shown}F\033[J')
             self._tasks_shown = 0
 
     def _cleanup_tasks(self):
@@ -1269,7 +1259,7 @@ class _HandlerImpl:
             if task._status == Task._Status.RUNNING:
                 new_tasks.append(task)
             else:
-                self._stream.write(self._format_task(task))
+                self.stream.write(self._format_task(task))
         self._tasks = new_tasks
 
     def _draw(self):
@@ -1284,7 +1274,7 @@ class _HandlerImpl:
         while tasks:
             task, indent = tasks.pop()
 
-            self._stream.write(self._format_task(task, indent))
+            self.stream.write(self._format_task(task, indent))
             self._tasks_shown += 1
 
             indent += 1
@@ -1292,26 +1282,26 @@ class _HandlerImpl:
                 [(subtask, indent) for subtask in reversed(task._subtasks)]
             )
 
-        self._stream.flush()
+        self.stream.flush()
 
     def _format_task(self, task: Task, indent: int = 0) -> str:
         # Format a task with respect to `_use_colors`.
 
         if task._status == Task._Status.DONE:
-            color = self._colors['task_done']
+            color = self.colors['task_done']
             status = ': OK'
         elif task._status == Task._Status.ERROR:
-            color = self._colors['task_error']
+            color = self.colors['task_error']
             status = ': ERROR'
         else:
-            color = self._colors['task']
+            color = self.colors['task']
             if (
-                self._use_colors
+                self.use_colors
                 and task._progress is None
                 and task._comment is not None
             ):
                 status = ' - ' + task._comment + '...'
-            elif task._progress is None or not self._use_colors:
+            elif task._progress is None or not self.use_colors:
                 status = '...'
             else:
                 status = ' ' + self._make_progress_bar(task._progress)
@@ -1323,7 +1313,7 @@ class _HandlerImpl:
     def _format_record(self, msg: str, record: logging.LogRecord) -> str:
         # Format a record with respect to `_use_colors`.
 
-        color = self._colors.get(record.levelname.lower(), Color())
+        color = self.colors.get(record.levelname.lower(), Color())
         process_color_tags = getattr(record, 'yuio_process_color_tags', False)
         if getattr(record, 'yuio_add_newline', True):
             msg += '\n'
@@ -1338,11 +1328,11 @@ class _HandlerImpl:
         default_color = FORE_NORMAL | BACK_NORMAL | default_color
 
         if not process_color_tags:
-            if self._use_colors:
+            if self.use_colors:
                 return str(default_color) + msg + str(Color())
             else:
                 return msg
-        elif not self._use_colors:
+        elif not self.use_colors:
             return self._TAG_RE.sub('', msg)
 
         out = ''
@@ -1360,7 +1350,7 @@ class _HandlerImpl:
                 color = stack[-1]
                 for sub_name in name.split(','):
                     sub_name = sub_name.strip()
-                    color = color | self._colors.get(sub_name, Color())
+                    color = color | self.colors.get(sub_name, Color())
                 out += str(color)
                 stack.append(color)
             elif len(stack) > 1:
@@ -1431,15 +1421,22 @@ class _HandlerImpl:
 
 logging.addLevelName(QUESTION, 'question')
 
-_HANDLER_IMPL = _HandlerImpl()
+_MSG_HANDLER_IMPL = _HandlerImpl()
 
 _MSG_HANDLER = Handler()
+_MSG_HANDLER.setFormatter(DEFAULT_FORMATTER)
 
-_MSG_LOGGER = logging.getLogger('yuio.msg')
-_MSG_LOGGER.propagate = False
-_MSG_LOGGER.setLevel(1)  # ignore logging level of the root logger
-_MSG_LOGGER.addHandler(_MSG_HANDLER)
+_ROOT_LOGGER = logging.getLogger('yuio.msg')
+_ROOT_LOGGER.setLevel(1)
+_ROOT_LOGGER.propagate = False
+_ROOT_LOGGER.addHandler(_MSG_HANDLER)
+
+_MSG_LOGGER = logging.getLogger('yuio.msg.default')
 
 _QUESTION_LOGGER = logging.getLogger('yuio.msg.question')
 
-setup()
+
+if 'DEBUG' in os.environ:
+    _MSG_LOGGER.setLevel(DEBUG)
+elif 'QUIET' in os.environ:
+    _MSG_LOGGER.setLevel(WARNING)

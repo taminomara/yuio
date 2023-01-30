@@ -264,7 +264,7 @@ class TestBasics:
 
 class TestEnv:
     @pytest.fixture(autouse=True)
-    def setup(self, clear_env):
+    def auto_fixtures(self, save_env):
         pass
 
     def test_load(self):
@@ -303,7 +303,7 @@ class TestEnv:
     def test_disabled(self):
         class MyConfig(Config):
             f_disabled: str = field(
-                'f_disabled', env=disabled())
+                'f_disabled', env=DISABLED)
             f_enabled: str = 'f_enabled'
 
         os.environ['F_DISABLED'] = 'f_disabled.2'
@@ -341,7 +341,7 @@ class TestEnv:
         os.environ['S'] = 'x'
         c = MyConfig.load_from_env()
         assert c.b is True
-        assert c.s is 'x'
+        assert c.s == 'x'
 
         os.environ['S'] = 'z'
         with pytest.raises(ValueError, match='one of x, y'):
@@ -477,7 +477,7 @@ class TestArgs:
 
     def test_disabled(self, capsys):
         class MyConfig(Config):
-            a: str = field(default='def', flags=disabled())
+            a: str = field(default='def', flags=DISABLED)
 
         c = self.load_from_args(MyConfig, '')
         assert c.a == 'def'
@@ -517,7 +517,7 @@ class TestArgs:
 
         c = self.load_from_args(MyConfig, '--b --s x')
         assert c.b is True
-        assert c.s is 'x'
+        assert c.s == 'x'
 
         with pytest.raises(SystemExit):
             self.load_from_args(MyConfig, '--s z')

@@ -1,4 +1,5 @@
 import os
+import sys
 
 import pytest
 
@@ -14,5 +15,9 @@ def save_env():
 
 
 @pytest.fixture
-def clear_env(save_env):
-    os.environ.clear()
+def save_stdin():
+    stdin = sys.stdin
+
+    yield
+
+    sys.stdin = stdin

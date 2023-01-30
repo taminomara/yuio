@@ -397,7 +397,7 @@ class _HelpFormatter(argparse.HelpFormatter):
         help = re.sub(r'\[default: (.*?)]$', r'<c:cli-default>[default: <c:code>\1</c>]</c>', help, flags=re.MULTILINE)
         help = re.sub(r'`\b.*?\b`', r'<c:code>\g<0></c>', help, flags=re.MULTILINE)
         help = help.replace('\n  <subcommand>\n', '\n')
-        return yuio.io._HANDLER_IMPL._colorize(help, yuio.io.Color()) + '\n'
+        return yuio.io._MSG_HANDLER_IMPL._colorize(help, yuio.io.Color()) + '\n'
 
     def start_section(self, heading: _t.Optional[str]):
         heading = f'<c:cli-section>{heading}:@@section</c>'

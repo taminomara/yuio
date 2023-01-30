@@ -1,4 +1,5 @@
 import io
+import sys
 
 import pytest
 
@@ -7,7 +8,7 @@ from yuio.io import *
 
 
 class AttyStream(io.StringIO):
-    def __init__(self, atty:bool):
+    def __init__(self, atty: bool):
         super().__init__()
         self.atty = atty
 
@@ -15,9 +16,27 @@ class AttyStream(io.StringIO):
         return self.atty
 
 
+@pytest.fixture(autouse=True)
+def reset_logging():
+    yuio.io._MSG_HANDLER_IMPL.stream = AttyStream(False)
+    yuio.io._MSG_HANDLER_IMPL.use_colors = False
+    yuio.io._MSG_HANDLER_IMPL.colors = yuio.io.DEFAULT_COLORS
+    yuio.io._MSG_HANDLER_IMPL._tasks = []
+    yuio.io._MSG_HANDLER_IMPL._tasks_shown = 0
+    yuio.io._MSG_HANDLER_IMPL._suspended = 0
+    yuio.io._MSG_HANDLER_IMPL._suspended_lines = []
+
+    yield
+
+    assert yuio.io._MSG_HANDLER_IMPL._tasks == []
+    assert yuio.io._MSG_HANDLER_IMPL._tasks_shown == 0
+    assert yuio.io._MSG_HANDLER_IMPL._suspended == 0
+    assert yuio.io._MSG_HANDLER_IMPL._suspended_lines == []
+
+
 @pytest.fixture
-def stream():
-    stream = io.StringIO()
+def stream(reset_logging):
+    stream = AttyStream(False)
     setup(use_colors=True, level=DEBUG, stream=stream)
 
     yield stream
@@ -26,8 +45,8 @@ def stream():
 
 
 @pytest.fixture
-def stream_no_color():
-    stream = io.StringIO()
+def stream_no_color(reset_logging):
+    stream = AttyStream(False)
     setup(use_colors=False, level=DEBUG, stream=stream)
 
     yield stream
@@ -36,7 +55,7 @@ def stream_no_color():
 
 
 @pytest.fixture
-def stream_interactive(save_env):
+def stream_interactive(save_env, reset_logging):
     os.environ['TERM'] = 'xterm-256color'
 
     stream = AttyStream(True)
@@ -45,21 +64,6 @@ def stream_interactive(save_env):
     yield stream
 
     setup()
-
-
-@pytest.fixture(autouse=True)
-def reset_logging():
-    yuio.io._HANDLER_IMPL._tasks = []
-    yuio.io._HANDLER_IMPL._tasks_shown = 0
-    yuio.io._HANDLER_IMPL._suspended = 0
-    yuio.io._HANDLER_IMPL._suspended_lines = []
-
-    yield
-
-    assert yuio.io._HANDLER_IMPL._tasks == []
-    assert yuio.io._HANDLER_IMPL._tasks_shown == 0
-    assert yuio.io._HANDLER_IMPL._suspended == 0
-    assert yuio.io._HANDLER_IMPL._suspended_lines == []
 
 
 class TestColor:
@@ -79,22 +83,70 @@ class TestColor:
 
 class TestHelpers:
     def test_detect_editor(self, save_env):
-        os.environ['EDITOR'] = 'subl'
+        os.environ['EDITOR'] = 'subl -nw'
 
-        assert detect_editor() == 'subl'
+        assert detect_editor() == 'subl -nw'
 
     def test_is_interactive(self, save_env):
         os.environ['TERM'] = 'xterm-256color'
 
-        setup(stream=AttyStream(True))  # type: ignore
+        setup(stream=AttyStream(True))
         assert is_interactive()
 
-        setup(stream=AttyStream(False))  # type: ignore
+        setup(stream=AttyStream(False))
         assert not is_interactive()
 
         os.environ['TERM'] = 'dumb'
-        setup(stream=AttyStream(True))  # type: ignore
+        setup(stream=AttyStream(True))
         assert not is_interactive()
+
+
+class TestSetup:
+    def test_level(self, stream_no_color):
+        setup(level=WARNING)
+        debug('debug message 1')
+        info('info message 1')
+        warning('warning message 1')
+
+        setup(level=INFO)
+        debug('debug message 2')
+        info('info message 2')
+        warning('warning message 2')
+
+        assert (
+            stream_no_color.getvalue() ==
+            'warning message 1\n'
+            'info message 2\n'
+            'warning message 2\n'
+        )
+
+    def test_formatter(self, stream_no_color):
+        setup(formatter=logging.Formatter('-> %(message)s'))
+        info('info message 1')
+        setup()
+        info('info message 2')
+        setup(formatter=logging.Formatter('%(message)s'))
+        info('info message 3')
+
+        assert (
+            stream_no_color.getvalue() ==
+            '-> info message 1\n'
+            '-> info message 2\n'
+            'info message 3\n'
+        )
+
+    def test_level_question(self, stream_no_color):
+        setup(level=CRITICAL)
+        error('error message 1')
+        question('question message 1 ')
+        setup(level=QUESTION)
+        error('error message 2')
+        question('question message 2 ')  # logged bc questions can't be disabled
+
+        assert (
+            stream_no_color.getvalue() ==  # questions don't produce newlines
+            'question message 1 question message 2 '
+        )
 
 
 class TestLoggingNoColor:
@@ -113,6 +165,7 @@ class TestLoggingNoColor:
         info('info message')
         warning('warning message')
         error('error message')
+        question('question message')
 
         assert (
             stream_no_color.getvalue() ==
@@ -120,6 +173,7 @@ class TestLoggingNoColor:
             'info message\n'
             'warning message\n'
             'error message\n'
+            'question message'
         )
 
 
@@ -134,6 +188,7 @@ class TestLoggingColor:
         info('info message')
         warning('warning message')
         error('error message')
+        question('question message')
 
         assert (
             stream.getvalue() ==
@@ -141,6 +196,7 @@ class TestLoggingColor:
             '\033[0;39;49minfo message\n\033[0m'
             '\033[0;33;49mwarning message\n\033[0m'
             '\033[0;31;49merror message\n\033[0m'
+            '\033[0;34;49mquestion message\033[0m'
         )
 
     def test_color_tags(self, stream):
@@ -158,10 +214,9 @@ class TestLoggingColor:
             '\033[0m'  # end of message, resetting all styles
         )
 
-    def test_color_overrides(self):
-        stream = io.StringIO()
+    def test_color_overrides(self, stream):
         setup(
-            use_colors=True, level=DEBUG, stream=stream, colors=dict(
+            use_colors=True, level=DEBUG, colors=dict(
                 info=STYLE_BOLD,
                 custom_tag=FORE_BLACK,
             )
@@ -203,11 +258,7 @@ class TestTask:
             'task description: OK\n'
         )
 
-    def test_color_logging(self):
-        stream = io.StringIO()
-
-        setup(use_colors=True, level=DEBUG, stream=stream)
-
+    def test_color_logging(self, stream):
         task = Task('task description')
 
         task.comment('comment')
@@ -462,7 +513,7 @@ class TestSuspend:
 
 
 class TestEdit:
-    def test_noninteractive(self, stream_no_color):
+    def test_noninteractive(self):
         assert edit('String to edit') == 'String to edit'
         assert edit('# Comment\nString to edit') == 'String to edit'
         assert edit('  #Comment\nString to edit') == 'String to edit'
@@ -481,81 +532,91 @@ class TestEdit:
         assert edit('a\nx') == 'b\nx'
 
     def test_comment_marker(self):
-        assert edit('// Comment\nString to edit', comment_marker='//') == 'String to edit'
+        assert (
+            edit(
+                '// Comment\n'
+                'String to edit 1\n'
+                '// Comment\n'
+                'String to edit 2\n'
+                '// Comment',
+                comment_marker='//'
+            ) == (
+                'String to edit 1\n'
+                'String to edit 2'
+            )
+        )
 
 
 class TestAsk:
     @pytest.fixture(autouse=True)
-    def stdin_fixup(self, stream_interactive):
-        stdin = sys.stdin
-        yield
-        sys.stdin = stdin
+    def auto_fixtures(self, stream_interactive, save_stdin):
+        pass
 
-    out: AttyStream
-
-    def prepare(self, input):
-        self.out = AttyStream(True)
-        setup(stream=self.out)
+    @staticmethod
+    def prepare(input):
+        output = AttyStream(True)
+        setup(stream=output, use_colors=True)
         sys.stdin = io.StringIO(input)
+        return output
 
     def test_str(self):
-        self.prepare('abc\n')
+        output = self.prepare('abc\n')
         assert ask('question') == 'abc'
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
-        self.prepare('\nabc\n')
+        output = self.prepare('\nabc\n')
         assert ask('question') == 'abc'
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
             '\033[0;31;49mInput is required.\n\033[0m'
             '\033[0;34;49mquestion: \033[0m'
         )
 
-        self.prepare('\n')
+        output = self.prepare('\n')
         assert ask('question', default='abc') == 'abc'
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion [\033[0;32;49mabc\033[0;34;49m]: \033[0m'
         )
 
     def test_parser(self):
-        self.prepare('10\n')
+        output = self.prepare('10\n')
         assert ask('question', parser=yuio.parse.Int()) == 10
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
-        self.prepare('10\n11')
+        output = self.prepare('10\n11')
         assert ask('question', parser=yuio.parse.Int().gt(10)) == 11
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
             '\033[0;31;49mError: value should be greater than 10, got 10 instead.\n\033[0m'
             '\033[0;34;49mquestion: \033[0m'
         )
 
-        self.prepare('True\n')
+        output = self.prepare('True\n')
         assert ask('question', parser=yuio.parse.Bool()) is True
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
-        self.prepare('xxx\nno')
+        output = self.prepare('xxx\nno')
         assert ask('question', parser=yuio.parse.Bool()) is False
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
             '\033[0;31;49mError: could not parse value \'xxx\', enter either \'yes\' or \'no\'.\n\033[0m'
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
-        self.prepare('xxx\n\n')
+        output = self.prepare('xxx\n\n')
         assert ask(
             'question',
             parser=yuio.parse.OneOf(
@@ -565,96 +626,96 @@ class TestAsk:
             default='b'
         ) == 'b'
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (a|b) [\033[0;32;49mb\033[0;34;49m]: \033[0m'
             '\033[0;31;49mError: could not parse value \'xxx\', should be one of a, b.\n\033[0m'
             '\033[0;34;49mquestion (a|b) [\033[0;32;49mb\033[0;34;49m]: \033[0m'
         )
 
     def test_parser_from_type(self):
-        self.prepare('10\n')
+        output = self.prepare('10\n')
         assert ask('question', parser=int) == 10
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
-        self.prepare('True\n')
+        output = self.prepare('True\n')
         assert ask('question', parser=bool) is True
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
     def test_descriptions(self):
-        self.prepare('10\n')
+        output = self.prepare('10\n')
         assert ask('question', parser=int, input_description='int') == 10
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (int): \033[0m'
         )
 
-        self.prepare('True\n')
+        output = self.prepare('True\n')
         assert ask('question', parser=bool, input_description='bool') is True
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (bool): \033[0m'
         )
 
-        self.prepare('True\n')
+        output = self.prepare('True\n')
         assert ask('question', parser=bool, input_description='') is True
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
-        self.prepare('\n')
+        output = self.prepare('\n')
         assert ask('question', parser=int, default=10) == 10
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion [\033[0;32;49m10\033[0;34;49m]: \033[0m'
         )
 
-        self.prepare('\n')
+        output = self.prepare('\n')
         assert ask('question', parser=int, default=10, default_description='ten') == 10
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion [\033[0;32;49mten\033[0;34;49m]: \033[0m'
         )
 
-        self.prepare('\n')
+        output = self.prepare('\n')
         assert ask('question', parser=int, default=10, default_description='') == 10
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
     def test_yn(self):
-        self.prepare('True\n')
+        output = self.prepare('True\n')
         assert ask_yn('question') is True
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
-        self.prepare('False\n')
+        output = self.prepare('False\n')
         assert ask_yn('question') is False
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
-        self.prepare('\n')
+        output = self.prepare('\n')
         assert ask_yn('question', default=None) is None
         assert (
-            self.out.getvalue() ==
+            output.getvalue() ==
             '\033[0;34;49mquestion (yes|no) [\033[0;32;49m<none>\033[0;34;49m]: \033[0m'
         )
 
     def test_wait(self):
-        self.prepare('\n')
+        output = self.prepare('\n')
         wait_for_user()
-        assert self.out.getvalue() == '\033[0;34;49mPress enter to continue\n\033[0m'
+        assert output.getvalue() == '\033[0;34;49mPress enter to continue\n\033[0m'
 
     def test_noninteractive(self, save_env):
         os.environ['TERM'] = 'dumb'
