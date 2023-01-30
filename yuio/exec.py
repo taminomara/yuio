@@ -37,8 +37,7 @@ def exec(
     input: _t.Optional[str] = None,
     level: int = yuio.io.INFO,
     text: _t.Literal[True] = True,
-) -> str:
-    pass
+) -> str: ...
 
 
 @_t.overload
@@ -49,8 +48,7 @@ def exec(
     input: _t.Optional[bytes] = None,
     level: int = yuio.io.INFO,
     text: _t.Literal[False],
-) -> bytes:
-    pass
+) -> bytes: ...
 
 
 def exec(
@@ -165,8 +163,7 @@ def sh(
     input: _t.Optional[str] = None,
     level: int = yuio.io.INFO,
     text: _t.Literal[True] = True,
-) -> str:
-    pass
+) -> str: ...
 
 
 @_t.overload
@@ -180,8 +177,7 @@ def sh(
     input: _t.Optional[bytes] = None,
     level: int = yuio.io.INFO,
     text: _t.Literal[False],
-) -> bytes:
-    pass
+) -> bytes: ...
 
 
 def sh(

@@ -1,5 +1,5 @@
-import time
 import threading
+import time
 
 import yuio.io
 
@@ -12,7 +12,7 @@ def install_package(package: str, task: yuio.io.Task):
         pkg_task.comment('downloading')
 
         for i in range(10):
-            # Set progress as percentage.
+            # Set progress as percentage, just for demonstration.
             pkg_task.progress(i / 10)
 
             time.sleep(0.5)

@@ -43,8 +43,7 @@ def app(
     help: _t.Optional[str] = None,
     description: _t.Optional[str] = None,
     epilog: _t.Optional[str] = None,
-) -> _t.Callable[[Command], 'App']:
-    pass
+) -> _t.Callable[[Command], 'App']: ...
 
 
 @_t.overload
@@ -57,8 +56,7 @@ def app(
     help: _t.Optional[str] = None,
     description: _t.Optional[str] = None,
     epilog: _t.Optional[str] = None,
-) -> 'App':
-    pass
+) -> 'App': ...
 
 
 def app(
@@ -174,8 +172,7 @@ class App:
         help: _t.Optional[str] = None,
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
-    ) -> _t.Callable[[Command], 'App']:
-        pass
+    ) -> _t.Callable[[Command], 'App']: ...
 
     @_t.overload
     def subcommand(
@@ -190,8 +187,7 @@ class App:
         help: _t.Optional[str] = None,
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
-    ) -> 'App':
-        pass
+    ) -> 'App': ...
 
     def subcommand(
         self,
