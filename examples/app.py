@@ -2,8 +2,8 @@ import pathlib
 
 import yuio.app
 import yuio.config
-import yuio.parse
 import yuio.io
+import yuio.parse
 
 
 class Config(yuio.config.Config):
@@ -46,12 +46,26 @@ def main(_subcommand, config: Config = yuio.config.inline()):
     yuio.io.debug('global config is loaded: %s', CONFIG)
 
 
+main.epilog = """
+usage examples:
+  app.py train training.bin\v
+  app.py run trained.model sample.bin\v
+
+note:
+  yuio splits text into paragraphs and fills them according to available
+  terminal width. This means that original line breaks are ignored.
+  When it's not desirable, use `\\v` at the end of line to indicate that
+  this particular linebreak should be preserved.
+
+"""
+
+
 @main.subcommand(aliases=['r'])
 def run(
     #: trained model to execute
-    model: pathlib.Path,
+    model: pathlib.Path = yuio.config.positional(),
     #: input data for the model
-    data: pathlib.Path,
+    data: pathlib.Path = yuio.config.positional(),
 ):
     """apply trained model to a dataset.
 
@@ -63,9 +77,13 @@ def run(
 @main.subcommand(aliases=['t'])
 def train(
     #: input data for the model
-    data: pathlib.Path,
+    data: pathlib.Path = yuio.config.positional(),
+
     #: output data for the model
-    output: pathlib.Path = pathlib.Path('trained.bin'),
+    output: pathlib.Path = yuio.config.field(
+        default=pathlib.Path('trained.model'),
+        flags=['-o', '--out', '--output'],
+    ),
 ):
     """train model on a dataset.
 

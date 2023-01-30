@@ -139,9 +139,6 @@ class App:
         if not description and command is not None:
             description = command.__doc__
 
-        if description:
-            description = textwrap.dedent(description.strip())
-
         self.description: _t.Optional[str] = description
 
         if not help and description:
@@ -149,9 +146,6 @@ class App:
             help = lines[0].replace('\n', ' ').rstrip('.')
 
         self.help: _t.Optional[str] = help
-
-        if epilog:
-            epilog = textwrap.dedent(epilog.strip())
 
         self.epilog: _t.Optional[str] = epilog
 
@@ -391,20 +385,72 @@ def _command_from_callable_run_impl(cb: Command, params: _t.List[str], accepts_s
 class _HelpFormatter(argparse.HelpFormatter):
     def format_help(self):
         help = super().format_help().strip('\n')
-        help = re.sub(r'^usage:', '<c:cli-section>usage:</c>', help)
-        help = re.sub(r':@@section</c>:$', r':</c>\n', help, flags=re.MULTILINE)
-        help = re.sub(r'(?<=\W)(-[a-zA-Z0-9]|--[a-zA-Z0-9-_]+)\b', r'<c:cli-flag>\g<0></c>', help, flags=re.MULTILINE)
-        help = re.sub(r'\[default: (.*?)]$', r'<c:cli-default>[default: <c:code>\1</c>]</c>', help, flags=re.MULTILINE)
-        help = re.sub(r'`\b.*?\b`', r'<c:code>\g<0></c>', help, flags=re.MULTILINE)
+        help = re.sub(r'^usage:', '<c:cli_section>usage:</c>', help)
+        help = re.sub(r'\n\n(\S.*?:)\n(  |\n|\Z)', r'\n\n<c:cli_section>\1</c>\n\2', help, flags=re.MULTILINE)
+        help = re.sub(r'(?<=\W)(-[a-zA-Z0-9]|--[a-zA-Z0-9-_]+)\b', r'<c:cli_flag>\1</c>', help, flags=re.MULTILINE)
+        help = re.sub(r'\[(default:\s*)(.*?)]$', r'<c:cli_default>[\1<c:code>\2</c>]</c>', help, flags=re.MULTILINE)
+        help = re.sub(r'(`+)(.*?)\1', r'<c:code>\2</c>', help, flags=re.MULTILINE)
         help = help.replace('\n  <subcommand>\n', '\n')
         return yuio.io._MSG_HANDLER_IMPL._colorize(help, yuio.io.Color()) + '\n'
-
-    def start_section(self, heading: _t.Optional[str]):
-        heading = f'<c:cli-section>{heading}:@@section</c>'
-        super().start_section(heading)
 
     def _iter_indented_subactions(self, action):
         try:
             return action._get_subactions()
         except AttributeError:
             return []
+
+    def _expand_help(self, action):
+        return self._get_help_string(action)
+
+    def _fill_text(self, text, width, indent):
+        text = text.replace('\t', ' ')
+        first_line, *rest = text.split('\n', 1)
+        text = first_line + ('\n' + textwrap.dedent(rest[0]) if rest else '')
+        text = text.strip()
+
+        filled_lines = []
+
+        for paragraph in re.split(r'\n\s*\n', text, re.MULTILINE):
+            if not paragraph:
+                continue
+
+            lines = paragraph.split('\n')
+
+            if filled_lines:
+                filled_lines.append('')
+
+            if (
+                re.match(r'^[^\v\s][^\v]*:\v*$', lines[0])
+                and (len(lines) == 1 or lines[1].startswith('  '))
+            ):
+                # First line is a section's heading
+                filled_lines.append(lines[0])
+                lines.pop(0)
+
+            common_indent = min(
+                len(re.match(r'^ *', line).group(0)) for line in lines
+            )
+
+            if common_indent >= 4:
+                filled_lines.extend(line.rstrip('\v') for line in lines)
+            else:
+                lines_to_fill = ['']
+                for line in lines:
+                    if lines_to_fill[-1]:
+                        lines_to_fill[-1] += ' '
+                    if line.endswith('\v'):
+                        lines_to_fill[-1] += line[common_indent:-1]
+                        lines_to_fill.append('')
+                    else:
+                        lines_to_fill[-1] += line[common_indent:]
+                filled_lines.extend(
+                    textwrap.fill(
+                        line,
+                        width=width,
+                        initial_indent=indent + ' ' * common_indent,
+                        subsequent_indent=indent + ' ' * common_indent,
+                    )
+                    for line in lines_to_fill if line
+                )
+
+        return '\n'.join(filled_lines)
