@@ -388,6 +388,13 @@ def _parse_collection_action(parser: yuio.parse.Parser):
     return Action
 
 
+class _VerboseAction(argparse.Action):
+    def __call__(self, _, namespace, values, option_string=None):
+        import yuio.io
+        yuio.io.setup(yuio.io.DEBUG)
+        # yuio.io._MSG_HANDLER.setLevel(yuio.io.DEBUG)
+
+
 class Config:
     """Base class for configs.
 
@@ -590,6 +597,13 @@ class Config:
             add this prefix to ``dest``s of all argparse actions.
 
         """
+
+        parser.add_argument(
+            '-v', '--verbose',
+            help='increase verbosity of output',
+            action=_VerboseAction,
+            nargs=0,
+        )
 
         cls.__setup_arg_parser(parser, parser, '', ns_prefix + ':', False)
 
