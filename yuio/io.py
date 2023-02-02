@@ -369,6 +369,7 @@ DEFAULT_COLORS = {
     'note': FORE_GREEN,
     'success': FORE_GREEN | STYLE_BOLD,
     'failure': FORE_RED | STYLE_BOLD,
+    'heading': FORE_BLUE,
 
     'question': FORE_BLUE,
     'critical': FORE_WHITE | BACK_RED,
