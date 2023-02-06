@@ -411,16 +411,13 @@ class RefParser(yuio.parse.Parser[Commit]):
 
         self._repo = repo
 
-    def parse(self, value: str, /) -> Commit:
+    def _parse(self, value: str, /) -> Commit:
         commit = self._repo.show(value)
         if commit is None:
             raise yuio.parse.ParsingError('invalid git ref')
         return commit
 
-    def parse_config(self, value: _t.Any, /) -> Commit:
+    def _parse_config(self, value: _t.Any, /) -> Commit:
         if not isinstance(value, str):
             raise yuio.parse.ParsingError('expected a string')
         return self.parse(value)
-
-    def validate(self, value: Commit, /):
-        super().validate(value)

@@ -160,22 +160,21 @@ import typing as _t
 from dataclasses import dataclass
 
 import yuio.parse
+import yuio._utils
 from yuio._utils import DISABLED, MISSING, POSITIONAL, Disabled, Missing, Positional
 
 
 T = _t.TypeVar('T')
-NArgs = _t.Union[None, str, _t.Literal['?', '*', '+', '...']]
 
 
 @dataclass(frozen=True)
 class _FieldSettings:
     default: _t.Any
     parser: _t.Optional[yuio.parse.Parser] = None
-    help: _t.Optional[_t.Union[str, Disabled]] = None
-    env: _t.Optional[_t.Union[str, Disabled]] = None
-    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled, Positional]] = None
+    help: _t.Union[str, Disabled, None] = None
+    env: _t.Union[str, Disabled, None] = None
+    flags: _t.Union[str, _t.List[str], Disabled, Positional, None] = None
     required: bool = False
-    nargs: NArgs = None
 
     def _update_defaults(
         self,
@@ -232,11 +231,6 @@ class _FieldSettings:
 
         required = self.required
 
-        nargs = self.nargs
-        if nargs is not None and flags is not POSITIONAL and flags is not DISABLED:
-            raise TypeError(
-                f'{qualname}: non-positional flags can\'t have nargs')
-
         if is_subconfig:
             if default is not MISSING:
                 raise TypeError(
@@ -272,15 +266,8 @@ class _FieldSettings:
                 or origin is _t.Union and len(args) == 2 and type(None) in args
             )
 
-            if is_optional and not isinstance(parser, yuio.parse.Optional):
+            if is_optional and not parser.supports_parse_optional():
                 parser = yuio.parse.Optional(parser)
-
-            nargs_is_array = nargs in ('*', '+', '...') or isinstance(nargs, int)
-
-            if nargs_is_array and not parser.supports_parse_many():
-                raise TypeError(
-                    f'{qualname}: parser does not support parsing arrays, '
-                    f'yet nargs is set to {nargs!r}')
 
         return _Field(
             default,
@@ -291,7 +278,6 @@ class _FieldSettings:
             is_subconfig,
             ty,
             required,
-            nargs,
         )
 
 
@@ -305,25 +291,14 @@ class _Field:
     is_subconfig: bool
     ty: _t.Type
     required: bool
-    nargs: NArgs
 
 
 @_t.overload
 def field(
     *,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
-) -> _t.Any: ...
-
-
-@_t.overload
-def field(
-    *,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    flags: Positional,
-    nargs: NArgs = None,
+    help: _t.Union[str, Disabled, None] = None,
+    env: _t.Union[str, Disabled, None] = None,
+    flags: _t.Union[str, _t.List[str], Positional, Disabled, None] = None,
 ) -> _t.Any: ...
 
 
@@ -332,21 +307,9 @@ def field(
     default: _t.Union[T, Missing] = MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
-) -> T: ...
-
-
-@_t.overload
-def field(
-    default: _t.Union[T, Missing] = MISSING,
-    *,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    flags: Positional,
-    nargs: NArgs = None,
+    help: _t.Union[str, Disabled, None] = None,
+    env: _t.Union[str, Disabled, None] = None,
+    flags: _t.Union[str, _t.List[str], Positional, Disabled, None] = None,
 ) -> T: ...
 
 
@@ -355,32 +318,19 @@ def field(
     default: None,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled]] = None,
-) -> _t.Optional[T]: ...
-
-
-@_t.overload
-def field(
-    default: None,
-    *,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    flags: Positional,
-    nargs: NArgs = None,
+    help: _t.Union[str, Disabled, None] = None,
+    env: _t.Union[str, Disabled, None] = None,
+    flags: _t.Union[str, _t.List[str], Positional, Disabled, None] = None,
 ) -> _t.Optional[T]: ...
 
 
 def field(
     default: _t.Any = MISSING,
     *,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    flags: _t.Optional[_t.Union[str, _t.List[str], Disabled, Positional]] = None,
-    nargs: NArgs = None,
+    parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
+    help: _t.Union[str, Disabled, None] = None,
+    env: _t.Union[str, Disabled, None] = None,
+    flags: _t.Union[str, _t.List[str], Disabled, Positional, None] = None,
 ) -> _t.Any:
     """Field descriptor, used for additional configuration of fields.
 
@@ -394,8 +344,6 @@ def field(
         name of environment variable that will be used for this field.
     :param flags:
         list of names of CLI flags that will be used for this field.
-    :param nargs:
-        can only be used when ``flags`` is :data:`POSITIONAL`.
 
     """
 
@@ -405,12 +353,11 @@ def field(
         help=help,
         env=env,
         flags=flags,
-        nargs=nargs,
     )
 
 
 def inline(
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
+    help: _t.Union[str, Disabled, None] = None,
 ) -> _t.Any:
     """A shortcut for inlining nested configs.
 
@@ -425,9 +372,8 @@ def inline(
 @_t.overload
 def positional(
     *,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    nargs: NArgs = None,
+    help: _t.Union[str, Disabled, None] = None,
+    env: _t.Union[str, Disabled, None] = None,
 ) -> _t.Any: ...
 
 
@@ -436,9 +382,8 @@ def positional(
     default: _t.Union[T, Missing] = MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    nargs: NArgs = None,
+    help: _t.Union[str, Disabled, None] = None,
+    env: _t.Union[str, Disabled, None] = None,
 ) -> T: ...
 
 
@@ -447,20 +392,18 @@ def positional(
     default: None,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    nargs: NArgs = None,
+    help: _t.Union[str, Disabled, None] = None,
+    env: _t.Union[str, Disabled, None] = None,
 ) -> _t.Optional[T]: ...
 
 
 def positional(
     default: _t.Any = MISSING,
     *,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Optional[_t.Union[str, Disabled]] = None,
-    env: _t.Optional[_t.Union[str, Disabled]] = None,
-    nargs: NArgs = None,
-):
+    parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
+    help: _t.Union[str, Disabled, None] = None,
+    env: _t.Union[str, Disabled, None] = None,
+) -> _t.Any:
     """A shortcut for adding a positional argument.
 
     Equivalent to calling :func:`field`
@@ -473,7 +416,6 @@ def positional(
         parser=parser,
         help=help,
         env=env,
-        nargs=nargs,
         flags=POSITIONAL,
     )
 
@@ -481,14 +423,16 @@ def positional(
 def _action(parser: yuio.parse.Parser, parse_many: bool):
     class Action(argparse.Action):
         def __call__(self, _, namespace, values, option_string=None):
+            if values is MISSING:
+                return
+
             try:
                 if parse_many:
                     assert values is not None and not isinstance(values, str)
                     parsed = parser.parse_many(values)
-                    parser.validate(parsed)
                 else:
                     assert isinstance(values, str)
-                    parsed = parser(values)
+                    parsed = parser.parse(values)
             except argparse.ArgumentTypeError as e:
                 raise argparse.ArgumentError(self, str(e))
             setattr(namespace, self.dest, parsed)
@@ -647,7 +591,7 @@ class Config:
                 fields[name] = field.ty.load_from_env(prefix=env)
             elif env in os.environ:
                 assert field.parser is not None
-                fields[name] = field.parser(os.environ[env])
+                fields[name] = field.parser.parse(os.environ[env])
 
         return cls(**fields)
 
@@ -761,17 +705,18 @@ class Config:
                     lines = help.split('\n\n', 1)
                     title = lines[0].replace('\n', ' ').rstrip('.') or name
                     desc = lines[1] if len(lines) > 1 else None
-                    subgroup = parser.add_argument_group(
-                        title, desc)  # type: ignore
+                    subgroup = parser.add_argument_group(title, desc)
                 field.ty.__setup_arg_parser(
                     subgroup, parser, flags[0], dest + '.', current_suppress_help)
                 continue
             else:
                 assert field.parser is not None
 
-            action = _action(field.parser, field.parser.supports_parse_many())
+            parse_many = field.parser.supports_parse_many()
 
-            if field.parser.supports_parse_many():
+            action = _action(field.parser, parse_many)
+
+            if parse_many:
                 metavar = field.parser.describe_many()
             else:
                 metavar = field.parser.describe()
@@ -780,20 +725,19 @@ class Config:
             else:
                 metavar = '<' + name.replace('_', '-') + '>'
 
+            nargs = field.parser.get_nargs()
+            nargs_kw = {'nargs': nargs} if nargs is not None else {}
+
             if flags is POSITIONAL:
                 group.add_argument(
                     dest,
                     default=MISSING,
                     help=help,
                     metavar=metavar,
-                    nargs=field.nargs,  # type: ignore
                     action=action,
+                    **nargs_kw,
                 )
-                continue
-            else:
-                assert field.flags is not POSITIONAL
-
-            if isinstance(field.parser, yuio.parse.Bool):
+            elif isinstance(field.parser, yuio.parse.Bool):
                 mutex_group = group.add_mutually_exclusive_group(
                     required=field.required)
 
@@ -805,6 +749,7 @@ class Config:
                     action='store_true',
                 )
 
+                assert field.flags is not POSITIONAL
                 for flag in field.flags:
                     if flag.startswith('--'):
                         flag_neg = (prefix or '--') + 'no-' + flag[2:]
@@ -821,7 +766,6 @@ class Config:
                         )
                         break
             else:
-                nargs = '*' if field.parser.supports_parse_many() else None
                 group.add_argument(
                     *flags,
                     default=MISSING,
@@ -830,7 +774,7 @@ class Config:
                     required=field.required,
                     dest=dest,
                     action=action,
-                    nargs=nargs,  # type: ignore
+                    **nargs_kw,
                 )
 
     @classmethod
@@ -980,7 +924,6 @@ class Config:
                     assert field.parser is not None
                     try:
                         value = field.parser.parse_config(parsed[name])
-                        field.parser.validate(value)
                     except yuio.parse.ParsingError as e:
                         raise yuio.parse.ParsingError(
                             f'can\'t parse {field_prefix}{name}: {e}') from None
