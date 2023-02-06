@@ -181,15 +181,15 @@ def sh(
 
 
 def sh(
-    cmd,
+    cmd: str,
     /,
-    shell='/bin/sh',
+    shell: str = '/bin/sh',
     *,
-    cwd=None,
-    env=None,
-    input=None,
-    level=yuio.io.INFO,
-    text=True,
+    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    env: _t.Optional[_t.Dict[str, str]] = None,
+    input: _t.Union[None, str, bytes] = None,
+    level: int = yuio.io.INFO,
+    text: bool = True,
 ):
     """Run command in a shell, returns its stdout.
 
@@ -216,7 +216,7 @@ def sh(
         shell, '-c', cmd,
         cwd=cwd,
         env=env,
-        input=input,
+        input=input,  # type: ignore
         level=level,
-        text=text,
+        text=text,  # type: ignore
     )

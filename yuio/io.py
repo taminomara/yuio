@@ -415,7 +415,7 @@ _QUESTION_LOGGER: logging.Logger
 
 def setup(
     level: _t.Optional[int] = None,
-    stream: _t.Optional[_t.IO] = None,
+    stream: _t.Optional[_t.TextIO] = None,
     *,
     use_colors: _t.Optional[bool] = None,
     formatter: _t.Optional[logging.Formatter] = None,
@@ -1375,11 +1375,9 @@ class _HandlerImpl:
 
         if isinstance(progress, tuple):
             if len(progress) == 2:
-                progress = _t.cast(_t.Tuple[int, int], progress)
                 done_percentage = float(progress[0]) / float(progress[1])
                 progress_indicator = f'{progress[0]} / {progress[1]}'
             elif len(progress) == 3:
-                progress = _t.cast(_t.Tuple[int, int, int], progress)
                 done_percentage = float(progress[0]) / float(progress[2])
                 inflight_percentage = float(progress[1]) / float(progress[2])
                 progress_indicator = f'{progress[0]} / {progress[1]} / {progress[2]}'

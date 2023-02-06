@@ -235,31 +235,31 @@ class TestBasics:
             ResolveConfig(f=10)
 
     def test_optional_lift(self):
-        class MyConfig(Config):
+        class MyConfig1(Config):
             x: int
 
         with pytest.raises(yuio.parse.ParsingError, match='expected an int'):
-            assert MyConfig.load_from_parsed_file(dict(x=None))
+            assert MyConfig1.load_from_parsed_file(dict(x=None))
 
-        class MyConfig(Config):
-            x: int = None
+        class MyConfig2(Config):
+            x: int = None  # type: ignore
 
-        assert MyConfig.load_from_parsed_file(dict(x=None)).x is None
+        assert MyConfig2.load_from_parsed_file(dict(x=None)).x is None
 
-        class MyConfig(Config):
+        class MyConfig3(Config):
             x: int = field(
                 parser=yuio.parse.Int(),
                 default=None,
-            )
+            )  # type: ignore
 
-        assert MyConfig.load_from_parsed_file(dict(x=None)).x is None
+        assert MyConfig3.load_from_parsed_file(dict(x=None)).x is None
 
-        class MyConfig(Config):
+        class MyConfig4(Config):
             x: typing.Optional[int] = field(
                 parser=yuio.parse.Int(),
             )
 
-        assert MyConfig.load_from_parsed_file(dict(x=None)).x is None
+        assert MyConfig4.load_from_parsed_file(dict(x=None)).x is None
 
 
 class TestEnv:
@@ -331,7 +331,7 @@ class TestEnv:
             ErrConfig.load_from_env()
 
     def test_simple_parsers(self):
-        class MyConfig(Config):
+        class MyConfig1(Config):
             b: bool
             s: str = field(
                 parser=yuio.parse.OneOf(yuio.parse.Str(), ['x', 'y'])
@@ -339,19 +339,19 @@ class TestEnv:
 
         os.environ['B'] = 'y'
         os.environ['S'] = 'x'
-        c = MyConfig.load_from_env()
+        c = MyConfig1.load_from_env()
         assert c.b is True
         assert c.s == 'x'
 
         os.environ['S'] = 'z'
         with pytest.raises(ValueError, match='one of x, y'):
-            _ = MyConfig.load_from_env()
+            _ = MyConfig1.load_from_env()
 
         class E(enum.Enum):
             A = enum.auto()
             B = enum.auto()
 
-        class MyConfig(Config):
+        class MyConfig2(Config):
             b: bool
             s: str
             f: float
@@ -364,14 +364,14 @@ class TestEnv:
         os.environ['I'] = '-10'
         os.environ['E'] = 'B'
 
-        c = MyConfig.load_from_env()
+        c = MyConfig2.load_from_env()
         assert c.b is False
         assert c.s == 'str'
         assert c.f == 1.5
         assert c.i == -10
         assert c.e is E.B
 
-        class MyConfig(Config):
+        class MyConfig3(Config):
             b: typing.Optional[bool]
             s: typing.Optional[str]
             f: typing.Optional[float]
@@ -384,7 +384,7 @@ class TestEnv:
         os.environ['I'] = '-10'
         os.environ['E'] = 'B'
 
-        c = MyConfig.load_from_env()
+        c = MyConfig3.load_from_env()
         assert c.b is False
         assert c.s == 'str'
         assert c.f == 1.5
@@ -451,12 +451,13 @@ class TestEnv:
 
 
 class TestArgs:
+    C = typing.TypeVar('C', bound=Config)
+
     @staticmethod
-    @typing.no_type_check
-    def load_from_args(cls: typing.Type[T], args: str) -> T:
+    def load_from_args(confg: typing.Type[C], args: str) -> C:
         parser = argparse.ArgumentParser()
-        cls.setup_arg_parser(parser)
-        return cls.load_from_namespace(parser.parse_args(args.split()))
+        confg.setup_arg_parser(parser)
+        return confg.load_from_namespace(parser.parse_args(args.split()))
 
     def test_load(self):
         class MyConfig(Config):

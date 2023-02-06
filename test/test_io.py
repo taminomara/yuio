@@ -4,7 +4,7 @@ import sys
 import pytest
 
 import yuio.io
-from yuio.io import *
+import yuio.parse
 
 
 class AttyStream(io.StringIO):
@@ -37,81 +37,82 @@ def reset_logging():
 @pytest.fixture
 def stream(reset_logging):
     stream = AttyStream(False)
-    setup(use_colors=True, level=DEBUG, stream=stream)
+    yuio.io.setup(use_colors=True, level=yuio.io.DEBUG, stream=stream)
 
     yield stream
 
-    setup()
+    yuio.io.setup()
 
 
 @pytest.fixture
 def stream_no_color(reset_logging):
     stream = AttyStream(False)
-    setup(use_colors=False, level=DEBUG, stream=stream)
+    print(yuio.io.DEBUG)
+    yuio.io.setup(use_colors=False, level=yuio.io.DEBUG, stream=stream)
 
     yield stream
 
-    setup()
+    yuio.io.setup()
 
 
 @pytest.fixture
 def stream_interactive(save_env, reset_logging):
-    os.environ['TERM'] = 'xterm-256color'
+    yuio.io.os.environ['TERM'] = 'xterm-256color'
 
     stream = AttyStream(True)
-    setup(use_colors=True, level=DEBUG, stream=stream)
+    yuio.io.setup(use_colors=True, level=yuio.io.DEBUG, stream=stream)
 
     yield stream
 
-    setup()
+    yuio.io.setup()
 
 
 class TestColor:
     def test_output(self):
-        assert str(Color()) == '\033[0m'
-        assert str(Color(31)) == '\033[0;31m'
-        assert str(Color(32, bold=True, dim=True)) == '\033[0;32;1;2m'
-        assert str(Color(bold=True)) == '\033[0;1m'
+        assert str(yuio.io.Color()) == '\033[0m'
+        assert str(yuio.io.Color(31)) == '\033[0;31m'
+        assert str(yuio.io.Color(32, bold=True, dim=True)) == '\033[0;32;1;2m'
+        assert str(yuio.io.Color(bold=True)) == '\033[0;1m'
 
     def test_combine(self):
-        assert Color(1) | Color(2) == Color(2)
-        assert Color(1) | Color() == Color(1)
-        assert Color() | Color(1) == Color(1)
-        assert Color(1) | Color(bold=True) == Color(1, bold=True)
-        assert Color(1, bold=True) | Color(2) == Color(2, bold=True)
+        assert yuio.io.Color(1) | yuio.io.Color(2) == yuio.io.Color(2)
+        assert yuio.io.Color(1) | yuio.io.Color() == yuio.io.Color(1)
+        assert yuio.io.Color() | yuio.io.Color(1) == yuio.io.Color(1)
+        assert yuio.io.Color(1) | yuio.io.Color(bold=True) == yuio.io.Color(1, bold=True)
+        assert yuio.io.Color(1, bold=True) | yuio.io.Color(2) == yuio.io.Color(2, bold=True)
 
 
 class TestHelpers:
     def test_detect_editor(self, save_env):
-        os.environ['EDITOR'] = 'subl -nw'
+        yuio.io.os.environ['EDITOR'] = 'subl -nw'
 
-        assert detect_editor() == 'subl -nw'
+        assert yuio.io.detect_editor() == 'subl -nw'
 
     def test_is_interactive(self, save_env):
-        os.environ['TERM'] = 'xterm-256color'
+        yuio.io.os.environ['TERM'] = 'xterm-256color'
 
-        setup(stream=AttyStream(True))
-        assert is_interactive()
+        yuio.io.setup(stream=AttyStream(True))
+        assert yuio.io.is_interactive()
 
-        setup(stream=AttyStream(False))
-        assert not is_interactive()
+        yuio.io.setup(stream=AttyStream(False))
+        assert not yuio.io.is_interactive()
 
-        os.environ['TERM'] = 'dumb'
-        setup(stream=AttyStream(True))
-        assert not is_interactive()
+        yuio.io.os.environ['TERM'] = 'dumb'
+        yuio.io.setup(stream=AttyStream(True))
+        assert not yuio.io.is_interactive()
 
 
 class TestSetup:
     def test_level(self, stream_no_color):
-        setup(level=WARNING)
-        debug('debug message 1')
-        info('info message 1')
-        warning('warning message 1')
+        yuio.io.setup(level=yuio.io.WARNING)
+        yuio.io.debug('debug message 1')
+        yuio.io.info('info message 1')
+        yuio.io.warning('warning message 1')
 
-        setup(level=INFO)
-        debug('debug message 2')
-        info('info message 2')
-        warning('warning message 2')
+        yuio.io.setup(level=yuio.io.INFO)
+        yuio.io.debug('debug message 2')
+        yuio.io.info('info message 2')
+        yuio.io.warning('warning message 2')
 
         assert (
             stream_no_color.getvalue() ==
@@ -121,12 +122,12 @@ class TestSetup:
         )
 
     def test_formatter(self, stream_no_color):
-        setup(formatter=logging.Formatter('-> %(message)s'))
-        info('info message 1')
-        setup()
-        info('info message 2')
-        setup(formatter=logging.Formatter('%(message)s'))
-        info('info message 3')
+        yuio.io.setup(formatter=yuio.io.logging.Formatter('-> %(message)s'))
+        yuio.io.info('info message 1')
+        yuio.io.setup()
+        yuio.io.info('info message 2')
+        yuio.io.setup(formatter=yuio.io.logging.Formatter('%(message)s'))
+        yuio.io.info('info message 3')
 
         assert (
             stream_no_color.getvalue() ==
@@ -136,12 +137,12 @@ class TestSetup:
         )
 
     def test_level_question(self, stream_no_color):
-        setup(level=CRITICAL)
-        error('error message 1')
-        question('question message 1 ')
-        setup(level=QUESTION)
-        error('error message 2')
-        question('question message 2 ')  # logged bc questions can't be disabled
+        yuio.io.setup(level=yuio.io.CRITICAL)
+        yuio.io.error('error message 1')
+        yuio.io.question('question message 1 ')
+        yuio.io.setup(level=yuio.io.QUESTION)
+        yuio.io.error('error message 2')
+        yuio.io.question('question message 2 ')  # logged bc questions can't be disabled
 
         assert (
             stream_no_color.getvalue() ==  # questions don't produce newlines
@@ -151,21 +152,21 @@ class TestSetup:
 
 class TestLoggingNoColor:
     def test_tags_are_removed(self, stream_no_color):
-        info('<c:t1>t1</c> <c:t2,t3>t2,t3</c>')
+        yuio.io.info('<c:t1>t1</c> <c:t2,t3>t2,t3</c>')
 
         assert stream_no_color.getvalue() == 't1 t2,t3\n'
 
     def test_yuio_process_color_tags(self, stream_no_color):
-        info('<c:t1>t1</c>', extra={'yuio_process_color_tags': False})
+        yuio.io.info('<c:t1>t1</c>', extra={'yuio_process_color_tags': False})
 
         assert stream_no_color.getvalue() == '<c:t1>t1</c>\n'
 
     def test_simple_logging(self, stream_no_color):
-        debug('debug message')
-        info('info message')
-        warning('warning message')
-        error('error message')
-        question('question message')
+        yuio.io.debug('debug message')
+        yuio.io.info('info message')
+        yuio.io.warning('warning message')
+        yuio.io.error('error message')
+        yuio.io.question('question message')
 
         assert (
             stream_no_color.getvalue() ==
@@ -179,16 +180,16 @@ class TestLoggingNoColor:
 
 class TestLoggingColor:
     def test_yuio_process_color_tags(self, stream):
-        info('<c:t1>t1</c>', extra={'yuio_process_color_tags': False})
+        yuio.io.info('<c:t1>t1</c>', extra={'yuio_process_color_tags': False})
 
         assert stream.getvalue() == '\033[0;39;49m<c:t1>t1</c>\n\033[0m'
 
     def test_simple_logging(self, stream):
-        debug('debug message')
-        info('info message')
-        warning('warning message')
-        error('error message')
-        question('question message')
+        yuio.io.debug('debug message')
+        yuio.io.info('info message')
+        yuio.io.warning('warning message')
+        yuio.io.error('error message')
+        yuio.io.question('question message')
 
         assert (
             stream.getvalue() ==
@@ -200,7 +201,7 @@ class TestLoggingColor:
         )
 
     def test_color_tags(self, stream):
-        info('<c:red>red <c:bold>bold <c:green>green</c></c></c>')
+        yuio.io.info('<c:red>red <c:bold>bold <c:green>green</c></c></c>')
 
         assert (
             stream.getvalue() ==
@@ -215,14 +216,14 @@ class TestLoggingColor:
         )
 
     def test_color_overrides(self, stream):
-        setup(
-            use_colors=True, level=DEBUG, colors=dict(
-                info=STYLE_BOLD,
-                custom_tag=FORE_BLACK,
+        yuio.io.setup(
+            use_colors=True, level=yuio.io.DEBUG, colors=dict(
+                info=yuio.io.STYLE_BOLD,
+                custom_tag=yuio.io.FORE_BLACK,
             )
         )
 
-        info('<c:custom_tag>black</c>')
+        yuio.io.info('<c:custom_tag>black</c>')
 
         assert (
             stream.getvalue() ==
@@ -235,13 +236,13 @@ class TestLoggingColor:
 
 class TestTask:
     def test_no_color_logging(self, stream_no_color):
-        task = Task('task description')
+        task = yuio.io.Task('task description')
 
         # These are ignored in 'no color' mode.
         task.comment('comment')
         task.progress(0.5)
 
-        info('info message')
+        yuio.io.info('info message')
 
         subtask = task.subtask('subtask description')
 
@@ -259,12 +260,12 @@ class TestTask:
         )
 
     def test_color_logging(self, stream):
-        task = Task('task description')
+        task = yuio.io.Task('task description')
 
         task.comment('comment')
         task.progress(0.5)
 
-        info('info message')
+        yuio.io.info('info message')
 
         task.done()
 
@@ -283,11 +284,11 @@ class TestTask:
         )
 
     def test_task_context(self, stream):
-        with Task('task 1'):
+        with yuio.io.Task('task 1'):
             pass
 
         try:
-            with Task('task 2') as t2:
+            with yuio.io.Task('task 2') as t2:
                 t2.comment('comment')
                 raise RuntimeError('scary error!!!')
         except RuntimeError as e:
@@ -306,7 +307,7 @@ class TestTask:
         )
 
     def test_subtask(self, stream):
-        task = Task('task description')
+        task = yuio.io.Task('task description')
         subtask = task.subtask('subtask description')
         sub_subtask = subtask.subtask('sub-subtask description')
 
@@ -333,7 +334,7 @@ class TestTask:
         )
 
     def test_progress(self, stream):
-        task = Task('task')
+        task = yuio.io.Task('task')
 
         task.progress(0.3)
         task.progress((3, 15))
@@ -355,7 +356,7 @@ class TestTask:
         )
 
     def test_iter(self, stream):
-        with Task('task') as task:
+        with yuio.io.Task('task') as task:
             for _ in task.iter(range(3)):
                 pass
 
@@ -375,7 +376,7 @@ class TestTask:
         )
 
     def test_iter_task_long(self, stream):
-        with Task('task') as task:
+        with yuio.io.Task('task') as task:
             for _ in task.iter(range(1500)):
                 pass
 
@@ -390,8 +391,8 @@ class TestTask:
             assert f' {i}%' in log
 
     def test_concurrent_tasks(self, stream):
-        task1 = Task('task 1')
-        task2 = Task('task 2')
+        task1 = yuio.io.Task('task 1')
+        task2 = yuio.io.Task('task 2')
         task2.done()
         task1.done()
 
@@ -411,11 +412,11 @@ class TestTask:
 
 class TestSuspend:
     def test_logging_is_suspended(self, stream):
-        info('info message')
+        yuio.io.info('info message')
 
-        with SuspendLogging():
-            info('suspended message')
-            log(1000, 'high priority message')
+        with yuio.io.SuspendLogging():
+            yuio.io.info('suspended message')
+            yuio.io.log(1000, 'high priority message')
 
             assert stream.getvalue() == '\033[0;39;49minfo message\n\033[0m'
 
@@ -427,11 +428,11 @@ class TestSuspend:
         )
 
     def test_logging_is_suspended_no_color(self, stream_no_color):
-        info('info message')
+        yuio.io.info('info message')
 
-        with SuspendLogging():
-            info('suspended message')
-            log(1000, 'high priority message')
+        with yuio.io.SuspendLogging():
+            yuio.io.info('suspended message')
+            yuio.io.log(1000, 'high priority message')
 
             assert stream_no_color.getvalue() == 'info message\n'
 
@@ -443,10 +444,10 @@ class TestSuspend:
         )
 
     def test_tasks_are_suspended(self, stream):
-        info('info message')
+        yuio.io.info('info message')
 
-        with SuspendLogging():
-            task = Task('task description')
+        with yuio.io.SuspendLogging():
+            task = yuio.io.Task('task description')
             task.comment('comment')
 
             assert stream.getvalue() == '\033[0;39;49minfo message\n\033[0m'
@@ -462,14 +463,14 @@ class TestSuspend:
         )
 
     def test_tasks_are_suspended_no_color(self, stream_no_color):
-        info('info message')
+        yuio.io.info('info message')
 
-        with SuspendLogging():
-            task = Task('task description')
+        with yuio.io.SuspendLogging():
+            task = yuio.io.Task('task description')
             task.comment('comment')
             task.subtask('task 2').done()
 
-            info('info message 2')
+            yuio.io.info('info message 2')
 
             assert stream_no_color.getvalue() == 'info message\n'
 
@@ -486,14 +487,14 @@ class TestSuspend:
         )
 
     def test_suspended_override(self, stream):
-        info('info message')
+        yuio.io.info('info message')
 
-        with SuspendLogging() as logging:
-            info('suspended message')
+        with yuio.io.SuspendLogging() as logging:
+            yuio.io.info('suspended message')
 
             logging.info('overridden message')
             logging.info('suspended message 2', extra={'yuio_ignore_suspended': False})
-            info('overridden message 2', extra={'yuio_ignore_suspended': True})
+            yuio.io.info('overridden message 2', extra={'yuio_ignore_suspended': True})
 
             assert (
                 stream.getvalue() ==
@@ -514,26 +515,26 @@ class TestSuspend:
 
 class TestEdit:
     def test_noninteractive(self):
-        assert edit('String to edit') == 'String to edit'
-        assert edit('# Comment\nString to edit') == 'String to edit'
-        assert edit('  #Comment\nString to edit') == 'String to edit'
+        assert yuio.io.edit('String to edit') == 'String to edit'
+        assert yuio.io.edit('# Comment\nString to edit') == 'String to edit'
+        assert yuio.io.edit('  #Comment\nString to edit') == 'String to edit'
 
     def test_interactive(self, stream_interactive):
-        assert edit('String to edit', editor='cat') == 'String to edit'
-        assert edit('# Comment\nString to edit', editor='cat') == 'String to edit'
-        assert edit('  #Comment\nString to edit', editor='cat') == 'String to edit'
+        assert yuio.io.edit('String to edit', editor='cat') == 'String to edit'
+        assert yuio.io.edit('# Comment\nString to edit', editor='cat') == 'String to edit'
+        assert yuio.io.edit('  #Comment\nString to edit', editor='cat') == 'String to edit'
 
     def test_replace(self, stream_interactive):
-        assert edit('a\nx', editor='sed -i "" "s/a/b/g"') == 'b\nx'
+        assert yuio.io.edit('a\nx', editor='sed -i "" "s/a/b/g"') == 'b\nx'
 
     def test_detect_editor(self, stream_interactive, save_env):
-        os.environ['EDITOR'] = 'sed -i "" "s/a/b/g"'
+        yuio.io.os.environ['EDITOR'] = 'sed -i "" "s/a/b/g"'
 
-        assert edit('a\nx') == 'b\nx'
+        assert yuio.io.edit('a\nx') == 'b\nx'
 
     def test_comment_marker(self):
         assert (
-            edit(
+            yuio.io.edit(
                 '// Comment\n'
                 'String to edit 1\n'
                 '// Comment\n'
@@ -555,20 +556,20 @@ class TestAsk:
     @staticmethod
     def prepare(input):
         output = AttyStream(True)
-        setup(stream=output, use_colors=True)
-        sys.stdin = io.StringIO(input)
+        yuio.io.setup(stream=output, use_colors=True)
+        yuio.io.sys.stdin = io.StringIO(input)
         return output
 
     def test_str(self):
         output = self.prepare('abc\n')
-        assert ask('question') == 'abc'
+        assert yuio.io.ask('question') == 'abc'
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
         output = self.prepare('\nabc\n')
-        assert ask('question') == 'abc'
+        assert yuio.io.ask('question') == 'abc'
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
@@ -577,7 +578,7 @@ class TestAsk:
         )
 
         output = self.prepare('\n')
-        assert ask('question', default='abc') == 'abc'
+        assert yuio.io.ask('question', default='abc') == 'abc'
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion [\033[0;32;49mabc\033[0;34;49m]: \033[0m'
@@ -585,14 +586,14 @@ class TestAsk:
 
     def test_parser(self):
         output = self.prepare('10\n')
-        assert ask('question', parser=yuio.parse.Int()) == 10
+        assert yuio.io.ask('question', parser=yuio.io.yuio.parse.Int()) == 10
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
         output = self.prepare('10\n11')
-        assert ask('question', parser=yuio.parse.Int().gt(10)) == 11
+        assert yuio.io.ask('question', parser=yuio.io.yuio.parse.Int().gt(10)) == 11
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
@@ -601,14 +602,14 @@ class TestAsk:
         )
 
         output = self.prepare('True\n')
-        assert ask('question', parser=yuio.parse.Bool()) is True
+        assert yuio.io.ask('question', parser=yuio.io.yuio.parse.Bool()) is True
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
         output = self.prepare('xxx\nno')
-        assert ask('question', parser=yuio.parse.Bool()) is False
+        assert yuio.io.ask('question', parser=yuio.io.yuio.parse.Bool()) is False
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
@@ -617,10 +618,10 @@ class TestAsk:
         )
 
         output = self.prepare('xxx\n\n')
-        assert ask(
+        assert yuio.io.ask(
             'question',
-            parser=yuio.parse.OneOf(
-                yuio.parse.Str(),
+            parser=yuio.io.yuio.parse.OneOf(
+                yuio.io.yuio.parse.Str(),
                 ['a', 'b']
             ),
             default='b'
@@ -634,14 +635,14 @@ class TestAsk:
 
     def test_parser_from_type(self):
         output = self.prepare('10\n')
-        assert ask('question', parser=int) == 10
+        assert yuio.io.ask('question', parser=int) == 10
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
         output = self.prepare('True\n')
-        assert ask('question', parser=bool) is True
+        assert yuio.io.ask('question', parser=bool) is True
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
@@ -649,42 +650,42 @@ class TestAsk:
 
     def test_descriptions(self):
         output = self.prepare('10\n')
-        assert ask('question', parser=int, input_description='int') == 10
+        assert yuio.io.ask('question', parser=int, input_description='int') == 10
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (int): \033[0m'
         )
 
         output = self.prepare('True\n')
-        assert ask('question', parser=bool, input_description='bool') is True
+        assert yuio.io.ask('question', parser=bool, input_description='bool') is True
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (bool): \033[0m'
         )
 
         output = self.prepare('True\n')
-        assert ask('question', parser=bool, input_description='') is True
+        assert yuio.io.ask('question', parser=bool, input_description='') is True
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
         )
 
         output = self.prepare('\n')
-        assert ask('question', parser=int, default=10) == 10
+        assert yuio.io.ask('question', parser=int, default=10) == 10
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion [\033[0;32;49m10\033[0;34;49m]: \033[0m'
         )
 
         output = self.prepare('\n')
-        assert ask('question', parser=int, default=10, default_description='ten') == 10
+        assert yuio.io.ask('question', parser=int, default=10, default_description='ten') == 10
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion [\033[0;32;49mten\033[0;34;49m]: \033[0m'
         )
 
         output = self.prepare('\n')
-        assert ask('question', parser=int, default=10, default_description='') == 10
+        assert yuio.io.ask('question', parser=int, default=10, default_description='') == 10
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
@@ -692,21 +693,21 @@ class TestAsk:
 
     def test_yn(self):
         output = self.prepare('True\n')
-        assert ask_yn('question') is True
+        assert yuio.io.ask_yn('question') is True
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
         output = self.prepare('False\n')
-        assert ask_yn('question') is False
+        assert yuio.io.ask_yn('question') is False
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
         output = self.prepare('\n')
-        assert ask_yn('question', default=None) is None
+        assert yuio.io.ask_yn('question', default=None) is None
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (yes|no) [\033[0;32;49m<none>\033[0;34;49m]: \033[0m'
@@ -714,13 +715,13 @@ class TestAsk:
 
     def test_wait(self):
         output = self.prepare('\n')
-        wait_for_user()
+        yuio.io.wait_for_user()
         assert output.getvalue() == '\033[0;34;49mPress enter to continue\n\033[0m'
 
     def test_noninteractive(self, save_env):
-        os.environ['TERM'] = 'dumb'
+        yuio.io.os.environ['TERM'] = 'dumb'
 
-        assert ask('message', default='x') == 'x'
-        assert ask('message', default=None) is None
-        with pytest.raises(UserIoError):
-            ask('message')
+        assert yuio.io.ask('message', default='x') == 'x'
+        assert yuio.io.ask('message', default=None) is None
+        with pytest.raises(yuio.io.UserIoError):
+            yuio.io.ask('message')

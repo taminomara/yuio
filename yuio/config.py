@@ -908,7 +908,7 @@ class Config:
     def __load_from_file(
         cls: _t.Type[_Self],
         path: _t.Union[str, pathlib.Path],
-        parser: _t.Callable[[str], _t.Any],
+        file_parser: _t.Callable[[str], _t.Any],
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
     ) -> _Self:
@@ -917,7 +917,7 @@ class Config:
 
         try:
             with open(path, 'r') as file:
-                loaded = parser(file.read())
+                loaded = file_parser(file.read())
         except Exception as e:
             raise yuio.parse.ParsingError(f'invalid config {path}: {e}') from None
 

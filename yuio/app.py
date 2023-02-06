@@ -69,7 +69,7 @@ def app(
     description: _t.Optional[str] = None,
     epilog: _t.Optional[str] = None,
 ):
-    def registrar(command: Command) -> App:
+    def registrar(command: Command, /) -> App:
         return App(
             command,
             prog=prog,
@@ -208,7 +208,7 @@ class App:
         else:
             cb = cb_or_name
 
-        def registrar(cb: Command) -> App:
+        def registrar(cb: Command, /) -> App:
             app = App(
                 prog=prog,
                 usage=usage,
@@ -387,7 +387,7 @@ class _HelpFormatter(argparse.HelpFormatter):
 
     def _iter_indented_subactions(self, action):
         try:
-            return action._get_subactions()
+            return getattr(action, '_get_subactions')()
         except AttributeError:
             return []
 
@@ -420,7 +420,7 @@ class _HelpFormatter(argparse.HelpFormatter):
                 lines.pop(0)
 
             common_indent = min(
-                len(re.match(r'^ *', line).group(0)) for line in lines
+                len(line) - len(line.lstrip()) for line in lines
             )
 
             if common_indent >= 4:
