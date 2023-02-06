@@ -24,8 +24,8 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [
-    "pytest~=6.2",
-    "pytest-mypy~=0.9",
+    "pytest~=7.0",
+    "pytest-pyright~=0.0.3",
     "PyYaml~=5.3",
     "types-PyYAML~=5.3",
     "toml~=0.10",
@@ -47,8 +47,7 @@ requires = ["flit_core>=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
 [tool.pytest.ini_options]
-minversion = "6.2"
-addopts = "--mypy"
+minversion = "7.0"
 testpaths = [
     "examples",
     "test",
