@@ -240,16 +240,16 @@ import os
 import re
 import string
 import subprocess
+import sys
 import tempfile
 import threading
 import typing as _t
 from dataclasses import dataclass
 from logging import LogRecord
 
-import sys
-
 import yuio.parse
-from yuio._utils import Disabled, DISABLED
+from yuio._utils import DISABLED, Disabled
+
 
 T = _t.TypeVar('T')
 _PROGRESS = _t.Union[None, int, float, _t.Tuple[int, int], _t.Tuple[int, int, int]]

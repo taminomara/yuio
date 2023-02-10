@@ -153,14 +153,14 @@ are handled to provide better CLI experience::
 """
 
 import argparse
+import logging
 import os
 import pathlib
-import logging
 import typing as _t
 from dataclasses import dataclass
 
-import yuio.parse
 import yuio._utils
+import yuio.parse
 from yuio._utils import DISABLED, MISSING, POSITIONAL, Disabled, Missing, Positional
 
 

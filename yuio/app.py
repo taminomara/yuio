@@ -4,10 +4,12 @@
 #
 # You're free to copy this file to your project and edit it for your needs,
 # just keep this copyright line please :3
+
 """
 This module expands on :mod:`yuio.config` to build CLI apps.
 
 """
+
 import argparse
 import dataclasses
 import inspect
@@ -18,10 +20,12 @@ import types
 import typing as _t
 from dataclasses import dataclass
 
+import yuio._utils
 import yuio.config
 import yuio.io
 import yuio.parse
-from yuio._utils import MISSING
+from yuio._utils import DISABLED, MISSING, POSITIONAL, Disabled, Missing, Positional
+from yuio.config import field, inline, positional
 
 
 Command = _t.Callable[..., None]
