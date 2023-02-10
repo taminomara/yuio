@@ -812,7 +812,7 @@ class Config:
         """
 
         try:
-            import yaml
+            import yaml  # type: ignore
         except ImportError:
             raise ImportError('PyYaml is not available')
 
@@ -838,7 +838,7 @@ class Config:
         """
 
         try:
-            import toml
+            import toml  # type: ignore
         except ImportError:
             try:
                 import tomllib as toml  # type: ignore

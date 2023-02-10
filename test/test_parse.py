@@ -1,5 +1,4 @@
 import os.path
-import py.path
 import pytest
 
 from yuio.parse import *
@@ -389,7 +388,7 @@ def test_path():
         parser.parse('file.sql')
 
 
-def test_file(tmpdir: py.path.local):
+def test_file(tmpdir):
     tmpdir.join('file.cfg').write('hi!')
 
     parser = File()
@@ -409,7 +408,7 @@ def test_file(tmpdir: py.path.local):
         parser.parse(tmpdir.join('file.sql').strpath)
 
 
-def test_dir(tmpdir: py.path.local):
+def test_dir(tmpdir):
     tmpdir.join('file.cfg').write('hi!')
 
     parser = Dir()
@@ -421,7 +420,7 @@ def test_dir(tmpdir: py.path.local):
         parser.parse(tmpdir.join('file.cfg').strpath)
 
 
-def test_git_repo(tmpdir: py.path.local):
+def test_git_repo(tmpdir):
     tmpdir.join('file.cfg').write('hi!')
 
     parser = GitRepo()
