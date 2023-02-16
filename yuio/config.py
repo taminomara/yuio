@@ -182,6 +182,7 @@ class _FieldSettings:
         name: str,
         ty: _t.Any,
         parsed_help: _t.Optional[str],
+        allow_positionals: bool,
     ) -> '_Field':
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
 
@@ -207,6 +208,9 @@ class _FieldSettings:
         flags: _t.Union[_t.List[str], Disabled, Positional]
         if self.flags is DISABLED or self.flags is POSITIONAL:
             flags = self.flags
+            if not allow_positionals and flags is POSITIONAL:
+                raise TypeError(
+                    f'{qualname}: positional arguments are not allowed in configs')
         elif self.flags is None:
             flags = ['--' + name.replace('_', '-')]
         elif isinstance(self.flags, str):
@@ -268,6 +272,10 @@ class _FieldSettings:
 
             if is_optional and not parser.supports_parse_optional():
                 parser = yuio.parse.Optional(parser)
+            
+            if flags is POSITIONAL and default is not MISSING and parser.supports_parse_many():
+                raise TypeError(
+                    f'{qualname}: positional multi-value arguments can\'t have defaults')
 
         return _Field(
             default,
@@ -423,14 +431,15 @@ def positional(
 def _action(parser: yuio.parse.Parser, parse_many: bool):
     class Action(argparse.Action):
         def __call__(self, _, namespace, values, option_string=None):
-            if values is MISSING:
-                return
-
             try:
                 if parse_many:
+                    if values is MISSING:
+                        values = []
                     assert values is not None and not isinstance(values, str)
                     parsed = parser.parse_many(values)
                 else:
+                    if values is MISSING:
+                        return
                     assert isinstance(values, str)
                     parsed = parser.parse(values)
             except argparse.ArgumentTypeError as e:
@@ -444,7 +453,6 @@ class _VerboseAction(argparse.Action):
     def __call__(self, _, namespace, values, option_string=None):
         import yuio.io
         yuio.io.setup(yuio.io.DEBUG)
-        # yuio.io._MSG_HANDLER.setLevel(yuio.io.DEBUG)
 
 
 class Config:
@@ -463,6 +471,7 @@ class Config:
     _Self = _t.TypeVar('_Self', bound='Config')
 
     # Value is generated lazily by `__get_fields`.
+    __allow_positionals: _t.ClassVar[bool] = False
     __fields: _t.ClassVar[_t.Optional[_t.Dict[str, _Field]]] = None
 
     @classmethod
@@ -508,15 +517,16 @@ class Config:
             setattr(cls, name, field.default)
 
             fields[name] = field._update_defaults(
-                f'{cls.__qualname__}.{name}', name, types[name], docs.get(name))
+                f'{cls.__qualname__}.{name}', name, types[name], docs.get(name), cls.__allow_positionals)
 
         cls.__fields = fields
 
         return fields
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, _allow_positionals=False, **kwargs):
         super().__init_subclass__(**kwargs)
 
+        cls.__allow_positionals = _allow_positionals
         cls.__fields = None
 
     def __init__(self, *args, **kwargs):
@@ -726,6 +736,8 @@ class Config:
                 metavar = '<' + name.replace('_', '-') + '>'
 
             nargs = field.parser.get_nargs()
+            if flags is POSITIONAL and field.default is not MISSING and nargs is None:
+                nargs = '?'
             nargs_kw = {'nargs': nargs} if nargs is not None else {}
 
             if flags is POSITIONAL:

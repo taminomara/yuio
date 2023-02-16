@@ -722,8 +722,7 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
         return True
 
     def _get_nargs(self) -> _t.Union[str, int, None]:
-        nargs = self._inner.get_nargs()
-        return nargs if nargs is not None else '?'
+        return self._inner.get_nargs()
 
     def describe(self) -> _t.Optional[str]:
         return self._inner.describe()

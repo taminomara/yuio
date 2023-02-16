@@ -584,6 +584,13 @@ class TestArgs:
         c = self.load_from_args(MyConfig, '--b foo --a bar')
         assert c.b == 'foo'
         assert c.sub.a == 'bar'
+    
+    def test_positionals_not_allower(self):
+        class MyConfig(Config):
+            a: str = positional()
+        
+        with pytest.raises(TypeError, match='positional arguments are not allowed in configs'):
+            self.load_from_args(MyConfig, 'abc')
 
     class DocSubConfig(Config):
         #: help for `a`.

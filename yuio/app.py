@@ -365,6 +365,7 @@ def _command_from_callable(cb: Command) -> _t.Type[yuio.config.Config]:
     return types.new_class(
         cb.__name__,
         (yuio.config.Config,),
+        {'_allow_positionals': True},
         exec_body=lambda ns: ns.update(dct)
     )
 
