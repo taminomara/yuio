@@ -596,6 +596,9 @@ class TestArgs:
         #: help for `a`.
         a: str
 
+        #: help for `b`.
+        b: bool = False
+
     class DocConfig(Config):
         #: help for `sub`.
         sub: 'TestArgs.DocSubConfig'
@@ -606,6 +609,7 @@ class TestArgs:
         help = parser.format_help()
         assert 'help for `sub`:' in help
         assert 'help for `a`.' in help
+        assert 'help for `b`. [default: disabled]' in help
 
 
 class TestLoadFromFile:

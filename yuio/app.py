@@ -242,7 +242,7 @@ class App:
         try:
             command = self._load_from_namespace(parser.parse_args(args))
             command()
-        except argparse.ArgumentTypeError as e:
+        except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
             parser.error(str(e))
         except Exception as e:
             yuio.io.exception('<c:failure>Error: %s</c>', e)

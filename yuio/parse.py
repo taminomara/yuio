@@ -727,8 +727,14 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
     def describe(self) -> _t.Optional[str]:
         return self._inner.describe()
 
+    def describe_or_def(self) -> str:
+        return self._inner.describe_or_def()
+
     def describe_many(self) -> _t.Optional[str]:
         return self._inner.describe_many()
+    
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_or_def()
 
     def describe_value(self, value: _t.Optional[T], /) -> _t.Optional[str]:
         if value is None:
@@ -793,6 +799,9 @@ class List(Parser[_t.List[T]], _t.Generic[T]):
 
     def describe_many(self) -> _t.Optional[str]:
         return self._inner.describe()
+
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_or_def()
 
     def describe_value(self, value: _t.List[T], /) -> _t.Optional[str]:
         return (self._delimiter or ' ').join(
@@ -862,6 +871,9 @@ class Set(Parser[_t.Set[T]], _t.Generic[T]):
     def describe_many(self) -> _t.Optional[str]:
         return self._inner.describe()
 
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_or_def()
+
     def describe_value(self, value: _t.Set[T], /) -> _t.Optional[str]:
         return (self._delimiter or ' ').join(
             self._inner.describe_value_or_def(item) for item in value
@@ -929,6 +941,9 @@ class FrozenSet(Parser[_t.FrozenSet[T]], _t.Generic[T]):
 
     def describe_many(self) -> _t.Optional[str]:
         return self._inner.describe()
+
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_or_def()
 
     def describe_value(self, value: _t.FrozenSet[T], /) -> _t.Optional[str]:
         return (self._delimiter or ' ').join(
@@ -1000,6 +1015,9 @@ class Dict(Parser[_t.Dict[K, V]], _t.Generic[K, V]):
 
     def describe_many(self) -> _t.Optional[str]:
         return self._inner.describe()
+
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_or_def()
 
     def describe_value(self, value: _t.Dict[K, V], /) -> _t.Optional[str]:
         return (self._delimiter or ' ').join(
@@ -1137,7 +1155,18 @@ class Tuple(Parser[TU], _t.Generic[TU]):
         return delimiter.join(desc)
 
     def describe_many(self) -> _t.Optional[str]:
-        return None
+        descriptions = set(parser.describe() for parser in self._parsers)
+        if len(descriptions) == 1:
+            return descriptions.pop()
+        else:
+            return None
+
+    def describe_many_or_def(self) -> str:
+        descriptions = set(parser.describe_or_def() for parser in self._parsers)
+        if len(descriptions) == 1:
+            return descriptions.pop()
+        else:
+            return 'value'
 
     def describe_value(self, value: TU, /) -> _t.Optional[str]:
         delimiter = self._delimiter or ' '

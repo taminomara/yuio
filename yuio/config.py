@@ -726,14 +726,12 @@ class Config:
 
             action = _action(field.parser, parse_many)
 
-            if parse_many:
-                metavar = field.parser.describe_many()
-            else:
-                metavar = field.parser.describe()
-            if metavar:
-                metavar = '{' + metavar + '}'
-            else:
+            if flags is POSITIONAL:
                 metavar = '<' + name.replace('_', '-') + '>'
+            elif parse_many:
+                metavar = '{' + field.parser.describe_many_or_def() + '}'
+            else:
+                metavar = '{' + field.parser.describe_or_def() + '}'
 
             nargs = field.parser.get_nargs()
             if flags is POSITIONAL and field.default is not MISSING and nargs is None:

@@ -26,7 +26,7 @@ CONFIG = Config()
 
 
 @yuio.app.app
-def main(_subcommand, config: Config = yuio.config.inline()):
+def main(config: Config = yuio.config.inline()):
     """some ml stuff idk im not into ml
 
     """
