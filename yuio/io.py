@@ -68,6 +68,7 @@ List of all tags that are available by default:
 - ``code``: for inline code,
 - ``note``: for notes, such as default values in user prompts,
 - ``success``, ``failure``: for indicating outcome of the program,
+- ``heading``: for splitting output into sections,
 - ``critical``, ``error``, ``warning``, ``info``, ``debug``:
   used to color log messages,
 - ``task``, ``task_done``, ``task_error``:
@@ -79,15 +80,15 @@ List of all tags that are available by default:
 Custom colors
 -------------
 
-You can add more tags or change colors of the existing ones by supplying
-the `colors` argument to the :func:`setup` function. This argument
-is a mapping from a tag name to a :class:`Color` instance::
+Use :func:`setup` function to override existing tag colors or add new tags::
 
     setup(
         colors=dict(
             success=FORE_BLUE | STYLE_BOLD
         )
     )
+
+This argument is a mapping from a tag name to a :class:`Color` instance::
 
 .. autoclass:: Color
 
@@ -151,9 +152,7 @@ To query some input from a user, there's the :func:`ask` function:
 
 .. autofunction:: ask
 
-You can prompt user to edit something with the :func:`edit` function.
-Note that this function doesn't add any header with an explanation
-to the given text, so you will need to do it yourself:
+You can prompt user to edit something with the :func:`edit` function:
 
 .. autofunction:: edit
 
@@ -1108,15 +1107,14 @@ class _HandlerImpl:
     """
 
     def __init__(self):
-        self.stream = sys.stderr
+        self.stream: _t.TextIO = sys.stderr
         self.colors: _t.Dict[str, Color] = DEFAULT_COLORS
 
+        self.use_colors: bool = self.stream.isatty()
         if 'NO_COLORS' in os.environ:
             self.use_colors = False
         elif 'FORCE_COLORS' in os.environ:
             self.use_colors = True
-        else:
-            self.use_colors: bool = self.stream.isatty()
 
         self._tasks: _t.List[Task] = []
 
