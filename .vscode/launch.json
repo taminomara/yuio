@@ -1,0 +1,50 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Example: App",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/app.py"
+        },
+        {
+            "name": "Example: Git",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/git.py",
+        },
+        {
+            "name": "Example: Io Edit",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/io_edit.py"
+        },
+        {
+            "name": "Example: Io Logging",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/io_logging.py"
+        },
+        {
+            "name": "Example: Io Questions",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/io_questions.py"
+        },
+        {
+            "name": "Example: Io Tasks Multithreaded",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/io_tasks_multithreaded.py"
+        },
+        {
+            "name": "Example: Io Tasks",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/io_tasks.py"
+        },
+    ]
+}
