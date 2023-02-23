@@ -126,6 +126,7 @@ class _Comparable(_t.Protocol):
 T = _t.TypeVar('T')
 K = _t.TypeVar('K')
 V = _t.TypeVar('V')
+C = _t.TypeVar('C', bound=_t.Collection)
 Sz = _t.TypeVar('Sz', bound=_t.Sized)
 Cmp = _t.TypeVar('Cmp', bound=_Comparable)
 E = _t.TypeVar('E', bound=enum.Enum)
@@ -742,7 +743,77 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
         return self._inner.describe_value(value)
 
 
-class List(Parser[_t.List[T]], _t.Generic[T]):
+class _Collection(Parser[C], _t.Generic[C]):
+    _ctor: _t.Callable[[_t.Iterable], C]
+
+    def __init__(
+        self,
+        inner: Parser[_t.Any],
+        ctor: _t.Callable[[_t.Iterable], C],
+        /,
+        *,
+        config_type: type = list,
+        config_type_iter: _t.Callable[[_t.Any], _t.Iterable] = iter,
+        delimiter: _t.Optional[str] = None
+    ):
+        super().__init__()
+        
+        self._ctor = ctor
+        self._inner = inner
+        self._config_type = config_type
+        self._config_type_iter = config_type_iter
+        if delimiter == '':
+            raise ValueError('empty delimiter')
+        self._delimiter = delimiter
+
+    def _parse(self, value: str, /) -> C:
+        return self.parse_many(value.split(self._delimiter))
+
+    def _parse_many(self, value: _t.Sequence[str], /) -> C:
+        return self._ctor(
+            self._inner.parse(item)
+            for item in value
+        )
+
+    def _supports_parse_many(self) -> bool:
+        return True
+
+    def _parse_config(self, value: _t.Any, /) -> C:
+        if not isinstance(value, self._config_type):
+            raise ParsingError(f'expected a {self._config_type.__name__}')
+
+        return self._ctor(
+            self._inner.parse_config(item)
+            for item in self._config_type_iter(value)
+        )
+
+    def _validate(self, value: C, /):
+        for item in self._config_type_iter(value):
+            self._inner.validate(item)
+
+    def _get_nargs(self) -> _t.Union[str, int, None]:
+        return '*'
+
+    def describe(self) -> _t.Optional[str]:
+        delimiter = self._delimiter or ' '
+        value = self._inner.describe_or_def()
+
+        return f'{value}[{delimiter}{value}[{delimiter}...]]'
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe()
+
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_or_def()
+
+    def describe_value(self, value: C, /) -> _t.Optional[str]:
+        return (self._delimiter or ' ').join(
+            self._inner.describe_value_or_def(item)
+            for item in self._config_type_iter(value)
+        )
+
+
+class List(_Collection[_t.List[T]], _t.Generic[T]):
     """Parser for lists.
 
     Will split a string by the given delimiter, and parse each item
@@ -756,60 +827,10 @@ class List(Parser[_t.List[T]], _t.Generic[T]):
     """
 
     def __init__(self, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None):
-        super().__init__()
-
-        self._inner: Parser[T] = inner
-        if delimiter == '':
-            raise ValueError('empty delimiter')
-        self._delimiter = delimiter
-
-    def _parse(self, value: str, /) -> _t.List[T]:
-        return self.parse_many(value.split(self._delimiter))
-
-    def _parse_many(self, value: _t.Sequence[str], /) -> _t.List[T]:
-        return [
-            self._inner.parse(item)
-            for item in value
-        ]
-
-    def _parse_config(self, value: _t.Any, /) -> _t.List[T]:
-        if not isinstance(value, list):
-            raise ParsingError('expected a list')
-
-        return [
-            self._inner.parse_config(item)
-            for item in value
-        ]
-
-    def _validate(self, value: _t.List[T], /):
-        for item in value:
-            self._inner.validate(item)
-
-    def _supports_parse_many(self) -> bool:
-        return True
-
-    def _get_nargs(self) -> _t.Union[str, int, None]:
-        return '*'
-
-    def describe(self) -> _t.Optional[str]:
-        delimiter = self._delimiter or ' '
-        value = self._inner.describe_or_def()
-
-        return f'{value}[{delimiter}{value}[{delimiter}...]]'
-
-    def describe_many(self) -> _t.Optional[str]:
-        return self._inner.describe()
-
-    def describe_many_or_def(self) -> str:
-        return self._inner.describe_or_def()
-
-    def describe_value(self, value: _t.List[T], /) -> _t.Optional[str]:
-        return (self._delimiter or ' ').join(
-            self._inner.describe_value_or_def(item) for item in value
-        )
+        super().__init__(inner, list, delimiter=delimiter)
 
 
-class Set(Parser[_t.Set[T]], _t.Generic[T]):
+class Set(_Collection[_t.Set[T]], _t.Generic[T]):
     """Parser for sets.
 
     Will split a string by the given delimiter, and parse each item
@@ -823,64 +844,10 @@ class Set(Parser[_t.Set[T]], _t.Generic[T]):
     """
 
     def __init__(self, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None):
-        super().__init__()
-
-        self._inner: Parser[T] = inner
-        if delimiter == '':
-            raise ValueError('empty delimiter')
-        self._delimiter = delimiter
-
-    def _parse(self, value: str, /) -> _t.Set[T]:
-        return {
-            self._inner.parse(item)
-            for item in
-            value.split(self._delimiter)
-        }
-
-    def _parse_many(self, value: _t.Sequence[str], /) -> _t.Set[T]:
-        return {
-            self._inner.parse(item)
-            for item in value
-        }
-
-    def _parse_config(self, value: _t.Any, /) -> _t.Set[T]:
-        if not isinstance(value, list):
-            raise ParsingError('expected a list')
-
-        return {
-            self._inner.parse_config(item)
-            for item in value
-        }
-
-    def _validate(self, value: _t.Set[T], /):
-        for item in value:
-            self._inner.validate(item)
-
-    def _supports_parse_many(self) -> bool:
-        return True
-
-    def _get_nargs(self) -> _t.Union[str, int, None]:
-        return '*'
-
-    def describe(self) -> _t.Optional[str]:
-        delimiter = self._delimiter or ' '
-        value = self._inner.describe_or_def()
-
-        return f'{value}[{delimiter}{value}[{delimiter}...]]'
-
-    def describe_many(self) -> _t.Optional[str]:
-        return self._inner.describe()
-
-    def describe_many_or_def(self) -> str:
-        return self._inner.describe_or_def()
-
-    def describe_value(self, value: _t.Set[T], /) -> _t.Optional[str]:
-        return (self._delimiter or ' ').join(
-            self._inner.describe_value_or_def(item) for item in value
-        )
+        super().__init__(inner, set, delimiter=delimiter)
 
 
-class FrozenSet(Parser[_t.FrozenSet[T]], _t.Generic[T]):
+class FrozenSet(_Collection[_t.FrozenSet[T]], _t.Generic[T]):
     """Parser for frozen sets.
 
     Will split a string by the given delimiter, and parse each item
@@ -894,64 +861,10 @@ class FrozenSet(Parser[_t.FrozenSet[T]], _t.Generic[T]):
     """
 
     def __init__(self, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None):
-        super().__init__()
-
-        self._inner: Parser[T] = inner
-        if delimiter == '':
-            raise ValueError('empty delimiter')
-        self._delimiter = delimiter
-
-    def _parse(self, value: str, /) -> _t.FrozenSet[T]:
-        return frozenset({
-            self._inner.parse(item)
-            for item in
-            value.split(self._delimiter)
-        })
-
-    def _parse_many(self, value: _t.Sequence[str], /) -> _t.FrozenSet[T]:
-        return frozenset({
-            self._inner.parse(item)
-            for item in value
-        })
-
-    def _parse_config(self, value: _t.Any, /) -> _t.FrozenSet[T]:
-        if not isinstance(value, list):
-            raise ParsingError('expected a list')
-
-        return frozenset({
-            self._inner.parse_config(item)
-            for item in value
-        })
-
-    def _validate(self, value: _t.FrozenSet[T], /):
-        for item in value:
-            self._inner.validate(item)
-
-    def _supports_parse_many(self) -> bool:
-        return True
-
-    def _get_nargs(self) -> _t.Union[str, int, None]:
-        return '*'
-
-    def describe(self) -> _t.Optional[str]:
-        delimiter = self._delimiter or ' '
-        value = self._inner.describe_or_def()
-
-        return f'{value}[{delimiter}{value}[{delimiter}...]]'
-
-    def describe_many(self) -> _t.Optional[str]:
-        return self._inner.describe()
-
-    def describe_many_or_def(self) -> str:
-        return self._inner.describe_or_def()
-
-    def describe_value(self, value: _t.FrozenSet[T], /) -> _t.Optional[str]:
-        return (self._delimiter or ' ').join(
-            self._inner.describe_value_or_def(item) for item in value
-        )
+        super().__init__(inner, frozenset, delimiter=delimiter)
 
 
-class Dict(Parser[_t.Dict[K, V]], _t.Generic[K, V]):
+class Dict(_Collection[_t.Dict[K, V]], _t.Generic[K, V]):
     """Parser for dicts.
 
     Will split a string by the given delimiter, and parse each item
@@ -977,51 +890,14 @@ class Dict(Parser[_t.Dict[K, V]], _t.Generic[K, V]):
         delimiter: _t.Optional[str] = None,
         pair_delimiter: str = ':'
     ):
-        super().__init__()
+        inner = Pair(key, value, delimiter=pair_delimiter)
 
-        if delimiter == '':
-            raise ValueError('empty delimiter')
-        self._delimiter = delimiter
-
-        self._inner = Pair(key, value, delimiter=pair_delimiter)
-
-    def _parse(self, value: str, /) -> _t.Dict[K, V]:
-        return self.parse_many(value.split(self._delimiter))
-
-    def _parse_many(self, value: _t.Sequence[str], /) -> _t.Dict[K, V]:
-        return dict(self._inner.parse(item) for item in value)
-
-    def _parse_config(self, value: _t.Any, /) -> _t.Dict[K, V]:
-        if not isinstance(value, dict):
-            raise ParsingError('expected a dict')
-
-        return dict(self._inner.parse_config(item) for item in value)
-
-    def _validate(self, value: _t.Dict[K, V], /):
-        for item in value.items():
-            self._inner.validate(item)
-
-    def _supports_parse_many(self) -> bool:
-        return True
-
-    def _get_nargs(self) -> _t.Union[str, int, None]:
-        return '*'
-
-    def describe(self) -> _t.Optional[str]:
-        delimiter = self._delimiter or ' '
-        value = self._inner.describe_or_def()
-
-        return f'{value}[{delimiter}{value}[{delimiter}...]]'
-
-    def describe_many(self) -> _t.Optional[str]:
-        return self._inner.describe()
-
-    def describe_many_or_def(self) -> str:
-        return self._inner.describe_or_def()
-
-    def describe_value(self, value: _t.Dict[K, V], /) -> _t.Optional[str]:
-        return (self._delimiter or ' ').join(
-            self._inner.describe_value_or_def(item) for item in value.items()
+        super().__init__(
+            inner,
+            dict,
+            config_type=dict,
+            config_type_iter=dict.items,
+            delimiter=delimiter
         )
 
 
