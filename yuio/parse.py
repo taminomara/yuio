@@ -8,15 +8,7 @@
 """
 This module provides several parsers that convert (usually user-provided)
 strings to python objects, or check user input, and throw
-:class:`ValueError` in case of any issue.
-
-All parsers are descendants of the :class:`Parser` class.
-On the surface, they are just callables that take a string and return a python
-object. That is, you can use them in any place that expects such callable,
-for example in flags in argparse, or in :func:`~yuio.io.ask` method
-from :mod:`yuio.io`.
-
-When parsing fails, we raise :class:`ParsingError`.
+:class:`ParsingError` in case of any issue.
 
 
 Base parser
@@ -32,6 +24,7 @@ Value parsers
 -------------
 
 .. autoclass:: Str
+   :members:
 
 .. autoclass:: Int
 
@@ -79,17 +72,17 @@ Validators
 
 .. autoclass:: OneOf
 
-.. autoclass:: Regex
-
 
 Deriving parsers from type hints
 --------------------------------
 
 There is a way to automatically derive basic parsers from type hints
-(used by :mod:`yuio.config`). To extend capabilities of the automatic converter,
-you can register your own types and parsers:
+(used by :mod:`yuio.config`):
 
 .. autofunction:: from_type_hint
+
+To extend capabilities of the automatic converter,
+you can register your own types and parsers:
 
 .. autofunction:: register_type_hint_conversion
 
@@ -166,12 +159,6 @@ class Parser(_t.Generic[T], abc.ABC):
 
         """
 
-    @abc.abstractmethod
-    def _parse_config(self, value: _t.Any, /) -> T:
-        """Implementation of :meth:`~Parser.parse_config`.
-
-        """
-
     def _parse_many(self, value: _t.Sequence[str], /) -> T:
         """Implementation of :meth:`~Parser.parse_many`.
 
@@ -179,18 +166,24 @@ class Parser(_t.Generic[T], abc.ABC):
 
         raise RuntimeError('unable to parse multiple values')
 
-    @abc.abstractmethod
-    def _validate(self, value: T, /):
-        """Implementation of :meth:`~Parser.validate`.
-
-        """
-
     def _supports_parse_many(self) -> bool:
         """Implementation of :meth:`~Parser.supports_parse_many`.
 
         """
 
         return False
+
+    @abc.abstractmethod
+    def _parse_config(self, value: _t.Any, /) -> T:
+        """Implementation of :meth:`~Parser.parse_config`.
+
+        """
+
+    @abc.abstractmethod
+    def _validate(self, value: T, /):
+        """Implementation of :meth:`~Parser.validate`.
+
+        """
 
     def _supports_parse_optional(self) -> bool:
         """Implementation of :meth:`~Parser.supports_parse_optional`.
@@ -222,26 +215,47 @@ class Parser(_t.Generic[T], abc.ABC):
         return parsed
 
     @_t.final
-    def parse_config(self, value: _t.Any, /) -> T:
-        """Parse and validate value from a config,
-        raise :class:`ParsingError` on failure.
-
-        This method accepts python values, i.e. when parsing a json config.
-
-        """
-
-        parsed = self._parse_config(value)
-        self._validate(parsed)
-        return parsed
-
-    @_t.final
     def parse_many(self, value: _t.Sequence[str], /) -> T:
-        """Parse a list of user inputs by parsing them and uniting
-        parsed values into a collection.
+        """For collection parsers, parse and validate collection
+        by parsing its items one-by-one.
+
+        Example::
+
+            # Let's say we're parsing a set of ints...
+            parser = Set(Int())
+
+            # And the user enters collection items one-by-one.
+            user_input = ['1', '2', '3']
+
+            # We can parse collection from its items:
+            result = parser.parse_many(user_input)
 
         """
 
         parsed = self._parse_many(value)
+        self._validate(parsed)
+        return parsed
+
+    @_t.final
+    def supports_parse_many(self) -> bool:
+        """Return true if this parser returns a collection
+        and so supports :meth:`~Parser.parse_many`.
+
+        """
+
+        return self._supports_parse_many()
+
+    @_t.final
+    def parse_config(self, value: _t.Any, /) -> T:
+        """Parse and validate value from a config,
+        raise :class:`ParsingError` on failure.
+
+        This method accepts python values.
+        Use it to parse json configs and similar.
+
+        """
+
+        parsed = self._parse_config(value)
         self._validate(parsed)
         return parsed
 
@@ -252,15 +266,6 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
         self._validate(value)
-
-    @_t.final
-    def supports_parse_many(self) -> bool:
-        """Return true if this parser returns a collection
-        and so supports :meth:`~Parser.parse_many`.
-
-        """
-
-        return self._supports_parse_many()
 
     @_t.final
     def supports_parse_optional(self) -> bool:
@@ -299,8 +304,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def describe_many(self) -> _t.Optional[str]:
         """Return a human-readable description of a container element.
 
-        Used with :meth:`~Parser.parse_many`, when the outermost container
-        is parsed in :mod:`argparse`.
+        Used with :meth:`~Parser.parse_many`.
 
         """
 
@@ -707,6 +711,9 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
     def _parse_many(self, value: _t.Sequence[str], /) -> _t.Optional[T]:
         return self._inner.parse_many(value)
 
+    def _supports_parse_many(self) -> bool:
+        return self._inner.supports_parse_many()
+
     def _parse_config(self, value: _t.Any, /) -> _t.Optional[T]:
         if value is None:
             return None
@@ -715,9 +722,6 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
     def _validate(self, value: _t.Optional[T], /):
         if value is not None:
             self._inner.validate(value)
-
-    def _supports_parse_many(self) -> bool:
-        return self._inner.supports_parse_many()
 
     def _supports_parse_optional(self) -> bool:
         return True
@@ -1407,8 +1411,14 @@ class _BoundImpl(Parser[T], _t.Generic[T, Cmp]):
     def describe(self) -> _t.Optional[str]:
         return self._inner.describe()
 
+    def describe_or_def(self) -> str:
+        return self._inner.describe_or_def()
+
     def describe_many(self) -> _t.Optional[str]:
         return self._inner.describe_many()
+
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_many_or_def()
 
     def describe_value(self, value: T, /) -> _t.Optional[str]:
         return self._inner.describe_value(value)
@@ -1547,6 +1557,12 @@ class OneOf(Parser[T], _t.Generic[T]):
             return desc
         else:
             return super().describe()
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe_many()
+
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_many_or_def()
 
     def describe_value(self, value: T, /) -> _t.Optional[str]:
         return self._inner.describe_value(value)
