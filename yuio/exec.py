@@ -26,7 +26,7 @@ import typing as _t
 import yuio.io
 
 
-_LOGGER = logging.getLogger('yuio.io.msg.exec')
+_LOGGER = logging.getLogger('yuio.io.exec')
 
 
 @_t.overload

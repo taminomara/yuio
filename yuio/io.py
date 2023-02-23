@@ -41,8 +41,6 @@ Use logging functions from this module:
 
 .. autofunction:: critical
 
-.. autofunction:: question
-
 
 Coloring the output
 -------------------
@@ -70,7 +68,7 @@ List of all tags that are available by default:
 - ``code``: for inline code,
 - ``note``: for notes, such as default values in user prompts,
 - ``success``, ``failure``: for indicating outcome of the program,
-- ``question``, ``critical``, ``error``, ``warning``, ``info``, ``debug``:
+- ``critical``, ``error``, ``warning``, ``info``, ``debug``:
   used to color log messages,
 - ``task``, ``task_done``, ``task_error``:
   used to color tasks,
@@ -192,10 +190,10 @@ It sets up the following logger hierarchy:
 
    edge[dir=back]
 
-   msg[shape=plain label=<
+   io[shape=plain label=<
      <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="1">
        <TR>
-         <TD>msg</TD>
+         <TD>io</TD>
        </TR>
        <TR>
          <TD>
@@ -210,20 +208,20 @@ It sets up the following logger hierarchy:
    >]
 
    root -> yuio
-   yuio -> msg [style=dashed label="propagate=False"]
-   msg -> {exec, question};
+   yuio -> io [style=dashed label="propagate=False"]
+   io -> {default, exec, question};
    root -> "...";
 
-``yuio.msg`` collects everything that should be printed on the screen
+``yuio.io`` collects everything that should be printed on the screen
 and passes it to a handler. It has its propagation disabled,
 so yuio's messages never reach the root logger. This means that you can set up
 other loggers and handlers without yuio interfering.
 
 If you want to direct yuio messages somewhere else (i.e to a file),
-either add a handler to ``yuio.msg`` or enable propagation for it.
+either add a handler to ``yuio.io`` or enable propagation for it.
 
 Since messages and questions from :mod:`yuio.exec` are logged to
-``yuio.msg.question`` and ``yuio.msg.exec``,
+``yuio.io.question`` and ``yuio.io.exec``,
 you can filter them out from your handlers or the root logger.
 
 If you want to direct messages from some other logger into yuio,
@@ -261,7 +259,6 @@ class UserIoError(IOError):
     """
 
 
-QUESTION = 100
 CRITICAL = logging.CRITICAL
 ERROR = logging.ERROR
 WARNING = logging.WARNING
@@ -512,20 +509,6 @@ def critical(msg: str, /, *args, **kwargs):
     log(CRITICAL, msg, *args, **kwargs)
 
 
-def question(msg: str, /, *args, **kwargs):
-    """Log a message with input prompts and other user communications.
-
-    These messages don't end with newline. They also have high priority,
-    so they will not be filtered by log level settings.
-
-    """
-
-    extra = kwargs.setdefault('extra', {})
-    extra.setdefault('yuio_add_newline', False)
-    extra.setdefault('yuio_process_color_tags', True)
-    _QUESTION_LOGGER.log(QUESTION, msg, *args, **kwargs)
-
-
 def is_interactive() -> bool:
     """Check if we're running in an interactive environment.
 
@@ -656,14 +639,15 @@ def ask(
     else:
         msg += ' '
 
+    msg = _MSG_HANDLER_IMPL._colorize(msg, _MSG_HANDLER_IMPL.colors['question'])
+
     with SuspendLogging() as s:
         while True:
-            s.question(msg)
             try:
                 if secure_input:
-                    answer = getpass.getpass(prompt='')
+                    answer = getpass.getpass(prompt=msg)
                 else:
-                    answer = input()
+                    answer = input(msg)
             except EOFError:
                 raise UserIoError('unexpected end of input') from None
             if not answer and default is not DISABLED:
@@ -723,9 +707,13 @@ def wait_for_user(
     if not is_interactive():
         return
 
-    with SuspendLogging() as s:
-        s.question(msg + '\n', *args)
-        input()
+    if args:
+        msg = msg % args
+
+    msg = _MSG_HANDLER_IMPL._colorize(msg, _MSG_HANDLER_IMPL.colors['question'])
+
+    with SuspendLogging():
+        input(msg + '\n')
 
 
 def detect_editor() -> _t.Optional[str]:
@@ -911,15 +899,6 @@ class SuspendLogging:
 
         kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
         critical(msg, *args, **kwargs)
-
-    @staticmethod
-    def question(msg: str, /, *args, **kwargs):
-        """Log a :func:`question` message, ignore suspended status.
-
-        """
-
-        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
-        question(msg, *args, **kwargs)
 
     def __enter__(self):
         return self
@@ -1418,21 +1397,17 @@ class _HandlerImpl:
                + f' {progress_indicator}'
 
 
-logging.addLevelName(QUESTION, 'question')
-
 _MSG_HANDLER_IMPL = _HandlerImpl()
 
 _MSG_HANDLER = Handler()
 _MSG_HANDLER.setFormatter(DEFAULT_FORMATTER)
 
-_ROOT_LOGGER = logging.getLogger('yuio.msg')
+_ROOT_LOGGER = logging.getLogger('yuio.io')
 _ROOT_LOGGER.setLevel(1)
 _ROOT_LOGGER.propagate = False
 _ROOT_LOGGER.addHandler(_MSG_HANDLER)
 
-_MSG_LOGGER = logging.getLogger('yuio.msg.default')
-
-_QUESTION_LOGGER = logging.getLogger('yuio.msg.question')
+_MSG_LOGGER = logging.getLogger('yuio.io.default')
 
 
 if 'DEBUG' in os.environ:
