@@ -41,6 +41,8 @@ Use logging functions from this module:
 
 .. autofunction:: critical
 
+.. autofunction:: question
+
 
 Coloring the output
 -------------------
@@ -69,7 +71,7 @@ List of all tags that are available by default:
 - ``note``: for notes, such as default values in user prompts,
 - ``success``, ``failure``: for indicating outcome of the program,
 - ``heading``: for splitting output into sections,
-- ``critical``, ``error``, ``warning``, ``info``, ``debug``:
+- ``question``, ``critical``, ``error``, ``warning``, ``info``, ``debug``:
   used to color log messages,
 - ``task``, ``task_done``, ``task_error``:
   used to color tasks,
@@ -258,6 +260,7 @@ class UserIoError(IOError):
     """
 
 
+QUESTION = 100
 CRITICAL = logging.CRITICAL
 ERROR = logging.ERROR
 WARNING = logging.WARNING
@@ -508,6 +511,20 @@ def critical(msg: str, /, *args, **kwargs):
     log(CRITICAL, msg, *args, **kwargs)
 
 
+def question(msg: str, /, *args, **kwargs):
+    """Log a message with input prompts and other user communications.
+
+    These messages don't end with newline. They also have high priority,
+    so they will not be filtered by log level settings.
+
+    """
+
+    extra = kwargs.setdefault('extra', {})
+    extra.setdefault('yuio_add_newline', False)
+    extra.setdefault('yuio_process_color_tags', True)
+    _QUESTION_LOGGER.log(QUESTION, msg, *args, **kwargs)
+
+
 def is_interactive() -> bool:
     """Check if we're running in an interactive environment.
 
@@ -638,15 +655,14 @@ def ask(
     else:
         msg += ' '
 
-    msg = _MSG_HANDLER_IMPL._colorize(msg, _MSG_HANDLER_IMPL.colors['question'])
-
     with SuspendLogging() as s:
         while True:
+            s.question(msg)
             try:
                 if secure_input:
-                    answer = getpass.getpass(prompt=msg)
+                    answer = getpass.getpass(prompt='')
                 else:
-                    answer = input(msg)
+                    answer = input()
             except EOFError:
                 raise UserIoError('unexpected end of input') from None
             if not answer and default is not DISABLED:
@@ -706,13 +722,9 @@ def wait_for_user(
     if not is_interactive():
         return
 
-    if args:
-        msg = msg % args
-
-    msg = _MSG_HANDLER_IMPL._colorize(msg, _MSG_HANDLER_IMPL.colors['question'])
-
-    with SuspendLogging():
-        input(msg + '\n')
+    with SuspendLogging() as s:
+        s.question(msg + '\n', *args)
+        input()
 
 
 def detect_editor() -> _t.Optional[str]:
@@ -898,6 +910,15 @@ class SuspendLogging:
 
         kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
         critical(msg, *args, **kwargs)
+
+    @staticmethod
+    def question(msg: str, /, *args, **kwargs):
+        """Log a :func:`question` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault('extra', {}).setdefault('yuio_ignore_suspended', True)
+        question(msg, *args, **kwargs)
 
     def __enter__(self):
         return self
@@ -1395,6 +1416,8 @@ class _HandlerImpl:
                + f' {progress_indicator}'
 
 
+logging.addLevelName(QUESTION, 'question')
+
 _MSG_HANDLER_IMPL = _HandlerImpl()
 
 _MSG_HANDLER = Handler()
@@ -1406,6 +1429,7 @@ _ROOT_LOGGER.propagate = False
 _ROOT_LOGGER.addHandler(_MSG_HANDLER)
 
 _MSG_LOGGER = logging.getLogger('yuio.io.default')
+_QUESTION_LOGGER = logging.getLogger('yuio.msg.question')
 
 
 if 'DEBUG' in os.environ:

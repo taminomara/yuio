@@ -137,18 +137,16 @@ class TestSetup:
         )
 
     def test_level_question(self, stream_no_color):
-        yuio.io.setup(level=yuio.io.ERROR)
-        yuio.io.error('error message 1')
-        yuio.io.critical('critical message 1')
         yuio.io.setup(level=yuio.io.CRITICAL)
+        yuio.io.error('error message 1')
+        yuio.io.question('question message 1 ')
+        yuio.io.setup(level=yuio.io.QUESTION)
         yuio.io.error('error message 2')
-        yuio.io.critical('critical message 2')
+        yuio.io.question('question message 2 ')  # logged bc questions can't be disabled
 
         assert (
             stream_no_color.getvalue() ==  # questions don't produce newlines
-            'error message 1\n'
-            'critical message 1\n'
-            'critical message 2\n'
+            'question message 1 question message 2 '
         )
 
 
@@ -168,6 +166,7 @@ class TestLoggingNoColor:
         yuio.io.info('info message')
         yuio.io.warning('warning message')
         yuio.io.error('error message')
+        yuio.io.question('question message')
 
         assert (
             stream_no_color.getvalue() ==
@@ -175,6 +174,7 @@ class TestLoggingNoColor:
             'info message\n'
             'warning message\n'
             'error message\n'
+            'question message'
         )
 
 
@@ -189,6 +189,7 @@ class TestLoggingColor:
         yuio.io.info('info message')
         yuio.io.warning('warning message')
         yuio.io.error('error message')
+        yuio.io.question('question message')
 
         assert (
             stream.getvalue() ==
@@ -196,6 +197,7 @@ class TestLoggingColor:
             '\033[0;39;49minfo message\n\033[0m'
             '\033[0;33;49mwarning message\n\033[0m'
             '\033[0;31;49merror message\n\033[0m'
+            '\033[0;34;49mquestion message\033[0m'
         )
 
     def test_color_tags(self, stream):
