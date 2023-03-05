@@ -6,16 +6,89 @@
 # just keep this copyright line please :3
 
 """
-This module provides several parsers that convert (usually user-provided)
-strings to python objects, or check user input, and throw
-:class:`ParsingError` in case of any issue.
+Everything to do with parsing user input.
+
+Use provided classes to construct parsers and add validation::
+
+    # Parses a non-empty list of strings.
+    parser = yuio.parse.List(yuio.parse.Str()).len_ge(1)
+
+Pass a parser to other yuio functions::
+
+    mods = yuio.io.ask('List of modules to reformat', parser=parser)
+
+Or parse strings yourself::
+
+    mods = parser.parse('sys os enum dataclasses')
 
 
-Base parser
------------
+Using a parser
+--------------
+
+..
+
+   .. automethod:: bound
+
+   .. automethod:: gt
+
+   .. automethod:: ge
+
+   .. automethod:: lt
+
+   .. automethod:: le
+
+   .. automethod:: len_bound
+
+   .. automethod:: len_between
+
+   .. automethod:: len_gt
+
+   .. automethod:: len_ge
+
+   .. automethod:: len_lt
+
+   .. automethod:: len_le
+
+   .. automethod:: len_eq
+
+   .. automethod:: one_of
 
 .. autoclass:: Parser
-   :members:
+
+   .. automethod:: parse
+
+   .. automethod:: parse_many
+
+   .. automethod:: supports_parse_many
+
+   .. automethod:: parse_config
+
+   .. automethod:: get_nargs
+
+   .. automethod:: describe
+
+   .. automethod:: describe_or_def
+
+   .. automethod:: describe_many
+
+   .. automethod:: describe_many_or_def
+
+   .. automethod:: describe_value
+
+   .. automethod:: describe_value_or_def
+
+   .. automethod:: _parse
+
+   .. automethod:: _parse_many
+
+   .. automethod:: _supports_parse_many
+
+   .. automethod:: _parse_config
+
+   .. automethod:: _validate
+
+   .. automethod:: _get_nargs
+
 
 .. autoclass:: ParsingError
 
@@ -44,7 +117,7 @@ Value parsers
 
 .. autoclass:: Pair
 
-.. autoclass:: Tuple
+.. autoclass:: Tuple(*parsers: Parser[typing.Any], delimiter: typing.Optional[str] = None)
 
 
 File system path parsers
@@ -68,7 +141,7 @@ Validators
 
 .. autoclass:: Bound
 
-.. autoclass:: BoundLen
+.. autoclass:: LenBound
 
 .. autoclass:: OneOf
 
@@ -117,6 +190,7 @@ class _Comparable(_t.Protocol):
 
 
 T = _t.TypeVar('T')
+U = _t.TypeVar('U')
 K = _t.TypeVar('K')
 V = _t.TypeVar('V')
 C = _t.TypeVar('C', bound=_t.Collection)
@@ -159,19 +233,17 @@ class Parser(_t.Generic[T], abc.ABC):
 
         """
 
+    @abc.abstractmethod
     def _parse_many(self, value: _t.Sequence[str], /) -> T:
         """Implementation of :meth:`~Parser.parse_many`.
 
         """
 
-        raise RuntimeError('unable to parse multiple values')
-
+    @abc.abstractmethod
     def _supports_parse_many(self) -> bool:
         """Implementation of :meth:`~Parser.supports_parse_many`.
 
         """
-
-        return False
 
     @abc.abstractmethod
     def _parse_config(self, value: _t.Any, /) -> T:
@@ -181,27 +253,9 @@ class Parser(_t.Generic[T], abc.ABC):
 
     @abc.abstractmethod
     def _validate(self, value: T, /):
-        """Implementation of :meth:`~Parser.validate`.
+        """Validation for parsed value.
 
         """
-
-    def _supports_parse_optional(self) -> bool:
-        """Implementation of :meth:`~Parser.supports_parse_optional`.
-
-        """
-
-        return False
-
-    def _get_nargs(self) -> _t.Union[str, int, None]:
-        """Implementation of :meth:`~Parser.get_nargs`.
-
-        """
-
-        return None
-
-    @_t.final
-    def __call__(self, value: str, /) -> T:
-        return self.parse(value)
 
     @_t.final
     def parse(self, value: str, /) -> T:
@@ -259,30 +313,13 @@ class Parser(_t.Generic[T], abc.ABC):
         self._validate(parsed)
         return parsed
 
-    @_t.final
-    def validate(self, value: T, /):
-        """Verify parsed value, raise :class:`ParsingError` on failure.
-
-        """
-
-        self._validate(value)
-
-    @_t.final
-    def supports_parse_optional(self) -> bool:
-        """Return true if this parser can handle optional values.
-
-        """
-
-        return self._supports_parse_optional()
-
-    @_t.final
+    @abc.abstractmethod
     def get_nargs(self) -> _t.Union[str, int, None]:
         """Generate `nargs` for argparse.
 
         """
 
-        return self._get_nargs()
-
+    @abc.abstractmethod
     def describe(self) -> _t.Optional[str]:
         """Return a human-readable description of an expected input.
 
@@ -290,17 +327,14 @@ class Parser(_t.Generic[T], abc.ABC):
 
         return None
 
+    @abc.abstractmethod
     def describe_or_def(self) -> str:
         """Like :py:meth:`~Parser.describe`,
         but guaranteed to return something.
 
         """
 
-        return (
-            self.describe()
-            or yuio._utils.to_dash_case(self.__class__.__name__)
-        )
-
+    @abc.abstractmethod
     def describe_many(self) -> _t.Optional[str]:
         """Return a human-readable description of a container element.
 
@@ -308,33 +342,25 @@ class Parser(_t.Generic[T], abc.ABC):
 
         """
 
-        return self.describe()
-
+    @abc.abstractmethod
     def describe_many_or_def(self) -> str:
         """Like :py:meth:`~Parser.describe_many`,
         but guaranteed to return something.
 
         """
 
-        return (
-            self.describe_many()
-            or yuio._utils.to_dash_case(self.__class__.__name__)
-        )
-
+    @abc.abstractmethod
     def describe_value(self, value: T, /) -> _t.Optional[str]:
         """Return a human-readable description of a given value.
 
         """
 
-        return None
-
+    @abc.abstractmethod
     def describe_value_or_def(self, value: T, /) -> str:
         """Like :py:meth:`~Parser.describe_value`,
         but guaranteed to return something.
 
         """
-
-        return self.describe_value(value) or str(value)
 
     @_t.final
     def bound(
@@ -411,7 +437,7 @@ class Parser(_t.Generic[T], abc.ABC):
         """Check that length of a value is upper- or lower-bound
         by some constraints.
 
-        See :class:`BoundLen` for more info.
+        See :class:`LenBound` for more info.
 
         """
 
@@ -423,12 +449,35 @@ class Parser(_t.Generic[T], abc.ABC):
             upper_inclusive=upper_inclusive,
         )
 
+
+    @_t.overload
+    def len_between(self: 'Parser[Sz]', upper: int, /) -> 'LenBound[Sz]': ...
+
+    @_t.overload
+    def len_between(self: 'Parser[Sz]', lower: int, upper: int, /) -> 'LenBound[Sz]': ...
+
+    @_t.final
+    def len_between(self: 'Parser[Sz]', *args: int) -> 'LenBound[Sz]':
+        """Check that length of the value is within the given range.
+
+        See :class:`LenBound` for more info.
+        
+        """
+        
+        if len(args) == 1:
+            lower, upper = None, args[0]
+        elif len(args) == 2:
+            lower, upper = args
+        else:
+            raise TypeError(f'len_between() takes 1 or 2 arguments ({len(args)} given)')
+        return self.len_bound(lower_inclusive=lower, upper=upper)
+
     @_t.final
     def len_gt(self: 'Parser[Sz]', bound: int, /) -> 'LenBound[Sz]':
         """Check that length of the value is greater then
         the given bound.
 
-        See :class:`Bound` for more info.
+        See :class:`LenBound` for more info.
 
         """
 
@@ -439,7 +488,7 @@ class Parser(_t.Generic[T], abc.ABC):
         """Check that length of the value is greater then or equal to
         the given bound.
 
-        See :class:`Bound` for more info.
+        See :class:`LenBound` for more info.
 
         """
 
@@ -450,7 +499,7 @@ class Parser(_t.Generic[T], abc.ABC):
         """Check that length of the value is lesser then
         the given bound.
 
-        See :class:`Bound` for more info.
+        See :class:`LenBound` for more info.
 
         """
 
@@ -461,7 +510,7 @@ class Parser(_t.Generic[T], abc.ABC):
         """Check that length of the value is lesser then or equal to
         the given bound.
 
-        See :class:`Bound` for more info.
+        See :class:`LenBound` for more info.
 
         """
 
@@ -472,7 +521,7 @@ class Parser(_t.Generic[T], abc.ABC):
         """Check that length of the value is equal to
         the given bound.
 
-        See :class:`Bound` for more info.
+        See :class:`LenBound` for more info.
 
         """
 
@@ -492,16 +541,102 @@ class Parser(_t.Generic[T], abc.ABC):
 
         return OneOf(self, values)
 
+
+class _ValueParser(Parser[T], _t.Generic[T]):
+    """Base implementation for a parser that returns a single value.
+    
+    """
+    
     @_t.final
-    def optional(self) -> 'Optional[T]':
-        """Enable parsing optional values.
+    def _parse_many(self, value: _t.Sequence[str], /) -> T:
+        raise RuntimeError('unable to parse multiple values')
 
-        """
+    @_t.final
+    def _supports_parse_many(self) -> bool:
+        return False
 
-        return Optional(self)
+    @_t.final
+    def get_nargs(self) -> _t.Union[str, int, None]:
+        return None
+
+    def describe(self) -> _t.Optional[str]:
+        return None
+
+    def describe_or_def(self) -> str:
+        return (
+            self.describe()
+            or yuio._utils.to_dash_case(self.__class__.__name__)
+        )
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self.describe()
+
+    def describe_many_or_def(self) -> str:
+        return (
+            self.describe_many()
+            or yuio._utils.to_dash_case(self.__class__.__name__)
+        )
+
+    def describe_value(self, value: T, /) -> _t.Optional[str]:
+        return None
+
+    def describe_value_or_def(self, value: T, /) -> str:
+        return self.describe_value(value) or str(value)
 
 
-class Str(Parser[str]):
+class _WrappingParser(Parser[T], _t.Generic[T, U]):
+    """Base implementation for a parser that wraps another parser.
+
+    :tparam T: return type of the parser.
+    :tparam U: return type of the wrapped parser.
+    
+    """
+
+    def __init__(self, inner: Parser[U]):
+        super().__init__()
+
+        self._inner = inner
+
+
+class _SimpleWrappingParser(_WrappingParser[T, T], _t.Generic[T]):
+    def _parse(self, value: str, /) -> T:
+        return self._inner.parse(value)
+
+    def _parse_many(self, value: _t.Sequence[str], /) -> T:
+        return self._inner.parse_many(value)
+
+    def _supports_parse_many(self) -> bool:
+        return self._inner.supports_parse_many()
+
+    def _parse_config(self, value: _t.Any, /) -> T:
+        return self._inner.parse_config(value)
+
+    def _validate(self, value: T, /):
+        self._inner._validate(value)
+
+    def get_nargs(self) -> _t.Union[str, int, None]:
+        return self._inner.get_nargs()
+
+    def describe(self) -> _t.Optional[str]:
+        return self._inner.describe()
+
+    def describe_or_def(self) -> str:
+        return self._inner.describe_or_def()
+
+    def describe_many(self) -> _t.Optional[str]:
+        return self._inner.describe_many()
+
+    def describe_many_or_def(self) -> str:
+        return self._inner.describe_or_def()
+
+    def describe_value(self, value: T, /) -> _t.Optional[str]:
+        return self._inner.describe_value(value)
+
+    def describe_value_or_def(self, value: T, /) -> str:
+        return self._inner.describe_value_or_def(value)
+
+
+class Str(_ValueParser[str]):
     """Parser for str values.
 
     Applies a `modifiers` to the value, in order they are given.
@@ -563,26 +698,27 @@ class Str(Parser[str]):
 
         return Str(*self._modifiers, lambda s: s.rstrip(char))
 
-    def regex(self, regex: _t.Union[str, re.Pattern], /) -> 'Str':
-        """Checks that the parsed string matches the given regular expression.
+    # def regex(self, regex: _t.Union[str, re.Pattern], /, group: _t.Union[int, str] = 0) -> 'Str':
+    #     """Matches the parsed string with the given regular expression,
+    #     can return a group of .
 
-        """
+    #     """
 
-        if isinstance(regex, str):
-            compiled = re.compile(regex)
-        else:
-            compiled = regex
+    #     if isinstance(regex, re.Pattern):
+    #         compiled = regex
+    #     else:
+    #         compiled = re.compile(regex)
 
-        def mapper(value: str) -> str:
-            if compiled.match(value) is None:
-                raise ParsingError(
-                    f'value should match regex \'{compiled.pattern}\'')
-            return value
+    #     def mapper(value: str) -> str:
+    #         if (match := compiled.match(value)) is None:
+    #             raise ParsingError(
+    #                 f'value should match regex \'{compiled.pattern}\'')
+    #         return match.group(group)
 
-        return Str(*self._modifiers, mapper)
+    #     return Str(*self._modifiers, mapper)
 
 
-class Int(Parser[int]):
+class Int(_ValueParser[int]):
     """Parser for int values.
 
     """
@@ -606,7 +742,7 @@ class Int(Parser[int]):
         pass
 
 
-class Float(Parser[float]):
+class Float(_ValueParser[float]):
     """Parser for float values.
 
     """
@@ -626,7 +762,7 @@ class Float(Parser[float]):
         pass
 
 
-class Bool(Parser[bool]):
+class Bool(_ValueParser[bool]):
     """Parser for bool values, such as `'yes'` or `'no'`.
 
     """
@@ -657,7 +793,7 @@ class Bool(Parser[bool]):
         return 'yes' if value else 'no'
 
 
-class Enum(Parser[E], _t.Generic[E]):
+class Enum(_ValueParser[E], _t.Generic[E]):
     """Parser for enums, as defined in the standard :mod:`enum` module.
 
     """
@@ -693,17 +829,12 @@ class Enum(Parser[E], _t.Generic[E]):
         return value.name
 
 
-class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
+class Optional(_WrappingParser[_t.Optional[T], T], _t.Generic[T]):
     """Parser for optional values.
 
     Interprets empty strings as `None`s.
 
     """
-
-    def __init__(self, inner: Parser[T], /):
-        super().__init__()
-
-        self._inner: Parser[T] = inner
 
     def _parse(self, value: str, /) -> _t.Optional[T]:
         return self._inner.parse(value)
@@ -721,12 +852,9 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
 
     def _validate(self, value: _t.Optional[T], /):
         if value is not None:
-            self._inner.validate(value)
+            self._inner._validate(value)
 
-    def _supports_parse_optional(self) -> bool:
-        return True
-
-    def _get_nargs(self) -> _t.Union[str, int, None]:
+    def get_nargs(self) -> _t.Union[str, int, None]:
         return self._inner.get_nargs()
 
     def describe(self) -> _t.Optional[str]:
@@ -737,7 +865,7 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
 
     def describe_many(self) -> _t.Optional[str]:
         return self._inner.describe_many()
-    
+
     def describe_many_or_def(self) -> str:
         return self._inner.describe_or_def()
 
@@ -746,24 +874,26 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
             return '<none>'
         return self._inner.describe_value(value)
 
+    def describe_value_or_def(self, value: _t.Optional[T], /) -> _t.Optional[str]:
+        if value is None:
+            return '<none>'
+        return self._inner.describe_value_or_def(value)
 
-class _Collection(Parser[C], _t.Generic[C]):
-    _ctor: _t.Callable[[_t.Iterable], C]
 
+class _Collection(_WrappingParser[C, T], _t.Generic[C, T]):
     def __init__(
         self,
-        inner: Parser[_t.Any],
-        ctor: _t.Callable[[_t.Iterable], C],
+        inner: Parser[T],
+        ctor: _t.Callable[[_t.Iterable[T]], C],
         /,
         *,
         config_type: type = list,
-        config_type_iter: _t.Callable[[_t.Any], _t.Iterable] = iter,
+        config_type_iter: _t.Callable[[C], _t.Iterable[T]] = iter,
         delimiter: _t.Optional[str] = None
     ):
-        super().__init__()
-        
+        super().__init__(inner)
+
         self._ctor = ctor
-        self._inner = inner
         self._config_type = config_type
         self._config_type_iter = config_type_iter
         if delimiter == '':
@@ -793,12 +923,15 @@ class _Collection(Parser[C], _t.Generic[C]):
 
     def _validate(self, value: C, /):
         for item in self._config_type_iter(value):
-            self._inner.validate(item)
+            self._inner._validate(item)
 
-    def _get_nargs(self) -> _t.Union[str, int, None]:
+    def get_nargs(self) -> _t.Union[str, int, None]:
         return '*'
 
     def describe(self) -> _t.Optional[str]:
+        return self.describe_or_def()
+
+    def describe_or_def(self) -> str:
         delimiter = self._delimiter or ' '
         value = self._inner.describe_or_def()
 
@@ -811,13 +944,16 @@ class _Collection(Parser[C], _t.Generic[C]):
         return self._inner.describe_or_def()
 
     def describe_value(self, value: C, /) -> _t.Optional[str]:
+        return self.describe_value_or_def(value)
+
+    def describe_value_or_def(self, value: C, /) -> str:
         return (self._delimiter or ' ').join(
             self._inner.describe_value_or_def(item)
             for item in self._config_type_iter(value)
         )
 
 
-class List(_Collection[_t.List[T]], _t.Generic[T]):
+class List(_Collection[_t.List[T], T], _t.Generic[T]):
     """Parser for lists.
 
     Will split a string by the given delimiter, and parse each item
@@ -834,7 +970,7 @@ class List(_Collection[_t.List[T]], _t.Generic[T]):
         super().__init__(inner, list, delimiter=delimiter)
 
 
-class Set(_Collection[_t.Set[T]], _t.Generic[T]):
+class Set(_Collection[_t.Set[T], T], _t.Generic[T]):
     """Parser for sets.
 
     Will split a string by the given delimiter, and parse each item
@@ -851,7 +987,7 @@ class Set(_Collection[_t.Set[T]], _t.Generic[T]):
         super().__init__(inner, set, delimiter=delimiter)
 
 
-class FrozenSet(_Collection[_t.FrozenSet[T]], _t.Generic[T]):
+class FrozenSet(_Collection[_t.FrozenSet[T], T], _t.Generic[T]):
     """Parser for frozen sets.
 
     Will split a string by the given delimiter, and parse each item
@@ -868,7 +1004,7 @@ class FrozenSet(_Collection[_t.FrozenSet[T]], _t.Generic[T]):
         super().__init__(inner, frozenset, delimiter=delimiter)
 
 
-class Dict(_Collection[_t.Dict[K, V]], _t.Generic[K, V]):
+class Dict(_Collection[_t.Dict[K, V], _t.Tuple[K, V]], _t.Generic[K, V]):
     """Parser for dicts.
 
     Will split a string by the given delimiter, and parse each item
@@ -905,7 +1041,7 @@ class Dict(_Collection[_t.Dict[K, V]], _t.Generic[K, V]):
         )
 
 
-class Pair(Parser[_t.Tuple[K, V]], _t.Generic[K, V]):
+class Pair(_ValueParser[_t.Tuple[K, V]], _t.Generic[K, V]):
     """Parser for key-value pairs.
 
     :param key:
@@ -953,8 +1089,8 @@ class Pair(Parser[_t.Tuple[K, V]], _t.Generic[K, V]):
         )
 
     def _validate(self, value: _t.Tuple[K, V], /):
-        self._key.validate(value[0])
-        self._value.validate(value[1])
+        self._key._validate(value[0])
+        self._value._validate(value[1])
 
     def describe(self) -> _t.Optional[str]:
         delimiter = self._delimiter or ' '
@@ -980,6 +1116,40 @@ class Tuple(Parser[TU], _t.Generic[TU]):
         delimiter that will be passed to :py:meth:`str.split`.
 
     """
+
+    T1 = _t.TypeVar('T1')
+    T2 = _t.TypeVar('T2')
+    T3 = _t.TypeVar('T3')
+    T4 = _t.TypeVar('T4')
+    T5 = _t.TypeVar('T5')
+    T6 = _t.TypeVar('T6')
+    T7 = _t.TypeVar('T7')
+    T8 = _t.TypeVar('T8')
+    T9 = _t.TypeVar('T9')
+
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1]]': ...
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], p2: Parser[T2], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2]]': ...
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], p2: Parser[T2], p3: Parser[T3], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3]]': ...
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], p2: Parser[T2], p3: Parser[T3], p4: Parser[T4], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4]]': ...
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], p2: Parser[T2], p3: Parser[T3], p4: Parser[T4], p5: Parser[T5], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5]]': ...
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], p2: Parser[T2], p3: Parser[T3], p4: Parser[T4], p5: Parser[T5], p6: Parser[T6], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6]]': ...
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], p2: Parser[T2], p3: Parser[T3], p4: Parser[T4], p5: Parser[T5], p6: Parser[T6], p7: Parser[T7], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7]]': ...
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], p2: Parser[T2], p3: Parser[T3], p4: Parser[T4], p5: Parser[T5], p6: Parser[T6], p7: Parser[T7], p8: Parser[T8], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8]]': ...
+    @_t.overload
+    def __new__(cls, p1: Parser[T1], p2: Parser[T2], p3: Parser[T3], p4: Parser[T4], p5: Parser[T5], p6: Parser[T6], p7: Parser[T7], p8: Parser[T8], p9: Parser[T9], /, delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9]]': ...
+    @_t.overload
+    def __new__(cls, *parsers: Parser[_t.Any], delimiter: _t.Optional[str] = None) -> 'Tuple[_t.Tuple[_t.Any, ...]]': ...
+
+    def __new__(cls, *args, **kwargs) -> _t.Any:
+        return super().__new__(cls)
 
     def __init__(
         self,
@@ -1020,15 +1190,18 @@ class Tuple(Parser[TU], _t.Generic[TU]):
 
     def _validate(self, value: TU, /):
         for parser, item in zip(self._parsers, value):
-            parser.validate(item)
+            parser._validate(item)
 
     def _supports_parse_many(self) -> bool:
         return True
 
-    def _get_nargs(self) -> _t.Union[str, int, None]:
+    def get_nargs(self) -> _t.Union[str, int, None]:
         return len(self._parsers)
 
     def describe(self) -> _t.Optional[str]:
+        return self.describe_or_def()
+    
+    def describe_or_def(self) -> str:
         delimiter = self._delimiter or ' '
         desc = [parser.describe_or_def() for parser in self._parsers]
 
@@ -1049,6 +1222,9 @@ class Tuple(Parser[TU], _t.Generic[TU]):
             return 'value'
 
     def describe_value(self, value: TU, /) -> _t.Optional[str]:
+        return self.describe_value_or_def(value)
+
+    def describe_value_or_def(self, value: TU, /) -> str:
         delimiter = self._delimiter or ' '
         desc = [
             parser.describe_value_or_def(item)
@@ -1058,7 +1234,7 @@ class Tuple(Parser[TU], _t.Generic[TU]):
         return delimiter.join(desc)
 
 
-class DateTime(Parser[datetime.datetime]):
+class DateTime(_ValueParser[datetime.datetime]):
     """Parse a datetime in ISO ('YYYY-MM-DD HH:MM:SS') format.
 
     """
@@ -1081,7 +1257,7 @@ class DateTime(Parser[datetime.datetime]):
         pass
 
 
-class Date(Parser[datetime.date]):
+class Date(_ValueParser[datetime.date]):
     """Parse a date in ISO ('YYYY-MM-DD') format.
 
     """
@@ -1106,7 +1282,7 @@ class Date(Parser[datetime.date]):
         pass
 
 
-class Time(Parser[datetime.time]):
+class Time(_ValueParser[datetime.time]):
     """Parse a date in ISO ('HH:MM:SS') format.
 
     """
@@ -1131,7 +1307,7 @@ class Time(Parser[datetime.time]):
         pass
 
 
-class TimeDelta(Parser[datetime.timedelta]):
+class TimeDelta(_ValueParser[datetime.timedelta]):
     """Parse a time delta.
 
     """
@@ -1213,7 +1389,7 @@ class TimeDelta(Parser[datetime.timedelta]):
         pass
 
 
-class Path(Parser[pathlib.Path]):
+class Path(_ValueParser[pathlib.Path]):
     """Parse a file system path, return a :class:`pathlib.Path`.
 
     :param extensions: list of allowed file extensions.
@@ -1318,7 +1494,7 @@ class GitRepo(Dir):
         return value
 
 
-class _BoundImpl(Parser[T], _t.Generic[T, Cmp]):
+class _BoundImpl(_SimpleWrappingParser[T], _t.Generic[T, Cmp]):
     _Self = _t.TypeVar('_Self', bound='_BoundImpl')
 
     def __init__(
@@ -1333,9 +1509,7 @@ class _BoundImpl(Parser[T], _t.Generic[T, Cmp]):
         mapper: _t.Callable[[T], Cmp],
         desc: str,
     ):
-        super().__init__()
-
-        self._inner: Parser[T] = inner
+        super().__init__(inner)
 
         self._lower: _t.Optional[Cmp] = None
         self._lower_inclusive: bool = True
@@ -1365,17 +1539,8 @@ class _BoundImpl(Parser[T], _t.Generic[T, Cmp]):
         self._mapper = mapper
         self._desc = desc
 
-    def _parse(self, value: str, /) -> T:
-        return self._inner.parse(value)
-
-    def _parse_many(self, value: _t.Sequence[str], /) -> T:
-        return self._inner.parse_many(value)
-
-    def _parse_config(self, value: _t.Any, /) -> T:
-        return self._inner.parse_config(value)
-
     def _validate(self, value: T, /):
-        self._inner.validate(value)
+        self._inner._validate(value)
 
         mapped = self._mapper(value)
 
@@ -1398,30 +1563,6 @@ class _BoundImpl(Parser[T], _t.Generic[T, Cmp]):
                 raise ParsingError(
                     f'{self._desc} should be lesser than {self._upper},'
                     f' got {value} instead')
-
-    def _supports_parse_many(self) -> bool:
-        return self._inner.supports_parse_many()
-
-    def _supports_parse_optional(self) -> bool:
-        return self._inner.supports_parse_optional()
-
-    def _get_nargs(self) -> _t.Union[str, int, None]:
-        return self._inner.get_nargs()
-
-    def describe(self) -> _t.Optional[str]:
-        return self._inner.describe()
-
-    def describe_or_def(self) -> str:
-        return self._inner.describe_or_def()
-
-    def describe_many(self) -> _t.Optional[str]:
-        return self._inner.describe_many()
-
-    def describe_many_or_def(self) -> str:
-        return self._inner.describe_many_or_def()
-
-    def describe_value(self, value: T, /) -> _t.Optional[str]:
-        return self._inner.describe_value(value)
 
 
 class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
@@ -1493,63 +1634,44 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             desc='length of a value'
         )
 
-    def _get_nargs(self) -> _t.Union[str, int, None]:
+    def get_nargs(self) -> _t.Union[str, int, None]:
         if not self._inner.supports_parse_many():
             # somebody bound len of a string?
             return self._inner.get_nargs()
 
-        lower = self._lower
-        if lower is not None and not self._lower_inclusive:
-            lower += 1
-        upper = self._upper
-        if upper is not None and not self._upper_inclusive:
-            upper -= 1
+        lower_inclusive = self._lower_inclusive
+        if lower_inclusive is None and self._lower is not None:
+            lower_inclusive = self._lower + 1
+        upper_inclusive = self._upper_inclusive
+        if upper_inclusive is None and self._upper is not None:
+            upper_inclusive = self._upper - 1
 
-        if lower == upper:
-            return lower
-        elif lower is not None and lower > 0:
+        if lower_inclusive == upper_inclusive:
+            return lower_inclusive
+        elif lower_inclusive is not None and lower_inclusive > 0:
             return '+'
         else:
             return '*'
 
 
-class OneOf(Parser[T], _t.Generic[T]):
+class OneOf(_SimpleWrappingParser[T], _t.Generic[T]):
     """Check that the parsed value is one of the given set of values.
 
     """
 
     def __init__(self, inner: Parser[T], values: _t.Collection[T], /):
-        super().__init__()
+        super().__init__(inner)
 
-        self._inner: Parser[T] = inner
         self._allowed_values = values
 
-    def _parse(self, value: str, /) -> T:
-        return self._inner.parse(value)
-
-    def _parse_many(self, value: _t.Sequence[str], /) -> T:
-        return self._inner.parse_many(value)
-
-    def _parse_config(self, value: _t.Any, /) -> T:
-        return self._inner.parse_config(value)
-
     def _validate(self, value: T, /):
-        self._inner.validate(value)
+        self._inner._validate(value)
 
         if value not in self._allowed_values:
             values = ', '.join(map(str, self._allowed_values))
             raise ParsingError(
                 f'could not parse value {value!r},'
                 f' should be one of {values}')
-
-    def _supports_parse_many(self) -> bool:
-        return self._inner.supports_parse_many()
-
-    def _supports_parse_optional(self) -> bool:
-        return self._inner.supports_parse_optional()
-
-    def _get_nargs(self) -> _t.Union[str, int, None]:
-        return self._inner.get_nargs()
 
     def describe(self) -> _t.Optional[str]:
         desc = '|'.join(self.describe_value_or_def(e) for e in self._allowed_values)
@@ -1558,14 +1680,17 @@ class OneOf(Parser[T], _t.Generic[T]):
         else:
             return super().describe()
 
-    def describe_many(self) -> _t.Optional[str]:
-        return self._inner.describe_many()
 
-    def describe_many_or_def(self) -> str:
-        return self._inner.describe_many_or_def()
+# class Regex(Parser[str]):
+#     def __init__(self, inner: Parser[str], regex: _t.Union[str, re.Pattern]):
+#         super().__init__()
 
-    def describe_value(self, value: T, /) -> _t.Optional[str]:
-        return self._inner.describe_value(value)
+#         self._inner = inner
+#         if not isinstance(regex, re.Pattern):
+#             regex = re.compile(regex)
+#         self._regex = regex
+    
+
 
 
 _FromTypeHintCallback = _t.Callable[

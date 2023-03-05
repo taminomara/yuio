@@ -170,7 +170,7 @@ T = _t.TypeVar('T')
 @dataclass(frozen=True)
 class _FieldSettings:
     default: _t.Any
-    parser: _t.Optional[yuio.parse.Parser] = None
+    parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None
     help: _t.Union[str, Disabled, None] = None
     env: _t.Union[str, Disabled, None] = None
     flags: _t.Union[str, _t.List[str], Disabled, Positional, None] = None
@@ -270,7 +270,7 @@ class _FieldSettings:
                 or origin is _t.Union and len(args) == 2 and type(None) in args
             )
 
-            if is_optional and not parser.supports_parse_optional():
+            if is_optional and not isinstance(parser, yuio.parse.Optional):
                 parser = yuio.parse.Optional(parser)
             
             if flags is POSITIONAL and default is not MISSING and parser.supports_parse_many():
@@ -292,7 +292,7 @@ class _FieldSettings:
 @dataclass(frozen=True)
 class _Field:
     default: _t.Any
-    parser: _t.Optional[yuio.parse.Parser]
+    parser: _t.Optional[yuio.parse.Parser[_t.Any]]
     help: _t.Union[str, Disabled]
     env: _t.Union[str, Disabled]
     flags: _t.Union[_t.List[str], Disabled, Positional]

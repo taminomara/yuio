@@ -138,6 +138,11 @@ class TestContainers:
         with pytest.raises(ValueError, match='expected an int'):
             parser.parse_config('3')
 
+        assert parser.describe() is None
+        assert parser.describe_or_def() == 'int'
+        assert parser.describe_value(None) == '<none>'
+        assert parser.describe_value_or_def(10) == '10'
+
     def test_list(self):
         parser = List(Int())
         assert parser.parse('') == []
@@ -153,6 +158,9 @@ class TestContainers:
             parser.parse_config(10)
 
         assert parser.describe() == 'int[ int[ ...]]'
+        assert parser.describe_many() is None
+        assert parser.describe_many_or_def() == 'int'
+        assert parser.describe_value([1, 2, 3]) == '1 2 3'
 
         with pytest.raises(ValueError, match='empty delimiter'):
             List(Int(), delimiter='')
@@ -172,6 +180,8 @@ class TestContainers:
             parser.parse_config(10)
 
         assert parser.describe() == 'int[ int[ ...]]'
+        assert parser.describe_many() is None
+        assert parser.describe_many_or_def() == 'int'
 
         with pytest.raises(ValueError, match='empty delimiter'):
             Set(Int(), delimiter='')
@@ -192,6 +202,8 @@ class TestContainers:
             parser.parse_config(10)
 
         assert parser.describe() == 'int[ int[ ...]]'
+        assert parser.describe_many() is None
+        assert parser.describe_many_or_def() == 'int'
 
         with pytest.raises(ValueError, match='empty delimiter'):
             FrozenSet(Int(), delimiter='')
@@ -203,6 +215,7 @@ class TestContainers:
         with pytest.raises(ValueError, match='could not parse'):
             parser.parse('10')
         assert parser.describe() == 'int:str[-int:str[-...]]'
+        assert parser.describe_many() == 'int:str'
         assert parser.describe_value({1: 'z', 2: 'y'}) == '1:z-2:y'
 
         parser = Dict(Int(), Pair(Str(), Str()))
@@ -247,6 +260,10 @@ class TestContainers:
             Tuple()
         with pytest.raises(ValueError, match='empty delimiter'):
             Tuple(Int(), delimiter='')
+
+        assert parser.describe() == 'int int str'
+        assert parser.describe_many() is None
+        assert parser.describe_many_or_def() == 'value'
 
 
 class TestTime:
