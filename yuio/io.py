@@ -671,7 +671,7 @@ def ask(
                 s.error('Input is required.')
             else:
                 try:
-                    return parser(answer)
+                    return parser.parse(answer)
                 except yuio.parse.ParsingError as e:
                     if secure_input:
                         s.error('Error: invalid value.')
@@ -1429,7 +1429,7 @@ _ROOT_LOGGER.propagate = False
 _ROOT_LOGGER.addHandler(_MSG_HANDLER)
 
 _MSG_LOGGER = logging.getLogger('yuio.io.default')
-_QUESTION_LOGGER = logging.getLogger('yuio.msg.question')
+_QUESTION_LOGGER = logging.getLogger('yuio.io.question')
 
 
 if 'DEBUG' in os.environ:
