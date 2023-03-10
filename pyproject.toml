@@ -49,6 +49,7 @@ build-backend = "flit_core.buildapi"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
+addopts = "--doctest-modules"
 testpaths = [
     "examples",
     "test",
