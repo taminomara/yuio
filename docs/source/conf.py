@@ -1,3 +1,6 @@
+import sys, pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.joinpath('_pygments')))
+
 # -- Project information -----------------------------------------------------
 
 project = 'Yuio'
@@ -28,6 +31,8 @@ autodoc_typehints_format = 'short'
 autodoc_member_order = 'bysource'
 
 graphviz_output_format = 'svg'
+
+pygments_style = 'yuio_pygments.Style'
 
 # -- Options for HTML output -------------------------------------------------
 
