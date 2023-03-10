@@ -1,4 +1,4 @@
-# Yuio project, MIT licence.
+# Yuio project, MIT license.
 #
 # https://github.com/taminomara/yuio/
 #
@@ -76,7 +76,7 @@ List of all tags that are available by default:
 - ``task``, ``task_done``, ``task_error``:
   used to color tasks,
 - ``bold``, ``b``, ``dim``: font styles,
-- ``red``, ``green``, ``yellow``, ``blue``, ``magenta``, ``cyan``, ``normal``:
+- ``red``, ``green``, ``yellow``, ``blue``, ``magenta``, ``cyan``:
   font colors.
 
 Custom colors
@@ -90,51 +90,10 @@ Use :func:`setup` function to override existing tag colors or add new tags::
         )
     )
 
-This argument is a mapping from a tag name to a :class:`Color` instance::
+This argument is a mapping from a tag name to a :class:`Color` instance:
 
 .. autoclass:: Color
-
-List of all pre-defined codes:
-
-.. autodata:: STYLE_BOLD
-
-.. autodata:: STYLE_DIM
-
-.. autodata:: FORE_NORMAL
-
-.. autodata:: FORE_BLACK
-
-.. autodata:: FORE_RED
-
-.. autodata:: FORE_GREEN
-
-.. autodata:: FORE_YELLOW
-
-.. autodata:: FORE_BLUE
-
-.. autodata:: FORE_MAGENTA
-
-.. autodata:: FORE_CYAN
-
-.. autodata:: FORE_WHITE
-
-.. autodata:: BACK_NORMAL
-
-.. autodata:: BACK_BLACK
-
-.. autodata:: BACK_RED
-
-.. autodata:: BACK_GREEN
-
-.. autodata:: BACK_YELLOW
-
-.. autodata:: BACK_BLUE
-
-.. autodata:: BACK_MAGENTA
-
-.. autodata:: BACK_CYAN
-
-.. autodata:: BACK_WHITE
+   :members:
 
 
 Indicating progress
@@ -150,9 +109,13 @@ of some task:
 Querying user input
 -------------------
 
-To query some input from a user, there's the :func:`ask` function:
+There are functions to query some input from a user:
 
 .. autofunction:: ask
+
+.. autofunction:: ask_yn
+
+.. autofunction:: wait_for_user
 
 You can prompt user to edit something with the :func:`edit` function:
 
@@ -273,17 +236,9 @@ NOTSET = logging.NOTSET
 class Color:
     """ANSI color code.
 
-    See the list of all available codes
-    at `Wikipedia <https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters>`_.
-
-    Example::
-
-        # 31 is a color code for red
-        BOLD_RED = Color(fore=31, bold=True)
-
     You can combine multiple colors::
 
-        BOLD_RED = FORE_RED | STYLE_BOLD
+        BOLD_RED = Color.FORE_RED | Color.STYLE_BOLD
 
     """
 
@@ -315,85 +270,89 @@ class Color:
             codes.append('2')
         return '\033[' + ';'.join(codes) + 'm'
 
+    #: Bold font style.
+    STYLE_BOLD: _t.ClassVar['Color'] = lambda: Color(bold=True)  # type: ignore
+    #: Dim font style.
+    STYLE_DIM: _t.ClassVar['Color'] = lambda: Color(dim=True)  # type: ignore
 
-#: Bold font style.
-STYLE_BOLD = Color(bold=True)
-#: Dim font style.
-STYLE_DIM = Color(dim=True)
+    #: Normal foreground color.
+    FORE_NORMAL: _t.ClassVar['Color'] = lambda: Color(fore=39)  # type: ignore
+    #: Black foreground color.
+    FORE_BLACK: _t.ClassVar['Color'] = lambda: Color(fore=30)  # type: ignore
+    #: Red foreground color.
+    FORE_RED: _t.ClassVar['Color'] = lambda: Color(fore=31)  # type: ignore
+    #: Green foreground color.
+    FORE_GREEN: _t.ClassVar['Color'] = lambda: Color(fore=32)  # type: ignore
+    #: Yellow foreground color.
+    FORE_YELLOW: _t.ClassVar['Color'] = lambda: Color(fore=33)  # type: ignore
+    #: Blue foreground color.
+    FORE_BLUE: _t.ClassVar['Color'] = lambda: Color(fore=34)  # type: ignore
+    #: Magenta foreground color.
+    FORE_MAGENTA: _t.ClassVar['Color'] = lambda: Color(fore=35)  # type: ignore
+    #: Cyan foreground color.
+    FORE_CYAN: _t.ClassVar['Color'] = lambda: Color(fore=36)  # type: ignore
+    #: White foreground color.
+    FORE_WHITE: _t.ClassVar['Color'] = lambda: Color(fore=37)  # type: ignore
 
-#: Normal foreground color.
-FORE_NORMAL = Color(fore=39)
-#: Black foreground color.
-FORE_BLACK = Color(fore=30)
-#: Red foreground color.
-FORE_RED = Color(fore=31)
-#: Green foreground color.
-FORE_GREEN = Color(fore=32)
-#: Yellow foreground color.
-FORE_YELLOW = Color(fore=33)
-#: Blue foreground color.
-FORE_BLUE = Color(fore=34)
-#: Magenta foreground color.
-FORE_MAGENTA = Color(fore=35)
-#: Cyan foreground color.
-FORE_CYAN = Color(fore=36)
-#: White foreground color.
-FORE_WHITE = Color(fore=37)
+    #: Normal background color.
+    BACK_NORMAL: _t.ClassVar['Color'] = lambda: Color(back=49)  # type: ignore
+    #: Black background color.
+    BACK_BLACK: _t.ClassVar['Color'] = lambda: Color(back=40)  # type: ignore
+    #: Red background color.
+    BACK_RED: _t.ClassVar['Color'] = lambda: Color(back=41)  # type: ignore
+    #: Green background color.
+    BACK_GREEN: _t.ClassVar['Color'] = lambda: Color(back=42)  # type: ignore
+    #: Yellow background color.
+    BACK_YELLOW: _t.ClassVar['Color'] = lambda: Color(back=43)  # type: ignore
+    #: Blue background color.
+    BACK_BLUE: _t.ClassVar['Color'] = lambda: Color(back=44)  # type: ignore
+    #: Magenta background color.
+    BACK_MAGENTA: _t.ClassVar['Color'] = lambda: Color(back=45)  # type: ignore
+    #: Cyan background color.
+    BACK_CYAN: _t.ClassVar['Color'] = lambda: Color(back=46)  # type: ignore
+    #: White background color.
+    BACK_WHITE: _t.ClassVar['Color'] = lambda: Color(back=47)  # type: ignore
 
-#: Normal background color.
-BACK_NORMAL = Color(back=49)
-#: Black background color.
-BACK_BLACK = Color(back=40)
-#: Red background color.
-BACK_RED = Color(back=41)
-#: Green background color.
-BACK_GREEN = Color(back=42)
-#: Yellow background color.
-BACK_YELLOW = Color(back=43)
-#: Blue background color.
-BACK_BLUE = Color(back=44)
-#: Magenta background color.
-BACK_MAGENTA = Color(back=45)
-#: Cyan background color.
-BACK_CYAN = Color(back=46)
-#: White background color.
-BACK_WHITE = Color(back=47)
+for _n, _v in vars(Color).items():
+    if _n.startswith(('STYLE', 'FORE', 'BACK')):
+        setattr(Color, _n, _v())
+del _n, _v  # type: ignore
 
 DEFAULT_FORMATTER = logging.Formatter(
     '%(message)s'
 )
 
 DEFAULT_COLORS = {
-    'code': FORE_MAGENTA,
-    'note': FORE_GREEN,
-    'success': FORE_GREEN | STYLE_BOLD,
-    'failure': FORE_RED | STYLE_BOLD,
-    'heading': FORE_BLUE,
+    'code': Color.FORE_MAGENTA,
+    'note': Color.FORE_GREEN,
+    'success': Color.FORE_GREEN | Color.STYLE_BOLD,
+    'failure': Color.FORE_RED | Color.STYLE_BOLD,
+    'heading': Color.FORE_BLUE,
 
-    'question': FORE_BLUE,
-    'critical': FORE_WHITE | BACK_RED,
-    'error': FORE_RED,
-    'warning': FORE_YELLOW,
-    'task': FORE_BLUE,
-    'task_done': FORE_GREEN,
-    'task_error': FORE_RED,
-    'info': FORE_NORMAL,
-    'debug': STYLE_DIM,
+    'question': Color.FORE_BLUE,
+    'critical': Color.FORE_WHITE | Color.BACK_RED,
+    'error': Color.FORE_RED,
+    'warning': Color.FORE_YELLOW,
+    'info': Color.FORE_NORMAL,
+    'debug': Color.STYLE_DIM,
 
-    'bold': STYLE_BOLD,
-    'b': STYLE_BOLD,
-    'dim': STYLE_DIM,
-    'red': FORE_RED,
-    'green': FORE_GREEN,
-    'yellow': FORE_YELLOW,
-    'blue': FORE_BLUE,
-    'magenta': FORE_MAGENTA,
-    'cyan': FORE_CYAN,
-    'normal': FORE_NORMAL,
+    'task': Color.FORE_BLUE,
+    'task_done': Color.FORE_GREEN,
+    'task_error': Color.FORE_RED,
 
-    'cli_flag': FORE_GREEN,
-    'cli_default': FORE_NORMAL,
-    'cli_section': FORE_BLUE,
+    'bold': Color.STYLE_BOLD,
+    'b': Color.STYLE_BOLD,
+    'dim': Color.STYLE_DIM,
+    'red': Color.FORE_RED,
+    'green': Color.FORE_GREEN,
+    'yellow': Color.FORE_YELLOW,
+    'blue': Color.FORE_BLUE,
+    'magenta': Color.FORE_MAGENTA,
+    'cyan': Color.FORE_CYAN,
+
+    'cli_flag': Color.FORE_GREEN,
+    'cli_default': Color.FORE_NORMAL,
+    'cli_section': Color.FORE_BLUE,
 }
 
 # Data flow:
@@ -447,6 +406,11 @@ def setup(
     if use_colors is not None:
         _MSG_HANDLER_IMPL.use_colors = use_colors
     if colors is not None:
+        for color in colors:
+            if not re.match(r'^[a-z0-9_]+$', color):
+                raise RuntimeError(
+                    f'invalid tag {color!r}: tag names should consist of '
+                    'lowercase letters, digits, and underscore symbols')
         _MSG_HANDLER_IMPL.colors = dict(DEFAULT_COLORS, **colors)
 
 
@@ -711,7 +675,7 @@ def ask_yn(
 
 
 def wait_for_user(
-    msg: str = 'Press enter to continue',
+    msg: str = 'Press <c:note>enter</c> to continue',
     /,
     *args,
 ):
@@ -944,12 +908,6 @@ class _IterTask(_t.Generic[T]):
     def __iter__(self) -> '_IterTask[T]':
         return self
 
-    def __enter__(self):
-        self._task.__enter__()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return self._task.__exit__(exc_type, exc_val, exc_tb)
-
 
 class _IterTaskLong(_t.Generic[T]):
     def __init__(self, collection: _t.Collection[T], task: 'Task'):
@@ -972,12 +930,6 @@ class _IterTaskLong(_t.Generic[T]):
     def __iter__(self) -> '_IterTaskLong[T]':
         return self
 
-    def __enter__(self):
-        self._task.__enter__()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return self._task.__exit__(exc_type, exc_val, exc_tb)
-
 
 class Task:
     """A class for indicating progress of some task.
@@ -988,14 +940,16 @@ class Task:
 
     This class can be used as a context manager::
 
-        with task('Fetching data') as t:
-            data = requests.get(url)
+        with Task('Processing input') as t:
+            ...
+            t.progress(0.3)
+            ...
 
     This will output the following:
 
     .. code-block:: text
 
-       Fetching data [---->          ] (3 / 10) - https://google.com
+       Processing input [---->          ] 30%
 
     """
 
@@ -1005,7 +959,7 @@ class Task:
         ERROR = enum.auto()
 
     def __init__(self, msg: str, /, *args, parent: _t.Optional['Task'] = None):
-        # These should not be written to directly.
+        # Task properties should not be written to directly.
         # Instead, task should be sent to a handler for modification.
         # This ensures thread safety, because handler has a lock.
         # See handler's implementation details.
@@ -1048,7 +1002,7 @@ class Task:
 
             with Task('Fetching data') as t:
                 for url in t.iter(urls):
-                    url.fetch()
+                    ...
 
         This will output the following:
 
@@ -1068,6 +1022,19 @@ class Task:
         """Set a comment for a task.
 
         Comment is displayed after the progress.
+
+        For example::
+
+            with Task('Fetching data') as t:
+                for url in urls:
+                    t.comment(url)
+                    ...
+
+        This will output the following:
+
+        .. code-block:: text
+
+           Fetching data - https://google.com
 
         """
 
@@ -1314,53 +1281,104 @@ class _HandlerImpl:
 
         color = self.colors.get(record.levelname.lower(), Color())
         process_color_tags = getattr(record, 'yuio_process_color_tags', False)
+        msg = self._colorize(msg, color, process_color_tags)
         if getattr(record, 'yuio_add_newline', True):
             msg += '\n'
-        return self._colorize(msg, color, process_color_tags)
+        return msg
 
-    _TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _-]+)>|</c>')
+    _TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _]+)>|</c>')
+    _TB_RE = re.compile(r'^(?P<indent>[ |+]*)(Stack|Traceback|Exception Group Traceback) \(most recent call last\):$', re.MULTILINE)
+    _TB_LINE_FILE = re.compile(r'^[ |+]*File (?P<file>"[^"]*"), line (?P<line>\d+)(?:, in (?P<loc>.*))?$')
+    _TB_LINE_HIGHLIGHT = re.compile(r'^[ |+^~-]*$')
+    _SITE_PACKAGES = os.sep + 'site-packages' + os.sep
 
     def _colorize(self, msg: str, default_color: Color, process_color_tags: bool = True):
         # Colorize a message, process color tags if necessary.
         # Respect `_use_colors`.
 
-        default_color = FORE_NORMAL | BACK_NORMAL | default_color
+        default_color = Color.FORE_NORMAL | Color.BACK_NORMAL | default_color
 
         if not process_color_tags:
             if self.use_colors:
                 return str(default_color) + msg + str(Color())
             else:
                 return msg
-        elif not self.use_colors:
-            return self._TAG_RE.sub('', msg)
 
-        out = ''
+        if tb_start := self._TB_RE.search(msg):
+            index = tb_start.start()
+            msg, tb = msg[:index], msg[index:]
+        else:
+            tb = ''
+
+        if not self.use_colors:
+            return self._TAG_RE.sub('', msg) + tb
+
+        out = []
         last_pos = 0
         stack = [default_color]
 
-        out += str(default_color)
+        out.append(str(default_color))
 
         for tag in self._TAG_RE.finditer(msg):
-            out += msg[last_pos:tag.span()[0]]
-            last_pos = tag.span()[1]
+            out.append(msg[last_pos:tag.start()])
+            last_pos = tag.end()
 
-            name = tag.group('name')
-            if name:
+            if name := tag.group('name'):
                 color = stack[-1]
                 for sub_name in name.split(','):
                     sub_name = sub_name.strip()
                     color = color | self.colors.get(sub_name, Color())
-                out += str(color)
+                out.append(str(color))
                 stack.append(color)
             elif len(stack) > 1:
                 stack.pop()
-                out += str(stack[-1])
+                out.append(str(stack[-1]))
 
-        out += msg[last_pos:]
+        out.append(msg[last_pos:])
 
-        out += str(Color())
+        if tb:
+            default_color_b = default_color | Color.STYLE_BOLD
+            default_color_n = default_color | self.colors['note']
 
-        return out
+            default_color_d = default_color | Color.STYLE_DIM
+            default_color_d_b = default_color_d | Color.STYLE_BOLD
+            default_color_d_n = default_color_d | self.colors['note']
+
+            base, bold, note = default_color, default_color_b, default_color_n
+
+            indent = None
+            for line in tb.splitlines(keepends=True):
+                if indent and line.startswith(indent):
+                    if match := self._TB_LINE_FILE.match(line):
+                        f, l, lc = match.group('file', 'line', 'loc')
+                        if self._SITE_PACKAGES in f:
+                            base, bold, note = default_color_d, default_color_d_b, default_color_d_n
+                        else:
+                            base, bold, note = default_color, default_color_b, default_color_n
+                        if lc:
+                            out.append(f'{base}{indent}File {note}{f}{base}, line {note}{l}{base}, in {note}{lc}{base}\n')
+                        else:
+                            out.append(f'{base}{indent}File {note}{f}{base}, line {note}{l}{base}\n')
+                    elif match := self._TB_LINE_HIGHLIGHT.match(line):
+                        out.append(line)
+                    else:
+                        out.append(indent)
+                        out.append(str(bold))
+                        out.append(line[len(indent):])
+                        out.append(str(base))
+                    continue
+                elif match := self._TB_RE.match(line):
+                    indent = match.group('indent').replace('+', '|') + '  '
+                elif indent:
+                    indent = None
+                    base, bold, note = default_color, default_color_b, default_color_n
+                    out.append(str(base))
+
+                out.append(line)
+
+        out.append(str(Color()))
+
+        return ''.join(out)
 
     def _make_progress_bar(self, progress: _PROGRESS) -> str:
         width = 15

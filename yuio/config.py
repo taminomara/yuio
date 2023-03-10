@@ -1,4 +1,4 @@
-# Yuio project, MIT licence.
+# Yuio project, MIT license.
 #
 # https://github.com/taminomara/yuio/
 #
@@ -51,9 +51,9 @@ appropriate parsers, and other things from field's name and type hint.
 
 If you need to override them, theres the :func:`field` function:
 
-.. autofunction:: field
+.. .. autofunction:: field
 
-.. autofunction:: disabled
+.. .. autofunction:: disabled
 
 
 Parsing environment variables
@@ -272,7 +272,7 @@ class _FieldSettings:
 
             if is_optional and not isinstance(parser, yuio.parse.Optional):
                 parser = yuio.parse.Optional(parser)
-            
+
             if flags is POSITIONAL and default is not MISSING and parser.supports_parse_many():
                 raise TypeError(
                     f'{qualname}: positional multi-value arguments can\'t have defaults')
@@ -656,7 +656,7 @@ class Config:
         """Add fields from this config to the given arguments parser.
 
         :param ns_prefix:
-            add this prefix to ``dest``s of all argparse actions.
+            add this prefix to `dest` of all argparse actions.
 
         """
 

@@ -149,6 +149,21 @@ class TestSetup:
             'question message 1 question message 2 '
         )
 
+    def test_custom_tags(self, stream):
+        yuio.io.setup(colors={'my_tag': yuio.io.Color.FORE_RED})
+        yuio.io.info('using <c:my_tag>tag</c>')
+
+        assert (
+            stream.getvalue() ==
+            '\033[0;39;49musing \033[0;31;49mtag\033[0;39;49m\033[0m\n'
+        )
+
+        with pytest.raises(RuntimeError, match='invalid tag \'my-tag\''):
+            yuio.io.setup(colors={'my-tag': yuio.io.Color.FORE_RED})
+
+        with pytest.raises(RuntimeError, match='invalid tag \'MY_TAG\''):
+            yuio.io.setup(colors={'MY_TAG': yuio.io.Color.FORE_RED})
+
 
 class TestLoggingNoColor:
     def test_tags_are_removed(self, stream_no_color):
@@ -182,7 +197,7 @@ class TestLoggingColor:
     def test_yuio_process_color_tags(self, stream):
         yuio.io.info('<c:t1>t1</c>', extra={'yuio_process_color_tags': False})
 
-        assert stream.getvalue() == '\033[0;39;49m<c:t1>t1</c>\n\033[0m'
+        assert stream.getvalue() == '\033[0;39;49m<c:t1>t1</c>\033[0m\n'
 
     def test_simple_logging(self, stream):
         yuio.io.debug('debug message')
@@ -193,10 +208,10 @@ class TestLoggingColor:
 
         assert (
             stream.getvalue() ==
-            '\033[0;39;49;2mdebug message\n\033[0m'
-            '\033[0;39;49minfo message\n\033[0m'
-            '\033[0;33;49mwarning message\n\033[0m'
-            '\033[0;31;49merror message\n\033[0m'
+            '\033[0;39;49;2mdebug message\033[0m\n'
+            '\033[0;39;49minfo message\033[0m\n'
+            '\033[0;33;49mwarning message\033[0m\n'
+            '\033[0;31;49merror message\033[0m\n'
             '\033[0;34;49mquestion message\033[0m'
         )
 
@@ -211,15 +226,15 @@ class TestLoggingColor:
             '\033[0;32;49;1mgreen'  # opening green tag, color is bold-green
             '\033[0;31;49;1m'  # closing green tag
             '\033[0;31;49m'  # closing bold tag
-            '\033[0;39;49m\n'  # closing red tag
-            '\033[0m'  # end of message, resetting all styles
+            '\033[0;39;49m'  # closing red tag
+            '\033[0m\n'  # end of message, resetting all styles
         )
 
     def test_color_overrides(self, stream):
         yuio.io.setup(
             use_colors=True, level=yuio.io.DEBUG, colors=dict(
-                info=yuio.io.STYLE_BOLD,
-                custom_tag=yuio.io.FORE_BLACK,
+                info=yuio.io.Color.STYLE_BOLD,
+                custom_tag=yuio.io.Color.FORE_BLACK,
             )
         )
 
@@ -229,8 +244,30 @@ class TestLoggingColor:
             stream.getvalue() ==
             '\033[0;39;49;1m'  # info log line color, color is bold
             '\033[0;30;49;1mblack'  # opening custom tag, color is bold-black
-            '\033[0;39;49;1m\n'  # closing custom tag
-            '\033[0m'  # end of message, resetting all styles
+            '\033[0;39;49;1m'  # closing custom tag
+            '\033[0m\n'  # end of message, resetting all styles
+        )
+
+    def test_color_tags_in_exception(self, stream):
+        import traceback
+
+        try:
+            # Color tags in exception messages and tracebacks are not processed.
+            raise RuntimeError('<c:green>exception</c>')
+        except RuntimeError as e:
+            yuio.io.exception('oh no!')
+
+            frame = traceback.extract_tb(e.__traceback__)[0]
+            fname = frame.filename
+            fline = frame.lineno
+
+        assert (
+            stream.getvalue() ==
+            f'\033[0;31;49moh no!\n'
+            f'Traceback (most recent call last):\n'
+            f'\033[0;31;49m  File \033[0;32;49m"{fname}"\033[0;31;49m, line \033[0;32;49m{fline}\033[0;31;49m, in \033[0;32;49mtest_color_tags_in_exception\033[0;31;49m\n'
+            f'  \033[0;31;49;1m  raise RuntimeError(\'<c:green>exception</c>\')\n'
+            f'\033[0;31;49m\033[0;31;49mRuntimeError: <c:green>exception</c>\033[0m\n'
         )
 
 
@@ -277,7 +314,7 @@ class TestTask:
             '\033[1F\033[J'  # clear tasks
             '\033[0;34;49mtask description [------>        ] 50% - comment\033[0m\n'  # add progress
             '\033[1F\033[J'  # clear tasks
-            '\033[0;39;49minfo message\n\033[0m'  # log info message
+            '\033[0;39;49minfo message\033[0m\n'  # log info message
             '\033[0;34;49mtask description [------>        ] 50% - comment\033[0m\n'  # redraw task
             '\033[1F\033[J'  # clear tasks
             '\033[0;32;49mtask description: OK\033[0m\n'  # task is OK
@@ -418,13 +455,13 @@ class TestSuspend:
             yuio.io.info('suspended message')
             yuio.io.log(1000, 'high priority message')
 
-            assert stream.getvalue() == '\033[0;39;49minfo message\n\033[0m'
+            assert stream.getvalue() == '\033[0;39;49minfo message\033[0m\n'
 
         assert (
             stream.getvalue() ==
-            '\033[0;39;49minfo message\n\033[0m'
-            '\033[0;39;49msuspended message\n\033[0m'
-            '\033[0;39;49mhigh priority message\n\033[0m'
+            '\033[0;39;49minfo message\033[0m\n'
+            '\033[0;39;49msuspended message\033[0m\n'
+            '\033[0;39;49mhigh priority message\033[0m\n'
         )
 
     def test_logging_is_suspended_no_color(self, stream_no_color):
@@ -450,13 +487,13 @@ class TestSuspend:
             task = yuio.io.Task('task description')
             task.comment('comment')
 
-            assert stream.getvalue() == '\033[0;39;49minfo message\n\033[0m'
+            assert stream.getvalue() == '\033[0;39;49minfo message\033[0m\n'
 
         task.done()
 
         assert (
             stream.getvalue() ==
-            '\033[0;39;49minfo message\n\033[0m'
+            '\033[0;39;49minfo message\033[0m\n'
             '\033[0;34;49mtask description - comment...\033[0m\n'
             '\033[1F\033[J'  # clear tasks
             '\033[0;32;49mtask description: OK\033[0m\n'
@@ -498,18 +535,18 @@ class TestSuspend:
 
             assert (
                 stream.getvalue() ==
-                '\033[0;39;49minfo message\n\033[0m'
-                '\033[0;39;49moverridden message\n\033[0m'
-                '\033[0;39;49moverridden message 2\n\033[0m'
+                '\033[0;39;49minfo message\033[0m\n'
+                '\033[0;39;49moverridden message\033[0m\n'
+                '\033[0;39;49moverridden message 2\033[0m\n'
             )
 
         assert (
             stream.getvalue() ==
-            '\033[0;39;49minfo message\n\033[0m'
-            '\033[0;39;49moverridden message\n\033[0m'
-            '\033[0;39;49moverridden message 2\n\033[0m'
-            '\033[0;39;49msuspended message\n\033[0m'
-            '\033[0;39;49msuspended message 2\n\033[0m'
+            '\033[0;39;49minfo message\033[0m\n'
+            '\033[0;39;49moverridden message\033[0m\n'
+            '\033[0;39;49moverridden message 2\033[0m\n'
+            '\033[0;39;49msuspended message\033[0m\n'
+            '\033[0;39;49msuspended message 2\033[0m\n'
         )
 
 
@@ -573,7 +610,7 @@ class TestAsk:
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
-            '\033[0;31;49mInput is required.\n\033[0m'
+            '\033[0;31;49mInput is required.\033[0m\n'
             '\033[0;34;49mquestion: \033[0m'
         )
 
@@ -597,7 +634,7 @@ class TestAsk:
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion: \033[0m'
-            '\033[0;31;49mError: value should be greater than 10, got 10 instead.\n\033[0m'
+            '\033[0;31;49mError: value should be greater than 10, got 10 instead.\033[0m\n'
             '\033[0;34;49mquestion: \033[0m'
         )
 
@@ -613,7 +650,7 @@ class TestAsk:
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (yes|no): \033[0m'
-            '\033[0;31;49mError: could not parse value \'xxx\', enter either \'yes\' or \'no\'.\n\033[0m'
+            '\033[0;31;49mError: could not parse value \'xxx\', enter either \'yes\' or \'no\'.\033[0m\n'
             '\033[0;34;49mquestion (yes|no): \033[0m'
         )
 
@@ -629,7 +666,7 @@ class TestAsk:
         assert (
             output.getvalue() ==
             '\033[0;34;49mquestion (a|b) [\033[0;32;49mb\033[0;34;49m]: \033[0m'
-            '\033[0;31;49mError: could not parse value \'xxx\', should be one of a, b.\n\033[0m'
+            '\033[0;31;49mError: could not parse value \'xxx\', should be one of a, b.\033[0m\n'
             '\033[0;34;49mquestion (a|b) [\033[0;32;49mb\033[0;34;49m]: \033[0m'
         )
 
@@ -716,7 +753,7 @@ class TestAsk:
     def test_wait(self):
         output = self.prepare('\n')
         yuio.io.wait_for_user()
-        assert output.getvalue() == '\033[0;34;49mPress enter to continue\n\033[0m'
+        assert output.getvalue() == '\033[0;34;49mPress \033[0;32;49menter\033[0;34;49m to continue\n\033[0m'
 
     def test_noninteractive(self, save_env):
         yuio.io.os.environ['TERM'] = 'dumb'

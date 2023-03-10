@@ -1,4 +1,4 @@
-# Yuio project, MIT licence.
+# Yuio project, MIT license.
 #
 # https://github.com/taminomara/yuio/
 #
