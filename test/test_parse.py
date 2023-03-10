@@ -186,7 +186,6 @@ class TestContainers:
         with pytest.raises(ValueError, match='empty delimiter'):
             Set(Int(), delimiter='')
 
-
     def test_frozenset(self):
         parser = FrozenSet(Int())
         assert parser.parse('') == frozenset()
@@ -246,7 +245,6 @@ class TestContainers:
         assert parser.describe_value((-5, ('xyz', 'abc'))) == '-5:xyz:abc'
         with pytest.raises(ValueError, match='empty delimiter'):
             Pair(Int(), Int(), delimiter='')
-
 
     def test_tuple(self):
         parser = Tuple(Int(), Int(), Str())
