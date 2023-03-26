@@ -273,10 +273,12 @@ class Color:
     # Note: other font styles besides bold and dim are not implemented
     # because their support in terminals is limited.
 
-    fore: _t.Optional[int] = None
-    back: _t.Optional[int] = None
+    fore: _t.Optional[str] = None
+    back: _t.Optional[str] = None
     bold: bool = False
     dim: bool = False
+
+    _s = None
 
     def __or__(self, other: 'Color', /):
         return Color(
@@ -287,16 +289,19 @@ class Color:
         )
 
     def __str__(self):
-        codes = ['0']
-        if self.fore is not None:
-            codes.append(str(self.fore))
-        if self.back is not None:
-            codes.append(str(self.back))
-        if self.bold:
-            codes.append('1')
-        if self.dim:
-            codes.append('2')
-        return '\033[' + ';'.join(codes) + 'm'
+        if (s := self._s) is None:
+            codes = ['0']
+            if self.fore is not None:
+                codes.append(self.fore)
+            if self.back is not None:
+                codes.append(self.back)
+            if self.bold:
+                codes.append('1')
+            if self.dim:
+                codes.append('2')
+            s = '\033[' + ';'.join(codes) + 'm'
+            object.__setattr__(self, '_s', s)
+        return s
 
     #: Bold font style.
     STYLE_BOLD: _t.ClassVar['Color'] = lambda: Color(bold=True)  # type: ignore
@@ -304,45 +309,45 @@ class Color:
     STYLE_DIM: _t.ClassVar['Color'] = lambda: Color(dim=True)  # type: ignore
 
     #: Normal foreground color.
-    FORE_NORMAL: _t.ClassVar['Color'] = lambda: Color(fore=39)  # type: ignore
+    FORE_NORMAL: _t.ClassVar['Color'] = lambda: Color(fore='39')  # type: ignore
     #: Black foreground color.
-    FORE_BLACK: _t.ClassVar['Color'] = lambda: Color(fore=30)  # type: ignore
+    FORE_BLACK: _t.ClassVar['Color'] = lambda: Color(fore='30')  # type: ignore
     #: Red foreground color.
-    FORE_RED: _t.ClassVar['Color'] = lambda: Color(fore=31)  # type: ignore
+    FORE_RED: _t.ClassVar['Color'] = lambda: Color(fore='31')  # type: ignore
     #: Green foreground color.
-    FORE_GREEN: _t.ClassVar['Color'] = lambda: Color(fore=32)  # type: ignore
+    FORE_GREEN: _t.ClassVar['Color'] = lambda: Color(fore='32')  # type: ignore
     #: Yellow foreground color.
-    FORE_YELLOW: _t.ClassVar['Color'] = lambda: Color(fore=33)  # type: ignore
+    FORE_YELLOW: _t.ClassVar['Color'] = lambda: Color(fore='33')  # type: ignore
     #: Blue foreground color.
-    FORE_BLUE: _t.ClassVar['Color'] = lambda: Color(fore=34)  # type: ignore
+    FORE_BLUE: _t.ClassVar['Color'] = lambda: Color(fore='34')  # type: ignore
     #: Magenta foreground color.
-    FORE_MAGENTA: _t.ClassVar['Color'] = lambda: Color(fore=35)  # type: ignore
+    FORE_MAGENTA: _t.ClassVar['Color'] = lambda: Color(fore='35')  # type: ignore
     #: Cyan foreground color.
-    FORE_CYAN: _t.ClassVar['Color'] = lambda: Color(fore=36)  # type: ignore
+    FORE_CYAN: _t.ClassVar['Color'] = lambda: Color(fore='36')  # type: ignore
     #: White foreground color.
-    FORE_WHITE: _t.ClassVar['Color'] = lambda: Color(fore=37)  # type: ignore
+    FORE_WHITE: _t.ClassVar['Color'] = lambda: Color(fore='37')  # type: ignore
 
     #: Normal background color.
-    BACK_NORMAL: _t.ClassVar['Color'] = lambda: Color(back=49)  # type: ignore
+    BACK_NORMAL: _t.ClassVar['Color'] = lambda: Color(back='49')  # type: ignore
     #: Black background color.
-    BACK_BLACK: _t.ClassVar['Color'] = lambda: Color(back=40)  # type: ignore
+    BACK_BLACK: _t.ClassVar['Color'] = lambda: Color(back='40')  # type: ignore
     #: Red background color.
-    BACK_RED: _t.ClassVar['Color'] = lambda: Color(back=41)  # type: ignore
+    BACK_RED: _t.ClassVar['Color'] = lambda: Color(back='41')  # type: ignore
     #: Green background color.
-    BACK_GREEN: _t.ClassVar['Color'] = lambda: Color(back=42)  # type: ignore
+    BACK_GREEN: _t.ClassVar['Color'] = lambda: Color(back='42')  # type: ignore
     #: Yellow background color.
-    BACK_YELLOW: _t.ClassVar['Color'] = lambda: Color(back=43)  # type: ignore
+    BACK_YELLOW: _t.ClassVar['Color'] = lambda: Color(back='43')  # type: ignore
     #: Blue background color.
-    BACK_BLUE: _t.ClassVar['Color'] = lambda: Color(back=44)  # type: ignore
+    BACK_BLUE: _t.ClassVar['Color'] = lambda: Color(back='44')  # type: ignore
     #: Magenta background color.
-    BACK_MAGENTA: _t.ClassVar['Color'] = lambda: Color(back=45)  # type: ignore
+    BACK_MAGENTA: _t.ClassVar['Color'] = lambda: Color(back='45')  # type: ignore
     #: Cyan background color.
-    BACK_CYAN: _t.ClassVar['Color'] = lambda: Color(back=46)  # type: ignore
+    BACK_CYAN: _t.ClassVar['Color'] = lambda: Color(back='46')  # type: ignore
     #: White background color.
-    BACK_WHITE: _t.ClassVar['Color'] = lambda: Color(back=47)  # type: ignore
+    BACK_WHITE: _t.ClassVar['Color'] = lambda: Color(back='47')  # type: ignore
 
 for _n, _v in vars(Color).items():
-    if _n.startswith(('STYLE', 'FORE', 'BACK')):
+    if _n == _n.upper():
         setattr(Color, _n, _v())
 del _n, _v  # type: ignore
 

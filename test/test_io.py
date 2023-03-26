@@ -69,16 +69,16 @@ def stream_interactive(save_env, reset_logging):
 class TestColor:
     def test_output(self):
         assert str(yuio.io.Color()) == '\033[0m'
-        assert str(yuio.io.Color(31)) == '\033[0;31m'
-        assert str(yuio.io.Color(32, bold=True, dim=True)) == '\033[0;32;1;2m'
+        assert str(yuio.io.Color('31')) == '\033[0;31m'
+        assert str(yuio.io.Color('32', bold=True, dim=True)) == '\033[0;32;1;2m'
         assert str(yuio.io.Color(bold=True)) == '\033[0;1m'
 
     def test_combine(self):
-        assert yuio.io.Color(1) | yuio.io.Color(2) == yuio.io.Color(2)
-        assert yuio.io.Color(1) | yuio.io.Color() == yuio.io.Color(1)
-        assert yuio.io.Color() | yuio.io.Color(1) == yuio.io.Color(1)
-        assert yuio.io.Color(1) | yuio.io.Color(bold=True) == yuio.io.Color(1, bold=True)
-        assert yuio.io.Color(1, bold=True) | yuio.io.Color(2) == yuio.io.Color(2, bold=True)
+        assert yuio.io.Color('1') | yuio.io.Color('2') == yuio.io.Color('2')
+        assert yuio.io.Color('1') | yuio.io.Color() == yuio.io.Color('1')
+        assert yuio.io.Color() | yuio.io.Color('1') == yuio.io.Color('1')
+        assert yuio.io.Color('1') | yuio.io.Color(bold=True) == yuio.io.Color('1', bold=True)
+        assert yuio.io.Color('1', bold=True) | yuio.io.Color('2') == yuio.io.Color('2', bold=True)
 
 
 class TestHelpers:
