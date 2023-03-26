@@ -160,7 +160,6 @@ class App:
         #: By default, inferred from command's documentation.
         #:
         #: See `description <https://docs.python.org/3/library/argparse.html#description>`_.
-        #: See :red:`foobar`.
         self.description: _t.Optional[str] = description
 
         if not help and description:
@@ -291,6 +290,7 @@ class App:
         try:
             command = self._load_from_namespace(parser.parse_args(args))
             command()
+            exit(0)
         except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
             parser.error(str(e))
         except Exception as e:
