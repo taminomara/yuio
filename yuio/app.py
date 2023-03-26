@@ -160,6 +160,8 @@ class App:
         #: By default, inferred from command's documentation.
         #:
         #: See `description <https://docs.python.org/3/library/argparse.html#description>`_.
+        #:
+        #: Error for github to display: :ref:`foobar`.
         self.description: _t.Optional[str] = description
 
         if not help and description:
