@@ -15,7 +15,6 @@ Configuration
 Yuio configures itself upon import using environment variables:
 
 - ``DEBUG``: print debug-level messages,
-- ``QUIET``: only print warnings, errors, and input prompts,
 - ``NO_COLORS``: disable colored output,
 - ``FORCE_COLORS``: enable colored output.
 
@@ -91,7 +90,7 @@ Use :func:`setup` function to override existing tag colors or add new tags::
 
     setup(
         colors=dict(
-            success=FORE_BLUE | STYLE_BOLD
+            success=Color.FORE_BLUE | Color.STYLE_BOLD
         )
     )
 
@@ -593,20 +592,19 @@ def ask(
         )
 
     :param msg:
-        prompt that will be sent to the user.
+        prompt to display to user.
     :param args:
         arguments for prompt formatting.
     :param parser:
-        how to parse and verify the input. See :mod:`yuio.parse` for more
+        parser to use to parse user input. See :mod:`yuio.parse` for more
         info. Can also accept a type hint and turn it into a parser.
     :param default:
-        if given, this value will be returned if no input is provided.
+        default value to return if user input is empty.
     :param input_description:
-        a string that describes expected input, like ``'yes/no'`` for boolean
-        inputs. By default, inferred from the given parser.
+        description of the expected input, like ``'yes/no'`` for boolean
+        inputs.
     :param default_description:
-        a string that describes the `default` value. By default,
-        inferred from the given parser and `repr` of the default value.
+        description of the `default` value.
     :param secure_input:
         if enabled, treats input as password, and uses secure input methods.
         This option also hides errors from the parser, because they may contain
@@ -725,7 +723,7 @@ def wait_for_user(
 
 
 def detect_editor() -> _t.Optional[str]:
-    """Detect an editor executable.
+    """Detect the user's preferred editor.
 
     This function checks the ``EDITOR`` environment variable.
     If it's not found, it checks whether ``nano`` or ``vi``
