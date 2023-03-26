@@ -220,6 +220,8 @@ class _FieldSettings:
             help = ty.__doc__
         else:
             help = ''
+        if help == argparse.SUPPRESS:
+            help = DISABLED
 
         env: _t.Union[str, Disabled]
         if self.env is not None:
