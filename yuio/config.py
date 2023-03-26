@@ -631,20 +631,13 @@ class Config:
         return cls(**fields)
 
     @classmethod
-    def load_from_namespace(
+    def _load_from_namespace(
         cls: _t.Type[_Self],
         namespace: argparse.Namespace,
         /,
         *,
         ns_prefix: str = '',
     ) -> _Self:
-        """Load config from parsed command line arguments.
-
-        This method assumes that arguments parser was configured
-        with :meth:`Config.setup_arg_parser`.
-
-        """
-
         return cls.__load_from_namespace(namespace, ns_prefix + ':')
 
     @classmethod
@@ -671,20 +664,13 @@ class Config:
         return cls(**fields)
 
     @classmethod
-    def setup_arg_parser(
+    def _setup_arg_parser(
         cls,
         parser: argparse.ArgumentParser,
         /,
         *,
         ns_prefix: str = '',
     ):
-        """Add fields from this config to the given arguments parser.
-
-        :param ns_prefix:
-            add this prefix to `dest` of all argparse actions.
-
-        """
-
         parser.add_argument(
             '-v', '--verbose',
             help='increase verbosity of output',

@@ -328,7 +328,7 @@ class App:
         return parser
 
     def __setup_arg_parser(self, parser: argparse.ArgumentParser, ns_prefix: str):
-        self._config_type.setup_arg_parser(parser, ns_prefix=ns_prefix)
+        self._config_type._setup_arg_parser(parser, ns_prefix=ns_prefix)
 
         if self._sub_apps:
             subparsers = parser.add_subparsers(
