@@ -612,6 +612,8 @@ class TestArgs:
         #: help for `b`.
         b: bool = False
 
+        c: int
+
     class DocConfig(Config):
         #: help for `sub`.
         sub: 'TestArgs.DocSubConfig'
@@ -620,9 +622,37 @@ class TestArgs:
         parser = argparse.ArgumentParser()
         TestArgs.DocConfig._setup_arg_parser(parser)
         help = parser.format_help()
-        assert 'help for `sub`:' in help
-        assert 'help for `a`.' in help
-        assert 'help for `b`. [default: disabled]' in help
+        assert 'help for `sub`:\n' in help
+        assert '  --sub-a {str}  help for `a`.\n' in help
+        assert '  --sub-b        help for `b`. [default: disabled]\n' in help
+        assert '  --sub-no-b     disable --sub-b\n' in help
+        assert '  --sub-c {int}\n' in help
+
+    def test_help_disabled(self):
+        class SubConfig(Config):
+            a: str = field(help='help for a')
+
+        class SubConfigNoHelp(Config):
+            b: str = field(help='help for b')
+
+        class MyConfig(Config):
+            c: str
+            d: str = field(help=DISABLED)
+            sub: SubConfig
+            sub_no_help: SubConfigNoHelp = field(help=DISABLED)
+            sub_no_help_2: SubConfigNoHelp = field(help=argparse.SUPPRESS)
+
+        parser = argparse.ArgumentParser()
+        MyConfig._setup_arg_parser(parser)
+        help = parser.format_help()
+        print(help)
+        assert '  --c {str}\n' in help
+        assert 'sub:\n' in help
+        assert '  --sub-a {str}  help for a\n' in help
+        assert 'help for b' not in help
+        assert '-b' not in help
+        assert 'sub_no_help' not in help
+        assert 'sub_no_help_2' not in help
 
 
 class TestLoadFromFile:
