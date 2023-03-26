@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yuio &mdash; Yuio  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Io" href="io.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            Yuio
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="io.html">Io</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parse.html">Parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="app.html">CLI Apps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="exec.html">Exec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="git.html">Git</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Yuio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Yuio</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="yuio">
+<h1>Yuio<a class="headerlink" href="#yuio" title="Permalink to this heading"></a></h1>
+<p>Yuio is a lightweight python library for building simple human-friendly CLIs.</p>
+<p>Unlike bigger tools like <a class="reference external" href="https://click.palletsprojects.com/">click</a> or <a class="reference external" href="https://cleo.readthedocs.io/en/latest/">cleo</a>, Yuio is small, simple, has no dependencies, and relies
+on standard python libraries such as <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.11)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> and <a class="reference external" href="https://docs.python.org/3/library/argparse.html#module-argparse" title="(in Python v3.11)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">argparse</span></code></a>.</p>
+<p>It is ideal for things like automation scripts, utilities for CI, or any other small tools.
+Without dependencies, it is easy to use in places where you either don’t or don’t want to have
+access to dependency management systems. Just copy-paste its source files into your project,
+and be done with it.</p>
+<p>Yuio is MyPy-friendly!</p>
+<hr class="docutils" />
+<img alt="_images/yuio_small.png" src="_images/yuio_small.png" />
+<hr class="docutils" />
+<section id="features">
+<h2>Features<a class="headerlink" href="#features" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Colored output with inline tags built on top of the <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.11)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> module:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">setup</span><span class="p">()</span>
+<span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;&lt;c:bold&gt;Yuio&lt;/c&gt;: a user-friendly io library!&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Status indication with progress bars:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span><span class="s1">&#39;Loading sources&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">task</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">source</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sources</span><span class="p">):</span>
+        <span class="n">source</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">))</span>
+</pre></div>
+</div>
+</li>
+<li><p>User interactions and input parsing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">answer</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">ask</span><span class="p">(</span>
+    <span class="s1">&#39;Do you want a choco bar?&#39;</span><span class="p">,</span>
+    <span class="n">parser</span><span class="o">=</span><span class="n">yuio</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">Bool</span><span class="p">(),</span>
+    <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Tools to edit things in an external editor:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">text</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="s1">&#39;// Please enter the commit message for your changes.</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="s1">&#39;// Lines starting with &quot;//&quot; will be ignored,</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="s1">&#39;// and an empty message aborts the commit.</span><span class="se">\n</span><span class="s1">&#39;</span>
+<span class="p">)</span>
+<span class="n">text</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">edit</span><span class="o">.</span><span class="n">edit</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">comment_marker</span><span class="o">=</span><span class="s1">&#39;//&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Tools to run commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">yuio</span><span class="o">.</span><span class="n">exec</span><span class="o">.</span><span class="n">sh</span><span class="p">(</span><span class="s1">&#39;ping 127.0.0.1 -c 5 1&gt;&amp;2&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Interactions with git:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">repo</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">git</span><span class="o">.</span><span class="n">Repo</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+<span class="n">status</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">status</span><span class="p">()</span>
+<span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+   <span class="s1">&#39;At branch &lt;c:code&gt;</span><span class="si">%s</span><span class="s1">&lt;/c&gt;, commit &lt;c:code&gt;</span><span class="si">%s</span><span class="s1">&lt;/c&gt;&#39;</span><span class="p">,</span>
+   <span class="n">status</span><span class="o">.</span><span class="n">branch</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">commit</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this heading"></a></h2>
+<p>The only requirement is <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">&gt;=</span> <span class="pre">3.8</span></code>.</p>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h2>
+<p>Install <code class="docutils literal notranslate"><span class="pre">yuio</span></code> with pip:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>pip3<span class="w"> </span>install<span class="w"> </span>yuio
+</pre></div>
+</div>
+<p>Or just copy-paste the <code class="docutils literal notranslate"><span class="pre">yuio</span></code> directory to somewhere in the <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> of your project.</p>
+</section>
+<section id="use-cases">
+<h2>Use cases<a class="headerlink" href="#use-cases" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/taminomara/yuio/blob/main/examples/release.py">Example</a>: a script that cuts Yuio’s releases.</p></li>
+</ul>
+</section>
+<section id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="io.html">Io</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="io.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#logging-messages">Logging messages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#coloring-the-output">Coloring the output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#custom-colors">Custom colors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#indicating-progress">Indicating progress</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#querying-user-input">Querying user input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#suspending-logging">Suspending logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#python-s-logging-and-yuio">Python’s <cite>logging</cite> and yuio</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parse.html">Parsing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#parser-base-class">Parser base class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#helper-methods">Helper methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#value-parsers">Value parsers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#file-system-path-parsers">File system path parsers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#validators">Validators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#deriving-parsers-from-type-hints">Deriving parsers from type hints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#building-your-own-parser">Building your own parser</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="config.html#config-base-class">Config base class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#advanced-field-configuration">Advanced field configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#nesting-configs">Nesting configs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#parsing-environment-variables">Parsing environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#parsing-config-files">Parsing config files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#parsing-cli-arguments">Parsing CLI arguments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="app.html">CLI Apps</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="app.html#yuio.app.App"><code class="docutils literal notranslate"><span class="pre">App</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="exec.html">Exec</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="exec.html#yuio.exec.exec"><code class="docutils literal notranslate"><span class="pre">exec()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="exec.html#yuio.exec.sh"><code class="docutils literal notranslate"><span class="pre">sh()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="git.html">Git</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="git.html#interacting-with-a-repository">Interacting with a repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="git.html#commit-and-status-objects">Commit and status objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="git.html#parsing-git-refs">Parsing git refs</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="io.html" class="btn btn-neutral float-right" title="Io" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Tamika Nomara.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
