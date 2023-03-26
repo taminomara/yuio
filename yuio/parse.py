@@ -26,8 +26,8 @@ Or parse strings yourself::
     ['sys', 'os', 'enum', 'dataclasses']
 
 
-Base parser
------------
+Parser base class
+-----------------
 
 .. autoclass:: Parser
 

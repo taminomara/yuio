@@ -1,4 +1,4 @@
-# Yuio project, MIT licence.
+# Yuio project, MIT license.
 #
 # https://github.com/taminomara/yuio/
 #
@@ -6,7 +6,10 @@
 # just keep this copyright line please :3
 
 """
-This module expands on :mod:`yuio.config` to build CLI apps.
+This module expands on :mod:`yuio.config` to build CLI apps!
+
+.. autoclass:: App
+   :members:
 
 """
 
@@ -135,23 +138,57 @@ class App:
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
     ):
+        #: Program or subcommand display name.
+        #:
+        #: By default, inferred from :data:`sys.argv` and subcommand names.
+        #:
+        #: See `prog <https://docs.python.org/3/library/argparse.html#prog>`_.
         self.prog: _t.Optional[str] = prog
+
+        #: Program or subcommand usage description.
+        #:
+        #: By default, generated from CLI flags by argparse.
+        #:
+        #: See `usage <https://docs.python.org/3/library/argparse.html#usage>`_.
         self.usage: _t.Optional[str] = usage
 
         if not description and command is not None:
             description = command.__doc__
 
+        #: Text that is shown before CLI flags help.
+        #:
+        #: By default, inferred from command's documentation.
+        #:
+        #: See `description <https://docs.python.org/3/library/argparse.html#description>`_.
+        #: See :red:`foobar`.
         self.description: _t.Optional[str] = description
 
         if not help and description:
             lines = description.split('\n\n', 1)
             help = lines[0].replace('\n', ' ').rstrip('.')
 
+        #: Short help message that is shown when listing subcommands.
+        #:
+        #: See `help <https://docs.python.org/3/library/argparse.html#help>`_.
         self.help: _t.Optional[str] = help
 
+        #: Text that is shown after CLI flags help.
+        #:
+        #: See `epilog <https://docs.python.org/3/library/argparse.html#epilog>`_.
         self.epilog: _t.Optional[str] = epilog
 
+        #: Allow abbreviating CLI flags if that doesn't create ambiguity.
+        #:
+        #: Enabled by default.
+        #:
+        #: See `allow_abbrev <https://docs.python.org/3/library/argparse.html#allow-abbrev>`_.
         self.allow_abbrev: bool = True
+
+        #: Require the user to provide a subcommand for this command.
+        #:
+        #: If this command doesn't have any subcommands, this option is ignored.
+        #:
+        #: Enabled by default.
         self.subcommand_required: bool = True
 
         self._sub_apps: _t.Dict[str, _SubApp] = {}
@@ -206,6 +243,10 @@ class App:
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
     ):
+        """Register a subcommand for the given app.
+
+        """
+
         if isinstance(cb_or_name, str):
             cb = None
             name = cb_or_name
@@ -237,7 +278,15 @@ class App:
         else:
             return registrar(cb)
 
-    def run(self, args: _t.Optional[_t.List[str]] = None):
+    def run(self, args: _t.Optional[_t.List[str]] = None) -> _t.NoReturn:
+        """Parse arguments and run the application.
+
+        If arguments are not given, parse :data:`sys.argv`.
+
+        This function does not return.
+
+        """
+
         parser = self._setup_arg_parser()
         try:
             command = self._load_from_namespace(parser.parse_args(args))

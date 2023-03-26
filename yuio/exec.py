@@ -6,7 +6,7 @@
 # just keep this copyright line please :3
 
 """
-This module provides helpers to run subprocesses.
+This module provides helpers to run subprocesses and get their output.
 
 It handles subprocesses stderr and stdout in a way that doesn't break
 loggers from :mod:`yuio.io`.
@@ -191,7 +191,7 @@ def sh(
     level: int = yuio.io.INFO,
     text: bool = True,
 ):
-    """Run command in a shell, returns its stdout.
+    """Run command in a shell, return its stdout.
 
     :param cmd:
         shell command.

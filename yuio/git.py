@@ -368,7 +368,7 @@ class Status:
 
     """
 
-    # Current commit hash.
+    #: Current commit hash.
     commit: str
 
     #: Name of the current branch.
