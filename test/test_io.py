@@ -561,10 +561,10 @@ class TestEdit:
         assert yuio.io.edit('  #Comment\nString to edit', editor='cat') == 'String to edit'
 
     def test_replace(self, stream_interactive):
-        assert yuio.io.edit('a\nx', editor='sed -i "" "s/a/b/g"') == 'b\nx'
+        assert yuio.io.edit('a\nx', editor='sed -i= "s/a/b/g"') == 'b\nx'
 
     def test_detect_editor(self, stream_interactive, save_env):
-        yuio.io.os.environ['EDITOR'] = 'sed -i "" "s/a/b/g"'
+        yuio.io.os.environ['EDITOR'] = 'sed -i= "s/a/b/g"'
 
         assert yuio.io.edit('a\nx') == 'b\nx'
 
