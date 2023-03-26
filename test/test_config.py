@@ -456,8 +456,8 @@ class TestArgs:
     @staticmethod
     def load_from_args(confg: typing.Type[C], args: str) -> C:
         parser = argparse.ArgumentParser()
-        confg.setup_arg_parser(parser)
-        return confg.load_from_namespace(parser.parse_args(args.split()))
+        confg._setup_arg_parser(parser)
+        return confg._load_from_namespace(parser.parse_args(args.split()))
 
     def test_load(self):
         class MyConfig(Config):
@@ -584,11 +584,11 @@ class TestArgs:
         c = self.load_from_args(MyConfig, '--b foo --a bar')
         assert c.b == 'foo'
         assert c.sub.a == 'bar'
-    
+
     def test_positionals_not_allower(self):
         class MyConfig(Config):
             a: str = positional()
-        
+
         with pytest.raises(TypeError, match='positional arguments are not allowed in configs'):
             self.load_from_args(MyConfig, 'abc')
 
@@ -605,7 +605,7 @@ class TestArgs:
 
     def test_help(self):
         parser = argparse.ArgumentParser()
-        TestArgs.DocConfig.setup_arg_parser(parser)
+        TestArgs.DocConfig._setup_arg_parser(parser)
         help = parser.format_help()
         assert 'help for `sub`:' in help
         assert 'help for `a`.' in help
