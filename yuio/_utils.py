@@ -12,25 +12,6 @@ def to_dash_case(s: str) -> str:
     return _TO_DASH_CASE_RE.sub('-', s).lower()
 
 
-class Placeholders(enum.Enum):
-    DISABLED = '<disabled>'
-    MISSING = '<missing>'
-    POSITIONAL = '<positional>'
-
-    def __repr__(self):
-        return self.value
-
-
-Disabled = _t.Literal[Placeholders.DISABLED]
-DISABLED: Disabled = Placeholders.DISABLED
-
-Missing = _t.Literal[Placeholders.MISSING]
-MISSING: Missing = Placeholders.MISSING
-
-Positional = _t.Literal[Placeholders.POSITIONAL]
-POSITIONAL: Positional = Placeholders.POSITIONAL
-
-
 _COMMENT_RE = re.compile(r'^\s*#: ?(.*)\r?\n?$')
 
 

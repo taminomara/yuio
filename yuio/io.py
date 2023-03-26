@@ -215,7 +215,7 @@ from dataclasses import dataclass
 from logging import LogRecord
 
 import yuio.parse
-from yuio._utils import DISABLED, Disabled
+from yuio.config import DISABLED, Disabled
 
 
 T = _t.TypeVar('T')

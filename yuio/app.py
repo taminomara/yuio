@@ -27,7 +27,7 @@ import yuio._utils
 import yuio.config
 import yuio.io
 import yuio.parse
-from yuio._utils import DISABLED, MISSING, POSITIONAL, Disabled, Missing, Positional
+from yuio.config import DISABLED, MISSING, POSITIONAL, Disabled, Missing, Positional
 from yuio.config import field, inline, positional
 
 

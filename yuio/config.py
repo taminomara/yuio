@@ -156,15 +156,40 @@ import argparse
 import logging
 import os
 import pathlib
+import enum
 import typing as _t
 from dataclasses import dataclass
 
 import yuio._utils
 import yuio.parse
-from yuio._utils import DISABLED, MISSING, POSITIONAL, Disabled, Missing, Positional
 
 
 T = _t.TypeVar('T')
+
+
+class _Placeholders(enum.Enum):
+    DISABLED = '<disabled>'
+    MISSING = '<missing>'
+    POSITIONAL = '<positional>'
+
+    def __repr__(self):
+        return self.value
+
+
+#: Type of the :data:`DISABLED` placeholder.
+Disabled = _t.Literal[_Placeholders.DISABLED]
+#: Indicates that some functionality is disabled.
+DISABLED: Disabled = _Placeholders.DISABLED
+
+#: Type of the :data:`MISSING` placeholder.
+Missing = _t.Literal[_Placeholders.MISSING]
+#: Indicates that some value is missing.
+MISSING: Missing = _Placeholders.MISSING
+
+#: Type of the :data:`POSITIONAL` placeholder.
+Positional = _t.Literal[_Placeholders.POSITIONAL]
+#: Used with :func:`field` to enable positional arguments.
+POSITIONAL: Positional = _Placeholders.POSITIONAL
 
 
 @dataclass(frozen=True)
