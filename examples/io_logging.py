@@ -1,7 +1,7 @@
 import yuio.io
 
 if __name__ == '__main__':
-    yuio.io.setup(level=yuio.io.DEBUG)
+    yuio.io.setup(level=yuio.io.LogLevel.DEBUG)
 
     yuio.io.info('<c:heading>Log level colors:</c>')
     yuio.io.debug('  Debug message is gray.')
