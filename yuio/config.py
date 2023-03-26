@@ -452,7 +452,7 @@ def _action(parser: yuio.parse.Parser, parse_many: bool):
 class _VerboseAction(argparse.Action):
     def __call__(self, _, namespace, values, option_string=None):
         import yuio.io
-        yuio.io.setup(yuio.io.DEBUG)
+        yuio.io.setup(yuio.io.LogLevel.DEBUG)
 
 
 class Config:

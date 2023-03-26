@@ -37,7 +37,7 @@ def reset_logging():
 @pytest.fixture
 def stream(reset_logging):
     stream = AttyStream(False)
-    yuio.io.setup(use_colors=True, level=yuio.io.DEBUG, stream=stream)
+    yuio.io.setup(use_colors=True, level=yuio.io.LogLevel.DEBUG, stream=stream)
 
     yield stream
 
@@ -47,8 +47,7 @@ def stream(reset_logging):
 @pytest.fixture
 def stream_no_color(reset_logging):
     stream = AttyStream(False)
-    print(yuio.io.DEBUG)
-    yuio.io.setup(use_colors=False, level=yuio.io.DEBUG, stream=stream)
+    yuio.io.setup(use_colors=False, level=yuio.io.LogLevel.DEBUG, stream=stream)
 
     yield stream
 
@@ -60,7 +59,7 @@ def stream_interactive(save_env, reset_logging):
     yuio.io.os.environ['TERM'] = 'xterm-256color'
 
     stream = AttyStream(True)
-    yuio.io.setup(use_colors=True, level=yuio.io.DEBUG, stream=stream)
+    yuio.io.setup(use_colors=True, level=yuio.io.LogLevel.DEBUG, stream=stream)
 
     yield stream
 
@@ -104,12 +103,12 @@ class TestHelpers:
 
 class TestSetup:
     def test_level(self, stream_no_color):
-        yuio.io.setup(level=yuio.io.WARNING)
+        yuio.io.setup(level=yuio.io.LogLevel.WARNING)
         yuio.io.debug('debug message 1')
         yuio.io.info('info message 1')
         yuio.io.warning('warning message 1')
 
-        yuio.io.setup(level=yuio.io.INFO)
+        yuio.io.setup(level=yuio.io.LogLevel.INFO)
         yuio.io.debug('debug message 2')
         yuio.io.info('info message 2')
         yuio.io.warning('warning message 2')
@@ -137,10 +136,10 @@ class TestSetup:
         )
 
     def test_level_question(self, stream_no_color):
-        yuio.io.setup(level=yuio.io.CRITICAL)
+        yuio.io.setup(level=yuio.io.LogLevel.CRITICAL)
         yuio.io.error('error message 1')
         yuio.io.question('question message 1 ')
-        yuio.io.setup(level=yuio.io.QUESTION)
+        yuio.io.setup(level=yuio.io.LogLevel.QUESTION)
         yuio.io.error('error message 2')
         yuio.io.question('question message 2 ')  # logged bc questions can't be disabled
 
@@ -232,7 +231,7 @@ class TestLoggingColor:
 
     def test_color_overrides(self, stream):
         yuio.io.setup(
-            use_colors=True, level=yuio.io.DEBUG, colors=dict(
+            use_colors=True, level=yuio.io.LogLevel.DEBUG, colors=dict(
                 info=yuio.io.Color.STYLE_BOLD,
                 custom_tag=yuio.io.Color.FORE_BLACK,
             )
@@ -453,7 +452,7 @@ class TestSuspend:
 
         with yuio.io.SuspendLogging():
             yuio.io.info('suspended message')
-            yuio.io.log(1000, 'high priority message')
+            yuio.io.log(yuio.io.LogLevel(1000), 'high priority message')
 
             assert stream.getvalue() == '\033[0;39;49minfo message\033[0m\n'
 
@@ -469,7 +468,7 @@ class TestSuspend:
 
         with yuio.io.SuspendLogging():
             yuio.io.info('suspended message')
-            yuio.io.log(1000, 'high priority message')
+            yuio.io.log(yuio.io.LogLevel(1000), 'high priority message')
 
             assert stream_no_color.getvalue() == 'info message\n'
 

@@ -43,6 +43,11 @@ Use logging functions from this module:
 
 .. autofunction:: question
 
+.. autofunction:: log
+
+.. autoclass:: LogLevel
+   :members:
+
 
 Coloring the output
 -------------------
@@ -223,13 +228,36 @@ class UserIoError(IOError):
     """
 
 
-QUESTION = 100
-CRITICAL = logging.CRITICAL
-ERROR = logging.ERROR
-WARNING = logging.WARNING
-INFO = logging.INFO
-DEBUG = logging.DEBUG
-NOTSET = logging.NOTSET
+class LogLevel(int):
+    """Logging levels for the :func:`log` function.
+
+    """
+
+    #: Used for displaying questions to users.
+    QUESTION: 'LogLevel' = lambda: LogLevel(100)  # type: ignore
+
+    #: Used for critical errors that cause a program to crash.
+    CRITICAL: 'LogLevel' = lambda: LogLevel(logging.CRITICAL)  # type: ignore
+
+    #: Used for unhandled errors.
+    ERROR: 'LogLevel' = lambda: LogLevel(logging.ERROR)  # type: ignore
+
+    #: Used for conditions that may cause concern.
+    WARNING: 'LogLevel' = lambda: LogLevel(logging.WARNING)  # type: ignore
+
+    #: Used for info messages and normal user interactions.
+    INFO: 'LogLevel' = lambda: LogLevel(logging.INFO)  # type: ignore
+
+    #: Used for logging debug info.
+    DEBUG: 'LogLevel' = lambda: LogLevel(logging.DEBUG)  # type: ignore
+
+    #: The smallest possible log level.
+    NOTSET: 'LogLevel' = lambda: LogLevel(logging.NOTSET)  # type: ignore
+
+for _n, _v in vars(LogLevel).items():
+    if _n == _n.upper():
+        setattr(LogLevel, _n, _v())
+del _n, _v  # type: ignore
 
 
 @dataclass(frozen=True)
@@ -372,7 +400,7 @@ _QUESTION_LOGGER: logging.Logger
 
 
 def setup(
-    level: _t.Optional[int] = None,
+    level: _t.Optional[LogLevel] = None,
     stream: _t.Optional[_t.TextIO] = None,
     *,
     use_colors: _t.Optional[bool] = None,
@@ -414,7 +442,7 @@ def setup(
         _MSG_HANDLER_IMPL.colors = dict(DEFAULT_COLORS, **colors)
 
 
-def log(level: int, msg: str, /, *args, **kwargs):
+def log(level: LogLevel, msg: str, /, *args, **kwargs):
     """Log a message.
 
     """
@@ -428,7 +456,7 @@ def debug(msg: str, /, *args, **kwargs):
 
     """
 
-    log(DEBUG, msg, *args, **kwargs)
+    log(LogLevel.DEBUG, msg, *args, **kwargs)
 
 
 def info(msg: str, /, *args, **kwargs):
@@ -436,7 +464,7 @@ def info(msg: str, /, *args, **kwargs):
 
     """
 
-    log(INFO, msg, *args, **kwargs)
+    log(LogLevel.INFO, msg, *args, **kwargs)
 
 
 def warning(msg: str, /, *args, **kwargs):
@@ -444,7 +472,7 @@ def warning(msg: str, /, *args, **kwargs):
 
     """
 
-    log(WARNING, msg, *args, **kwargs)
+    log(LogLevel.WARNING, msg, *args, **kwargs)
 
 
 def error(msg: str, /, *args, **kwargs):
@@ -452,7 +480,7 @@ def error(msg: str, /, *args, **kwargs):
 
     """
 
-    log(ERROR, msg, *args, **kwargs)
+    log(LogLevel.ERROR, msg, *args, **kwargs)
 
 
 def exception(msg: str, /, *args, exc_info=True, **kwargs):
@@ -464,7 +492,7 @@ def exception(msg: str, /, *args, exc_info=True, **kwargs):
 
     """
 
-    log(ERROR, msg, *args, exc_info=exc_info, **kwargs)
+    log(LogLevel.ERROR, msg, *args, exc_info=exc_info, **kwargs)
 
 
 def critical(msg: str, /, *args, **kwargs):
@@ -472,7 +500,7 @@ def critical(msg: str, /, *args, **kwargs):
 
     """
 
-    log(CRITICAL, msg, *args, **kwargs)
+    log(LogLevel.CRITICAL, msg, *args, **kwargs)
 
 
 def question(msg: str, /, *args, **kwargs):
@@ -486,7 +514,7 @@ def question(msg: str, /, *args, **kwargs):
     extra = kwargs.setdefault('extra', {})
     extra.setdefault('yuio_add_newline', False)
     extra.setdefault('yuio_process_color_tags', True)
-    _QUESTION_LOGGER.log(QUESTION, msg, *args, **kwargs)
+    _QUESTION_LOGGER.log(LogLevel.QUESTION, msg, *args, **kwargs)
 
 
 def is_interactive() -> bool:
@@ -813,7 +841,7 @@ class SuspendLogging:
             self._resumed = True
 
     @staticmethod
-    def log(level: int, msg: str, /, *args, **kwargs):
+    def log(level: LogLevel, msg: str, /, *args, **kwargs):
         """Log a message, ignore suspended status.
 
         """
@@ -1434,7 +1462,7 @@ class _HandlerImpl:
                + f' {progress_indicator}'
 
 
-logging.addLevelName(QUESTION, 'question')
+logging.addLevelName(LogLevel.QUESTION, 'question')
 
 _MSG_HANDLER_IMPL = _HandlerImpl()
 
@@ -1451,6 +1479,4 @@ _QUESTION_LOGGER = logging.getLogger('yuio.io.question')
 
 
 if 'DEBUG' in os.environ:
-    _MSG_LOGGER.setLevel(DEBUG)
-elif 'QUIET' in os.environ:
-    _MSG_LOGGER.setLevel(WARNING)
+    _MSG_LOGGER.setLevel(LogLevel.DEBUG)
