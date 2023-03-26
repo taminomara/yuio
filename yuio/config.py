@@ -550,10 +550,11 @@ class Config:
 
         return fields
 
-    def __init_subclass__(cls, _allow_positionals=False, **kwargs):
+    def __init_subclass__(cls, _allow_positionals=None, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        cls.__allow_positionals = _allow_positionals
+        if _allow_positionals is not None:
+            cls.__allow_positionals = _allow_positionals
         cls.__fields = None
 
     def __init__(self, *args, **kwargs):
