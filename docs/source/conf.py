@@ -17,6 +17,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinx.ext.graphviz',
+    'sphinxcontrib.jquery',
 ]
 
 templates_path = ['_templates']
