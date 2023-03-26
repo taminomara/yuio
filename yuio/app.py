@@ -111,16 +111,16 @@ class App:
         #: this will be empty.
         subcommand: _t.Optional['App.SubCommand']
 
-        # Internal, do not use
-        _data: _t.Any
+        # Internal, do not use.
+        _config: _t.Any
 
         def __call__(self):
             """Execute this subcommand.
 
             """
 
-            if self._data is not None:
-                should_invoke_subcommand = self._data._run(self.subcommand)
+            if self._config is not None:
+                should_invoke_subcommand = self._config._run(self.subcommand)
                 if should_invoke_subcommand is None:
                     should_invoke_subcommand = True
             else:
@@ -301,7 +301,7 @@ class App:
         return self.__load_from_namespace(namespace, 'app')
 
     def __load_from_namespace(self, namespace: argparse.Namespace, ns_prefix: str) -> 'App.SubCommand':
-        data = self._config_type.load_from_namespace(namespace, ns_prefix=ns_prefix)
+        config = self._config_type._load_from_namespace(namespace, ns_prefix=ns_prefix)
         subcommand = None
 
         if ns_prefix + '@subcommand' in namespace:
@@ -311,7 +311,7 @@ class App:
                 namespace, f'{ns_prefix}/{sub_app.name}'
             ), name=sub_app.name)
 
-        return App.SubCommand('', subcommand, _data=data)
+        return App.SubCommand('', subcommand, _config=config)
 
     def _setup_arg_parser(self) -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(
