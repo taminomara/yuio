@@ -516,6 +516,7 @@ class Config:
             docs = {}
 
         fields = {}
+        defaults = {}
 
         for base in reversed(cls.__mro__):
             if base is not cls and hasattr(base, '_Config__get_fields'):
@@ -541,11 +542,16 @@ class Config:
                 field = value
             else:
                 field = _FieldSettings(default=value)
-            setattr(cls, name, field.default)
 
+            defaults[name] = field.default
             fields[name] = field._update_defaults(
                 f'{cls.__qualname__}.{name}', name, types[name], docs.get(name), cls.__allow_positionals)
 
+        # We don't want to set any attributes on cls if any `_update_defaults` has
+        # raised an exception. For this reason, we defer setting defaults
+        # until all fields were processed.
+        for name, default in defaults.items():
+            setattr(cls, name, default)
         cls.__fields = fields
 
         return fields
