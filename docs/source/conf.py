@@ -1,6 +1,5 @@
 import sys, pathlib
 sys.path.append(str(pathlib.Path(__file__).parent.joinpath('_ext')))
-sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
 # -- Project information -----------------------------------------------------
 

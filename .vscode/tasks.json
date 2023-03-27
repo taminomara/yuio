@@ -5,50 +5,7 @@
             "label": "docs",
             "type": "shell",
             "command": "cd ${workspaceFolder}/docs && PYTHONPATH='..' make html",
-            "problemMatcher": [
-                {
-                    "owner": "sphinx-problem-matcher",
-                    "fileLocation": "absolute",
-                    "source": "sphinx",
-                    "pattern": [
-                        {
-                            "regexp": "^(\\/[^:\\n]+):(\\d+): (WARNING|ERROR): (.*)$",
-                            "file": 1,
-                            "line": 2,
-                            "severity": 3,
-                            "message": 4
-                        }
-                    ]
-                },
-                {
-                    "owner": "sphinx-problem-matcher-autodoc",
-                    "fileLocation": "absolute",
-                    "source": "sphinx",
-                    "pattern": [
-                        {
-                            "regexp": "^(\\/[^:\\n]+):(docstring of .*?: (WARNING|ERROR): .*)$",
-                            "kind": "file",
-                            "file": 1,
-                            "message": 2,
-                            "severity": 3
-                        }
-                    ]
-                },
-                {
-                    "owner": "sphinx-problem-matcher-loose",
-                    "fileLocation": "absolute",
-                    "source": "sphinx",
-                    "pattern": [
-                        {
-                            "regexp": "(\\/[^:\\n]+?\\.rst): (WARNING|ERROR): (.*)$",
-                            "kind": "file",
-                            "file": 1,
-                            "severity": 2,
-                            "message": 3
-                        }
-                    ]
-                }
-            ]
+            "problemMatcher": []
         }
     ]
 }
