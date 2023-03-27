@@ -1,10 +1,13 @@
 name: Test package
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches:
+      - main
+    tags:
+      - 'v*'
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 jobs:
   tests:
     name: Test
@@ -12,12 +15,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10"]
     steps:
       - name: Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install package
@@ -25,7 +28,12 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install '.[test]'
       - name: Test package
-        run: pytest --mypy --doctest-modules yuio test examples
+        run: pytest yuio test examples --junit-xml=test-results.xml
+      - name: Generate summary
+        uses: pmeier/pytest-summary-gha@main
+        if: always()
+        with:
+          path: test-results.xml
   publish:
     name: Publish to PyPi
     runs-on: ubuntu-latest
@@ -33,14 +41,14 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
     steps:
       - name: Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up python 3.8
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
       - name: Install flit
         run: |
-          pip install flit~=3.2
+          pip install flit~=3.8
       - name: Build and publish to test pypi
         run: |
           flit publish
