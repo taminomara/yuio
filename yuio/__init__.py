@@ -1,13 +1,9 @@
-import yuio.config
-import yuio.exec
-import yuio.git
-import yuio.io
-import yuio.parse
+import logging
+import os
 
-__all__ = (
-    'config',
-    'exec',
-    'git',
-    'io',
-    'parse',
-)
+_logger = logging.getLogger('yuio.internal')
+
+if 'YUIO_DEBUG' in os.environ:
+    _logger.setLevel(logging.DEBUG)
+else:
+    _logger.setLevel(logging.CRITICAL)

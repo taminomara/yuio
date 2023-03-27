@@ -6,7 +6,7 @@
 # just keep this copyright line please :3
 
 """
-This module provides helpers to run subprocesses.
+This module provides helpers to run subprocesses and get their output.
 
 It handles subprocesses stderr and stdout in a way that doesn't break
 loggers from :mod:`yuio.io`.
@@ -26,7 +26,7 @@ import typing as _t
 import yuio.io
 
 
-_LOGGER = logging.getLogger('yuio.io.msg.exec')
+_LOGGER = logging.getLogger('yuio.io.exec')
 
 
 @_t.overload
@@ -35,10 +35,9 @@ def exec(
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
-    level: int = yuio.io.INFO,
+    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
     text: _t.Literal[True] = True,
-) -> str:
-    pass
+) -> str: ...
 
 
 @_t.overload
@@ -47,10 +46,9 @@ def exec(
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
-    level: int = yuio.io.INFO,
+    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
     text: _t.Literal[False],
-) -> bytes:
-    pass
+) -> bytes: ...
 
 
 def exec(
@@ -58,7 +56,7 @@ def exec(
     cwd: _t.Union[None, str, pathlib.Path] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Union[None, str, bytes] = None,
-    level: int = yuio.io.INFO,
+    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
     text: bool = True,
 ):
     """Run an executable and return its stdout.
@@ -106,7 +104,14 @@ def exec(
                 if not line:
                     return
                 if isinstance(line, bytes):
-                    line = line.decode()
+                    try:
+                        line = line.decode()
+                    except UnicodeDecodeError:
+                        logging.getLogger('yuio.internal').exception(
+                            'unable to decode stderr line:\n%r',
+                            line,
+                        )
+                        line = line.decode(errors='replace')
                 _LOGGER.log(level, line.rstrip('\n'))
 
         def read_stdout(fh):
@@ -118,7 +123,7 @@ def exec(
         stdout_thread = threading.Thread(
             target=read_stdout,
             args=(process.stdout,),
-            name=f'yuio stdin handler for {process_desc}'
+            name=f'yuio stdout handler for {process_desc}'
         )
         stdout_thread.daemon = True
         stdout_thread.start()
@@ -150,42 +155,43 @@ def exec(
 @_t.overload
 def sh(
     cmd: str,
+    /,
     shell: str = '/bin/sh',
     *,
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
-    level: int = yuio.io.INFO,
+    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
     text: _t.Literal[True] = True,
-) -> str:
-    pass
+) -> str: ...
 
 
 @_t.overload
 def sh(
     cmd: str,
+    /,
     shell: str = '/bin/sh',
     *,
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
-    level: int = yuio.io.INFO,
+    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
     text: _t.Literal[False],
-) -> bytes:
-    pass
+) -> bytes: ...
 
 
 def sh(
     cmd: str,
-    shell='/bin/sh',
+    /,
+    shell: str = '/bin/sh',
     *,
-    cwd=None,
-    env=None,
-    input=None,
-    level=yuio.io.INFO,
-    text=True,
+    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    env: _t.Optional[_t.Dict[str, str]] = None,
+    input: _t.Union[None, str, bytes] = None,
+    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
+    text: bool = True,
 ):
-    """Run command in a shell, returns its stdout.
+    """Run command in a shell, return its stdout.
 
     :param cmd:
         shell command.
@@ -210,7 +216,7 @@ def sh(
         shell, '-c', cmd,
         cwd=cwd,
         env=env,
-        input=input,
+        input=input,  # type: ignore
         level=level,
-        text=text,
+        text=text,  # type: ignore
     )

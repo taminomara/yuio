@@ -105,5 +105,6 @@ Contents
    io
    parse
    config
+   app
    exec
    git

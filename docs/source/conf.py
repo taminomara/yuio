@@ -1,3 +1,7 @@
+import sys, pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.joinpath('_ext')))
+sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
+
 # -- Project information -----------------------------------------------------
 
 project = 'Yuio'
@@ -13,6 +17,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinx.ext.graphviz',
+    'sphinxcontrib.jquery',
 ]
 
 templates_path = ['_templates']
@@ -28,6 +33,8 @@ autodoc_typehints_format = 'short'
 autodoc_member_order = 'bysource'
 
 graphviz_output_format = 'svg'
+
+pygments_style = 'yuio_pygments.Style'
 
 # -- Options for HTML output -------------------------------------------------
 

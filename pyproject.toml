@@ -13,6 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "License :: OSI Approved :: MIT License",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: User Interfaces",
@@ -24,12 +25,16 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [
-    "pytest~=6.2",
-    "pytest-mypy~=0.9",
+    "pytest~=7.0",
+    "pytest-pyright~=0.0.3",
+    "PyYaml~=5.3",
+    "types-PyYAML~=5.3",
+    "toml~=0.10",
+    "types-toml~=0.10",
 ]
 doc = [
-    "sphinx~=4.4",
-    "sphinx-rtd-theme~=1.0",
+    "sphinx~=6.1",
+    "sphinx-rtd-theme~=1.2",
 ]
 
 [project.urls]
@@ -41,3 +46,12 @@ Changelog = "https://github.com/taminomara/yuio/blob/main/CHANGELOG.md"
 [build-system]
 requires = ["flit_core>=3.2,<4"]
 build-backend = "flit_core.buildapi"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "--doctest-modules"
+testpaths = [
+    "examples",
+    "test",
+    "yuio",
+]
