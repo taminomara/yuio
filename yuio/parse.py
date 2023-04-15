@@ -8,26 +8,39 @@
 """
 Everything to do with parsing user input.
 
-Use provided classes to construct parsers and add validation:
+Use provided classes to construct parsers and add validation::
 
     >>> # Parses a string that matches the given regex.
     >>> ident = Str().regex(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
-    >>>
+
     >>> # Parses a non-empty list of strings.
     >>> idents = List(ident).len_ge(1)
 
 Pass a parser to other yuio functions::
 
-    >>> yuio.io.ask('List of modules to reformat', parser=idents)  # doctest: +SKIP
+    >>> yuio.io.ask('List of modules to reformat', parser=idents)# doctest: +SKIP
 
 Or parse strings yourself::
 
     >>> idents.parse('sys os enum dataclasses')
     ['sys', 'os', 'enum', 'dataclasses']
 
+Build a parser from type hints::
 
-Parser base class
------------------
+    >>> from_type_hint(list[int] | None)
+    Optional(List(Int))
+
+You can even use special type annotations in type hints::
+
+    >>> from_type_hint(NonEmptyList[int])
+    LenBound(List(Int), 0 < len)
+
+
+Base parser
+-----------
+
+All parsers are derived from the same base class :class:`Parser`,
+which describes parsing API.
 
 .. autoclass:: Parser
 
@@ -117,6 +130,10 @@ Value parsers
 
 .. autoclass:: Enum
 
+.. autoclass:: Decimal
+
+.. autoclass:: Fraction
+
 .. autoclass:: List
 
 .. autoclass:: Set
@@ -169,14 +186,40 @@ you can register your own types and parsers:
 
 .. autofunction:: register_type_hint_conversion
 
+There are also several useful type hints to help
+with constructing more complex parsers:
+
+.. autoclass:: NonEmptyList
+
+.. autoclass:: PositiveInt
+
+.. autoclass:: NonNegativeInt
+
+.. autoclass:: NegativeInt
+
+.. autoclass:: NonPositiveInt
+
+.. autoclass:: PositiveFloat
+
+.. autoclass:: NonNegativeFloat
+
+.. autoclass:: NegativeFloat
+
+.. autoclass:: NonPositiveFloat
+
+.. autoclass:: FractionFloat
+
+.. autoclass:: FactorFloat
+
 
 Building your own parser
 ------------------------
 
-Implementing a parser is fairly straight forward:
-subclass :class:`Parser` and implement all abstract methods.
+To implement your parser, you can subclass :class:`Parser`
+and implement all abstract methods.
 
-Following
+We, however, recommend using the following classes
+to speed up the process:
 
 .. autoclass:: ValueParser
 
@@ -191,7 +234,10 @@ Following
 import abc
 import argparse
 import datetime
+import decimal
 import enum
+import fractions
+from functools import reduce
 import pathlib
 import re
 import typing as _t
@@ -281,18 +327,18 @@ class Parser(_t.Generic[T], abc.ABC):
         This method accepts python values that would result from
         parsing json, yaml, and similar formats.
 
-        Example:
+        Example::
 
-        >>> # Let's say we're parsing a set of ints.
-        >>> parser = Set(Int())
-        >>>
-        >>> # And we're loading it from json.
-        >>> import json
-        >>> user_config = json.loads('[1, 2, 3]')
-        >>>
-        >>> # We can process parsed json:
-        >>> parser.parse_config(user_config)
-        {1, 2, 3}
+            >>> # Let's say we're parsing a set of ints.
+            >>> parser = Set(Int())
+
+            >>> # And we're loading it from json.
+            >>> import json
+            >>> user_config = json.loads('[1, 2, 3]')
+
+            >>> # We can process parsed json:
+            >>> parser.parse_config(user_config)
+            {1, 2, 3}
 
         """
 
@@ -307,8 +353,6 @@ class Parser(_t.Generic[T], abc.ABC):
         """Return a human-readable description of an expected input.
 
         """
-
-        return None
 
     @abc.abstractmethod
     def describe_or_def(self) -> str:
@@ -353,9 +397,12 @@ class Parser(_t.Generic[T], abc.ABC):
     ) -> 'Bound[Cmp]':
         """Check that value is upper- or lower-bound by some constraints.
 
-        :param inner:
-            inner parser that will be used to actually parse a value before
-            checking its bounds.
+        Example::
+
+            >>> # Int in range `0 < x <= 1`:
+            >>> Int().bound(lower=0, upper_inclusive=1)
+            Bound(Int, 0 < x <= 1)
+
         :param lower:
             set lower bound for value, so we require that ``value > lower``.
             Can't be given if `lower_inclusive` is also given.
@@ -368,8 +415,6 @@ class Parser(_t.Generic[T], abc.ABC):
         :param upper_inclusive:
             set upper bound for value, so we require that ``value <= upper``.
             Can't be given if `upper` is also given.
-
-        See :class:`Bound` for more info.
 
         """
 
@@ -385,7 +430,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def gt(self: 'Parser[Cmp]', bound: Cmp, /) -> 'Bound[Cmp]':
         """Check that value is greater than the given bound.
 
-        See :class:`Bound` for more info.
+        See :meth:`~Parser.bound` for more info.
 
         """
 
@@ -395,7 +440,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def ge(self: 'Parser[Cmp]', bound: Cmp, /) -> 'Bound[Cmp]':
         """Check that value is greater than or equal to the given bound.
 
-        See :class:`Bound` for more info.
+        See :meth:`~Parser.bound` for more info.
 
         """
 
@@ -405,7 +450,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def lt(self: 'Parser[Cmp]', bound: Cmp, /) -> 'Bound[Cmp]':
         """Check that value is lesser than the given bound.
 
-        See :class:`Bound` for more info.
+        See :meth:`~Parser.bound` for more info.
 
         """
 
@@ -415,7 +460,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def le(self: 'Parser[Cmp]', bound: Cmp, /) -> 'Bound[Cmp]':
         """Check that value is lesser than or equal to the given bound.
 
-        See :class:`Bound` for more info.
+        See :meth:`~Parser.bound` for more info.
 
         """
 
@@ -434,7 +479,11 @@ class Parser(_t.Generic[T], abc.ABC):
 
         The signature is the same as of the :meth:`~Parser.bound` method.
 
-        See :class:`LenBound` for more info.
+        Example::
+
+            >>> # List of up to five ints:
+            >>> List(Int()).len_bound(upper_inclusive=5)
+            LenBound(List(Int), len <= 5)
 
         """
 
@@ -457,12 +506,22 @@ class Parser(_t.Generic[T], abc.ABC):
     def len_between(self: 'Parser[Sz]', *args: int) -> 'LenBound[Sz]':
         """Check that length of the value is within the given range.
 
+        Example::
+
+            >>> # List of up to five ints:
+            >>> List(Int()).len_between(6)
+            LenBound(List(Int), len < 6)
+
+            >>> # List of one, two, or three ints:
+            >>> List(Int()).len_between(1, 4)
+            LenBound(List(Int), 1 <= len < 4)
+
+        See :meth:`~Parser.len_bound` for more info.
+
         :param lower:
             lower length bound, inclusive.
         :param upper:
             upper length bound, not inclusive.
-
-        See :class:`LenBound` for more info.
 
         """
 
@@ -478,7 +537,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def len_gt(self: 'Parser[Sz]', bound: int, /) -> 'LenBound[Sz]':
         """Check that length of the value is greater than the given bound.
 
-        See :class:`LenBound` for more info.
+        See :meth:`~Parser.len_bound` for more info.
 
         """
 
@@ -488,7 +547,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def len_ge(self: 'Parser[Sz]', bound: int, /) -> 'LenBound[Sz]':
         """Check that length of the value is greater than or equal to the given bound.
 
-        See :class:`LenBound` for more info.
+        See :meth:`~Parser.len_bound` for more info.
 
         """
 
@@ -498,7 +557,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def len_lt(self: 'Parser[Sz]', bound: int, /) -> 'LenBound[Sz]':
         """Check that length of the value is lesser than the given bound.
 
-        See :class:`LenBound` for more info.
+        See :meth:`~Parser.len_bound` for more info.
 
         """
 
@@ -508,7 +567,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def len_le(self: 'Parser[Sz]', bound: int, /) -> 'LenBound[Sz]':
         """Check that length of the value is lesser than or equal to the given bound.
 
-        See :class:`LenBound` for more info.
+        See :meth:`~Parser.len_bound` for more info.
 
         """
 
@@ -518,7 +577,7 @@ class Parser(_t.Generic[T], abc.ABC):
     def len_eq(self: 'Parser[Sz]', bound: int, /) -> 'LenBound[Sz]':
         """Check that length of the value is equal to the given bound.
 
-        See :class:`LenBound` for more info.
+        See :meth:`~Parser.len_bound` for more info.
 
         """
 
@@ -532,11 +591,18 @@ class Parser(_t.Generic[T], abc.ABC):
     ) -> 'OneOf[T]':
         """Check that the parsed value is one of the given set of values.
 
-        See :class:`OneOf` for more info.
+        Example::
+
+            >>> # Accepts only strings 'A', 'B', or 'C':
+            >>> Str().one_of(['A', 'B', 'C'])
+            OneOf(Str)
 
         """
 
         return OneOf(self, values)
+
+    def __repr__(self):
+        return self.__class__.__name__
 
 
 class ValueParser(Parser[T], _t.Generic[T]):
@@ -544,6 +610,26 @@ class ValueParser(Parser[T], _t.Generic[T]):
 
     Implements all method, except for :meth:`~Parser.parse`
     and :meth:`~Parser.parse_config`.
+
+    ..
+        >>> from dataclasses import dataclass
+        >>> @dataclass
+        ... class MyType:
+        ...     value: int
+
+    Example::
+
+        >>> class MyTypeParser(ValueParser[MyType]):
+        ...     def parse(self, value: str, /) -> MyType:
+        ...         return self.parse_config(value)
+        ...
+        ...     def parse_config(self, value: _t.Any, /) -> MyType:
+        ...         if not isinstance(value, str):
+        ...             raise ParsingError(f'expected a string, got {value!r}')
+        ...         return MyType(value)
+
+        >>> MyTypeParser().parse('data')
+        MyType(value='data')
 
     """
 
@@ -592,10 +678,15 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
 
     Example::
 
-        class IsLower(ValidatingParser[str]):
-            def _validate(self, value: str, /):
-                if value != value.lower():
-                    raise ParsingError('value should be lowercase')
+        >>> class IsLower(ValidatingParser[str]):
+        ...     def _validate(self, value: str, /):
+        ...         if value != value.lower():
+        ...             raise ParsingError('value should be lowercase')
+
+        >>> IsLower(Str()).parse('Not lowercase!')
+        Traceback (most recent call last):
+        ...
+        yuio.parse.ParsingError: value should be lowercase
 
     """
 
@@ -651,6 +742,9 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
         Should raise :class:`ParsingError` if validation fails.
 
         """
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self._inner!r})'
 
 
 class Str(ValueParser[str]):
@@ -834,6 +928,49 @@ class Enum(ValueParser[E], _t.Generic[E]):
         return value.name
 
 
+class Decimal(ValueParser[decimal.Decimal]):
+    """Parser for :class:`decimal.Decimal`.
+
+    """
+
+    def parse(self, value: str, /) -> decimal.Decimal:
+        return self.parse_config(value)
+
+    def parse_config(self, value: _t.Any, /) -> decimal.Decimal:
+        if not isinstance(value, (int, float, str, decimal.Decimal)):
+            raise ParsingError('expected an int, float, or string')
+        try:
+            return decimal.Decimal(value)
+        except decimal.DecimalException:
+            raise ParsingError(f'could not parse value {value!r} as a decimal number')
+
+
+class Fraction(ValueParser[fractions.Fraction]):
+    """Parser for :class:`fractions.Fraction`.
+
+    """
+
+    def parse(self, value: str, /) -> fractions.Fraction:
+        return self.parse_config(value)
+
+    def parse_config(self, value: _t.Any, /) -> fractions.Fraction:
+        if (
+            isinstance(value, (list, tuple))
+            and len(value) == 2
+            and all(isinstance(v, (float, int)) for v in value)
+        ):
+            try:
+                return fractions.Fraction(*value)
+            except (ValueError, ZeroDivisionError):
+                raise ParsingError(f'could not parse value {value[0]!r}/{value[1]} as a fraction')
+        if isinstance(value, (int, float, str, decimal.Decimal, fractions.Fraction)):
+            try:
+                return fractions.Fraction(value)
+            except (ValueError, ZeroDivisionError):
+                raise ParsingError(f'could not parse value {value!r} as a fraction')
+        raise ParsingError('expected an int, float, fraction string, or a tuple of two ints')
+
+
 class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
     """Parser for optional values.
 
@@ -882,6 +1019,9 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
         if value is None:
             return '<none>'
         return self._inner.describe_value_or_def(value)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self._inner!r})'
 
 
 class _Collection(Parser[C], _t.Generic[C, T]):
@@ -950,6 +1090,9 @@ class _Collection(Parser[C], _t.Generic[C, T]):
             self._inner.describe_value_or_def(item)
             for item in self._config_type_iter(value)
         )
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self._inner!r})'
 
 
 class List(_Collection[_t.List[T], T], _t.Generic[T]):
@@ -1099,6 +1242,9 @@ class Pair(ValueParser[_t.Tuple[K, V]], _t.Generic[K, V]):
 
         return f'{key_d}{delimiter}{value_d}'
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self._key!r}, {self._value!r})'
+
 
 class Tuple(Parser[TU], _t.Generic[TU]):
     """Parser for tuples of fixed lengths.
@@ -1219,6 +1365,10 @@ class Tuple(Parser[TU], _t.Generic[TU]):
         ]
 
         return delimiter.join(desc)
+
+    def __repr__(self):
+        parsers = ', '.join(repr(parser for parser in self._parsers))
+        return f'{self.__class__.__name__}({parsers})'
 
 
 class DateTime(ValueParser[datetime.datetime]):
@@ -1486,30 +1636,30 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
     ):
         super().__init__(inner)
 
-        self._lower: _t.Optional[Cmp] = None
-        self._lower_inclusive: bool = True
-        self._upper: _t.Optional[Cmp] = None
-        self._upper_inclusive: bool = True
+        self._lower_bound: _t.Optional[Cmp] = None
+        self._lower_bound_is_inclusive: bool = True
+        self._upper_bound: _t.Optional[Cmp] = None
+        self._upper_bound_is_inclusive: bool = True
 
         if lower is not None and lower_inclusive is not None:
             raise TypeError(
                 'lower and lower_inclusive cannot be given at the same time')
         elif lower is not None:
-            self._lower = lower
-            self._lower_inclusive = False
+            self._lower_bound = lower
+            self._lower_bound_is_inclusive = False
         elif lower_inclusive is not None:
-            self._lower = lower_inclusive
-            self._lower_inclusive = True
+            self._lower_bound = lower_inclusive
+            self._lower_bound_is_inclusive = True
 
         if upper is not None and upper_inclusive is not None:
             raise TypeError(
                 'upper and upper_inclusive cannot be given at the same time')
         elif upper is not None:
-            self._upper = upper
-            self._upper_inclusive = False
+            self._upper_bound = upper
+            self._upper_bound_is_inclusive = False
         elif upper_inclusive is not None:
-            self._upper = upper_inclusive
-            self._upper_inclusive = True
+            self._upper_bound = upper_inclusive
+            self._upper_bound_is_inclusive = True
 
         self._mapper = mapper
         self._desc = desc
@@ -1517,45 +1667,46 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
     def _validate(self, value: T, /):
         mapped = self._mapper(value)
 
-        if self._lower is not None:
-            if self._lower_inclusive and mapped < self._lower:
+        if self._lower_bound is not None:
+            if self._lower_bound_is_inclusive and mapped < self._lower_bound:
                 raise ParsingError(
-                    f'{self._desc} should be greater or equal to {self._lower},'
+                    f'{self._desc} should be greater or equal to {self._lower_bound},'
                     f' got {value} instead')
-            elif not self._lower_inclusive and mapped <= self._lower:
+            elif not self._lower_bound_is_inclusive and mapped <= self._lower_bound:
                 raise ParsingError(
-                    f'{self._desc} should be greater than {self._lower},'
+                    f'{self._desc} should be greater than {self._lower_bound},'
                     f' got {value} instead')
 
-        if self._upper is not None:
-            if self._upper_inclusive and mapped > self._upper:
+        if self._upper_bound is not None:
+            if self._upper_bound_is_inclusive and mapped > self._upper_bound:
                 raise ParsingError(
-                    f'{self._desc} should be lesser or equal to {self._upper},'
+                    f'{self._desc} should be lesser or equal to {self._upper_bound},'
                     f' got {value} instead')
-            elif not self._upper_inclusive and mapped >= self._upper:
+            elif not self._upper_bound_is_inclusive and mapped >= self._upper_bound:
                 raise ParsingError(
-                    f'{self._desc} should be lesser than {self._upper},'
+                    f'{self._desc} should be lesser than {self._upper_bound},'
                     f' got {value} instead')
+
+    def __repr__(self):
+        desc = ''
+        if self._lower_bound is not None:
+            desc += repr(self._lower_bound)
+            desc += ' <= ' if self._lower_bound_is_inclusive else ' < '
+        mapper_name = getattr(self._mapper, '__name__')
+        if mapper_name and mapper_name != '<lambda>':
+            desc += mapper_name
+        else:
+            desc += 'x'
+        if self._upper_bound is not None:
+            desc += ' <= ' if self._upper_bound_is_inclusive else ' < '
+            desc += repr(self._upper_bound)
+        return f'{self.__class__.__name__}({self._inner!r}, {desc})'
 
 
 class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
     """Check that value is upper- or lower-bound by some constraints.
 
-    :param inner:
-        inner parser that will be used to actually parse a value before
-        checking its bounds.
-    :param lower:
-        set lower bound for value, so we require that ``value > lower``.
-        Can't be given if `lower_inclusive` is also given.
-    :param lower_inclusive:
-        set lower bound for value, so we require that ``value >= lower``.
-        Can't be given if `lower` is also given.
-    :param upper:
-        set upper bound for value, so we require that ``value < upper``.
-        Can't be given if `upper_inclusive` is also given.
-    :param upper_inclusive:
-        set upper bound for value, so we require that ``value <= upper``.
-        Can't be given if `upper` is also given.
+    See :meth:`Parser.bound` for more info.
 
     """
 
@@ -1583,7 +1734,7 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
 class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
     """Check that length of a value is upper- or lower-bound by some constraints.
 
-    The interface is exactly like one of the :class:`Bound` parser.
+    See :meth:`Parser.len_bound` for more info.
 
     """
 
@@ -1612,11 +1763,11 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             # somebody bound len of a string?
             return self._inner.get_nargs()
 
-        lower = self._lower
-        if lower is not None and not self._lower_inclusive:
+        lower = self._lower_bound
+        if lower is not None and not self._lower_bound_is_inclusive:
             lower += 1
-        upper = self._upper
-        if upper is not None and not self._upper_inclusive:
+        upper = self._upper_bound
+        if upper is not None and not self._upper_bound_is_inclusive:
             upper -= 1
 
         if lower == upper:
@@ -1629,6 +1780,8 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
 
 class OneOf(ValidatingParser[T], _t.Generic[T]):
     """Check that the parsed value is one of the given set of values.
+
+    See :meth:`Parser.one_of` for more info.
 
     """
 
@@ -1662,6 +1815,24 @@ _FROM_TYPE_HINT_CALLBACKS: _t.List[_FromTypeHintCallback] = []
 
 def from_type_hint(ty: _t.Type[T], /) -> 'Parser[T]':
     """Create parser from a type hint.
+
+    Example::
+
+        >>> from_type_hint(list[int] | None)
+        Optional(List(Int))
+
+    This function uses :class:`typing.Annotated` to determine
+    correct parsers. Therefore, it is important to set `include_extras`
+    to `True` when calling :func:`typing.get_type_hints`::
+
+        >>> import typing
+
+        >>> class Example:
+        ...     var: NonEmptyList[int] | None
+
+        >>> type_hints = typing.get_type_hints(Example, include_extras=True)
+        >>> from_type_hint(type_hints['var'])
+        Optional(LenBound(List(Int), 0 < len))
 
     """
 
@@ -1697,16 +1868,97 @@ def register_type_hint_conversion(
 
     This function can be used as a decorator.
 
+    ..
+        >>> class MyType: ...
+        >>> class MyTypeParser(ValueParser[MyType]):
+        ...     def parse(self, value: str, /) -> int: ...
+        ...     def parse_config(self, value: _t.Any, /) -> int: ...
+
+    Example::
+
+        >>> @register_type_hint_conversion
+        ... def my_type_conversion(ty, origin, args):
+        ...     if ty is MyType:
+        ...         return MyTypeParser()
+        ...     else:
+        ...         return None
+
+        >>> from_type_hint(MyType)
+        MyTypeParser
+
     """
 
     _FROM_TYPE_HINT_CALLBACKS.append(cb)
     return cb
 
 
+class _Annotation:
+    parser: _t.Callable[..., Parser]
+    args: _t.Tuple[_t.Any]
+    kwargs: _t.Dict[str, _t.Any]
+
+    def __init__(self, parser: _t.Callable[..., Parser], *args, **kwargs) -> None:
+        self.parser = parser
+        self.args = args
+        self.kwargs = kwargs
+
+    def make_parser(self, p: Parser[_t.Any]):
+        return self.parser(p, *self.args, **self.kwargs)
+
+
+#: Non-empty list.
+NonEmptyList: _t.TypeAlias = _t.Annotated[_t.List[T], _Annotation(LenBound, lower=0)]
+
+#: Positive int.
+PositiveInt: _t.TypeAlias = _t.Annotated[int, _Annotation(Bound, lower=0)]
+
+#: Non-negative int.
+NonNegativeInt: _t.TypeAlias = _t.Annotated[int, _Annotation(Bound, lower_inclusive=0)]
+
+#: Negative int.
+NegativeInt: _t.TypeAlias = _t.Annotated[int, _Annotation(Bound, upper=0)]
+
+#: Non-positive int.
+NonPositiveInt: _t.TypeAlias = _t.Annotated[int, _Annotation(Bound, upper_inclusive=0)]
+
+#: Positive float.
+PositiveFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, lower=0)]
+
+#: Non-negative float.
+NonNegativeFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, lower_inclusive=0)]
+
+#: Negative float.
+NegativeFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, upper=0)]
+
+#: Non-positive float.
+NonPositiveFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, upper_inclusive=0)]
+
+#: Float between `0.0` and `1.0`, inclusive.
+FractionFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, lower_inclusive=0, upper_inclusive=1)]
+
+#: Float greater than `1.0`, inclusive.
+FactorFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, lower_inclusive=1)]
+
+
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        reduce(
+            lambda p, ann: ann.make_parser(p) if isinstance(ann, _Annotation) else p,
+            args[1:],
+            from_type_hint(args[0]),
+        )
+        if origin is _t.Annotated
+        else None
+)
+try:
+    from types import UnionType as _UnionType
+    _is_union = lambda origin: origin is _UnionType or origin is _t.Union
+except ImportError:
+    _is_union = lambda origin: origin is _t.Union
 register_type_hint_conversion(
     lambda ty, origin, args:
         Optional(from_type_hint(args[1 - args.index(type(None))]))
-        if origin is _t.Union and len(args) == 2 and type(None) in args
+        if _is_union(origin) and len(args) == 2 and type(None) in args
         else None
 )
 register_type_hint_conversion(
@@ -1737,6 +1989,18 @@ register_type_hint_conversion(
     lambda ty, origin, args:
         Enum(ty)
         if isinstance(ty, type) and issubclass(ty, enum.Enum)
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Decimal()
+        if ty is decimal.Decimal
+        else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args:
+        Fraction()
+        if ty is fractions.Fraction
         else None
 )
 register_type_hint_conversion(
@@ -1772,33 +2036,33 @@ register_type_hint_conversion(
 register_type_hint_conversion(
     lambda ty, origin, args:
         Path()
-        if isinstance(ty, type) and issubclass(ty, pathlib.PurePath)
+        if ty is pathlib.Path
         else None
 )
 register_type_hint_conversion(
     lambda ty, origin, args:
-    DateTime()
-    if origin is datetime.datetime
-    else None
+        DateTime()
+        if ty is datetime.datetime
+        else None
 )
 
 register_type_hint_conversion(
     lambda ty, origin, args:
-    Date()
-    if origin is datetime.date
-    else None
+        Date()
+        if ty is datetime.date
+        else None
 )
 
 register_type_hint_conversion(
     lambda ty, origin, args:
-    Time()
-    if origin is datetime.time
-    else None
+        Time()
+        if ty is datetime.time
+        else None
 )
 
 register_type_hint_conversion(
     lambda ty, origin, args:
-    TimeDelta()
-    if origin is datetime.timedelta
-    else None
+        TimeDelta()
+        if ty is datetime.timedelta
+        else None
 )

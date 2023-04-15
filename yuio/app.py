@@ -8,10 +8,27 @@
 """
 This module expands on :mod:`yuio.config` to build CLI apps!
 
+Creating and running an app
+---------------------------
+
+App arguments
+-------------
+
+App help
+--------
+
+Creating sub-commands
+---------------------
+
+Controlling how sub-commands are invoked
+----------------------------------------
+
 .. autoclass:: App
    :members:
 
 """
+
+
 
 import argparse
 import dataclasses
@@ -22,6 +39,7 @@ import textwrap
 import types
 import typing as _t
 from dataclasses import dataclass
+import functools
 
 import yuio._utils
 import yuio.config
@@ -32,14 +50,6 @@ from yuio.config import field, inline, positional
 
 
 Command = _t.Callable[..., None]
-
-
-@dataclass(frozen=True)
-class _SubApp:
-    app: 'App'
-    name: str
-    aliases: _t.Optional[_t.List[str]] = None
-    is_primary: bool = False
 
 
 @_t.overload
@@ -129,15 +139,35 @@ class App:
             if should_invoke_subcommand and self.subcommand is not None:
                 self.subcommand()
 
+    @dataclass(frozen=True)
+    class _SubApp:
+        app: 'App'
+        name: str
+        aliases: _t.Optional[_t.List[str]] = None
+        is_primary: bool = False
+
     def __init__(
         self,
-        command: _t.Optional[Command] = None,
+        command: Command,
+        /,
+        *,
         prog: _t.Optional[str] = None,
         usage: _t.Optional[str] = None,
         help: _t.Optional[str] = None,
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
     ):
+        """
+
+        :param command:
+        :param prog:
+        :param usage:
+        :param help:
+        :param description:
+        :param epilog:
+
+        """
+
         #: Program or subcommand display name.
         #:
         #: By default, inferred from :data:`sys.argv` and subcommand names.
@@ -192,15 +222,19 @@ class App:
         #: Enabled by default.
         self.subcommand_required: bool = True
 
-        self._sub_apps: _t.Dict[str, _SubApp] = {}
+        self._sub_apps: _t.Dict[str, 'App._SubApp'] = {}
 
-        if command is None:
-            self._config_type: _t.Type[yuio.config.Config] = yuio.config.Config
-        elif callable(command):
+        if callable(command):
             self._config_type = _command_from_callable(command)
         else:
-            raise TypeError(
-                f'expected a function, got {command}')
+            raise TypeError(f'expected a function, got {command}')
+
+        functools.update_wrapper(
+            self,  # type: ignore
+            command,
+            assigned=('__module__', '__name__', '__qualname__', '__doc__'),
+            updated=()
+        )
 
     @_t.overload
     def subcommand(
@@ -256,20 +290,20 @@ class App:
 
         def registrar(cb: Command, /) -> App:
             app = App(
+                cb,
                 prog=prog,
                 usage=usage,
                 help=help,
                 description=description,
                 epilog=epilog,
-                command=cb
             )
 
             app.allow_abbrev = self.allow_abbrev
 
             main_name = name or yuio._utils.to_dash_case(cb.__name__)
-            self._sub_apps[main_name] = _SubApp(app, main_name, aliases, is_primary=True)
-            alias_app = _SubApp(app, main_name)
+            self._sub_apps[main_name] = App._SubApp(app, main_name, aliases, is_primary=True)
             if aliases:
+                alias_app = App._SubApp(app, main_name)
                 self._sub_apps.update({alias: alias_app for alias in aliases})
 
             return app
@@ -392,7 +426,7 @@ def _command_from_callable(cb: Command) -> _t.Type[yuio.config.Config]:
         if param.default is not param.empty:
             field = param.default
         else:
-            field = yuio.config.field()
+            field = yuio.config.positional()
         if not isinstance(field, yuio.config._FieldSettings):
             field = yuio.config.field(field)
         if field.default is MISSING:

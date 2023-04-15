@@ -192,12 +192,12 @@ class Repo:
 
         commits = []
 
-        for line in lines:
-            commits.append(self._parse_single_log_entry(line, lines))
+        while commit := self._parse_single_log_entry(lines):
+            commits.append(commit)
 
         return commits
 
-    def show(self, ref, /) -> _t.Optional['Commit']:
+    def show(self, ref: str, /) -> _t.Optional['Commit']:
         """Query information for the given git object.
 
         Return `None` if object is not found.
@@ -208,55 +208,60 @@ class Repo:
             text = self.git(
                 'show',
                 f'--pretty=format:{self._LOG_FMT}',
+                '-s',
                 ref,
             )
         except GitException:
             return None
 
-        if not text:
+        lines = iter(text.decode().split('\n'))
+
+        commit = self._parse_single_log_entry(lines)
+
+        if commit is None:
             return None
 
-        lines = iter(text.decode().split('\n'))
-        line = next(lines)
-
-        commit = self._parse_single_log_entry(line, lines)
         commit.orig_ref = ref
 
         return commit
 
     @staticmethod
-    def _parse_single_log_entry(commit, lines) -> 'Commit':
-        author = next(lines)
-        author_email = next(lines)
-        author_date = datetime.fromisoformat(next(lines))
-        committer = next(lines)
-        committer_email = next(lines)
-        committer_date = datetime.fromisoformat(next(lines))
-        title = next(lines)
-        body = ''
+    def _parse_single_log_entry(lines) -> _t.Optional['Commit']:
+        try:
+            commit = next(lines)
+            author = next(lines)
+            author_email = next(lines)
+            author_date = datetime.fromisoformat(next(lines))
+            committer = next(lines)
+            committer_email = next(lines)
+            committer_date = datetime.fromisoformat(next(lines))
+            title = next(lines)
+            body = ''
 
-        while True:
-            line = next(lines)
-            if not line or line.startswith(' '):
-                body += line[1:] + '\n'
-            else:
-                break
+            while True:
+                line = next(lines)
+                if not line or line.startswith(' '):
+                    body += line[1:] + '\n'
+                else:
+                    break
 
-        body = body.strip('\n')
-        if body:
-            body += '\n'
+            body = body.strip('\n')
+            if body:
+                body += '\n'
 
-        return Commit(
-            commit,
-            author,
-            author_email,
-            author_date,
-            committer,
-            committer_email,
-            committer_date,
-            title,
-            body
-        )
+            return Commit(
+                commit,
+                author,
+                author_email,
+                author_date,
+                committer,
+                committer_email,
+                committer_date,
+                title,
+                body
+            )
+        except StopIteration:
+            return None
 
 
 @dataclass

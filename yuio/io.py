@@ -640,19 +640,16 @@ def ask(
         if default_description:
             desc += f' [<c:note>{default_description}</c>]'
 
-    if args:
-        msg = msg % args
+    msg += desc.replace('%', '%%')
 
-    msg += desc
-
-    if desc or not msg.endswith(tuple(string.punctuation)):
-        msg += ': '
-    else:
+    if not msg.endswith((':', ': ')):
+        msg += ':'
+    if not msg.endswith(' '):
         msg += ' '
 
     with SuspendLogging() as s:
         while True:
-            s.question(msg)
+            s.question(msg, *args)
             try:
                 if secure_input:
                     answer = getpass.getpass(prompt='')
@@ -994,10 +991,8 @@ class Task:
         # Instead, task should be sent to a handler for modification.
         # This ensures thread safety, because handler has a lock.
         # See handler's implementation details.
-        if args:
-            msg = msg % args
-
         self._msg: str = msg
+        self._args = args
         self._progress: _PROGRESS = None
         self._comment: _t.Optional[str] = None
         self._status: Task._Status = Task._Status.RUNNING

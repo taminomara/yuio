@@ -276,10 +276,13 @@ class _FieldSettings:
         self,
         qualname: str,
         name: str,
-        ty: _t.Any,
+        ty_with_extras: _t.Any,
         parsed_help: _t.Optional[str],
         allow_positionals: bool,
     ) -> '_Field':
+        ty = ty_with_extras
+        while _t.get_origin(ty) is _t.Annotated:
+            ty = _t.get_args(ty)[0]
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
 
         help: _t.Union[str, Disabled]
@@ -354,7 +357,7 @@ class _FieldSettings:
                         f'{qualname} cannot have a short flag')
         elif parser is None:
             try:
-                parser = yuio.parse.from_type_hint(ty)
+                parser = yuio.parse.from_type_hint(ty_with_extras)
             except TypeError as e:
                 raise TypeError(
                     f'can\'t derive parser for {qualname}: {e}') from None
@@ -609,7 +612,7 @@ class Config:
                 fields.update(getattr(base, '_Config__get_fields')())
 
         try:
-            types = _t.get_type_hints(cls)
+            types = _t.get_type_hints(cls, include_extras=True)
         except NameError as e:
             if '<locals>' in cls.__qualname__:
                 raise NameError(
