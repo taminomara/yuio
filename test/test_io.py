@@ -120,21 +120,6 @@ class TestSetup:
             'warning message 2\n'
         )
 
-    def test_formatter(self, stream_no_color):
-        yuio.io.setup(formatter=yuio.io.logging.Formatter('-> %(message)s'))
-        yuio.io.info('info message 1')
-        yuio.io.setup()
-        yuio.io.info('info message 2')
-        yuio.io.setup(formatter=yuio.io.logging.Formatter('%(message)s'))
-        yuio.io.info('info message 3')
-
-        assert (
-            stream_no_color.getvalue() ==
-            '-> info message 1\n'
-            '-> info message 2\n'
-            'info message 3\n'
-        )
-
     def test_level_question(self, stream_no_color):
         yuio.io.setup(level=yuio.io.LogLevel.CRITICAL)
         yuio.io.error('error message 1')

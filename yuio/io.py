@@ -61,13 +61,9 @@ You can combine multiple colors in the same tag::
 
     info('<c:bold,green>Success!</c>')
 
-To disable tags processing, pass `process_color_tags`
-to the logging's `extra` object::
+Only tags that appear in the log message itself are processed::
 
-    info(
-        'this tag --> <c:color> is printed as-is',
-        extra=dict(yuio_process_color_tags=False)
-    )
+    info('Tags in this message --> %s are printed as-is', '<c:color>')
 
 List of all tags that are available by default:
 
@@ -199,16 +195,21 @@ you can add a :class:`Handler`:
 
 """
 
+import atexit
 import enum
+import functools
 import getpass
 import logging
 import os
+import queue
 import re
-import string
 import subprocess
 import sys
 import tempfile
+import textwrap
 import threading
+import time
+import traceback
 import typing as _t
 from dataclasses import dataclass
 from logging import LogRecord
@@ -277,8 +278,6 @@ class Color:
     bold: bool = False
     dim: bool = False
 
-    _s = None
-
     def __or__(self, other: 'Color', /):
         return Color(
             other.fore if other.fore is not None else self.fore,
@@ -288,7 +287,7 @@ class Color:
         )
 
     def __str__(self):
-        if (s := self._s) is None:
+        if (s := getattr(self, '_cached', None)) is None:
             codes = ['0']
             if self.fore is not None:
                 codes.append(self.fore)
@@ -299,8 +298,20 @@ class Color:
             if self.dim:
                 codes.append('2')
             s = '\033[' + ';'.join(codes) + 'm'
-            object.__setattr__(self, '_s', s)
+            object.__setattr__(self, '_cached', s)
         return s
+
+    def __add__(self, rhs: _t.Any):
+        if isinstance(rhs, str):
+            return str(self) + rhs
+        return NotImplemented
+
+    def __radd__(self, lhs: _t.Any):
+        if isinstance(lhs, str):
+            return lhs + str(self)
+        return NotImplemented
+
+    NONE: _t.ClassVar['Color'] = lambda: Color()  # type: ignore
 
     #: Bold font style.
     STYLE_BOLD: _t.ClassVar['Color'] = lambda: Color(bold=True)  # type: ignore
@@ -350,10 +361,6 @@ for _n, _v in vars(Color).items():
         setattr(Color, _n, _v())
 del _n, _v  # type: ignore
 
-DEFAULT_FORMATTER = logging.Formatter(
-    '%(message)s'
-)
-
 DEFAULT_COLORS = {
     'code': Color.FORE_MAGENTA,
     'note': Color.FORE_GREEN,
@@ -365,8 +372,12 @@ DEFAULT_COLORS = {
     'critical': Color.FORE_WHITE | Color.BACK_RED,
     'error': Color.FORE_RED,
     'warning': Color.FORE_YELLOW,
-    'info': Color.FORE_NORMAL,
+    'info': Color.NONE,
     'debug': Color.STYLE_DIM,
+
+    'rich_log_default_level_color': Color.FORE_CYAN,
+    'rich_log_asctime': Color.STYLE_DIM,
+    'rich_log_logger': Color.STYLE_DIM,
 
     'task': Color.FORE_BLUE,
     'task_done': Color.FORE_GREEN,
@@ -375,6 +386,8 @@ DEFAULT_COLORS = {
     'bold': Color.STYLE_BOLD,
     'b': Color.STYLE_BOLD,
     'dim': Color.STYLE_DIM,
+    'd': Color.STYLE_DIM,
+
     'red': Color.FORE_RED,
     'green': Color.FORE_GREEN,
     'yellow': Color.FORE_YELLOW,
@@ -408,7 +421,6 @@ def setup(
     stream: _t.Optional[_t.TextIO] = None,
     *,
     use_colors: _t.Optional[bool] = None,
-    formatter: _t.Optional[logging.Formatter] = None,
     colors: _t.Optional[_t.Dict[str, Color]] = None,
 ):
     """Initial setup of the logging facilities.
@@ -418,8 +430,6 @@ def setup(
     :param stream:
         a stream where to output messages. Uses :data:`~sys.stderr` by default.
         Setting a stream disables colored output, unless `use_colors` is given.
-    :param formatter:
-        formatter for log messages.
     :param use_colors:
         use ANSI escape sequences to color the output.
     :param colors:
@@ -430,8 +440,6 @@ def setup(
 
     if level is not None:
         _MSG_HANDLER.setLevel(level)
-    if formatter is not None:
-        _MSG_HANDLER.setFormatter(formatter)
     if stream is not None:
         _MSG_HANDLER_IMPL.stream = stream
         _MSG_HANDLER_IMPL.use_colors = False
@@ -451,7 +459,6 @@ def log(level: LogLevel, msg: str, /, *args, **kwargs):
 
     """
 
-    kwargs.setdefault('extra', {}).setdefault('yuio_process_color_tags', True)
     _MSG_LOGGER.log(level, msg, *args, **kwargs)
 
 
@@ -517,7 +524,6 @@ def question(msg: str, /, *args, **kwargs):
 
     extra = kwargs.setdefault('extra', {})
     extra.setdefault('yuio_add_newline', False)
-    extra.setdefault('yuio_process_color_tags', True)
     _QUESTION_LOGGER.log(LogLevel.QUESTION, msg, *args, **kwargs)
 
 
@@ -992,11 +998,14 @@ class Task:
         # This ensures thread safety, because handler has a lock.
         # See handler's implementation details.
         self._msg: str = msg
-        self._args = args
+        self._args: tuple = args
         self._progress: _PROGRESS = None
         self._comment: _t.Optional[str] = None
+        self._comment_args: _t.Optional[tuple] = None
         self._status: Task._Status = Task._Status.RUNNING
         self._subtasks: _t.List[Task] = []
+
+        self._cached_msg = None
 
         if parent is None:
             _MSG_HANDLER_IMPL.reg_task(self)
@@ -1044,7 +1053,7 @@ class Task:
             # updating progress bar 100 times is slow...
             return _IterTaskLong(collection, self)
 
-    def comment(self, comment: _t.Optional[str], /):
+    def comment(self, comment: _t.Optional[str], /, *args):
         """Set a comment for a task.
 
         Comment is displayed after the progress.
@@ -1064,7 +1073,7 @@ class Task:
 
         """
 
-        _MSG_HANDLER_IMPL.set_comment(self, comment)
+        _MSG_HANDLER_IMPL.set_comment(self, comment, args)
 
     def done(self):
         """Indicate that this task has finished successfully.
@@ -1100,16 +1109,48 @@ class Task:
 class Handler(logging.Handler):
     """A handler that redirects all log messages to yuio.
 
-    Note that formatters set up via the :func:`setup` function
-    do not affect this handler.
-
     """
+
+    def __init__(
+        self,
+        level: LogLevel = LogLevel.NOTSET,
+        /,
+        *,
+        process_color_tags: bool = False,
+        rich_log_line: bool = True,
+    ) -> None:
+        super().__init__(level)
+
+        self._process_color_tags = process_color_tags
+        self._rich_log_line = rich_log_line
 
     def createLock(self) -> None:
         self.lock = None
 
     def emit(self, record: LogRecord) -> None:
-        _MSG_HANDLER_IMPL.emit(self.format(record), record)
+        _MSG_HANDLER_IMPL.emit(record, self._process_color_tags, self._rich_log_line)
+        _MSG_HANDLER_IMPL.suspend()
+
+
+Cb = _t.TypeVar('Cb', bound=_t.Callable[..., None])
+
+
+def _handler_impl_interface(wait_till_done: bool = False) -> _t.Callable[[Cb], Cb]:
+    def decorator(func: Cb) -> Cb:
+        if wait_till_done:
+            @functools.wraps(func)
+            def wrapped_decorator(self: '_HandlerImpl', *args, **kwargs):
+                event = threading.Event()
+                self._messages.put((func, self, args, kwargs, event))
+                event.wait()
+        else:
+            @functools.wraps(func)
+            def wrapped_decorator(self: '_HandlerImpl', *args, **kwargs):
+                self._messages.put((func, self, args, kwargs, None))
+
+        return _t.cast(Cb, wrapped_decorator)
+
+    return decorator
 
 
 class _HandlerImpl:
@@ -1137,80 +1178,121 @@ class _HandlerImpl:
         self._suspended: int = 0
         self._suspended_lines: _t.List[str] = []
 
-        self.lock = threading.Lock()
+        self._messages = queue.SimpleQueue()
 
-    def flush(self) -> None:
-        self.stream.flush()
+        self._thread = threading.Thread(target=self._worker, name='yuio_io_thread').start()
 
-    def emit(self, msg, record: logging.LogRecord):
-        with self.lock:
-            line = self._format_record(msg, record)
-            if self._suspended:
-                if getattr(record, 'yuio_ignore_suspended', False):
-                    self.stream.write(line)
-                else:
-                    self._suspended_lines.append(line)
-            elif self.use_colors:
-                self._undraw()
-                self.stream.write(line)
-                self._draw()
-            else:
-                self.stream.write(line)
-            self.stream.flush()
+    def _worker(self):
+        atexit.register(lambda: self._messages.put(None))
 
-    def reg_task(self, task: Task):
-        with self.lock:
-            self._tasks.append(task)
-            self._display_task_status_change(task)
+        while True:
+            try:
+                try:
+                    message = self._messages.get(timeout=0.25)
+                except queue.Empty:
+                    if self.use_colors:
+                        self._redraw()
+                    continue
 
-    def reg_subtask(self, parent: Task, task: Task):
-        with self.lock:
-            parent._subtasks.append(task)
-            self._display_task_status_change(task)
+                if message is None:
+                    return
 
-    def set_progress(self, task: Task, progress: _PROGRESS):
-        with self.lock:
-            task._progress = progress
-
-            if self.use_colors:
-                self._redraw()
-
-    def set_comment(self, task: Task, comment: _t.Optional[str]):
-        with self.lock:
-            task._comment = comment
-
-            if self.use_colors and not self._suspended:
-                self._redraw()
-
-    def set_status(self, task: Task, status: Task._Status):
-        with self.lock:
-            task._status = status
-            self._display_task_status_change(task)
-
-    def suspend(self):
-        with self.lock:
-            self._suspended += 1
-
-            if self._suspended == 1:
-                self._undraw()
+                f, _self, args, kwargs, event = message
+                try:
+                    f(_self, *args, **kwargs)
+                finally:
+                    if event is not None:
+                        event.set()
+            except Exception:
+                msg = (
+                    f'-----BEGIN YUIO CRITICAL MESSAGE-----\n'
+                    f'CRITICAL: YUIO LOGGER ENCOUNTERED AN ERROR.\n'
+                    f'PLEASE, SEND TRACEBACK AND ANY ADDITIONAL INTO TO YUIO DEVELOPERS.\n'
+                    f'{traceback.format_exc()}\n'
+                    f'-----END YUIO CRITICAL MESSAGE-----\n'
+                )
+                self.stream.write(msg)
                 self.stream.flush()
 
+    @_handler_impl_interface()
+    def emit(
+        self,
+        record: logging.LogRecord,
+        process_color_tags: bool,
+        rich_log_line: bool,
+    ):
+        line = self._format_record(record, process_color_tags, rich_log_line)
+        if self._suspended:
+            if getattr(record, 'yuio_ignore_suspended', False):
+                self.stream.write(line)
+            else:
+                self._suspended_lines.append(line)
+        elif self.use_colors:
+            self._undraw()
+            self.stream.write(line)
+            self._draw()
+        else:
+            self.stream.write(line)
+        self.stream.flush()
+
+    @_handler_impl_interface()
+    def reg_task(self, task: Task):
+        self._tasks.append(task)
+        self._display_task_status_change(task)
+
+    @_handler_impl_interface()
+    def reg_subtask(self, parent: Task, task: Task):
+        parent._subtasks.append(task)
+        self._display_task_status_change(task)
+
+    @_handler_impl_interface()
+    def set_progress(self, task: Task, progress: _PROGRESS):
+        task._progress = progress
+        task._cached_msg = None
+
+        if self.use_colors:
+            self._redraw()
+
+    @_handler_impl_interface()
+    def set_comment(self, task: Task, comment: _t.Optional[str], args):
+        task._comment = comment
+        task._comment_args = args
+        task._cached_msg = None
+
+        if self.use_colors and not self._suspended:
+            self._redraw()
+
+    @_handler_impl_interface()
+    def set_status(self, task: Task, status: Task._Status):
+        task._status = status
+        task._cached_msg = None
+
+        self._display_task_status_change(task)
+
+    @_handler_impl_interface(wait_till_done=True)
+    def suspend(self):
+        self._suspended += 1
+
+        if self._suspended == 1:
+            self._undraw()
+            self.stream.flush()
+
+    @_handler_impl_interface(wait_till_done=True)
     def resume(self):
-        with self.lock:
-            self._suspended -= 1
+        self._suspended -= 1
 
-            if self._suspended == 0:
-                for line in self._suspended_lines:
-                    self.stream.write(line)
+        if self._suspended == 0:
+            for line in self._suspended_lines:
+                self.stream.write(line)
 
-                self._suspended_lines.clear()
+            self._suspended_lines.clear()
 
-                if self.use_colors:
-                    self._cleanup_tasks()
-                    self._draw()
+            if self.use_colors:
+                self._cleanup_tasks()
+                self._draw()
 
-            if self._suspended < 0:
-                raise RuntimeError('unequal number of suspends and resumes')
+        if self._suspended < 0:
+            raise RuntimeError('unequal number of suspends and resumes')
 
     def _display_task_status_change(self, task: Task):
         if self.use_colors:
@@ -1281,42 +1363,89 @@ class _HandlerImpl:
 
         if task._status == Task._Status.DONE:
             color = self.colors['task_done']
-            status = ': OK'
+            status = self._colorize(': OK', color)
         elif task._status == Task._Status.ERROR:
             color = self.colors['task_error']
-            status = ': ERROR'
+            status = self._colorize(': ERROR', color)
         else:
+            if task._cached_msg is not None:
+                return task._cached_msg
+
             color = self.colors['task']
-            if (
-                self.use_colors
-                and task._progress is None
-                and task._comment is not None
-            ):
-                status = ' - ' + task._comment + '...'
-            elif task._progress is None or not self.use_colors:
-                status = '...'
-            else:
-                status = ' ' + self._make_progress_bar(task._progress)
+            if self.use_colors:
+                status = ''
+                if task._progress is not None:
+                    status += ' ' + self._make_progress_bar(task._progress)
                 if task._comment is not None:
-                    status += ' - ' + task._comment
+                    status += ' - ' + str(task._comment)
+                status = self._colorize(status, color)
+                if task._comment is not None and task._comment_args:
+                    status = status % task._comment_args
+            else:
+                status = self._colorize('...', color)
 
-        return self._colorize('  ' * indent + task._msg + status, color) + '\n'
+        msg = self._colorize('  ' * indent + str(task._msg), color)
+        if task._args:
+            msg = msg % task._args
 
-    def _format_record(self, msg: str, record: logging.LogRecord) -> str:
+        return msg + status + '\n'
+
+    def _format_record(self, record: logging.LogRecord, process_color_tags: bool, rich_log_line: bool) -> str:
         # Format a record with respect to `_use_colors`.
 
-        color = self.colors.get(record.levelname.lower(), Color())
-        process_color_tags = getattr(record, 'yuio_process_color_tags', False)
-        msg = self._colorize(msg, color, process_color_tags)
+        process_color_tags = getattr(record, 'yuio_process_color_tags', process_color_tags)
+
+        if rich_log_line:
+            color = Color.NONE
+            tb_color = color
+
+            fmt = '<c:rich_log_asctime>%s</c> '
+
+            asctime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(record.created))
+            if self.use_colors:
+                asctime_color = self._get_color('rich_log_asctime')
+                asctime = f'{asctime_color}{asctime}{Color.NONE}'
+
+            logger = record.name
+            if self.use_colors:
+                logger_color = self._get_color('rich_log_logger')
+                logger = f'{logger_color}{logger}{Color.NONE}'
+
+            levelname = record.levelname
+            if levelname in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
+                levelname = levelname[:4]
+            if self.use_colors:
+                levelname_color = self._get_color(record.levelname.lower())
+                tb_color = levelname_color
+                if levelname_color == Color.NONE:
+                    levelname_color = self._get_color('rich_log_default_level_color')
+                levelname = f'{levelname_color}{levelname}{Color.NONE}'
+
+            msg = f'{asctime} {logger} {levelname} {record.msg}'
+        else:
+            color = self._get_color(record.levelname.lower())
+            tb_color = color
+            msg = self._colorize(str(record.msg), color, process_color_tags)
+
+        if record.args:
+            msg = msg % record.args
+
+        if record.exc_info:
+            # Cache the traceback text to avoid converting it multiple times
+            # (it's constant anyway)
+            if not record.exc_text:
+                record.exc_text = ''.join(traceback.format_exception(*record.exc_info))
+        if record.exc_text:
+            msg += '\n' + textwrap.indent(self._colorize_tb(record.exc_text, tb_color), '    ')
+        if record.stack_info:
+            msg += '\n' + textwrap.indent(self._colorize_tb(record.stack_info, tb_color), '    ')
+
         if getattr(record, 'yuio_add_newline', True):
             msg += '\n'
+
         return msg
 
     _TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _]+)>|</c>')
-    _TB_RE = re.compile(r'^(?P<indent>[ |+]*)(Stack|Traceback|Exception Group Traceback) \(most recent call last\):$', re.MULTILINE)
-    _TB_LINE_FILE = re.compile(r'^[ |+]*File (?P<file>"[^"]*"), line (?P<line>\d+)(?:, in (?P<loc>.*))?$')
-    _TB_LINE_HIGHLIGHT = re.compile(r'^[ |+^~-]*$')
-    _SITE_PACKAGES = os.sep + 'site-packages' + os.sep
 
     def _colorize(self, msg: str, default_color: Color, process_color_tags: bool = True):
         # Colorize a message, process color tags if necessary.
@@ -1326,24 +1455,18 @@ class _HandlerImpl:
 
         if not process_color_tags:
             if self.use_colors:
-                return str(default_color) + msg + str(Color())
+                return default_color + msg + Color.NONE
             else:
                 return msg
 
-        if tb_start := self._TB_RE.search(msg):
-            index = tb_start.start()
-            msg, tb = msg[:index], msg[index:]
-        else:
-            tb = ''
-
         if not self.use_colors:
-            return self._TAG_RE.sub('', msg) + tb
+            return self._TAG_RE.sub('', msg)
 
         out = []
         last_pos = 0
         stack = [default_color]
 
-        out.append(str(default_color))
+        out.append(default_color)
 
         for tag in self._TAG_RE.finditer(msg):
             out.append(msg[last_pos:tag.start()])
@@ -1353,56 +1476,74 @@ class _HandlerImpl:
                 color = stack[-1]
                 for sub_name in name.split(','):
                     sub_name = sub_name.strip()
-                    color = color | self.colors.get(sub_name, Color())
-                out.append(str(color))
+                    color = color | self._get_color(sub_name)
+                out.append(color)
                 stack.append(color)
             elif len(stack) > 1:
                 stack.pop()
-                out.append(str(stack[-1]))
+                out.append(stack[-1])
 
         out.append(msg[last_pos:])
 
-        if tb:
-            default_color_b = default_color | Color.STYLE_BOLD
-            default_color_n = default_color | self.colors['note']
+        out.append(Color.NONE)
 
-            default_color_d = default_color | Color.STYLE_DIM
-            default_color_d_b = default_color_d | Color.STYLE_BOLD
-            default_color_d_n = default_color_d | self.colors['note']
+        return ''.join(out)
 
-            base, bold, note = default_color, default_color_b, default_color_n
+    _TB_RE = re.compile(r'^(?P<indent>[ |+]*)(Stack|Traceback|Exception Group Traceback) \(most recent call last\):$', re.MULTILINE)
+    _TB_LINE_FILE = re.compile(r'^[ |+]*File (?P<file>"[^"]*"), line (?P<line>\d+)(?:, in (?P<loc>.*))?$')
+    _TB_LINE_HIGHLIGHT = re.compile(r'^[ |+^~-]*$')
+    _SITE_PACKAGES = os.sep + 'site-packages' + os.sep
 
-            indent = None
-            for line in tb.splitlines(keepends=True):
-                if indent and line.startswith(indent):
-                    if match := self._TB_LINE_FILE.match(line):
-                        f, l, lc = match.group('file', 'line', 'loc')
-                        if self._SITE_PACKAGES in f:
-                            base, bold, note = default_color_d, default_color_d_b, default_color_d_n
-                        else:
-                            base, bold, note = default_color, default_color_b, default_color_n
-                        if lc:
-                            out.append(f'{base}{indent}File {note}{f}{base}, line {note}{l}{base}, in {note}{lc}{base}\n')
-                        else:
-                            out.append(f'{base}{indent}File {note}{f}{base}, line {note}{l}{base}\n')
-                    elif match := self._TB_LINE_HIGHLIGHT.match(line):
-                        out.append(line)
+    def _colorize_tb(self, tb: str, default_color: Color):
+        default_color = Color.FORE_NORMAL | Color.BACK_NORMAL | default_color
+
+        if not self.use_colors:
+            return tb
+
+        out = []
+
+        out.append(default_color)
+
+        default_color_b = default_color | Color.STYLE_BOLD
+        default_color_n = default_color | self.colors['note']
+
+        default_color_d = default_color | Color.STYLE_DIM
+        default_color_d_b = default_color_d | Color.STYLE_BOLD
+        default_color_d_n = default_color_d | self.colors['note']
+
+        base, bold, note = default_color, default_color_b, default_color_n
+
+        indent = None
+        for line in tb.splitlines(keepends=True):
+            if indent and line.startswith(indent):
+                if match := self._TB_LINE_FILE.match(line):
+                    f, l, lc = match.group('file', 'line', 'loc')
+                    if self._SITE_PACKAGES in f:
+                        base, bold, note = default_color_d, default_color_d_b, default_color_d_n
                     else:
-                        out.append(indent)
-                        out.append(str(bold))
-                        out.append(line[len(indent):])
-                        out.append(str(base))
-                    continue
-                elif match := self._TB_RE.match(line):
-                    indent = match.group('indent').replace('+', '|') + '  '
-                elif indent:
-                    indent = None
-                    base, bold, note = default_color, default_color_b, default_color_n
-                    out.append(str(base))
+                        base, bold, note = default_color, default_color_b, default_color_n
+                    if lc:
+                        out.append(f'{base}{indent}File {note}{f}{base}, line {note}{l}{base}, in {note}{lc}{base}\n')
+                    else:
+                        out.append(f'{base}{indent}File {note}{f}{base}, line {note}{l}{base}\n')
+                elif match := self._TB_LINE_HIGHLIGHT.match(line):
+                    out.append(line)
+                else:
+                    out.append(indent)
+                    out.append(bold)
+                    out.append(line[len(indent):])
+                    out.append(base)
+                continue
+            elif match := self._TB_RE.match(line):
+                indent = match.group('indent').replace('+', '|') + '  '
+            elif indent:
+                indent = None
+                base, bold, note = default_color, default_color_b, default_color_n
+                out.append(base)
 
-                out.append(line)
+            out.append(line)
 
-        out.append(str(Color()))
+        out.append(Color.NONE)
 
         return ''.join(out)
 
@@ -1459,13 +1600,15 @@ class _HandlerImpl:
                + ']' \
                + f' {progress_indicator}'
 
+    def _get_color(self, tag: str) -> Color:
+        return self.colors.get(tag, Color.NONE)
+
 
 logging.addLevelName(LogLevel.QUESTION, 'question')
 
 _MSG_HANDLER_IMPL = _HandlerImpl()
 
-_MSG_HANDLER = Handler()
-_MSG_HANDLER.setFormatter(DEFAULT_FORMATTER)
+_MSG_HANDLER = Handler(process_color_tags=True, rich_log_line=False)
 
 _ROOT_LOGGER = logging.getLogger('yuio.io')
 _ROOT_LOGGER.setLevel(1)

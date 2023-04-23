@@ -840,7 +840,7 @@ class Int(ValueParser[int]):
         try:
             return int(value.strip())
         except ValueError:
-            raise ParsingError(f'could not parse value {value!r} as an int')
+            raise ParsingError(f'could not parse value {value!r} as an int') from None
 
     def parse_config(self, value: _t.Any, /) -> int:
         if isinstance(value, float):
@@ -861,7 +861,7 @@ class Float(ValueParser[float]):
         try:
             return float(value.strip())
         except ValueError:
-            raise ParsingError(f'could not parse value {value!r} as a float')
+            raise ParsingError(f'could not parse value {value!r} as a float') from None
 
     def parse_config(self, value: _t.Any, /) -> float:
         if not isinstance(value, (float, int)):
@@ -913,7 +913,7 @@ class Enum(ValueParser[E], _t.Generic[E]):
             raise ParsingError(
                 f'could not parse value {value!r}'
                 f' as {self._enum_type.__name__},'
-                f' should be one of {enum_values}')
+                f' should be one of {enum_values}') from None
 
     def parse_config(self, value: _t.Any, /) -> E:
         if not isinstance(value, str):
@@ -942,7 +942,7 @@ class Decimal(ValueParser[decimal.Decimal]):
         try:
             return decimal.Decimal(value)
         except decimal.DecimalException:
-            raise ParsingError(f'could not parse value {value!r} as a decimal number')
+            raise ParsingError(f'could not parse value {value!r} as a decimal number') from None
 
 
 class Fraction(ValueParser[fractions.Fraction]):
@@ -962,12 +962,12 @@ class Fraction(ValueParser[fractions.Fraction]):
             try:
                 return fractions.Fraction(*value)
             except (ValueError, ZeroDivisionError):
-                raise ParsingError(f'could not parse value {value[0]!r}/{value[1]} as a fraction')
+                raise ParsingError(f'could not parse value {value[0]!r}/{value[1]} as a fraction') from None
         if isinstance(value, (int, float, str, decimal.Decimal, fractions.Fraction)):
             try:
                 return fractions.Fraction(value)
             except (ValueError, ZeroDivisionError):
-                raise ParsingError(f'could not parse value {value!r} as a fraction')
+                raise ParsingError(f'could not parse value {value!r} as a fraction') from None
         raise ParsingError('expected an int, float, fraction string, or a tuple of two ints')
 
 
@@ -1380,7 +1380,7 @@ class DateTime(ValueParser[datetime.datetime]):
         try:
             return datetime.datetime.fromisoformat(value)
         except ValueError:
-            raise ParsingError(f'could not parse value {value!r} as a datetime')
+            raise ParsingError(f'could not parse value {value!r} as a datetime') from None
 
     def parse_config(self, value: _t.Any, /) -> datetime.datetime:
         if isinstance(value, datetime.datetime):
@@ -1400,7 +1400,7 @@ class Date(ValueParser[datetime.date]):
         try:
             return datetime.date.fromisoformat(value)
         except ValueError:
-            raise ParsingError(f'could not parse value {value!r} as a date')
+            raise ParsingError(f'could not parse value {value!r} as a date') from None
 
     def parse_config(self, value: _t.Any, /) -> datetime.date:
         if isinstance(value, datetime.datetime):
@@ -1422,7 +1422,7 @@ class Time(ValueParser[datetime.time]):
         try:
             return datetime.time.fromisoformat(value)
         except ValueError:
-            raise ParsingError(f'could not parse value {value!r} as a time')
+            raise ParsingError(f'could not parse value {value!r} as a time') from None
 
     def parse_config(self, value: _t.Any, /) -> datetime.time:
         if isinstance(value, datetime.datetime):

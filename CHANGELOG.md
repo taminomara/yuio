@@ -1,5 +1,6 @@
 # Changelog
 
+
 *v1.1.0:*
 
 - Fix the bug where log level colors were ignored if `no_color_tags` flag was set (by Tamika Nomara)

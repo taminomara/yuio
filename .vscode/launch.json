@@ -5,6 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+            }
+        },
+        {
             "name": "Example: App",
             "type": "python",
             "request": "launch",
@@ -14,7 +25,7 @@
             "name": "Example: Git",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/examples/git.py",
+            "program": "${workspaceFolder}/examples/git.py"
         },
         {
             "name": "Example: Io Edit",
