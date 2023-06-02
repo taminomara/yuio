@@ -3,7 +3,6 @@ import time
 
 import yuio.io
 
-
 def install_package(package: str, task: yuio.io.Task):
     time.sleep(0.7)
 
@@ -11,17 +10,17 @@ def install_package(package: str, task: yuio.io.Task):
         # Set task's comment.
         pkg_task.comment('downloading')
 
-        for i in range(10):
+        for i in range(25):
             # Set progress as percentage, just for demonstration.
-            pkg_task.progress(i / 10)
+            pkg_task.progress(i / 24)
 
-            time.sleep(0.5)
+            time.sleep(0.2)
 
-        # Clear progres, update task's comment.
+        # Clear progress, update task's comment.
         pkg_task.progress(None)
         pkg_task.comment('installing')
 
-        time.sleep(1.3)
+        time.sleep(1.6)
 
 
 if __name__ == '__main__':
@@ -35,11 +34,12 @@ if __name__ == '__main__':
         'cpp@20',
     ]
 
-    yuio.io.info('Going to install some packages '
-                 'to demonstrate you progressbars!')
+    yuio.io.heading('Yuio\'s tasks showcase')
+    yuio.io.info('Going to install some packages to demonstrate you progressbars!')
+    yuio.io.hr()
 
     with yuio.io.Task('Installing packages') as task:
-        time.sleep(0.5)
+        time.sleep(2)
 
         threads = []
 
@@ -54,4 +54,4 @@ if __name__ == '__main__':
         for thread in threads:
             thread.join()
 
-    yuio.io.info('<c:success>TADA!</c>')
+    yuio.io.success('Successfully installed %s', ', '.join(packages))

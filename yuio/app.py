@@ -322,6 +322,8 @@ class App:
 
         """
 
+        logging.basicConfig()
+
         parser = self._setup_arg_parser()
         try:
             command = self._load_from_namespace(parser.parse_args(args))
@@ -330,7 +332,7 @@ class App:
         except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
             parser.error(str(e))
         except Exception as e:
-            yuio.io.exception('<c:failure>Error: %s</c>', e)
+            yuio.io.error_with_tb('Error: %s', e)
             exit(1)
 
     def _load_from_namespace(self, namespace: argparse.Namespace) -> 'App.SubCommand':
@@ -404,7 +406,7 @@ def _command_from_callable(cb: Command) -> _t.Type[yuio.config.Config]:
     try:
         docs = yuio._utils.find_docs(cb)
     except Exception:
-        logging.getLogger('yuio.internal').exception(
+        yuio._logger.exception(
             'Unable to get documentation for %s',
             cb.__qualname__,
         )
@@ -467,13 +469,16 @@ def _command_from_callable_run_impl(cb: Command, params: _t.List[str], accepts_s
 class _HelpFormatter(argparse.HelpFormatter):
     def format_help(self):
         help = super().format_help().strip('\n')
-        help = re.sub(r'^usage:', '<c:cli_section>usage:</c>', help)
-        help = re.sub(r'\n\n(\S.*?:)\n(  |\n|\Z)', r'\n\n<c:cli_section>\1</c>\n\2', help, flags=re.MULTILINE)
-        help = re.sub(r'(?<=\W)(-[a-zA-Z0-9]|--[a-zA-Z0-9-_]+)\b', r'<c:cli_flag>\1</c>', help, flags=re.MULTILINE)
-        help = re.sub(r'\[(default:\s*)(.*?)]$', r'<c:cli_default>[\1<c:code>\2</c>]</c>', help, flags=re.MULTILINE)
+        help = re.sub(r'^usage:', '<c:cli/section>usage:</c>', help)
+        help = re.sub(r'\n\n(\S.*?:)\n(  |\n|\Z)', r'\n\n<c:cli/section>\1</c>\n\2', help, flags=re.MULTILINE)
+        help = re.sub(r'(?<=\W)(-[a-zA-Z0-9]|--[a-zA-Z0-9-_]+)\b', r'<c:cli/flag>\1</c>', help, flags=re.MULTILINE)
+        help = re.sub(r'\[(default:\s*)(.*?)]$', r'<c:cli/default>[\1<c:cli/default/code>\2</c>]</c>', help, flags=re.MULTILINE)
         help = re.sub(r'(`+)(.*?)\1', r'<c:code>\2</c>', help, flags=re.MULTILINE)
         help = help.replace('\n  <subcommand>\n', '\n')
-        return yuio.io._MSG_HANDLER_IMPL._colorize(help, yuio.io.Color()) + '\n'
+
+        handler = yuio.io._handler()
+        color = handler._get_color('cli')
+        return handler._merge_colored_out(handler._colorize(help, None, color)) + '\n'
 
     def _iter_indented_subactions(self, action):
         try:

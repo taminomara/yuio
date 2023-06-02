@@ -567,8 +567,23 @@ def _action(parser: yuio.parse.Parser, parse_many: bool):
 
 class _VerboseAction(argparse.Action):
     def __call__(self, _, namespace, values, option_string=None):
+        count = (getattr(namespace, self.dest, 0) or 0) + 1
+        setattr(namespace, self.dest, count)
+
         import yuio.io
-        yuio.io.setup(yuio.io.LogLevel.DEBUG)
+        yuio.io.setup(debug_output=True)
+
+
+class _DisableColorAction(argparse.Action):
+    def __call__(self, _, namespace, values, option_string=None):
+        import yuio.io
+        yuio.io.setup(use_colors=False)
+
+
+class _EnableColorAction(argparse.Action):
+    def __call__(self, _, namespace, values, option_string=None):
+        import yuio.io
+        yuio.io.setup(use_colors=True)
 
 
 class Config:
@@ -598,7 +613,7 @@ class Config:
         try:
             docs = yuio._utils.find_docs(cls)
         except Exception:
-            logging.getLogger('yuio.internal').exception(
+            yuio._logger.exception(
                 'unable to get documentation for class %s',
                 cls.__qualname__,
             )
@@ -773,6 +788,20 @@ class Config:
             '-v', '--verbose',
             help='increase verbosity of output',
             action=_VerboseAction,
+            nargs=0,
+        )
+
+        parser.add_argument(
+            '--force-color',
+            help='force-enable colored output',
+            action=_EnableColorAction,
+            nargs=0,
+        )
+
+        parser.add_argument(
+            '--force-no-color',
+            help='force-disable colored output',
+            action=_DisableColorAction,
             nargs=0,
         )
 

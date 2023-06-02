@@ -1,9 +1,5 @@
-import logging
-import os
+import logging as _logging
+import os as _os
 
-_logger = logging.getLogger('yuio.internal')
-
-if 'YUIO_DEBUG' in os.environ:
-    _logger.setLevel(logging.DEBUG)
-else:
-    _logger.setLevel(logging.CRITICAL)
+_logger = _logging.getLogger('yuio.internal')
+_logger.propagate = 'YUIO_DEBUG' in _os.environ

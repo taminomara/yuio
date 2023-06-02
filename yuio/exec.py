@@ -26,7 +26,7 @@ import typing as _t
 import yuio.io
 
 
-_LOGGER = logging.getLogger('yuio.io.exec')
+_LOGGER = logging.getLogger('yuio.exec')
 
 
 @_t.overload
@@ -107,7 +107,7 @@ def exec(
                     try:
                         line = line.decode()
                     except UnicodeDecodeError:
-                        logging.getLogger('yuio.internal').exception(
+                        yuio._logger.exception(
                             'unable to decode stderr line:\n%r',
                             line,
                         )
