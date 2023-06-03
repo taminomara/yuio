@@ -237,14 +237,164 @@ class UserIoError(IOError):
     """
 
 
+@dataclass(frozen=True)
+class TermInfo:
+    """Overall info about a terminal.
+
+    """
+
+    #: If true, we're attached to a terminal.
+    is_interactive: bool = False
+
+    #: If true, terminal supports colored output.
+    has_colors: bool = False
+
+    #: Terminal's level of support for
+    can_move_cursor: bool = False
 
 
+@functools.cache
+def get_term_info() -> TermInfo:
+    """Get info about the current terminal.
 
-ColorMap = _t.Dict[str, _t.Union[str, Color]]
+    """
+
+    term = os.environ.get('TERM', '').lower()
+
+    is_interactive = (
+        _STDERR is not None
+        and hasattr(_STDERR, 'isatty')
+        and _STDERR.isatty()
+        and _STDERR.writable()
+    )
+
+    has_colors = False
+    can_move_cursor = False
+    if is_interactive:
+        if os.name == 'nt':
+            if _enable_vt_processing(stream):
+                has_colors = True
+                can_move_cursor = True
+        elif 'GITHUB_ACTIONS' in os.environ:
+            has_colors = True
+        elif any(ci in os.environ for ci in ['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE', 'TEAMCITY_VERSION']):
+            has_colors = True
+        elif term == 'linux' or 'color' in term or 'ansi' in term or 'xterm' in term:
+            has_colors = True
+            can_move_cursor = True
+
+    return TermInfo(is_interactive, has_colors, can_move_cursor)
+
+
+if os.name == 'nt':
+    import ctypes
+    import msvcrt
+
+    def _enable_vt_processing(stream: _t.TextIO) -> bool:
+        try:
+            version = sys.getwindowsversion()
+            if version.major < 10 or version.build < 14931:
+                return False
+
+            stderr_handle = msvcrt.get_osfhandle(stream.fileno())
+            return bool(ctypes.windll.kernel32.SetConsoleMode(stderr_handle, 7))
+
+        except Exception:
+            return False
+
+
+@dataclass(frozen=True, slots=True)
+class Color:
+    """
+
+    """
+
+    fore: _t.Optional[str] = None
+    back: _t.Optional[str] = None
+    bold: bool = False
+    dim: bool = False
+
+    def __or__(self, other: 'Color', /):
+        return Color(
+            other.fore or self.fore,
+            other.back or self.back,
+            other.bold or self.bold,
+            other.dim or self.dim,
+        )
+
+    def __ior__(self, other: 'Color', /):
+        return self | other
+
+    def __str__(self) -> str:
+        codes = ['0']
+        if self.fore:
+            codes.append(self.fore)
+        if self.back:
+            codes.append(self.back)
+        if self.bold:
+            codes.append('1')
+        if self.dim:
+            codes.append('2')
+        return '\x1b[' + ';'.join(codes) + 'm'
+
+    #: No color.
+    NONE: _t.ClassVar['Color'] = lambda: Color()  # type: ignore
+
+    #: Bold font style.
+    STYLE_BOLD: _t.ClassVar['Color'] = lambda: Color(bold=True)  # type: ignore
+    #: Dim font style.
+    STYLE_DIM: _t.ClassVar['Color'] = lambda: Color(dim=True)  # type: ignore
+
+    #: Normal foreground color.
+    FORE_NORMAL: _t.ClassVar['Color'] = lambda: Color(fore='39')  # type: ignore
+    #: Black foreground color.
+    FORE_BLACK: _t.ClassVar['Color'] = lambda: Color(fore='30')  # type: ignore
+    #: Red foreground color.
+    FORE_RED: _t.ClassVar['Color'] = lambda: Color(fore='31')  # type: ignore
+    #: Green foreground color.
+    FORE_GREEN: _t.ClassVar['Color'] = lambda: Color(fore='32')  # type: ignore
+    #: Yellow foreground color.
+    FORE_YELLOW: _t.ClassVar['Color'] = lambda: Color(fore='33')  # type: ignore
+    #: Blue foreground color.
+    FORE_BLUE: _t.ClassVar['Color'] = lambda: Color(fore='34')  # type: ignore
+    #: Magenta foreground color.
+    FORE_MAGENTA: _t.ClassVar['Color'] = lambda: Color(fore='35')  # type: ignore
+    #: Cyan foreground color.
+    FORE_CYAN: _t.ClassVar['Color'] = lambda: Color(fore='36')  # type: ignore
+    #: White foreground color.
+    FORE_WHITE: _t.ClassVar['Color'] = lambda: Color(fore='37')  # type: ignore
+
+    #: Normal background color.
+    BACK_NORMAL: _t.ClassVar['Color'] = lambda: Color(back='49')  # type: ignore
+    #: Black background color.
+    BACK_BLACK: _t.ClassVar['Color'] = lambda: Color(back='40')  # type: ignore
+    #: Red background color.
+    BACK_RED: _t.ClassVar['Color'] = lambda: Color(back='41')  # type: ignore
+    #: Green background color.
+    BACK_GREEN: _t.ClassVar['Color'] = lambda: Color(back='42')  # type: ignore
+    #: Yellow background color.
+    BACK_YELLOW: _t.ClassVar['Color'] = lambda: Color(back='43')  # type: ignore
+    #: Blue background color.
+    BACK_BLUE: _t.ClassVar['Color'] = lambda: Color(back='44')  # type: ignore
+    #: Magenta background color.
+    BACK_MAGENTA: _t.ClassVar['Color'] = lambda: Color(back='45')  # type: ignore
+    #: Cyan background color.
+    BACK_CYAN: _t.ClassVar['Color'] = lambda: Color(back='46')  # type: ignore
+    #: White background color.
+    BACK_WHITE: _t.ClassVar['Color'] = lambda: Color(back='47')  # type: ignore
+
+for _n, _v in vars(Color).items():
+    if _n == _n.upper():
+        setattr(Color, _n, _v())
+del _n, _v  # type: ignore
 
 
 class Theme:
-    decoration_symbol = '⣿'
+    msg_decorations: _t.Dict[str, str] = {
+        'heading': '⣿',
+        'question': '>',
+        'task': '>',
+    }
 
     progress_bar_width = 15
     progress_bar_start_symbol = ''
@@ -253,9 +403,8 @@ class Theme:
     progress_bar_inflight_symbol = '■'
     progress_bar_pending_symbol = '□'
 
-    spinner_pattern = '⣤⠶⠛⠛⠛⠶⣤⣤'
+    spinner_pattern = '⣤⣤⣤⠶⠛⠛⠛⠶'
     spinner_static_symbol = '⣿'
-    spinner_simple_symbol = '>'
     spinner_update_rate_ms = 200
 
     #: Message colors::
@@ -315,7 +464,7 @@ class Theme:
     #:  │    │  └ task/progressbar/pending      └ task/progress (or .../done or .../error)
     #:  │    └ task/progressbar/inflight
     #:  └ task/progressbar/done
-    colors: ColorMap = {
+    colors: _t.Dict[str, _t.Union[str, Color]] = {
         'code': Color.FORE_MAGENTA,
         'note': Color.FORE_GREEN,
 
@@ -342,10 +491,6 @@ class Theme:
             colors.update(getattr(base, 'colors', {}))
         cls.colors = colors
 
-    def get_progressbar_gradient(self) -> _t.Callable[[float], Color]:
-        color = self.get_color('task/progressbar/done')
-        return lambda f, /: color
-
     @functools.cache
     def get_color(self, path: str, /) -> Color:
         color = Color.NONE
@@ -363,17 +508,20 @@ class Theme:
 
 
 class DefaultTheme(Theme):
-    colors: ColorMap = {
-        'msg/heading/decoration': Color.FORE_MAGENTA,
+    colors = {
+        'accent_color': Color.FORE_MAGENTA,
+
+        'msg/heading/decoration': 'accent_color',
         'msg/heading/text': Color.STYLE_BOLD,
-        'msg/question': Color.STYLE_BOLD,
+        'msg/question/decoration': 'accent_color',
+        'msg/question/text': Color.STYLE_BOLD,
         'msg/error': Color.FORE_RED,
         'msg/warning': Color.FORE_YELLOW,
         'msg/success': Color.FORE_GREEN,
         'msg/info': Color.NONE,
         'msg/debug': Color.STYLE_DIM,
         'msg/hr': Color.STYLE_DIM,
-        'msg/group': Color.FORE_BLUE,
+        'msg/group': 'accent_color',
 
         'log/plain_text': Color.STYLE_DIM,
         'log/asctime': Color.STYLE_DIM,
@@ -407,14 +555,14 @@ class DefaultTheme(Theme):
         'task/plain_text': Color.STYLE_DIM,
         'task/heading': Color.STYLE_BOLD,
         'task/comment': Color.NONE,
-        'task/spinner/running': Color.FORE_MAGENTA,
+        'task/spinner/running': 'accent_color',
         'task/spinner/done': Color.FORE_GREEN,
         'task/spinner/error': Color.FORE_RED,
         'task/progressbar': Color.NONE,
-        'task/progressbar/done': Color.FORE_MAGENTA,
+        'task/progressbar/done': 'accent_color',
         'task/progressbar/inflight': Color.STYLE_DIM,
         'task/progressbar/pending': Color.STYLE_DIM,
-        'task/progress/running': Color.FORE_MAGENTA,
+        'task/progress/running': 'accent_color',
         'task/progress/done': Color.FORE_GREEN,
         'task/progress/error': Color.FORE_RED,
 
@@ -422,22 +570,6 @@ class DefaultTheme(Theme):
         'cli/default/code': 'code',
         'cli/section': 'msg/group',
     }
-
-    def __init__(self, term_info: yuio.term.TermInfo):
-        if term_info.has_ansi_256_colors:
-            self.get_progressbar_gradient = lambda: Color.lerp(Color.fore_from_hex('#6719D5'), Color.fore_from_hex('#C00FBA'))
-
-            if term_info.theme == yuio.term.TermTheme.DARK and term_info.background_color:
-                self.colors['msg/hr'] = Color(fore=term_info.background_color.lighten(0.2))
-            elif term_info.theme == yuio.term.TermTheme.DARK:
-                self.colors['msg/hr'] = Color.fore_from_hex('#323232')
-            elif term_info.theme == yuio.term.TermTheme.LIGHT and term_info.background_color:
-                self.colors['msg/hr'] = Color(fore=term_info.background_color.darken(0.2))
-            elif term_info.theme == yuio.term.TermTheme.LIGHT:
-                self.colors['msg/hr'] = Color.fore_from_hex('#CCCCCC')
-
-    def get_progressbar_gradient(self) -> _t.Callable[[float], Color]:
-        return Color.lerp(Color.fore_from_hex('#6719D5'), Color.fore_from_hex('#C00FBA'))
 
 
 def setup(
@@ -470,7 +602,7 @@ def _print(
     add_newline: bool = True,
     ignore_suspended: bool = False,
     exc_info: _t.Union[None, bool, BaseException, _ExcInfo] = None,
-    decorate: bool = False,
+    add_space: bool = False,
 ):
     if exc_info is True:
         exc_info = sys.exc_info()
@@ -484,7 +616,7 @@ def _print(
         add_newline=add_newline,
         ignore_suspended=ignore_suspended,
         exc_info=exc_info,
-        decorate=decorate,
+        add_space=add_space,
     )
 
 
@@ -561,7 +693,7 @@ def heading(msg: str, /, *args, **kwargs):
 
     """
 
-    kwargs.setdefault('decorate', True)
+    kwargs.setdefault('add_space', True)
     _print(msg, args, 'heading', **kwargs)
 
 
@@ -663,7 +795,7 @@ def ask(
 
     """
 
-    if not get_terminal_info().has_interactive_input:
+    if not get_term_info().is_interactive:
         if default is not DISABLED:
             return default
         else:
@@ -762,12 +894,15 @@ def wait_for_user(
 
     """
 
-    if not get_terminal_info().has_interactive_input:
+    if not get_term_info().is_interactive:
         return
 
     with SuspendLogging() as s:
         s.question(msg, *args, add_newline=True)
-        input()
+        try:
+            input()
+        except EOFError:
+            return
 
 
 def detect_editor() -> _t.Optional[str]:
@@ -779,25 +914,15 @@ def detect_editor() -> _t.Optional[str]:
 
     """
 
-    if sys.platform == 'win':
-        return 'notepad'
+    if editor := os.environ.get('EDITOR'):
+        return editor
 
-    if os.environ.get('EDITOR'):
-        return os.environ['EDITOR']
-
-    def check_editor(name):
-        return subprocess.run(
-            ['which', name], stdout=subprocess.DEVNULL
-        ).returncode == 0
-
-    # if check_editor('code'):
-    #     return 'code -nw'
-    # if check_editor('subl'):
-    #     return 'subl -nw'
-    if check_editor('nano'):
-        return 'nano'
-    if check_editor('vi'):
-        return 'vi'
+    if editor := shutil.which('nano'):
+        return editor
+    if editor := shutil.which('vi'):
+        return editor
+    if editor := shutil.which('notepad'):
+        return editor
 
     return None
 
@@ -823,7 +948,7 @@ def edit(
 
     """
 
-    if get_terminal_info().has_interactive_input:
+    if get_term_info().is_interactive:
         if editor is None:
             editor = detect_editor()
 
@@ -1195,11 +1320,11 @@ class _HandlerImpl:
     """
 
     def __init__(self):
-        self._term_info = yuio.term.get_stderr_info()
+        self._term_info = get_term_info()
 
-        self._theme: Theme = DefaultTheme(self._term_info)
+        self._theme: Theme = DefaultTheme()
 
-        self._use_colors = self._term_info.has_ansi_8_colors
+        self._use_colors = self._term_info.has_colors
         if 'FORCE_NO_COLORS' in os.environ:
             self._use_colors = False
         elif 'FORCE_COLORS' in os.environ:
@@ -1273,10 +1398,10 @@ class _HandlerImpl:
         add_newline: bool = True,
         ignore_suspended: bool = False,
         exc_info: _t.Optional[_ExcInfo] = None,
-        decorate: bool = False,
+        add_space: bool = False,
     ):
         with self._lock:
-            line = self._format_line(msg, args, m_tag, add_newline, exc_info, decorate)
+            line = self._format_line(msg, args, m_tag, add_newline, exc_info, add_space)
 
             self._emit(line, ignore_suspended)
 
@@ -1432,7 +1557,7 @@ class _HandlerImpl:
         assert self._print_sticky_tasks
 
         if self._tasks_shown > 0:
-            _STDERR.write(f'\033[{self._tasks_shown}F\033[J')
+            _STDERR.write(f'\x1b[{self._tasks_shown}F\x1b[J')
             self._tasks_shown = 0
 
     def _show_tasks(self):
@@ -1449,16 +1574,22 @@ class _HandlerImpl:
             (task, 0) for task in reversed(self._tasks)
         ]
 
+        out = []
+
         while tasks:
             task, indent = tasks.pop()
 
-            _STDERR.write(self._format_task(task, indent))
+            out.append(self._format_task(task, indent))
             self._tasks_shown += 1
 
             indent += 1
             tasks.extend(
                 [(subtask, indent) for subtask in reversed(task._subtasks)]
             )
+
+        if out:
+            _STDERR.write(''.join(out))
+            _STDERR.flush()
 
     #
     # IMPLEMENTATION: LOG LINE FORMATTING
@@ -1554,26 +1685,28 @@ class _HandlerImpl:
 
         return self._merge_colored_out(out)
 
-    def _format_line(self, msg: str, args: _t.Optional[tuple], m_tag: str, add_newline: bool, exc_info: _t.Optional[_ExcInfo], decorate: bool) -> str:
+    def _format_line(self, msg: str, args: _t.Optional[tuple], m_tag: str, add_newline: bool, exc_info: _t.Optional[_ExcInfo], add_space: bool) -> str:
         out: _t.List[_t.Union[str, Color]] = []
 
-        if decorate and self._printed_some_lines:
+        decoration = self._theme.msg_decorations.get(m_tag)
+
+        if add_space and self._printed_some_lines:
             out.append('\n\n')
 
         if self._indent:
             out.append('  ' * self._indent)
 
-        if decorate:
+        if decoration:
             out.append(self._theme.get_color(f'msg/{m_tag}/decoration'))
-            out.append(self._theme.decoration_symbol)
-            out.append(self._theme.get_color(f'msg/{m_tag}'))
+            out.append(decoration)
+            out.append(self._theme.get_color(f'msg/{m_tag}/text'))
             out.append(' ')
 
         out.extend(self._colorize(msg, args, self._theme.get_color(f'msg/{m_tag}/text')))
 
         if add_newline:
             out.append('\n')
-            if decorate:
+            if add_space:
                 out.append('\n')
 
         if exc_info is not None:
@@ -1595,24 +1728,25 @@ class _HandlerImpl:
             level = level[:4]
         message = record.getMessage()
 
-        out.extend([
-            self._theme.get_color('log/asctime'),
-            asctime,
-            plain_text_color,
-            ' ',
-            self._theme.get_color('log/logger'),
-            logger,
-            plain_text_color,
-            ' ',
-            self._theme.get_color(f'log/level/{record.levelname.lower()}'),
-            level,
-            plain_text_color,
-            ' ',
-            self._theme.get_color(f'log/message/{record.levelname.lower()}'),
-            message,
-            plain_text_color,
-            '\n',
-        ])
+        out.append(self._theme.get_color('log/asctime'))
+        out.append(asctime)
+        out.append(plain_text_color)
+        out.append(' ')
+
+        out.append(self._theme.get_color('log/logger'))
+        out.append(logger)
+        out.append(plain_text_color)
+        out.append(' ')
+
+        out.append(self._theme.get_color(f'log/level/{record.levelname.lower()}'))
+        out.append(level)
+        out.append(plain_text_color)
+        out.append(' ')
+
+        out.append(self._theme.get_color(f'log/message/{record.levelname.lower()}'))
+        out.append(message)
+        out.append(plain_text_color)
+        out.append('\n')
 
         if record.exc_info:
             if not record.exc_text:
@@ -1711,7 +1845,6 @@ class _HandlerImpl:
                         out.append(plain_text_color)
                         out.append(indent)
                         out.append(stack_indent)
-
                         out.append(stack_colors.file_color)
                         out.append('File ')
                         out.append(stack_colors.file_path_color)
@@ -1817,14 +1950,15 @@ class _HandlerImpl:
     def _make_progress_bar(self, progress: _Progress) -> _t.Iterable[_t.Union[str, Color]]:
         done = 0.0
         inflight = 0.0
-        if isinstance(progress, tuple):
-            if len(progress) == 2:
-                done = float(progress[0]) / float(progress[1])
-            elif len(progress) == 3:
-                done = float(progress[0]) / float(progress[2])
-                inflight = float(progress[1]) / float(progress[2])
+
+        if isinstance(progress, tuple) and len(progress) == 2:
+            done = float(progress[0]) / float(progress[1])
+        elif isinstance(progress, tuple) and len(progress) == 3:
+            done = float(progress[0]) / float(progress[2])
+            inflight = float(progress[1]) / float(progress[2])
         elif isinstance(progress, (float, int)):
             done = float(progress)
+
         done = max(0.0, min(1.0, done))
         inflight = max(0.0, min(1.0 - done, inflight))
 
@@ -1832,30 +1966,22 @@ class _HandlerImpl:
         inflight_len = int(self._theme.progress_bar_width * inflight)
         pending_len = self._theme.progress_bar_width - done_len - inflight_len
 
-        color = self._theme.get_color(f'task/progressbar')
-        done_color = self._theme.get_progressbar_gradient()
-        inflight_color = self._theme.get_color(f'task/progressbar/inflight')
-        pending_color = self._theme.get_color(f'task/progressbar/pending')
+        return [
+            self._theme.get_color(f'task/progressbar'),
+            self._theme.progress_bar_start_symbol,
 
-        out = []
+            self._theme.get_color(f'task/progressbar/done'),
+            self._theme.progress_bar_done_symbol * done_len,
 
-        out.append(color)
-        out.append(self._theme.progress_bar_start_symbol)
+            self._theme.get_color(f'task/progressbar/inflight'),
+            self._theme.progress_bar_inflight_symbol * inflight_len,
 
-        for i in range(done_len):
-            out.append(done_color(i / self._theme.progress_bar_width))
-            out.append(self._theme.progress_bar_done_symbol)
+            self._theme.get_color(f'task/progressbar/pending'),
+            self._theme.progress_bar_pending_symbol * pending_len,
 
-        out.append(inflight_color)
-        out.append(self._theme.progress_bar_inflight_symbol * inflight_len)
-
-        out.append(pending_color)
-        out.append(self._theme.progress_bar_pending_symbol * pending_len)
-
-        out.append(color)
-        out.append(self._theme.progress_bar_end_symbol)
-
-        return out
+            self._theme.get_color(f'task/progressbar'),
+            self._theme.progress_bar_end_symbol,
+        ]
 
     def _make_spinner(self, t_tag: str) -> _t.Iterable[_t.Union[str, Color]]:
         spinner_color = self._theme.get_color(f'task/spinner/{t_tag}')
@@ -1866,15 +1992,17 @@ class _HandlerImpl:
         return [spinner_color, self._theme.spinner_static_symbol]
 
     def _make_spinner_simple(self, t_tag: str) -> _t.Iterable[_t.Union[str, Color]]:
-        spinner_color = self._theme.get_color(f'task/spinner/{t_tag}')
-        return [spinner_color, self._theme.spinner_simple_symbol]
+        if decoration := self._theme.msg_decorations.get('task'):
+            spinner_color = self._theme.get_color(f'task/spinner/{t_tag}')
+            return [spinner_color, decoration]
+        else:
+            return []
 
     def _merge_colored_out(self, out: _t.Iterable[_t.Union[str, Color]]) -> str:
         if self._use_colors:
-            cap = max(self._term_info.color_capability, yuio.term.TermColorCapability.ANSI_8)
+            return ''.join(str(s) for s in out)
         else:
-            cap = yuio.term.TermColorCapability.NONE
-        return ''.join([s if isinstance(s, str) else s.as_code(cap) for s in out])
+            return ''.join(s for s in out if isinstance(s, str))
 
 
 @functools.cache

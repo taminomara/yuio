@@ -1,16 +1,17 @@
+import enum
+
 import yuio.io
 import yuio.parse
 
-if __name__ == '__main__':
-    food = yuio.io.ask(
-        'What would you like for dinner?',
-        parser=yuio.parse.OneOf(
-            yuio.parse.Str().lower(), ['fish', 'meat', 'vegan burger']
-        ),
-        default='vegan burger'
-    )
 
-    if yuio.io.ask_yn('Maybe add some fries?', default=True):
-        food += ' with fries'
+class Dish(enum.Enum):
+    FISH = 'fish'
+    MEAT = 'meat'
+    VEGAN_BURGER = 'vegan burger'
+
+
+if __name__ == '__main__':
+    food = yuio.io.ask('What would you like for dinner?', parser=Dish, default=Dish.VEGAN_BURGER)
+    with_fries = yuio.io.ask_yn('Maybe add some fries?', default=True)
 
     yuio.io.info('Alright, %s it is!', food)

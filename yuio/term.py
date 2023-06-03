@@ -58,7 +58,7 @@ class TermTheme(enum.Enum):
     LIGHT = enum.auto()
 
 
-class TermColorCapability(enum.IntEnum):
+class TermColors(enum.IntEnum):
     """Terminal's capability for coloring output.
 
     """
@@ -67,38 +67,13 @@ class TermColorCapability(enum.IntEnum):
     NONE = 0
 
     #: Only simple 8-bit color codes are supported.
-    ANSI_8 = 1
+    ANSI = 1
 
     #: 256-encoded colors are supported.
     ANSI_256 = 2
 
     #: True colors are supported.
     ANSI_TRUE = 3
-
-    @property
-    def has_ansi_8_colors(self) -> bool:
-        """Return true if terminal supports simple 8-bit color codes.
-
-        """
-
-        return self >= TermColorCapability.ANSI_8
-
-    @property
-    def has_ansi_256_colors(self) -> bool:
-        """Return true if terminal supports 256-encoded colors.
-
-        """
-
-        return self >= TermColorCapability.ANSI_256
-
-    @property
-    def has_ansi_true_colors(self) -> bool:
-        """Return true if terminal supports true colors.
-
-        """
-
-        return self >= TermColorCapability.ANSI_TRUE
-
 
 
 @dataclass(frozen=True)
@@ -111,7 +86,7 @@ class TermInfo:
     has_interactive_output: bool = False
 
     #: Terminal's capability for coloring output.
-    color_capability: TermColorCapability = TermColorCapability.NONE
+    colors: TermColors = TermColors.NONE
 
     #: Terminal's level of support for
     can_move_cursor: bool = False
@@ -123,28 +98,28 @@ class TermInfo:
     theme: TermTheme = TermTheme.UNKNOWN
 
     @property
-    def has_ansi_8_colors(self) -> bool:
+    def has_colors(self) -> bool:
         """Return true if terminal supports simple 8-bit color codes.
 
         """
 
-        return self.color_capability.has_ansi_8_colors
+        return self.colors >= TermColors.ANSI
 
     @property
-    def has_ansi_256_colors(self) -> bool:
+    def has_colors_256(self) -> bool:
         """Return true if terminal supports 256-encoded colors.
 
         """
 
-        return self.color_capability.has_ansi_256_colors
+        return self.colors >= TermColors.ANSI_256
 
     @property
-    def has_ansi_true_colors(self) -> bool:
+    def has_colors_true(self) -> bool:
         """Return true if terminal supports true colors.
 
         """
 
-        return self.color_capability.has_ansi_true_colors
+        return self.colors >= TermColors.ANSI_TRUE
 
 
 @functools.cache
@@ -171,35 +146,35 @@ def _get_term_info(ostream: _t.Optional[_t.TextIO]) -> TermInfo:
 
     has_interactive_output = _is_interactive_output(ostream)
 
-    color_capability = TermColorCapability.NONE
+    colors = TermColors.NONE
     can_move_cursor = False
     if has_interactive_output:
         if os.name == 'nt':
             if _enable_vt_processing(ostream):
-                color_capability = TermColorCapability.ANSI_TRUE
+                colors = TermColors.ANSI_TRUE
                 can_move_cursor = True
         elif 'GITHUB_ACTIONS' in os.environ:
-            color_capability = TermColorCapability.ANSI_TRUE
+            colors = TermColors.ANSI_TRUE
         elif any(ci in os.environ for ci in ['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE', 'TEAMCITY_VERSION']):
-            color_capability = TermColorCapability.ANSI_8
+            colors = TermColors.ANSI
         elif colorterm in ('truecolor', '24bit') or term == 'xterm-kitty':
-            color_capability = TermColorCapability.ANSI_TRUE
+            colors = TermColors.ANSI_TRUE
             can_move_cursor = True
         elif colorterm in ('yes', 'true') or '256color' in term or term == 'screen':
-            color_capability = TermColorCapability.ANSI_256
+            colors = TermColors.ANSI_256
             can_move_cursor = True
         elif term in 'linux' or 'color' in term or 'ansi' in term or 'xterm' in term:
-            color_capability = TermColorCapability.ANSI_8
+            colors = TermColors.ANSI
             can_move_cursor = True
 
     theme = TermTheme.UNKNOWN
     background_color = None
-    if color_capability >= TermColorCapability.ANSI_8 and can_move_cursor:
+    if colors >= TermColors.ANSI and can_move_cursor:
         theme, background_color = _get_theme(ostream)
 
     return TermInfo(
         has_interactive_output=has_interactive_output,
-        color_capability=color_capability,
+        colors=colors,
         can_move_cursor=can_move_cursor,
         background_color=ColorValue(background_color) if background_color else None,
         theme=theme,
@@ -450,26 +425,26 @@ class ColorValue:
                     return colors[l]
                 else:
                     a, b = colors[i].data, colors[i + 1].data
-                    return ColorValue(tuple(int(ca + f * (cb - ca)) for ca, cb in zip(a, b)))
+                    return ColorValue(tuple(int(ca + f * (cb - ca)) for ca, cb in zip(a, b)))  # type: ignore
 
             return lerp
         else:
             return lambda f, /: colors[0]
 
-    def _as_fore(self, cap: _t.Union[TermInfo, TermColorCapability], /) -> str:
+    def _as_fore(self, cap: TermInfo, /) -> str:
         return self._as_code('3', cap)
 
-    def _as_back(self, cap: _t.Union[TermInfo, TermColorCapability], /) -> str:
+    def _as_back(self, cap: TermInfo, /) -> str:
         return self._as_code('4', cap)
 
-    def _as_code(self, fg_bg_code: str, cap: _t.Union[TermInfo, TermColorCapability], /) -> str:
-        if not cap.has_ansi_8_colors:
+    def _as_code(self, fg_bg_code: str, cap: TermInfo, /) -> str:
+        if not cap.has_colors:
             return ''
         elif isinstance(self.data, int):
             return f'{fg_bg_code}{self.data}'
-        elif cap.has_ansi_true_colors:
+        elif cap.has_colors_true:
             return f'{fg_bg_code}8;2;{self.data[0]};{self.data[1]};{self.data[2]}'
-        elif cap.has_ansi_256_colors:
+        elif cap.has_colors_256:
             return f'{fg_bg_code}8;5;{_rgb_to_256(*self.data)}'
         else:
             return f'{fg_bg_code}{_rgb_to_8(*self.data)}'
@@ -557,13 +532,13 @@ class Color:
         return lambda f, /: colors[0]
 
 
-    def as_code(self, cap: _t.Union[TermInfo, TermColorCapability], /) -> str:
+    def as_code(self, cap: TermInfo, /) -> str:
         """Convert this color into an ANSI escape code
         with respect to the given terminal capabilities.
 
         """
 
-        if cap == TermColorCapability.NONE:
+        if cap == TermColors.NONE:
             return ''
 
         codes = ['0']
@@ -671,5 +646,5 @@ def _adjust_lightness(color: ColorValue, factor: float):
 #     ColorValue.from_hex('#C00FBA'),
 # )
 # for i in range(0, 81):
-#     print(f'\x1b[{lerp(i / 80)._as_back(TermColorCapability.ANSI_TRUE)}m ', end='')
+#     print(f'\x1b[{lerp(i / 80)._as_back(TermColors.ANSI_TRUE)}m ', end='')
 # print('')
