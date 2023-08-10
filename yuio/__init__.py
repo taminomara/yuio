@@ -1,5 +1,140 @@
+"""
+Utility functions
+-----------------
+
+The following utility functions are used throughout Yuio implementation:
+
+.. autofunction:: to_dash_case
+
+
+Utility types
+-------------
+
+.. autoclass:: SupportsLt
+
+"""
+
 import logging as _logging
 import os as _os
+import sys as _sys
+import abc as _abc
+import textwrap as _textwrap
+import re as _re
+import typing as _t
+
+__all__ = [
+    "SupportsLt",
+    "to_dash_case",
+]
 
 _logger = _logging.getLogger('yuio.internal')
-_logger.propagate = 'YUIO_DEBUG' in _os.environ
+_logger.setLevel("DEBUG")  #
+_logger.propagate = False
+
+_debug = "YUIO_DEBUG" in _os.environ
+if _debug:
+    __level = _os.environ.get('YUIO_DEBUG_LEVEL', "DEBUG")
+    __file = _os.environ.get('YUIO_DEBUG_FILE') or 'yuio.log'
+    __file_handler = _logging.FileHandler(__file, delay=True)
+    __file_handler.setLevel(__level)
+    _logger.addHandler(__file_handler)
+
+__stderr_handler = _logging.StreamHandler(_sys.__stderr__)
+__stderr_handler.setLevel('CRITICAL')
+_logger.addHandler(__stderr_handler)
+
+
+_T_contra = _t.TypeVar('_T_contra', contravariant=True)
+
+class SupportsLt(_t.Protocol[_T_contra]):
+    """Protocol for objects that can be compared to each other.
+
+    """
+
+    @_abc.abstractmethod
+    def __lt__(self, other: _T_contra, /) -> bool: ...
+
+
+_TO_DASH_CASE_RE = _re.compile(
+    r"""
+      # We will add a dash (bear with me here):
+      _                                 # 1. instead of underscore,
+      | (                               # 2. OR in the following case:
+        (?<!^)                          #   - not at the beginning of the string,
+        (                               #   - AND EITHER:
+            (?<=[A-Z])(?=[A-Z][a-z])    #     - before case gets lower (`XMLTag` -> `XML-Tag`),
+          | (?<=[a-zA-Z])(?![a-zA-Z_])  #     - between a letter and a non-letter (`HTTP20` -> `HTTP-20`),
+          | (?<![A-Z_])(?=[A-Z])        #     - between non-uppercase and uppercase letter (`TagXML` -> `Tag-XML`),
+        )                               #   - AND ALSO:
+        (?!$)                           #     - not at the end of the string.
+      )
+    """,
+    _re.VERBOSE | _re.MULTILINE,
+)
+
+
+def to_dash_case(s: str, /) -> str:
+    """Convert ``CamelCase`` or ``snake_case`` identifier to a ``dash-case`` one.
+
+    This function assumes ASCII input, and will not word correctly
+    with non-ASCII characters.
+
+    """
+
+    return _TO_DASH_CASE_RE.sub('-', s).lower()
+
+
+_COMMENT_RE = _re.compile(r'^\s*#: ?(.*)\r?\n?$')
+
+
+def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
+    # based on code from Sphinx
+
+    import inspect
+    import itertools
+    import ast
+
+    if '<locals>' in obj.__qualname__:
+        # This will not work as expected!
+        return {}
+
+    sourcelines, _ = inspect.getsourcelines(obj)
+
+    docs = {}
+
+    node = ast.parse(_textwrap.dedent(''.join(sourcelines)))
+    assert isinstance(node, ast.Module)
+    assert len(node.body) == 1
+    cdef = node.body[0]
+
+    if isinstance(cdef, ast.ClassDef):
+        fields = [
+            (stmt.lineno, stmt.target.id)
+            for stmt in cdef.body
+            if (
+                isinstance(stmt, ast.AnnAssign)
+                and isinstance(stmt.target, ast.Name)
+                and not stmt.target.id.startswith('_')
+            )
+        ]
+    elif isinstance(cdef, ast.FunctionDef):
+        fields = [
+            (field.lineno, field.arg)
+            for field in
+            itertools.chain(cdef.args.args, cdef.args.kwonlyargs)
+        ]
+    else:
+        return {}
+
+    for (pos, name) in fields:
+        comment_lines = []
+        for before_line in sourcelines[pos - 2::-1]:
+            if match := _COMMENT_RE.match(before_line):
+                comment_lines.append(_textwrap.dedent(match.group(1)))
+            else:
+                break
+
+        if comment_lines:
+            docs[name] = '\n'.join(reversed(comment_lines))
+
+    return docs

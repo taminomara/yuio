@@ -4,5 +4,6 @@
     "python.testing.pytestEnabled": true,
     "cSpell.words": [
         "yuio"
-    ]
+    ],
+    "austin.interval": 10
 }

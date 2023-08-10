@@ -1,7 +1,9 @@
+import abc
 import enum
 import re
 import textwrap
 import typing as _t
+
 
 _TO_DASH_CASE_RE = re.compile(
     r'(?<!^)((?=[A-Z]([^A-Z]|$))|(?<=\d)(?=[A-Z])|(?<!\d)(?=\d))'

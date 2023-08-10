@@ -361,7 +361,7 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
     @abc.abstractmethod
-    def describe_many(self) -> _t.Optional[str]:
+    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
         """Return a human-readable description of a container element.
 
         Used with :meth:`~Parser.parse_many`.
@@ -369,7 +369,7 @@ class Parser(_t.Generic[T], abc.ABC):
         """
 
     @abc.abstractmethod
-    def describe_many_or_def(self) -> str:
+    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
         """Like :py:meth:`~Parser.describe_many`, but guaranteed to return something.
 
         """
@@ -654,10 +654,10 @@ class ValueParser(Parser[T], _t.Generic[T]):
             or yuio._utils.to_dash_case(self.__class__.__name__)
         )
 
-    def describe_many(self) -> _t.Optional[str]:
+    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
         return self.describe()
 
-    def describe_many_or_def(self) -> str:
+    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
         return (
             self.describe_many()
             or yuio._utils.to_dash_case(self.__class__.__name__)
@@ -723,10 +723,10 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
     def describe_or_def(self) -> str:
         return self._inner.describe_or_def()
 
-    def describe_many(self) -> _t.Optional[str]:
+    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
         return self._inner.describe_many()
 
-    def describe_many_or_def(self) -> str:
+    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
         return self._inner.describe_or_def()
 
     def describe_value(self, value: T, /) -> _t.Optional[str]:
@@ -1004,10 +1004,10 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
     def describe_or_def(self) -> str:
         return self._inner.describe_or_def()
 
-    def describe_many(self) -> _t.Optional[str]:
+    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
         return self._inner.describe_many()
 
-    def describe_many_or_def(self) -> str:
+    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
         return self._inner.describe_or_def()
 
     def describe_value(self, value: _t.Optional[T], /) -> _t.Optional[str]:
@@ -1076,10 +1076,10 @@ class _Collection(Parser[C], _t.Generic[C, T]):
 
         return f'{value}[{delimiter}{value}[{delimiter}...]]'
 
-    def describe_many(self) -> _t.Optional[str]:
+    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
         return self._inner.describe()
 
-    def describe_many_or_def(self) -> str:
+    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
         return self._inner.describe_or_def()
 
     def describe_value(self, value: C, /) -> _t.Optional[str]:
@@ -1322,7 +1322,7 @@ class Tuple(Parser[TU], _t.Generic[TU]):
 
         return _t.cast(TU, tuple(
             parser.parse_config(item)
-            for parser, item in zip(self._parsers, value)
+            for parser, item in zip(self._parsers, value)  # type: ignore
         ))
 
     def supports_parse_many(self) -> bool:
@@ -1340,19 +1340,11 @@ class Tuple(Parser[TU], _t.Generic[TU]):
 
         return delimiter.join(desc)
 
-    def describe_many(self) -> _t.Optional[str]:
-        descriptions = set(parser.describe() for parser in self._parsers)
-        if len(descriptions) == 1:
-            return descriptions.pop()
-        else:
-            return None
+    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
+        return tuple(parser.describe() or 'value' for parser in self._parsers)
 
-    def describe_many_or_def(self) -> str:
-        descriptions = set(parser.describe_or_def() for parser in self._parsers)
-        if len(descriptions) == 1:
-            return descriptions.pop()
-        else:
-            return 'value'
+    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
+        return tuple(parser.describe_or_def() for parser in self._parsers)
 
     def describe_value(self, value: TU, /) -> _t.Optional[str]:
         return self.describe_value_or_def(value)
@@ -1361,7 +1353,7 @@ class Tuple(Parser[TU], _t.Generic[TU]):
         delimiter = self._delimiter or ' '
         desc = [
             parser.describe_value_or_def(item)
-            for parser, item in zip(self._parsers, value)
+            for parser, item in zip(self._parsers, value)  # type: ignore
         ]
 
         return delimiter.join(desc)
@@ -1805,12 +1797,12 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
             return super().describe()
 
 
-_FromTypeHintCallback = _t.Callable[
+_FromTypeHintCallback: _t.TypeAlias = _t.Callable[
     [_t.Type, _t.Optional[_t.Any], _t.Tuple[_t.Any, ...]],
     _t.Optional['Parser[_t.Any]']
 ]
 
-_FROM_TYPE_HINT_CALLBACKS: _t.List[_FromTypeHintCallback] = []
+_FROM_TYPE_HINT_CALLBACKS: _t.List["_FromTypeHintCallback"] = []
 
 
 def from_type_hint(ty: _t.Type[T], /) -> 'Parser[T]':
@@ -1851,8 +1843,8 @@ def from_type_hint(ty: _t.Type[T], /) -> 'Parser[T]':
 
 
 def register_type_hint_conversion(
-    cb: _FromTypeHintCallback
-) -> _FromTypeHintCallback:
+    cb: "_FromTypeHintCallback"
+) -> "_FromTypeHintCallback":
     """Register a new converter from typehint to a parser.
 
     This function takes a callback that accepts three positional arguments:

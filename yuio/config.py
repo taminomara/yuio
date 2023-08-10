@@ -248,28 +248,28 @@ class _Placeholders(enum.Enum):
 
 
 #: Type of the :data:`DISABLED` placeholder.
-Disabled = _t.Literal[_Placeholders.DISABLED]
+Disabled: _t.TypeAlias = _t.Literal[_Placeholders.DISABLED]
 #: Indicates that some functionality is disabled.
-DISABLED: Disabled = _Placeholders.DISABLED
+DISABLED: "Disabled" = _Placeholders.DISABLED
 
 #: Type of the :data:`MISSING` placeholder.
-Missing = _t.Literal[_Placeholders.MISSING]
+Missing: _t.TypeAlias = _t.Literal[_Placeholders.MISSING]
 #: Indicates that some value is missing.
-MISSING: Missing = _Placeholders.MISSING
+MISSING: "Missing" = _Placeholders.MISSING
 
 #: Type of the :data:`POSITIONAL` placeholder.
-Positional = _t.Literal[_Placeholders.POSITIONAL]
+Positional: _t.TypeAlias = _t.Literal[_Placeholders.POSITIONAL]
 #: Used with :func:`field` to enable positional arguments.
-POSITIONAL: Positional = _Placeholders.POSITIONAL
+POSITIONAL: "Positional" = _Placeholders.POSITIONAL
 
 
 @dataclass(frozen=True)
 class _FieldSettings:
     default: _t.Any
     parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None
-    help: _t.Union[str, Disabled, None] = None
-    env: _t.Union[str, Disabled, None] = None
-    flags: _t.Union[str, _t.List[str], Disabled, Positional, None] = None
+    help: _t.Union[str, "Disabled", None] = None
+    env: _t.Union[str, "Disabled", None] = None
+    flags: _t.Union[str, _t.List[str], "Disabled", "Positional", None] = None
     required: bool = False
 
     def _update_defaults(
@@ -285,7 +285,7 @@ class _FieldSettings:
             ty = _t.get_args(ty)[0]
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
 
-        help: _t.Union[str, Disabled]
+        help: _t.Union[str, "Disabled"]
         if self.help is not None:
             help = self.help
         elif parsed_help is not None:
@@ -297,7 +297,7 @@ class _FieldSettings:
         if help == argparse.SUPPRESS:
             help = DISABLED
 
-        env: _t.Union[str, Disabled]
+        env: _t.Union[str, "Disabled"]
         if self.env is not None:
             env = self.env
         else:
@@ -306,7 +306,7 @@ class _FieldSettings:
             raise TypeError(
                 f'{qualname} got an empty env variable name')
 
-        flags: _t.Union[_t.List[str], Disabled, Positional]
+        flags: _t.Union[_t.List[str], "Disabled", "Positional"]
         if self.flags is DISABLED or self.flags is POSITIONAL:
             flags = self.flags
             if not allow_positionals and flags is POSITIONAL:
@@ -394,9 +394,9 @@ class _FieldSettings:
 class _Field:
     default: _t.Any
     parser: _t.Optional[yuio.parse.Parser[_t.Any]]
-    help: _t.Union[str, Disabled]
-    env: _t.Union[str, Disabled]
-    flags: _t.Union[_t.List[str], Disabled, Positional]
+    help: _t.Union[str, "Disabled"]
+    env: _t.Union[str, "Disabled"]
+    flags: _t.Union[_t.List[str], "Disabled", "Positional"]
     is_subconfig: bool
     ty: _t.Type
     required: bool
@@ -405,20 +405,20 @@ class _Field:
 @_t.overload
 def field(
     *,
-    help: _t.Union[str, Disabled, None] = None,
-    env: _t.Union[str, Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], Positional, Disabled, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
+    env: _t.Union[str, "Disabled", None] = None,
+    flags: _t.Union[str, _t.List[str], "Positional", "Disabled", None] = None,
 ) -> _t.Any: ...
 
 
 @_t.overload
 def field(
-    default: _t.Union[T, Missing] = MISSING,
+    default: _t.Union[T, "Missing"] = MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, Disabled, None] = None,
-    env: _t.Union[str, Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], Positional, Disabled, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
+    env: _t.Union[str, "Disabled", None] = None,
+    flags: _t.Union[str, _t.List[str], "Positional", "Disabled", None] = None,
 ) -> T: ...
 
 
@@ -427,9 +427,9 @@ def field(
     default: None,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, Disabled, None] = None,
-    env: _t.Union[str, Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], Positional, Disabled, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
+    env: _t.Union[str, "Disabled", None] = None,
+    flags: _t.Union[str, _t.List[str], "Positional", "Disabled", None] = None,
 ) -> _t.Optional[T]: ...
 
 
@@ -437,9 +437,9 @@ def field(
     default: _t.Any = MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
-    help: _t.Union[str, Disabled, None] = None,
-    env: _t.Union[str, Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], Disabled, Positional, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
+    env: _t.Union[str, "Disabled", None] = None,
+    flags: _t.Union[str, _t.List[str], "Disabled", "Positional", None] = None,
 ) -> _t.Any:
     """Field descriptor, used for additional configuration of fields.
 
@@ -483,7 +483,7 @@ def field(
 
 
 def inline(
-    help: _t.Union[str, Disabled, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
 ) -> _t.Any:
     """A shortcut for inlining nested configs.
 
@@ -497,18 +497,18 @@ def inline(
 @_t.overload
 def positional(
     *,
-    help: _t.Union[str, Disabled, None] = None,
-    env: _t.Union[str, Disabled, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
+    env: _t.Union[str, "Disabled", None] = None,
 ) -> _t.Any: ...
 
 
 @_t.overload
 def positional(
-    default: _t.Union[T, Missing] = MISSING,
+    default: _t.Union[T, "Missing"] = MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, Disabled, None] = None,
-    env: _t.Union[str, Disabled, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
+    env: _t.Union[str, "Disabled", None] = None,
 ) -> T: ...
 
 
@@ -517,8 +517,8 @@ def positional(
     default: None,
     *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, Disabled, None] = None,
-    env: _t.Union[str, Disabled, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
+    env: _t.Union[str, "Disabled", None] = None,
 ) -> _t.Optional[T]: ...
 
 
@@ -526,8 +526,8 @@ def positional(
     default: _t.Any = MISSING,
     *,
     parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
-    help: _t.Union[str, Disabled, None] = None,
-    env: _t.Union[str, Disabled, None] = None,
+    help: _t.Union[str, "Disabled", None] = None,
+    env: _t.Union[str, "Disabled", None] = None,
 ) -> _t.Any:
     """A shortcut for adding a positional argument.
 
@@ -570,20 +570,12 @@ class _VerboseAction(argparse.Action):
         count = (getattr(namespace, self.dest, 0) or 0) + 1
         setattr(namespace, self.dest, count)
 
-        import yuio.io
-        yuio.io.setup(debug_output=True)
+        # TODO!
 
+        # import yuio.io
+        # yuio.io.setup(debug_output=True)
 
-class _DisableColorAction(argparse.Action):
-    def __call__(self, _, namespace, values, option_string=None):
-        import yuio.io
-        yuio.io.setup(use_colors=False)
-
-
-class _EnableColorAction(argparse.Action):
-    def __call__(self, _, namespace, values, option_string=None):
-        import yuio.io
-        yuio.io.setup(use_colors=True)
+        pass
 
 
 class Config:
@@ -791,18 +783,19 @@ class Config:
             nargs=0,
         )
 
-        parser.add_argument(
+        # Note: `yuio.term` will search for these flags in `sys.argv` on its own,
+        # our job is simply to accept them. This is done to avoid situations when
+        # `yuio.io` gets used before parsing arguments.
+        color = parser.add_mutually_exclusive_group()
+        color.add_argument(
             '--force-color',
             help='force-enable colored output',
-            action=_EnableColorAction,
-            nargs=0,
+            action='store_true',
         )
-
-        parser.add_argument(
+        color.add_argument(
             '--force-no-color',
             help='force-disable colored output',
-            action=_DisableColorAction,
-            nargs=0,
+            action='store_true',
         )
 
         cls.__setup_arg_parser(parser, parser, '', ns_prefix + ':', False)
@@ -839,7 +832,7 @@ class Config:
                         default_desc = field.parser.describe_value_or_def(field.default)
                     help += f' [default: {default_desc}]'
 
-            flags: _t.Union[_t.List[str], Positional]
+            flags: _t.Union[_t.List[str], "Positional"]
             if prefix and field.flags is not POSITIONAL:
                 flags = [prefix + flag.lstrip('-') for flag in field.flags]
             else:
@@ -867,14 +860,18 @@ class Config:
             if flags is POSITIONAL:
                 metavar = '<' + name.replace('_', '-') + '>'
             elif parse_many:
-                metavar = '{' + field.parser.describe_many_or_def() + '}'
+                metavar = field.parser.describe_many_or_def()
+                if isinstance(metavar, tuple):
+                    metavar = tuple("{" + v + "}" for v in metavar)
+                else:
+                    metavar = "{" + metavar + "}"
             else:
                 metavar = '{' + field.parser.describe_or_def() + '}'
 
             nargs = field.parser.get_nargs()
             if flags is POSITIONAL and field.default is not MISSING and nargs is None:
                 nargs = '?'
-            nargs_kw = {'nargs': nargs} if nargs is not None else {}
+            nargs_kw: _t.Any = {'nargs': nargs} if nargs is not None else {}
 
             if flags is POSITIONAL:
                 group.add_argument(

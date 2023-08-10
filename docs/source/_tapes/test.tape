@@ -2,11 +2,11 @@ Output examples/demo.webm
 
 Require python
 
-Set Shell "bash"
-Set WindowBar "Colorful"
-Set BorderRadius 10
-Set Margin 20
-Set MarginFill "#674EFF"
+# Set Shell "bash"
+# Set WindowBar "Colorful"
+# Set BorderRadius 10
+# Set Margin 20
+# Set MarginFill "#674EFF"
 # Set PlaybackSpeed 0.5
 # Set TypingSpeed 25ms
 

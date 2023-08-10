@@ -1,12 +1,15 @@
+import datetime
+import enum
 import os.path
+
 import pytest
 
-from yuio.parse import *
+import yuio.parse
 
 
 class TestSimple:
     def test_str(self):
-        parser = Str()
+        parser = yuio.parse.Str()
         assert parser.parse('Test') == 'Test'
         assert parser.parse('Test') == 'Test'
         assert parser.parse_config('Test') == 'Test'
@@ -14,7 +17,7 @@ class TestSimple:
             parser.parse_config(10)
 
     def test_str_lower(self):
-        parser = Str().lower()
+        parser = yuio.parse.Str().lower()
         assert parser.parse('Test') == 'test'
         assert parser.parse('Test') == 'test'
         assert parser.parse_config('Test') == 'test'
@@ -22,7 +25,7 @@ class TestSimple:
             parser.parse_config(10)
 
     def test_str_upper(self):
-        parser = Str().upper()
+        parser = yuio.parse.Str().upper()
         assert parser.parse('Test') == 'TEST'
         assert parser.parse('Test') == 'TEST'
         assert parser.parse_config('Test') == 'TEST'
@@ -30,14 +33,14 @@ class TestSimple:
             parser.parse_config(10)
 
     def test_regex(self):
-        parser = Str().regex(r'^a|b$')
+        parser = yuio.parse.Str().regex(r'^a|b$')
         assert parser.parse('a') == 'a'
         assert parser.parse('b') == 'b'
         with pytest.raises(ValueError, match=r"should match regex '\^a\|b\$'"):
             parser.parse('foo')
 
     def test_int(self):
-        parser = Int()
+        parser = yuio.parse.Int()
         assert parser.parse('1') == 1
         assert parser.parse('1') == 1
         assert parser.parse_config(1) == 1
@@ -50,7 +53,7 @@ class TestSimple:
             parser.parse_config('x')
 
     def test_float(self):
-        parser = Float()
+        parser = yuio.parse.Float()
         assert parser.parse('1.5') == 1.5
         assert parser.parse('-10') == -10.0
         assert parser.parse('2e9') == 2e9
@@ -64,7 +67,7 @@ class TestSimple:
 
 class TestBool:
     def test_basics(self):
-        parser = Bool()
+        parser = yuio.parse.Bool()
         assert parser.parse('y') is True
         assert parser.parse('yes') is True
         assert parser.parse('yEs') is True
@@ -90,7 +93,7 @@ class TestEnum:
             DOGS = enum.auto()
             BLAHAJ = ':3'
 
-        parser = Enum(Cuteness)
+        parser = yuio.parse.Enum(Cuteness)
         assert parser.parse('CATS') is Cuteness.CATS
         assert parser.parse('CATS') is Cuteness.CATS
         assert parser.parse_config('CATS') is Cuteness.CATS
@@ -110,7 +113,7 @@ class TestEnum:
             GREEN = 32
             BLUE = 34
 
-        parser = Enum(Colors)
+        parser = yuio.parse.Enum(Colors)
         assert parser.parse('RED') is Colors.RED
         assert parser.parse('RED') is Colors.RED
         assert parser.parse_config('RED') is Colors.RED
@@ -127,7 +130,7 @@ class TestEnum:
 
 class TestContainers:
     def test_optional(self):
-        parser = Optional(Int())
+        parser = yuio.parse.Optional(yuio.parse.Int())
         assert parser.parse('1') == 1
         with pytest.raises(ValueError):
             parser.parse('')
@@ -144,7 +147,7 @@ class TestContainers:
         assert parser.describe_value_or_def(10) == '10'
 
     def test_list(self):
-        parser = List(Int())
+        parser = yuio.parse.List(yuio.parse.Int())
         assert parser.parse('') == []
         assert parser.parse('1 2 3') == [1, 2, 3]
         assert parser.parse('1\n2') == [1, 2]
@@ -163,10 +166,10 @@ class TestContainers:
         assert parser.describe_value([1, 2, 3]) == '1 2 3'
 
         with pytest.raises(ValueError, match='empty delimiter'):
-            List(Int(), delimiter='')
+            yuio.parse.List(yuio.parse.Int(), delimiter='')
 
     def test_set(self):
-        parser = Set(Int())
+        parser = yuio.parse.Set(yuio.parse.Int())
         assert parser.parse('') == set()
         assert parser.parse('1 2 3') == {1, 2, 3}
         assert parser.parse('1 2 1') == {1, 2}
@@ -184,10 +187,10 @@ class TestContainers:
         assert parser.describe_many_or_def() == 'int'
 
         with pytest.raises(ValueError, match='empty delimiter'):
-            Set(Int(), delimiter='')
+            yuio.parse.Set(yuio.parse.Int(), delimiter='')
 
     def test_frozenset(self):
-        parser = FrozenSet(Int())
+        parser = yuio.parse.FrozenSet(yuio.parse.Int())
         assert parser.parse('') == frozenset()
         assert parser.parse('1 2 3') == frozenset({1, 2, 3})
         assert parser.parse('1 2 1') == frozenset({1, 2})
@@ -205,10 +208,10 @@ class TestContainers:
         assert parser.describe_many_or_def() == 'int'
 
         with pytest.raises(ValueError, match='empty delimiter'):
-            FrozenSet(Int(), delimiter='')
+            yuio.parse.FrozenSet(yuio.parse.Int(), delimiter='')
 
     def test_dict(self):
-        parser = Dict(Int(), Str(), delimiter='-')
+        parser = yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Str(), delimiter='-')
         assert parser.parse('10:abc') == {10: 'abc'}
         assert parser.parse('10:abc-11:xyz') == {10: 'abc', 11: 'xyz'}
         with pytest.raises(ValueError, match='could not parse'):
@@ -217,17 +220,17 @@ class TestContainers:
         assert parser.describe_many() == 'int:str'
         assert parser.describe_value({1: 'z', 2: 'y'}) == '1:z-2:y'
 
-        parser = Dict(Int(), Pair(Str(), Str()))
+        parser = yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Pair(yuio.parse.Str(), yuio.parse.Str()))
         assert parser.parse('10:abc:xyz 11:abc::') \
             == {10: ('abc', 'xyz'), 11: ('abc', ':')}
         assert parser.describe() == 'int:str:str[ int:str:str[ ...]]'
         assert parser.describe_value({-5: ('xyz', 'abc'), 10: ('a', 'b')}) \
             == '-5:xyz:abc 10:a:b'
         with pytest.raises(ValueError, match='empty delimiter'):
-            Dict(Int(), Int(), delimiter='')
+            yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Int(), delimiter='')
 
     def test_pair(self):
-        parser = Pair(Int(), Str(), delimiter='-')
+        parser = yuio.parse.Pair(yuio.parse.Int(), yuio.parse.Str(), delimiter='-')
         assert parser.parse('10-abc') == (10, 'abc')
         assert parser.parse('10-abc-xyz') == (10, 'abc-xyz')
         with pytest.raises(ValueError, match='could not parse'):
@@ -235,7 +238,7 @@ class TestContainers:
         assert parser.describe() == 'int-str'
         assert parser.describe_value((-5, 'xyz')) == '-5-xyz'
 
-        parser = Pair(Int(), Pair(Str(), Str()))
+        parser = yuio.parse.Pair(yuio.parse.Int(), yuio.parse.Pair(yuio.parse.Str(), yuio.parse.Str()))
         assert parser.parse('10:abc:xyz') == (10, ('abc', 'xyz'))
         assert parser.parse('10:abc::') == (10, ('abc', ':'))
         assert parser.parse('10::xyz') == (10, ('', 'xyz'))
@@ -244,10 +247,10 @@ class TestContainers:
         assert parser.describe() == 'int:str:str'
         assert parser.describe_value((-5, ('xyz', 'abc'))) == '-5:xyz:abc'
         with pytest.raises(ValueError, match='empty delimiter'):
-            Pair(Int(), Int(), delimiter='')
+            yuio.parse.Pair(yuio.parse.Int(), yuio.parse.Int(), delimiter='')
 
     def test_tuple(self):
-        parser = Tuple(Int(), Int(), Str())
+        parser = yuio.parse.Tuple(yuio.parse.Int(), yuio.parse.Int(), yuio.parse.Str())
         assert parser.parse('1 2 asd') == (1, 2, 'asd')
         assert parser.parse('1 2 asd dsa') == (1, 2, 'asd dsa')
         with pytest.raises(ValueError, match='expected 3 element'):
@@ -255,9 +258,9 @@ class TestContainers:
         with pytest.raises(ValueError, match='as an int'):
             parser.parse('1 dsa asd')
         with pytest.raises(ValueError, match='empty tuple'):
-            Tuple()
+            yuio.parse.Tuple()
         with pytest.raises(ValueError, match='empty delimiter'):
-            Tuple(Int(), delimiter='')
+            yuio.parse.Tuple(yuio.parse.Int(), delimiter='')
 
         assert parser.describe() == 'int int str'
         assert parser.describe_many() is None
@@ -266,7 +269,7 @@ class TestContainers:
 
 class TestTime:
     def test_datetime(self):
-        parser = DateTime()
+        parser = yuio.parse.DateTime()
 
         assert parser.parse('2007-01-02T10:00:05.001') \
             == datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
@@ -282,7 +285,7 @@ class TestTime:
             parser.parse_config(10)
 
     def test_date(self):
-        parser = Date()
+        parser = yuio.parse.Date()
 
         assert parser.parse('2007-01-02') \
             == datetime.date(2007, 1, 2)
@@ -300,7 +303,7 @@ class TestTime:
             parser.parse_config(datetime.time(10, 1))
 
     def test_time(self):
-        parser = Time()
+        parser = yuio.parse.Time()
 
         assert parser.parse('10:05') \
             == datetime.time(10, 5)
@@ -318,7 +321,7 @@ class TestTime:
             parser.parse_config(datetime.date(1996, 1, 1))
 
     def test_timedelta(self):
-        parser = TimeDelta()
+        parser = yuio.parse.TimeDelta()
 
         assert parser.parse('1w') == datetime.timedelta(weeks=1)
         assert parser.parse('1week') == datetime.timedelta(weeks=1)
@@ -382,14 +385,14 @@ class TestTime:
 
 class TestPath:
     def test_path(self, ):
-        parser = Path()
+        parser = yuio.parse.Path()
         assert str(parser.parse('/a/s/d')) == '/a/s/d'
         assert str(parser.parse('/a/s/d/..')) == '/a/s'
         assert str(parser.parse('a/s/d')) == os.path.abspath('a/s/d')
         assert str(parser.parse('./a/s/./d')) == os.path.abspath('a/s/d')
         assert str(parser.parse('~/a')) == os.path.expanduser('~/a')
 
-        parser = Path(extensions=['.cfg', '.txt'])
+        parser = yuio.parse.Path(extensions=['.cfg', '.txt'])
         assert str(parser.parse('/a/s/d.cfg')) == '/a/s/d.cfg'
         assert str(parser.parse('/a/s/d.txt')) == '/a/s/d.txt'
         with pytest.raises(ValueError, match='should have extension .cfg, .txt'):
@@ -398,7 +401,7 @@ class TestPath:
     def test_file(self, tmpdir):
         tmpdir.join('file.cfg').write('hi!')
 
-        parser = File()
+        parser = yuio.parse.File()
         assert str(parser.parse(tmpdir.join('file.cfg').strpath)) \
             == tmpdir.join('file.cfg').strpath
         with pytest.raises(ValueError, match='doesn\'t exist'):
@@ -406,7 +409,7 @@ class TestPath:
         with pytest.raises(ValueError, match='is not a file'):
             parser.parse(tmpdir.strpath)
 
-        parser = File(extensions=['.cfg', '.txt'])
+        parser = yuio.parse.File(extensions=['.cfg', '.txt'])
         assert str(parser.parse(tmpdir.join('file.cfg').strpath)) \
             == tmpdir.join('file.cfg').strpath
         with pytest.raises(ValueError, match='doesn\'t exist'):
@@ -417,7 +420,7 @@ class TestPath:
     def test_dir(self, tmpdir):
         tmpdir.join('file.cfg').write('hi!')
 
-        parser = Dir()
+        parser = yuio.parse.Dir()
         assert str(parser.parse('~')) == os.path.expanduser('~')
         assert str(parser.parse(tmpdir.strpath)) == tmpdir.strpath
         with pytest.raises(ValueError, match='doesn\'t exist'):
@@ -428,7 +431,7 @@ class TestPath:
     def test_git_repo(self, tmpdir):
         tmpdir.join('file.cfg').write('hi!')
 
-        parser = GitRepo()
+        parser = yuio.parse.GitRepo()
         with pytest.raises(ValueError, match='is not a git repository'):
             parser.parse(tmpdir.strpath)
         with pytest.raises(ValueError, match='doesn\'t exist'):
@@ -444,42 +447,42 @@ class TestPath:
 class TestConstraints:
     def test_bound(self):
         with pytest.raises(TypeError, match='lower and lower_inclusive'):
-            Bound(Int(), lower=0, lower_inclusive=1)
+            yuio.parse.Bound(yuio.parse.Int(), lower=0, lower_inclusive=1)
         with pytest.raises(TypeError, match='upper and upper_inclusive'):
-            Bound(Int(), upper=0, upper_inclusive=1)
+            yuio.parse.Bound(yuio.parse.Int(), upper=0, upper_inclusive=1)
 
-        parser = Int().bound()
+        parser = yuio.parse.Int().bound()
         assert parser.parse('0') == 0
         assert parser.parse('-10') == -10
         assert parser.parse('10') == 10
 
-        parser = Int().gt(0)
+        parser = yuio.parse.Int().gt(0)
         assert parser.parse('10') == 10
         with pytest.raises(ValueError, match='should be greater than 0'):
             parser.parse('-1')
         with pytest.raises(ValueError, match='should be greater than 0'):
             parser.parse('0')
 
-        parser = Int().ge(0)
+        parser = yuio.parse.Int().ge(0)
         assert parser.parse('10') == 10
         assert parser.parse('0') == 0
         with pytest.raises(ValueError, match='should be greater or equal to 0'):
             parser.parse('-1')
 
-        parser = Int().lt(10)
+        parser = yuio.parse.Int().lt(10)
         assert parser.parse('5') == 5
         with pytest.raises(ValueError, match='should be lesser than 10'):
             parser.parse('10')
         with pytest.raises(ValueError, match='should be lesser than 10'):
             parser.parse('11')
 
-        parser = Int().le(10)
+        parser = yuio.parse.Int().le(10)
         assert parser.parse('5') == 5
         assert parser.parse('10') == 10
         with pytest.raises(ValueError, match='should be lesser or equal to 10'):
             parser.parse('11')
 
-        parser = Bound(Int(), lower_inclusive=0, upper_inclusive=5)
+        parser = yuio.parse.Bound(yuio.parse.Int(), lower_inclusive=0, upper_inclusive=5)
         assert parser.parse('0') == 0
         assert parser.parse('2') == 2
         assert parser.parse('5') == 5
@@ -488,7 +491,7 @@ class TestConstraints:
         with pytest.raises(ValueError, match='should be lesser or equal to 5'):
             parser.parse('6')
 
-        parser = Bound(Int(), lower=0, upper=5)
+        parser = yuio.parse.Bound(yuio.parse.Int(), lower=0, upper=5)
         assert parser.parse('2') == 2
         with pytest.raises(ValueError, match='should be greater than 0'):
             parser.parse('0')
@@ -496,7 +499,7 @@ class TestConstraints:
             parser.parse('5')
 
     def test_one_of(self):
-        parser = OneOf(Str(), ['qux', 'duo'])
+        parser = yuio.parse.OneOf(yuio.parse.Str(), ['qux', 'duo'])
         assert parser.parse('qux') == 'qux'
         assert parser.parse('duo') == 'duo'
         with pytest.raises(ValueError, match="qux, duo"):
@@ -508,6 +511,6 @@ class TestConstraints:
 
         assert parser.describe() == 'qux|duo'
 
-        parser = OneOf(Str().lower(), ['qux', 'duo'])
+        parser = yuio.parse.OneOf(yuio.parse.Str().lower(), ['qux', 'duo'])
         assert parser.parse('Qux') == 'qux'
         assert parser.parse('Duo') == 'duo'

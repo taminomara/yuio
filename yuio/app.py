@@ -29,12 +29,14 @@ Controlling how sub-commands are invoked
 """
 
 
-
 import argparse
 import dataclasses
 import inspect
 import logging
+import os
 import re
+import string
+import sys
 import textwrap
 import types
 import typing as _t
@@ -45,11 +47,12 @@ import yuio._utils
 import yuio.config
 import yuio.io
 import yuio.parse
+import yuio.term
 from yuio.config import DISABLED, MISSING, POSITIONAL, Disabled, Missing, Positional
 from yuio.config import field, inline, positional
 
 
-Command = _t.Callable[..., None]
+Command: _t.TypeAlias = _t.Callable[..., None]
 
 
 @_t.overload
@@ -60,12 +63,12 @@ def app(
     help: _t.Optional[str] = None,
     description: _t.Optional[str] = None,
     epilog: _t.Optional[str] = None,
-) -> _t.Callable[[Command], 'App']: ...
+) -> _t.Callable[["Command"], 'App']: ...
 
 
 @_t.overload
 def app(
-    command: Command,
+    command: "Command",
     /,
     *,
     prog: _t.Optional[str] = None,
@@ -77,7 +80,7 @@ def app(
 
 
 def app(
-    command: _t.Optional[Command] = None,
+    command: _t.Optional["Command"] = None,
     /,
     *,
     prog: _t.Optional[str] = None,
@@ -86,7 +89,7 @@ def app(
     description: _t.Optional[str] = None,
     epilog: _t.Optional[str] = None,
 ):
-    def registrar(command: Command, /) -> App:
+    def registrar(command: "Command", /) -> App:
         return App(
             command,
             prog=prog,
@@ -119,7 +122,7 @@ class App:
         #:
         #: If this command has no subcommands, or subcommand was not invoked,
         #: this will be empty.
-        subcommand: _t.Optional['App.SubCommand']
+        subcommand: _t.Optional["App.SubCommand"]
 
         # Internal, do not use.
         _config: _t.Any
@@ -148,7 +151,7 @@ class App:
 
     def __init__(
         self,
-        command: Command,
+        command: "Command",
         /,
         *,
         prog: _t.Optional[str] = None,
@@ -248,12 +251,12 @@ class App:
         help: _t.Optional[str] = None,
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
-    ) -> _t.Callable[[Command], 'App']: ...
+    ) -> _t.Callable[["Command"], 'App']: ...
 
     @_t.overload
     def subcommand(
         self,
-        cb: Command,
+        cb: "Command",
         /,
         *,
         name: _t.Optional[str] = None,
@@ -267,7 +270,7 @@ class App:
 
     def subcommand(
         self,
-        cb_or_name: _t.Union[str, Command, None] = None,
+        cb_or_name: _t.Union[str, "Command", None] = None,
         /,
         *,
         name: _t.Optional[str] = None,
@@ -288,7 +291,7 @@ class App:
         else:
             cb = cb_or_name
 
-        def registrar(cb: Command, /) -> App:
+        def registrar(cb: "Command", /) -> App:
             app = App(
                 cb,
                 prog=prog,
@@ -352,20 +355,24 @@ class App:
         return App.SubCommand('', subcommand, _config=config)
 
     def _setup_arg_parser(self) -> argparse.ArgumentParser:
+        prog = self.prog
+        if not prog:
+            prog = os.path.basename(sys.argv[0])
+
         parser = argparse.ArgumentParser(
             prog=self.prog,
             usage=self.usage,
             description=self.description,
             epilog=self.epilog,
             allow_abbrev=self.allow_abbrev,
-            formatter_class=_HelpFormatter,
+            formatter_class=_HelpFormatterV2,
         )
 
-        self.__setup_arg_parser(parser, 'app')
+        self.__setup_arg_parser(parser, 'app', prog)
 
         return parser
 
-    def __setup_arg_parser(self, parser: argparse.ArgumentParser, ns_prefix: str):
+    def __setup_arg_parser(self, parser: argparse.ArgumentParser, ns_prefix: str, prog: str):
         self._config_type._setup_arg_parser(parser, ns_prefix=ns_prefix)
 
         if self._sub_apps:
@@ -383,19 +390,20 @@ class App:
                 parser = subparsers.add_parser(
                     name,
                     aliases=sub_app.aliases or [],
+                    prog=prog,
                     help=sub_app.app.help,
                     description=sub_app.app.description,
                     epilog=sub_app.app.epilog,
                     allow_abbrev=self.allow_abbrev,
-                    formatter_class=_HelpFormatter,
+                    formatter_class=_HelpFormatterV2,
                 )
 
                 sub_app.app.__setup_arg_parser(
-                    parser, ns_prefix=f'{ns_prefix}/{name}'
+                    parser, ns_prefix=f'{ns_prefix}/{name}', prog=f"{prog} {name}"
                 )
 
 
-def _command_from_callable(cb: Command) -> _t.Type[yuio.config.Config]:
+def _command_from_callable(cb: "Command") -> _t.Type[yuio.config.Config]:
     sig = inspect.signature(cb)
 
     dct = {}
@@ -457,7 +465,7 @@ def _command_from_callable(cb: Command) -> _t.Type[yuio.config.Config]:
     )
 
 
-def _command_from_callable_run_impl(cb: Command, params: _t.List[str], accepts_subcommand):
+def _command_from_callable_run_impl(cb: "Command", params: _t.List[str], accepts_subcommand):
     def run(self, subcommand):
         kw = {name: getattr(self, name) for name in params}
         if accepts_subcommand:
@@ -466,78 +474,311 @@ def _command_from_callable_run_impl(cb: Command, params: _t.List[str], accepts_s
     return run
 
 
-class _HelpFormatter(argparse.HelpFormatter):
-    def format_help(self):
-        help = super().format_help().strip('\n')
-        help = re.sub(r'^usage:', '<c:cli/section>usage:</c>', help)
-        help = re.sub(r'\n\n(\S.*?:)\n(  |\n|\Z)', r'\n\n<c:cli/section>\1</c>\n\2', help, flags=re.MULTILINE)
-        help = re.sub(r'(?<=\W)(-[a-zA-Z0-9]|--[a-zA-Z0-9-_]+)\b', r'<c:cli/flag>\1</c>', help, flags=re.MULTILINE)
-        help = re.sub(r'\[(default:\s*)(.*?)]$', r'<c:cli/default>[\1<c:cli/default/code>\2</c>]</c>', help, flags=re.MULTILINE)
-        help = re.sub(r'(`+)(.*?)\1', r'<c:code>\2</c>', help, flags=re.MULTILINE)
-        help = help.replace('\n  <subcommand>\n', '\n')
+# class _HelpFormatter(argparse.HelpFormatter):
+#     def format_help(self):
+#         help = super().format_help().strip('\n')
+#         help = re.sub(r'^usage:', '<c:cli/section>usage:</c>', help)
+#         help = re.sub(r'\n\n(\S.*?:)\n(  |\n|\Z)', r'\n\n<c:cli/section>\1</c>\n\2', help, flags=re.MULTILINE)
+#         help = re.sub(r'(?<=\W)(-[a-zA-Z0-9]|--[a-zA-Z0-9-_]+)\b', r'<c:cli/flag>\1</c>', help, flags=re.MULTILINE)
+#         help = re.sub(r'\[(default:\s*)(.*?)]$', r'<c:cli/default>[\1<c:cli/default/code>\2</c>]</c>', help, flags=re.MULTILINE)
+#         help = re.sub(r'(`+)(.*?)\1', r'<c:code>\2</c>', help, flags=re.MULTILINE)
+#         help = help.replace('\n  <subcommand>\n', '\n')
 
-        handler = yuio.io._handler()
-        color = handler._get_color('cli')
-        return handler._merge_colored_out(handler._colorize(help, None, color)) + '\n'
+#         theme = yuio.io.get_theme()
+#         term = yuio.io.get_term()
+#         return theme.colorize(help + "\n", default_color="cli").merge(term)
 
-    def _iter_indented_subactions(self, action):
-        try:
-            return getattr(action, '_get_subactions')()
-        except AttributeError:
-            return []
+#     def _iter_indented_subactions(self, action):
+#         try:
+#             return getattr(action, '_get_subactions')()
+#         except AttributeError:
+#             return []
 
-    def _expand_help(self, action):
-        return self._get_help_string(action)
+#     def _expand_help(self, action):
+#         return self._get_help_string(action)
 
-    def _fill_text(self, text, width, indent):
-        text = text.replace('\t', ' ')
-        first_line, *rest = text.split('\n', 1)
-        text = first_line + ('\n' + textwrap.dedent(rest[0]) if rest else '')
-        text = text.strip()
+#     def _fill_text(self, text, width, indent):
+#         text = text.replace('\t', '  ')
+#         first_line, *rest = text.split('\n', 1)
+#         text = first_line + ('\n' + textwrap.dedent(rest[0]) if rest else '')
+#         text = text.strip()
 
-        filled_lines = []
+#         filled_lines = []
 
-        for paragraph in re.split(r'\n\s*\n', text, re.MULTILINE):
-            if not paragraph:
-                continue
+#         for paragraph in re.split(r'\n\s*\n', text, re.MULTILINE):
+#             if not paragraph:
+#                 continue
 
-            lines = paragraph.split('\n')
+#             lines = paragraph.split('\n')
 
-            if filled_lines:
-                filled_lines.append('')
+#             if filled_lines:
+#                 filled_lines.append('')
 
-            if (
-                re.match(r'^[^\v\s][^\v]*:\v*$', lines[0])
-                and (len(lines) == 1 or lines[1].startswith('  '))
-            ):
-                # First line is a section's heading
-                filled_lines.append(lines[0])
-                lines.pop(0)
+#             if (
+#                 re.match(r'^[^\v\s][^\v]*:\v*$', lines[0])
+#                 and (len(lines) == 1 or lines[1].startswith('  '))
+#             ):
+#                 # First line is a section's heading
+#                 filled_lines.append(lines[0])
+#                 lines.pop(0)
 
-            common_indent = min(
-                len(line) - len(line.lstrip()) for line in lines
+#             common_indent = min(
+#                 len(line) - len(line.lstrip()) for line in lines
+#             )
+
+#             if common_indent >= 4:
+#                 filled_lines.extend(line.rstrip('\v') for line in lines)
+#             else:
+#                 lines_to_fill = ['']
+#                 for line in lines:
+#                     if lines_to_fill[-1]:
+#                         lines_to_fill[-1] += ' '
+#                     if line.endswith('\v'):
+#                         lines_to_fill[-1] += line[common_indent:-1]
+#                         lines_to_fill.append('')
+#                     else:
+#                         lines_to_fill[-1] += line[common_indent:]
+#                 filled_lines.extend(
+#                     textwrap.fill(
+#                         line,
+#                         width=width,
+#                         initial_indent=indent + ' ' * common_indent,
+#                         subsequent_indent=indent + ' ' * common_indent,
+#                     )
+#                     for line in lines_to_fill if line
+#                 )
+
+#         return '\n'.join(filled_lines)
+
+
+_MAX_ARGS_COLUMN_WIDTH = 25
+
+
+class _HelpFormatterV2(object):
+    @dataclass(frozen=True, slots=True)
+    class _Text:
+        args: _t.Optional[yuio.term.ColorizedString]
+        text: _t.Optional[yuio.term.ColorizedString]
+
+    @dataclass(frozen=True, slots=True)
+    class _Section:
+        indent: int
+        heading: _t.Optional[yuio.term.ColorizedString] = None
+        items: _t.List["_HelpFormatterV2._Text"] = dataclasses.field(default_factory=list)
+
+        def format(self, out: yuio.term.ColorizedString, term_width: int):
+            if self.heading:
+                out += "  " * (self.indent - 1)
+                out += self.heading
+                out += "\n"
+
+            for item in self.items:
+                indent = self.indent
+                if item.args:
+                    out += "  " * indent
+                    out += item.args
+                    out += "\n"
+                    indent += 1
+                if item.text:
+                    for line in item.text.wrap(term_width - 2 * indent):
+                        out += "  " * indent
+                        out += line
+                        out += "\n"
+
+            # args_column_width = max(
+            #     min(item.args_column_width, _MAX_ARGS_COLUMN_WIDTH)
+            #     for item in self.items
+            # )
+
+
+    def __init__(self, prog: str):
+        self._prog = prog
+        self._term = yuio.io.get_term()
+        self._theme = yuio.io.get_theme()
+        self._indent = 0
+        self._sections = [_HelpFormatterV2._Section(0)]
+
+    def start_section(self, heading: _t.Optional[str]):
+        c_heading = self._theme.colorize(heading, default_color="cli/section") if heading else None
+        self._indent += 1
+        self._sections.append(_HelpFormatterV2._Section(self._indent, c_heading))
+
+    def end_section(self):
+        self._indent -= 1
+        self._sections.append(_HelpFormatterV2._Section(self._indent, None))
+
+    def add_text(self, text):
+        if text is not argparse.SUPPRESS and text is not None:
+            pass
+
+    def add_usage(self, usage, actions, groups, prefix=None):
+        if usage is argparse.SUPPRESS:
+            return
+
+        if prefix is None:
+            prefix = 'usage: '
+        c_prefix = self._theme.colorize(prefix, default_color="cli/section")
+
+        if usage is not None:
+            c_usage = self._theme.colorize(usage) % dict(prog=self._prog)
+        else:
+            c_usage = self._theme.colorize("%(prog)s") % dict(prog=self._prog)
+
+            optionals = []
+            positionals = []
+            for action in actions:
+                if action.option_strings:
+                    optionals.append(action)
+                else:
+                    positionals.append(action)
+            actions = optionals + positionals
+            inserts = [' '] * len(actions) + ['']
+            action_is_in_group = [False] * len(actions)
+            group: argparse._MutuallyExclusiveGroup
+            for group in groups:
+                try:
+                    start = actions.index(group._group_actions[0])
+                except (ValueError, IndexError):
+                    continue
+                else:
+                    end = start + len(group._group_actions)
+                    if actions[start:end] == group._group_actions:
+                        inserts[start] += '(' if group.required else '['
+                        inserts[start + 1:end] = [' | '] * (end - start - 1)
+                        inserts[end] = (')' if group.required else ']') + inserts[end]
+                        action_is_in_group[start:end] = [True] * len(group._group_actions)
+
+            for insert, action, in_group in zip(inserts, actions, action_is_in_group):
+                c_usage += self._theme.get_color("cli")
+                c_usage += insert
+                self._format_action_short(action, c_usage, in_group=in_group)
+            if inserts[-1]:
+                c_usage += self._theme.get_color("cli")
+                c_usage += inserts[-1]
+
+        self._sections[-1].items.append(_HelpFormatterV2._Text(None, c_prefix + c_usage))
+
+    def add_argument(self, action: argparse.Action):
+        if action.help is not argparse.SUPPRESS:
+            c_usage = yuio.term.ColorizedString()
+            sep = False
+            for option_string in action.option_strings:
+                if sep:
+                    c_usage += self._theme.get_color("cli")
+                    c_usage += ", "
+                c_usage += self._theme.get_color("cli/flag")
+                c_usage += option_string
+                if action.nargs != 0:
+                    c_usage += self._theme.get_color("cli")
+                    c_usage += " "
+                self._format_action_metavar_expl(action, c_usage)
+                sep = True
+
+            self._sections[-1].items.append(
+                _HelpFormatterV2._Text(
+                    c_usage,
+                    self._theme.colorize(action.help) if action.help else None)
             )
 
-            if common_indent >= 4:
-                filled_lines.extend(line.rstrip('\v') for line in lines)
+            try:
+                get_subactions = action._get_subactions
+            except AttributeError:
+                pass
             else:
-                lines_to_fill = ['']
-                for line in lines:
-                    if lines_to_fill[-1]:
-                        lines_to_fill[-1] += ' '
-                    if line.endswith('\v'):
-                        lines_to_fill[-1] += line[common_indent:-1]
-                        lines_to_fill.append('')
-                    else:
-                        lines_to_fill[-1] += line[common_indent:]
-                filled_lines.extend(
-                    textwrap.fill(
-                        line,
-                        width=width,
-                        initial_indent=indent + ' ' * common_indent,
-                        subsequent_indent=indent + ' ' * common_indent,
-                    )
-                    for line in lines_to_fill if line
-                )
+                self._indent += 1
+                self.add_arguments(get_subactions())
+                self._indent -= 1
 
-        return '\n'.join(filled_lines)
+    def add_arguments(self, actions):
+        for action in actions:
+            self.add_argument(action)
+
+    def format_help(self) -> str:
+        out = yuio.term.ColorizedString()
+        need_sep = False
+        for section in self._sections:
+            if not section.items:
+                continue
+            if section.heading and need_sep:
+                out += "\n"
+            section.format(out, 100)
+            need_sep = True
+        out += yuio.term.Color.NONE
+        return out.merge(self._term)
+
+    def _format_action_short(self, action: argparse.Action, out: yuio.term.ColorizedString, in_group: bool = False):
+        out += self._theme.get_color("cli")
+        if not in_group and not action.required:
+            out += "["
+
+        if action.option_strings:
+            out += self._theme.get_color("cli/flag")
+            out += action.format_usage()
+            if action.nargs != 0:
+                out += self._theme.get_color("cli")
+                out += " "
+
+        self._format_action_metavar_expl(action, out)
+
+        if not in_group and not action.required:
+            out += self._theme.get_color("cli")
+            out += "]"
+
+    def _format_action_metavar_expl(self, action: argparse.Action, out: yuio.term.ColorizedString):
+        nargs = action.nargs if action.nargs is not None else 1
+
+        if nargs == argparse.OPTIONAL:
+            out += "["
+            self._format_action_metavar(action, 0, out)
+            out += self._theme.get_color("cli")
+            out += "]"
+        elif nargs == argparse.ZERO_OR_MORE:
+            out += "["
+            self._format_action_metavar(action, 0, out)
+            out += self._theme.get_color("cli")
+            out += " ...]"
+        elif nargs == argparse.ONE_OR_MORE:
+            self._format_action_metavar(action, 0, out)
+            out += self._theme.get_color("cli")
+            out += " ["
+            self._format_action_metavar(action, 1, out)
+            out += self._theme.get_color("cli")
+            out += " ...]"
+        elif nargs == argparse.REMAINDER:
+            out += "..."
+        elif nargs == argparse.PARSER:
+            self._format_action_metavar(action, 1, out)
+            out += self._theme.get_color("cli")
+            out += " ..."
+        elif isinstance(nargs, int):
+            sep = False
+            for i in range(nargs):
+                if sep:
+                    out += self._theme.get_color("cli")
+                    out += " "
+                self._format_action_metavar(action, i, out)
+                sep = True
+
+    def _format_action_metavar(self, action: argparse.Action, n: int, out: yuio.term.ColorizedString):
+        metavar_t = action.metavar or f"<{action.option_strings[0]}>"
+        if isinstance(metavar_t, tuple):
+            metavar = metavar_t[n] if n < len(metavar_t) else metavar_t[-1]
+        else:
+            metavar = metavar_t
+
+        cli_color = self._theme.get_color("cli")
+        metavar_color = self._theme.get_color("cli/metavar")
+        cur_color = None
+        is_punctuation = False
+        for part in re.split(r"((?:[" + string.punctuation + r"]|\s)+)", metavar):
+            if is_punctuation and cur_color is not cli_color:
+                cur_color = cli_color
+                out += cli_color
+            elif not is_punctuation and cur_color is not metavar_color:
+                cur_color = metavar_color
+                out += metavar_color
+            out += part
+            is_punctuation = not is_punctuation
+
+    def _format_args(self, *_):
+        pass  # a workaround for argparse's shitty code

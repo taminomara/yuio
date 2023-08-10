@@ -17,6 +17,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.graphviz',
     'sphinxcontrib.jquery',
+    'sphinx_vhs',
 ]
 
 templates_path = ['_templates']
@@ -34,6 +35,8 @@ autodoc_member_order = 'bysource'
 graphviz_output_format = 'svg'
 
 pygments_style = 'yuio_pygments.Style'
+
+vhs_cwd = pathlib.Path(__file__).parent.parent.parent
 
 # -- Options for HTML output -------------------------------------------------
 

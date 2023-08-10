@@ -43,7 +43,7 @@ def main(config: Config = yuio.config.inline()):
     # From CLI arguments...
     CONFIG.update(config)
 
-    yuio.io.debug('global config is loaded: %s', CONFIG)
+    yuio.io.info('global config is loaded: <c:code>%r</c>', CONFIG)
 
 
 main.epilog = """
@@ -84,6 +84,8 @@ def train(
         default=pathlib.Path('trained.model'),
         flags=['-o', '--out', '--output'],
     ),
+
+    foo_bar: tuple[int, str] = (0, ''),
 ):
     """train model on a dataset.
 

@@ -1,15 +1,18 @@
+import argparse
 import enum
-import typing
+import os
+
+import typing as _t
 
 import pytest
 
-from yuio.config import *
+import yuio.config
 import yuio.parse
 
 
 class TestBasics:
     def test_default(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             f1: str = '1'
             f2: str = '2'
 
@@ -26,9 +29,9 @@ class TestBasics:
         assert c.f2 == 'b'
 
     def test_default_field(self):
-        class MyConfig(Config):
-            f1: str = field('1')
-            f2: str = field('2')
+        class MyConfig(yuio.config.Config):
+            f1: str = yuio.config.field('1')
+            f2: str = yuio.config.field('2')
 
         c = MyConfig()
         assert c.f1 == '1'
@@ -43,7 +46,7 @@ class TestBasics:
         assert c.f2 == 'b'
 
     def test_missing(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             f1: str
             f2: str
 
@@ -63,9 +66,9 @@ class TestBasics:
         assert c.f2 == 'b'
 
     def test_missing_field(self):
-        class MyConfig(Config):
-            f1: str = field()
-            f2: str = field()
+        class MyConfig(yuio.config.Config):
+            f1: str = yuio.config.field()
+            f2: str = yuio.config.field()
 
         c = MyConfig()
         with pytest.raises(AttributeError, match='f1 is not configured'):
@@ -83,7 +86,7 @@ class TestBasics:
         assert c.f2 == 'b'
 
     def test_init(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             f1: str
             f2: str
 
@@ -91,7 +94,7 @@ class TestBasics:
             MyConfig(x=1)
 
     def test_repr(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             f1: str = '1'
             f2: str
 
@@ -100,7 +103,7 @@ class TestBasics:
         assert repr(MyConfig(f2='y')) == "MyConfig(\n  f1='1',\n  f2='y'\n)"
 
     def test_inheritance(self):
-        class Parent(Config):
+        class Parent(yuio.config.Config):
             field_without_default: int
             field_with_default: int = 0
             field_without_default_that_gets_overridden_with_default: int
@@ -151,11 +154,11 @@ class TestBasics:
         assert c.new_field == 'x'
 
     def test_subconfig(self):
-        class SubConfig(Config):
+        class SubConfig(yuio.config.Config):
             a: str = 'a'
             b: str
 
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             sub: SubConfig
             x: int
 
@@ -177,7 +180,7 @@ class TestBasics:
                ")"
 
     def test_update(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             f1: str = 'f1'
             f2: str
 
@@ -200,11 +203,11 @@ class TestBasics:
         assert c.f2 == 'f2.2'
 
     def test_update_recursive(self):
-        class SubConfig(Config):
+        class SubConfig(yuio.config.Config):
             a: str = 'a'
             b: str
 
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             sub: SubConfig
             x: int
 
@@ -215,10 +218,10 @@ class TestBasics:
         assert c.sub.a == 'a.2'
         assert c.sub.b == '2'
 
-    class SubConfig(Config):
+    class SubConfig(yuio.config.Config):
         y: int
 
-    class ResolveConfig(Config):
+    class ResolveConfig(yuio.config.Config):
         x: 'TestBasics.SubConfig'
 
     def test_resolve(self):
@@ -228,34 +231,34 @@ class TestBasics:
     def test_resolve_locals(self):
         Ty = int
 
-        class ResolveConfig(Config):
+        class ResolveConfig(yuio.config.Config):
             f: 'Ty'
 
         with pytest.raises(NameError, match='forward references do not work inside functions'):
             ResolveConfig(f=10)
 
     def test_optional_lift(self):
-        class MyConfig1(Config):
+        class MyConfig1(yuio.config.Config):
             x: int
 
         with pytest.raises(yuio.parse.ParsingError, match='expected an int'):
             assert MyConfig1.load_from_parsed_file(dict(x=None))
 
-        class MyConfig2(Config):
+        class MyConfig2(yuio.config.Config):
             x: int = None  # type: ignore
 
         assert MyConfig2.load_from_parsed_file(dict(x=None)).x is None
 
-        class MyConfig3(Config):
-            x: int = field(
+        class MyConfig3(yuio.config.Config):
+            x: int = yuio.config.field(
                 parser=yuio.parse.Int(),
                 default=None,
             )  # type: ignore
 
         assert MyConfig3.load_from_parsed_file(dict(x=None)).x is None
 
-        class MyConfig4(Config):
-            x: typing.Optional[int] = field(
+        class MyConfig4(yuio.config.Config):
+            x: _t.Optional[int] = yuio.config.field(
                 parser=yuio.parse.Int(),
             )
 
@@ -268,7 +271,7 @@ class TestEnv:
         pass
 
     def test_load(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             f1: str
             f2: str = 'f2'
 
@@ -288,7 +291,7 @@ class TestEnv:
         assert c.f2 == 'f2.2'
 
     def test_prefix(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             s: str
 
         os.environ['S'] = 's.1'
@@ -301,9 +304,9 @@ class TestEnv:
         assert c.s == 's.2'
 
     def test_disabled(self):
-        class MyConfig(Config):
-            f_disabled: str = field(
-                'f_disabled', env=DISABLED)
+        class MyConfig(yuio.config.Config):
+            f_disabled: str = yuio.config.field(
+                'f_disabled', env=yuio.config.DISABLED)
             f_enabled: str = 'f_enabled'
 
         os.environ['F_DISABLED'] = 'f_disabled.2'
@@ -313,8 +316,8 @@ class TestEnv:
         assert c.f_enabled == 'f_enabled.2'
 
     def test_configured_name(self):
-        class MyConfig(Config):
-            f1: str = field('f1', env='FX')
+        class MyConfig(yuio.config.Config):
+            f1: str = yuio.config.field('f1', env='FX')
 
         os.environ['F1'] = 'f1.2'
         c = MyConfig.load_from_env()
@@ -325,15 +328,15 @@ class TestEnv:
         assert c.f1 == 'f1.3'
 
         with pytest.raises(TypeError, match='empty env variable name'):
-            class ErrConfig(Config):
-                a: str = field(env='')
+            class ErrConfig(yuio.config.Config):
+                a: str = yuio.config.field(env='')
 
             ErrConfig.load_from_env()
 
     def test_simple_parsers(self):
-        class MyConfig1(Config):
+        class MyConfig1(yuio.config.Config):
             b: bool
-            s: str = field(
+            s: str = yuio.config.field(
                 parser=yuio.parse.OneOf(yuio.parse.Str(), ['x', 'y'])
             )
 
@@ -351,7 +354,7 @@ class TestEnv:
             A = enum.auto()
             B = enum.auto()
 
-        class MyConfig2(Config):
+        class MyConfig2(yuio.config.Config):
             b: bool
             s: str
             f: float
@@ -371,12 +374,12 @@ class TestEnv:
         assert c.i == -10
         assert c.e is E.B
 
-        class MyConfig3(Config):
-            b: typing.Optional[bool]
-            s: typing.Optional[str]
-            f: typing.Optional[float]
-            i: typing.Optional[int]
-            e: typing.Optional[E]
+        class MyConfig3(yuio.config.Config):
+            b: _t.Optional[bool]
+            s: _t.Optional[str]
+            f: _t.Optional[float]
+            i: _t.Optional[int]
+            e: _t.Optional[E]
 
         os.environ['B'] = 'no'
         os.environ['S'] = 'str'
@@ -392,14 +395,14 @@ class TestEnv:
         assert c.e is E.B
 
     def test_collection_parsers(self):
-        class MyConfig(Config):
-            b: list = field(
+        class MyConfig(yuio.config.Config):
+            b: list = yuio.config.field(
                 parser=yuio.parse.List(
                     yuio.parse.Pair(
                         yuio.parse.Str(), yuio.parse.Int())))
-            s: typing.Set[int]
-            x: typing.Tuple[int, float]
-            d: typing.Dict[str, int]
+            s: _t.Set[int]
+            x: _t.Tuple[int, float]
+            d: _t.Dict[str, int]
 
         os.environ['B'] = 'a:1 b:2'
         os.environ['S'] = '1 2 3 5 3'
@@ -412,10 +415,10 @@ class TestEnv:
         assert c.d == {'a': 10, 'b': 20}
 
     def test_subconfig(self):
-        class SubConfig(Config):
+        class SubConfig(yuio.config.Config):
             a: str
 
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             sub: SubConfig
 
         os.environ['SUB_A'] = 'xxx1'
@@ -423,15 +426,15 @@ class TestEnv:
         assert c.sub.a == 'xxx1'
 
     def test_subconfig_no_prefix(self):
-        class SubSubConfig(Config):
+        class SubSubConfig(yuio.config.Config):
             b: str
 
-        class SubConfig(Config):
+        class SubConfig(yuio.config.Config):
             a: str
-            sub: SubSubConfig = field(env='')
+            sub: SubSubConfig = yuio.config.field(env='')
 
-        class MyConfig(Config):
-            sub: SubConfig = field(env='')
+        class MyConfig(yuio.config.Config):
+            sub: SubConfig = yuio.config.field(env='')
 
         os.environ['SUB_A'] = 'xxx1'
         os.environ['A'] = 'xxx-a'
@@ -451,16 +454,16 @@ class TestEnv:
 
 
 class TestArgs:
-    C = typing.TypeVar('C', bound=Config)
+    C = _t.TypeVar('C', bound=yuio.config.Config)
 
     @staticmethod
-    def load_from_args(confg: typing.Type[C], args: str) -> C:
+    def load_from_args(confg: _t.Type[C], args: str) -> C:
         parser = argparse.ArgumentParser()
         confg._setup_arg_parser(parser)
         return confg._load_from_namespace(parser.parse_args(args.split()))
 
     def test_load(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: str
             b: int
             c: int = 5
@@ -477,8 +480,8 @@ class TestArgs:
         assert c.c == 5
 
     def test_disabled(self, capsys):
-        class MyConfig(Config):
-            a: str = field(default='def', flags=DISABLED)
+        class MyConfig(yuio.config.Config):
+            a: str = yuio.config.field(default='def', flags=yuio.config.DISABLED)
 
         c = self.load_from_args(MyConfig, '')
         assert c.a == 'def'
@@ -488,8 +491,8 @@ class TestArgs:
         assert 'unrecognized arguments: --a asd' in capsys.readouterr().err
 
     def test_configured_flags(self):
-        class MyConfig(Config):
-            a: str = field(flags=['-a', '--a-long'])
+        class MyConfig(yuio.config.Config):
+            a: str = yuio.config.field(flags=['-a', '--a-long'])
 
         c = self.load_from_args(MyConfig, '-a foo')
         assert c.a == 'foo'
@@ -498,21 +501,21 @@ class TestArgs:
         assert c.a == 'bar'
 
         with pytest.raises(TypeError, match='empty flag'):
-            class _ErrConfig1(Config):
-                a: str = field(flags='')
+            class _ErrConfig1(yuio.config.Config):
+                a: str = yuio.config.field(flags='')
 
             self.load_from_args(_ErrConfig1, '')
 
         with pytest.raises(TypeError, match='empty flag'):
-            class _ErrConfig2(Config):
-                a: str = field(flags=[''])
+            class _ErrConfig2(yuio.config.Config):
+                a: str = yuio.config.field(flags=[''])
 
             self.load_from_args(_ErrConfig2, '')
 
     def test_simple_parsers(self, capsys):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             b: bool
-            s: str = field(
+            s: str = yuio.config.field(
                 parser=yuio.parse.OneOf(yuio.parse.Str(), ['x', 'y'])
             )
 
@@ -525,14 +528,14 @@ class TestArgs:
         assert 'one of x, y' in capsys.readouterr().err
 
     def test_collection_parsers(self):
-        class MyConfig(Config):
-            b: list = field(
+        class MyConfig(yuio.config.Config):
+            b: list = yuio.config.field(
                 parser=yuio.parse.List(
                     yuio.parse.Pair(
                         yuio.parse.Str(), yuio.parse.Int())))
-            s: typing.Set[int]
-            x: typing.Tuple[int, float]
-            d: typing.Dict[str, int]
+            s: _t.Set[int]
+            x: _t.Tuple[int, float]
+            d: _t.Dict[str, int]
 
         c = self.load_from_args(MyConfig, '--b a:1 b:2 --s 1 2 3 5 3 --x 1 2 --d a:10 b:20')
         assert c.b == [('a', 1), ('b', 2)]
@@ -541,7 +544,7 @@ class TestArgs:
         assert c.d == {'a': 10, 'b': 20}
 
     def test_bool_flag(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: bool
             b: bool
 
@@ -550,10 +553,10 @@ class TestArgs:
         assert c.b is False
 
     def test_subconfig(self):
-        class SubConfig(Config):
+        class SubConfig(yuio.config.Config):
             a: str
 
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             b: str
             sub: SubConfig
 
@@ -562,50 +565,50 @@ class TestArgs:
         assert c.sub.a == 'bar'
 
     def test_subconfig_custom_prefix(self):
-        class SubConfig(Config):
+        class SubConfig(yuio.config.Config):
             a: str
 
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             b: str
-            sub: SubConfig = field(flags='--sub-sub')
+            sub: SubConfig = yuio.config.field(flags='--sub-sub')
 
         c = self.load_from_args(MyConfig, '--b foo --sub-sub-a bar')
         assert c.b == 'foo'
         assert c.sub.a == 'bar'
 
     def test_subconfig_no_prefix(self):
-        class SubConfig(Config):
+        class SubConfig(yuio.config.Config):
             a: str
 
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             b: str
-            sub: SubConfig = field(flags='')
+            sub: SubConfig = yuio.config.field(flags='')
 
         c = self.load_from_args(MyConfig, '--b foo --a bar')
         assert c.b == 'foo'
         assert c.sub.a == 'bar'
 
     def test_positionals_not_allowed(self):
-        class MyConfig(Config):
-            a: str = positional()
+        class MyConfig(yuio.config.Config):
+            a: str = yuio.config.positional()
 
         with pytest.raises(TypeError, match='positional arguments are not allowed in configs'):
             self.load_from_args(MyConfig, 'abc')
 
-        class MyConfig2(Config, _allow_positionals=True):
-            a: str = positional()
+        class MyConfig2(yuio.config.Config, _allow_positionals=True):
+            a: str = yuio.config.positional()
 
         c = self.load_from_args(MyConfig2, 'abc')
         assert c.a == 'abc'
 
         class MyConfig3(MyConfig2):
-            b: str = positional()
+            b: str = yuio.config.positional()
 
         c = self.load_from_args(MyConfig3, 'abc def')
         assert c.a == 'abc'
         assert c.b == 'def'
 
-    class DocSubConfig(Config):
+    class DocSubConfig(yuio.config.Config):
         #: help for `a`.
         a: str
 
@@ -614,7 +617,7 @@ class TestArgs:
 
         c: int
 
-    class DocConfig(Config):
+    class DocConfig(yuio.config.Config):
         #: help for `sub`.
         sub: 'TestArgs.DocSubConfig'
 
@@ -623,24 +626,24 @@ class TestArgs:
         TestArgs.DocConfig._setup_arg_parser(parser)
         help = parser.format_help()
         assert 'help for `sub`:\n' in help
-        assert '  --sub-a {str}  help for `a`.\n' in help
-        assert '  --sub-b        help for `b`. [default: disabled]\n' in help
-        assert '  --sub-no-b     disable --sub-b\n' in help
+        assert '  --sub-a {str}     help for `a`.\n' in help
+        assert '  --sub-b           help for `b`. [default: disabled]\n' in help
+        assert '  --sub-no-b        disable --sub-b\n' in help
         assert '  --sub-c {int}\n' in help
 
     def test_help_disabled(self):
-        class SubConfig(Config):
-            a: str = field(help='help for a')
+        class SubConfig(yuio.config.Config):
+            a: str = yuio.config.field(help='help for a')
 
-        class SubConfigNoHelp(Config):
-            b: str = field(help='help for b')
+        class SubConfigNoHelp(yuio.config.Config):
+            b: str = yuio.config.field(help='help for b')
 
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             c: str
-            d: str = field(help=DISABLED)
+            d: str = yuio.config.field(help=yuio.config.DISABLED)
             sub: SubConfig
-            sub_no_help: SubConfigNoHelp = field(help=DISABLED)
-            sub_no_help_2: SubConfigNoHelp = field(help=argparse.SUPPRESS)
+            sub_no_help: SubConfigNoHelp = yuio.config.field(help=yuio.config.DISABLED)
+            sub_no_help_2: SubConfigNoHelp = yuio.config.field(help=argparse.SUPPRESS)
 
         parser = argparse.ArgumentParser()
         MyConfig._setup_arg_parser(parser)
@@ -648,7 +651,7 @@ class TestArgs:
         print(help)
         assert '  --c {str}\n' in help
         assert 'sub:\n' in help
-        assert '  --sub-a {str}  help for a\n' in help
+        assert '  --sub-a {str}     help for a\n' in help
         assert 'help for b' not in help
         assert '-b' not in help
         assert 'sub_no_help' not in help
@@ -657,7 +660,7 @@ class TestArgs:
 
 class TestLoadFromFile:
     def test_load_from_parsed_file(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: str
             b: int
             c: int = 5
@@ -674,7 +677,7 @@ class TestLoadFromFile:
         assert c.c == 5
 
     def test_load_from_parsed_file_unknown_fields(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: str
             b: int
             c: int = 5
@@ -683,7 +686,7 @@ class TestLoadFromFile:
             MyConfig.load_from_parsed_file(dict(a='abc', b=10, x=11))
 
     def test_load_from_parsed_file_unknown_fields_ignored(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: str
             b: int
 
@@ -694,17 +697,17 @@ class TestLoadFromFile:
             _ = c.b
 
     def test_load_from_parsed_file_type_mismatch(self):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: str
 
         with pytest.raises(yuio.parse.ParsingError, match='expected a string'):
             MyConfig.load_from_parsed_file(dict(a=10))
 
     def test_load_from_parsed_file_subconfig(self):
-        class SubConfig(Config):
+        class SubConfig(yuio.config.Config):
             a: str
 
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             b: str
             c: SubConfig
 
@@ -716,7 +719,7 @@ class TestLoadFromFile:
             MyConfig.load_from_parsed_file(dict(b='abc', c=dict(x='cde')))
 
     def test_load_from_json_file(self, tmp_path):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: str
             b: int
             c: int = 5
@@ -753,7 +756,7 @@ class TestLoadFromFile:
         assert c.c == 5
 
     def test_load_from_yaml_file(self, tmp_path):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: str
             b: int
             c: int = 5
@@ -790,7 +793,7 @@ class TestLoadFromFile:
         assert c.c == 5
 
     def test_load_from_toml_file(self, tmp_path):
-        class MyConfig(Config):
+        class MyConfig(yuio.config.Config):
             a: str
             b: int
             c: int = 5

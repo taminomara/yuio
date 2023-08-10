@@ -35,7 +35,7 @@ def exec(
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
-    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
+    level: int = 0,
     text: _t.Literal[True] = True,
 ) -> str: ...
 
@@ -46,7 +46,7 @@ def exec(
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
-    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
+    level: int = 0,
     text: _t.Literal[False],
 ) -> bytes: ...
 
@@ -56,7 +56,7 @@ def exec(
     cwd: _t.Union[None, str, pathlib.Path] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Union[None, str, bytes] = None,
-    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
+    level: int = 0,
     text: bool = True,
 ):
     """Run an executable and return its stdout.
@@ -161,7 +161,7 @@ def sh(
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
-    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
+    level: int = 0,
     text: _t.Literal[True] = True,
 ) -> str: ...
 
@@ -175,7 +175,7 @@ def sh(
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
-    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
+    level: int = 0,
     text: _t.Literal[False],
 ) -> bytes: ...
 
@@ -188,7 +188,7 @@ def sh(
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Union[None, str, bytes] = None,
-    level: yuio.io.LogLevel = yuio.io.LogLevel.INFO,
+    level: int = 0,
     text: bool = True,
 ):
     """Run command in a shell, return its stdout.

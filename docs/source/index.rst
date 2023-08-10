@@ -9,6 +9,12 @@ on standard python libraries such as :mod:`logging` and :mod:`argparse`.
 .. _click: https://click.palletsprojects.com/
 .. _cleo: https://cleo.readthedocs.io/en/latest/
 
+
+.. vhs:: _tapes/widget_help.tape
+   :alt: Demonstration of `InputWithCompletion` widget.
+   :scale: 40%
+
+
 Features
 --------
 
@@ -96,3 +102,6 @@ Contents
    app
    exec
    git
+   complete
+   term
+   widget

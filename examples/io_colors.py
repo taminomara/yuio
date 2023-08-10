@@ -3,7 +3,6 @@ import yuio.io
 if __name__ == '__main__':
     yuio.io.heading('Message colors')
 
-    yuio.io.debug('Debug message is gray.')
     yuio.io.info('Info message is default color.')
     yuio.io.success('Success message is green.')
     yuio.io.warning('Warning message is yellow.')
@@ -12,7 +11,8 @@ if __name__ == '__main__':
     yuio.io.heading('Exceptions')
 
     try:
-        raise RuntimeError('example error')
+        import json
+        json.loads('{ nah, this is not a valid json 😕 }')
     except:
         yuio.io.error_with_tb('Something went horribly wrong!')
 
