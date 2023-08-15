@@ -275,7 +275,13 @@ _CI_ENV_VARS = [
 def _get_term_info(stream: _t.TextIO) -> Term:
     # Note: we don't rely on argparse to parse out flags and send them to us
     # because these functions can be called before parsing arguments.
-    if '--force-no-color' in sys.argv or 'FORCE_NO_COLOR' in os.environ:
+    if (
+        '--no-color' in sys.argv
+        or '--no-colors' in sys.argv
+        or '--force-no-color' in sys.argv
+        or '--force-no-colors' in sys.argv
+        or 'FORCE_NO_COLOR' in os.environ
+    ):
         return Term(stream)
 
     term = os.environ.get('TERM', '').lower()
@@ -287,7 +293,11 @@ def _get_term_info(stream: _t.TextIO) -> Term:
 
     color_support = ColorSupport.NONE
     in_ci = 'CI' in os.environ
-    if '--force-color' in sys.argv or 'FORCE_COLOR' in os.environ:
+    if(
+        '--force-color' in sys.argv
+        or '--force-colors' in sys.argv
+        or 'FORCE_COLOR' in os.environ
+    ):
         color_support = ColorSupport.ANSI
     if has_interactive_output:
         if os.name == 'nt':
@@ -1042,15 +1052,26 @@ class Theme:
         for i in range(1, len(it) + 1):
             yield it[:i]
 
+    _TAG_RE = re.compile(
+        r"""
+              <c:(?P<tag_open>[a-z0-9, _/@]+)>  # Color tag open.
+            | </c>                              # Color tag close.
+            | `(?P<code>(?:``|[^`])*)`          # Inline code block (backticks).
+        """,
+        re.VERBOSE
+    )
+    _NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
+    _FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
+
     def colorize(
         self,
         s: str,
         /,
         *,
         default_color: _t.Union[Color, str] = Color.NONE,
+        parse_cli_flags_in_backticks: bool = False,
     ) -> 'ColorizedString':
-        """
-        Colorize the given string.
+        """Colorize the given string.
 
         Apply `default_color` to the entire message, and process color tags
         within the message.
@@ -1061,28 +1082,133 @@ class Theme:
             default_color = self.get_color(default_color)
 
         raw: "RawColorizedString" = []
-
-        last_pos = 0
-        stack = [default_color]
-
         raw.append(default_color)
 
-        for tag in _TAG_RE.finditer(s):
+        stack = [default_color]
+
+        last_pos = 0
+        for tag in self._TAG_RE.finditer(s):
             raw.append(s[last_pos:tag.start()])
             last_pos = tag.end()
 
-            if name := tag.group('name'):
+            if name := tag.group('tag_open'):
                 color = stack[-1]
                 for sub_name in name.split(','):
                     sub_name = sub_name.strip()
                     color = color | self.get_color(sub_name)
                 raw.append(color)
                 stack.append(color)
+            elif code := tag.group("code"):
+                if (
+                    parse_cli_flags_in_backticks
+                    and self._FLAG_RE.match(code)
+                    and not self._NEG_NUM_RE.match(code)
+                ):
+                    raw.append(stack[-1] | self.get_color("cli/flag"))
+                else:
+                    raw.append(stack[-1] | self.get_color("code"))
+                raw.append(code.replace("``", "`"))
+                raw.append(stack[-1])
             elif len(stack) > 1:
                 stack.pop()
                 raw.append(stack[-1])
 
         raw.append(s[last_pos:])
+
+        raw.append(Color.NONE)
+
+        return ColorizedString(raw)
+
+    _PY_KWDS = [
+        "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del",
+        "elif", "else", "except", "False", "finally", "for", "from", "global", "if", "import",
+        "in", "is", "lambda", "None", "nonlocal", "not", "or", "pass", "raise", "return",
+        "True", "try", "while", "with", "yield"
+    ]
+    _PY_SYNTAX = re.compile(r"""
+          (?P<kwd>\b(?:%s)\b)                   # keyword
+        | (?P<str>
+            [rfu]*(                             # string prefix
+                '(?:\\.|[^\\'])*(?:'|\n)        # singly-quoted string
+              | "(?:\\.|[^\\"])*(?:"|\n)        # doubly-quoted string
+              | \"""(\\.|[^\\]|\n)*?\"""        # long singly-quoted string
+              | \'''(\\.|[^\\]|\n)*?\'''))      # long doubly-quoted string
+        | (?P<lit>
+              \d+(?:\.\d*(?:e[+-]?\d+)?)?       # int or float
+            | \.\d+(?:e[+-]?\d+)?               # float that starts with dot
+            | 0x[0-9a-fA-F]+                    # hex
+            | 0b[01]+)                          # bin
+        | (?P<punct>[({[\]})\\])                # punctuation
+        | (?P<comment>\#.*$)                    # comment
+    """ % "|".join(map(re.escape, _PY_KWDS)), re.MULTILINE | re.VERBOSE)
+    _SH_KWDS = [
+        "if", "then", "elif", "else", "fi", "time", "for", "in", "until", "while", "do",
+        "done", "case", "esac", "coproc", "select", "function",
+    ]
+    _SH_SYNTAX = re.compile(r"""
+        (?P<kwd>\b(?:%s)\b|\[\[|\]\])           # keyword
+        | (?P<str>
+            '(?:[.\n]*?)*'                      # singly-quoted string
+            | "(?:\\.|[^\\"])*")                # doubly-quoted string
+        | (?P<punct>
+              [{}()[\]\\;|!&]                   # punctuation
+            | <{1,3}                            # input redirect
+            | [12]?>{1,2}(?:&[12])?)            # output redirect
+        | (?P<comment>\#.*$)                    # comment
+        | (?P<flag>(?<=\s)-[-a-zA-Z0-9_]+\b)    # flag
+    """ % "|".join(map(re.escape, _SH_KWDS)), re.MULTILINE | re.VERBOSE)
+
+    _SYNTAX: _t.Dict[str, re.Pattern] = {
+        "py": _PY_SYNTAX,
+        "python": _PY_SYNTAX,
+        "sh": _SH_SYNTAX,
+        "bash": _SH_SYNTAX,
+    }
+
+    def highlight_code(
+        self,
+        s: str,
+        syntax: str,
+        /,
+        *,
+        default_color: _t.Union[Color, str] = Color.NONE,
+    ) -> "ColorizedString":
+        """Highlight syntax in the given string.
+
+        This is a very simple regexp-based syntax highlighter
+        that applies `default_color` to the entire code,
+        and adds colors for keywords and strings.
+
+        You can pass language name to the `syntax` param (currently
+        we only support ``'py'`` and ``'sh'``).
+
+        """
+
+        if isinstance(default_color, str):
+            default_color = self.get_color(default_color)
+
+        if syntax in self._SYNTAX:
+            syntax_re = self._SYNTAX[syntax]
+        else:
+            return ColorizedString([default_color, s])
+
+        raw: "RawColorizedString" = []
+
+        last_pos = 0
+        for code_unit in syntax_re.finditer(s):
+            if last_pos < code_unit.start():
+                raw.append(default_color)
+                raw.append(s[last_pos:code_unit.start()])
+            last_pos = code_unit.end()
+
+            for name, text in code_unit.groupdict().items():
+                if text:
+                    raw.append(default_color | self.get_color(f"syntax_highlighting/{name}"))
+                    raw.append(text)
+
+        if last_pos < len(s):
+            raw.append(default_color)
+            raw.append(s[last_pos:])
 
         raw.append(Color.NONE)
 
@@ -1154,7 +1280,7 @@ class DefaultTheme(Theme):
         'tb/frame/usr/file/line': 'code',
         'tb/frame/usr/file/path': 'code',
         'tb/frame/usr/code': 'primary_color',
-        'tb/frame/usr/highlight': 'primary_color',
+        'tb/frame/usr/highlight': 'low_priority_color_a',
         'tb/frame/lib': 'dim',
         'tb/frame/lib/file': 'tb/frame/usr/file',
         'tb/frame/lib/file/module': 'tb/frame/usr/file/module',
@@ -1177,6 +1303,17 @@ class DefaultTheme(Theme):
         'cli/flag': 'note',
         'cli/metavar': 'code',
         'cli/section': 'msg/group',
+        'cli/list/decoration': ["secondary_color"],
+        'cli/quote/decoration': ["secondary_color"],
+        'cli/code_block/decoration': ["secondary_color"],
+
+        "syntax_highlighting/kwd": "bold",
+        "syntax_highlighting/str": "bold",
+        "syntax_highlighting/str/esc": "blue",
+        "syntax_highlighting/lit": "bold",
+        "syntax_highlighting/punct": "blue",
+        "syntax_highlighting/comment": "dim",
+        "syntax_highlighting/flag": "cli/flag",
 
         'menu/input/decoration': 'low_priority_color_a',
         'menu/input/text': 'primary_color',
@@ -1333,6 +1470,9 @@ class ColorizedString:
     def __len__(self) -> int:
         return self.len
 
+    def __bool__(self) -> bool:
+        return self.len > 0
+
     def iter(self) -> _t.Iterator[str]:
         """Iterate over code points in this string, ignoring all colors.
 
@@ -1347,6 +1487,7 @@ class ColorizedString:
         i.e. the underlying list of strings and colors.
 
         """
+
         return self._items.__iter__()
 
     def __iter__(self):
@@ -1362,6 +1503,8 @@ class ColorizedString:
         break_on_hyphens: bool = True,
         preserve_spaces: bool = False,
         preserve_newlines: bool = True,
+        first_line_indent: _t.Optional[AnyString] = None,
+        continuation_indent: _t.Optional[AnyString] = None,
     ) -> _t.List['ColorizedString']:
         """Wrap a long line of text into multiple lines.
 
@@ -1378,6 +1521,10 @@ class ColorizedString:
 
         If `preserve_newlines` is `False`, newlines are treated as whitespaces.
 
+        If `first_line_indent` and `continuation_indent` are given, they are placed
+        in the beginning of respective lines. Passing colorized strings as indents
+        does not break coloring of the wrapped text.
+
         Example::
 
             >>> ColorizedString("hello, world!\\nit's a good day!").wrap(13)  # doctest: +NORMALIZE_WHITESPACE
@@ -1392,6 +1539,8 @@ class ColorizedString:
             break_on_hyphens=break_on_hyphens,
             preserve_spaces=preserve_spaces,
             preserve_newlines=preserve_newlines,
+            first_line_indent=first_line_indent,
+            continuation_indent=continuation_indent,
         ).wrap(self)
 
     def percent_format(self, args: _t.Any) -> 'ColorizedString':
@@ -1479,6 +1628,16 @@ class ColorizedString:
 
         term.stream.write(self.merge(term))
 
+    def get_last_color(self) -> _t.Optional[Color]:
+        """Get the latest color in this colorized string.
+
+        """
+
+        for item in reversed(self._items):
+            if isinstance(item, Color):
+                return item
+        return None
+
     def __str__(self) -> str:
         return ''.join(s for s in self._items if isinstance(s, str))
 
@@ -1487,17 +1646,6 @@ class ColorizedString:
             return f"<ColorizedString({self.__str__()!r}, explicit_newline={self.explicit_newline!r})>"
         else:
             return f"<ColorizedString({self.__str__()!r})>"
-
-
-_TAG_RE = re.compile(r'<c:(?P<name>[a-z0-9, _/@]+)>|</c>')
-
-
-def strip_color_tags(s: str, /) -> str:
-    """Remove all color tags from the given string.
-
-    """
-
-    return _TAG_RE.sub('', s)
 
 
 _S_SYNTAX = re.compile(
@@ -1589,28 +1737,53 @@ class _TextWrapper:
         break_on_hyphens: bool,
         preserve_spaces: bool,
         preserve_newlines: bool,
+        first_line_indent: _t.Optional[AnyString] = None,
+        continuation_indent: _t.Optional[AnyString] = None,
     ):
-        if width <= 1:
-            raise ValueError("width should be at least 2")
-
         self.width: int = width
         self.break_on_hyphens: bool = break_on_hyphens
         self.preserve_spaces: bool = preserve_spaces
         self.preserve_newlines: bool = preserve_newlines
+        self.first_line_indent: ColorizedString = ColorizedString(first_line_indent)
+        self.first_line_indent_color: _t.Optional[Color] = self.first_line_indent.get_last_color()
+        self.continuation_indent: ColorizedString = ColorizedString(continuation_indent)
+        self.continuation_indent_color: _t.Optional[Color] = self.continuation_indent.get_last_color()
+
+        if (
+            self.width - self.first_line_indent.width <= 1
+            or self.width - self.continuation_indent.width <= 1
+        ):
+            self.width = max(self.first_line_indent.width, self.continuation_indent.width) + 2
 
         self.lines: _t.List[ColorizedString] = []
 
-        self.current_line: "RawColorizedString" = []
-        self.current_line_width: int = 0
+        self.current_line: "RawColorizedString" = list(self.first_line_indent.iter_raw())
+        self.current_line_width: int = self.first_line_indent.width
+        self.current_color: _t.Optional[Color] = None
+        self.current_line_is_nonempty: bool = False
 
     def _flush_line(self, explicit_newline=''):
         self.lines.append(ColorizedString(self.current_line, explicit_newline=explicit_newline))
-        self.current_line = []
-        self.current_line_width = 0
+        self.current_line: "RawColorizedString" = list(self.continuation_indent.iter_raw())
+        self.current_line_width: int = self.continuation_indent.width
+        if (
+            self.current_color
+            and self.continuation_indent_color
+            and self.current_color != self.continuation_indent_color
+        ):
+            # Restore color after printing indent.
+            self.current_line.append(self.current_color)
+        self.current_line_is_nonempty = False
 
     def _append_word(self, word: str, word_width: int):
+        self.current_line_is_nonempty = True
         self.current_line.append(word)
         self.current_line_width += word_width
+
+    def _append_color(self, color: Color):
+        if color != self.current_color:
+            self.current_color = color
+            self.current_line.append(color)
 
     def _append_word_with_breaks(self, word: str, word_width: int):
         while self.current_line_width + word_width > self.width:
@@ -1631,8 +1804,7 @@ class _TextWrapper:
             self._flush_line()
 
         if word:
-            self.current_line.append(word)
-            self.current_line_width += word_width
+            self._append_word(word, word_width)
 
     def wrap(self, text: ColorizedString) -> _t.List[ColorizedString]:
         need_space_before_word = False
@@ -1640,7 +1812,7 @@ class _TextWrapper:
 
         for item in text.iter_raw():
             if isinstance(item, Color):
-                self.current_line.append(item)
+                self._append_color(item)
                 continue
 
             if self.break_on_hyphens is True:
@@ -1675,7 +1847,7 @@ class _TextWrapper:
                     self._append_word(word, word_width)
                 else:
                     # Word doesn't fit, so we start a new line.
-                    if self.current_line_width:
+                    if self.current_line_is_nonempty:
                         self._flush_line()
                     # We will break the word in the middle if it doesn't fit
                     # onto the whole line.

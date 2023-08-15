@@ -1,4 +1,5 @@
 import typing as _t
+import yuio.io
 import yuio.term
 import yuio.widget
 from yuio.widget import KeyboardEvent, RenderContext, VerticalLayout, Widget
@@ -37,10 +38,15 @@ class InputWithHeading(Widget):
 
 
 if __name__ == "__main__":
-    term = yuio.term.get_stderr_info()
-    theme = yuio.term.DefaultTheme(term)
+    yuio.io.heading("Demonstration for `yuio.widget.VerticalLayout`")
+    yuio.io.info("This widget dynamically changes its contents.")
+    yuio.io.info("Try pasting a long string and see what happens.")
+    yuio.io.br()
+
+    term = yuio.io.get_term()
+    theme = yuio.io.get_theme()
 
     widget = InputWithHeading()
 
     result = widget.run(term, theme)
-    print(f"You've entered {result!r}")
+    yuio.io.success(f"You've entered %r", result)

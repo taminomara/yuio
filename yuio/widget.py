@@ -1042,6 +1042,8 @@ class Widget(abc.ABC, _t.Generic[T]):
             column = getattr(cb, '__yuio_column__', None)
             lines = (cb.__doc__ or '').lstrip().splitlines() or ['']
             help = lines[0]
+            if not help:
+                continue
             item: "Help.Action" = (list(reversed(events)), help)
             if column is None:
                 items.append(item)
@@ -1262,6 +1264,13 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
                 widget.draw(rc)
 
             y1 = y2
+
+    @property
+    def help_columns(self) -> _t.List["Help.Column"]:
+        if self._event_receiver is not None:
+            return self._widgets[self._event_receiver].help_columns
+        else:
+            return []
 
 
 class Line(Widget[_t.Never]):
@@ -1930,6 +1939,28 @@ class Choice(Widget[T]):
             rc.set_color_path(f'menu/choice/{status_tag}/plain_text/{option.color_tag}')
             rc.write(']')
 
+    @functools.cached_property
+    def help_columns(self) -> _t.List["Help.Column"]:
+        return [
+            [
+                (
+                    [
+                        Key.ARROW_UP,
+                        Key.ARROW_DOWN,
+                        Key.ARROW_LEFT,
+                        Key.ARROW_RIGHT,
+                    ],
+                    "choose option",
+                )
+            ],
+            [
+                (
+                    Key.ENTER,
+                    "accept",
+                )
+            ]
+        ]
+
 
 class InputWithCompletion(Widget[str]):
     """
@@ -2225,7 +2256,15 @@ class Help(Widget[_t.Never]):
         self._keys_column_width = [self._get_action_keys_width(column) for column in self._columns]
         self._helps_column_width = [self._get_helps_width(column) for column in self._columns]
 
-        self._separate = all(len(column) == 1 for column in self._columns)
+        self._separate = all(len(column) == 1 for column in self._columns)\
+
+    @classmethod
+    def add_help_to(cls, widget: Widget[T]) -> Widget[T]:
+        """Wraps the given widget into a vertical layout, adding help message right after.
+
+        """
+
+        return VerticalLayoutBuilder().add(widget, receive_events=True).add(widget.help_widget).build()
 
     def _prepare_column(self, column: "Help.Column") -> _t.List[_t.Tuple[_t.List[str], str, int]]:
         return [self._prepare_action(action) for action in column]

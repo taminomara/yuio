@@ -727,7 +727,7 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
         return self._inner.describe_many()
 
     def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
-        return self._inner.describe_or_def()
+        return self._inner.describe_many_or_def()
 
     def describe_value(self, value: T, /) -> _t.Optional[str]:
         return self._inner.describe_value(value)
@@ -1008,7 +1008,7 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
         return self._inner.describe_many()
 
     def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
-        return self._inner.describe_or_def()
+        return self._inner.describe_many_or_def()
 
     def describe_value(self, value: _t.Optional[T], /) -> _t.Optional[str]:
         if value is None:
@@ -1359,7 +1359,7 @@ class Tuple(Parser[TU], _t.Generic[TU]):
         return delimiter.join(desc)
 
     def __repr__(self):
-        parsers = ', '.join(repr(parser for parser in self._parsers))
+        parsers = ', '.join(repr(parser) for parser in self._parsers)
         return f'{self.__class__.__name__}({parsers})'
 
 

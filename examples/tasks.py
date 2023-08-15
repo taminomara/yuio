@@ -24,10 +24,6 @@ def install(package):
     time.sleep(1.2)
     logging.debug('%s: build successful', package)
     time.sleep(0.2)
-    logging.debug('%s: building a package', package)
-    time.sleep(1.2)
-    logging.debug('%s: build successful', package)
-    time.sleep(0.2)
     logging.debug('%s: installing a package to `/usr/local`', package)
     time.sleep(0.3)
     logging.info('%s: install successful', package)
@@ -44,7 +40,7 @@ if __name__ == '__main__':
 
     yuio.io.heading('Yuio\'s tasks and logging showcase')
     yuio.io.info('Going to install some packages to demonstrate you tasks and logging!')
-    yuio.io.br()
+    yuio.io.hr()
 
     with yuio.io.Task('Installing packages') as task:
         # A bit of work.

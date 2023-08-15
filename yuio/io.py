@@ -343,8 +343,6 @@ def error_with_tb(msg: str, /, *args, **kwargs):
 def question(msg: str, /, *args, **kwargs):
     """Log a message with input prompts and other user communications.
 
-    These messages don't end with newline.
-
     """
 
     _handler().print(msg, args, 'question', **kwargs)
@@ -355,6 +353,7 @@ def heading(msg: str, /, *args, **kwargs):
 
     """
 
+    kwargs.setdefault("pad_line", 2)
     _handler().print(msg, args, 'heading', **kwargs)
 
 
@@ -363,8 +362,8 @@ def hr():
 
     """
 
-    msg = '\n' + '┄' * shutil.get_terminal_size().columns + '\n'
-    _handler().print(msg, None, 'hr')
+    msg = '┄' * shutil.get_terminal_size().columns
+    _handler().print(msg, None, 'hr', pad_line=1)
 
 
 def br():
@@ -1126,6 +1125,7 @@ class _HandlerImpl:
         self._rc = yuio.widget.RenderContext(term, theme)
 
         self._indent = 0
+        self._needs_padding: bool = False
 
         self._suspended: int = 0
         self._suspended_lines: _t.List[yuio.term.ColorizedString] = []
@@ -1214,6 +1214,7 @@ class _HandlerImpl:
         *,
         exc_info: _t.Union["_ExcInfo", bool, None] = None,
         ignore_suspended: bool = False,
+        pad_line: int = 0,
     ):
         if exc_info is True:
             exc_info = sys.exc_info()
@@ -1225,7 +1226,7 @@ class _HandlerImpl:
             raise ValueError(f"invalid exc_info {exc_info!r}")
 
         with self._lock:
-            line = self._format_line(msg, args, m_tag, exc_info)
+            line = self._format_line(msg, args, m_tag, exc_info, pad_line)
             self._emit(line, ignore_suspended)
 
     def emit(
@@ -1379,8 +1380,12 @@ class _HandlerImpl:
         args: _t.Optional[tuple],
         m_tag: str,
         exc_info: _t.Union["_ExcInfo", bool, None] = None,
+        pad_line: int = 0,
     ) -> yuio.term.ColorizedString:
         res = yuio.term.ColorizedString()
+
+        if pad_line and self._needs_padding:
+            res += "\n" * pad_line
 
         if self._indent:
             res += '  ' * self._indent
@@ -1400,6 +1405,12 @@ class _HandlerImpl:
         if exc_info is not None:
             res += self._format_tb(
                 ''.join(traceback.format_exception(*exc_info)), '  ' * (self._indent + 1))
+
+        if pad_line:
+            res += "\n"
+            self._needs_padding = False
+        else:
+            self._needs_padding = True
 
         return res
 
@@ -1529,8 +1540,11 @@ class _HandlerImpl:
                         res += plain_text_color
                         res += indent
                         res += stack_indent
-                        res += stack_colors.code_color
-                        res += line[len(stack_indent):]
+                        res += self.theme.highlight_code(
+                            line[len(stack_indent):],
+                            "py",
+                            default_color=stack_colors.code_color,
+                        )
                     continue
                 else:
                     # Stack has ended, this line is actually a message.

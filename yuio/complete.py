@@ -359,7 +359,7 @@ class CompletionCollector:
                 and all(c.iprefix == iprefix and c.isuffix == isuffix for c in self._completions)
             ):
                 # If all completions have the same `iprefix` and `isuffix`...
-                common_prefix = _commonprefix(list(c.completion for c in self._completions))
+                common_prefix = yuio._commonprefix(list(c.completion for c in self._completions))
                 if common_prefix and len(iprefix) + len(common_prefix) > len(self.iprefix) + len(self.prefix):
                     # ...and they have a common prefix that is longer than what's entered so far,
                     # then complete this common prefix.
@@ -492,17 +492,6 @@ def _corrections(a: str, b: str) -> float:
             )
 
     return d[-1][-1]
-
-
-def _commonprefix(m: _t.List[str]) -> str:
-    if not m:
-        return ''
-    s1 = min(m)
-    s2 = max(m)
-    for i, c in enumerate(s1):
-        if c != s2[i]:
-            return s1[:i]
-    return s1
 
 
 class Completer(abc.ABC):

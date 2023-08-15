@@ -9,7 +9,7 @@ import yuio.parse
 class Config(yuio.config.Config):
     """global configuration
 
-    global options are loaded from `app_config.json`,
+    global options are loaded from `./app_config.json`,
     from environment variables, and from CLI arguments.
 
     """
@@ -43,19 +43,37 @@ def main(config: Config = yuio.config.inline()):
     # From CLI arguments...
     CONFIG.update(config)
 
-    yuio.io.info('global config is loaded: <c:code>%r</c>', CONFIG)
+    yuio.io.info('global config is loaded: `%r`', CONFIG)
 
 
 main.epilog = """
-usage examples:
-  app.py train training.bin\v
-  app.py run trained.model sample.bin\v
+formatting:
+    prolog is parsed and colorized according to the general format
+    of help messages:
 
-note:
-  yuio splits text into paragraphs and fills them according to available
-  terminal width. This means that original line breaks are ignored.
-  When it's not desirable, use `\\v` at the end of line to indicate that
-  this particular linebreak should be preserved.
+    - lines without indent that end with semicolon are considered headings;
+    - the rest of the lines are considered heading sections --
+      they are indented accordingly;
+    - some markdown-like block markup is supported: code snippets, bullet
+      and numbered lists, quotes. For example, here's a code block:
+
+      ```
+      Beautiful python
+      Explicit and simple form
+      Winding through clouds
+
+          -- from heroku art
+      ```
+
+      And here's another one, with syntax highlighting:
+
+      ```py
+      for i in range(10):
+          print(f"Hello, {i}!")
+      ```
+
+    - Color tags are supported, as well as `backticks`! Btw, backticks highlight
+      `--flags` with appropriate color too!
 
 """
 
@@ -71,7 +89,7 @@ def run(
 
     """
 
-    yuio.io.info('applying model <c:code>%s</c> to data <c:code>%s</c>', model, data)
+    yuio.io.info('applying model `%s` to data `%s`', model, data)
 
 
 @main.subcommand(aliases=['t'])
@@ -84,14 +102,12 @@ def train(
         default=pathlib.Path('trained.model'),
         flags=['-o', '--out', '--output'],
     ),
-
-    foo_bar: tuple[int, str] = (0, ''),
 ):
     """train model on a dataset.
 
     """
 
-    yuio.io.info('training model <c:code>%s</c> on data <c:code>%s</c>', output, data)
+    yuio.io.info('training model `%s` on data `%s`', output, data)
 
 
 if __name__ == '__main__':

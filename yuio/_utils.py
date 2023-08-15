@@ -14,7 +14,7 @@ def to_dash_case(s: str) -> str:
     return _TO_DASH_CASE_RE.sub('-', s).lower()
 
 
-_COMMENT_RE = re.compile(r'^\s*#: ?(.*)\r?\n?$')
+_COMMENT_RE = re.compile(r'^\s*#:(.*)\r?\n?$')
 
 
 def find_docs(obj: _t.Any) -> _t.Dict[str, str]:
@@ -60,11 +60,11 @@ def find_docs(obj: _t.Any) -> _t.Dict[str, str]:
         comment_lines = []
         for before_line in sourcelines[pos - 2::-1]:
             if match := _COMMENT_RE.match(before_line):
-                comment_lines.append(textwrap.dedent(match.group(1)))
+                comment_lines.append(match.group(1))
             else:
                 break
 
         if comment_lines:
-            docs[name] = '\n'.join(reversed(comment_lines))
+            docs[name] = textwrap.dedent('\n'.join(reversed(comment_lines)))
 
     return docs

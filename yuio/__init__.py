@@ -138,3 +138,14 @@ def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
             docs[name] = '\n'.join(reversed(comment_lines))
 
     return docs
+
+
+def _commonprefix(m: _t.List[str]) -> str:
+    if not m:
+        return ''
+    s1 = min(m)
+    s2 = max(m)
+    for i, c in enumerate(s1):
+        if c != s2[i]:
+            return s1[:i]
+    return s1

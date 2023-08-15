@@ -394,10 +394,196 @@ class TestColorizedString:
             ),
             (
                 [
-                    yuio.term.Color.FORE_MAGENTA, 'usage: ', yuio.term.Color.NONE, yuio.term.Color.NONE, 'app.py train', yuio.term.Color.NONE, yuio.term.Color.NONE, ' ', yuio.term.Color.NONE, '[', yuio.term.Color.FORE_BLUE, '-h', yuio.term.Color.NONE, ']', yuio.term.Color.NONE, ' ', yuio.term.Color.NONE, '[', yuio.term.Color.FORE_BLUE, '-v', yuio.term.Color.NONE, ']', yuio.term.Color.NONE, ' [', yuio.term.Color.NONE, yuio.term.Color.FORE_BLUE, '--force-color', yuio.term.Color.NONE, ' | ', yuio.term.Color.NONE, yuio.term.Color.FORE_BLUE, '--force-no-color', yuio.term.Color.NONE, '] ', yuio.term.Color.NONE, '[', yuio.term.Color.FORE_BLUE, '-o', yuio.term.Color.NONE, ' ', yuio.term.Color.FORE_MAGENTA, '', yuio.term.Color.NONE, '{', yuio.term.Color.FORE_MAGENTA, 'path', yuio.term.Color.NONE, '}', yuio.term.Color.FORE_MAGENTA, '', yuio.term.Color.NONE, ']', yuio.term.Color.NONE, ' ', yuio.term.Color.NONE, yuio.term.Color.FORE_MAGENTA, '', yuio.term.Color.NONE, '<', yuio.term.Color.FORE_MAGENTA, 'data', yuio.term.Color.NONE, '>', yuio.term.Color.FORE_MAGENTA, ''], 100, {},
-                [['usage:', ' ', 'app.py', ' ', 'train', ' ', '[-h]', ' ', '[-v]', ' ',
-                  '[--force-', 'color', ' ', '|', ' ', '--force-', 'no-', 'color]', ' ',
-                  '[-o', ' ', '{path}]', ' ', '<data>']]
+                    yuio.term.Color.FORE_MAGENTA,
+                    'usage: ',
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.NONE,
+                    'app.py train',
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.NONE,
+                    ' ',
+                    yuio.term.Color.NONE,
+                    '[',
+                    yuio.term.Color.FORE_BLUE,
+                    '-h',
+                    yuio.term.Color.NONE,
+                    ']',
+                    yuio.term.Color.NONE,
+                    ' ',
+                    yuio.term.Color.NONE,
+                    '[',
+                    yuio.term.Color.FORE_BLUE,
+                    '-v',
+                    yuio.term.Color.NONE,
+                    ']',
+                    yuio.term.Color.NONE,
+                    ' [',
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.FORE_BLUE,
+                    '--force-color',
+                    yuio.term.Color.NONE,
+                    ' | ',
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.FORE_BLUE,
+                    '--force-no-color',
+                    yuio.term.Color.NONE,
+                    '] ',
+                    yuio.term.Color.NONE,
+                    '[',
+                    yuio.term.Color.FORE_BLUE,
+                    '-o',
+                    yuio.term.Color.NONE,
+                    ' ',
+                    yuio.term.Color.FORE_MAGENTA,
+                    '',
+                    yuio.term.Color.NONE,
+                    '{',
+                    yuio.term.Color.FORE_MAGENTA,
+                    'path',
+                    yuio.term.Color.NONE,
+                    '}',
+                    yuio.term.Color.FORE_MAGENTA,
+                    '',
+                    yuio.term.Color.NONE,
+                    ']',
+                    yuio.term.Color.NONE,
+                    ' ',
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.FORE_MAGENTA,
+                    '',
+                    yuio.term.Color.NONE,
+                    '<',
+                    yuio.term.Color.FORE_MAGENTA,
+                    'data',
+                    yuio.term.Color.NONE,
+                    '>',
+                    yuio.term.Color.FORE_MAGENTA,
+                    '',
+                ], 100, {},
+                [[
+                    yuio.term.Color.FORE_MAGENTA,
+                    'usage:',
+                    yuio.term.Color.NONE,
+                    ' ',
+                    'app.py',
+                    ' ',
+                    'train',
+                    ' ',
+                    '[',
+                    yuio.term.Color.FORE_BLUE,
+                    '-h',
+                    yuio.term.Color.NONE,
+                    ']',
+                    ' ',
+                    '[',
+                    yuio.term.Color.FORE_BLUE,
+                    '-v',
+                    yuio.term.Color.NONE,
+                    ']',
+                    ' ',
+                    '[',
+                    yuio.term.Color.FORE_BLUE,
+                    '--force-',
+                    'color',
+                    yuio.term.Color.NONE,
+                    ' ',
+                    '|',
+                    yuio.term.Color.FORE_BLUE,
+                    ' ',
+                    '--force-',
+                    'no-',
+                    'color',
+                    yuio.term.Color.NONE,
+                    ']',
+                    ' ',
+                    '[',
+                    yuio.term.Color.FORE_BLUE,
+                    '-o',
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.FORE_MAGENTA,
+                    yuio.term.Color.NONE,
+                    ' ',
+                    '{',
+                    yuio.term.Color.FORE_MAGENTA,
+                    'path',
+                    yuio.term.Color.NONE,
+                    '}',
+                    yuio.term.Color.FORE_MAGENTA,
+                    yuio.term.Color.NONE,
+                    ']',
+                    yuio.term.Color.FORE_MAGENTA,
+                    yuio.term.Color.NONE,
+                    ' ',
+                    '<',
+                    yuio.term.Color.FORE_MAGENTA,
+                    'data',
+                    yuio.term.Color.NONE,
+                    '>',
+                    yuio.term.Color.FORE_MAGENTA,
+                ]]
+            ),
+            (
+                ["single string"], 100, {"first_line_indent": ">>"},
+                [[">>", "single", " ", "string"]]
+            ),
+            (
+                ["single string"], 100, {"continuation_indent": ">>"},
+                [["single", " ", "string"]]
+            ),
+            (
+                ["single string"], 13, {},
+                [["single", " ", "string"]]
+            ),
+            (
+                ["single string"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "single"], ["..", "string"]]
+            ),
+            (
+                ["foo bar baz"], 8, {"first_line_indent": ">>>", "continuation_indent": "|"},
+                [[">>>", "foo"], ["|", "bar", " ", "baz"]]
+            ),
+            (
+                ["word werywerylongunbreakableword"], 8, {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "word"], ["..", "werywe"], ["..", "rylong"], ["..", "unbrea"], ["..", "kablew"], ["..", "ord"]]
+            ),
+            (
+                ["werywerylongunbreakableword"], 8, {"first_line_indent": ">>>", "continuation_indent": "."},
+                [[">>>", "weryw"], [".", "erylong"], [".", "unbreak"], [".", "ablewor"], [".", "d"]]
+            ),
+            (
+                ["single string", "\nnext string"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "single"], ["..", "string"], ["..", "next", " ", "string"]]
+            ),
+            (
+                ["a\n\nb"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "a"], [".."], ["..", "b"]]
+            ),
+            (
+                ["a\n"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "a"], [".."]]
+            ),
+            (
+                ["\na"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>"], ["..", "a"]]
+            ),
+            (
+                ["\nwerywerylongunbreakableword"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>"], ["..", "werywerylon"], ["..", "gunbreakabl"], ["..", "eword"]]
+            ),
+            (
+                [
+                    yuio.term.Color.FORE_BLUE,
+                    "single string"
+                ],
+                13,
+                {
+                    "first_line_indent": yuio.term.ColorizedString([yuio.term.Color.FORE_MAGENTA, ">>"]),
+                    "continuation_indent": yuio.term.ColorizedString([yuio.term.Color.FORE_BLUE, ".."]),
+                },
+                [
+                    [yuio.term.Color.FORE_MAGENTA, ">>", yuio.term.Color.FORE_BLUE, "single"],
+                    [yuio.term.Color.FORE_BLUE, "..", "string"]
+                ]
             ),
         ]
     )
@@ -405,11 +591,3 @@ class TestColorizedString:
         wrapped = yuio.term.ColorizedString(text).wrap(width, **kwargs)
         raw = [line._items for line in wrapped]
         assert raw == expect
-
-    def test_wrap_err(self):
-        with pytest.raises(ValueError, match="width"):
-            yuio.term.ColorizedString("").wrap(1)
-        with pytest.raises(ValueError, match="width"):
-            yuio.term.ColorizedString("").wrap(0)
-        with pytest.raises(ValueError, match="width"):
-            yuio.term.ColorizedString("").wrap(-1)

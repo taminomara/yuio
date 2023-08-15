@@ -565,19 +565,6 @@ def _action(parser: yuio.parse.Parser, parse_many: bool):
     return Action
 
 
-class _VerboseAction(argparse.Action):
-    def __call__(self, _, namespace, values, option_string=None):
-        count = (getattr(namespace, self.dest, 0) or 0) + 1
-        setattr(namespace, self.dest, count)
-
-        # TODO!
-
-        # import yuio.io
-        # yuio.io.setup(debug_output=True)
-
-        pass
-
-
 class Config:
     """Base class for configs.
 
@@ -776,28 +763,6 @@ class Config:
         *,
         ns_prefix: str = '',
     ):
-        parser.add_argument(
-            '-v', '--verbose',
-            help='increase verbosity of output',
-            action=_VerboseAction,
-            nargs=0,
-        )
-
-        # Note: `yuio.term` will search for these flags in `sys.argv` on its own,
-        # our job is simply to accept them. This is done to avoid situations when
-        # `yuio.io` gets used before parsing arguments.
-        color = parser.add_mutually_exclusive_group()
-        color.add_argument(
-            '--force-color',
-            help='force-enable colored output',
-            action='store_true',
-        )
-        color.add_argument(
-            '--force-no-color',
-            help='force-disable colored output',
-            action='store_true',
-        )
-
         cls.__setup_arg_parser(parser, parser, '', ns_prefix + ':', False)
 
     @classmethod
@@ -824,13 +789,6 @@ class Config:
             else:
                 help = field.help
                 current_suppress_help = False
-                if field.default is not MISSING:
-                    assert field.parser is not None
-                    if isinstance(field.parser, yuio.parse.Bool):
-                        default_desc = 'enabled' if field.default else 'disabled'
-                    else:
-                        default_desc = field.parser.describe_value_or_def(field.default)
-                    help += f' [default: {default_desc}]'
 
             flags: _t.Union[_t.List[str], "Positional"]
             if prefix and field.flags is not POSITIONAL:
@@ -858,15 +816,15 @@ class Config:
             action = _action(field.parser, parse_many)
 
             if flags is POSITIONAL:
-                metavar = '<' + name.replace('_', '-') + '>'
+                metavar = f"<{name.replace('_', '-')}>"
             elif parse_many:
                 metavar = field.parser.describe_many_or_def()
                 if isinstance(metavar, tuple):
-                    metavar = tuple("{" + v + "}" for v in metavar)
+                    metavar = tuple(f"{{{v}}}" for v in metavar)
                 else:
-                    metavar = "{" + metavar + "}"
+                    metavar = f"{{{metavar}}}"
             else:
-                metavar = '{' + field.parser.describe_or_def() + '}'
+                metavar = f"{{{field.parser.describe_or_def()}}}"
 
             nargs = field.parser.get_nargs()
             if flags is POSITIONAL and field.default is not MISSING and nargs is None:
@@ -901,7 +859,7 @@ class Config:
                         if current_suppress_help:
                             help = argparse.SUPPRESS
                         else:
-                            help = f'disable {(prefix or "--") + flag[2:]}'
+                            help = f'disable <c:cli/flag>{(prefix or "--") + flag[2:]}</c>'
                         mutex_group.add_argument(
                             flag_neg,
                             default=MISSING,

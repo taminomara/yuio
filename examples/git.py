@@ -14,16 +14,18 @@ if __name__ == '__main__':
 
     for k, v in dataclasses.asdict(status).items():
         if k != 'changes':
-            yuio.io.info('%s: <c:code>%s</c>', k, v)
+            yuio.io.info('%s: `%s`', k, v)
         else:
             pass
+
+    yuio.io.hr()
 
     yuio.io.heading('Changes')
 
     if changes := status.changes:
         for change in changes:
             path = change.path if change.path_from is None else f'{change.path_from} -> {change.path}'
-            yuio.io.info('%s: <c:code>%s%s</c>', path, change.staged.value, change.tree.value)
+            yuio.io.info('%s: `%s%s`', path, change.staged.value, change.tree.value)
     else:
         yuio.io.info('No files were changed!')
 
@@ -31,6 +33,6 @@ if __name__ == '__main__':
 
     if log := repo.log(max_entries=5):
         for commit in log:
-            yuio.io.info('%s <c:code>[%s <%s>]</c>', commit.title, commit.author, commit.author_email)
+            yuio.io.info('%s `[%s <%s>]`', commit.title, commit.author, commit.author_email)
     else:
         yuio.io.info('Log is empty!')

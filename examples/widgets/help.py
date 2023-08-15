@@ -1,6 +1,6 @@
 import typing as _t
 
-import yuio.term
+import yuio.io
 import yuio.widget
 from yuio.widget import Key, RenderContext
 
@@ -65,8 +65,13 @@ class ExampleWidget(yuio.widget.Widget[None]):
 
 
 if __name__ == '__main__':
-    term = yuio.term.get_stderr_info()
-    theme = yuio.term.DefaultTheme(term)
+    yuio.io.heading("Demonstration for `yuio.widget.VerticalLayout`")
+    yuio.io.info("This widget dynamically changes its contents.")
+    yuio.io.info("Try pasting a long string.")
+    yuio.io.br()
+
+    term = yuio.io.get_term()
+    theme = yuio.io.get_theme()
 
     widget = ExampleWidget()
     widget_with_help = yuio.widget.VerticalLayoutBuilder() \
