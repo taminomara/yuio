@@ -13,7 +13,7 @@ import yuio.complete
     ]
 )
 def test_commonprefix(strings, expected):
-    assert yuio.complete._commonprefix(strings) == expected
+    assert yuio._commonprefix(strings) == expected
 
 
 @pytest.mark.parametrize(

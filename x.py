@@ -1,35 +1,32 @@
-import sys
+import functools
 
-import yuio.complete
-import yuio.widget
-import yuio.term
-import contextlib
+class A:
+    __actual_cls__: type | None = None
 
+    def __init_subclass__(cls):
+        if "__init__" not in cls.__dict__:
+            return
 
-devnull = open('/dev/null', 'w')
-
-
-yuio.widget._set_cbreak = contextlib.nullcontext
-
-
-class MockRc(yuio.widget.RenderContext):
-    def __init__(self, term, theme):
-        super().__init__(term, theme)
-        self._override_wh = (200, 200)
-yuio.widget.RenderContext = MockRc
-
-
-def _mock_event_stream():
-    for _ in range(500):
-        yield yuio.widget.KeyboardEvent(yuio.widget.Key.TAB)
-yuio.widget._event_stream = _mock_event_stream
+        init = cls.__init__
+        @functools.wraps(init)
+        def _wrapped_init(self, *args, **kwargs):
+            prev_actual_cls, self.__actual_cls__ = self.__actual_cls__, cls
+            try:
+                init(self)
+            finally:
+                self.__actual_cls__ = prev_actual_cls
+        cls.__init__ = _wrapped_init
 
 
+class B(A):
+    def __init__(self) -> None:
+        super().__init__()
+        print(self.__actual_cls__)
 
-term = yuio.term.Term(devnull, yuio.term.ColorSupport.ANSI_TRUE, yuio.term.InteractiveSupport.FULL)
-completer = yuio.complete.Choice([yuio.complete.CompletionChoice(f"comp{i}") for i in range(1000)])
-widget = yuio.widget.InputWithCompletion(completer)
-try:
-    widget.run(term, yuio.term.DefaultTheme(term))
-except AssertionError:
-    pass
+class C(B):
+    def __init__(self) -> None:
+        super().__init__()
+        print(self.__actual_cls__)
+
+
+print(C.__init__, C().__init__)

@@ -306,7 +306,7 @@ class TestEnv:
     def test_disabled(self):
         class MyConfig(yuio.config.Config):
             f_disabled: str = yuio.config.field(
-                'f_disabled', env=yuio.config.DISABLED)
+                'f_disabled', env=yuio.DISABLED)
             f_enabled: str = 'f_enabled'
 
         os.environ['F_DISABLED'] = 'f_disabled.2'
@@ -481,7 +481,7 @@ class TestArgs:
 
     def test_disabled(self, capsys):
         class MyConfig(yuio.config.Config):
-            a: str = yuio.config.field(default='def', flags=yuio.config.DISABLED)
+            a: str = yuio.config.field(default='def', flags=yuio.DISABLED)
 
         c = self.load_from_args(MyConfig, '')
         assert c.a == 'def'
@@ -640,9 +640,9 @@ class TestArgs:
 
         class MyConfig(yuio.config.Config):
             c: str
-            d: str = yuio.config.field(help=yuio.config.DISABLED)
+            d: str = yuio.config.field(help=yuio.DISABLED)
             sub: SubConfig
-            sub_no_help: SubConfigNoHelp = yuio.config.field(help=yuio.config.DISABLED)
+            sub_no_help: SubConfigNoHelp = yuio.config.field(help=yuio.DISABLED)
             sub_no_help_2: SubConfigNoHelp = yuio.config.field(help=argparse.SUPPRESS)
 
         parser = argparse.ArgumentParser()

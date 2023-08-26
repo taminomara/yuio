@@ -44,6 +44,8 @@ which describes parsing API.
 
 .. autoclass:: Parser
 
+    .. autodata:: __wrapped_parser__
+
    .. automethod:: parse
 
    .. automethod:: parse_many
@@ -189,23 +191,15 @@ you can register your own types and parsers:
 There are also several useful type hints to help
 with constructing more complex parsers:
 
-.. autoclass:: NonEmptyList
+.. autoclass:: NonEmpty
 
-.. autoclass:: PositiveInt
+.. autoclass:: Positive
 
-.. autoclass:: NonNegativeInt
+.. autoclass:: NonNegative
 
-.. autoclass:: NegativeInt
+.. autoclass:: Negative
 
-.. autoclass:: NonPositiveInt
-
-.. autoclass:: PositiveFloat
-
-.. autoclass:: NonNegativeFloat
-
-.. autoclass:: NegativeFloat
-
-.. autoclass:: NonPositiveFloat
+.. autoclass:: NonPositive
 
 .. autoclass:: FractionFloat
 
@@ -219,7 +213,7 @@ To implement your parser, you can subclass :class:`Parser`
 and implement all abstract methods.
 
 We, however, recommend using the following classes
-to speed up the process:
+to speed up the process and avoid common bugs:
 
 .. autoclass:: ValueParser
 
@@ -242,7 +236,9 @@ import pathlib
 import re
 import typing as _t
 
-import yuio._utils
+import yuio
+import yuio.complete
+import yuio.widget
 
 
 class _Comparable(_t.Protocol):
@@ -262,6 +258,7 @@ class _Comparable(_t.Protocol):
     def __eq__(self, other, /) -> bool: ...
 
 
+T_co = _t.TypeVar('T_co', covariant=True)
 T = _t.TypeVar('T')
 U = _t.TypeVar('U')
 K = _t.TypeVar('K')
@@ -287,6 +284,10 @@ class Parser(_t.Generic[T], abc.ABC):
     """Base class for parsers.
 
     """
+
+    #: An attribute for unwrapping parsers that validate or map results
+    #: of other parsers.
+    __wrapped_parser__: _t.Optional["Parser"] = None
 
     @abc.abstractmethod
     def parse(self, value: str, /) -> T:
@@ -383,6 +384,38 @@ class Parser(_t.Generic[T], abc.ABC):
     @abc.abstractmethod
     def describe_value_or_def(self, value: T, /) -> str:
         """Like :py:meth:`~Parser.describe_value`, but guaranteed to return something.
+
+        """
+
+    @abc.abstractmethod
+    def completer(self) -> yuio.complete.Completer:
+        """Return a completer for values of this parser.
+
+        This function is used when assembling autocompletion functions for shells,
+        and when reading values from user via :func:`yuio.io.ask`.
+
+        """
+
+    @abc.abstractmethod
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+        """Return a widget for reading values of this parser.
+
+        This function is used when reading values from user
+        via :func:`yuio.io.ask`.
+
+        The returned widget must produce values of type `T`.
+        If `default` is given, and the user input is empty (or, in case
+        of `choice` widgets, if the user chooses the default), the widget
+        must produce the :data:`~yuio.MISSING` constant.
+
+        Validating parsers must wrap the widget they got from
+        :func:`~ValidatingParser._inner` into :class:`~yuio.widget.Map`
+        or :class:`~yuio.widget.Apply` in order to validate widget's results.
 
         """
 
@@ -651,7 +684,7 @@ class ValueParser(Parser[T], _t.Generic[T]):
     def describe_or_def(self) -> str:
         return (
             self.describe()
-            or yuio._utils.to_dash_case(self.__class__.__name__)
+            or yuio.to_dash_case(self.__class__.__name__)
         )
 
     def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
@@ -660,14 +693,33 @@ class ValueParser(Parser[T], _t.Generic[T]):
     def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
         return (
             self.describe_many()
-            or yuio._utils.to_dash_case(self.__class__.__name__)
+            or yuio.to_dash_case(self.__class__.__name__)
         )
 
     def describe_value(self, value: T, /) -> _t.Optional[str]:
         return None
 
     def describe_value_or_def(self, value: T, /) -> str:
-        return self.describe_value(value) or str(value)
+        return self.describe_value(value) or str(value) or "<empty>"
+
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.Empty()
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+        completer = self.completer()
+        return _map_widget_result(
+            self,
+            default,
+            yuio.widget.InputWithCompletion(
+                completer,
+                placeholder=f" default: {default_description}" if default_description else "",
+            ),
+        )
 
 
 class ValidatingParser(Parser[T], _t.Generic[T]):
@@ -680,7 +732,7 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
 
         >>> class IsLower(ValidatingParser[str]):
         ...     def _validate(self, value: str, /):
-        ...         if value != value.lower():
+        ...         if not value.islower():
         ...             raise ParsingError('value should be lowercase')
 
         >>> IsLower(Str()).parse('Not lowercase!')
@@ -691,49 +743,63 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
     """
 
     #: Wrapped parser.
-    _inner: Parser[T]
+    __wrapped_parser__: Parser[T]
 
     def __init__(self, inner: Parser[T]):
-        self._inner = inner
+        self.__wrapped_parser__ = inner
 
     def parse(self, value: str, /) -> T:
-        parsed = self._inner.parse(value)
+        parsed = self.__wrapped_parser__.parse(value)
         self._validate(parsed)
         return parsed
 
     def parse_many(self, value: _t.Sequence[str], /) -> T:
-        parsed = self._inner.parse_many(value)
+        parsed = self.__wrapped_parser__.parse_many(value)
         self._validate(parsed)
         return parsed
 
     def supports_parse_many(self) -> bool:
-        return self._inner.supports_parse_many()
+        return self.__wrapped_parser__.supports_parse_many()
 
     def parse_config(self, value: _t.Any, /) -> T:
-        parsed = self._inner.parse_config(value)
+        parsed = self.__wrapped_parser__.parse_config(value)
         self._validate(parsed)
         return parsed
 
     def get_nargs(self) -> _t.Union[str, int, None]:
-        return self._inner.get_nargs()
+        return self.__wrapped_parser__.get_nargs()
 
     def describe(self) -> _t.Optional[str]:
-        return self._inner.describe()
+        return self.__wrapped_parser__.describe()
 
     def describe_or_def(self) -> str:
-        return self._inner.describe_or_def()
+        return self.__wrapped_parser__.describe_or_def()
 
     def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
-        return self._inner.describe_many()
+        return self.__wrapped_parser__.describe_many()
 
     def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
-        return self._inner.describe_many_or_def()
+        return self.__wrapped_parser__.describe_many_or_def()
 
     def describe_value(self, value: T, /) -> _t.Optional[str]:
-        return self._inner.describe_value(value)
+        return self.__wrapped_parser__.describe_value(value)
 
     def describe_value_or_def(self, value: T, /) -> str:
-        return self._inner.describe_value_or_def(value)
+        return self.__wrapped_parser__.describe_value_or_def(value)
+
+    def completer(self) -> yuio.complete.Completer:
+        return self.__wrapped_parser__.completer()
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+        return yuio.widget.Apply(
+            self.__wrapped_parser__.widget(default, default_description),
+            lambda v: self._validate(v) if v is not yuio.MISSING else None
+        )
 
     @abc.abstractmethod
     def _validate(self, value: T, /):
@@ -744,7 +810,7 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
         """
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self._inner!r})'
+        return f'{self.__class__.__name__}({self.__wrapped_parser__!r})'
 
 
 class Str(ValueParser[str]):
@@ -896,6 +962,33 @@ class Bool(ValueParser[bool]):
     def describe_value(self, value: bool, /) -> _t.Optional[str]:
         return 'yes' if value else 'no'
 
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.Choice([
+            yuio.complete.CompletionChoice("no"),
+            yuio.complete.CompletionChoice("yes"),
+        ])
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[bool, yuio.Missing]]:
+        options: _t.List[yuio.widget.Option[_t.Union[bool, yuio.Missing]]] = [
+            yuio.widget.Option(False, "no"),
+            yuio.widget.Option(True, "yes"),
+        ]
+
+        if default is yuio.MISSING:
+            default_index = 0
+        elif isinstance(default, bool):
+            default_index = int(default)
+        else:
+            options.append(yuio.widget.Option(yuio.MISSING, default_description))
+            default_index = 2
+
+        return yuio.widget.Choice(options, default_index=default_index)
+
 
 class Enum(ValueParser[E], _t.Generic[E]):
     """Parser for enums, as defined in the standard :mod:`enum` module.
@@ -926,6 +1019,31 @@ class Enum(ValueParser[E], _t.Generic[E]):
 
     def describe_value(self, value: E, /) -> _t.Optional[str]:
         return value.name
+
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.Choice([
+            yuio.complete.CompletionChoice(e.name) for e in self._enum_type
+        ])
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[E, yuio.Missing]]:
+        options: _t.List[yuio.widget.Option[_t.Union[E, yuio.Missing]]] = [
+            yuio.widget.Option(e, e.name) for e in self._enum_type
+        ]
+
+        if default is yuio.MISSING:
+            default_index = 0
+        elif isinstance(default, self._enum_type):
+            default_index = list(self._enum_type).index(default)
+        else:
+            options.insert(0, yuio.widget.Option(yuio.MISSING, default_description))
+            default_index = 0
+
+        return yuio.widget.FilterableChoice(options, default_index=default_index)
 
 
 class Decimal(ValueParser[decimal.Decimal]):
@@ -978,50 +1096,63 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
 
     """
 
+    __wrapped_parser__: Parser[T]
+
     def __init__(self, inner: Parser[T]):
-        self._inner = inner
+        self.__wrapped_parser__ = inner
 
     def parse(self, value: str, /) -> _t.Optional[T]:
-        return self._inner.parse(value)
+        return self.__wrapped_parser__.parse(value)
 
     def parse_many(self, value: _t.Sequence[str], /) -> _t.Optional[T]:
-        return self._inner.parse_many(value)
+        return self.__wrapped_parser__.parse_many(value)
 
     def supports_parse_many(self) -> bool:
-        return self._inner.supports_parse_many()
+        return self.__wrapped_parser__.supports_parse_many()
 
     def parse_config(self, value: _t.Any, /) -> _t.Optional[T]:
         if value is None:
             return None
-        return self._inner.parse_config(value)
+        return self.__wrapped_parser__.parse_config(value)
 
     def get_nargs(self) -> _t.Union[str, int, None]:
-        return self._inner.get_nargs()
+        return self.__wrapped_parser__.get_nargs()
 
     def describe(self) -> _t.Optional[str]:
-        return self._inner.describe()
+        return self.__wrapped_parser__.describe()
 
     def describe_or_def(self) -> str:
-        return self._inner.describe_or_def()
+        return self.__wrapped_parser__.describe_or_def()
 
     def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
-        return self._inner.describe_many()
+        return self.__wrapped_parser__.describe_many()
 
     def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
-        return self._inner.describe_many_or_def()
+        return self.__wrapped_parser__.describe_many_or_def()
 
     def describe_value(self, value: _t.Optional[T], /) -> _t.Optional[str]:
         if value is None:
             return '<none>'
-        return self._inner.describe_value(value)
+        return self.__wrapped_parser__.describe_value(value)
 
     def describe_value_or_def(self, value: _t.Optional[T], /) -> _t.Optional[str]:
         if value is None:
             return '<none>'
-        return self._inner.describe_value_or_def(value)
+        return self.__wrapped_parser__.describe_value_or_def(value)
+
+    def completer(self) -> yuio.complete.Completer:
+        return self.__wrapped_parser__.completer()
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+        return self.__wrapped_parser__.widget(default, default_description)
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self._inner!r})'
+        return f'{self.__class__.__name__}({self.__wrapped_parser__!r})'
 
 
 class _Collection(Parser[C], _t.Generic[C, T]):
@@ -1089,6 +1220,24 @@ class _Collection(Parser[C], _t.Generic[C, T]):
         return (self._delimiter or ' ').join(
             self._inner.describe_value_or_def(item)
             for item in self._config_type_iter(value)
+        )
+
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.List(self._inner.completer(), delimiter=self._delimiter)
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[C, yuio.Missing]]:
+        return _map_widget_result(
+            self,
+            default,
+            yuio.widget.InputWithCompletion(
+                self.completer(),
+                placeholder=f" default: {default_description}" if default_description else "",
+            )
         )
 
     def __repr__(self):
@@ -1242,6 +1391,13 @@ class Pair(ValueParser[_t.Tuple[K, V]], _t.Generic[K, V]):
 
         return f'{key_d}{delimiter}{value_d}'
 
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.Tuple(
+            self._key.completer(),
+            self._value.completer(),
+            delimiter=self._delimiter,
+        )
+
     def __repr__(self):
         return f'{self.__class__.__name__}({self._key!r}, {self._value!r})'
 
@@ -1357,6 +1513,29 @@ class Tuple(Parser[TU], _t.Generic[TU]):
         ]
 
         return delimiter.join(desc)
+
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.Tuple(
+            *[parser.completer() for parser in self._parsers],
+            delimiter=self._delimiter,
+        )
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[TU, yuio.Missing]]:
+        completer = self.completer()
+
+        return _map_widget_result(
+            self,
+            default,
+            yuio.widget.InputWithCompletion(
+                completer,
+                placeholder=f" default: {default_description}" if default_description else "",
+            ),
+        )
 
     def __repr__(self):
         parsers = ', '.join(repr(parser) for parser in self._parsers)
@@ -1541,6 +1720,9 @@ class Path(ValueParser[pathlib.Path]):
                 exts = ', '.join(self._extensions)
                 raise ParsingError(f'{value} should have extension {exts}')
 
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.File(extensions=self._extensions)
+
 
 class NonExistentPath(Path):
     """Parse a file system path and verify that it doesn't exist.
@@ -1592,6 +1774,9 @@ class Dir(ExistingPath):
 
         if not value.is_dir():
             raise ParsingError(f'{value} is not a directory')
+
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.Dir()
 
 
 class GitRepo(Dir):
@@ -1692,7 +1877,7 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
         if self._upper_bound is not None:
             desc += ' <= ' if self._upper_bound_is_inclusive else ' < '
             desc += repr(self._upper_bound)
-        return f'{self.__class__.__name__}({self._inner!r}, {desc})'
+        return f'{self.__class__.__name__}({self.__wrapped_parser__!r}, {desc})'
 
 
 class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
@@ -1751,9 +1936,9 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
         )
 
     def get_nargs(self) -> _t.Union[str, int, None]:
-        if not self._inner.supports_parse_many():
+        if not self.__wrapped_parser__.supports_parse_many():
             # somebody bound len of a string?
-            return self._inner.get_nargs()
+            return self.__wrapped_parser__.get_nargs()
 
         lower = self._lower_bound
         if lower is not None and not self._lower_bound_is_inclusive:
@@ -1795,6 +1980,51 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
             return desc
         else:
             return super().describe()
+
+    def completer(self) -> yuio.complete.Completer:
+        return yuio.complete.Choice([
+            yuio.complete.CompletionChoice(self.describe_value_or_def(e))
+            for e in self._allowed_values
+        ])
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        default_description: str,
+        /
+    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+        allowed_values = list(self._allowed_values)
+
+        options: _t.List[yuio.widget.Option[_t.Union[T, yuio.Missing]]] = [
+            yuio.widget.Option(e, self.__wrapped_parser__.describe_value_or_def(e))
+            for e in allowed_values
+        ]
+
+        if default is yuio.MISSING:
+            default_index = 0
+        elif default in allowed_values:
+            default_index = list(allowed_values).index(default)  # type: ignore
+        else:
+            options.insert(0, yuio.widget.Option(yuio.MISSING, default_description))
+            default_index = 0
+
+        return yuio.widget.FilterableChoice(options, default_index=default_index)
+
+
+def _map_widget_result(
+    parser: Parser[T],
+    default: _t.Union[object, yuio.Missing],
+    widget: yuio.widget.Widget[str]
+) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+    def mapper(s: str) -> _t.Union[T, yuio.Missing]:
+        if not s and default is not yuio.MISSING:
+            return yuio.MISSING
+        elif not s:
+            raise ParsingError("Input is required.")
+        else:
+            return parser.parse(s)
+
+    return yuio.widget.Map(widget, mapper)
 
 
 _FromTypeHintCallback: _t.TypeAlias = _t.Callable[
@@ -1898,32 +2128,20 @@ class _Annotation:
         return self.parser(p, *self.args, **self.kwargs)
 
 
-#: Non-empty list.
-NonEmptyList: _t.TypeAlias = _t.Annotated[_t.List[T], _Annotation(LenBound, lower=0)]
+#: Non-empty collection.
+NonEmpty: _t.TypeAlias = _t.Annotated[Sz, _Annotation(LenBound, lower=0)]
 
-#: Positive int.
-PositiveInt: _t.TypeAlias = _t.Annotated[int, _Annotation(Bound, lower=0)]
+#: Positive number.
+Positive: _t.TypeAlias = _t.Annotated[Cmp, _Annotation(Bound, lower=0)]
 
-#: Non-negative int.
-NonNegativeInt: _t.TypeAlias = _t.Annotated[int, _Annotation(Bound, lower_inclusive=0)]
+#: Non-negative number.
+NonNegative: _t.TypeAlias = _t.Annotated[Cmp, _Annotation(Bound, lower_inclusive=0)]
 
-#: Negative int.
-NegativeInt: _t.TypeAlias = _t.Annotated[int, _Annotation(Bound, upper=0)]
+#: Negative number.
+Negative: _t.TypeAlias = _t.Annotated[Cmp, _Annotation(Bound, upper=0)]
 
-#: Non-positive int.
-NonPositiveInt: _t.TypeAlias = _t.Annotated[int, _Annotation(Bound, upper_inclusive=0)]
-
-#: Positive float.
-PositiveFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, lower=0)]
-
-#: Non-negative float.
-NonNegativeFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, lower_inclusive=0)]
-
-#: Negative float.
-NegativeFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, upper=0)]
-
-#: Non-positive float.
-NonPositiveFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, upper_inclusive=0)]
+#: Non-positive number.
+NonPositive: _t.TypeAlias = _t.Annotated[Cmp, _Annotation(Bound, upper_inclusive=0)]
 
 #: Float between `0.0` and `1.0`, inclusive.
 FractionFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, lower_inclusive=0, upper_inclusive=1)]
@@ -2058,3 +2276,11 @@ register_type_hint_conversion(
         if ty is datetime.timedelta
         else None
 )
+
+
+def _is_optional_parser(parser: _t.Optional[Parser], /) -> bool:
+    while parser is not None:
+        if isinstance(parser, Optional):
+            return True
+        parser = parser.__wrapped_parser__
+    return False

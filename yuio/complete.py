@@ -25,7 +25,7 @@ from dataclasses import dataclass
 import yuio
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **yuio._with_slots())
 @functools.total_ordering
 class Completion:
     """A single completion.
@@ -163,6 +163,10 @@ class CompletionCollector:
     #: Similar to :attr:`CompletionCollector.iprefix`, but for suffixes.
     isuffix: str
 
+    #: Completions from this set will not be added. This is useful
+    #: when completing lists of unique values.
+    dedup_words: frozenset
+
     # Internal fields.
     _group_id: int
     _group_sorted: bool
@@ -175,6 +179,7 @@ class CompletionCollector:
         self.rsuffix = ''
         self.rsymbols = ''
         self.isuffix = ''
+        self.dedup_words = frozenset()
 
         self._group_id = 0
         self._group_sorted = True
@@ -197,6 +202,14 @@ class CompletionCollector:
         """
 
         return self.suffix + self.isuffix
+
+    @property
+    def text(self) -> str:
+        """Portion of the text that is being autocompleted.
+
+        """
+
+        return self.prefix + self.suffix
 
     @contextlib.contextmanager
     def save_state(self):
@@ -242,7 +255,7 @@ class CompletionCollector:
 
         """
 
-        if completion and completion.startswith(self.prefix):
+        if completion and completion not in self.dedup_words and completion.startswith(self.prefix):
             self._add(completion, comment=comment, dprefix=dprefix, dsuffix=dsuffix, color_tag=color_tag)
 
     def _add(
@@ -409,7 +422,7 @@ class _CorrectingCollector(CompletionCollector):
         dsuffix: str = '',
         color_tag: _t.Optional[str] = None,
     ):
-        if not completion:
+        if not completion or completion in self.dedup_words:
             return
 
         a = self.prefix + self.suffix
@@ -523,7 +536,16 @@ class Completer(abc.ABC):
         """
 
 
-@dataclass(frozen=True, slots=True)
+class Empty(Completer):
+    """An empty completer that returns no values.
+
+    """
+
+    def process(self, collector: CompletionCollector):
+        pass  # nothing to do
+
+
+@dataclass(frozen=True, **yuio._with_slots())
 class CompletionChoice:
     """A single completion option for the :chass:`Choice` completer.
 
@@ -541,8 +563,8 @@ class Choice(Completer):
 
     """
 
-    def __init__(self, choices: _t.List[CompletionChoice], /):
-        self._choices = choices
+    def __init__(self, choices: _t.Collection[CompletionChoice], /):
+        self._choices: _t.Collection[CompletionChoice] = choices
 
     def process(self, collector: CompletionCollector, /):
         for choice in self._choices:
@@ -554,17 +576,31 @@ class List(Completer):
 
     """
 
-    def __init__(self, inner: Completer, /, *, delimiter: _t.Optional[str] = None):
+    def __init__(self, inner: Completer, /, *, delimiter: _t.Optional[str] = None, allow_duplicates: bool = False):
         self._inner = inner
         if delimiter == '':
             raise ValueError('empty delimiter')
         self._delimiter = delimiter
+        self._allow_duplicates = allow_duplicates
 
     def process(self, collector: CompletionCollector, /):
+        if not self._allow_duplicates:
+            dedup_words = set(
+                collector.prefix.split(self._delimiter)
+                + collector.suffix.split(self._delimiter)
+            )
+        else:
+            dedup_words = set()
+
         collector.split_off_prefix(self._delimiter)
         collector.split_off_suffix(self._delimiter)
         collector.rsuffix = self._delimiter or ' '
         collector.rsymbols += self._delimiter or string.whitespace
+
+        if collector.text in dedup_words:
+            dedup_words.remove(collector.text)
+        collector.dedup_words = frozenset(dedup_words)
+
         self._inner.process(collector)
 
 

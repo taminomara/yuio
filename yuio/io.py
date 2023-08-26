@@ -11,6 +11,7 @@ standard logging library.
 
 """
 import math
+import string
 from yuio.widget import RenderContext
 
 
@@ -46,8 +47,6 @@ Use logging functions from this module:
 .. autofunction:: error
 
 .. autofunction:: error_with_tb
-
-.. autofunction:: question
 
 .. autofunction:: heading
 
@@ -226,7 +225,6 @@ import yuio.parse
 import yuio.term
 import yuio.widget
 from yuio.term import Color, Theme, DefaultTheme
-from yuio.config import DISABLED, Disabled
 
 
 T = _t.TypeVar('T')
@@ -340,14 +338,6 @@ def error_with_tb(msg: str, /, *args, **kwargs):
     _handler().print(msg, args, 'error', **kwargs)
 
 
-def question(msg: str, /, *args, **kwargs):
-    """Log a message with input prompts and other user communications.
-
-    """
-
-    _handler().print(msg, args, 'question', **kwargs)
-
-
 def heading(msg: str, /, *args, **kwargs):
     """Log a heading message.
 
@@ -355,6 +345,14 @@ def heading(msg: str, /, *args, **kwargs):
 
     kwargs.setdefault("pad_line", 2)
     _handler().print(msg, args, 'heading', **kwargs)
+
+
+def question(msg: str, /, *args, **kwargs):
+    """Log a message with input prompts and other user communications.
+
+    """
+
+    _handler().print(msg, args, 'question', **kwargs)
 
 
 def hr():
@@ -374,6 +372,65 @@ def br():
     _handler().print('', None, '')
 
 
+def print_colorized_string(msg: yuio.term.ColorizedString, /, **kwargs):
+    """Print an already formatted and colorized string.
+
+    Yuio doesn't modify the string and doesn't add newlines to it.
+    This helper is intended as a user-facing bridge between
+    low-level :mod:`yuio.term` and high-level :mod:`yuio.io` APIs,
+    and should be used sparingly.
+
+    """
+
+    kwargs.setdefault("ignore_suspended", False)
+    _handler().print_colorized_string(msg, **kwargs)
+
+
+class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
+    _layout: yuio.widget.VerticalLayout[T]
+
+    def __init__(self, prompt: yuio.term.ColorizedString, widget: yuio.widget.Widget[T]):
+        self._prompt = yuio.widget.Text(prompt)
+        self._error_msg: _t.Optional[str] = None
+        self._inner = widget
+
+    def event(self, e: yuio.widget.KeyboardEvent, /) -> _t.Optional[yuio.widget.Result[T]]:
+        try:
+            result = self._inner.event(e)
+        except yuio.parse.ParsingError as err:
+            self._error_msg = f"Error: {err}."
+        else:
+            self._error_msg = None
+            return result
+
+    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+        builder = yuio.widget.VerticalLayoutBuilder() \
+            .add(self._prompt) \
+            .add(self._inner, receive_events=True)
+        if self._error_msg is not None:
+            rc.bell()
+            error_text = yuio.term.ColorizedString([
+                rc.theme.get_color("msg/error/decoration"),
+                rc.theme.msg_decorations.get("error", "▲"),
+                rc.theme.get_color("msg/error/plain_text"),
+                " ",
+                rc.theme.get_color("msg/error/text"),
+                self._error_msg,
+                yuio.term.Color.NONE,
+            ])
+            builder = builder.add(yuio.widget.Text(error_text))
+
+        self._layout = builder.build()
+        return self._layout.layout(rc)
+
+    def draw(self, rc: RenderContext, /):
+        self._layout.draw(rc)
+
+    @property
+    def help_columns(self) -> _t.List["yuio.widget.Help.Column"]:
+        return self._inner.help_columns
+
+
 class _Ask(_t.Generic[T]):
     def __init__(self, parser: yuio.parse.Parser[T]):
         self._parser: yuio.parse.Parser[T] = parser
@@ -390,7 +447,7 @@ class _Ask(_t.Generic[T]):
         msg: str,
         /,
         *args,
-        default: _t.Union[T, "Disabled"] = DISABLED,
+        default: _t.Union[T, yuio.Missing] = yuio.MISSING,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
         secure_input: bool = False,
@@ -415,7 +472,7 @@ class _Ask(_t.Generic[T]):
         /,
         *args,
         parser: yuio.parse.Parser[U],
-        default: _t.Union[U, "Disabled"] = DISABLED,
+        default: _t.Union[U, yuio.Missing] = yuio.MISSING,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
         secure_input: bool = False,
@@ -439,14 +496,17 @@ class _Ask(_t.Generic[T]):
         msg: str,
         /,
         *args,
-        parser: _t.Union[yuio.parse.Parser, None] = None,
-        default: _t.Any = DISABLED,
+        parser: _t.Optional[yuio.parse.Parser] = None,
+        default: _t.Any = yuio.MISSING,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
         secure_input: bool = False,
     ) -> _t.Any:
+        term = get_term()
+        theme = get_theme()
+
         if sys.stdin is None or not sys.stdin.readable():
-            if default is not DISABLED:
+            if default is not yuio.MISSING:
                 return default
             else:
                 raise UserIoError(
@@ -455,53 +515,79 @@ class _Ask(_t.Generic[T]):
 
         if parser is None:
             parser = self._parser
-        if default is None and not isinstance(parser, yuio.parse.Optional):
+        if default is None and not yuio.parse._is_optional_parser(parser):
             parser = yuio.parse.Optional(parser)
 
-        desc = ''
+        msg = msg.rstrip()
+        if msg.endswith(":"):
+            needs_colon = True
+            msg = msg[:-1]
+        else:
+            needs_colon = msg and not msg[-1] in string.punctuation
 
-        if input_description is None:
-            input_description = parser.describe()
-        if input_description:
-            desc += f' ({input_description})'
+        prompt = theme.colorize(msg, default_color="msg/question/text")
+        if args:
+            prompt = prompt % args
 
-        if default is not DISABLED:
+        if default is yuio.MISSING:
+            default_description = ""
+        elif not secure_input:
             if default_description is None:
                 default_description = parser.describe_value(default)
             if default_description is None:
                 default_description = str(default)
-            if default_description:
-                desc += f' [<c:note>{default_description}</c>]'
+        elif default_description is None:
+            default_description = ""
 
-        msg += desc.replace('%', '%%')
+        if not secure_input and get_term().is_fully_interactive:
+            if input_description:
+                prompt += (
+                    theme.colorize(" (%s)", default_color="msg/question/text")
+                    % input_description
+                )
 
-        if not msg.endswith((':', ': ')):
-            msg += ':'
-        if not msg.endswith(' '):
-            msg += ' '
-
-        with SuspendLogging() as s:
-            while True:
-                s.question(msg, *args)
+            widget = _AskWidget(prompt, parser.widget(default, default_description))
+            with SuspendLogging():
                 try:
-                    if secure_input:
-                        answer = getpass.getpass(prompt='')
-                    else:
-                        answer = input()
-                except EOFError:
-                    raise UserIoError('unexpected end of input') from None
-                if not answer and default is not DISABLED:
-                    return default
-                elif not answer:
-                    s.error('Input is required.')
-                else:
+                    return widget.run(term, theme)
+                except (IOError, OSError) as e:
+                    raise UserIoError('unexpected end of input') from e
+        else:
+            if not input_description:
+                input_description = parser.describe()
+            if input_description:
+                prompt += (
+                    theme.colorize(" (%s)", default_color="msg/question/text")
+                    % input_description
+                )
+            if default_description:
+                prompt += (
+                    theme.colorize(" [`%s`]", default_color="msg/question/text")
+                    % default_description
+                )
+            prompt += theme.colorize(": " if needs_colon else " ", default_color="msg/question/text")
+            with SuspendLogging() as s:
+                while True:
+                    prompt_s = prompt.merge(term)
                     try:
-                        return parser.parse(answer)
-                    except yuio.parse.ParsingError as e:
                         if secure_input:
-                            s.error('Error: invalid value.')
+                            answer = getpass.getpass(prompt_s)
                         else:
-                            s.error(f'Error: {e}.')
+                            answer = input(prompt_s)
+                    except EOFError:
+                        raise UserIoError('unexpected end of input') from None
+                    if not answer and default is not yuio.MISSING:
+                        return default
+                    elif not answer:
+                        s.error('Input is required.')
+                    else:
+                        try:
+                            return parser.parse(answer)
+                        except yuio.parse.ParsingError as e:
+                            if secure_input:
+                                s.error('Error: invalid value.')
+                            else:
+                                s.error(f'Error: %s.', e)
 
 
 ask: _Ask[str] = _Ask[str](yuio.parse.Str())
@@ -542,7 +628,7 @@ def ask_yn(
     msg: str,
     /,
     *args,
-    default: _t.Union[bool, "Disabled"] = DISABLED,
+    default: _t.Union[bool, yuio.Missing] = yuio.MISSING,
 ) -> bool: ...
 
 
@@ -559,7 +645,7 @@ def ask_yn(
     msg: str,
     /,
     *args,
-    default: _t.Union[bool, None, "Disabled"] = DISABLED,
+    default: _t.Union[bool, None, yuio.Missing] = yuio.MISSING,
 ) -> _t.Any:
     """Shortcut to :func:`ask` for asking yes/no questions.
 
@@ -581,6 +667,9 @@ def wait_for_user(
 
     if sys.stdin is None or not sys.stdin.readable():
         return
+
+    if msg and not msg[-1].isspace():
+        msg += " "
 
     with SuspendLogging() as s:
         s.question(msg, *args)
@@ -748,15 +837,6 @@ class SuspendLogging:
         kwargs.setdefault('ignore_suspended', True)
         error_with_tb(msg, *args, **kwargs)
 
-    @staticmethod
-    def question(msg: str, /, *args, **kwargs):
-        """Log a :func:`question` message, ignore suspended status.
-
-        """
-
-        kwargs.setdefault('ignore_suspended', True)
-        question(msg, *args, **kwargs)
-
 
     @staticmethod
     def heading(msg: str, /, *args, **kwargs):
@@ -766,6 +846,26 @@ class SuspendLogging:
 
         kwargs.setdefault('ignore_suspended', True)
         heading(msg, *args, **kwargs)
+
+    @staticmethod
+    def question(msg: str, /, *args, **kwargs):
+        """Log a :func:`question` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault('ignore_suspended', True)
+        question(msg, *args, **kwargs)
+
+    @staticmethod
+    def print_colorized_string(msg: yuio.term.ColorizedString, /, **kwargs):
+        """Print a colorized string, ignore suspended status.
+
+        See :func:`print_colorized_string`.
+
+        """
+
+        kwargs.setdefault("ignore_suspended", True)
+        print_colorized_string(msg, **kwargs)
 
     def __enter__(self):
         return self
@@ -1190,7 +1290,7 @@ class _HandlerImpl:
 
             self._clear_tasks()
             self._rc = yuio.widget.RenderContext(term, theme)
-            del self.update_rate_us
+            self.__dict__.pop("update_rate_us", None)
             self._update_tasks()
 
     def indent(self):
@@ -1215,6 +1315,7 @@ class _HandlerImpl:
         exc_info: _t.Union["_ExcInfo", bool, None] = None,
         ignore_suspended: bool = False,
         pad_line: int = 0,
+        add_newline: bool = True,
     ):
         if exc_info is True:
             exc_info = sys.exc_info()
@@ -1226,8 +1327,18 @@ class _HandlerImpl:
             raise ValueError(f"invalid exc_info {exc_info!r}")
 
         with self._lock:
-            line = self._format_line(msg, args, m_tag, exc_info, pad_line)
+            line = self._format_line(msg, args, m_tag, exc_info, pad_line, add_newline)
             self._emit(line, ignore_suspended)
+
+    def print_colorized_string(
+        self,
+        msg: yuio.term.ColorizedString,
+        /,
+        *,
+        ignore_suspended: bool = False,
+    ):
+        with self._lock:
+            self._emit(msg, ignore_suspended)
 
     def emit(
         self,
@@ -1381,6 +1492,7 @@ class _HandlerImpl:
         m_tag: str,
         exc_info: _t.Union["_ExcInfo", bool, None] = None,
         pad_line: int = 0,
+        add_newline: bool = True,
     ) -> yuio.term.ColorizedString:
         res = yuio.term.ColorizedString()
 
@@ -1393,18 +1505,20 @@ class _HandlerImpl:
         if decoration := self.theme.msg_decorations.get(m_tag):
             res += self.theme.get_color(f'msg/{m_tag}/decoration')
             res += decoration
-            res += Color.NONE
+            res += self.theme.get_color(f'msg/{m_tag}/plain_text/plain_text')
             res += ' '
 
         col_msg = self.theme.colorize(msg, default_color=f'msg/{m_tag}/text')
         if args:
             col_msg %= args
         res += col_msg
-        res += "\n"
 
         if exc_info is not None:
+            res += "\n"
             res += self._format_tb(
                 ''.join(traceback.format_exception(*exc_info)), '  ' * (self._indent + 1))
+        elif pad_line or add_newline:
+            res += "\n"
 
         if pad_line:
             res += "\n"

@@ -114,6 +114,7 @@ _MIN_COLUMN_WIDTH = 10
 
 T = _t.TypeVar('T')
 U = _t.TypeVar('U')
+T_co = _t.TypeVar('T_co', covariant=True)
 
 
 class Key(enum.Enum):
@@ -167,7 +168,7 @@ class Key(enum.Enum):
         return self.name.replace('_', ' ').title()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **yuio._with_slots())
 class KeyboardEvent:
     """A single keyboard event.
 
@@ -681,6 +682,16 @@ class RenderContext:
 
             self.write(line, max_width=max_width)
 
+    def bell(self):
+        """Immediately ring a terminal bell.
+
+        Cen be used in event handlers to indicate unsuccessful event handling.
+
+        """
+
+        self._term.stream.write("\a")
+        self._term.stream.flush()
+
     def prepare(self, *, full_redraw: bool = False):
         """Reset output canvas and prepare context for a new round of widget formatting.
 
@@ -843,7 +854,16 @@ class RenderContext:
         self._out.clear()
 
 
-class Widget(abc.ABC, _t.Generic[T]):
+@dataclass(frozen=True, **yuio._with_slots())
+class Result(_t.Generic[T_co]):
+    """Result of a widget run.
+
+    """
+
+    value: T_co
+
+
+class Widget(abc.ABC, _t.Generic[T_co]):
     """Base class for all interactive console elements.
 
     Widgets are displayed with their :meth:`~Widget.run` method.
@@ -869,14 +889,13 @@ class Widget(abc.ABC, _t.Generic[T]):
            wait -> event;
            event -> stop;
            stop:e -> layout:e [ weight=0; ];
-           stop -> end [ taillabel="called   \\nWidget.stop()   " ];
+           stop -> end [ taillabel="returned   \\nResult(v)   " ];
        }
 
     Widgets run indefinitely until they stop themselves and return a value.
     For example, :class:`Input` will return when user presses `Enter`.
-    When widget needs to stop, it calls the :meth:`~Widget.stop` method,
-    which, in turn, raises :class:`Widget.StopWidget`. Then :meth:`~Widget.run`
-    catches this exception and returns a value.
+    When widget needs to stop, it can return the :meth:`Result` class
+    from its event handler.
 
     For typing purposes of this process, :class:`Widget` is generic.
     That is, ``Widget[T]`` returns `T` from its :meth:`~Widget.run` method.
@@ -888,18 +907,7 @@ class Widget(abc.ABC, _t.Generic[T]):
 
     """
 
-    class StopWidget(Exception):
-        """Raise this class in an event handler
-        to stop widget rendering and return a value.
-
-        Use :meth:`~Widget.stop` method to enable better type checking.
-
-        """
-
-        def __init__(self, value: T):
-            self.value: T = value
-
-    def event(self, e: KeyboardEvent, /):
+    def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
         """Handle incoming keyboard event.
 
         By default, this function dispatches event
@@ -910,11 +918,11 @@ class Widget(abc.ABC, _t.Generic[T]):
         """
 
         if handler := self._event_bindings.get(e):
-            handler()
+            return handler()
         else:
-            self.default_event_handler(e)
+            return self.default_event_handler(e)
 
-    def default_event_handler(self, e: KeyboardEvent, /):
+    def default_event_handler(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
         """Process any event that wasn't handled by other event handlers.
 
         """
@@ -940,7 +948,7 @@ class Widget(abc.ABC, _t.Generic[T]):
         """
 
     @_t.final
-    def run(self, term: _Term, theme: _Theme, /) -> T:
+    def run(self, term: _Term, theme: _Theme, /) -> T_co:
         """Read user input and run the widget.
 
         """
@@ -965,22 +973,15 @@ class Widget(abc.ABC, _t.Generic[T]):
                 rc.render()
 
                 try:
-                    self.event(next(events))
-                except Widget.StopWidget as sw:
-                    rc.finalize()
-                    return sw.value
+                    result = self.event(next(events))
                 except StopIteration:
                     assert False, "_event_stream supposed to be infinite"
                 except (Exception, KeyboardInterrupt):
                     rc.finalize()
                     raise
-
-    def stop(self, value: T) -> _t.NoReturn:
-        """Stop rendering a widget and return a value.
-
-        """
-
-        raise Widget.StopWidget(value)
+                if result is not None:
+                    rc.finalize()
+                    return result.value
 
     @functools.cached_property
     def _event_bindings(self) -> _t.Dict[KeyboardEvent, _t.Callable[[], None]]:
@@ -991,6 +992,18 @@ class Widget(abc.ABC, _t.Generic[T]):
                     cb = getattr(self, name)
                     event_bindings_cache.update(dict.fromkeys(cb.__yuio_keybindings__, cb))
         return event_bindings_cache
+
+    def with_help(self) -> "Widget[T_co]":
+        """Return this widget with a :meth:`~Widget.help_widget` added after it.
+
+        """
+
+        return (
+            VerticalLayoutBuilder()
+                .add(self, receive_events=True)
+                .add(self.help_widget)
+                .build()
+            )
 
     @functools.cached_property
     def help_widget(self) -> "Help":
@@ -1089,7 +1102,7 @@ def bind(key: _t.Union[str, Key], ctrl: bool = False, alt: bool = False) -> _t.C
     return decorate
 
 
-def help_column(column: int, /) -> _t.Callable[[_t.Callable[[T], None]], _t.Callable[[T], None]]:
+def help_column(column: int, /) -> _t.Callable[[T], T]:
     """Set index of help column for a bound event handler.
 
     This decorator controls automatic generation of help messages for a widget.
@@ -1109,7 +1122,7 @@ def help_column(column: int, /) -> _t.Callable[[_t.Callable[[T], None]], _t.Call
 
     """
 
-    def decorate(f: _t.Callable[[T], None]) -> _t.Callable[[T], None]:
+    def decorate(f: T) -> T:
         setattr(f, '__yuio_column__', column)
         return f
     return decorate
@@ -1215,7 +1228,7 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
         self._widgets.extend(widgets)
 
-    def event(self, e: KeyboardEvent):
+    def event(self, e: KeyboardEvent) -> _t.Optional[Result[T]]:
         """Dispatch event to the widget that was added with ``receive_events=True``.
 
         See :class:`~VerticalLayoutBuilder` for details.
@@ -1223,7 +1236,7 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
         """
 
         if self._event_receiver is not None:
-            self._widgets[self._event_receiver].event(e)
+            return self._widgets[self._event_receiver].event(e)
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         """Calculate layout of the entire stack.
@@ -1299,6 +1312,16 @@ class Line(Widget[_t.Never]):
         self._color = color
         self._color_path = color_path
 
+    @property
+    def text(self) -> yuio.term.ColorizedString:
+        return self._text
+
+    @text.setter
+    def test(self, text: yuio.term.AnyString, /):
+        self._text = _ColorizedString(text)
+        self._wrapped_text = None
+        self._wrapped_text_width = 0
+
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         return 1, 1
 
@@ -1318,18 +1341,26 @@ class Text(Widget[_t.Never]):
 
     def __init__(
         self,
-        text: "yuio.term.AnyString",
+        text: yuio.term.AnyString,
         /,
         *,
-        color: _t.Optional[_Color] = None,
-        color_path: _t.Optional[str] = None,
+        color: _t.Union[_Color, str, None] = None,
     ):
-        self._text: "yuio.term.ColorizedString" = _ColorizedString(text)
+        self._text: yuio.term.ColorizedString = _ColorizedString(text)
         self._color = color
-        self._color_path = color_path
 
         self._wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
         self._wrapped_text_width: int = 0
+
+    @property
+    def text(self) -> yuio.term.ColorizedString:
+        return self._text
+
+    @text.setter
+    def test(self, text: yuio.term.AnyString, /):
+        self._text = _ColorizedString(text)
+        self._wrapped_text = None
+        self._wrapped_text_width = 0
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         if self._wrapped_text is None or self._wrapped_text_width != rc.width:
@@ -1340,10 +1371,11 @@ class Text(Widget[_t.Never]):
 
     def draw(self, rc: RenderContext, /):
         assert self._wrapped_text is not None
-        if self._color_path is not None:
-            rc.set_color_path(self._color_path)
-        elif self._color is not None:
-            rc.set_color(self._color)
+        if self._color is not None:
+            if isinstance(self._color, str):
+                rc.set_color_path(self._color)
+            else:
+                rc.set_color(self._color)
         rc.write_text(self._wrapped_text)
 
 
@@ -1580,12 +1612,12 @@ class Input(Widget[str]):
             self.pos = prev_pos
 
     @bind(Key.ENTER)
-    def enter(self):
-        self.alt_enter()
+    def enter(self) -> _t.Optional[Result[str]]:
+        return self.alt_enter()
 
     @bind(Key.ENTER, alt=True)
-    def alt_enter(self):
-        self.stop(self.text)
+    def alt_enter(self) -> _t.Optional[Result[str]]:
+        return Result(self.text)
 
     @bind('7', ctrl=True)  # no idea why, but `^_` and `^7` are the same code...
     @bind('-', ctrl=True)
@@ -1669,15 +1701,15 @@ class Input(Widget[str]):
             rc.set_final_pos(*self._pos_after_wrap)
 
 
-@dataclass(frozen=True, slots=True)
-class Option(_t.Generic[T]):
+@dataclass(frozen=True, **yuio._with_slots())
+class Option(_t.Generic[T_co]):
     """
     An option for the :class:`Choice` widget.
 
     """
 
     #: Option's value that will be returned from widget.
-    value: T
+    value: T_co
 
     #: What should be displayed in the autocomplete list.
     display_text: str
@@ -1699,7 +1731,7 @@ class Option(_t.Generic[T]):
     color_tag: _t.Optional[str] = None
 
 
-class Choice(Widget[T]):
+class Choice(Widget[T], _t.Generic[T]):
     """
     Allows choosing from pre-defined options.
 
@@ -1837,9 +1869,9 @@ class Choice(Widget[T]):
         self._current_idx = len(self._options) - 1
 
     @bind(Key.ENTER)
-    def enter(self):
+    def enter(self) -> _t.Optional[Result[T]]:
         if self._options and self._current_idx is not None:
-            self.stop(self._options[self._current_idx].value)
+            return Result(self._options[self._current_idx].value)
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         self._column_width = max(1, min(self._column_width, rc.width))
@@ -1977,6 +2009,7 @@ class InputWithCompletion(Widget[str]):
         self._input = Input(placeholder=placeholder, decoration=decoration)
         self._choice = Choice[yuio.complete.Completion]([], decoration=completion_item_decoration)
         self._choice_active = False
+        self._completion_was_failed: bool = False
 
         self._prev_text: str = ''
         self._prev_pos: int = 0
@@ -1985,13 +2018,13 @@ class InputWithCompletion(Widget[str]):
         self._rsuffix: _t.Optional[yuio.complete.Completion] = None
 
     @bind(Key.ENTER)
-    def enter(self):
+    def enter(self) -> _t.Optional[Result[str]]:
         if self._choice_active and (option := self._choice.get_option()):
             self._set_input_state_from_completion(option.value)
             self._deactivate_completion()
         else:
             self._drop_rsuffix()
-            self.stop(self._input.text)
+            return Result(self._input.text)
 
     @bind(Key.ESCAPE)
     def escape(self):
@@ -2008,12 +2041,13 @@ class InputWithCompletion(Widget[str]):
                 self._set_input_state_from_completion(option.value)
             return
 
-        self._input.checkpoint()
 
         completion = self._completer.complete(self._input.text, self._input.pos)
         if len(completion) == 1:
+            self._input.checkpoint()
             self._set_input_state_from_completion(completion[0])
-        else:
+        elif completion:
+            self._input.checkpoint()
             self._choice.set_options(
                 [
                     Option(c, c.completion, c.dprefix, c.dsuffix, c.comment, c.group_color_tag)
@@ -2022,6 +2056,8 @@ class InputWithCompletion(Widget[str]):
                 default_index=None,
             )
             self._activate_completion()
+        else:
+            self._completion_was_failed = True
 
     def default_event_handler(self, e: KeyboardEvent):
         if self._choice_active and e.key in (Key.ARROW_UP, Key.ARROW_DOWN, Key.TAB, Key.SHIFT_TAB, Key.PAGE_UP, Key.PAGE_DOWN):
@@ -2096,10 +2132,14 @@ class InputWithCompletion(Widget[str]):
         return self._layout.layout(rc)
 
     def draw(self, rc: RenderContext, /):
+        if self._completion_was_failed:
+            rc.bell()
+            self._completion_was_failed = False
+
         self._layout.draw(rc)
 
 
-class FilterableChoice(Widget[Option[T]]):
+class FilterableChoice(Widget[T], _t.Generic[T]):
     """Allows choosing from pre-defined options, with search functionality.
 
     """
@@ -2150,6 +2190,8 @@ class FilterableChoice(Widget[Option[T]]):
 
         self._layout: VerticalLayout
 
+        self._update_completion()
+
     @bind(Key.ESCAPE)
     def esc(self):
         """select default"""
@@ -2166,12 +2208,12 @@ class FilterableChoice(Widget[Option[T]]):
             self._input.event(KeyboardEvent('/'))
             self._update_completion()
 
-    def default_event_handler(self, e: KeyboardEvent):
+    def default_event_handler(self, e: KeyboardEvent) -> _t.Optional[Result[T]]:
         if not self._enable_search or e.key in (
             Key.ARROW_UP, Key.SHIFT_TAB, Key.ARROW_DOWN, Key.TAB, Key.ARROW_LEFT,
             Key.ARROW_RIGHT, Key.PAGE_DOWN, Key.PAGE_UP, Key.HOME, Key.END, Key.ENTER
         ):
-            self._choice.event(e)
+            return self._choice.event(e)
         else:
             self._input.event(e)
             self._update_completion()
@@ -2182,7 +2224,7 @@ class FilterableChoice(Widget[Option[T]]):
         index = 0
         options = []
         for i, option in enumerate(self._options):
-            if self._filter(option, query):
+            if not query or self._filter(option, query):
                 if i == self._default_index:
                     index = len(options)
                 options.append(option)
@@ -2199,13 +2241,54 @@ class FilterableChoice(Widget[Option[T]]):
             self._layout.append(self._no_options_text)
         if self._enable_search:
             self._layout.append(self._input)
-        else:
+        elif len(self._options) > 3:
             self._layout.append(self.help_widget)
 
         return self._layout.layout(rc)
 
     def draw(self, rc: RenderContext, /):
         self._layout.draw(rc)
+
+
+class Map(Widget[U], _t.Generic[T, U]):
+    def __init__(self, inner: Widget[T], fn: _t.Callable[[T], U], /):
+        self._inner: Widget[T] = inner
+        self._fn: _t.Callable[[T], U] = fn
+
+    def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[U]]:
+        if result := self._inner.event(e):
+            return Result(self._fn(result.value))
+
+    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+        return self._inner.layout(rc)
+
+    def draw(self, rc: RenderContext, /):
+        self._inner.draw(rc)
+
+    @property
+    def help_columns(self) -> _t.List["Help.Column"]:
+        return self._inner.help_columns
+
+
+class Apply(Widget[T], _t.Generic[T]):
+    def __init__(self, inner: Widget[T], fn: _t.Callable[[T], None], /):
+        self._inner: Widget[T] = inner
+        self._fn: _t.Callable[[T], None] = fn
+
+    def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T]]:
+        if result := self._inner.event(e):
+            self._fn(result.value)
+            return result
+
+    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+        return self._inner.layout(rc)
+
+    def draw(self, rc: RenderContext, /):
+        self._inner.draw(rc)
+
+    @property
+    def help_columns(self) -> _t.List["Help.Column"]:
+        return self._inner.help_columns
 
 
 class Help(Widget[_t.Never]):
@@ -2257,14 +2340,6 @@ class Help(Widget[_t.Never]):
         self._helps_column_width = [self._get_helps_width(column) for column in self._columns]
 
         self._separate = all(len(column) == 1 for column in self._columns)\
-
-    @classmethod
-    def add_help_to(cls, widget: Widget[T]) -> Widget[T]:
-        """Wraps the given widget into a vertical layout, adding help message right after.
-
-        """
-
-        return VerticalLayoutBuilder().add(widget, receive_events=True).add(widget.help_widget).build()
 
     def _prepare_column(self, column: "Help.Column") -> _t.List[_t.Tuple[_t.List[str], str, int]]:
         return [self._prepare_action(action) for action in column]

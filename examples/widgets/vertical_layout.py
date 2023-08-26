@@ -10,17 +10,17 @@ from yuio.widget import KeyboardEvent, RenderContext, VerticalLayout, Widget
 # and we'll stack them together using `yuio.widget.VerticalLayout`.
 
 class InputWithHeading(Widget):
-    def __init__(self) -> None:
+    def __init__(self):
         self._heading = yuio.widget.Line("Enter something:", color_path='bold')
         self._input = yuio.widget.Input()
 
-        # We will fill this in the `layout` function.
+        # We will init this attribute in the `layout` function.
         self._layout: VerticalLayout
 
-    def event(self, e: KeyboardEvent):
+    def event(self, e: KeyboardEvent) -> _t.Optional[yuio.widget.Result[str]]:
         # Simply forward all events to the input box.
         # We won't use `VerticalLayout`s event handling capabilities in this example.
-        self._input.event(e)
+        return self._input.event(e)
 
     def layout(self, rc: RenderContext) -> _t.Tuple[int, int]:
         # First two widgets will always show...
@@ -38,15 +38,11 @@ class InputWithHeading(Widget):
 
 
 if __name__ == "__main__":
-    yuio.io.heading("Demonstration for `yuio.widget.VerticalLayout`")
-    yuio.io.info("This widget dynamically changes its contents.")
-    yuio.io.info("Try pasting a long string and see what happens.")
-    yuio.io.br()
-
     term = yuio.io.get_term()
     theme = yuio.io.get_theme()
 
     widget = InputWithHeading()
 
+    yuio.io.question("Choose what you'd like for breakfast:\n")
     result = widget.run(term, theme)
-    yuio.io.success(f"You've entered %r", result)
+    yuio.io.success(f"You've entered `%r`", result)

@@ -29,7 +29,9 @@ if __name__ == '__main__':
         ),
     ]
 
-    widget = yuio.widget.Help.add_help_to(yuio.widget.Choice(options))
+    widget = yuio.widget.Choice(options).with_help()
+    # You can also use `yuio.widget.FilterableChoice`
+    # if you have many options.
 
     yuio.io.question("What should Santa bring you this year?")
     result = widget.run(term, theme)

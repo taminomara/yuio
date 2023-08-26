@@ -90,10 +90,9 @@ Utilities
 
 .. autofunction:: line_width
 
-.. autofunction:: strip_color_tags
-
 """
 
+import collections
 import contextlib
 import dataclasses
 import colorsys
@@ -101,11 +100,14 @@ import enum
 import functools
 import os
 import re
+import string
 import sys
 
 from dataclasses import dataclass
 import typing as _t
 import unicodedata
+
+import yuio
 
 
 T = _t.TypeVar('T')
@@ -477,7 +479,7 @@ if os.name == 'nt':
             return False
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **yuio._with_slots())
 class ColorValue:
     """Data about a single color.
 
@@ -621,7 +623,7 @@ class ColorValue:
             return f'<ColorValue {self.data}>'
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **yuio._with_slots())
 class Color:
     """Data about terminal output style. Contains
     foreground and background color, as well as text styles.
@@ -798,11 +800,11 @@ class Color:
                 back = ColorValue.lerp(*(color.back for color in colors))  # type: ignore
 
             if fore_lerp and back_lerp:
-                return lambda f: dataclasses.replace(colors[0], fore=fore(f), back=back(f))
+                return lambda f: dataclasses.replace(colors[0], fore=fore(f), back=back(f))  # type: ignore
             elif fore_lerp:
-                return lambda f: dataclasses.replace(colors[0], fore=fore(f))
+                return lambda f: dataclasses.replace(colors[0], fore=fore(f))  # type: ignore
             elif back_lerp:
-                return lambda f: dataclasses.replace(colors[0], back=back(f))
+                return lambda f: dataclasses.replace(colors[0], back=back(f))  # type: ignore
 
         return lambda f, /: colors[0]
 
@@ -923,6 +925,42 @@ def _adjust_lightness(color: ColorValue, factor: float):
         return color
 
 
+class _ImmutableDictProxy(_t.Mapping[str, T], _t.Generic[T]):
+    def __init__(self, data: _t.Dict[str, T], /, *, attr: str):
+        self.__data = data
+        self.__attr = attr
+
+    def items(self) -> _t.ItemsView[str, T]:
+        return self.__data.items()
+
+    def keys(self) -> _t.KeysView[str]:
+        return self.__data.keys()
+
+    def values(self) -> _t.ValuesView[T]:
+        return self.__data.values()
+
+    def __len__(self):
+        return len(self.__data)
+
+    def __getitem__(self, key):
+        return self.__data[key]
+
+    def __iter__(self):
+        return iter(self.__data)
+
+    def __contains__(self, key):
+        return key in self.__data
+
+    def __repr__(self):
+        return repr(self.__data)
+
+    def __setitem__(self, key, item):
+        raise RuntimeError(f"Theme.{self.__attr} is immutable")
+
+    def __delitem__(self, key):
+        raise RuntimeError(f"Theme.{self.__attr} is immutable")
+
+
 class Theme:
     """Base class for Yuio themes.
 
@@ -930,10 +968,11 @@ class Theme:
 
     """
 
-    msg_decorations: _t.Dict[str, str] = {
+    msg_decorations: _t.Mapping[str, str] = {
         'heading': '⣿',
         'question': '>',
         'task': '>',
+        'group': '',
 
         # TODO: support these in widgets
         # 'menu_selected_item': '▶︎',
@@ -941,6 +980,14 @@ class Theme:
         # 'menu_select': '#',
         # 'menu_search': '/',
     }
+
+    #: An actual mutable version of :attr:`~Theme.msg_decorations`
+    #: is kept here, because `__init_subclass__` will replace
+    #: :attr:`~Theme.msg_decorations` with an immutable proxy.
+    __msg_decorations: _t.Dict[str, str]
+    #: Keeps track of where a message decoration was inherited from. This var is used
+    #: to avoid `__init__`-ing message decorations that were overridden in a subclass.
+    __msg_decoration_sources: _t.Dict[str, _t.Optional[type]] = {}
 
     progress_bar_width = 15
     progress_bar_start_symbol = ''
@@ -986,14 +1033,17 @@ class Theme:
     #: Here, color of traceback's heading ``'tb/heading'`` will be bold and red.
     #:
     #: The base theme class provides colors for basic tags, such as `bold`, `red`,
-    #: `code`, `note`, etc. :class:`DefaultTheme` expands on it, providing
+    #: `code`, `note`, etc. :class:`DefaultTheme` expands on it, providing main
+    #: colors that control the overall look of the theme, and then colors for all
+    #: interface elements.
     #:
-    #: When deriving from a theme, you can override this mapping. Its elements will
-    #: be merged with colors from all base classes.
+    #: When deriving from a theme, you can override this mapping. When looking up
+    #: colors via :meth:`~Theme.get_color`, base classes will be tried for color,
+    #: in order of method resolution.
     #:
-    #: ..
-    #:    TODO: document which paths are used by standard Yuio's widgets.
-    colors: _t.Dict[str, _t.Union[str, Color, _t.List[_t.Union[str, Color]]]] = {
+    #: This mapping becomes immutable once a theme class is created. The only possible
+    #: way to modify it is by using :meth:`~Theme._set_color_if_not_overridden`.
+    colors: _t.Mapping[str, _t.Union[str, Color, _t.List[_t.Union[str, Color]]]] = {
         'code': 'magenta',
         'note': 'green',
 
@@ -1013,18 +1063,137 @@ class Theme:
         'white': Color.FORE_WHITE,
     }
 
+    #: An actual mutable version of :attr:`~Theme.colors`
+    #: is kept here, because `__init_subclass__` will replace
+    #: :attr:`~Theme.colors` with an immutable proxy.
+    __colors: _t.Dict[str, _t.Union[str, Color, _t.List[_t.Union[str, Color]]]]
+    #: Keeps track of where a color was inherited from. This var is used
+    #: to avoid `__init__`-ing colors that were overridden in a subclass.
+    __color_sources: _t.Dict[str, _t.Optional[type]] = {}
+
+    #: When running an `__init__` function, this variable will be set to the class
+    #: that implemented it, regardless of type of `self`.
+    #:
+    #: That is, inside `DefaultTheme.__init__`, `__expected_source` is set
+    #: to `DefaultTheme`, in `MyTheme.__init__` it is `MyTheme`, etc.
+    #:
+    #: This is possible because `__init_subclass__` wraps any implementation
+    #: of `__init__` into a wrapper that sets this variable.
+    __expected_source: _t.Optional[type] = None
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
         colors = {}
+        color_sources = {}
         for base in reversed(cls.__mro__):
-            colors.update(getattr(base, 'colors', {}))
-        cls.colors = colors
+            base_colors = getattr(base, 'colors', {})
+            colors.update(base_colors)
+            color_sources.update(dict.fromkeys(base_colors.keys(), cls))
+        cls.__colors = colors
+        cls.__color_sources = color_sources
+        cls.colors = _ImmutableDictProxy(cls.__colors, attr="colors")
 
         msg_decorations = {}
+        msg_decoration_sources = {}
         for base in reversed(cls.__mro__):
-            msg_decorations.update(getattr(base, 'msg_decorations', {}))
-        cls.msg_decorations = msg_decorations
+            base_msg_decorations = getattr(base, 'msg_decorations', {})
+            msg_decorations.update(base_msg_decorations)
+            msg_decoration_sources.update(dict.fromkeys(base_msg_decorations, cls))
+        cls.__msg_decorations = msg_decorations
+        cls.__msg_decoration_sources = msg_decoration_sources
+        cls.msg_decorations = _ImmutableDictProxy(cls.__msg_decorations, attr="msg_decorations")
+
+        if init := cls.__dict__.get("__init__", None):
+            @functools.wraps(init)
+            def _wrapped_init(_self, *args, **kwargs):
+                prev_expected_source = _self._Theme__expected_source
+                _self._Theme__expected_source = cls
+                try:
+                    return init(_self, *args, **kwargs)
+                finally:
+                    _self._Theme__expected_source = prev_expected_source
+            cls.__init__ = _wrapped_init
+
+    def _set_msg_decoration_if_not_overridden(
+        self,
+        name: str,
+        msg_decoration: str,
+        /,
+    ):
+        """Set message decoration by name, but only if it wasn't overridden
+        in a subclass.
+
+        This method should be called from `__init__` implementations
+        to dynamically set message decorations. It will only set the decoration
+        if it was not overridden by any child class.
+
+        """
+
+        if self.__expected_source is None:
+            raise RuntimeError(
+                f"_set_msg_decoration_if_not_overridden should only be called from __init__")
+        source = self.__msg_decoration_sources.get(name, Theme)
+        # The class that's `__init__` is currently running should be a parent
+        # of the msg_decoration's source. This means that the msg_decoration was assigned by a parent.
+        if source is not None and issubclass(self.__expected_source, source):
+            self.set_msg_decoration(name, msg_decoration)
+
+    def set_msg_decoration(
+        self,
+        name: str,
+        msg_decoration: str,
+        /,
+    ):
+        """Set message decoration by name.
+
+        """
+
+        if "_Theme__msg_decorations" not in self.__dict__:
+            self.__msg_decorations = self.__class__.__msg_decorations.copy()
+            self.__msg_decoration_sources = self.__class__.__msg_decoration_sources.copy()
+        self.__msg_decorations[name] = msg_decoration
+        self.__msg_decoration_sources[name] = self.__expected_source
+
+    def _set_color_if_not_overridden(
+        self,
+        path: str,
+        color: _t.Union[str, Color, _t.List[_t.Union[str, Color]]],
+        /,
+    ):
+        """Set color by path, but only if the color was not overridden in a subclass.
+
+        This method should be called from `__init__` implementations
+        to dynamically set colors. It will only set the color if it was not overridden
+        by any child class.
+
+        """
+
+        if self.__expected_source is None:
+            raise RuntimeError(
+                f"_set_color_if_not_overridden should only be called from __init__")
+        source = self.__color_sources.get(path, Theme)
+        # The class that's `__init__` is currently running should be a parent
+        # of the color's source. This means that the color was assigned by a parent.
+        if source is not None and issubclass(self.__expected_source, source):
+            self.set_color(path, color)
+
+    def set_color(
+        self,
+        path: str,
+        color: _t.Union[str, Color, _t.List[_t.Union[str, Color]]],
+        /,
+    ):
+        """Set color by path.
+
+        """
+
+        if "_Theme__colors" not in self.__dict__:
+            self.__colors = self.__class__.__colors.copy()
+            self.__color_sources = self.__class__.__color_sources.copy()
+        self.__colors[path] = color
+        self.__color_sources[path] = self.__expected_source
+        self.get_color.cache_clear()
 
     @_t.final
     @functools.cache
@@ -1035,8 +1204,8 @@ class Theme:
 
         color = Color.NONE
 
-        for prefix in self._prefixes(path.split('/')):
-            if (res := self.colors.get('/'.join(prefix))) is not None:
+        for prefix in self.__prefixes(path.split('/')):
+            if (res := self.__colors.get('/'.join(prefix))) is not None:
                 if isinstance(res, str):
                     color |= self.get_color(res)
                 elif isinstance(res, list):
@@ -1048,11 +1217,11 @@ class Theme:
         return color
 
     @staticmethod
-    def _prefixes(it: _t.List[T]) -> _t.Iterable[_t.List[T]]:
+    def __prefixes(it: _t.List[T]) -> _t.Iterable[_t.List[T]]:
         for i in range(1, len(it) + 1):
             yield it[:i]
 
-    _TAG_RE = re.compile(
+    __TAG_RE = re.compile(
         r"""
               <c:(?P<tag_open>[a-z0-9, _/@]+)>  # Color tag open.
             | </c>                              # Color tag close.
@@ -1060,8 +1229,8 @@ class Theme:
         """,
         re.VERBOSE
     )
-    _NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
-    _FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
+    __NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
+    __FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
 
     def colorize(
         self,
@@ -1087,7 +1256,7 @@ class Theme:
         stack = [default_color]
 
         last_pos = 0
-        for tag in self._TAG_RE.finditer(s):
+        for tag in self.__TAG_RE.finditer(s):
             raw.append(s[last_pos:tag.start()])
             last_pos = tag.end()
 
@@ -1101,8 +1270,8 @@ class Theme:
             elif code := tag.group("code"):
                 if (
                     parse_cli_flags_in_backticks
-                    and self._FLAG_RE.match(code)
-                    and not self._NEG_NUM_RE.match(code)
+                    and self.__FLAG_RE.match(code)
+                    and not self.__NEG_NUM_RE.match(code)
                 ):
                     raw.append(stack[-1] | self.get_color("cli/flag"))
                 else:
@@ -1119,50 +1288,69 @@ class Theme:
 
         return ColorizedString(raw)
 
-    _PY_KWDS = [
+    __PY_KWDS = [
         "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del",
         "elif", "else", "except", "False", "finally", "for", "from", "global", "if", "import",
         "in", "is", "lambda", "None", "nonlocal", "not", "or", "pass", "raise", "return",
         "True", "try", "while", "with", "yield"
     ]
-    _PY_SYNTAX = re.compile(r"""
-          (?P<kwd>\b(?:%s)\b)                   # keyword
+    __PY_SYNTAX = re.compile(r"""
+          (?P<kwd>\b(?:%s)\b)                       # keyword
         | (?P<str>
-            [rfu]*(                             # string prefix
-                '(?:\\.|[^\\'])*(?:'|\n)        # singly-quoted string
-              | "(?:\\.|[^\\"])*(?:"|\n)        # doubly-quoted string
-              | \"""(\\.|[^\\]|\n)*?\"""        # long singly-quoted string
-              | \'''(\\.|[^\\]|\n)*?\'''))      # long doubly-quoted string
+            [rfu]*(                                 # string prefix
+                '(?:\\.|[^\\'])*(?:'|\n)            # singly-quoted string
+              | "(?:\\.|[^\\"])*(?:"|\n)            # doubly-quoted string
+              | \"""(\\.|[^\\]|\n)*?\"""            # long singly-quoted string
+              | \'''(\\.|[^\\]|\n)*?\'''))          # long doubly-quoted string
         | (?P<lit>
-              \d+(?:\.\d*(?:e[+-]?\d+)?)?       # int or float
-            | \.\d+(?:e[+-]?\d+)?               # float that starts with dot
-            | 0x[0-9a-fA-F]+                    # hex
-            | 0b[01]+)                          # bin
-        | (?P<punct>[({[\]})\\])                # punctuation
-        | (?P<comment>\#.*$)                    # comment
-    """ % "|".join(map(re.escape, _PY_KWDS)), re.MULTILINE | re.VERBOSE)
-    _SH_KWDS = [
+              \d+(?:\.\d*(?:e[+-]?\d+)?)?           # int or float
+            | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
+            | 0x[0-9a-fA-F]+                        # hex
+            | 0b[01]+)                              # bin
+        | (?P<punct>[{}()[\]\\;|!&])                # punctuation
+        | (?P<comment>\#.*$)                        # comment
+    """ % "|".join(map(re.escape, __PY_KWDS)), re.MULTILINE | re.VERBOSE)
+    __SH_KWDS = [
         "if", "then", "elif", "else", "fi", "time", "for", "in", "until", "while", "do",
         "done", "case", "esac", "coproc", "select", "function",
     ]
-    _SH_SYNTAX = re.compile(r"""
-        (?P<kwd>\b(?:%s)\b|\[\[|\]\])           # keyword
+    __SH_SYNTAX = re.compile(r"""
+          (?P<kwd>\b(?:%s)\b|\[\[|\]\])             # keyword
+        | (?P<a0__punct>(?:^|\|\|?|&&|\$\())        # chaining operator (pipe or logic)
+          (?P<a1__>\s*)
+          (?P<a2__prog>\S+)                         # prog
         | (?P<str>
-            '(?:[.\n]*?)*'                      # singly-quoted string
-            | "(?:\\.|[^\\"])*")                # doubly-quoted string
+            '(?:[.\n]*?)*'                          # singly-quoted string
+            | "(?:\\.|[^\\"])*")                    # doubly-quoted string
         | (?P<punct>
-              [{}()[\]\\;|!&]                   # punctuation
-            | <{1,3}                            # input redirect
-            | [12]?>{1,2}(?:&[12])?)            # output redirect
-        | (?P<comment>\#.*$)                    # comment
-        | (?P<flag>(?<=\s)-[-a-zA-Z0-9_]+\b)    # flag
-    """ % "|".join(map(re.escape, _SH_KWDS)), re.MULTILINE | re.VERBOSE)
+              [{}()[\]\\;!&|&]                      # punctuation
+            | <{1,3}                                # input redirect
+            | [12]?>{1,2}(?:&[12])?)                # output redirect
+        | (?P<comment>\#.*$)                        # comment
+        | (?P<flag>(?<![\w-])-[a-zA-Z0-9_-]+\b)     # flag
+    """ % "|".join(map(re.escape, __SH_KWDS)), re.MULTILINE | re.VERBOSE)
+    _SH_USAGE_SYNTAX = re.compile(r"""
+          (?P<kwd>\b(?:%s)\b)                       # keyword
+        | (?P<prog>%%\(prog\)s)                     # prog
+        | (?P<metavar>(?<=<)[^>]+(?=>))             # metavar
+        | (?P<str>
+            '(?:[.\n]*?)*'                          # singly-quoted string
+            | "(?:\\.|[^\\"])*")                    # doubly-quoted string
+        | (?P<comment>\#.*$)                        # comment
+        | (?P<flag>(?<![\w-])-[-a-zA-Z0-9_]+\b)     # flag
+    """ % "|".join(map(re.escape, __SH_KWDS)), re.MULTILINE | re.VERBOSE)
 
-    _SYNTAX: _t.Dict[str, re.Pattern] = {
-        "py": _PY_SYNTAX,
-        "python": _PY_SYNTAX,
-        "sh": _SH_SYNTAX,
-        "bash": _SH_SYNTAX,
+    __SYNTAX: _t.Dict[str, re.Pattern] = {
+        "py": __PY_SYNTAX,
+        "python": __PY_SYNTAX,
+
+        "sh": __SH_SYNTAX,
+        "bash": __SH_SYNTAX,
+
+        "sh_usage": _SH_USAGE_SYNTAX,
+        "sh-usage": _SH_USAGE_SYNTAX,
+        "bash_usage": _SH_USAGE_SYNTAX,
+        "bash-usage": _SH_USAGE_SYNTAX,
     }
 
     def highlight_code(
@@ -1187,8 +1375,8 @@ class Theme:
         if isinstance(default_color, str):
             default_color = self.get_color(default_color)
 
-        if syntax in self._SYNTAX:
-            syntax_re = self._SYNTAX[syntax]
+        if syntax in self.__SYNTAX:
+            syntax_re = self.__SYNTAX[syntax]
         else:
             return ColorizedString([default_color, s])
 
@@ -1201,7 +1389,8 @@ class Theme:
                 raw.append(s[last_pos:code_unit.start()])
             last_pos = code_unit.end()
 
-            for name, text in code_unit.groupdict().items():
+            for name, text in sorted(code_unit.groupdict().items()):
+                name = name.split("__", maxsplit=1)[-1]
                 if text:
                     raw.append(default_color | self.get_color(f"syntax_highlighting/{name}"))
                     raw.append(text)
@@ -1233,11 +1422,22 @@ class DefaultTheme(Theme):
 
     """
 
+    #: Colors for default theme are separated into several sections.
+    #:
+    #: The main section (the first one) has common settings which are referenced
+    #: from all other sections. You'll probably want to override
     colors = {
-        # Basic theme colors, the rest is derived from them.
+        #
+        # Main settings
+        # -------------
+        #
+        # This section controls the overall theme look.
+        # Most likely you'll want to change accent colors from here.
+
         'heading_color': 'bold',
         'primary_color': 'normal',
         'accent_color': 'magenta',
+        'accent_color_2': 'cyan',
         'secondary_color': 'dim',
         'error_color': 'red',
         'warning_color': 'yellow',
@@ -1245,21 +1445,49 @@ class DefaultTheme(Theme):
         'low_priority_color_a': 'dim',
         'low_priority_color_b': 'dim',
 
-        # The rest...
+        #
+        # Common tags
+        # -----------
 
-        'code': 'magenta',
-        'note': 'cyan',
+        'code': 'accent_color',
+        'note': 'accent_color_2',
 
-        'msg/heading/decoration': 'accent_color',
+        #
+        # IO messages
+        # -----------
+
+        # Elements that are common for all messages.
+        "msg/decoration": "accent_color",
+        "msg/plain_text": Color.NONE,
+        # Colors for each message type.
+        'msg/heading/decoration': "msg/decoration",
         'msg/heading/text': 'heading_color',
-        'msg/question/decoration': 'accent_color',
+        'msg/heading/plain_text': "msg/plain_text",
+        'msg/question/decoration': "msg/decoration",
         'msg/question/text': 'heading_color',
-        'msg/error': 'error_color',
-        'msg/warning': 'warning_color',
-        'msg/success': 'success_color',
-        'msg/info': 'primary_color',
-        'msg/hr': 'low_priority_color_a',
-        'msg/group': 'accent_color',
+        'msg/question/plain_text': "msg/plain_text",
+        'msg/error/decoration': "msg/decoration",
+        'msg/error/text': 'error_color',
+        'msg/error/plain_text': "msg/plain_text",
+        'msg/warning/decoration': "msg/decoration",
+        'msg/warning/text': 'warning_color',
+        'msg/warning/plain_text': "msg/plain_text",
+        'msg/success/decoration': "msg/decoration",
+        'msg/success/text': 'success_color',
+        'msg/success/plain_text': "msg/plain_text",
+        'msg/info/decoration': "msg/decoration",
+        'msg/info/text': 'primary_color',
+        'msg/info/plain_text': "msg/plain_text",
+        'msg/hr/decoration': "msg/decoration",
+        'msg/hr/text': 'low_priority_color_a',
+        'msg/hr/plain_text': "msg/plain_text",
+        'msg/group/decoration': "msg/decoration",
+        'msg/group/text': 'accent_color',
+        'msg/group/plain_text': "msg/plain_text",
+
+        #
+        # Log messages
+        # ------------
 
         'log/plain_text': 'secondary_color',
         'log/asctime': 'secondary_color',
@@ -1272,8 +1500,14 @@ class DefaultTheme(Theme):
         'log/level/debug': 'secondary_color',
         'log/message': 'primary_color',
 
+        # Colorized tracebacks
+        # --------------------
+
+        # Main traceback elements.
         'tb/plain_text': 'secondary_color',
         'tb/heading': ['heading_color', 'error_color'],
+        'tb/message': 'tb/heading',
+        # Stack frames for user code.
         'tb/frame/usr': 'primary_color',
         'tb/frame/usr/file': 'primary_color',
         'tb/frame/usr/file/module': 'code',
@@ -1281,6 +1515,7 @@ class DefaultTheme(Theme):
         'tb/frame/usr/file/path': 'code',
         'tb/frame/usr/code': 'primary_color',
         'tb/frame/usr/highlight': 'low_priority_color_a',
+        # Stack frames for library code.
         'tb/frame/lib': 'dim',
         'tb/frame/lib/file': 'tb/frame/usr/file',
         'tb/frame/lib/file/module': 'tb/frame/usr/file/module',
@@ -1288,32 +1523,67 @@ class DefaultTheme(Theme):
         'tb/frame/lib/file/path': 'tb/frame/usr/file/path',
         'tb/frame/lib/code': 'tb/frame/usr/code',
         'tb/frame/lib/highlight': 'tb/frame/usr/highlight',
-        'tb/message': 'tb/heading',
 
+        #
+        # Tasks and progress bars
+        # -----------------------
+
+        # Main task elements.
         'task/plain_text': 'secondary_color',
         'task/heading': 'heading_color',
+        'task/progress': 'task/plain_text',
         'task/comment': 'primary_color',
+        # Spinner/decoration for finished tasks or tasks without progress.
         'task/decoration': 'accent_color',
         'task/decoration/done': 'success_color',
         'task/decoration/error': 'error_color',
-        'task/progress': 'task/plain_text',
+        # Progressbar.
         'task/progressbar/done': 'accent_color',
         'task/progressbar/pending': 'secondary_color',
 
-        'cli/flag': 'note',
-        'cli/metavar': 'code',
-        'cli/section': 'msg/group',
-        'cli/list/decoration': ["secondary_color"],
-        'cli/quote/decoration': ["secondary_color"],
-        'cli/code_block/decoration': ["secondary_color"],
+        #
+        # CLI
+        # ---
 
+        # Main text elements.
+        'cli/text': "primary_color",
+        'cli/plain_text': Color.BACK_GREEN,
+        # Usage elements.
+        'cli/prog': "syntax_highlighting/prog",
+        'cli/flag': "syntax_highlighting/flag",
+        'cli/metavar': "syntax_highlighting/metavar",
+        # Block elements.
+        'cli/section/text': 'msg/group/text',
+        'cli/section/plain_text': 'msg/group/text',
+        'cli/section/decoration': 'msg/group/decoration',
+        'cli/list/decoration': "secondary_color",
+        'cli/list/text': "cli/text",
+        'cli/list/plain_text': "cli/plain_text",
+        'cli/quote/decoration': "secondary_color",
+        'cli/quote/text': "cli/text",
+        'cli/quote/plain_text': "cli/plain_text",
+        'cli/code_block/decoration': "secondary_color",
+        'cli/code_block/text': "cli/text",
+        'cli/code_block/plain_text': "cli/plain_text",
+
+        #
+        # Syntax highlighting
+        # -------------------
+
+        # Primary groups.
         "syntax_highlighting/kwd": "bold",
-        "syntax_highlighting/str": "bold",
-        "syntax_highlighting/str/esc": "blue",
-        "syntax_highlighting/lit": "bold",
+        "syntax_highlighting/str": Color.NONE,
+        "syntax_highlighting/lit": Color.NONE,
         "syntax_highlighting/punct": "blue",
-        "syntax_highlighting/comment": "dim",
-        "syntax_highlighting/flag": "cli/flag",
+        "syntax_highlighting/comment": "secondary_color",
+        # Sh-specific.
+        "syntax_highlighting/prog": "bold",
+        "syntax_highlighting/flag": "cyan",
+        "syntax_highlighting/metavar": "bold",
+
+        #
+        # Menu and widgets
+        # ----------------
 
         'menu/input/decoration': 'low_priority_color_a',
         'menu/input/text': 'primary_color',
@@ -1356,11 +1626,19 @@ class DefaultTheme(Theme):
         background_color = ColorValue(term.background_color)
 
         if term.lightness.DARK:
-            self.colors['low_priority_color_a'] = Color(fore=background_color.lighten(0.25))
-            self.colors['low_priority_color_b'] = Color(fore=background_color.lighten(0.15))
+            self._set_color_if_not_overridden(
+                'low_priority_color_a', Color(fore=background_color.lighten(0.25))
+            )
+            self._set_color_if_not_overridden(
+                'low_priority_color_b', Color(fore=background_color.lighten(0.15))
+            )
         else:
-            self.colors['low_priority_color_a'] = Color(fore=background_color.darken(0.25))
-            self.colors['low_priority_color_b'] = Color(fore=background_color.darken(0.15))
+            self._set_color_if_not_overridden(
+                'low_priority_color_a', Color(fore=background_color.darken(0.25))
+            )
+            self._set_color_if_not_overridden(
+                'low_priority_color_b', Color(fore=background_color.darken(0.15))
+            )
 
 
 def line_width(s: str, /) -> int:

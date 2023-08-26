@@ -32,8 +32,6 @@ Controlling how sub-commands are invoked
 import abc
 import argparse
 import dataclasses
-from enum import Enum
-import enum
 import inspect
 import logging
 import math
@@ -48,12 +46,11 @@ import typing as _t
 from dataclasses import dataclass
 import functools
 
-import yuio._utils
+import yuio
 import yuio.config
 import yuio.io
 import yuio.parse
 import yuio.term
-from yuio.config import DISABLED, MISSING, POSITIONAL, Disabled, Missing, Positional
 from yuio.config import field, inline, positional
 
 
@@ -94,6 +91,10 @@ def app(
     description: _t.Optional[str] = None,
     epilog: _t.Optional[str] = None,
 ):
+    """
+
+    """
+
     def registrar(command: "Command", /) -> App:
         return App(
             command,
@@ -165,17 +166,6 @@ class App:
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
     ):
-        """
-
-        :param command:
-        :param prog:
-        :param usage:
-        :param help:
-        :param description:
-        :param epilog:
-
-        """
-
         #: Program or subcommand display name.
         #:
         #: By default, inferred from :data:`sys.argv` and subcommand names.
@@ -183,7 +173,19 @@ class App:
         #: See `prog <https://docs.python.org/3/library/argparse.html#prog>`_.
         self.prog: _t.Optional[str] = prog
 
-        #: Program or subcommand usage description.
+        #: Program or subcommand synapsis.
+        #:
+        #: This string will be colorized according to `bash` syntax,
+        #: and then it will be ``%``-formatted with a single keyword argument `prog`.
+        #: If command supports multiple signatures, each of them should be listed
+        #: on a separate string. For example::
+        #:
+        #:     usage = """
+        #:     %(prog)s [-q] [-f] [-m] [<branch>]
+        #:     %(prog)s [-q] [-f] [-m] --detach [<branch>]
+        #:     %(prog)s [-q] [-f] [-m] [--detach] <commit>
+        #:     ...
+        #:     """
         #:
         #: By default, generated from CLI flags by argparse.
         #:
@@ -193,18 +195,17 @@ class App:
         if not description and command is not None:
             description = command.__doc__
 
-        #: Text that is shown before CLI flags help.
+        #: Text that is shown before CLI flags help, usually contains
+        #: short description of the program or subcommand.
         #:
-        #: By default, inferred from command's documentation.
+        #: By default, inferred from command's description.
         #:
         #: See `description <https://docs.python.org/3/library/argparse.html#description>`_.
-        #:
-        #: Error for github to display: :ref:`foobar`.
         self.description: _t.Optional[str] = description
 
         if not help and description:
             lines = description.split('\n\n', 1)
-            help = lines[0].replace('\n', ' ').rstrip('.')
+            help = lines[0].rstrip('.')
 
         #: Short help message that is shown when listing subcommands.
         #:
@@ -308,7 +309,7 @@ class App:
 
             app.allow_abbrev = self.allow_abbrev
 
-            main_name = name or yuio._utils.to_dash_case(cb.__name__)
+            main_name = name or yuio.to_dash_case(cb.__name__)
             self._sub_apps[main_name] = App._SubApp(app, main_name, aliases, is_primary=True)
             if aliases:
                 alias_app = App._SubApp(app, main_name)
@@ -431,7 +432,7 @@ def _command_from_callable(cb: "Command") -> _t.Type[yuio.config.Config]:
     accepts_subcommand = False
 
     try:
-        docs = yuio._utils.find_docs(cb)
+        docs = yuio._find_docs(cb)
     except Exception:
         yuio._logger.exception(
             'Unable to get documentation for %s',
@@ -458,7 +459,7 @@ def _command_from_callable(cb: "Command") -> _t.Type[yuio.config.Config]:
             field = yuio.config.positional()
         if not isinstance(field, yuio.config._FieldSettings):
             field = yuio.config.field(field)
-        if field.default is MISSING:
+        if field.default is yuio.MISSING:
             field = dataclasses.replace(field, required=True)
         if name in docs:
             field = dataclasses.replace(field, help=docs[name])
@@ -496,7 +497,7 @@ def _command_from_callable_run_impl(cb: "Command", params: _t.List[str], accepts
 _MAX_ARGS_COLUMN_WIDTH = 24
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **yuio._with_slots())
 class _HelpHeading:
     """Section heading for help message.
 
@@ -512,7 +513,7 @@ class _HelpHeading:
             out += "\n"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **yuio._with_slots())
 class _HelpText:
     """Help section with help message.
 
@@ -539,7 +540,7 @@ class _HelpText:
         ):
             raise NotImplementedError()
 
-    @dataclass(slots=True)
+    @dataclass(**yuio._with_slots())
     class _Heading(_Node):
         """Heading AST node.
 
@@ -555,6 +556,12 @@ class _HelpText:
             continuation_indent: yuio.term.ColorizedString,
             theme: yuio.term.Theme,
         ):
+            heading_decoration = theme.colorize(
+                theme.msg_decorations.get("group", ""),
+                default_color="cli/section/decoration",
+            )
+            if heading_decoration:
+                heading_decoration += " "
             heading = theme.colorize(
                 self.heading,
                 default_color="cli/section",
@@ -568,7 +575,7 @@ class _HelpText:
                 out += line
                 out += "\n"
 
-    @dataclass(slots=True)
+    @dataclass(**yuio._with_slots())
     class _Container(_Node):
         """Base AST node for containers, i.e. nodes that contain lines of text.
 
@@ -580,7 +587,7 @@ class _HelpText:
 
         lines: _t.List[str] = dataclasses.field(default_factory=list)
 
-    @dataclass(slots=True, kw_only=True)
+    @dataclass(**yuio._with_slots(), kw_only=True)
     class _Paragraph(_Container):
         """Paragraph AST node.
 
@@ -609,7 +616,7 @@ class _HelpText:
                 out += line
                 out += "\n"
 
-    @dataclass(slots=True, kw_only=True)
+    @dataclass(**yuio._with_slots(), kw_only=True)
     class _ListItem(_Container):
         """AST node for a single bullet list item.
 
@@ -632,7 +639,7 @@ class _HelpText:
                 theme
             )
 
-    @dataclass(slots=True, kw_only=True)
+    @dataclass(**yuio._with_slots(), kw_only=True)
     class _NumberedListItem(_Container):
         """AST node for a single numbered list item.
 
@@ -661,7 +668,7 @@ class _HelpText:
                 theme
             )
 
-    @dataclass(slots=True, kw_only=True)
+    @dataclass(**yuio._with_slots(), kw_only=True)
     class _Quote(_Container):
         """Quote AST node.
 
@@ -684,7 +691,7 @@ class _HelpText:
                 theme
             )
 
-    @dataclass(slots=True, kw_only=True)
+    @dataclass(**yuio._with_slots(), kw_only=True)
     class _Code(_Container):
         """Code AST node.
 
@@ -717,7 +724,7 @@ class _HelpText:
                 out += line
                 out += "\n"
 
-    @dataclass(slots=True)
+    @dataclass(**yuio._with_slots())
     class _List(_Node):
         """AST node that holds bullet list items.
 
@@ -750,7 +757,7 @@ class _HelpText:
                 sep = True
                 indent = continuation_indent
 
-    @dataclass(slots=True)
+    @dataclass(**yuio._with_slots())
     class _NumberedList(_Node):
         """AST node that holds numbered list items.
 
@@ -944,7 +951,7 @@ class _HelpText:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **yuio._with_slots())
 class _HelpArg:
     indent: int
     args: yuio.term.ColorizedString
@@ -976,19 +983,32 @@ class _HelpArg:
             allow_headings=False,
         )
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **yuio._with_slots())
 class _HelpUsage:
-    indent: int
     prefix: yuio.term.ColorizedString
+    usage_override: yuio.term.ColorizedString
     usage: yuio.term.ColorizedString
     optionals: _t.List[yuio.term.ColorizedString]
     positionals: _t.List[yuio.term.ColorizedString]
 
     def format(self, out: yuio.term.ColorizedString, width: int, args_column_width: int, theme: yuio.term.Theme):
         out += theme.get_color("cli/plain_text")
-        out += "  " * self.indent
-        cur_width = self.indent * 2
         needs_space = False
+
+        if self.usage_override:
+            for line in self.usage_override.wrap(
+                width,
+                preserve_spaces=True,
+                preserve_newlines=True,
+                break_on_hyphens=False,
+                first_line_indent=self.prefix,
+                continuation_indent=" " * self.prefix.width,
+            ):
+                out += line
+                out += "\n"
+            return
+
+        cur_width = 0
 
         if self.prefix:
             out += self.prefix
@@ -1070,14 +1090,22 @@ class _HelpFormatter(object):
         c_optionals: _t.List[yuio.term.ColorizedString] = []
         c_positionals: _t.List[yuio.term.ColorizedString] = []
 
+        c_usage = yuio.term.ColorizedString()
+        c_usage_override = yuio.term.ColorizedString()
         if usage is not None:
-            c_usage = self._theme.colorize(
+            first_line, *rest = usage.split('\n', 1)
+            usage = first_line + ('\n' + textwrap.dedent(rest[0]) if rest else '')
+            usage = usage.strip()
+            c_usage_override = self._theme.highlight_code(
                 usage,
+                "sh-usage",
                 default_color="cli/plain_text",
-                parse_cli_flags_in_backticks=True,
             ) % dict(prog=self._prog)
         else:
-            c_usage = yuio.term.ColorizedString([self._theme.get_color("cli/plain_text"), str(self._prog)])
+            c_usage = yuio.term.ColorizedString([
+                self._theme.get_color("cli/prog"),
+                str(self._prog)
+            ])
 
             optionals: _t.List[_t.Union[argparse.Action, argparse._MutuallyExclusiveGroup]] = []
             positionals: _t.List[_t.Union[argparse.Action, argparse._MutuallyExclusiveGroup]] = []
@@ -1121,8 +1149,8 @@ class _HelpFormatter(object):
                             res.append(c_elem)
 
         self._sections.append(_HelpUsage(
-            self._indent,
             c_prefix,
+            c_usage_override,
             c_usage,
             c_optionals,
             c_positionals,

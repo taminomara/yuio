@@ -1,12 +1,12 @@
-import yuio.term
+import yuio.io
 import yuio.widget
 
 
 if __name__ == '__main__':
-    term = yuio.term.get_stderr_info()
-    theme = yuio.term.DefaultTheme(term)
+    term = yuio.io.get_term()
+    theme = yuio.io.get_theme()
 
-    widget = yuio.widget.Input(placeholder='Enter something', decoration='>')
+    widget = yuio.widget.Input(placeholder='Enter something nice?', decoration='>')
 
     result = widget.run(term, theme)
-    print(f"You've entered {result!r}")
+    yuio.io.success("You've entered `%r`", result)

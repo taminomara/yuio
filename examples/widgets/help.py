@@ -5,8 +5,16 @@ import yuio.widget
 from yuio.widget import Key, RenderContext
 
 
+# Let's build a simple widget and see how we can configure it
+# to automatically render help messages for us.
+
 class ExampleWidget(yuio.widget.Widget[None]):
-    _last_action = "nothing so far"
+    def __init__(self):
+        self._last_action = "nothing so far"
+
+    # For all actions we'll provide a short docstring.
+    # We'll also group actions into columns
+    # using `yuio.widget.help_column`.
 
     @yuio.widget.bind(Key.ARROW_UP)
     @yuio.widget.bind("k")
@@ -53,7 +61,7 @@ class ExampleWidget(yuio.widget.Widget[None]):
     @yuio.widget.help_column(1)
     def on_escape(self):
         """close"""
-        self.stop(None)
+        return yuio.widget.Result(None)
 
     def layout(self, rc: RenderContext) -> _t.Tuple[int, int]:
         return 1, 1
@@ -62,21 +70,15 @@ class ExampleWidget(yuio.widget.Widget[None]):
         rc.write("You've pressed ")
         rc.set_color_path("code")
         rc.write(self._last_action)
+        rc.reset_color()
+        rc.write(".")
 
 
 if __name__ == '__main__':
-    yuio.io.heading("Demonstration for `yuio.widget.VerticalLayout`")
-    yuio.io.info("This widget dynamically changes its contents.")
-    yuio.io.info("Try pasting a long string.")
-    yuio.io.br()
-
     term = yuio.io.get_term()
     theme = yuio.io.get_theme()
 
-    widget = ExampleWidget()
-    widget_with_help = yuio.widget.VerticalLayoutBuilder() \
-        .add(widget, receive_events=True) \
-        .add(widget.help_widget) \
-        .build()
+    widget = ExampleWidget().with_help()
 
-    widget_with_help.run(term, theme)
+    yuio.io.question("Press hotkeys for actions described below:")
+    widget.run(term, theme)

@@ -1,19 +1,32 @@
 """
-Utility functions
------------------
+Utilities
+---------
 
-The following utility functions are used throughout Yuio implementation:
+.. autoclass:: SupportsLt
 
 .. autofunction:: to_dash_case
 
 
-Utility types
--------------
+Placeholder values
+^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: SupportsLt
+These values are used in places where :data:`None` is ambiguous.
+
+.. autodata:: DISABLED
+
+.. autodata:: MISSING
+
+.. autodata:: POSITIONAL
+
+.. autodata:: Disabled
+
+.. autodata:: Missing
+
+.. autodata:: Positional
 
 """
 
+import enum as _enum
 import logging as _logging
 import os as _os
 import sys as _sys
@@ -28,7 +41,7 @@ __all__ = [
 ]
 
 _logger = _logging.getLogger('yuio.internal')
-_logger.setLevel("DEBUG")  #
+_logger.setLevel("DEBUG")  # handlers will do all the filtering
 _logger.propagate = False
 
 _debug = "YUIO_DEBUG" in _os.environ
@@ -76,7 +89,7 @@ _TO_DASH_CASE_RE = _re.compile(
 def to_dash_case(s: str, /) -> str:
     """Convert ``CamelCase`` or ``snake_case`` identifier to a ``dash-case`` one.
 
-    This function assumes ASCII input, and will not word correctly
+    This function assumes ASCII input, and will not work correctly
     with non-ASCII characters.
 
     """
@@ -149,3 +162,32 @@ def _commonprefix(m: _t.List[str]) -> str:
         if c != s2[i]:
             return s1[:i]
     return s1
+
+
+def _with_slots() -> _t.Dict[_t.Literal["slots"], bool]:
+    return {} if _sys.version_info < (3, 11) else {"slots": True}
+
+
+class _Placeholders(_enum.Enum):
+    DISABLED = '<disabled>'
+    MISSING = '<missing>'
+    POSITIONAL = '<positional>'
+
+    def __repr__(self):
+        return self.value
+
+
+#: Type of the :data:`DISABLED` placeholder.
+Disabled: _t.TypeAlias = _t.Literal[_Placeholders.DISABLED]
+#: Indicates that some functionality is disabled.
+DISABLED: Disabled = _Placeholders.DISABLED
+
+#: Type of the :data:`MISSING` placeholder.
+Missing: _t.TypeAlias = _t.Literal[_Placeholders.MISSING]
+#: Indicates that some value is missing.
+MISSING: Missing = _Placeholders.MISSING
+
+#: Type of the :data:`POSITIONAL` placeholder.
+Positional: _t.TypeAlias = _t.Literal[_Placeholders.POSITIONAL]
+#: Used with :func:`field` to enable positional arguments.
+POSITIONAL: Positional = _Placeholders.POSITIONAL
