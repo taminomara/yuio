@@ -64,39 +64,33 @@ import yuio.parse
 
 
 class GitException(subprocess.SubprocessError):
-    """Raised when git returns a non-zero exit code.
-
-    """
+    """Raised when git returns a non-zero exit code."""
 
 
 class Repo:
-    """A class that allows interactions with a git repository.
-
-    """
+    """A class that allows interactions with a git repository."""
 
     def __init__(self, path: _t.Union[pathlib.Path, str], /):
         self._path = pathlib.Path(path)
 
-        if not self._path.joinpath('.git').is_dir():
-            raise GitException(f'{path} is not a git repository')
+        if not self._path.joinpath(".git").is_dir():
+            raise GitException(f"{path} is not a git repository")
 
         try:
-            self.git('--version')
+            self.git("--version")
         except FileNotFoundError:
-            raise GitException(f'git executable was not found')
+            raise GitException(f"git executable was not found")
 
         try:
-            self.git('status')
+            self.git("status")
         except GitException:
-            raise GitException(f'{path} is not a git repository')
+            raise GitException(f"{path} is not a git repository")
 
     def git(self, *args: str) -> bytes:
-        """Call git and return its stdout.
-
-        """
+        """Call git and return its stdout."""
 
         res = subprocess.run(
-            ['git'] + list(args),
+            ["git"] + list(args),
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
             cwd=self._path,
@@ -104,40 +98,36 @@ class Repo:
 
         if res.returncode != 0:
             raise GitException(
-                f'git exited with status code {res.returncode}:\n'
-                f'{res.stderr.decode()}'
+                f"git exited with status code {res.returncode}:\n"
+                f"{res.stderr.decode()}"
             )
 
         return res.stdout
 
-    def status(self) -> 'Status':
-        """Query the current repository status.
+    def status(self) -> "Status":
+        """Query the current repository status."""
 
-        """
+        text = self.git("status", "--porcelain=v2", "--branch", "-z")
+        lines = iter(text.split(b"\0"))
 
-        text = self.git('status', '--porcelain=v2', '--branch', '-z')
-        lines = iter(text.split(b'\0'))
-
-        status = Status(commit='')
+        status = Status(commit="")
 
         for line_b in lines:
             line = line_b.decode()
-            if line.startswith('# branch.oid'):
+            if line.startswith("# branch.oid"):
                 status.commit = line[13:]
-            elif line.startswith('# branch.head'):
-                if line[14:] != '(detached)':
+            elif line.startswith("# branch.head"):
+                if line[14:] != "(detached)":
                     status.branch = line[14:]
-            elif line.startswith('# branch.upstream'):
+            elif line.startswith("# branch.upstream"):
                 status.upstream = line[18:]
-            elif line.startswith('# branch.ab'):
-                match = re.match(
-                    r'^\+(\d+) -(\d+)$', line[12:])
+            elif line.startswith("# branch.ab"):
+                match = re.match(r"^\+(\d+) -(\d+)$", line[12:])
                 assert match is not None
                 status.ahead = int(match.group(1))
                 status.behind = int(match.group(2))
-            elif line.startswith('1'):
-                match = re.match(
-                    r'^(.)(.) .{4} (?:[^ ]+ ){5}(.*)$', line[2:])
+            elif line.startswith("1"):
+                match = re.match(r"^(.)(.) .{4} (?:[^ ]+ ){5}(.*)$", line[2:])
                 assert match is not None
                 file_status = FileStatus(
                     path=pathlib.Path(match.group(3)),
@@ -145,13 +135,14 @@ class Repo:
                     tree=Modification(match.group(2)),
                 )
                 status.changes.append(file_status)
-                status.has_tracked_changes |= \
+                status.has_tracked_changes |= (
                     file_status.staged is not Modification.UNTRACKED
-                status.has_untracked_changes |= \
+                )
+                status.has_untracked_changes |= (
                     file_status.staged is Modification.UNTRACKED
-            elif line.startswith('2'):
-                match = re.match(
-                    r'^(.)(.) .{4} (?:[^ ]+ ){6}(.*)$', line[2:])
+                )
+            elif line.startswith("2"):
+                match = re.match(r"^(.)(.) .{4} (?:[^ ]+ ){6}(.*)$", line[2:])
                 assert match is not None
                 file_status = FileStatus(
                     path=pathlib.Path(match.group(3)),
@@ -160,35 +151,33 @@ class Repo:
                     tree=Modification(match.group(2)),
                 )
                 status.changes.append(file_status)
-                status.has_tracked_changes |= \
+                status.has_tracked_changes |= (
                     file_status.staged is not Modification.UNTRACKED
-                status.has_untracked_changes |= \
+                )
+                status.has_untracked_changes |= (
                     file_status.staged is Modification.UNTRACKED
+                )
 
         return status
 
-    _LOG_FMT = '%H%n%aN%n%aE%n%aI%n%cN%n%cE%n%cI%n%w(0,0,1)%B%w(0,0)%n-'
+    _LOG_FMT = "%H%n%aN%n%aE%n%aI%n%cN%n%cE%n%cI%n%w(0,0,1)%B%w(0,0)%n-"
 
-    def log(
-        self,
-        *refs: str,
-        max_entries: _t.Optional[int] = 10
-    ) -> _t.List['Commit']:
+    def log(self, *refs: str, max_entries: _t.Optional[int] = 10) -> _t.List["Commit"]:
         """Query the log for given git objects.
 
         Note that by default log output is limited by ten entries.
 
         """
 
-        args = [f'--pretty=format:{self._LOG_FMT}']
+        args = [f"--pretty=format:{self._LOG_FMT}"]
 
         if max_entries is not None:
-            args += ['-n', str(max_entries)]
+            args += ["-n", str(max_entries)]
 
         args += list(refs)
 
-        text = self.git('log', *args)
-        lines = iter(text.decode().split('\n'))
+        text = self.git("log", *args)
+        lines = iter(text.decode().split("\n"))
 
         commits = []
 
@@ -197,7 +186,7 @@ class Repo:
 
         return commits
 
-    def show(self, ref: str, /) -> _t.Optional['Commit']:
+    def show(self, ref: str, /) -> _t.Optional["Commit"]:
         """Query information for the given git object.
 
         Return `None` if object is not found.
@@ -206,15 +195,15 @@ class Repo:
 
         try:
             text = self.git(
-                'show',
-                f'--pretty=format:{self._LOG_FMT}',
-                '-s',
+                "show",
+                f"--pretty=format:{self._LOG_FMT}",
+                "-s",
                 ref,
             )
         except GitException:
             return None
 
-        lines = iter(text.decode().split('\n'))
+        lines = iter(text.decode().split("\n"))
 
         commit = self._parse_single_log_entry(lines)
 
@@ -226,7 +215,7 @@ class Repo:
         return commit
 
     @staticmethod
-    def _parse_single_log_entry(lines) -> _t.Optional['Commit']:
+    def _parse_single_log_entry(lines) -> _t.Optional["Commit"]:
         try:
             commit = next(lines)
             author = next(lines)
@@ -236,18 +225,18 @@ class Repo:
             committer_email = next(lines)
             committer_date = datetime.fromisoformat(next(lines))
             title = next(lines)
-            body = ''
+            body = ""
 
             while True:
                 line = next(lines)
-                if not line or line.startswith(' '):
-                    body += line[1:] + '\n'
+                if not line or line.startswith(" "):
+                    body += line[1:] + "\n"
                 else:
                     break
 
-            body = body.strip('\n')
+            body = body.strip("\n")
             if body:
-                body += '\n'
+                body += "\n"
 
             return Commit(
                 commit,
@@ -258,7 +247,7 @@ class Repo:
                 committer_email,
                 committer_date,
                 title,
-                body
+                body,
             )
         except StopIteration:
             return None
@@ -266,9 +255,7 @@ class Repo:
 
 @dataclass
 class Commit:
-    """Commit description.
-
-    """
+    """Commit description."""
 
     #: Commit hash.
     hash: str
@@ -316,43 +303,39 @@ class Commit:
 
 
 class Modification(enum.Enum):
-    """For changed file, what modification was applied to it.
-
-    """
+    """For changed file, what modification was applied to it."""
 
     #: File wasn't changed.
-    UNMODIFIED = '.'
+    UNMODIFIED = "."
 
     #: File was changed.
-    MODIFIED = 'M'
+    MODIFIED = "M"
 
     #: File was created.
-    ADDED = 'A'
+    ADDED = "A"
 
     #: File was deleted.
-    DELETED = 'D'
+    DELETED = "D"
 
     #: File was renamed (and possibly changed).
-    RENAMED = 'R'
+    RENAMED = "R"
 
     #: File was copied (and possibly changed).
-    COPIED = 'C'
+    COPIED = "C"
 
     #: File with conflicts is unmerged.
-    UPDATED = 'U'
+    UPDATED = "U"
 
     #: File is in ``.gitignore``.
-    IGNORED = '?'
+    IGNORED = "?"
 
     #: File was created but not yet added to git, i.e. not staged.
-    UNTRACKED = '!'
+    UNTRACKED = "!"
 
 
 @dataclass
 class FileStatus:
-    """Status of a changed file.
-
-    """
+    """Status of a changed file."""
 
     #: Path of the file.
     path: pathlib.Path
@@ -369,9 +352,7 @@ class FileStatus:
 
 @dataclass
 class Status:
-    """Status of a working copy.
-
-    """
+    """Status of a working copy."""
 
     #: Current commit hash.
     commit: str
@@ -399,17 +380,13 @@ class Status:
 
     @property
     def has_changes(self) -> bool:
-        """True if there are any changes in the repository.
-
-        """
+        """True if there are any changes in the repository."""
 
         return self.has_tracked_changes or self.has_untracked_changes
 
 
 class RefParser(yuio.parse.Parser[Commit]):
-    """A parser for git refs (commits, tags, branches, and so on).
-
-    """
+    """A parser for git refs (commits, tags, branches, and so on)."""
 
     def __init__(self, repo: Repo):
         super().__init__()
@@ -419,10 +396,10 @@ class RefParser(yuio.parse.Parser[Commit]):
     def _parse(self, value: str, /) -> Commit:
         commit = self._repo.show(value)
         if commit is None:
-            raise yuio.parse.ParsingError('invalid git ref')
+            raise yuio.parse.ParsingError("invalid git ref")
         return commit
 
     def _parse_config(self, value: _t.Any, /) -> Commit:
         if not isinstance(value, str):
-            raise yuio.parse.ParsingError('expected a string')
+            raise yuio.parse.ParsingError("expected a string")
         return self.parse(value)

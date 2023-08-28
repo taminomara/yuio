@@ -27,23 +27,21 @@ CONFIG = Config()
 
 @yuio.app.app
 def main(config: Config = yuio.config.inline()):
-    """some ml stuff idk im not into ml
-
-    """
+    """some ml stuff idk im not into ml"""
 
     # Load global config:
 
     # From file...
-    config_file = pathlib.Path(__file__).parent / 'app_config.json'
+    config_file = pathlib.Path(__file__).parent / "app_config.json"
     CONFIG.update(Config.load_from_json_file(config_file))
 
     # From environment variables...
-    CONFIG.update(Config.load_from_env('YUIO'))
+    CONFIG.update(Config.load_from_env("YUIO"))
 
     # From CLI arguments...
     CONFIG.update(config)
 
-    yuio.io.info('global config is loaded: `%r`', CONFIG)
+    yuio.io.info("global config is loaded: `%r`", CONFIG)
 
 
 main.epilog = """
@@ -78,37 +76,32 @@ formatting:
 """
 
 
-@main.subcommand(aliases=['r'])
+@main.subcommand(aliases=["r"])
 def run(
     #: trained model to execute
     model: pathlib.Path = yuio.config.positional(),
     #: input data for the model
     data: pathlib.Path = yuio.config.positional(),
 ):
-    """apply trained model to a dataset.
+    """apply trained model to a dataset."""
 
-    """
-
-    yuio.io.info('applying model `%s` to data `%s`', model, data)
+    yuio.io.info("applying model `%s` to data `%s`", model, data)
 
 
-@main.subcommand(aliases=['t'])
+@main.subcommand(aliases=["t"])
 def train(
     #: input data for the model
     data: pathlib.Path = yuio.config.positional(),
-
     #: output data for the model
     output: pathlib.Path = yuio.config.field(
-        default=pathlib.Path('trained.model'),
-        flags=['-o', '--out', '--output'],
+        default=pathlib.Path("trained.model"),
+        flags=["-o", "--out", "--output"],
     ),
 ):
-    """train model on a dataset.
+    """train model on a dataset."""
 
-    """
-
-    yuio.io.info('training model `%s` on data `%s`', output, data)
+    yuio.io.info("training model `%s` on data `%s`", output, data)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main.run()

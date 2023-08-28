@@ -93,24 +93,22 @@ Utilities
 """
 
 import collections
+import colorsys
 import contextlib
 import dataclasses
-import colorsys
 import enum
 import functools
 import os
 import re
 import string
 import sys
-
-from dataclasses import dataclass
 import typing as _t
 import unicodedata
+from dataclasses import dataclass
 
 import yuio
 
-
-T = _t.TypeVar('T')
+T = _t.TypeVar("T")
 
 _STDIN: _t.TextIO = sys.__stdin__
 _STDOUT: _t.TextIO = sys.__stdout__
@@ -136,9 +134,7 @@ class Lightness(enum.Enum):
 
 
 class ColorSupport(enum.IntEnum):
-    """Terminal's capability for coloring output.
-
-    """
+    """Terminal's capability for coloring output."""
 
     #: Color codes are not supported.
     NONE = 0
@@ -154,9 +150,7 @@ class ColorSupport(enum.IntEnum):
 
 
 class InteractiveSupport(enum.IntEnum):
-    """Terminal's capability for rendering interactive widgets.
-
-    """
+    """Terminal's capability for rendering interactive widgets."""
 
     #: Terminal can't render anything interactive.
     NONE = 0
@@ -170,9 +164,7 @@ class InteractiveSupport(enum.IntEnum):
 
 @dataclass(frozen=True)
 class Term:
-    """Overall info about a terminal.
-
-    """
+    """Overall info about a terminal."""
 
     #: Terminal's output stream.
     stream: _t.TextIO
@@ -191,35 +183,30 @@ class Term:
 
     @property
     def has_colors(self) -> bool:
-        """Return true if terminal supports simple 8-bit color codes.
-
-        """
+        """Return true if terminal supports simple 8-bit color codes."""
 
         return self.color_support >= ColorSupport.ANSI
 
     @property
     def has_colors_256(self) -> bool:
-        """Return true if terminal supports 256-encoded colors.
-
-        """
+        """Return true if terminal supports 256-encoded colors."""
 
         return self.color_support >= ColorSupport.ANSI_256
 
     @property
     def has_colors_true(self) -> bool:
-        """Return true if terminal supports true colors.
-
-        """
+        """Return true if terminal supports true colors."""
 
         return self.color_support >= ColorSupport.ANSI_TRUE
 
     @property
     def can_move_cursor(self) -> bool:
-        """Return true if terminal can move cursor and erase lines.
+        """Return true if terminal can move cursor and erase lines."""
 
-        """
-
-        return self.has_colors and self.interactive_support >= InteractiveSupport.MOVE_CURSOR
+        return (
+            self.has_colors
+            and self.interactive_support >= InteractiveSupport.MOVE_CURSOR
+        )
 
     @property
     def can_query_terminal(self) -> bool:
@@ -233,33 +220,33 @@ class Term:
 
     @property
     def is_fully_interactive(self) -> bool:
-        """Return true if we're in a fully interactive environment.
-
-        """
+        """Return true if we're in a fully interactive environment."""
 
         return self.has_colors and self.interactive_support >= InteractiveSupport.FULL
 
 
 @functools.cache
 def get_stdout_info() -> Term:
-    """Query info about stdout stream.
-
-    """
+    """Query info about stdout stream."""
 
     return _get_term_info(_STDOUT)
 
 
 @functools.cache
 def get_stderr_info() -> Term:
-    """Query info about stderr stream.
-
-    """
+    """Query info about stderr stream."""
 
     return _get_term_info(_STDERR)
 
 
 _CI_ENV_VARS = [
-    'TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE', 'TEAMCITY_VERSION'
+    "TRAVIS",
+    "CIRCLECI",
+    "APPVEYOR",
+    "GITLAB_CI",
+    "BUILDKITE",
+    "DRONE",
+    "TEAMCITY_VERSION",
 ]
 
 
@@ -267,44 +254,44 @@ def _get_term_info(stream: _t.TextIO) -> Term:
     # Note: we don't rely on argparse to parse out flags and send them to us
     # because these functions can be called before parsing arguments.
     if (
-        '--no-color' in sys.argv
-        or '--no-colors' in sys.argv
-        or '--force-no-color' in sys.argv
-        or '--force-no-colors' in sys.argv
-        or 'FORCE_NO_COLOR' in os.environ
+        "--no-color" in sys.argv
+        or "--no-colors" in sys.argv
+        or "--force-no-color" in sys.argv
+        or "--force-no-colors" in sys.argv
+        or "FORCE_NO_COLOR" in os.environ
     ):
         return Term(stream)
 
-    term = os.environ.get('TERM', '').lower()
-    colorterm = os.environ.get('COLORTERM', '').lower()
+    term = os.environ.get("TERM", "").lower()
+    colorterm = os.environ.get("COLORTERM", "").lower()
 
     has_interactive_output = _is_interactive_output(stream)
     has_interactive_input = _is_interactive_input(_STDIN)
     is_foreground = _is_foreground(stream) and _is_foreground(_STDIN)
 
     color_support = ColorSupport.NONE
-    in_ci = 'CI' in os.environ
-    if(
-        '--force-color' in sys.argv
-        or '--force-colors' in sys.argv
-        or 'FORCE_COLOR' in os.environ
+    in_ci = "CI" in os.environ
+    if (
+        "--force-color" in sys.argv
+        or "--force-colors" in sys.argv
+        or "FORCE_COLOR" in os.environ
     ):
         color_support = ColorSupport.ANSI
     if has_interactive_output:
-        if os.name == 'nt':
+        if os.name == "nt":
             if _enable_vt_processing(stream):
                 color_support = ColorSupport.ANSI_TRUE
-        elif 'GITHUB_ACTIONS' in os.environ:
+        elif "GITHUB_ACTIONS" in os.environ:
             color_support = ColorSupport.ANSI_TRUE
             in_ci = True
         elif any(ci in os.environ for ci in _CI_ENV_VARS):
             color_support = ColorSupport.ANSI
             in_ci = True
-        elif colorterm in ('truecolor', '24bit') or term == 'xterm-kitty':
+        elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
             color_support = ColorSupport.ANSI_TRUE
-        elif colorterm in ('yes', 'true') or '256color' in term or term == 'screen':
+        elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
             color_support = ColorSupport.ANSI_256
-        elif term in 'linux' or 'color' in term or 'ansi' in term or 'xterm' in term:
+        elif term in "linux" or "color" in term or "ansi" in term or "xterm" in term:
             color_support = ColorSupport.ANSI
 
     interactive_support = InteractiveSupport.NONE
@@ -326,13 +313,19 @@ def _get_term_info(stream: _t.TextIO) -> Term:
     )
 
 
-def _get_lightness(stream: _t.TextIO) -> _t.Tuple[Lightness, _t.Optional[_t.Tuple[int, int, int]]]:
+def _get_lightness(
+    stream: _t.TextIO,
+) -> _t.Tuple[Lightness, _t.Optional[_t.Tuple[int, int, int]]]:
     try:
-        response = _query_term(stream, '\x1b]11;?\a')
+        response = _query_term(stream, "\x1b]11;?\a")
         if response is None:
             return Lightness.UNKNOWN, None
 
-        match = re.match(rb'^]11;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})', response, re.IGNORECASE)
+        match = re.match(
+            rb"^]11;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})",
+            response,
+            re.IGNORECASE,
+        )
         if match is None:
             return Lightness.UNKNOWN, None
 
@@ -342,7 +335,7 @@ def _get_lightness(stream: _t.TextIO) -> _t.Tuple[Lightness, _t.Optional[_t.Tupl
 
         if luma <= 0.2:
             return Lightness.DARK, (r, g, b)
-        elif luma >=0.85:
+        elif luma >= 0.85:
             return Lightness.LIGHT, (r, g, b)
         else:
             return Lightness.UNKNOWN, (r, g, b)
@@ -350,7 +343,12 @@ def _get_lightness(stream: _t.TextIO) -> _t.Tuple[Lightness, _t.Optional[_t.Tupl
         return Lightness.UNKNOWN, None
 
 
-def _query_term(stream: _t.TextIO, query: str, timeout: float = 0.3, end_sequences: _t.Union[bytes, _t.Tuple[bytes, ...]] = (b'\a', b'\x1b\\')) -> _t.Optional[bytes]:
+def _query_term(
+    stream: _t.TextIO,
+    query: str,
+    timeout: float = 0.3,
+    end_sequences: _t.Union[bytes, _t.Tuple[bytes, ...]] = (b"\a", b"\x1b\\"),
+) -> _t.Optional[bytes]:
     try:
         with _set_cbreak():
             while _kbhit():
@@ -362,10 +360,10 @@ def _query_term(stream: _t.TextIO, query: str, timeout: float = 0.3, end_sequenc
             if not _kbhit(timeout):
                 return None
 
-            if _getch() != b'\x1b':
+            if _getch() != b"\x1b":
                 return None
 
-            buf = b''
+            buf = b""
             while _kbhit() and not buf.endswith(end_sequences):
                 buf += _getch()
 
@@ -403,7 +401,7 @@ def _is_interactive_output(stream: _t.Optional[_t.IO]) -> bool:
 
 
 # Platform-specific code for working with terminals.
-if os.name == 'posix':
+if os.name == "posix":
     import select
     import termios
     import tty
@@ -423,20 +421,22 @@ if os.name == 'posix':
 
     def _kbhit(timeout: float = 0) -> bool:
         return bool(select.select([_STDIN], [], [], timeout)[0])
+
 else:
+
     @contextlib.contextmanager
     def _set_cbreak():
-        raise OSError('not supported')
+        raise OSError("not supported")
         yield
 
     def _getch() -> bytes:
-        raise OSError('not supported')
+        raise OSError("not supported")
 
     def _kbhit(timeout: float = 0) -> bool:
-        raise OSError('not supported')
+        raise OSError("not supported")
 
 
-if os.name == 'nt':
+if os.name == "nt":
     import ctypes
     import msvcrt
 
@@ -474,7 +474,7 @@ class ColorValue:
     data: _t.Union[int, _t.Tuple[int, int, int]]
 
     @classmethod
-    def from_rgb(cls, r: int, g: int, b: int, /) -> 'ColorValue':
+    def from_rgb(cls, r: int, g: int, b: int, /) -> "ColorValue":
         """Create a color value from rgb components.
 
         Each component should be between 0 and 255.
@@ -489,7 +489,7 @@ class ColorValue:
         return cls((r, g, b))
 
     @classmethod
-    def from_hex(cls, h: str, /) -> 'ColorValue':
+    def from_hex(cls, h: str, /) -> "ColorValue":
         """Create a color value from a hex string.
 
         Example::
@@ -501,7 +501,7 @@ class ColorValue:
 
         return cls(_parse_hex(h))
 
-    def darken(self, amount: float, /) -> 'ColorValue':
+    def darken(self, amount: float, /) -> "ColorValue":
         """Make this color darker by the given percentage.
 
         Amount should be between 0 and 1.
@@ -516,7 +516,7 @@ class ColorValue:
 
         return _adjust_lightness(self, -amount)
 
-    def lighten(self, amount: float, /) -> 'ColorValue':
+    def lighten(self, amount: float, /) -> "ColorValue":
         """Make this color lighter by the given percentage.
 
         Amount should be between 0 and 1.
@@ -532,7 +532,7 @@ class ColorValue:
         return _adjust_lightness(self, amount)
 
     @staticmethod
-    def lerp(*colors: 'ColorValue') -> _t.Callable[[float], 'ColorValue']:
+    def lerp(*colors: "ColorValue") -> _t.Callable[[float], "ColorValue"]:
         """Return a lambda that allows linear interpolation between several colors.
 
         If either color is a single ANSI escape code, the first color is always returned
@@ -554,8 +554,10 @@ class ColorValue:
         """
 
         if not colors:
-            raise TypeError('lerp expected at least 1 argument, got 0')
-        elif len(colors) >= 2 and all(isinstance(color.data, tuple) for color in colors):
+            raise TypeError("lerp expected at least 1 argument, got 0")
+        elif len(colors) >= 2 and all(
+            isinstance(color.data, tuple) for color in colors
+        ):
             l = len(colors) - 1
 
             def lerp(f: float, /) -> ColorValue:
@@ -573,28 +575,30 @@ class ColorValue:
             return lambda f, /: colors[0]
 
     def _as_fore(self, term: Term, /) -> str:
-        return self._as_code('3', term)
+        return self._as_code("3", term)
 
     def _as_back(self, term: Term, /) -> str:
-        return self._as_code('4', term)
+        return self._as_code("4", term)
 
     def _as_code(self, fg_bg_code: str, term: Term, /) -> str:
         if not term.has_colors:
-            return ''
+            return ""
         elif isinstance(self.data, int):
-            return f'{fg_bg_code}{self.data}'
+            return f"{fg_bg_code}{self.data}"
         elif term.has_colors_true:
-            return f'{fg_bg_code}8;2;{self.data[0]};{self.data[1]};{self.data[2]}'
+            return f"{fg_bg_code}8;2;{self.data[0]};{self.data[1]};{self.data[2]}"
         elif term.has_colors_256:
-            return f'{fg_bg_code}8;5;{_rgb_to_256(*self.data)}'
+            return f"{fg_bg_code}8;5;{_rgb_to_256(*self.data)}"
         else:
-            return f'{fg_bg_code}{_rgb_to_8(*self.data)}'
+            return f"{fg_bg_code}{_rgb_to_8(*self.data)}"
 
     def __repr__(self) -> str:
         if isinstance(self.data, tuple):
-            return f'<ColorValue #{self.data[0]:02X}{self.data[1]:02X}{self.data[2]:02X}>'
+            return (
+                f"<ColorValue #{self.data[0]:02X}{self.data[1]:02X}{self.data[2]:02X}>"
+            )
         else:
-            return f'<ColorValue {self.data}>'
+            return f"<ColorValue {self.data}>"
 
 
 @dataclass(frozen=True, **yuio._with_slots())
@@ -634,7 +638,7 @@ class Color:
     #: If true, render text as dim.
     dim: _t.Optional[bool] = None
 
-    def __or__(self, other: 'Color', /):
+    def __or__(self, other: "Color", /):
         return Color(
             other.fore if other.fore is not None else self.fore,
             other.back if other.back is not None else self.back,
@@ -642,11 +646,11 @@ class Color:
             other.dim if other.dim is not None else self.dim,
         )
 
-    def __ior__(self, other: 'Color', /):
+    def __ior__(self, other: "Color", /):
         return self | other
 
     @classmethod
-    def fore_from_rgb(cls, r: int, g: int, b: int) -> 'Color':
+    def fore_from_rgb(cls, r: int, g: int, b: int) -> "Color":
         """Create a foreground color value from rgb components.
 
         Each component should be between 0 and 255.
@@ -661,7 +665,7 @@ class Color:
         return cls(fore=ColorValue.from_rgb(r, g, b))
 
     @classmethod
-    def fore_from_hex(cls, h: str) -> 'Color':
+    def fore_from_hex(cls, h: str) -> "Color":
         """Create a foreground color value from a hex string.
 
         Example::
@@ -674,7 +678,7 @@ class Color:
         return cls(fore=ColorValue.from_hex(h))
 
     @classmethod
-    def back_from_rgb(cls, r: int, g: int, b: int) -> 'Color':
+    def back_from_rgb(cls, r: int, g: int, b: int) -> "Color":
         """Create a background color value from rgb components.
 
         Each component should be between 0 and 255.
@@ -689,7 +693,7 @@ class Color:
         return cls(back=ColorValue.from_rgb(r, g, b))
 
     @classmethod
-    def back_from_hex(cls, h: str) -> 'Color':
+    def back_from_hex(cls, h: str) -> "Color":
         """Create a background color value from a hex string.
 
         Example::
@@ -701,7 +705,7 @@ class Color:
 
         return cls(back=ColorValue.from_hex(h))
 
-    def darken(self, amount: float) -> 'Color':
+    def darken(self, amount: float) -> "Color":
         """Make this color darker by the given percentage.
 
         Amount should be between 0 and 1.
@@ -720,7 +724,7 @@ class Color:
             back=self.back.darken(amount) if self.back else None,
         )
 
-    def lighten(self, amount: float) -> 'Color':
+    def lighten(self, amount: float) -> "Color":
         """Make this color lighter by the given percentage.
 
         Amount should be between 0 and 1.
@@ -740,7 +744,7 @@ class Color:
         )
 
     @staticmethod
-    def lerp(*colors: 'Color') -> _t.Callable[[float], 'Color']:
+    def lerp(*colors: "Color") -> _t.Callable[[float], "Color"]:
         """Return a lambda that allows linear interpolation between several colors.
 
         If either color is a single ANSI escape code, the first color is always returned
@@ -762,14 +766,20 @@ class Color:
         """
 
         if not colors:
-            raise TypeError('lerp expected at least 1 argument, got 0')
+            raise TypeError("lerp expected at least 1 argument, got 0")
 
         if len(colors) >= 2:
-            fore_lerp = all(color.fore is not None and isinstance(color.fore.data, tuple) for color in colors)
+            fore_lerp = all(
+                color.fore is not None and isinstance(color.fore.data, tuple)
+                for color in colors
+            )
             if fore_lerp:
                 fore = ColorValue.lerp(*(color.fore for color in colors))  # type: ignore
 
-            back_lerp = all(color.back is not None and isinstance(color.back.data, tuple) for color in colors)
+            back_lerp = all(
+                color.back is not None and isinstance(color.back.data, tuple)
+                for color in colors
+            )
             if back_lerp:
                 back = ColorValue.lerp(*(color.back for color in colors))  # type: ignore
 
@@ -782,7 +792,6 @@ class Color:
 
         return lambda f, /: colors[0]
 
-
     def as_code(self, term: Term, /) -> str:
         """Convert this color into an ANSI escape code
         with respect to the given terminal capabilities.
@@ -790,7 +799,7 @@ class Color:
         """
 
         if not term.has_colors:
-            return ''
+            return ""
 
         codes = []
         if self.fore:
@@ -798,61 +807,61 @@ class Color:
         if self.back:
             codes.append(self.back._as_back(term))
         if self.bold:
-            codes.append('1')
+            codes.append("1")
         if self.dim:
-            codes.append('2')
+            codes.append("2")
         if codes:
-            return '\x1b[;' + ';'.join(codes) + 'm'
+            return "\x1b[;" + ";".join(codes) + "m"
         else:
-            return '\x1b[m'
+            return "\x1b[m"
 
     #: No color.
-    NONE: _t.ClassVar['Color'] = lambda: Color()  # type: ignore
+    NONE: _t.ClassVar["Color"] = lambda: Color()  # type: ignore
 
     #: Bold font style.
-    STYLE_BOLD: _t.ClassVar['Color'] = lambda: Color(bold=True)  # type: ignore
+    STYLE_BOLD: _t.ClassVar["Color"] = lambda: Color(bold=True)  # type: ignore
     #: Dim font style.
-    STYLE_DIM: _t.ClassVar['Color'] = lambda: Color(dim=True)  # type: ignore
+    STYLE_DIM: _t.ClassVar["Color"] = lambda: Color(dim=True)  # type: ignore
     #: Not bold nor dim.
-    STYLE_NORMAL: _t.ClassVar['Color'] = lambda: Color(bold=False, dim=False)  # type: ignore
+    STYLE_NORMAL: _t.ClassVar["Color"] = lambda: Color(bold=False, dim=False)  # type: ignore
 
     #: Normal foreground color.
-    FORE_NORMAL: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(9))  # type: ignore
+    FORE_NORMAL: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(9))  # type: ignore
     #: Black foreground color.
-    FORE_BLACK: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(0))  # type: ignore
+    FORE_BLACK: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(0))  # type: ignore
     #: Red foreground color.
-    FORE_RED: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(1))  # type: ignore
+    FORE_RED: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(1))  # type: ignore
     #: Green foreground color.
-    FORE_GREEN: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(2))  # type: ignore
+    FORE_GREEN: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(2))  # type: ignore
     #: Yellow foreground color.
-    FORE_YELLOW: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(3))  # type: ignore
+    FORE_YELLOW: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(3))  # type: ignore
     #: Blue foreground color.
-    FORE_BLUE: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(4))  # type: ignore
+    FORE_BLUE: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(4))  # type: ignore
     #: Magenta foreground color.
-    FORE_MAGENTA: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(5))  # type: ignore
+    FORE_MAGENTA: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(5))  # type: ignore
     #: Cyan foreground color.
-    FORE_CYAN: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(6))  # type: ignore
+    FORE_CYAN: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(6))  # type: ignore
     #: White foreground color.
-    FORE_WHITE: _t.ClassVar['Color'] = lambda: Color(fore=ColorValue(7))  # type: ignore
+    FORE_WHITE: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(7))  # type: ignore
 
     #: Normal background color.
-    BACK_NORMAL: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(9))  # type: ignore
+    BACK_NORMAL: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(9))  # type: ignore
     #: Black background color.
-    BACK_BLACK: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(0))  # type: ignore
+    BACK_BLACK: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(0))  # type: ignore
     #: Red background color.
-    BACK_RED: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(1))  # type: ignore
+    BACK_RED: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(1))  # type: ignore
     #: Green background color.
-    BACK_GREEN: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(2))  # type: ignore
+    BACK_GREEN: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(2))  # type: ignore
     #: Yellow background color.
-    BACK_YELLOW: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(3))  # type: ignore
+    BACK_YELLOW: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(3))  # type: ignore
     #: Blue background color.
-    BACK_BLUE: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(4))  # type: ignore
+    BACK_BLUE: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(4))  # type: ignore
     #: Magenta background color.
-    BACK_MAGENTA: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(5))  # type: ignore
+    BACK_MAGENTA: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(5))  # type: ignore
     #: Cyan background color.
-    BACK_CYAN: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(6))  # type: ignore
+    BACK_CYAN: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(6))  # type: ignore
     #: White background color.
-    BACK_WHITE: _t.ClassVar['Color'] = lambda: Color(back=ColorValue(7))  # type: ignore
+    BACK_WHITE: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(7))  # type: ignore
 
 
 for _n, _v in vars(Color).items():
@@ -863,7 +872,7 @@ del _n, _v  # type: ignore
 
 def _rgb_to_256(r: int, g: int, b: int) -> int:
     closest_idx = lambda x, vals: min((abs(x - v), i) for i, v in enumerate(vals))[1]
-    color_components = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff]
+    color_components = [0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF]
 
     if r == g == b:
         i = closest_idx(r, color_components + [0x08 + 10 * i for i in range(24)])
@@ -876,25 +885,29 @@ def _rgb_to_256(r: int, g: int, b: int) -> int:
 
 
 def _rgb_to_8(r: int, g: int, b: int) -> int:
-    return (1 if r >= 128 else 0) | (1 if g >= 128 else 0) << 1 | (1 if b >= 128 else 0) << 2
+    return (
+        (1 if r >= 128 else 0)
+        | (1 if g >= 128 else 0) << 1
+        | (1 if b >= 128 else 0) << 2
+    )
 
 
 def _parse_hex(h: str) -> _t.Tuple[int, int, int]:
-    if not re.match(r'^#[0-9a-fA-F]{6}$', h):
-        raise ValueError(f'invalid hex string {h!r}')
-    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+    if not re.match(r"^#[0-9a-fA-F]{6}$", h):
+        raise ValueError(f"invalid hex string {h!r}")
+    return tuple(int(h[i : i + 2], 16) for i in (1, 3, 5))
 
 
 def _adjust_lightness(color: ColorValue, factor: float):
     if isinstance(color.data, tuple):
         r, g, b = color.data
-        h, l, s = colorsys.rgb_to_hls(r / 0xff, g / 0xff, b / 0xff)
+        h, l, s = colorsys.rgb_to_hls(r / 0xFF, g / 0xFF, b / 0xFF)
         if 1 >= factor > 0:
             l = 1 - ((1 - l) * (1 - factor))
         elif -1 <= factor < 0:
             l = l * (1 + factor)
         r, g, b = colorsys.hls_to_rgb(h, l, s)
-        return ColorValue.from_rgb(int(r * 0xff), int(g * 0xff), int(b * 0xff))
+        return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
     else:
         return color
 
@@ -943,11 +956,10 @@ class Theme:
     """
 
     msg_decorations: _t.Mapping[str, str] = {
-        'heading': '⣿',
-        'question': '>',
-        'task': '>',
-        'group': '',
-
+        "heading": "⣿",
+        "question": ">",
+        "task": ">",
+        "group": "",
         # TODO: support these in widgets
         # 'menu_selected_item': '▶︎',
         # 'menu_default_item': '★',
@@ -964,13 +976,13 @@ class Theme:
     __msg_decoration_sources: _t.Dict[str, _t.Optional[type]] = {}
 
     progress_bar_width = 15
-    progress_bar_start_symbol = ''
-    progress_bar_end_symbol = ''
-    progress_bar_done_symbol = '■'
-    progress_bar_pending_symbol = '□'
+    progress_bar_start_symbol = ""
+    progress_bar_end_symbol = ""
+    progress_bar_done_symbol = "■"
+    progress_bar_pending_symbol = "□"
 
-    spinner_pattern = '⣤⣤⣤⠶⠛⠛⠛⠶'
-    spinner_static_symbol = '⣿'
+    spinner_pattern = "⣤⣤⣤⠶⠛⠛⠛⠶"
+    spinner_static_symbol = "⣿"
     spinner_update_rate_ms = 200
 
     #: Mapping of color paths to actual colors.
@@ -1018,23 +1030,21 @@ class Theme:
     #: This mapping becomes immutable once a theme class is created. The only possible
     #: way to modify it is by using :meth:`~Theme._set_color_if_not_overridden`.
     colors: _t.Mapping[str, _t.Union[str, Color, _t.List[_t.Union[str, Color]]]] = {
-        'code': 'magenta',
-        'note': 'green',
-
-        'bold': Color.STYLE_BOLD,
-        'b': 'bold',
-        'dim': Color.STYLE_DIM,
-        'd': 'dim',
-
-        'normal': Color.FORE_NORMAL,
-        'black': Color.FORE_BLACK,
-        'red': Color.FORE_RED,
-        'green': Color.FORE_GREEN,
-        'yellow': Color.FORE_YELLOW,
-        'blue': Color.FORE_BLUE,
-        'magenta': Color.FORE_MAGENTA,
-        'cyan': Color.FORE_CYAN,
-        'white': Color.FORE_WHITE,
+        "code": "magenta",
+        "note": "green",
+        "bold": Color.STYLE_BOLD,
+        "b": "bold",
+        "dim": Color.STYLE_DIM,
+        "d": "dim",
+        "normal": Color.FORE_NORMAL,
+        "black": Color.FORE_BLACK,
+        "red": Color.FORE_RED,
+        "green": Color.FORE_GREEN,
+        "yellow": Color.FORE_YELLOW,
+        "blue": Color.FORE_BLUE,
+        "magenta": Color.FORE_MAGENTA,
+        "cyan": Color.FORE_CYAN,
+        "white": Color.FORE_WHITE,
     }
 
     #: An actual mutable version of :attr:`~Theme.colors`
@@ -1061,7 +1071,7 @@ class Theme:
         colors = {}
         color_sources = {}
         for base in reversed(cls.__mro__):
-            base_colors = getattr(base, 'colors', {})
+            base_colors = getattr(base, "colors", {})
             colors.update(base_colors)
             color_sources.update(dict.fromkeys(base_colors.keys(), cls))
         cls.__colors = colors
@@ -1071,14 +1081,17 @@ class Theme:
         msg_decorations = {}
         msg_decoration_sources = {}
         for base in reversed(cls.__mro__):
-            base_msg_decorations = getattr(base, 'msg_decorations', {})
+            base_msg_decorations = getattr(base, "msg_decorations", {})
             msg_decorations.update(base_msg_decorations)
             msg_decoration_sources.update(dict.fromkeys(base_msg_decorations, cls))
         cls.__msg_decorations = msg_decorations
         cls.__msg_decoration_sources = msg_decoration_sources
-        cls.msg_decorations = _ImmutableDictProxy(cls.__msg_decorations, attr="msg_decorations")
+        cls.msg_decorations = _ImmutableDictProxy(
+            cls.__msg_decorations, attr="msg_decorations"
+        )
 
         if init := cls.__dict__.get("__init__", None):
+
             @functools.wraps(init)
             def _wrapped_init(_self, *args, **kwargs):
                 prev_expected_source = _self._Theme__expected_source
@@ -1087,6 +1100,7 @@ class Theme:
                     return init(_self, *args, **kwargs)
                 finally:
                     _self._Theme__expected_source = prev_expected_source
+
             cls.__init__ = _wrapped_init
 
     def _set_msg_decoration_if_not_overridden(
@@ -1106,7 +1120,8 @@ class Theme:
 
         if self.__expected_source is None:
             raise RuntimeError(
-                f"_set_msg_decoration_if_not_overridden should only be called from __init__")
+                f"_set_msg_decoration_if_not_overridden should only be called from __init__"
+            )
         source = self.__msg_decoration_sources.get(name, Theme)
         # The class that's `__init__` is currently running should be a parent
         # of the msg_decoration's source. This means that the msg_decoration was assigned by a parent.
@@ -1119,13 +1134,13 @@ class Theme:
         msg_decoration: str,
         /,
     ):
-        """Set message decoration by name.
-
-        """
+        """Set message decoration by name."""
 
         if "_Theme__msg_decorations" not in self.__dict__:
             self.__msg_decorations = self.__class__.__msg_decorations.copy()
-            self.__msg_decoration_sources = self.__class__.__msg_decoration_sources.copy()
+            self.__msg_decoration_sources = (
+                self.__class__.__msg_decoration_sources.copy()
+            )
         self.__msg_decorations[name] = msg_decoration
         self.__msg_decoration_sources[name] = self.__expected_source
 
@@ -1145,7 +1160,8 @@ class Theme:
 
         if self.__expected_source is None:
             raise RuntimeError(
-                f"_set_color_if_not_overridden should only be called from __init__")
+                f"_set_color_if_not_overridden should only be called from __init__"
+            )
         source = self.__color_sources.get(path, Theme)
         # The class that's `__init__` is currently running should be a parent
         # of the color's source. This means that the color was assigned by a parent.
@@ -1158,9 +1174,7 @@ class Theme:
         color: _t.Union[str, Color, _t.List[_t.Union[str, Color]]],
         /,
     ):
-        """Set color by path.
-
-        """
+        """Set color by path."""
 
         if "_Theme__colors" not in self.__dict__:
             self.__colors = self.__class__.__colors.copy()
@@ -1172,19 +1186,17 @@ class Theme:
     @_t.final
     @functools.cache
     def get_color(self, path: str, /) -> Color:
-        """Lookup a color by path.
-
-        """
+        """Lookup a color by path."""
 
         color = Color.NONE
 
-        for prefix in self.__prefixes(path.split('/')):
-            if (res := self.__colors.get('/'.join(prefix))) is not None:
+        for prefix in self.__prefixes(path.split("/")):
+            if (res := self.__colors.get("/".join(prefix))) is not None:
                 if isinstance(res, str):
                     color |= self.get_color(res)
                 elif isinstance(res, list):
                     for c in res:
-                        color |= (self.get_color(c) if isinstance(c, str) else c)
+                        color |= self.get_color(c) if isinstance(c, str) else c
                 else:
                     color |= res
 
@@ -1201,7 +1213,7 @@ class Theme:
             | </c>                              # Color tag close.
             | `(?P<code>(?:``|[^`])*)`          # Inline code block (backticks).
         """,
-        re.VERBOSE
+        re.VERBOSE,
     )
     __NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
     __FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
@@ -1213,7 +1225,7 @@ class Theme:
         *,
         default_color: _t.Union[Color, str] = Color.NONE,
         parse_cli_flags_in_backticks: bool = False,
-    ) -> 'ColorizedString':
+    ) -> "ColorizedString":
         """Colorize the given string.
 
         Apply `default_color` to the entire message, and process color tags
@@ -1231,12 +1243,12 @@ class Theme:
 
         last_pos = 0
         for tag in self.__TAG_RE.finditer(s):
-            raw.append(s[last_pos:tag.start()])
+            raw.append(s[last_pos : tag.start()])
             last_pos = tag.end()
 
-            if name := tag.group('tag_open'):
+            if name := tag.group("tag_open"):
                 color = stack[-1]
-                for sub_name in name.split(','):
+                for sub_name in name.split(","):
                     sub_name = sub_name.strip()
                     color = color | self.get_color(sub_name)
                 raw.append(color)
@@ -1263,12 +1275,44 @@ class Theme:
         return ColorizedString(raw)
 
     __PY_KWDS = [
-        "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del",
-        "elif", "else", "except", "False", "finally", "for", "from", "global", "if", "import",
-        "in", "is", "lambda", "None", "nonlocal", "not", "or", "pass", "raise", "return",
-        "True", "try", "while", "with", "yield"
+        "and",
+        "as",
+        "assert",
+        "async",
+        "await",
+        "break",
+        "class",
+        "continue",
+        "def",
+        "del",
+        "elif",
+        "else",
+        "except",
+        "False",
+        "finally",
+        "for",
+        "from",
+        "global",
+        "if",
+        "import",
+        "in",
+        "is",
+        "lambda",
+        "None",
+        "nonlocal",
+        "not",
+        "or",
+        "pass",
+        "raise",
+        "return",
+        "True",
+        "try",
+        "while",
+        "with",
+        "yield",
     ]
-    __PY_SYNTAX = re.compile(r"""
+    __PY_SYNTAX = re.compile(
+        r"""
           (?P<kwd>\b(?:%s)\b)                       # keyword
         | (?P<str>
             [rfu]*(                                 # string prefix
@@ -1283,12 +1327,31 @@ class Theme:
             | 0b[01]+)                              # bin
         | (?P<punct>[{}()[\]\\;|!&])                # punctuation
         | (?P<comment>\#.*$)                        # comment
-    """ % "|".join(map(re.escape, __PY_KWDS)), re.MULTILINE | re.VERBOSE)
+    """
+        % "|".join(map(re.escape, __PY_KWDS)),
+        re.MULTILINE | re.VERBOSE,
+    )
     __SH_KWDS = [
-        "if", "then", "elif", "else", "fi", "time", "for", "in", "until", "while", "do",
-        "done", "case", "esac", "coproc", "select", "function",
+        "if",
+        "then",
+        "elif",
+        "else",
+        "fi",
+        "time",
+        "for",
+        "in",
+        "until",
+        "while",
+        "do",
+        "done",
+        "case",
+        "esac",
+        "coproc",
+        "select",
+        "function",
     ]
-    __SH_SYNTAX = re.compile(r"""
+    __SH_SYNTAX = re.compile(
+        r"""
           (?P<kwd>\b(?:%s)\b|\[\[|\]\])             # keyword
         | (?P<a0__punct>(?:^|\|\|?|&&|\$\())        # chaining operator (pipe or logic)
           (?P<a1__>\s*)
@@ -1302,8 +1365,12 @@ class Theme:
             | [12]?>{1,2}(?:&[12])?)                # output redirect
         | (?P<comment>\#.*$)                        # comment
         | (?P<flag>(?<![\w-])-[a-zA-Z0-9_-]+\b)     # flag
-    """ % "|".join(map(re.escape, __SH_KWDS)), re.MULTILINE | re.VERBOSE)
-    _SH_USAGE_SYNTAX = re.compile(r"""
+    """
+        % "|".join(map(re.escape, __SH_KWDS)),
+        re.MULTILINE | re.VERBOSE,
+    )
+    _SH_USAGE_SYNTAX = re.compile(
+        r"""
           (?P<kwd>\b(?:%s)\b)                       # keyword
         | (?P<prog>%%\(prog\)s)                     # prog
         | (?P<metavar>(?<=<)[^>]+(?=>))             # metavar
@@ -1312,15 +1379,16 @@ class Theme:
             | "(?:\\.|[^\\"])*")                    # doubly-quoted string
         | (?P<comment>\#.*$)                        # comment
         | (?P<flag>(?<![\w-])-[-a-zA-Z0-9_]+\b)     # flag
-    """ % "|".join(map(re.escape, __SH_KWDS)), re.MULTILINE | re.VERBOSE)
+    """
+        % "|".join(map(re.escape, __SH_KWDS)),
+        re.MULTILINE | re.VERBOSE,
+    )
 
     __SYNTAX: _t.Dict[str, re.Pattern] = {
         "py": __PY_SYNTAX,
         "python": __PY_SYNTAX,
-
         "sh": __SH_SYNTAX,
         "bash": __SH_SYNTAX,
-
         "sh_usage": _SH_USAGE_SYNTAX,
         "sh-usage": _SH_USAGE_SYNTAX,
         "bash_usage": _SH_USAGE_SYNTAX,
@@ -1360,13 +1428,15 @@ class Theme:
         for code_unit in syntax_re.finditer(s):
             if last_pos < code_unit.start():
                 raw.append(default_color)
-                raw.append(s[last_pos:code_unit.start()])
+                raw.append(s[last_pos : code_unit.start()])
             last_pos = code_unit.end()
 
             for name, text in sorted(code_unit.groupdict().items()):
                 name = name.split("__", maxsplit=1)[-1]
                 if text:
-                    raw.append(default_color | self.get_color(f"syntax_highlighting/{name}"))
+                    raw.append(
+                        default_color | self.get_color(f"syntax_highlighting/{name}")
+                    )
                     raw.append(text)
 
         if last_pos < len(s):
@@ -1407,143 +1477,128 @@ class DefaultTheme(Theme):
         #
         # This section controls the overall theme look.
         # Most likely you'll want to change accent colors from here.
-
-        'heading_color': 'bold',
-        'primary_color': 'normal',
-        'accent_color': 'magenta',
-        'accent_color_2': 'cyan',
-        'secondary_color': 'dim',
-        'error_color': 'red',
-        'warning_color': 'yellow',
-        'success_color': 'green',
-        'low_priority_color_a': 'dim',
-        'low_priority_color_b': 'dim',
-
+        "heading_color": "bold",
+        "primary_color": "normal",
+        "accent_color": "magenta",
+        "accent_color_2": "cyan",
+        "secondary_color": "dim",
+        "error_color": "red",
+        "warning_color": "yellow",
+        "success_color": "green",
+        "low_priority_color_a": "dim",
+        "low_priority_color_b": "dim",
         #
         # Common tags
         # -----------
-
-        'code': 'accent_color',
-        'note': 'accent_color_2',
-
+        "code": "accent_color",
+        "note": "accent_color_2",
         #
         # IO messages
         # -----------
-
         # Elements that are common for all messages.
         "msg/decoration": "accent_color",
         "msg/plain_text": Color.NONE,
         # Colors for each message type.
-        'msg/heading/decoration': "msg/decoration",
-        'msg/heading/text': 'heading_color',
-        'msg/heading/plain_text': "msg/plain_text",
-        'msg/question/decoration': "msg/decoration",
-        'msg/question/text': 'heading_color',
-        'msg/question/plain_text': "msg/plain_text",
-        'msg/error/decoration': "msg/decoration",
-        'msg/error/text': 'error_color',
-        'msg/error/plain_text': "msg/plain_text",
-        'msg/warning/decoration': "msg/decoration",
-        'msg/warning/text': 'warning_color',
-        'msg/warning/plain_text': "msg/plain_text",
-        'msg/success/decoration': "msg/decoration",
-        'msg/success/text': 'success_color',
-        'msg/success/plain_text': "msg/plain_text",
-        'msg/info/decoration': "msg/decoration",
-        'msg/info/text': 'primary_color',
-        'msg/info/plain_text': "msg/plain_text",
-        'msg/hr/decoration': "msg/decoration",
-        'msg/hr/text': 'low_priority_color_a',
-        'msg/hr/plain_text': "msg/plain_text",
-        'msg/group/decoration': "msg/decoration",
-        'msg/group/text': 'accent_color',
-        'msg/group/plain_text': "msg/plain_text",
-
+        "msg/heading/decoration": "msg/decoration",
+        "msg/heading/text": "heading_color",
+        "msg/heading/plain_text": "msg/plain_text",
+        "msg/question/decoration": "msg/decoration",
+        "msg/question/text": "heading_color",
+        "msg/question/plain_text": "msg/plain_text",
+        "msg/error/decoration": "msg/decoration",
+        "msg/error/text": "error_color",
+        "msg/error/plain_text": "msg/plain_text",
+        "msg/warning/decoration": "msg/decoration",
+        "msg/warning/text": "warning_color",
+        "msg/warning/plain_text": "msg/plain_text",
+        "msg/success/decoration": "msg/decoration",
+        "msg/success/text": "success_color",
+        "msg/success/plain_text": "msg/plain_text",
+        "msg/info/decoration": "msg/decoration",
+        "msg/info/text": "primary_color",
+        "msg/info/plain_text": "msg/plain_text",
+        "msg/hr/decoration": "msg/decoration",
+        "msg/hr/text": "low_priority_color_a",
+        "msg/hr/plain_text": "msg/plain_text",
+        "msg/group/decoration": "msg/decoration",
+        "msg/group/text": "accent_color",
+        "msg/group/plain_text": "msg/plain_text",
         #
         # Log messages
         # ------------
-
-        'log/plain_text': 'secondary_color',
-        'log/asctime': 'secondary_color',
-        'log/logger': 'secondary_color',
-        'log/level': 'heading_color',
-        'log/level/critical': 'error_color',
-        'log/level/error': 'error_color',
-        'log/level/warning': 'warning_color',
-        'log/level/info': 'success_color',
-        'log/level/debug': 'secondary_color',
-        'log/message': 'primary_color',
-
+        "log/plain_text": "secondary_color",
+        "log/asctime": "secondary_color",
+        "log/logger": "secondary_color",
+        "log/level": "heading_color",
+        "log/level/critical": "error_color",
+        "log/level/error": "error_color",
+        "log/level/warning": "warning_color",
+        "log/level/info": "success_color",
+        "log/level/debug": "secondary_color",
+        "log/message": "primary_color",
         # Colorized tracebacks
         # --------------------
-
         # Main traceback elements.
-        'tb/plain_text': 'secondary_color',
-        'tb/heading': ['heading_color', 'error_color'],
-        'tb/message': 'tb/heading',
+        "tb/plain_text": "secondary_color",
+        "tb/heading": ["heading_color", "error_color"],
+        "tb/message": "tb/heading",
         # Stack frames for user code.
-        'tb/frame/usr': 'primary_color',
-        'tb/frame/usr/file': 'primary_color',
-        'tb/frame/usr/file/module': 'code',
-        'tb/frame/usr/file/line': 'code',
-        'tb/frame/usr/file/path': 'code',
-        'tb/frame/usr/code': 'primary_color',
-        'tb/frame/usr/highlight': 'low_priority_color_a',
+        "tb/frame/usr": "primary_color",
+        "tb/frame/usr/file": "primary_color",
+        "tb/frame/usr/file/module": "code",
+        "tb/frame/usr/file/line": "code",
+        "tb/frame/usr/file/path": "code",
+        "tb/frame/usr/code": "primary_color",
+        "tb/frame/usr/highlight": "low_priority_color_a",
         # Stack frames for library code.
-        'tb/frame/lib': 'dim',
-        'tb/frame/lib/file': 'tb/frame/usr/file',
-        'tb/frame/lib/file/module': 'tb/frame/usr/file/module',
-        'tb/frame/lib/file/line': 'tb/frame/usr/file/line',
-        'tb/frame/lib/file/path': 'tb/frame/usr/file/path',
-        'tb/frame/lib/code': 'tb/frame/usr/code',
-        'tb/frame/lib/highlight': 'tb/frame/usr/highlight',
-
+        "tb/frame/lib": "dim",
+        "tb/frame/lib/file": "tb/frame/usr/file",
+        "tb/frame/lib/file/module": "tb/frame/usr/file/module",
+        "tb/frame/lib/file/line": "tb/frame/usr/file/line",
+        "tb/frame/lib/file/path": "tb/frame/usr/file/path",
+        "tb/frame/lib/code": "tb/frame/usr/code",
+        "tb/frame/lib/highlight": "tb/frame/usr/highlight",
         #
         # Tasks and progress bars
         # -----------------------
-
         # Main task elements.
-        'task/plain_text': 'secondary_color',
-        'task/heading': 'heading_color',
-        'task/progress': 'task/plain_text',
-        'task/comment': 'primary_color',
+        "task/plain_text": "secondary_color",
+        "task/heading": "heading_color",
+        "task/progress": "task/plain_text",
+        "task/comment": "primary_color",
         # Spinner/decoration for finished tasks or tasks without progress.
-        'task/decoration': 'accent_color',
-        'task/decoration/done': 'success_color',
-        'task/decoration/error': 'error_color',
+        "task/decoration": "accent_color",
+        "task/decoration/done": "success_color",
+        "task/decoration/error": "error_color",
         # Progressbar.
-        'task/progressbar/done': 'accent_color',
-        'task/progressbar/pending': 'secondary_color',
-
+        "task/progressbar/done": "accent_color",
+        "task/progressbar/pending": "secondary_color",
         #
         # CLI
         # ---
-
         # Main text elements.
-        'cli/text': "primary_color",
-        'cli/plain_text': Color.BACK_GREEN,
+        "cli/text": "primary_color",
+        "cli/plain_text": Color.BACK_GREEN,
         # Usage elements.
-        'cli/prog': "syntax_highlighting/prog",
-        'cli/flag': "syntax_highlighting/flag",
-        'cli/metavar': "syntax_highlighting/metavar",
+        "cli/prog": "syntax_highlighting/prog",
+        "cli/flag": "syntax_highlighting/flag",
+        "cli/metavar": "syntax_highlighting/metavar",
         # Block elements.
-        'cli/section/text': 'msg/group/text',
-        'cli/section/plain_text': 'msg/group/text',
-        'cli/section/decoration': 'msg/group/decoration',
-        'cli/list/decoration': "secondary_color",
-        'cli/list/text': "cli/text",
-        'cli/list/plain_text': "cli/plain_text",
-        'cli/quote/decoration': "secondary_color",
-        'cli/quote/text': "cli/text",
-        'cli/quote/plain_text': "cli/plain_text",
-        'cli/code_block/decoration': "secondary_color",
-        'cli/code_block/text': "cli/text",
-        'cli/code_block/plain_text': "cli/plain_text",
-
+        "cli/section/text": "msg/group/text",
+        "cli/section/plain_text": "msg/group/text",
+        "cli/section/decoration": "msg/group/decoration",
+        "cli/list/decoration": "secondary_color",
+        "cli/list/text": "cli/text",
+        "cli/list/plain_text": "cli/plain_text",
+        "cli/quote/decoration": "secondary_color",
+        "cli/quote/text": "cli/text",
+        "cli/quote/plain_text": "cli/plain_text",
+        "cli/code_block/decoration": "secondary_color",
+        "cli/code_block/text": "cli/text",
+        "cli/code_block/plain_text": "cli/plain_text",
         #
         # Syntax highlighting
         # -------------------
-
         # Primary groups.
         "syntax_highlighting/kwd": "bold",
         "syntax_highlighting/str": Color.NONE,
@@ -1554,40 +1609,40 @@ class DefaultTheme(Theme):
         "syntax_highlighting/prog": "bold",
         "syntax_highlighting/flag": "cyan",
         "syntax_highlighting/metavar": "bold",
-
         #
         # Menu and widgets
         # ----------------
-
-        'menu/input/decoration': 'low_priority_color_a',
-        'menu/input/text': 'primary_color',
-        'menu/input/placeholder': 'secondary_color',
-        'menu/choice/normal/plain_text': 'secondary_color',
-        'menu/choice/normal/decoration': 'primary_color',
-        'menu/choice/normal/text': 'primary_color',
-        'menu/choice/normal/text/dir': 'blue',
-        'menu/choice/normal/text/exec': 'red',
-        'menu/choice/normal/text/symlink': 'magenta',
-        'menu/choice/normal/text/socket': 'green',
-        'menu/choice/normal/text/pipe': 'yellow',
-        'menu/choice/normal/text/block_device': ['cyan', 'bold'],
-        'menu/choice/normal/text/char_device': ['yellow', 'bold'],
-        'menu/choice/normal/comment': 'note',
-        'menu/choice/normal/comment/original': "success_color",
-        'menu/choice/normal/comment/corrected': "error_color",
-        'menu/choice/active/plain_text': 'secondary_color',
-        'menu/choice/active/decoration': 'accent_color',
-        'menu/choice/active/text': 'accent_color',
-        'menu/choice/active/comment': 'note',
-        'menu/choice/active/comment/original': "success_color",
-        'menu/choice/active/comment/corrected': "error_color",
-        **{f"menu/choice/{status}/{role}/{color}": color
-           for color in Theme.colors
-           for status in ["normal", "active"]
-           for role in ["plain_text", "decoration", "text", "comment"]},
-        'menu/help/plain_text': 'low_priority_color_b',
-        'menu/help/text': 'low_priority_color_b',
-        'menu/help/key': 'low_priority_color_a',
+        "menu/input/decoration": "low_priority_color_a",
+        "menu/input/text": "primary_color",
+        "menu/input/placeholder": "secondary_color",
+        "menu/choice/normal/plain_text": "secondary_color",
+        "menu/choice/normal/decoration": "primary_color",
+        "menu/choice/normal/text": "primary_color",
+        "menu/choice/normal/text/dir": "blue",
+        "menu/choice/normal/text/exec": "red",
+        "menu/choice/normal/text/symlink": "magenta",
+        "menu/choice/normal/text/socket": "green",
+        "menu/choice/normal/text/pipe": "yellow",
+        "menu/choice/normal/text/block_device": ["cyan", "bold"],
+        "menu/choice/normal/text/char_device": ["yellow", "bold"],
+        "menu/choice/normal/comment": "note",
+        "menu/choice/normal/comment/original": "success_color",
+        "menu/choice/normal/comment/corrected": "error_color",
+        "menu/choice/active/plain_text": "secondary_color",
+        "menu/choice/active/decoration": "accent_color",
+        "menu/choice/active/text": "accent_color",
+        "menu/choice/active/comment": "note",
+        "menu/choice/active/comment/original": "success_color",
+        "menu/choice/active/comment/corrected": "error_color",
+        **{
+            f"menu/choice/{status}/{role}/{color}": color
+            for color in Theme.colors
+            for status in ["normal", "active"]
+            for role in ["plain_text", "decoration", "text", "comment"]
+        },
+        "menu/help/plain_text": "low_priority_color_b",
+        "menu/help/text": "low_priority_color_b",
+        "menu/help/key": "low_priority_color_a",
     }
 
     def __init__(self, term: Term) -> None:
@@ -1600,17 +1655,17 @@ class DefaultTheme(Theme):
 
         if term.lightness.DARK:
             self._set_color_if_not_overridden(
-                'low_priority_color_a', Color(fore=background_color.lighten(0.25))
+                "low_priority_color_a", Color(fore=background_color.lighten(0.25))
             )
             self._set_color_if_not_overridden(
-                'low_priority_color_b', Color(fore=background_color.lighten(0.15))
+                "low_priority_color_b", Color(fore=background_color.lighten(0.15))
             )
         else:
             self._set_color_if_not_overridden(
-                'low_priority_color_a', Color(fore=background_color.darken(0.25))
+                "low_priority_color_a", Color(fore=background_color.darken(0.25))
             )
             self._set_color_if_not_overridden(
-                'low_priority_color_b', Color(fore=background_color.darken(0.15))
+                "low_priority_color_b", Color(fore=background_color.darken(0.15))
             )
 
 
@@ -1652,8 +1707,9 @@ def line_width(s: str, /) -> int:
     else:
         # Long path. It kinda works, but not always, but most of the times...
         return sum(
-            (unicodedata.east_asian_width(c) in 'WF') + 1
-            for c in s if unicodedata.category(c)[0] not in 'MC'
+            (unicodedata.east_asian_width(c) in "WF") + 1
+            for c in s
+            if unicodedata.category(c)[0] not in "MC"
         )
 
 
@@ -1661,7 +1717,9 @@ def line_width(s: str, /) -> int:
 RawColorizedString: _t.TypeAlias = _t.List[_t.Union[str, Color]]
 
 #: Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
-AnyString: _t.TypeAlias = _t.Union[str, "ColorizedString", "RawColorizedString", "Color"]
+AnyString: _t.TypeAlias = _t.Union[
+    str, "ColorizedString", "RawColorizedString", "Color"
+]
 
 
 @_t.final
@@ -1683,7 +1741,13 @@ class ColorizedString:
 
     """
 
-    def __init__(self, contents: _t.Optional["AnyString"] = None, /, *, explicit_newline: str = ''):
+    def __init__(
+        self,
+        contents: _t.Optional["AnyString"] = None,
+        /,
+        *,
+        explicit_newline: str = "",
+    ):
         self._items: "RawColorizedString" = []
         self._explicit_newline = explicit_newline
         if contents is not None:
@@ -1712,9 +1776,7 @@ class ColorizedString:
 
     @functools.cached_property
     def len(self) -> int:
-        """Line length in bytes, ignoring all colors.
-
-        """
+        """Line length in bytes, ignoring all colors."""
 
         return sum(len(s) for s in self._items if isinstance(s, str))
 
@@ -1756,7 +1818,7 @@ class ColorizedString:
         preserve_newlines: bool = True,
         first_line_indent: _t.Optional[AnyString] = None,
         continuation_indent: _t.Optional[AnyString] = None,
-    ) -> _t.List['ColorizedString']:
+    ) -> _t.List["ColorizedString"]:
         """Wrap a long line of text into multiple lines.
 
         If `break_on_hyphens` is `True` (default),
@@ -1794,7 +1856,7 @@ class ColorizedString:
             continuation_indent=continuation_indent,
         ).wrap(self)
 
-    def percent_format(self, args: _t.Any) -> 'ColorizedString':
+    def percent_format(self, args: _t.Any) -> "ColorizedString":
         """Format colorized string as if with ``%``-formatting
         (i.e. `old-style formatting`_).
 
@@ -1813,14 +1875,14 @@ class ColorizedString:
 
         return ColorizedString(_percent_format(self, args))
 
-    def __mod__(self, args: _t.Any) -> 'ColorizedString':
+    def __mod__(self, args: _t.Any) -> "ColorizedString":
         return self.percent_format(args)
 
-    def __imod__(self, args: _t.Any) -> 'ColorizedString':
+    def __imod__(self, args: _t.Any) -> "ColorizedString":
         self._items = _percent_format(self, args)
 
-        self.__dict__.pop('width', None)
-        self.__dict__.pop('len', None)
+        self.__dict__.pop("width", None)
+        self.__dict__.pop("len", None)
 
         return self
 
@@ -1854,8 +1916,8 @@ class ColorizedString:
         else:
             return NotImplemented
 
-        self.__dict__.pop('width', None)
-        self.__dict__.pop('len', None)
+        self.__dict__.pop("width", None)
+        self.__dict__.pop("len", None)
 
         return self
 
@@ -1865,7 +1927,9 @@ class ColorizedString:
 
         """
 
-        return ''.join(s if isinstance(s, str) else s.as_code(term) for s in self._items)
+        return "".join(
+            s if isinstance(s, str) else s.as_code(term) for s in self._items
+        )
 
     def write_to(self, term: Term, /):
         """Write the given string to a terminal.
@@ -1880,9 +1944,7 @@ class ColorizedString:
         term.stream.write(self.merge(term))
 
     def get_last_color(self) -> _t.Optional[Color]:
-        """Get the latest color in this colorized string.
-
-        """
+        """Get the latest color in this colorized string."""
 
         for item in reversed(self._items):
             if isinstance(item, Color):
@@ -1890,7 +1952,7 @@ class ColorizedString:
         return None
 
     def __str__(self) -> str:
-        return ''.join(s for s in self._items if isinstance(s, str))
+        return "".join(s for s in self._items if isinstance(s, str))
 
     def __repr__(self) -> str:
         if self.explicit_newline:
@@ -1909,28 +1971,29 @@ _S_SYNTAX = re.compile(
         [hlL]?                          # Unused length modifier
         (?P<format>.)                   # Conversion type
     """,
-    re.VERBOSE
+    re.VERBOSE,
 )
 
 
 def _percent_format(s: ColorizedString, args: _t.Any) -> "RawColorizedString":
     if not isinstance(args, (dict, tuple)):
-        args = args,
+        args = (args,)
 
     i = 0
+
     def repl(m: re.Match) -> str:
         nonlocal i
         groups = m.groupdict()
-        if groups['format'] == '%':
+        if groups["format"] == "%":
             if m.group(0) != "%%":
                 raise ValueError("unsupported format character '%'")
-            return '%'
+            return "%"
 
-        if groups['mapping'] is not None:
+        if groups["mapping"] is not None:
             fmt_args = args
         elif isinstance(args, tuple):
             begin = i
-            end = i = i + 1 + (m.group('width') == '*') + (m.group('precision') == '*')
+            end = i = i + 1 + (m.group("width") == "*") + (m.group("precision") == "*")
             fmt_args = args[begin:end]
         elif i == 0:
             # We've passed a dict, and now want to format it with `%s`.
@@ -1950,14 +2013,15 @@ def _percent_format(s: ColorizedString, args: _t.Any) -> "RawColorizedString":
     return raw
 
 
-_SPACE_TRANS = str.maketrans("\r\n\t\v\b\f", '      ')
+_SPACE_TRANS = str.maketrans("\r\n\t\v\b\f", "      ")
 
 _WORD_PUNCT = r'[\w!"\'&.,?]'
-_LETTER = r'[^\d\W]'
-_NOWHITESPACE = r'[^ \r\n\t\v\b\f]'
+_LETTER = r"[^\d\W]"
+_NOWHITESPACE = r"[^ \r\n\t\v\b\f]"
 
 # Copied from textwrap with some modifications in newline handling
-_WORDSEP_RE = re.compile(r'''
+_WORDSEP_RE = re.compile(
+    r"""
     ( # newlines and line feeds are matched one-by-one
         (?:\r\n|\r|\n)
     | # any whitespace
@@ -1974,10 +2038,13 @@ _WORDSEP_RE = re.compile(r'''
         | # em-dash
             (?<=%(wp)s) (?=-{2,}\w)
         )
-    )''' % {'wp': _WORD_PUNCT, 'lt': _LETTER, 'nws': _NOWHITESPACE},
-    re.VERBOSE)
+    )"""
+    % {"wp": _WORD_PUNCT, "lt": _LETTER, "nws": _NOWHITESPACE},
+    re.VERBOSE,
+)
 
 _WORDSEP_SIMPLE_RE = re.compile(r"(\r\n|\r|\n|[ \t\v\b\f]+)")
+
 
 class _TextWrapper:
     def __init__(
@@ -1996,26 +2063,38 @@ class _TextWrapper:
         self.preserve_spaces: bool = preserve_spaces
         self.preserve_newlines: bool = preserve_newlines
         self.first_line_indent: ColorizedString = ColorizedString(first_line_indent)
-        self.first_line_indent_color: _t.Optional[Color] = self.first_line_indent.get_last_color()
+        self.first_line_indent_color: _t.Optional[
+            Color
+        ] = self.first_line_indent.get_last_color()
         self.continuation_indent: ColorizedString = ColorizedString(continuation_indent)
-        self.continuation_indent_color: _t.Optional[Color] = self.continuation_indent.get_last_color()
+        self.continuation_indent_color: _t.Optional[
+            Color
+        ] = self.continuation_indent.get_last_color()
 
         if (
             self.width - self.first_line_indent.width <= 1
             or self.width - self.continuation_indent.width <= 1
         ):
-            self.width = max(self.first_line_indent.width, self.continuation_indent.width) + 2
+            self.width = (
+                max(self.first_line_indent.width, self.continuation_indent.width) + 2
+            )
 
         self.lines: _t.List[ColorizedString] = []
 
-        self.current_line: "RawColorizedString" = list(self.first_line_indent.iter_raw())
+        self.current_line: "RawColorizedString" = list(
+            self.first_line_indent.iter_raw()
+        )
         self.current_line_width: int = self.first_line_indent.width
         self.current_color: _t.Optional[Color] = None
         self.current_line_is_nonempty: bool = False
 
-    def _flush_line(self, explicit_newline=''):
-        self.lines.append(ColorizedString(self.current_line, explicit_newline=explicit_newline))
-        self.current_line: "RawColorizedString" = list(self.continuation_indent.iter_raw())
+    def _flush_line(self, explicit_newline=""):
+        self.lines.append(
+            ColorizedString(self.current_line, explicit_newline=explicit_newline)
+        )
+        self.current_line: "RawColorizedString" = list(
+            self.continuation_indent.iter_raw()
+        )
         self.current_line_width: int = self.continuation_indent.width
         if (
             self.current_color
@@ -2075,7 +2154,7 @@ class _TextWrapper:
                 if not word:
                     continue
 
-                if word in ('\r', '\n', '\r\n') and self.preserve_newlines:
+                if word in ("\r", "\n", "\r\n") and self.preserve_newlines:
                     self._flush_line(explicit_newline=word)
                     need_space_before_word = False
                     at_line_beginning = True
@@ -2091,10 +2170,13 @@ class _TextWrapper:
 
                 word_width = line_width(word)
 
-                if self.current_line_width + word_width + need_space_before_word <= self.width:
+                if (
+                    self.current_line_width + word_width + need_space_before_word
+                    <= self.width
+                ):
                     # Word fits onto the current line.
                     if need_space_before_word:
-                        self._append_word(' ', 1)
+                        self._append_word(" ", 1)
                     self._append_word(word, word_width)
                 else:
                     # Word doesn't fit, so we start a new line.

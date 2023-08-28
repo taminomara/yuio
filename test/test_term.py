@@ -1,4 +1,5 @@
 import pytest
+
 import yuio.term
 
 
@@ -19,14 +20,38 @@ class TestColor:
             (yuio.term.Color.BACK_RED, yuio.term.ColorSupport.ANSI_256, "\x1b[;41m"),
             (yuio.term.Color.BACK_RED, yuio.term.ColorSupport.ANSI_TRUE, "\x1b[;41m"),
             (yuio.term.Color.fore_from_hex("#338F15"), yuio.term.ColorSupport.NONE, ""),
-            (yuio.term.Color.fore_from_hex("#338F15"), yuio.term.ColorSupport.ANSI, "\x1b[;32m"),
-            (yuio.term.Color.fore_from_hex("#338F15"), yuio.term.ColorSupport.ANSI_256, "\x1b[;38;5;64m"),
-            (yuio.term.Color.fore_from_hex("#338F15"), yuio.term.ColorSupport.ANSI_TRUE, "\x1b[;38;2;51;143;21m"),
+            (
+                yuio.term.Color.fore_from_hex("#338F15"),
+                yuio.term.ColorSupport.ANSI,
+                "\x1b[;32m",
+            ),
+            (
+                yuio.term.Color.fore_from_hex("#338F15"),
+                yuio.term.ColorSupport.ANSI_256,
+                "\x1b[;38;5;64m",
+            ),
+            (
+                yuio.term.Color.fore_from_hex("#338F15"),
+                yuio.term.ColorSupport.ANSI_TRUE,
+                "\x1b[;38;2;51;143;21m",
+            ),
             (yuio.term.Color.back_from_hex("#338F15"), yuio.term.ColorSupport.NONE, ""),
-            (yuio.term.Color.back_from_hex("#338F15"), yuio.term.ColorSupport.ANSI, "\x1b[;42m"),
-            (yuio.term.Color.back_from_hex("#338F15"), yuio.term.ColorSupport.ANSI_256, "\x1b[;48;5;64m"),
-            (yuio.term.Color.back_from_hex("#338F15"), yuio.term.ColorSupport.ANSI_TRUE, "\x1b[;48;2;51;143;21m"),
-        ]
+            (
+                yuio.term.Color.back_from_hex("#338F15"),
+                yuio.term.ColorSupport.ANSI,
+                "\x1b[;42m",
+            ),
+            (
+                yuio.term.Color.back_from_hex("#338F15"),
+                yuio.term.ColorSupport.ANSI_256,
+                "\x1b[;48;5;64m",
+            ),
+            (
+                yuio.term.Color.back_from_hex("#338F15"),
+                yuio.term.ColorSupport.ANSI_TRUE,
+                "\x1b[;48;2;51;143;21m",
+            ),
+        ],
     )
     def test_as_code(self, color: yuio.term.Color, cap, expect):
         term = yuio.term.Term(None, color_support=cap)  # type: ignore
@@ -62,7 +87,7 @@ class TestColor:
                     yuio.term.Color.fore_from_hex("#555500"),
                     yuio.term.Color.fore_from_hex("#2A7F00"),
                     yuio.term.Color.fore_from_hex("#00AA00"),
-                ]
+                ],
             ),
             (
                 [
@@ -81,7 +106,7 @@ class TestColor:
                     yuio.term.Color.fore_from_hex("#005555"),
                     yuio.term.Color.fore_from_hex("#002A7F"),
                     yuio.term.Color.fore_from_hex("#0000AA"),
-                ]
+                ],
             ),
             (
                 [
@@ -93,7 +118,7 @@ class TestColor:
                     yuio.term.Color.fore_from_hex("#AA0000"),
                     yuio.term.Color.fore_from_hex("#555500"),
                     yuio.term.Color.fore_from_hex("#00AA00"),
-                ]
+                ],
             ),
             (
                 [
@@ -105,21 +130,26 @@ class TestColor:
                     yuio.term.Color.back_from_hex("#0000AA"),
                     yuio.term.Color.back_from_hex("#005555"),
                     yuio.term.Color.back_from_hex("#00AA00"),
-                ]
+                ],
             ),
             (
                 [
-                    yuio.term.Color.fore_from_hex("#AA0000") | yuio.term.Color.back_from_hex("#0000AA"),
-                    yuio.term.Color.fore_from_hex("#00AA00") | yuio.term.Color.back_from_hex("#00AA00"),
+                    yuio.term.Color.fore_from_hex("#AA0000")
+                    | yuio.term.Color.back_from_hex("#0000AA"),
+                    yuio.term.Color.fore_from_hex("#00AA00")
+                    | yuio.term.Color.back_from_hex("#00AA00"),
                 ],
                 [0, 0.5, 1],
                 [
-                    yuio.term.Color.fore_from_hex("#AA0000") | yuio.term.Color.back_from_hex("#0000AA"),
-                    yuio.term.Color.fore_from_hex("#555500") | yuio.term.Color.back_from_hex("#005555"),
-                    yuio.term.Color.fore_from_hex("#00AA00") | yuio.term.Color.back_from_hex("#00AA00"),
-                ]
+                    yuio.term.Color.fore_from_hex("#AA0000")
+                    | yuio.term.Color.back_from_hex("#0000AA"),
+                    yuio.term.Color.fore_from_hex("#555500")
+                    | yuio.term.Color.back_from_hex("#005555"),
+                    yuio.term.Color.fore_from_hex("#00AA00")
+                    | yuio.term.Color.back_from_hex("#00AA00"),
+                ],
             ),
-        ]
+        ],
     )
     def test_lerp(self, colors, coeffs, expect):
         lerp = yuio.term.Color.lerp(*colors)
@@ -131,97 +161,112 @@ class TestTheme:
     def test_default_colors(self):
         t = yuio.term.Theme()
 
-        assert t.get_color('code') == yuio.term.Color.FORE_MAGENTA
-        assert t.get_color('note') == yuio.term.Color.FORE_GREEN
-        assert t.get_color('bold') == yuio.term.Color.STYLE_BOLD
-        assert t.get_color('b') == yuio.term.Color.STYLE_BOLD
-        assert t.get_color('dim') == yuio.term.Color.STYLE_DIM
-        assert t.get_color('d') == yuio.term.Color.STYLE_DIM
-        assert t.get_color('normal') == yuio.term.Color.FORE_NORMAL
-        assert t.get_color('black') == yuio.term.Color.FORE_BLACK
-        assert t.get_color('red') == yuio.term.Color.FORE_RED
-        assert t.get_color('green') == yuio.term.Color.FORE_GREEN
-        assert t.get_color('yellow') == yuio.term.Color.FORE_YELLOW
-        assert t.get_color('blue') == yuio.term.Color.FORE_BLUE
-        assert t.get_color('magenta') == yuio.term.Color.FORE_MAGENTA
-        assert t.get_color('cyan') == yuio.term.Color.FORE_CYAN
-        assert t.get_color('white') == yuio.term.Color.FORE_WHITE
+        assert t.get_color("code") == yuio.term.Color.FORE_MAGENTA
+        assert t.get_color("note") == yuio.term.Color.FORE_GREEN
+        assert t.get_color("bold") == yuio.term.Color.STYLE_BOLD
+        assert t.get_color("b") == yuio.term.Color.STYLE_BOLD
+        assert t.get_color("dim") == yuio.term.Color.STYLE_DIM
+        assert t.get_color("d") == yuio.term.Color.STYLE_DIM
+        assert t.get_color("normal") == yuio.term.Color.FORE_NORMAL
+        assert t.get_color("black") == yuio.term.Color.FORE_BLACK
+        assert t.get_color("red") == yuio.term.Color.FORE_RED
+        assert t.get_color("green") == yuio.term.Color.FORE_GREEN
+        assert t.get_color("yellow") == yuio.term.Color.FORE_YELLOW
+        assert t.get_color("blue") == yuio.term.Color.FORE_BLUE
+        assert t.get_color("magenta") == yuio.term.Color.FORE_MAGENTA
+        assert t.get_color("cyan") == yuio.term.Color.FORE_CYAN
+        assert t.get_color("white") == yuio.term.Color.FORE_WHITE
 
     def test_inheritance(self):
         class A(yuio.term.Theme):
             colors = {
-                't_a': yuio.term.Color.FORE_RED,
-                't_ab': yuio.term.Color.FORE_GREEN,
-                't_abc': yuio.term.Color.FORE_BLUE,
+                "t_a": yuio.term.Color.FORE_RED,
+                "t_ab": yuio.term.Color.FORE_GREEN,
+                "t_abc": yuio.term.Color.FORE_BLUE,
             }
 
         class B(yuio.term.Theme):
             colors = {
-                't_b': yuio.term.Color.FORE_CYAN,
-                't_ab': yuio.term.Color.FORE_MAGENTA,
-                't_abc': yuio.term.Color.FORE_YELLOW,
+                "t_b": yuio.term.Color.FORE_CYAN,
+                "t_ab": yuio.term.Color.FORE_MAGENTA,
+                "t_abc": yuio.term.Color.FORE_YELLOW,
             }
 
         class C(A, B):
             colors = {
-                't_c': yuio.term.Color.FORE_BLACK,
-                't_abc': yuio.term.Color.FORE_WHITE,
+                "t_c": yuio.term.Color.FORE_BLACK,
+                "t_abc": yuio.term.Color.FORE_WHITE,
             }
 
-        assert C.colors['t_a'] == yuio.term.Color.FORE_RED
-        assert C.colors['t_b'] == yuio.term.Color.FORE_CYAN
-        assert C.colors['t_c'] == yuio.term.Color.FORE_BLACK
-        assert C.colors['t_ab'] == yuio.term.Color.FORE_GREEN
-        assert C.colors['t_abc'] == yuio.term.Color.FORE_WHITE
+        assert C.colors["t_a"] == yuio.term.Color.FORE_RED
+        assert C.colors["t_b"] == yuio.term.Color.FORE_CYAN
+        assert C.colors["t_c"] == yuio.term.Color.FORE_BLACK
+        assert C.colors["t_ab"] == yuio.term.Color.FORE_GREEN
+        assert C.colors["t_abc"] == yuio.term.Color.FORE_WHITE
 
         c = C()
 
-        assert c.get_color('t_a') == yuio.term.Color.FORE_RED
-        assert c.get_color('t_b') == yuio.term.Color.FORE_CYAN
-        assert c.get_color('t_c') == yuio.term.Color.FORE_BLACK
-        assert c.get_color('t_ab') == yuio.term.Color.FORE_GREEN
-        assert c.get_color('t_abc') == yuio.term.Color.FORE_WHITE
+        assert c.get_color("t_a") == yuio.term.Color.FORE_RED
+        assert c.get_color("t_b") == yuio.term.Color.FORE_CYAN
+        assert c.get_color("t_c") == yuio.term.Color.FORE_BLACK
+        assert c.get_color("t_ab") == yuio.term.Color.FORE_GREEN
+        assert c.get_color("t_abc") == yuio.term.Color.FORE_WHITE
 
     def test_color_paths(self):
         class A(yuio.term.Theme):
             colors = {
-                'x': yuio.term.Color.STYLE_BOLD,
-                'x/y': yuio.term.Color.FORE_RED,
-                'x/z': yuio.term.Color.FORE_GREEN,
-                'y/y': yuio.term.Color.FORE_BLUE,
+                "x": yuio.term.Color.STYLE_BOLD,
+                "x/y": yuio.term.Color.FORE_RED,
+                "x/z": yuio.term.Color.FORE_GREEN,
+                "y/y": yuio.term.Color.FORE_BLUE,
             }
 
         a = A()
 
-        assert a.get_color('x') == yuio.term.Color.STYLE_BOLD
-        assert a.get_color('x/y') == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
-        assert a.get_color('x/z') == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_GREEN
-        assert a.get_color('y/y') == yuio.term.Color.FORE_BLUE
+        assert a.get_color("x") == yuio.term.Color.STYLE_BOLD
+        assert (
+            a.get_color("x/y") == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
+        )
+        assert (
+            a.get_color("x/z")
+            == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_GREEN
+        )
+        assert a.get_color("y/y") == yuio.term.Color.FORE_BLUE
 
     def test_color_redirect(self):
         class A(yuio.term.Theme):
             colors = {
-                't_r': yuio.term.Color.FORE_RED,
-                't_g': yuio.term.Color.FORE_GREEN,
-                't_b': yuio.term.Color.STYLE_BOLD,
-                't_d': yuio.term.Color.STYLE_DIM,
-
-                'x': 't_b',
-                'x/y': 't_r',
-
-                'y': 't_d',
-                'y/y': 'x/y',
-
-                'z': ['x/y', 'y/y', yuio.term.Color.BACK_CYAN]
+                "t_r": yuio.term.Color.FORE_RED,
+                "t_g": yuio.term.Color.FORE_GREEN,
+                "t_b": yuio.term.Color.STYLE_BOLD,
+                "t_d": yuio.term.Color.STYLE_DIM,
+                "x": "t_b",
+                "x/y": "t_r",
+                "y": "t_d",
+                "y/y": "x/y",
+                "z": ["x/y", "y/y", yuio.term.Color.BACK_CYAN],
             }
 
         a = A()
 
-        assert a.get_color('x') == yuio.term.Color.STYLE_BOLD
-        assert a.get_color('x/y') == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
-        assert a.get_color('y') == yuio.term.Color.STYLE_DIM
-        assert a.get_color('y/y') == yuio.term.Color.STYLE_DIM | yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
-        assert a.get_color('z') == yuio.term.Color.STYLE_DIM | yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED | yuio.term.Color.BACK_CYAN
+        assert a.get_color("x") == yuio.term.Color.STYLE_BOLD
+        assert (
+            a.get_color("x/y") == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
+        )
+        assert a.get_color("y") == yuio.term.Color.STYLE_DIM
+        assert (
+            a.get_color("y/y")
+            == yuio.term.Color.STYLE_DIM
+            | yuio.term.Color.STYLE_BOLD
+            | yuio.term.Color.FORE_RED
+        )
+        assert (
+            a.get_color("z")
+            == yuio.term.Color.STYLE_DIM
+            | yuio.term.Color.STYLE_BOLD
+            | yuio.term.Color.FORE_RED
+            | yuio.term.Color.BACK_CYAN
+        )
 
 
 class TestColorizedString:
@@ -229,42 +274,51 @@ class TestColorizedString:
         "text,args,expect",
         [
             (
-                [""], (),
+                [""],
+                (),
                 [""],
             ),
             (
-                ["hello world!"], (),
+                ["hello world!"],
+                (),
                 ["hello world!"],
             ),
             (
-                ["hello %s!"], "username",
+                ["hello %s!"],
+                "username",
                 ["hello username!"],
             ),
             (
-                ["hello %r!"], "username",
+                ["hello %r!"],
+                "username",
                 ["hello 'username'!"],
             ),
             (
-                ["hello %05.2f!"], 1.5,
+                ["hello %05.2f!"],
+                1.5,
                 ["hello 01.50!"],
             ),
             (
-                ["hello %05.2lf!"], 1.5,
+                ["hello %05.2lf!"],
+                1.5,
                 ["hello 01.50!"],
             ),
             (
-                ["hello %s %% %s!"], (1, 2),
+                ["hello %s %% %s!"],
+                (1, 2),
                 ["hello 1 % 2!"],
             ),
             (
-                ["hello %s"], {'a': 'b'},
+                ["hello %s"],
+                {"a": "b"},
                 ["hello {'a': 'b'}"],
             ),
             (
-                ["hello %s %(a)s"], {'a': 'b'},
+                ["hello %s %(a)s"],
+                {"a": "b"},
                 ["hello {'a': 'b'} b"],
             ),
-        ]
+        ],
     )
     def test_format(self, text, args, expect):
         formatted = yuio.term.ColorizedString(text) % args
@@ -273,319 +327,421 @@ class TestColorizedString:
     @pytest.mark.parametrize(
         "text,width,kwargs,expect",
         [
+            (["hello world!"], 15, {}, [["hello", " ", "world!"]]),
+            (["hello world! 15"], 15, {}, [["hello", " ", "world!", " ", "15"]]),
+            (["hello world! 👻"], 15, {}, [["hello", " ", "world!", " ", "👻"]]),
+            (["hello world! 👻👻"], 15, {}, [["hello", " ", "world!"], ["👻👻"]]),
             (
-                ["hello world!"], 15, {},
-                [["hello", " ", "world!"]]
+                ["hello world! this will wrap"],
+                15,
+                {},
+                [["hello", " ", "world!"], ["this", " ", "will", " ", "wrap"]],
             ),
             (
-                ["hello world! 15"], 15, {},
-                [["hello", " ", "world!", " ", "15"]]
+                ["hello world!     this will wrap"],
+                15,
+                {},
+                [["hello", " ", "world!"], ["this", " ", "will", " ", "wrap"]],
             ),
             (
-                ["hello world! 👻"], 15, {},
-                [["hello", " ", "world!", " ", "👻"]]
+                ["hello     world!     this     will     wrap"],
+                15,
+                {},
+                [["hello", " ", "world!"], ["this", " ", "will", " ", "wrap"]],
             ),
             (
-                ["hello world! 👻👻"], 15, {},
-                [["hello", " ", "world!"], ["👻👻"]]
+                ["this-will-wrap-on-hyphen"],
+                15,
+                {},
+                [["this-", "will-", "wrap-"], ["on-", "hyphen"]],
             ),
             (
-                ["hello world! this will wrap"], 15, {},
-                [["hello", " ", "world!"], ["this", " ", "will", " ", "wrap"]]
+                ["this.will.not.wrap.on.hyphen.this.is.too.long"],
+                15,
+                {},
+                [["this.will.not.w"], ["rap.on.hyphen.t"], ["his.is.too.long"]],
             ),
             (
-                ["hello world!     this will wrap"], 15, {},
-                [["hello", " ", "world!"], ["this", " ", "will", " ", "wrap"]]
+                ["this-will-not-wrap-on-hyphen-this-is-too-long"],
+                15,
+                {"break_on_hyphens": False},
+                [["this-will-not-w"], ["rap-on-hyphen-t"], ["his-is-too-long"]],
             ),
             (
-                ["hello     world!     this     will     wrap"], 15, {},
-                [["hello", " ", "world!"], ["this", " ", "will", " ", "wrap"]]
+                ["newlines will\nbe\nhonored!"],
+                15,
+                {"break_on_hyphens": False},
+                [["newlines", " ", "will"], ["be"], ["honored!"]],
             ),
             (
-                ["this-will-wrap-on-hyphen"], 15, {},
-                [["this-", "will-", "wrap-"], ["on-", "hyphen"]]
+                ["space before nl    \nis removed"],
+                15,
+                {},
+                [["space", " ", "before", " ", "nl"], ["is", " ", "removed"]],
             ),
             (
-                ["this.will.not.wrap.on.hyphen.this.is.too.long"], 15, {},
-                [["this.will.not.w"], ["rap.on.hyphen.t"], ["his.is.too.long"]]
+                ["space after nl\n    is kept"],
+                15,
+                {},
+                [["space", " ", "after", " ", "nl"], ["    ", "is", " ", "kept"]],
             ),
             (
-                ["this-will-not-wrap-on-hyphen-this-is-too-long"], 15, {'break_on_hyphens': False},
-                [["this-will-not-w"], ["rap-on-hyphen-t"], ["his-is-too-long"]]
-            ),
-            (
-                ["newlines will\nbe\nhonored!"], 15, {'break_on_hyphens': False},
-                [["newlines", " ", "will"], ["be"], ["honored!"]]
-            ),
-            (
-                ["space before nl    \nis removed"], 15, {},
-                [["space", " ", "before", " ", "nl"], ["is", " ", "removed"]]
-            ),
-            (
-                ["space after nl\n    is kept"], 15, {},
-                [["space", " ", "after", " ", "nl"], ["    ", "is", " ", "kept"]]
-            ),
-            (
-                ["wo", "rd wo", "rd"], 15, {},
+                ["wo", "rd wo", "rd"],
+                15,
+                {},
                 [["wo", "rd", " ", "wo", "rd"]],
             ),
             pytest.param(
-                ["wo", "rd wo", "rd"], 7, {},
+                ["wo", "rd wo", "rd"],
+                7,
+                {},
                 [["wo", "rd"], ["wo", "rd"]],
-                marks=pytest.mark.skip("this is a bug which I'm not sure how to fix atm"),
+                marks=pytest.mark.skip(
+                    "this is a bug which I'm not sure how to fix atm"
+                ),
             ),
             (
-                ["hello world!"], 15, {'preserve_spaces': True},
-                [["hello", " ", "world!"]]
+                ["hello world!"],
+                15,
+                {"preserve_spaces": True},
+                [["hello", " ", "world!"]],
             ),
             (
-                ["hello   world!"], 15, {'preserve_spaces': True},
-                [["hello", "   ", "world!"]]
+                ["hello   world!"],
+                15,
+                {"preserve_spaces": True},
+                [["hello", "   ", "world!"]],
             ),
             (
-                ["hello     world!"], 15, {'preserve_spaces': True},
-                [["hello", "     "], ["world!"]]
+                ["hello     world!"],
+                15,
+                {"preserve_spaces": True},
+                [["hello", "     "], ["world!"]],
             ),
             (
-                ["hello                    world"], 15, {'preserve_spaces': True},
-                [["hello", "          "], ["          ", "world"]]
+                ["hello                    world"],
+                15,
+                {"preserve_spaces": True},
+                [["hello", "          "], ["          ", "world"]],
             ),
             (
-                ["hello                    longlongworld"], 15, {'preserve_spaces': True},
-                [["hello", "          "], ["          "], ["longlongworld"]]
+                ["hello                    longlongworld"],
+                15,
+                {"preserve_spaces": True},
+                [["hello", "          "], ["          "], ["longlongworld"]],
             ),
             (
-                ["hello ", yuio.term.Color.STYLE_BOLD, "world", yuio.term.Color.NONE], 15, {'preserve_spaces': True},
-                [["hello", " ", yuio.term.Color.STYLE_BOLD, "world", yuio.term.Color.NONE]]
-            ),
-            (
-                [], 15, {'preserve_spaces': True},
-                [[]]
-            ),
-            (
-                [""], 15, {'preserve_spaces': True},
-                [[]]
-            ),
-            (
-                ["Hello line break", yuio.term.Color.NONE], 15, {},
-                [["Hello", " ", "line"], ["break", yuio.term.Color.NONE]]
-            ),
-            (
-                [yuio.term.Color.STYLE_BOLD, yuio.term.Color.NONE], 15, {},
-                [[yuio.term.Color.STYLE_BOLD, yuio.term.Color.NONE]]
-            ),
-            (
-                [yuio.term.Color.STYLE_BOLD, "", yuio.term.Color.NONE], 15, {},
-                [[yuio.term.Color.STYLE_BOLD, yuio.term.Color.NONE]]
-            ),
-            (
-                ["break\n", yuio.term.Color.NONE], 15, {},
-                [["break"], [yuio.term.Color.NONE]]
-            ),
-            (
-                ["break\n"], 15, {},
-                [["break"], []]
-            ),
-            (
-                ["usage: app.py train [-h] [-v] [--force-color | --force-no-color] [-o {path}] <data>"], 100, {},
-                [['usage:', ' ', 'app.py', ' ', 'train', ' ', '[-h]', ' ', '[-v]', ' ',
-                  '[--force-', 'color', ' ', '|', ' ', '--force-', 'no-', 'color]', ' ',
-                  '[-o', ' ', '{path}]', ' ', '<data>']]
-            ),
-            (
+                ["hello ", yuio.term.Color.STYLE_BOLD, "world", yuio.term.Color.NONE],
+                15,
+                {"preserve_spaces": True},
                 [
-                    yuio.term.Color.FORE_MAGENTA,
-                    'usage: ',
-                    yuio.term.Color.NONE,
-                    yuio.term.Color.NONE,
-                    'app.py train',
-                    yuio.term.Color.NONE,
-                    yuio.term.Color.NONE,
-                    ' ',
-                    yuio.term.Color.NONE,
-                    '[',
-                    yuio.term.Color.FORE_BLUE,
-                    '-h',
-                    yuio.term.Color.NONE,
-                    ']',
-                    yuio.term.Color.NONE,
-                    ' ',
-                    yuio.term.Color.NONE,
-                    '[',
-                    yuio.term.Color.FORE_BLUE,
-                    '-v',
-                    yuio.term.Color.NONE,
-                    ']',
-                    yuio.term.Color.NONE,
-                    ' [',
-                    yuio.term.Color.NONE,
-                    yuio.term.Color.FORE_BLUE,
-                    '--force-color',
-                    yuio.term.Color.NONE,
-                    ' | ',
-                    yuio.term.Color.NONE,
-                    yuio.term.Color.FORE_BLUE,
-                    '--force-no-color',
-                    yuio.term.Color.NONE,
-                    '] ',
-                    yuio.term.Color.NONE,
-                    '[',
-                    yuio.term.Color.FORE_BLUE,
-                    '-o',
-                    yuio.term.Color.NONE,
-                    ' ',
-                    yuio.term.Color.FORE_MAGENTA,
-                    '',
-                    yuio.term.Color.NONE,
-                    '{',
-                    yuio.term.Color.FORE_MAGENTA,
-                    'path',
-                    yuio.term.Color.NONE,
-                    '}',
-                    yuio.term.Color.FORE_MAGENTA,
-                    '',
-                    yuio.term.Color.NONE,
-                    ']',
-                    yuio.term.Color.NONE,
-                    ' ',
-                    yuio.term.Color.NONE,
-                    yuio.term.Color.FORE_MAGENTA,
-                    '',
-                    yuio.term.Color.NONE,
-                    '<',
-                    yuio.term.Color.FORE_MAGENTA,
-                    'data',
-                    yuio.term.Color.NONE,
-                    '>',
-                    yuio.term.Color.FORE_MAGENTA,
-                    '',
-                ], 100, {},
-                [[
-                    yuio.term.Color.FORE_MAGENTA,
-                    'usage:',
-                    yuio.term.Color.NONE,
-                    ' ',
-                    'app.py',
-                    ' ',
-                    'train',
-                    ' ',
-                    '[',
-                    yuio.term.Color.FORE_BLUE,
-                    '-h',
-                    yuio.term.Color.NONE,
-                    ']',
-                    ' ',
-                    '[',
-                    yuio.term.Color.FORE_BLUE,
-                    '-v',
-                    yuio.term.Color.NONE,
-                    ']',
-                    ' ',
-                    '[',
-                    yuio.term.Color.FORE_BLUE,
-                    '--force-',
-                    'color',
-                    yuio.term.Color.NONE,
-                    ' ',
-                    '|',
-                    yuio.term.Color.FORE_BLUE,
-                    ' ',
-                    '--force-',
-                    'no-',
-                    'color',
-                    yuio.term.Color.NONE,
-                    ']',
-                    ' ',
-                    '[',
-                    yuio.term.Color.FORE_BLUE,
-                    '-o',
-                    yuio.term.Color.NONE,
-                    yuio.term.Color.FORE_MAGENTA,
-                    yuio.term.Color.NONE,
-                    ' ',
-                    '{',
-                    yuio.term.Color.FORE_MAGENTA,
-                    'path',
-                    yuio.term.Color.NONE,
-                    '}',
-                    yuio.term.Color.FORE_MAGENTA,
-                    yuio.term.Color.NONE,
-                    ']',
-                    yuio.term.Color.FORE_MAGENTA,
-                    yuio.term.Color.NONE,
-                    ' ',
-                    '<',
-                    yuio.term.Color.FORE_MAGENTA,
-                    'data',
-                    yuio.term.Color.NONE,
-                    '>',
-                    yuio.term.Color.FORE_MAGENTA,
-                ]]
-            ),
-            (
-                ["single string"], 100, {"first_line_indent": ">>"},
-                [[">>", "single", " ", "string"]]
-            ),
-            (
-                ["single string"], 100, {"continuation_indent": ">>"},
-                [["single", " ", "string"]]
-            ),
-            (
-                ["single string"], 13, {},
-                [["single", " ", "string"]]
-            ),
-            (
-                ["single string"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
-                [[">>", "single"], ["..", "string"]]
-            ),
-            (
-                ["foo bar baz"], 8, {"first_line_indent": ">>>", "continuation_indent": "|"},
-                [[">>>", "foo"], ["|", "bar", " ", "baz"]]
-            ),
-            (
-                ["word werywerylongunbreakableword"], 8, {"first_line_indent": ">>", "continuation_indent": ".."},
-                [[">>", "word"], ["..", "werywe"], ["..", "rylong"], ["..", "unbrea"], ["..", "kablew"], ["..", "ord"]]
-            ),
-            (
-                ["werywerylongunbreakableword"], 8, {"first_line_indent": ">>>", "continuation_indent": "."},
-                [[">>>", "weryw"], [".", "erylong"], [".", "unbreak"], [".", "ablewor"], [".", "d"]]
-            ),
-            (
-                ["single string", "\nnext string"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
-                [[">>", "single"], ["..", "string"], ["..", "next", " ", "string"]]
-            ),
-            (
-                ["a\n\nb"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
-                [[">>", "a"], [".."], ["..", "b"]]
-            ),
-            (
-                ["a\n"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
-                [[">>", "a"], [".."]]
-            ),
-            (
-                ["\na"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
-                [[">>"], ["..", "a"]]
-            ),
-            (
-                ["\nwerywerylongunbreakableword"], 13, {"first_line_indent": ">>", "continuation_indent": ".."},
-                [[">>"], ["..", "werywerylon"], ["..", "gunbreakabl"], ["..", "eword"]]
-            ),
-            (
-                [
-                    yuio.term.Color.FORE_BLUE,
-                    "single string"
+                    [
+                        "hello",
+                        " ",
+                        yuio.term.Color.STYLE_BOLD,
+                        "world",
+                        yuio.term.Color.NONE,
+                    ]
                 ],
+            ),
+            ([], 15, {"preserve_spaces": True}, [[]]),
+            ([""], 15, {"preserve_spaces": True}, [[]]),
+            (
+                ["Hello line break", yuio.term.Color.NONE],
+                15,
+                {},
+                [["Hello", " ", "line"], ["break", yuio.term.Color.NONE]],
+            ),
+            (
+                [yuio.term.Color.STYLE_BOLD, yuio.term.Color.NONE],
+                15,
+                {},
+                [[yuio.term.Color.STYLE_BOLD, yuio.term.Color.NONE]],
+            ),
+            (
+                [yuio.term.Color.STYLE_BOLD, "", yuio.term.Color.NONE],
+                15,
+                {},
+                [[yuio.term.Color.STYLE_BOLD, yuio.term.Color.NONE]],
+            ),
+            (
+                ["break\n", yuio.term.Color.NONE],
+                15,
+                {},
+                [["break"], [yuio.term.Color.NONE]],
+            ),
+            (["break\n"], 15, {}, [["break"], []]),
+            (
+                [
+                    "usage: app.py train [-h] [-v] [--force-color | --force-no-color] [-o {path}] <data>"
+                ],
+                100,
+                {},
+                [
+                    [
+                        "usage:",
+                        " ",
+                        "app.py",
+                        " ",
+                        "train",
+                        " ",
+                        "[-h]",
+                        " ",
+                        "[-v]",
+                        " ",
+                        "[--force-",
+                        "color",
+                        " ",
+                        "|",
+                        " ",
+                        "--force-",
+                        "no-",
+                        "color]",
+                        " ",
+                        "[-o",
+                        " ",
+                        "{path}]",
+                        " ",
+                        "<data>",
+                    ]
+                ],
+            ),
+            (
+                [
+                    yuio.term.Color.FORE_MAGENTA,
+                    "usage: ",
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.NONE,
+                    "app.py train",
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.NONE,
+                    " ",
+                    yuio.term.Color.NONE,
+                    "[",
+                    yuio.term.Color.FORE_BLUE,
+                    "-h",
+                    yuio.term.Color.NONE,
+                    "]",
+                    yuio.term.Color.NONE,
+                    " ",
+                    yuio.term.Color.NONE,
+                    "[",
+                    yuio.term.Color.FORE_BLUE,
+                    "-v",
+                    yuio.term.Color.NONE,
+                    "]",
+                    yuio.term.Color.NONE,
+                    " [",
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.FORE_BLUE,
+                    "--force-color",
+                    yuio.term.Color.NONE,
+                    " | ",
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.FORE_BLUE,
+                    "--force-no-color",
+                    yuio.term.Color.NONE,
+                    "] ",
+                    yuio.term.Color.NONE,
+                    "[",
+                    yuio.term.Color.FORE_BLUE,
+                    "-o",
+                    yuio.term.Color.NONE,
+                    " ",
+                    yuio.term.Color.FORE_MAGENTA,
+                    "",
+                    yuio.term.Color.NONE,
+                    "{",
+                    yuio.term.Color.FORE_MAGENTA,
+                    "path",
+                    yuio.term.Color.NONE,
+                    "}",
+                    yuio.term.Color.FORE_MAGENTA,
+                    "",
+                    yuio.term.Color.NONE,
+                    "]",
+                    yuio.term.Color.NONE,
+                    " ",
+                    yuio.term.Color.NONE,
+                    yuio.term.Color.FORE_MAGENTA,
+                    "",
+                    yuio.term.Color.NONE,
+                    "<",
+                    yuio.term.Color.FORE_MAGENTA,
+                    "data",
+                    yuio.term.Color.NONE,
+                    ">",
+                    yuio.term.Color.FORE_MAGENTA,
+                    "",
+                ],
+                100,
+                {},
+                [
+                    [
+                        yuio.term.Color.FORE_MAGENTA,
+                        "usage:",
+                        yuio.term.Color.NONE,
+                        " ",
+                        "app.py",
+                        " ",
+                        "train",
+                        " ",
+                        "[",
+                        yuio.term.Color.FORE_BLUE,
+                        "-h",
+                        yuio.term.Color.NONE,
+                        "]",
+                        " ",
+                        "[",
+                        yuio.term.Color.FORE_BLUE,
+                        "-v",
+                        yuio.term.Color.NONE,
+                        "]",
+                        " ",
+                        "[",
+                        yuio.term.Color.FORE_BLUE,
+                        "--force-",
+                        "color",
+                        yuio.term.Color.NONE,
+                        " ",
+                        "|",
+                        yuio.term.Color.FORE_BLUE,
+                        " ",
+                        "--force-",
+                        "no-",
+                        "color",
+                        yuio.term.Color.NONE,
+                        "]",
+                        " ",
+                        "[",
+                        yuio.term.Color.FORE_BLUE,
+                        "-o",
+                        yuio.term.Color.NONE,
+                        yuio.term.Color.FORE_MAGENTA,
+                        yuio.term.Color.NONE,
+                        " ",
+                        "{",
+                        yuio.term.Color.FORE_MAGENTA,
+                        "path",
+                        yuio.term.Color.NONE,
+                        "}",
+                        yuio.term.Color.FORE_MAGENTA,
+                        yuio.term.Color.NONE,
+                        "]",
+                        yuio.term.Color.FORE_MAGENTA,
+                        yuio.term.Color.NONE,
+                        " ",
+                        "<",
+                        yuio.term.Color.FORE_MAGENTA,
+                        "data",
+                        yuio.term.Color.NONE,
+                        ">",
+                        yuio.term.Color.FORE_MAGENTA,
+                    ]
+                ],
+            ),
+            (
+                ["single string"],
+                100,
+                {"first_line_indent": ">>"},
+                [[">>", "single", " ", "string"]],
+            ),
+            (
+                ["single string"],
+                100,
+                {"continuation_indent": ">>"},
+                [["single", " ", "string"]],
+            ),
+            (["single string"], 13, {}, [["single", " ", "string"]]),
+            (
+                ["single string"],
+                13,
+                {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "single"], ["..", "string"]],
+            ),
+            (
+                ["foo bar baz"],
+                8,
+                {"first_line_indent": ">>>", "continuation_indent": "|"},
+                [[">>>", "foo"], ["|", "bar", " ", "baz"]],
+            ),
+            (
+                ["word werywerylongunbreakableword"],
+                8,
+                {"first_line_indent": ">>", "continuation_indent": ".."},
+                [
+                    [">>", "word"],
+                    ["..", "werywe"],
+                    ["..", "rylong"],
+                    ["..", "unbrea"],
+                    ["..", "kablew"],
+                    ["..", "ord"],
+                ],
+            ),
+            (
+                ["werywerylongunbreakableword"],
+                8,
+                {"first_line_indent": ">>>", "continuation_indent": "."},
+                [
+                    [">>>", "weryw"],
+                    [".", "erylong"],
+                    [".", "unbreak"],
+                    [".", "ablewor"],
+                    [".", "d"],
+                ],
+            ),
+            (
+                ["single string", "\nnext string"],
+                13,
+                {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "single"], ["..", "string"], ["..", "next", " ", "string"]],
+            ),
+            (
+                ["a\n\nb"],
+                13,
+                {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "a"], [".."], ["..", "b"]],
+            ),
+            (
+                ["a\n"],
+                13,
+                {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>", "a"], [".."]],
+            ),
+            (
+                ["\na"],
+                13,
+                {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>"], ["..", "a"]],
+            ),
+            (
+                ["\nwerywerylongunbreakableword"],
+                13,
+                {"first_line_indent": ">>", "continuation_indent": ".."},
+                [[">>"], ["..", "werywerylon"], ["..", "gunbreakabl"], ["..", "eword"]],
+            ),
+            (
+                [yuio.term.Color.FORE_BLUE, "single string"],
                 13,
                 {
-                    "first_line_indent": yuio.term.ColorizedString([yuio.term.Color.FORE_MAGENTA, ">>"]),
-                    "continuation_indent": yuio.term.ColorizedString([yuio.term.Color.FORE_BLUE, ".."]),
+                    "first_line_indent": yuio.term.ColorizedString(
+                        [yuio.term.Color.FORE_MAGENTA, ">>"]
+                    ),
+                    "continuation_indent": yuio.term.ColorizedString(
+                        [yuio.term.Color.FORE_BLUE, ".."]
+                    ),
                 },
                 [
-                    [yuio.term.Color.FORE_MAGENTA, ">>", yuio.term.Color.FORE_BLUE, "single"],
-                    [yuio.term.Color.FORE_BLUE, "..", "string"]
-                ]
+                    [
+                        yuio.term.Color.FORE_MAGENTA,
+                        ">>",
+                        yuio.term.Color.FORE_BLUE,
+                        "single",
+                    ],
+                    [yuio.term.Color.FORE_BLUE, "..", "string"],
+                ],
             ),
-        ]
+        ],
     )
     def test_wrap(self, text, width, kwargs, expect):
         wrapped = yuio.term.ColorizedString(text).wrap(width, **kwargs)

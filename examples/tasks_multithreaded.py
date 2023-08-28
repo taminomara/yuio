@@ -3,12 +3,13 @@ import time
 
 import yuio.io
 
+
 def install_package(package: str, task: yuio.io.Task):
     time.sleep(0.7)
 
     with task.subtask(package) as pkg_task:
         # Set task's comment.
-        pkg_task.comment('downloading')
+        pkg_task.comment("downloading")
 
         for i in range(25):
             # Set progress as percentage, just for demonstration.
@@ -18,34 +19,33 @@ def install_package(package: str, task: yuio.io.Task):
 
         # Clear progress, update task's comment.
         pkg_task.progress(None)
-        pkg_task.comment('installing')
+        pkg_task.comment("installing")
 
         time.sleep(1.6)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     packages = [
-        'htop',
-        'pyenv',
-        'virtualenv',
-        'node',
-        'rust',
-        'ruby',
-        'cpp@20',
+        "htop",
+        "pyenv",
+        "virtualenv",
+        "node",
+        "rust",
+        "ruby",
+        "cpp@20",
     ]
 
-    yuio.io.heading('Yuio\'s tasks showcase')
-    yuio.io.info('Going to install some packages to demonstrate you progressbars!')
+    yuio.io.heading("Yuio's tasks showcase")
+    yuio.io.info("Going to install some packages to demonstrate you progressbars!")
     yuio.io.hr()
 
-    with yuio.io.Task('Installing packages') as task:
+    with yuio.io.Task("Installing packages") as task:
         time.sleep(2)
 
         threads = []
 
         for package in packages:
-            thread = threading.Thread(
-                target=install_package, args=(package, task))
+            thread = threading.Thread(target=install_package, args=(package, task))
             thread.start()
             threads.append(thread)
 
@@ -54,4 +54,4 @@ if __name__ == '__main__':
         for thread in threads:
             thread.join()
 
-    yuio.io.success('Successfully installed %s', ', '.join(packages))
+    yuio.io.success("Successfully installed %s", ", ".join(packages))

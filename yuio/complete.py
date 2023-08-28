@@ -28,9 +28,7 @@ import yuio
 @dataclass(frozen=True, **yuio._with_slots())
 @functools.total_ordering
 class Completion:
-    """A single completion.
-
-    """
+    """A single completion."""
 
     #: See :class:`CompletionCollector.iprefix` for details.
     iprefix: str
@@ -69,19 +67,20 @@ class Completion:
     #: See :meth:`CompletionCollector.add_group` for details.
     group_color_tag: _t.Optional[str]
 
-    def __lt__(self, other: 'Completion') -> bool:
-        """Completions are ordered by their groups and then alphabetically.
+    def __lt__(self, other: "Completion") -> bool:
+        """Completions are ordered by their groups and then alphabetically."""
 
-        """
-
-        return (
-            self.group_id < other.group_id
-            or (self.group_id == other.group_id and self.completion < other.completion)
+        return self.group_id < other.group_id or (
+            self.group_id == other.group_id and self.completion < other.completion
         )
 
 
-@dataclass(init=False, eq=False, repr=False,
-           **({} if sys.version_info < (3, 10, 0) else {"match_args": False}))
+@dataclass(
+    init=False,
+    eq=False,
+    repr=False,
+    **({} if sys.version_info < (3, 10, 0) else {"match_args": False}),
+)
 class CompletionCollector:
     """A class that collects completions as completers are running.
 
@@ -173,12 +172,12 @@ class CompletionCollector:
     _group_color_tag: _t.Optional[str]
 
     def __init__(self, text: str, pos: int, /):
-        self.iprefix = ''
+        self.iprefix = ""
         self.prefix = text[:pos]
         self.suffix = text[pos:]
-        self.rsuffix = ''
-        self.rsymbols = ''
-        self.isuffix = ''
+        self.rsuffix = ""
+        self.rsymbols = ""
+        self.isuffix = ""
         self.dedup_words = frozenset()
 
         self._group_id = 0
@@ -189,25 +188,19 @@ class CompletionCollector:
 
     @property
     def full_prefix(self) -> str:
-        """Portion of the final completed text that goes before the cursor.
-
-        """
+        """Portion of the final completed text that goes before the cursor."""
 
         return self.iprefix + self.prefix
 
     @property
     def full_suffix(self) -> str:
-        """Portion of the final completed text that goes after the cursor.
-
-        """
+        """Portion of the final completed text that goes after the cursor."""
 
         return self.suffix + self.isuffix
 
     @property
     def text(self) -> str:
-        """Portion of the text that is being autocompleted.
-
-        """
+        """Portion of the text that is being autocompleted."""
 
         return self.prefix + self.suffix
 
@@ -238,8 +231,8 @@ class CompletionCollector:
         /,
         *,
         comment: _t.Optional[str] = None,
-        dprefix: str = '',
-        dsuffix: str = '',
+        dprefix: str = "",
+        dsuffix: str = "",
         color_tag: _t.Optional[str] = None,
     ):
         """Add a new completion.
@@ -255,8 +248,18 @@ class CompletionCollector:
 
         """
 
-        if completion and completion not in self.dedup_words and completion.startswith(self.prefix):
-            self._add(completion, comment=comment, dprefix=dprefix, dsuffix=dsuffix, color_tag=color_tag)
+        if (
+            completion
+            and completion not in self.dedup_words
+            and completion.startswith(self.prefix)
+        ):
+            self._add(
+                completion,
+                comment=comment,
+                dprefix=dprefix,
+                dsuffix=dsuffix,
+                color_tag=color_tag,
+            )
 
     def _add(
         self,
@@ -264,8 +267,8 @@ class CompletionCollector:
         /,
         *,
         comment: _t.Optional[str] = None,
-        dprefix: str = '',
-        dsuffix: str = '',
+        dprefix: str = "",
+        dsuffix: str = "",
         color_tag: _t.Optional[str] = None,
     ):
         if not self.isuffix or self.isuffix[0] in string.whitespace:
@@ -275,8 +278,8 @@ class CompletionCollector:
             rsuffix = self.rsuffix
             rsymbols = self.rsymbols
         else:
-            rsuffix = ''
-            rsymbols = ''
+            rsuffix = ""
+            rsymbols = ""
 
         if self._group_sorted:
             group_id = (self._group_id, 0)
@@ -286,18 +289,20 @@ class CompletionCollector:
         if color_tag is None:
             color_tag = self._group_color_tag
 
-        self._completions.append(Completion(
-            iprefix=self.iprefix,
-            completion=completion,
-            rsuffix=rsuffix,
-            rsymbols=rsymbols,
-            isuffix=self.isuffix,
-            comment=comment,
-            dprefix=dprefix,
-            dsuffix=dsuffix,
-            group_id=group_id,
-            group_color_tag=color_tag,
-        ))
+        self._completions.append(
+            Completion(
+                iprefix=self.iprefix,
+                completion=completion,
+                rsuffix=rsuffix,
+                rsymbols=rsymbols,
+                isuffix=self.isuffix,
+                comment=comment,
+                dprefix=dprefix,
+                dsuffix=dsuffix,
+                group_id=group_id,
+                group_color_tag=color_tag,
+            )
+        )
 
     def add_group(self, /, *, sorted: bool = True, color_tag: _t.Optional[str] = None):
         """Add a new completions group.
@@ -321,9 +326,7 @@ class CompletionCollector:
 
     @property
     def num_completions(self) -> int:
-        """Return number of completions that were added so far.
-
-        """
+        """Return number of completions that were added so far."""
 
         return len(self._completions)
 
@@ -334,7 +337,7 @@ class CompletionCollector:
 
         """
 
-        delim = delim or ' '
+        delim = delim or " "
         parts = self.prefix.rsplit(delim, maxsplit=1)
         if len(parts) > 1:
             self.iprefix += parts[0] + delim
@@ -347,7 +350,7 @@ class CompletionCollector:
 
         """
 
-        delim = delim or ' '
+        delim = delim or " "
         parts = self.suffix.split(delim, maxsplit=1)
         if len(parts) > 1:
             self.suffix = parts[0]
@@ -369,16 +372,26 @@ class CompletionCollector:
             if (
                 self.full_prefix.startswith(iprefix)
                 and self.full_suffix.endswith(isuffix)
-                and all(c.iprefix == iprefix and c.isuffix == isuffix for c in self._completions)
+                and all(
+                    c.iprefix == iprefix and c.isuffix == isuffix
+                    for c in self._completions
+                )
             ):
                 # If all completions have the same `iprefix` and `isuffix`...
-                common_prefix = yuio._commonprefix(list(c.completion for c in self._completions))
-                if common_prefix and len(iprefix) + len(common_prefix) > len(self.iprefix) + len(self.prefix):
+                common_prefix = yuio._commonprefix(
+                    list(c.completion for c in self._completions)
+                )
+                if common_prefix and len(iprefix) + len(common_prefix) > len(
+                    self.iprefix
+                ) + len(self.prefix):
                     # ...and they have a common prefix that is longer than what's entered so far,
                     # then complete this common prefix.
-                    rsuffix = ''
-                    rsymbols = ''
-                    if all(common_prefix == c.completion and rsuffix == c.rsuffix for c in self._completions):
+                    rsuffix = ""
+                    rsymbols = ""
+                    if all(
+                        common_prefix == c.completion and rsuffix == c.rsuffix
+                        for c in self._completions
+                    ):
                         # If completing common prefix actually fulfills a completion, add `rsuffix` as well.
                         rsuffix = c0.rsuffix
                         rsymbols = c0.rsymbols
@@ -390,8 +403,8 @@ class CompletionCollector:
                             rsymbols=rsymbols,
                             isuffix=isuffix,
                             comment=None,
-                            dprefix='',
-                            dsuffix='',
+                            dprefix="",
+                            dsuffix="",
                             group_id=(0, 0),
                             group_color_tag=None,
                         )
@@ -418,8 +431,8 @@ class _CorrectingCollector(CompletionCollector):
         /,
         *,
         comment: _t.Optional[str] = None,
-        dprefix: str = '',
-        dsuffix: str = '',
+        dprefix: str = "",
+        dsuffix: str = "",
         color_tag: _t.Optional[str] = None,
     ):
         if not completion or completion in self.dedup_words:
@@ -443,19 +456,25 @@ class _CorrectingCollector(CompletionCollector):
             else:
                 comment = "corrected"
             with self.save_state():
-                self._group_id = 0xfffffffe  # (big enough) - 1
+                self._group_id = 0xFFFFFFFE  # (big enough) - 1
                 self._group_color_tag = "corrected"
-                self._add(completion, comment=comment, dprefix=dprefix, dsuffix=dsuffix, color_tag=color_tag)
+                self._add(
+                    completion,
+                    comment=comment,
+                    dprefix=dprefix,
+                    dsuffix=dsuffix,
+                    color_tag=color_tag,
+                )
                 self._has_corrections = True
 
     def finalize(self) -> _t.List[Completion]:
         if self._has_corrections:
             c0 = self._completions[0]
 
-            iprefix = ''
+            iprefix = ""
             prefix = self.full_prefix
             suffix = self.full_suffix
-            isuffix = ''
+            isuffix = ""
 
             if prefix.startswith(c0.iprefix):
                 l = len(c0.iprefix)
@@ -469,7 +488,7 @@ class _CorrectingCollector(CompletionCollector):
 
             # If we have corrections, add original value to the end.
             with self.save_state():
-                self._group_id = 0xffffffff  # (big enough)
+                self._group_id = 0xFFFFFFFF  # (big enough)
                 self._group_color_tag = "original"
                 self.iprefix = iprefix
                 self.isuffix = isuffix
@@ -500,7 +519,7 @@ def _corrections(a: str, b: str) -> float:
                 d[i - 1][j - 1] + (a[i - 1] != b[j - 1]),
                 # Transpose:
                 d[i - 2][j - 2] + (a[i - 1] != b[j - 1])
-                if i > 2 and j > 2 and a[i - 2:i] == b[j - 1:j - 3:-1]
+                if i > 2 and j > 2 and a[i - 2 : i] == b[j - 1 : j - 3 : -1]
                 else math.inf,
             )
 
@@ -508,14 +527,10 @@ def _corrections(a: str, b: str) -> float:
 
 
 class Completer(abc.ABC):
-    """An interface for text completion providers.
-
-    """
+    """An interface for text completion providers."""
 
     def complete(self, text: str, pos: int, /) -> _t.List[Completion]:
-        """Complete the given text at the given cursor position.
-
-        """
+        """Complete the given text at the given cursor position."""
 
         collector = CompletionCollector(text, pos)
         with collector.save_state():
@@ -531,15 +546,11 @@ class Completer(abc.ABC):
 
     @abc.abstractmethod
     def process(self, collector: CompletionCollector, /):
-        """Add completions to the given collector.
-
-        """
+        """Add completions to the given collector."""
 
 
 class Empty(Completer):
-    """An empty completer that returns no values.
-
-    """
+    """An empty completer that returns no values."""
 
     def process(self, collector: CompletionCollector):
         pass  # nothing to do
@@ -547,9 +558,7 @@ class Empty(Completer):
 
 @dataclass(frozen=True, **yuio._with_slots())
 class CompletionChoice:
-    """A single completion option for the :chass:`Choice` completer.
-
-    """
+    """A single completion option for the :chass:`Choice` completer."""
 
     #: This string will replace an element that is being completed.
     completion: str
@@ -559,9 +568,7 @@ class CompletionChoice:
 
 
 class Choice(Completer):
-    """Completes input from a predefined list of completions.
-
-    """
+    """Completes input from a predefined list of completions."""
 
     def __init__(self, choices: _t.Collection[CompletionChoice], /):
         self._choices: _t.Collection[CompletionChoice] = choices
@@ -572,14 +579,19 @@ class Choice(Completer):
 
 
 class List(Completer):
-    """Completes a value-separated list of elements.
+    """Completes a value-separated list of elements."""
 
-    """
-
-    def __init__(self, inner: Completer, /, *, delimiter: _t.Optional[str] = None, allow_duplicates: bool = False):
+    def __init__(
+        self,
+        inner: Completer,
+        /,
+        *,
+        delimiter: _t.Optional[str] = None,
+        allow_duplicates: bool = False,
+    ):
         self._inner = inner
-        if delimiter == '':
-            raise ValueError('empty delimiter')
+        if delimiter == "":
+            raise ValueError("empty delimiter")
         self._delimiter = delimiter
         self._allow_duplicates = allow_duplicates
 
@@ -594,7 +606,7 @@ class List(Completer):
 
         collector.split_off_prefix(self._delimiter)
         collector.split_off_suffix(self._delimiter)
-        collector.rsuffix = self._delimiter or ' '
+        collector.rsuffix = self._delimiter or " "
         collector.rsymbols += self._delimiter or string.whitespace
 
         if collector.text in dedup_words:
@@ -605,14 +617,12 @@ class List(Completer):
 
 
 class Tuple(Completer):
-    """Completes a value-separated tuple of elements.
-
-    """
+    """Completes a value-separated tuple of elements."""
 
     def __init__(self, *inners: Completer, delimiter: _t.Optional[str] = None):
         self._inners = inners
-        if delimiter == '':
-            raise ValueError('empty delimiter')
+        if delimiter == "":
+            raise ValueError("empty delimiter")
         self._delimiter = delimiter
 
     def process(self, collector: CompletionCollector, /):
@@ -633,7 +643,7 @@ class Tuple(Completer):
 
         collector.split_off_prefix(self._delimiter)
         collector.split_off_suffix(self._delimiter)
-        collector.rsuffix = self._delimiter or ' '
+        collector.rsuffix = self._delimiter or " "
         collector.rsymbols += self._delimiter or string.whitespace
 
         self._inners[pos].process(collector)
@@ -645,16 +655,16 @@ class File(Completer):
 
     def process(self, collector: CompletionCollector, /):
         base, name = os.path.split(collector.prefix)
-        collector.iprefix += os.path.join(base, '')
+        collector.iprefix += os.path.join(base, "")
         collector.prefix = name
         collector.suffix = collector.suffix.split(os.sep, 2)[0]
         resolved = pathlib.Path(base).resolve()
         rsuffix = collector.rsuffix
         if resolved.is_dir():
-            if name.startswith('.'):
-                collector.rsuffix = ''
-                collector.add('./', color_tag="dir")
-                collector.add('../', color_tag="dir")
+            if name.startswith("."):
+                collector.rsuffix = ""
+                collector.add("./", color_tag="dir")
+                collector.add("../", color_tag="dir")
             for path in resolved.iterdir():
                 if path.is_dir():
                     if path.is_symlink():
@@ -663,15 +673,16 @@ class File(Completer):
                     else:
                         color_tag = "dir"
                         dsuffix = ""
-                    collector.rsuffix = ''
-                    collector.add(path.name + os.sep, color_tag=color_tag, dsuffix=dsuffix)
-                elif (
-                    self._extensions is None
-                    or any(path.name.endswith(ext) for ext in self._extensions)
+                    collector.rsuffix = ""
+                    collector.add(
+                        path.name + os.sep, color_tag=color_tag, dsuffix=dsuffix
+                    )
+                elif self._extensions is None or any(
+                    path.name.endswith(ext) for ext in self._extensions
                 ):
                     collector.rsuffix = rsuffix
                     color_tag = None
-                    dsuffix = ''
+                    dsuffix = ""
                     if path.is_file():
                         if os.access(path, os.X_OK):
                             color_tag = "exec"

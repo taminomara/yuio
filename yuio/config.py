@@ -232,8 +232,7 @@ from dataclasses import dataclass
 import yuio
 import yuio.parse
 
-
-T = _t.TypeVar('T')
+T = _t.TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -252,7 +251,7 @@ class _FieldSettings:
         ty_with_extras: _t.Any,
         parsed_help: _t.Optional[str],
         allow_positionals: bool,
-    ) -> '_Field':
+    ) -> "_Field":
         ty = ty_with_extras
         while _t.get_origin(ty) is _t.Annotated:
             ty = _t.get_args(ty)[0]
@@ -266,7 +265,7 @@ class _FieldSettings:
         elif is_subconfig and ty.__doc__:
             help = ty.__doc__
         else:
-            help = ''
+            help = ""
         if help == argparse.SUPPRESS:
             help = yuio.DISABLED
 
@@ -275,33 +274,30 @@ class _FieldSettings:
             env = self.env
         else:
             env = name.upper()
-        if env == '' and not is_subconfig:
-            raise TypeError(
-                f'{qualname} got an empty env variable name')
+        if env == "" and not is_subconfig:
+            raise TypeError(f"{qualname} got an empty env variable name")
 
         flags: _t.Union[_t.List[str], yuio.Disabled, yuio.Positional]
         if self.flags is yuio.DISABLED or self.flags is yuio.POSITIONAL:
             flags = self.flags
             if not allow_positionals and flags is yuio.POSITIONAL:
                 raise TypeError(
-                    f'{qualname}: positional arguments are not allowed in configs')
+                    f"{qualname}: positional arguments are not allowed in configs"
+                )
         elif self.flags is None:
-            flags = ['--' + name.replace('_', '-')]
+            flags = ["--" + name.replace("_", "-")]
         elif isinstance(self.flags, str):
             flags = [self.flags]
         else:
             if not self.flags:
-                raise TypeError(
-                    f'{qualname} should have at least one flag')
+                raise TypeError(f"{qualname} should have at least one flag")
             flags = self.flags
         if flags is not yuio.DISABLED and flags is not yuio.POSITIONAL:
             for flag in flags:
-                if flag and not flag.startswith('-'):
-                    raise TypeError(
-                        f'{qualname}: flag should start with a dash')
+                if flag and not flag.startswith("-"):
+                    raise TypeError(f"{qualname}: flag should start with a dash")
                 if not flag and not is_subconfig:
-                    raise TypeError(
-                        f'{qualname} got an empty flag')
+                    raise TypeError(f"{qualname} got an empty flag")
 
         default = self.default
 
@@ -311,29 +307,23 @@ class _FieldSettings:
 
         if is_subconfig:
             if default is not yuio.MISSING:
-                raise TypeError(
-                    f'{qualname} cannot have defaults')
+                raise TypeError(f"{qualname} cannot have defaults")
 
             if parser is not None:
-                raise TypeError(
-                    f'{qualname} cannot have parsers')
+                raise TypeError(f"{qualname} cannot have parsers")
 
             if flags is not yuio.DISABLED:
                 if flags is yuio.POSITIONAL:
-                    raise TypeError(
-                        f'{qualname} cannot be positional')
+                    raise TypeError(f"{qualname} cannot be positional")
                 if len(flags) > 1:
-                    raise TypeError(
-                        f'{qualname} cannot have multiple flags')
-                if flags[0] and not flags[0].startswith('--'):
-                    raise TypeError(
-                        f'{qualname} cannot have a short flag')
+                    raise TypeError(f"{qualname} cannot have multiple flags")
+                if flags[0] and not flags[0].startswith("--"):
+                    raise TypeError(f"{qualname} cannot have a short flag")
         elif parser is None:
             try:
                 parser = yuio.parse.from_type_hint(ty_with_extras)
             except TypeError as e:
-                raise TypeError(
-                    f'can\'t derive parser for {qualname}: {e}') from None
+                raise TypeError(f"can't derive parser for {qualname}: {e}") from None
 
         if parser is not None:
             origin = _t.get_origin(ty)
@@ -341,15 +331,22 @@ class _FieldSettings:
 
             is_optional = (
                 default is None
-                or origin is _t.Union and len(args) == 2 and type(None) in args
+                or origin is _t.Union
+                and len(args) == 2
+                and type(None) in args
             )
 
             if is_optional and not yuio.parse._is_optional_parser(parser):
                 parser = yuio.parse.Optional(parser)
 
-            if flags is yuio.POSITIONAL and default is not yuio.MISSING and parser.supports_parse_many():
+            if (
+                flags is yuio.POSITIONAL
+                and default is not yuio.MISSING
+                and parser.supports_parse_many()
+            ):
                 raise TypeError(
-                    f'{qualname}: positional multi-value arguments can\'t have defaults')
+                    f"{qualname}: positional multi-value arguments can't have defaults"
+                )
 
         return _Field(
             default,
@@ -381,7 +378,8 @@ def field(
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
-) -> _t.Any: ...
+) -> _t.Any:
+    ...
 
 
 @_t.overload
@@ -392,7 +390,8 @@ def field(
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
-) -> T: ...
+) -> T:
+    ...
 
 
 @_t.overload
@@ -403,7 +402,8 @@ def field(
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
-) -> _t.Optional[T]: ...
+) -> _t.Optional[T]:
+    ...
 
 
 def field(
@@ -464,7 +464,7 @@ def inline(
 
     """
 
-    return field(help=help, env='', flags='')
+    return field(help=help, env="", flags="")
 
 
 @_t.overload
@@ -472,7 +472,8 @@ def positional(
     *,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
-) -> _t.Any: ...
+) -> _t.Any:
+    ...
 
 
 @_t.overload
@@ -482,7 +483,8 @@ def positional(
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
-) -> T: ...
+) -> T:
+    ...
 
 
 @_t.overload
@@ -492,7 +494,8 @@ def positional(
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
-) -> _t.Optional[T]: ...
+) -> _t.Optional[T]:
+    ...
 
 
 def positional(
@@ -551,7 +554,7 @@ class Config:
 
     """
 
-    _Self = _t.TypeVar('_Self', bound='Config')
+    _Self = _t.TypeVar("_Self", bound="Config")
 
     # Value is generated lazily by `__get_fields`.
     __allow_positionals: _t.ClassVar[bool] = False
@@ -566,7 +569,7 @@ class Config:
             docs = yuio._find_docs(cls)
         except Exception:
             yuio._logger.exception(
-                'unable to get documentation for class %s',
+                "unable to get documentation for class %s",
                 cls.__qualname__,
             )
             docs = {}
@@ -575,22 +578,22 @@ class Config:
         defaults = {}
 
         for base in reversed(cls.__mro__):
-            if base is not cls and hasattr(base, '_Config__get_fields'):
-                fields.update(getattr(base, '_Config__get_fields')())
+            if base is not cls and hasattr(base, "_Config__get_fields"):
+                fields.update(getattr(base, "_Config__get_fields")())
 
         try:
             types = _t.get_type_hints(cls, include_extras=True)
         except NameError as e:
-            if '<locals>' in cls.__qualname__:
+            if "<locals>" in cls.__qualname__:
                 raise NameError(
-                    f'{e}. '
-                    f'Note: forward references do not work inside functions '
-                    f'(see https://github.com/python/typing/issues/797)'
+                    f"{e}. "
+                    f"Note: forward references do not work inside functions "
+                    f"(see https://github.com/python/typing/issues/797)"
                 ) from None
             raise
 
         for name in cls.__annotations__:
-            if name.startswith('_'):
+            if name.startswith("_"):
                 continue
 
             value = cls.__dict__.get(name, yuio.MISSING)
@@ -601,7 +604,12 @@ class Config:
 
             defaults[name] = field.default
             fields[name] = field._update_defaults(
-                f'{cls.__qualname__}.{name}', name, types[name], docs.get(name), cls.__allow_positionals)
+                f"{cls.__qualname__}.{name}",
+                name,
+                types[name],
+                docs.get(name),
+                cls.__allow_positionals,
+            )
 
         # We don't want to set any attributes on cls if any `_update_defaults` has
         # raised an exception. For this reason, we defer setting defaults
@@ -629,11 +637,7 @@ class Config:
 
         self.update(kwargs)
 
-    def update(
-        self: _Self,
-        other: _t.Union[_t.Dict[str, _t.Any], _Self],
-        /
-    ):
+    def update(self: _Self, other: _t.Union[_t.Dict[str, _t.Any], _Self], /):
         """Update fields in this config with fields from another config.
 
         This function is similar to :meth:`dict.update`.
@@ -650,15 +654,15 @@ class Config:
                 self.__class__ not in other.__class__.__mro__
                 and other.__class__ not in self.__class__.__mro__
             ):
-                raise TypeError('updating from an incompatible config')
+                raise TypeError("updating from an incompatible config")
             ns = other.__dict__
         elif isinstance(other, dict):
             ns = other
             for name in ns:
                 if name not in self.__get_fields():
-                    raise TypeError(f'unknown field: {name}')
+                    raise TypeError(f"unknown field: {name}")
         else:
-            raise TypeError('expected a dict or a config class')
+            raise TypeError("expected a dict or a config class")
 
         for name, field in self.__get_fields().items():
             if name in ns:
@@ -668,13 +672,8 @@ class Config:
                     setattr(self, name, ns[name])
 
     @classmethod
-    def load_from_env(
-        cls: _t.Type[_Self],
-        prefix: str = ''
-    ) -> _Self:
-        """Load config from environment variables.
-
-        """
+    def load_from_env(cls: _t.Type[_Self], prefix: str = "") -> _Self:
+        """Load config from environment variables."""
 
         fields = {}
 
@@ -683,9 +682,9 @@ class Config:
                 continue
 
             if prefix and field.env:
-                env = f'{prefix}_{field.env}'
+                env = f"{prefix}_{field.env}"
             else:
-                env = f'{prefix}{field.env}'
+                env = f"{prefix}{field.env}"
 
             if field.is_subconfig:
                 fields[name] = field.ty.load_from_env(prefix=env)
@@ -701,17 +700,14 @@ class Config:
         namespace: argparse.Namespace,
         /,
         *,
-        ns_prefix: str = '',
+        ns_prefix: str = "",
     ) -> _Self:
-        return cls.__load_from_namespace(namespace, ns_prefix + ':')
+        return cls.__load_from_namespace(namespace, ns_prefix + ":")
 
     @classmethod
     def __load_from_namespace(
-        cls: _t.Type[_Self],
-        namespace: argparse.Namespace,
-        prefix: str
+        cls: _t.Type[_Self], namespace: argparse.Namespace, prefix: str
     ) -> _Self:
-
         fields = {}
 
         for name, field in cls.__get_fields().items():
@@ -721,8 +717,7 @@ class Config:
             dest = prefix + name
 
             if field.is_subconfig:
-                fields[name] = field.ty.__load_from_namespace(
-                    namespace, dest + '.')
+                fields[name] = field.ty.__load_from_namespace(namespace, dest + ".")
             elif hasattr(namespace, dest):
                 fields[name] = getattr(namespace, dest)
 
@@ -734,9 +729,9 @@ class Config:
         parser: argparse.ArgumentParser,
         /,
         *,
-        ns_prefix: str = '',
+        ns_prefix: str = "",
     ):
-        cls.__setup_arg_parser(parser, parser, '', ns_prefix + ':', False)
+        cls.__setup_arg_parser(parser, parser, "", ns_prefix + ":", False)
 
     @classmethod
     def __setup_arg_parser(
@@ -748,7 +743,7 @@ class Config:
         suppress_help: bool,
     ):
         if prefix:
-            prefix += '-'
+            prefix += "-"
 
         for name, field in cls.__get_fields().items():
             if field.flags is yuio.DISABLED:
@@ -765,7 +760,7 @@ class Config:
 
             flags: _t.Union[_t.List[str], yuio.Positional]
             if prefix and field.flags is not yuio.POSITIONAL:
-                flags = [prefix + flag.lstrip('-') for flag in field.flags]
+                flags = [prefix + flag.lstrip("-") for flag in field.flags]
             else:
                 flags = field.flags
 
@@ -774,12 +769,13 @@ class Config:
                 if current_suppress_help:
                     subgroup = group
                 else:
-                    lines = help.split('\n\n', 1)
-                    title = lines[0].replace('\n', ' ').rstrip('.') or name
+                    lines = help.split("\n\n", 1)
+                    title = lines[0].replace("\n", " ").rstrip(".") or name
                     desc = lines[1] if len(lines) > 1 else None
                     subgroup = parser.add_argument_group(title, desc)
                 field.ty.__setup_arg_parser(
-                    subgroup, parser, flags[0], dest + '.', current_suppress_help)
+                    subgroup, parser, flags[0], dest + ".", current_suppress_help
+                )
                 continue
             else:
                 assert field.parser is not None
@@ -800,9 +796,13 @@ class Config:
                 metavar = f"{{{field.parser.describe_or_def()}}}"
 
             nargs = field.parser.get_nargs()
-            if flags is yuio.POSITIONAL and field.default is not yuio.MISSING and nargs is None:
-                nargs = '?'
-            nargs_kw: _t.Any = {'nargs': nargs} if nargs is not None else {}
+            if (
+                flags is yuio.POSITIONAL
+                and field.default is not yuio.MISSING
+                and nargs is None
+            ):
+                nargs = "?"
+            nargs_kw: _t.Any = {"nargs": nargs} if nargs is not None else {}
 
             if flags is yuio.POSITIONAL:
                 group.add_argument(
@@ -815,30 +815,33 @@ class Config:
                 )
             elif isinstance(field.parser, yuio.parse.Bool):
                 mutex_group = group.add_mutually_exclusive_group(
-                    required=field.required)
+                    required=field.required
+                )
 
                 mutex_group.add_argument(
                     *flags,
                     default=yuio.MISSING,
                     help=help,
                     dest=dest,
-                    action='store_true',
+                    action="store_true",
                 )
 
                 assert field.flags is not yuio.POSITIONAL
                 for flag in field.flags:
-                    if flag.startswith('--'):
-                        flag_neg = (prefix or '--') + 'no-' + flag[2:]
+                    if flag.startswith("--"):
+                        flag_neg = (prefix or "--") + "no-" + flag[2:]
                         if current_suppress_help:
                             help = argparse.SUPPRESS
                         else:
-                            help = f'disable <c:cli/flag>{(prefix or "--") + flag[2:]}</c>'
+                            help = (
+                                f'disable <c:cli/flag>{(prefix or "--") + flag[2:]}</c>'
+                            )
                         mutex_group.add_argument(
                             flag_neg,
                             default=yuio.MISSING,
                             help=help,
                             dest=dest,
-                            action='store_false',
+                            action="store_false",
                         )
                         break
             else:
@@ -862,14 +865,13 @@ class Config:
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
     ) -> _Self:
-        """Load config from a ``.json`` file.
-
-        """
+        """Load config from a ``.json`` file."""
 
         import json
 
         return cls.__load_from_file(
-            path, json.loads, ignore_unknown_fields, ignore_missing_file)
+            path, json.loads, ignore_unknown_fields, ignore_missing_file
+        )
 
     @classmethod
     def load_from_yaml_file(
@@ -890,10 +892,11 @@ class Config:
         try:
             import yaml  # type: ignore
         except ImportError:
-            raise ImportError('PyYaml is not available')
+            raise ImportError("PyYaml is not available")
 
         return cls.__load_from_file(
-            path, yaml.safe_load, ignore_unknown_fields, ignore_missing_file)
+            path, yaml.safe_load, ignore_unknown_fields, ignore_missing_file
+        )
 
     @classmethod
     def load_from_toml_file(
@@ -919,10 +922,11 @@ class Config:
             try:
                 import tomllib as toml  # type: ignore
             except ImportError:
-                raise ImportError('toml is not available')
+                raise ImportError("toml is not available")
 
         return cls.__load_from_file(
-            path, toml.loads, ignore_unknown_fields, ignore_missing_file)
+            path, toml.loads, ignore_unknown_fields, ignore_missing_file
+        )
 
     @classmethod
     def __load_from_file(
@@ -936,24 +940,21 @@ class Config:
             return cls()
 
         try:
-            with open(path, 'r') as file:
+            with open(path, "r") as file:
                 loaded = file_parser(file.read())
         except Exception as e:
-            raise yuio.parse.ParsingError(f'invalid config {path}: {e}') from None
+            raise yuio.parse.ParsingError(f"invalid config {path}: {e}") from None
 
         try:
             return cls.load_from_parsed_file(
-                loaded, ignore_unknown_fields=ignore_unknown_fields)
+                loaded, ignore_unknown_fields=ignore_unknown_fields
+            )
         except yuio.parse.ParsingError as e:
-            raise yuio.parse.ParsingError(f'invalid config {path}: {e}') from None
+            raise yuio.parse.ParsingError(f"invalid config {path}: {e}") from None
 
     @classmethod
     def load_from_parsed_file(
-        cls: _t.Type[_Self],
-        parsed: dict,
-        /,
-        *,
-        ignore_unknown_fields: bool = False
+        cls: _t.Type[_Self], parsed: dict, /, *, ignore_unknown_fields: bool = False
     ) -> _Self:
         """Load config from parsed config file.
 
@@ -967,34 +968,30 @@ class Config:
 
         """
 
-        return cls.__load_from_parsed_file(parsed, ignore_unknown_fields, '')
+        return cls.__load_from_parsed_file(parsed, ignore_unknown_fields, "")
 
     @classmethod
     def __load_from_parsed_file(
         cls: _t.Type[_Self],
         parsed: dict,
         ignore_unknown_fields: bool = False,
-        field_prefix: str = '',
+        field_prefix: str = "",
     ) -> _Self:
-
         if not isinstance(parsed, dict):
-            raise TypeError('config should be a dict')
+            raise TypeError("config should be a dict")
 
         fields = {}
 
         if not ignore_unknown_fields:
             for name in parsed:
                 if name not in cls.__get_fields():
-                    raise yuio.parse.ParsingError(
-                        f'unknown field {field_prefix}{name}')
+                    raise yuio.parse.ParsingError(f"unknown field {field_prefix}{name}")
 
         for name, field in cls.__get_fields().items():
             if name in parsed:
                 if field.is_subconfig:
                     fields[name] = field.ty.__load_from_parsed_file(
-                        parsed[name],
-                        ignore_unknown_fields,
-                        field_prefix=name + '.'
+                        parsed[name], ignore_unknown_fields, field_prefix=name + "."
                     )
                 else:
                     assert field.parser is not None
@@ -1002,7 +999,8 @@ class Config:
                         value = field.parser.parse_config(parsed[name])
                     except yuio.parse.ParsingError as e:
                         raise yuio.parse.ParsingError(
-                            f'can\'t parse {field_prefix}{name}: {e}') from None
+                            f"can't parse {field_prefix}{name}: {e}"
+                        ) from None
                     fields[name] = value
 
         return cls(**fields)
@@ -1010,7 +1008,7 @@ class Config:
     def __getattribute__(self, item):
         value = super().__getattribute__(item)
         if value is yuio.MISSING:
-            raise AttributeError(f'{item} is not configured')
+            raise AttributeError(f"{item} is not configured")
         else:
             return value
 
@@ -1019,16 +1017,16 @@ class Config:
 
     def __repr(self, indent):
         field_reprs = []
-        prefix = ' ' * indent
+        prefix = " " * indent
         for name in self.__get_fields():
             value = getattr(self, name, yuio.MISSING)
             if isinstance(value, Config):
                 value_repr = value.__repr(indent + 2)
             else:
                 value_repr = repr(value)
-            field_reprs.append(f'{prefix}  {name}={value_repr}')
+            field_reprs.append(f"{prefix}  {name}={value_repr}")
         if field_reprs:
             field_desc = ",\n".join(field_reprs)
-            return f'{self.__class__.__name__}(\n{field_desc}\n{prefix})'
+            return f"{self.__class__.__name__}(\n{field_desc}\n{prefix})"
         else:
-            return f'{self.__class__.__name__}()'
+            return f"{self.__class__.__name__}()"

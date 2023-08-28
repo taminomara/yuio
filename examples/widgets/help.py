@@ -4,9 +4,9 @@ import yuio.io
 import yuio.widget
 from yuio.widget import Key, RenderContext
 
-
 # Let's build a simple widget and see how we can configure it
 # to automatically render help messages for us.
+
 
 class ExampleWidget(yuio.widget.Widget[None]):
     def __init__(self):
@@ -50,14 +50,14 @@ class ExampleWidget(yuio.widget.Widget[None]):
         """accept input"""
         self._last_action = "Enter"
 
-    @yuio.widget.bind('/')
+    @yuio.widget.bind("/")
     @yuio.widget.help_column(1)
     def on_slash(self):
         """filter items"""
         self._last_action = "Slash"
 
     @yuio.widget.bind(Key.ESCAPE)
-    @yuio.widget.bind('q')
+    @yuio.widget.bind("q")
     @yuio.widget.help_column(1)
     def on_escape(self):
         """close"""
@@ -74,7 +74,7 @@ class ExampleWidget(yuio.widget.Widget[None]):
         rc.write(".")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     term = yuio.io.get_term()
     theme = yuio.io.get_theme()
 

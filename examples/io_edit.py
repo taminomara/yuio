@@ -10,11 +10,13 @@ for so were the counsels of Jove fulfilled from the day on which the son of Atre
 king of men, and great Achilles, first fell out with one another.
 """
 
-if __name__ == '__main__':
-    yuio.io.heading('Yuio\'s interactive editing showcase')
+if __name__ == "__main__":
+    yuio.io.heading("Yuio's interactive editing showcase")
 
-    yuio.io.info('This functionality is similar to what GIT does when you commit something:')
-    yuio.io.info('it opens your default editor and lets you edit a commit message.')
+    yuio.io.info(
+        "This functionality is similar to what GIT does when you commit something:"
+    )
+    yuio.io.info("it opens your default editor and lets you edit a commit message.")
 
     yuio.io.br()
 
@@ -22,12 +24,12 @@ if __name__ == '__main__':
 
     result = yuio.io.edit(TEXT)
 
-    yuio.io.success('Editing successful!')
-    yuio.io.success('So, this is what you\'ve done to Homer\'s Iliad:')
+    yuio.io.success("Editing successful!")
+    yuio.io.success("So, this is what you've done to Homer's Iliad:")
     yuio.io.br()
     if result:
         yuio.io.info(result)
     else:
-        yuio.io.info('...')
+        yuio.io.info("...")
         yuio.io.br()
-        yuio.io.info('... nothing! You\'ve deleted it! How could you 〈◕﹏◕〉')
+        yuio.io.info("... nothing! You've deleted it! How could you 〈◕﹏◕〉")

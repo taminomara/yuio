@@ -12,8 +12,8 @@ standard logging library.
 """
 import math
 import string
-from yuio.widget import RenderContext
 
+from yuio.widget import RenderContext
 
 """
 
@@ -224,14 +224,17 @@ from logging import LogRecord
 import yuio.parse
 import yuio.term
 import yuio.widget
-from yuio.term import Color, Theme, DefaultTheme
+from yuio.term import Color, DefaultTheme, Theme
 
+T = _t.TypeVar("T")
+U = _t.TypeVar("U")
+Cb = _t.TypeVar("Cb", bound=_t.Callable[..., None])
 
-T = _t.TypeVar('T')
-U = _t.TypeVar('U')
-Cb = _t.TypeVar('Cb', bound=_t.Callable[..., None])
-
-_ExcInfo: _t.TypeAlias = _t.Tuple[_t.Optional[_t.Type[BaseException]], _t.Optional[BaseException], _t.Optional[types.TracebackType]]
+_ExcInfo: _t.TypeAlias = _t.Tuple[
+    _t.Optional[_t.Type[BaseException]],
+    _t.Optional[BaseException],
+    _t.Optional[types.TracebackType],
+]
 
 
 _HANDLER_IMPL: _t.Optional["_HandlerImpl"] = None
@@ -248,9 +251,7 @@ def _handler() -> "_HandlerImpl":
 
 
 class UserIoError(IOError):
-    """Raised when interaction with user fails.
-
-    """
+    """Raised when interaction with user fails."""
 
 
 def setup(
@@ -278,51 +279,39 @@ def setup(
 
 
 def get_term() -> yuio.term.Term:
-    """Return current terminal.
-
-    """
+    """Return current terminal."""
 
     return _handler().term
 
 
 def get_theme() -> yuio.term.Theme:
-    """Return current theme.
-
-    """
+    """Return current theme."""
 
     return _handler().theme
 
 
 def info(msg: str, /, *args, **kwargs):
-    """Log an info message.
+    """Log an info message."""
 
-    """
-
-    _handler().print(msg, args, 'info', **kwargs)
+    _handler().print(msg, args, "info", **kwargs)
 
 
 def warning(msg: str, /, *args, **kwargs):
-    """Log a warning message.
+    """Log a warning message."""
 
-    """
-
-    _handler().print(msg, args, 'warning', **kwargs)
+    _handler().print(msg, args, "warning", **kwargs)
 
 
 def success(msg: str, /, *args, **kwargs):
-    """Log a success message.
+    """Log a success message."""
 
-    """
-
-    _handler().print(msg, args, 'success', **kwargs)
+    _handler().print(msg, args, "success", **kwargs)
 
 
 def error(msg: str, /, *args, **kwargs):
-    """Log an error message.
+    """Log an error message."""
 
-    """
-
-    _handler().print(msg, args, 'error', **kwargs)
+    _handler().print(msg, args, "error", **kwargs)
 
 
 def error_with_tb(msg: str, /, *args, **kwargs):
@@ -334,42 +323,34 @@ def error_with_tb(msg: str, /, *args, **kwargs):
 
     """
 
-    kwargs.setdefault('exc_info', True)
-    _handler().print(msg, args, 'error', **kwargs)
+    kwargs.setdefault("exc_info", True)
+    _handler().print(msg, args, "error", **kwargs)
 
 
 def heading(msg: str, /, *args, **kwargs):
-    """Log a heading message.
-
-    """
+    """Log a heading message."""
 
     kwargs.setdefault("pad_line", 2)
-    _handler().print(msg, args, 'heading', **kwargs)
+    _handler().print(msg, args, "heading", **kwargs)
 
 
 def question(msg: str, /, *args, **kwargs):
-    """Log a message with input prompts and other user communications.
+    """Log a message with input prompts and other user communications."""
 
-    """
-
-    _handler().print(msg, args, 'question', **kwargs)
+    _handler().print(msg, args, "question", **kwargs)
 
 
 def hr():
-    """Print a horizontal ruler.
+    """Print a horizontal ruler."""
 
-    """
-
-    msg = '┄' * shutil.get_terminal_size().columns
-    _handler().print(msg, None, 'hr', pad_line=1)
+    msg = "┄" * shutil.get_terminal_size().columns
+    _handler().print(msg, None, "hr", pad_line=1)
 
 
 def br():
-    """Print an empty line.
+    """Print an empty line."""
 
-    """
-
-    _handler().print('', None, '')
+    _handler().print("", None, "")
 
 
 def print_colorized_string(msg: yuio.term.ColorizedString, /, **kwargs):
@@ -389,12 +370,16 @@ def print_colorized_string(msg: yuio.term.ColorizedString, /, **kwargs):
 class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
     _layout: yuio.widget.VerticalLayout[T]
 
-    def __init__(self, prompt: yuio.term.ColorizedString, widget: yuio.widget.Widget[T]):
+    def __init__(
+        self, prompt: yuio.term.ColorizedString, widget: yuio.widget.Widget[T]
+    ):
         self._prompt = yuio.widget.Text(prompt)
         self._error_msg: _t.Optional[str] = None
         self._inner = widget
 
-    def event(self, e: yuio.widget.KeyboardEvent, /) -> _t.Optional[yuio.widget.Result[T]]:
+    def event(
+        self, e: yuio.widget.KeyboardEvent, /
+    ) -> _t.Optional[yuio.widget.Result[T]]:
         try:
             result = self._inner.event(e)
         except yuio.parse.ParsingError as err:
@@ -404,20 +389,24 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
             return result
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
-        builder = yuio.widget.VerticalLayoutBuilder() \
-            .add(self._prompt) \
+        builder = (
+            yuio.widget.VerticalLayoutBuilder()
+            .add(self._prompt)
             .add(self._inner, receive_events=True)
+        )
         if self._error_msg is not None:
             rc.bell()
-            error_text = yuio.term.ColorizedString([
-                rc.theme.get_color("msg/error/decoration"),
-                rc.theme.msg_decorations.get("error", "▲"),
-                rc.theme.get_color("msg/error/plain_text"),
-                " ",
-                rc.theme.get_color("msg/error/text"),
-                self._error_msg,
-                yuio.term.Color.NONE,
-            ])
+            error_text = yuio.term.ColorizedString(
+                [
+                    rc.theme.get_color("msg/error/decoration"),
+                    rc.theme.msg_decorations.get("error", "▲"),
+                    rc.theme.get_color("msg/error/plain_text"),
+                    " ",
+                    rc.theme.get_color("msg/error/text"),
+                    self._error_msg,
+                    yuio.term.Color.NONE,
+                ]
+            )
             builder = builder.add(yuio.widget.Text(error_text))
 
         self._layout = builder.build()
@@ -435,7 +424,7 @@ class _Ask(_t.Generic[T]):
     def __init__(self, parser: yuio.parse.Parser[T]):
         self._parser: yuio.parse.Parser[T] = parser
 
-    def __getitem__(self, ty: _t.Type[U]) -> '_Ask[U]':
+    def __getitem__(self, ty: _t.Type[U]) -> "_Ask[U]":
         # eval type
         container = type("_container", (), {"__annotations__": {"ty": ty}})
         annotations = _t.get_type_hints(container, include_extras=True)
@@ -451,7 +440,8 @@ class _Ask(_t.Generic[T]):
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
         secure_input: bool = False,
-    ) -> T: ...
+    ) -> T:
+        ...
 
     @_t.overload
     def __call__(
@@ -463,7 +453,8 @@ class _Ask(_t.Generic[T]):
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
         secure_input: bool = False,
-    ) -> _t.Optional[T]: ...
+    ) -> _t.Optional[T]:
+        ...
 
     @_t.overload
     def __call__(
@@ -476,7 +467,8 @@ class _Ask(_t.Generic[T]):
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
         secure_input: bool = False,
-    ) -> U: ...
+    ) -> U:
+        ...
 
     @_t.overload
     def __call__(
@@ -489,7 +481,8 @@ class _Ask(_t.Generic[T]):
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
         secure_input: bool = False,
-    ) -> _t.Optional[U]: ...
+    ) -> _t.Optional[U]:
+        ...
 
     def __call__(
         self,
@@ -510,7 +503,7 @@ class _Ask(_t.Generic[T]):
                 return default
             else:
                 raise UserIoError(
-                    'can\'t interact with user in non-interactive environment'
+                    "can't interact with user in non-interactive environment"
                 )
 
         if parser is None:
@@ -551,7 +544,7 @@ class _Ask(_t.Generic[T]):
                 try:
                     return widget.run(term, theme)
                 except (IOError, OSError) as e:
-                    raise UserIoError('unexpected end of input') from e
+                    raise UserIoError("unexpected end of input") from e
         else:
             if not input_description:
                 input_description = parser.describe()
@@ -565,7 +558,9 @@ class _Ask(_t.Generic[T]):
                     theme.colorize(" [`%s`]", default_color="msg/question/text")
                     % default_description
                 )
-            prompt += theme.colorize(": " if needs_colon else " ", default_color="msg/question/text")
+            prompt += theme.colorize(
+                ": " if needs_colon else " ", default_color="msg/question/text"
+            )
             prompt_s = prompt.merge(term)
             with SuspendLogging() as s:
                 while True:
@@ -575,19 +570,19 @@ class _Ask(_t.Generic[T]):
                         else:
                             answer = input(prompt_s)
                     except (IOError, OSError) as e:
-                        raise UserIoError('unexpected end of input') from None
+                        raise UserIoError("unexpected end of input") from None
                     if not answer and default is not yuio.MISSING:
                         return default
                     elif not answer:
-                        s.error('Input is required.')
+                        s.error("Input is required.")
                     else:
                         try:
                             return parser.parse(answer)
                         except yuio.parse.ParsingError as e:
                             if secure_input:
-                                s.error('Error: invalid value.')
+                                s.error("Error: invalid value.")
                             else:
-                                s.error(f'Error: %s.', e)
+                                s.error(f"Error: %s.", e)
 
 
 ask: _Ask[str] = _Ask[str](yuio.parse.Str())
@@ -629,7 +624,8 @@ def ask_yn(
     /,
     *args,
     default: _t.Union[bool, yuio.Missing] = yuio.MISSING,
-) -> bool: ...
+) -> bool:
+    ...
 
 
 @_t.overload
@@ -638,7 +634,8 @@ def ask_yn(
     /,
     *args,
     default: None,
-) -> _t.Optional[bool]: ...
+) -> _t.Optional[bool]:
+    ...
 
 
 def ask_yn(
@@ -647,15 +644,13 @@ def ask_yn(
     *args,
     default: _t.Union[bool, None, yuio.Missing] = yuio.MISSING,
 ) -> _t.Any:
-    """Shortcut to :func:`ask` for asking yes/no questions.
-
-    """
+    """Shortcut to :func:`ask` for asking yes/no questions."""
 
     return ask(msg, *args, parser=yuio.parse.Bool(), default=default)
 
 
 def wait_for_user(
-    msg: str = 'Press <c:note>enter</c> to continue',
+    msg: str = "Press <c:note>enter</c> to continue",
     /,
     *args,
 ):
@@ -688,13 +683,13 @@ def detect_editor() -> _t.Optional[str]:
 
     """
 
-    if editor := os.environ.get('EDITOR'):
+    if editor := os.environ.get("EDITOR"):
         return editor
-    elif editor := shutil.which('nano'):
+    elif editor := shutil.which("nano"):
         return editor
-    elif editor := shutil.which('vi'):
+    elif editor := shutil.which("vi"):
         return editor
-    elif editor := shutil.which('notepad'):
+    elif editor := shutil.which("notepad"):
         return editor
     else:
         return None
@@ -704,7 +699,7 @@ def edit(
     text: str,
     /,
     *,
-    comment_marker: _t.Optional[str] = '#',
+    comment_marker: _t.Optional[str] = "#",
     editor: _t.Optional[str] = None,
 ) -> str:
     """Ask user to edit some text.
@@ -727,14 +722,14 @@ def edit(
 
         if editor is None:
             raise UserIoError(
-                'can\'t detect an editor, ensure that the $EDITOR '
-                'environment variable contains '
-                'a correct path to an editor executable'
+                "can't detect an editor, ensure that the $EDITOR "
+                "environment variable contains "
+                "a correct path to an editor executable"
             )
 
         filepath = tempfile.mktemp()
         try:
-            with open(filepath, 'w') as file:
+            with open(filepath, "w") as file:
                 file.write(text)
 
             try:
@@ -742,27 +737,22 @@ def edit(
                     res = subprocess.run(f'{editor} "{filepath}"', shell=True)
             except FileNotFoundError:
                 raise UserIoError(
-                    'can\'t use this editor, ensure that the $EDITOR '
-                    'environment variable contains '
-                    'a correct path to an editor executable'
+                    "can't use this editor, ensure that the $EDITOR "
+                    "environment variable contains "
+                    "a correct path to an editor executable"
                 )
 
             if res.returncode != 0:
-                raise UserIoError(
-                    'editing failed'
-                )
+                raise UserIoError("editing failed")
 
-            with open(filepath, 'r') as file:
+            with open(filepath, "r") as file:
                 text = file.read()
         finally:
             os.remove(filepath)
 
     if comment_marker is not None:
         text = re.sub(
-            r'^\s*' + re.escape(comment_marker) + r'.*$',
-            '',
-            text,
-            flags=re.MULTILINE
+            r"^\s*" + re.escape(comment_marker) + r".*$", "", text, flags=re.MULTILINE
         )
 
     return text.strip()
@@ -781,9 +771,7 @@ class SuspendLogging:
         _handler().suspend()
 
     def resume(self):
-        """Manually resume the logging process.
-
-        """
+        """Manually resume the logging process."""
 
         if not self._resumed:
             _handler().resume()
@@ -791,69 +779,51 @@ class SuspendLogging:
 
     @staticmethod
     def info(msg: str, /, *args, **kwargs):
-        """Log an :func:`info` message, ignore suspended status.
+        """Log an :func:`info` message, ignore suspended status."""
 
-        """
-
-        kwargs.setdefault('ignore_suspended', True)
+        kwargs.setdefault("ignore_suspended", True)
         info(msg, *args, **kwargs)
-
 
     @staticmethod
     def warning(msg: str, /, *args, **kwargs):
-        """Log a :func:`warning` message, ignore suspended status.
+        """Log a :func:`warning` message, ignore suspended status."""
 
-        """
-
-        kwargs.setdefault('ignore_suspended', True)
+        kwargs.setdefault("ignore_suspended", True)
         warning(msg, *args, **kwargs)
-
 
     @staticmethod
     def success(msg: str, /, *args, **kwargs):
-        """Log a :func:`success` message, ignore suspended status.
+        """Log a :func:`success` message, ignore suspended status."""
 
-        """
-
-        kwargs.setdefault('ignore_suspended', True)
+        kwargs.setdefault("ignore_suspended", True)
         success(msg, *args, **kwargs)
-
 
     @staticmethod
     def error(msg: str, /, *args, **kwargs):
-        """Log an :func:`error` message, ignore suspended status.
+        """Log an :func:`error` message, ignore suspended status."""
 
-        """
-
-        kwargs.setdefault('ignore_suspended', True)
+        kwargs.setdefault("ignore_suspended", True)
         error(msg, *args, **kwargs)
 
     @staticmethod
     def error_with_tb(msg: str, /, *args, **kwargs):
-        """Log an :func:`error_with_tb` message, ignore suspended status.
+        """Log an :func:`error_with_tb` message, ignore suspended status."""
 
-        """
-
-        kwargs.setdefault('ignore_suspended', True)
+        kwargs.setdefault("ignore_suspended", True)
         error_with_tb(msg, *args, **kwargs)
-
 
     @staticmethod
     def heading(msg: str, /, *args, **kwargs):
-        """Log a :func:`heading` message, ignore suspended status.
+        """Log a :func:`heading` message, ignore suspended status."""
 
-        """
-
-        kwargs.setdefault('ignore_suspended', True)
+        kwargs.setdefault("ignore_suspended", True)
         heading(msg, *args, **kwargs)
 
     @staticmethod
     def question(msg: str, /, *args, **kwargs):
-        """Log a :func:`question` message, ignore suspended status.
+        """Log a :func:`question` message, ignore suspended status."""
 
-        """
-
-        kwargs.setdefault('ignore_suspended', True)
+        kwargs.setdefault("ignore_suspended", True)
         question(msg, *args, **kwargs)
 
     @staticmethod
@@ -882,7 +852,7 @@ class Group:
     """
 
     def __init__(self, msg: str, /, *args):
-        _handler().print(msg, args, 'group')
+        _handler().print(msg, args, "group")
         _handler().indent()
 
     def __enter__(self):
@@ -893,7 +863,7 @@ class Group:
 
 
 class _IterTask(_t.Generic[T]):
-    def __init__(self, collection: _t.Collection[T], task: 'Task'):
+    def __init__(self, collection: _t.Collection[T], task: "Task"):
         self._iter = iter(collection)
         self._task = task
 
@@ -906,12 +876,12 @@ class _IterTask(_t.Generic[T]):
             self._i += 1
         return self._iter.__next__()
 
-    def __iter__(self) -> '_IterTask[T]':
+    def __iter__(self) -> "_IterTask[T]":
         return self
 
 
 class _IterTaskLong(_t.Generic[T]):
-    def __init__(self, collection: _t.Collection[T], task: 'Task'):
+    def __init__(self, collection: _t.Collection[T], task: "Task"):
         self._iter = iter(collection)
         self._task = task
 
@@ -928,7 +898,7 @@ class _IterTaskLong(_t.Generic[T]):
             self._i += 1
         return self._iter.__next__()
 
-    def __iter__(self) -> '_IterTaskLong[T]':
+    def __iter__(self) -> "_IterTaskLong[T]":
         return self
 
 
@@ -959,7 +929,7 @@ class Task:
         DONE = "done"
         ERROR = "error"
 
-    def __init__(self, msg: str, /, *args, _parent: _t.Optional['Task'] = None):
+    def __init__(self, msg: str, /, *args, _parent: _t.Optional["Task"] = None):
         # Task properties should not be written to directly.
         # Instead, task should be sent to a handler for modification.
         # This ensures thread safety, because handler has a lock.
@@ -984,12 +954,27 @@ class Task:
             _handler().start_subtask(_parent, self)
 
     @_t.overload
-    def progress(self, progress: _t.Optional[float], /, *, ndigits: int = 2): ...
+    def progress(self, progress: _t.Optional[float], /, *, ndigits: int = 2):
+        ...
 
     @_t.overload
-    def progress(self, done: float, total: _t.Optional[float], /, *, unit: str = "", ndigits: int = 0): ...
+    def progress(
+        self,
+        done: float,
+        total: _t.Optional[float],
+        /,
+        *,
+        unit: str = "",
+        ndigits: int = 0,
+    ):
+        ...
 
-    def progress(self, *args: _t.Optional[float], unit: str = "", ndigits: _t.Optional[int] = None):
+    def progress(
+        self,
+        *args: _t.Optional[float],
+        unit: str = "",
+        ndigits: _t.Optional[int] = None,
+    ):
         """Indicate progress of this task.
 
         If given one argument, it is treated as percentage between `0` and `1`.
@@ -1066,7 +1051,7 @@ class Task:
             self,
             progress,
             "%.*f%s" % (ndigits, done, done_unit),
-            "%.*f%s" % (ndigits, total, total_unit)
+            "%.*f%s" % (ndigits, total, total_unit),
         )
 
     @staticmethod
@@ -1078,14 +1063,14 @@ class Task:
         return n, "P"
 
     def progress_scale(
-            self,
-            done: _t.Union[float, int],
-            total: _t.Union[float, int],
-            /,
-            *,
-            unit: str = "",
-            ndigits: int = 2,
-        ):
+        self,
+        done: _t.Union[float, int],
+        total: _t.Union[float, int],
+        /,
+        *,
+        unit: str = "",
+        ndigits: int = 2,
+    ):
         """Indicate progress of this task while scaling numbers in accordance
         with SI system.
 
@@ -1109,7 +1094,7 @@ class Task:
             self,
             progress,
             "%.*f%s" % (ndigits, done, done_unit),
-            "%.*f%s" % (ndigits, total, total_unit)
+            "%.*f%s" % (ndigits, total, total_unit),
         )
 
     @staticmethod
@@ -1171,23 +1156,17 @@ class Task:
         _handler().set_comment(self, comment, args)
 
     def done(self):
-        """Indicate that this task has finished successfully.
-
-        """
+        """Indicate that this task has finished successfully."""
 
         _handler().finish_task(self, Task._Status.DONE)
 
     def error(self):
-        """Indicate that this task has finished with an error.
-
-        """
+        """Indicate that this task has finished with an error."""
 
         _handler().finish_task(self, Task._Status.ERROR)
 
-    def subtask(self, msg: str, /, *args) -> 'Task':
-        """Create a subtask within this task.
-
-        """
+    def subtask(self, msg: str, /, *args) -> "Task":
+        """Create a subtask within this task."""
 
         return Task(msg, *args, _parent=self)
 
@@ -1202,9 +1181,7 @@ class Task:
 
 
 class Handler(logging.Handler):
-    """A handler that redirects all log messages to yuio.
-
-    """
+    """A handler that redirects all log messages to yuio."""
 
     def createLock(self) -> None:
         self.lock = None
@@ -1240,7 +1217,9 @@ class _HandlerImpl:
 
         self._renders = 0
 
-        threading.Thread(target=self._bg_update, name='yuio_io_thread', daemon=True).start()
+        threading.Thread(
+            target=self._bg_update, name="yuio_io_thread", daemon=True
+        ).start()
 
     @property
     def term(self) -> yuio.term.Term:
@@ -1303,7 +1282,7 @@ class _HandlerImpl:
 
             if self._indent < 0:
                 self._indent = 0
-                yuio._logger.error('unequal number of indents and dedents')
+                yuio._logger.error("unequal number of indents and dedents")
 
     def print(
         self,
@@ -1360,7 +1339,13 @@ class _HandlerImpl:
         with self._lock:
             self._finish_task(task, status)
 
-    def set_progress(self, task: Task, progress: _t.Optional[float], done: _t.Optional[str], total: _t.Optional[str]):
+    def set_progress(
+        self,
+        task: Task,
+        progress: _t.Optional[float],
+        done: _t.Optional[str],
+        total: _t.Optional[str],
+    ):
         with self._lock:
             task._progress = progress
             task._progress_done = done
@@ -1416,7 +1401,7 @@ class _HandlerImpl:
             self._update_tasks()
 
         if self._suspended < 0:
-            yuio._logger.debug('unequal number of suspends and resumes')
+            yuio._logger.debug("unequal number of suspends and resumes")
             self._suspended = 0
 
     def _start_task(self, task: Task):
@@ -1435,7 +1420,7 @@ class _HandlerImpl:
 
     def _finish_task(self, task: Task, status: Task._Status):
         if task._status != Task._Status.RUNNING:
-            yuio._logger.debug('trying to change status of an already stopped task')
+            yuio._logger.debug("trying to change status of an already stopped task")
             return
 
         task._status = status
@@ -1467,7 +1452,9 @@ class _HandlerImpl:
                 if now_us < next_update_us:
                     # Hard-limit update rate by `update_rate_ms`.
                     return
-                next_spinner_update_us = self._last_update_time_us + self.spinner_update_rate_us
+                next_spinner_update_us = (
+                    self._last_update_time_us + self.spinner_update_rate_us
+                )
                 if not self._needs_update and now_us < next_spinner_update_us:
                     # Tasks didn't change, and spinner state didn't change either,
                     # so we can skip this update.
@@ -1500,15 +1487,15 @@ class _HandlerImpl:
             res += "\n" * pad_line
 
         if self._indent:
-            res += '  ' * self._indent
+            res += "  " * self._indent
 
         if decoration := self.theme.msg_decorations.get(m_tag):
-            res += self.theme.get_color(f'msg/{m_tag}/decoration')
+            res += self.theme.get_color(f"msg/{m_tag}/decoration")
             res += decoration
-            res += self.theme.get_color(f'msg/{m_tag}/plain_text/plain_text')
-            res += ' '
+            res += self.theme.get_color(f"msg/{m_tag}/plain_text/plain_text")
+            res += " "
 
-        col_msg = self.theme.colorize(msg, default_color=f'msg/{m_tag}/text')
+        col_msg = self.theme.colorize(msg, default_color=f"msg/{m_tag}/text")
         if args:
             col_msg %= args
         res += col_msg
@@ -1516,7 +1503,9 @@ class _HandlerImpl:
         if exc_info is not None:
             res += "\n"
             res += self._format_tb(
-                ''.join(traceback.format_exception(*exc_info)), '  ' * (self._indent + 1))
+                "".join(traceback.format_exception(*exc_info)),
+                "  " * (self._indent + 1),
+            )
         elif pad_line or add_newline:
             res += "\n"
 
@@ -1531,41 +1520,41 @@ class _HandlerImpl:
     def _format_record(self, record: logging.LogRecord) -> yuio.term.ColorizedString:
         res = yuio.term.ColorizedString()
 
-        plain_text_color = self.theme.get_color('log/plain_text')
+        plain_text_color = self.theme.get_color("log/plain_text")
 
-        asctime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(record.created))
+        asctime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
         logger = record.name
         level = record.levelname
-        if level in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
+        if level in ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]:
             level = level[:4]
         message = record.getMessage()
 
-        res += self.theme.get_color(f'log/asctime')
+        res += self.theme.get_color(f"log/asctime")
         res += asctime
         res += plain_text_color
-        res += ' '
+        res += " "
 
-        res += self.theme.get_color(f'log/logger')
+        res += self.theme.get_color(f"log/logger")
         res += logger
         res += plain_text_color
-        res += ' '
+        res += " "
 
-        res += self.theme.get_color(f'log/level/{record.levelname.lower()}')
+        res += self.theme.get_color(f"log/level/{record.levelname.lower()}")
         res += level
         res += plain_text_color
-        res += ' '
+        res += " "
 
-        res += self.theme.get_color(f'log/message')
+        res += self.theme.get_color(f"log/message")
         res += message
         res += plain_text_color
-        res += '\n'
+        res += "\n"
 
         if record.exc_info:
             if not record.exc_text:
-                record.exc_text = ''.join(traceback.format_exception(*record.exc_info))
-            res += self._format_tb(record.exc_text, '  ')
+                record.exc_text = "".join(traceback.format_exception(*record.exc_info))
+            res += self._format_tb(record.exc_text, "  ")
         if record.stack_info:
-            res += self._format_tb(record.stack_info, '  ')
+            res += self._format_tb(record.stack_info, "  ")
 
         res += Color.NONE
 
@@ -1578,19 +1567,23 @@ class _HandlerImpl:
 
     class _StackColors:
         def __init__(self, theme: Theme, s_tag: str):
-            self.file_color = theme.get_color(f'tb/frame/{s_tag}/file')
-            self.file_path_color = theme.get_color(f'tb/frame/{s_tag}/file/path')
-            self.file_line_color = theme.get_color(f'tb/frame/{s_tag}/file/line')
-            self.file_module_color = theme.get_color(f'tb/frame/{s_tag}/file/module')
-            self.code_color = theme.get_color(f'tb/frame/{s_tag}/code')
-            self.highlight_color = theme.get_color(f'tb/frame/{s_tag}/highlight')
+            self.file_color = theme.get_color(f"tb/frame/{s_tag}/file")
+            self.file_path_color = theme.get_color(f"tb/frame/{s_tag}/file/path")
+            self.file_line_color = theme.get_color(f"tb/frame/{s_tag}/file/line")
+            self.file_module_color = theme.get_color(f"tb/frame/{s_tag}/file/module")
+            self.code_color = theme.get_color(f"tb/frame/{s_tag}/code")
+            self.highlight_color = theme.get_color(f"tb/frame/{s_tag}/highlight")
 
-    _TB_RE = re.compile(r'^(?P<indent>[ |+]*)(Stack|Traceback|Exception Group Traceback) \(most recent call last\):$')
-    _TB_MSG_RE = re.compile(r'^(?P<indent>[ |+]*)[A-Za-z_][A-Za-z0-9_]*($|:.*$)')
-    _TB_LINE_FILE = re.compile(r'^[ |+]*File (?P<file>"[^"]*"), line (?P<line>\d+)(?:, in (?P<loc>.*))?$')
-    _TB_LINE_HIGHLIGHT = re.compile(r'^[ |+^~-]*$')
-    _SITE_PACKAGES = os.sep + 'lib' + os.sep + 'site-packages' + os.sep
-    _LIB_PYTHON = os.sep + 'lib' + os.sep + 'python'
+    _TB_RE = re.compile(
+        r"^(?P<indent>[ |+]*)(Stack|Traceback|Exception Group Traceback) \(most recent call last\):$"
+    )
+    _TB_MSG_RE = re.compile(r"^(?P<indent>[ |+]*)[A-Za-z_][A-Za-z0-9_]*($|:.*$)")
+    _TB_LINE_FILE = re.compile(
+        r'^[ |+]*File (?P<file>"[^"]*"), line (?P<line>\d+)(?:, in (?P<loc>.*))?$'
+    )
+    _TB_LINE_HIGHLIGHT = re.compile(r"^[ |+^~-]*$")
+    _SITE_PACKAGES = os.sep + "lib" + os.sep + "site-packages" + os.sep
+    _LIB_PYTHON = os.sep + "lib" + os.sep + "python"
 
     def _format_tb(self, tb: str, indent: str) -> yuio.term.ColorizedString:
         if not self.term.can_move_cursor:
@@ -1598,26 +1591,28 @@ class _HandlerImpl:
                 tb = textwrap.indent(tb, indent)
             return yuio.term.ColorizedString(tb)
 
-        plain_text_color = self.theme.get_color('tb/plain_text')
-        heading_color = self.theme.get_color('tb/heading')
-        message_color = self.theme.get_color('tb/message')
+        plain_text_color = self.theme.get_color("tb/plain_text")
+        heading_color = self.theme.get_color("tb/heading")
+        message_color = self.theme.get_color("tb/message")
 
-        stack_normal_colors = self._StackColors(self.theme, 'usr')
-        stack_lib_colors = self._StackColors(self.theme, 'lib')
+        stack_normal_colors = self._StackColors(self.theme, "usr")
+        stack_lib_colors = self._StackColors(self.theme, "lib")
         stack_colors = stack_normal_colors
 
         res = yuio.term.ColorizedString()
 
-        state: _HandlerImpl._StackParsingState = _HandlerImpl._StackParsingState.PLAIN_TEXT
-        stack_indent = ''
-        message_indent = ''
+        state: _HandlerImpl._StackParsingState = (
+            _HandlerImpl._StackParsingState.PLAIN_TEXT
+        )
+        stack_indent = ""
+        message_indent = ""
 
         for line in tb.splitlines(keepends=True):
             if state is _HandlerImpl._StackParsingState.STACK:
                 if line.startswith(stack_indent):
                     # We're still in the stack.
                     if match := self._TB_LINE_FILE.match(line):
-                        file, line, loc = match.group('file', 'line', 'loc')
+                        file, line, loc = match.group("file", "line", "loc")
 
                         if self._SITE_PACKAGES in file or self._LIB_PYTHON in file:
                             stack_colors = stack_lib_colors
@@ -1628,34 +1623,34 @@ class _HandlerImpl:
                         res += indent
                         res += stack_indent
                         res += stack_colors.file_color
-                        res += 'File '
+                        res += "File "
                         res += stack_colors.file_path_color
                         res += file
                         res += stack_colors.file_color
-                        res += ', line '
+                        res += ", line "
                         res += stack_colors.file_line_color
                         res += line
                         res += stack_colors.file_color
 
                         if loc:
-                            res += ', in '
+                            res += ", in "
                             res += stack_colors.file_module_color
                             res += loc
                             res += stack_colors.file_color
 
-                        res += '\n'
+                        res += "\n"
                     elif match := self._TB_LINE_HIGHLIGHT.match(line):
                         res += plain_text_color
                         res += indent
                         res += stack_indent
                         res += stack_colors.highlight_color
-                        res += line[len(stack_indent):]
+                        res += line[len(stack_indent) :]
                     else:
                         res += plain_text_color
                         res += indent
                         res += stack_indent
                         res += self.theme.highlight_code(
-                            line[len(stack_indent):],
+                            line[len(stack_indent) :],
                             "py",
                             default_color=stack_colors.code_color,
                         )
@@ -1665,13 +1660,13 @@ class _HandlerImpl:
                     state = _HandlerImpl._StackParsingState.MESSAGE
 
             if state is _HandlerImpl._StackParsingState.MESSAGE:
-                if line and line != '\n' and line.startswith(message_indent):
+                if line and line != "\n" and line.startswith(message_indent):
                     # We're still in the message.
                     res += plain_text_color
                     res += indent
                     res += message_indent
                     res += message_color
-                    res += line[len(message_indent):]
+                    res += line[len(message_indent) :]
                     continue
                 else:
                     # Message has ended, this line is actually a plain text.
@@ -1680,27 +1675,27 @@ class _HandlerImpl:
             if state is _HandlerImpl._StackParsingState.PLAIN_TEXT:
                 if match := self._TB_RE.match(line):
                     # Plain text has ended, this is actually a heading.
-                    message_indent = match.group('indent').replace('+', '|')
-                    stack_indent = message_indent + '  '
+                    message_indent = match.group("indent").replace("+", "|")
+                    stack_indent = message_indent + "  "
 
                     res += plain_text_color
                     res += indent
                     res += message_indent
                     res += heading_color
-                    res += line[len(message_indent):]
+                    res += line[len(message_indent) :]
 
                     state = _HandlerImpl._StackParsingState.STACK
                     continue
                 elif match := self._TB_MSG_RE.match(line):
                     # Plain text has ended, this is an error message (without a traceback).
-                    message_indent = match.group('indent').replace('+', '|')
-                    stack_indent = message_indent + '  '
+                    message_indent = match.group("indent").replace("+", "|")
+                    stack_indent = message_indent + "  "
 
                     res += plain_text_color
                     res += indent
                     res += message_indent
                     res += message_color
-                    res += line[len(message_indent):]
+                    res += line[len(message_indent) :]
 
                     state = _HandlerImpl._StackParsingState.MESSAGE
                     continue
@@ -1742,7 +1737,9 @@ class _HandlerImpl:
             task._cached_msg = msg
         return task._cached_msg
 
-    def _format_task_comment(self, task: Task) -> _t.Optional[yuio.term.ColorizedString]:
+    def _format_task_comment(
+        self, task: Task
+    ) -> _t.Optional[yuio.term.ColorizedString]:
         if task._cached_comment is None and task._comment is not None:
             comment = self.theme.colorize(task._comment, default_color="task/comment")
             if task._comment_args:
@@ -1758,7 +1755,7 @@ class _HandlerImpl:
         self._draw_task_progress(task)
         if comment := self._format_task_comment(task):
             self._rc.set_color_path("task/plain_text")
-            self._rc.write(' - ')
+            self._rc.write(" - ")
             self._rc.write(comment)
         self._rc.new_line()
 
@@ -1770,18 +1767,18 @@ class _HandlerImpl:
             return None
 
         self._rc.set_color_path("task/plain_text")
-        self._rc.write(' - ')
+        self._rc.write(" - ")
 
         if task._status in (Task._Status.DONE, Task._Status.ERROR):
-            self._rc.set_color_path(f'task/progress')
+            self._rc.set_color_path(f"task/progress")
             self._rc.write(task._status.name.lower())
         else:
-            self._rc.set_color_path('task/progress')
+            self._rc.set_color_path("task/progress")
             self._rc.write(task._progress_done)
             if task._progress_total is not None:
                 self._rc.set_color_path("task/plain_text")
-                self._rc.write('/')
-                self._rc.set_color_path('task/progress')
+                self._rc.write("/")
+                self._rc.set_color_path("task/progress")
                 self._rc.write(task._progress_total)
 
     def _draw_task_progressbar(self, task: Task):
@@ -1790,9 +1787,15 @@ class _HandlerImpl:
             self._rc.write(self.theme.spinner_static_symbol)
         elif task._progress is None:
             self._rc.set_color_path(f"task/decoration/{task._status.value}")
-            self._rc.write(self.theme.spinner_pattern[self._spinner_state % len(self.theme.spinner_pattern)])
+            self._rc.write(
+                self.theme.spinner_pattern[
+                    self._spinner_state % len(self.theme.spinner_pattern)
+                ]
+            )
         else:
-            done_width = round(max(0, min(1, task._progress)) * self.theme.progress_bar_width)
+            done_width = round(
+                max(0, min(1, task._progress)) * self.theme.progress_bar_width
+            )
             pending_width = self.theme.progress_bar_width - done_width
             self._rc.set_color_path("task/progressbar")
             self._rc.write(self.theme.progress_bar_start_symbol)

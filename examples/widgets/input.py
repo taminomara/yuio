@@ -1,14 +1,13 @@
 import yuio.io
 import yuio.widget
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     term = yuio.io.get_term()
     theme = yuio.io.get_theme()
 
     widget = yuio.widget.Input(
-        placeholder='Enter something nice?',
-        decoration='>',
+        placeholder="Enter something nice?",
+        decoration=">",
         allow_multiline=True,
     ).with_help()
 

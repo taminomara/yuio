@@ -25,8 +25,7 @@ import typing as _t
 
 import yuio.io
 
-
-_LOGGER = logging.getLogger('yuio.exec')
+_LOGGER = logging.getLogger("yuio.exec")
 
 
 @_t.overload
@@ -37,7 +36,8 @@ def exec(
     input: _t.Optional[str] = None,
     level: int = 0,
     text: _t.Literal[True] = True,
-) -> str: ...
+) -> str:
+    ...
 
 
 @_t.overload
@@ -48,7 +48,8 @@ def exec(
     input: _t.Optional[bytes] = None,
     level: int = 0,
     text: _t.Literal[False],
-) -> bytes: ...
+) -> bytes:
+    ...
 
 
 def exec(
@@ -108,11 +109,11 @@ def exec(
                         line = line.decode()
                     except UnicodeDecodeError:
                         yuio._logger.exception(
-                            'unable to decode stderr line:\n%r',
+                            "unable to decode stderr line:\n%r",
                             line,
                         )
-                        line = line.decode(errors='replace')
-                _LOGGER.log(level, line.rstrip('\n'))
+                        line = line.decode(errors="replace")
+                _LOGGER.log(level, line.rstrip("\n"))
 
         def read_stdout(fh):
             stdout.append(fh.read())
@@ -123,7 +124,7 @@ def exec(
         stdout_thread = threading.Thread(
             target=read_stdout,
             args=(process.stdout,),
-            name=f'yuio stdout handler for {process_desc}'
+            name=f"yuio stdout handler for {process_desc}",
         )
         stdout_thread.daemon = True
         stdout_thread.start()
@@ -132,7 +133,7 @@ def exec(
         stderr_thread = threading.Thread(
             target=read_stderr,
             args=(process.stderr,),
-            name=f'yuio stderr handler for {process_desc}'
+            name=f"yuio stderr handler for {process_desc}",
         )
         stderr_thread.daemon = True
         stderr_thread.start()
@@ -156,34 +157,36 @@ def exec(
 def sh(
     cmd: str,
     /,
-    shell: str = '/bin/sh',
+    shell: str = "/bin/sh",
     *,
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
     level: int = 0,
     text: _t.Literal[True] = True,
-) -> str: ...
+) -> str:
+    ...
 
 
 @_t.overload
 def sh(
     cmd: str,
     /,
-    shell: str = '/bin/sh',
+    shell: str = "/bin/sh",
     *,
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
     level: int = 0,
     text: _t.Literal[False],
-) -> bytes: ...
+) -> bytes:
+    ...
 
 
 def sh(
     cmd: str,
     /,
-    shell: str = '/bin/sh',
+    shell: str = "/bin/sh",
     *,
     cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
@@ -213,7 +216,9 @@ def sh(
     """
 
     return exec(
-        shell, '-c', cmd,
+        shell,
+        "-c",
+        cmd,
         cwd=cwd,
         env=env,
         input=input,  # type: ignore
