@@ -1,11 +1,14 @@
-import sys, pathlib
+import sys, pathlib, datetime
 sys.path.append(str(pathlib.Path(__file__).parent.joinpath('_ext')))
+
+import yuio
 
 # -- Project information -----------------------------------------------------
 
 project = 'Yuio'
-copyright = '2022, Tamika Nomara'
+copyright = f'{datetime.date.today().year}, Tamika Nomara'
 author = 'Tamika Nomara'
+release = version = yuio.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -19,10 +22,6 @@ extensions = [
     'sphinxcontrib.jquery',
     'sphinx_vhs',
 ]
-
-templates_path = ['_templates']
-
-exclude_patterns = []
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
@@ -41,3 +40,4 @@ vhs_cwd = pathlib.Path(__file__).parent.parent.parent
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = 'sphinx_rtd_theme'
+html_extra_path = ["_extra/robots.txt"]

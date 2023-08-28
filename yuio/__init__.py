@@ -35,9 +35,23 @@ import textwrap as _textwrap
 import re as _re
 import typing as _t
 
+try:
+    from yuio._version import __version__, __version_tuple__
+except ImportError:
+    raise ImportError(
+        "yuio._version not found. if you are developing locally, "
+        "run `pip install -e .[test,doc]` to generate it"
+    )
+
 __all__ = [
     "SupportsLt",
     "to_dash_case",
+    "Disabled",
+    "DISABLED",
+    "Missing",
+    "MISSING",
+    "Positional",
+    "POSITIONAL",
 ]
 
 _logger = _logging.getLogger('yuio.internal')

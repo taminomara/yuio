@@ -425,7 +425,7 @@ if os.name == 'posix':
         return bool(select.select([_STDIN], [], [], timeout)[0])
 else:
     @contextlib.contextmanager
-    def _set_cbreak(stream: _t.TextIO):
+    def _set_cbreak():
         raise OSError('not supported')
         yield
 
