@@ -43,6 +43,6 @@ if __name__ == "__main__":
 
     widget = InputWithHeading()
 
-    yuio.io.question("Choose what you'd like for breakfast:\n")
+    yuio.io.question("Choose what you'd like for breakfast:")
     result = widget.run(term, theme)
     yuio.io.success(f"You've entered `%r`", result)

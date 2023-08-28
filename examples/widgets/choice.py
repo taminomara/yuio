@@ -17,7 +17,7 @@ if __name__ == '__main__':
         ),
         yuio.widget.Option(
             display_text="release of Half-Life 3",
-            value="Be realistic..."
+            value="Maybe a dragon?"
         ),
         yuio.widget.Option(
             display_text="a dragon!",
@@ -26,12 +26,11 @@ if __name__ == '__main__':
         yuio.widget.Option(
             display_text="gender euphoria 👉👈",
             value="Aww :3 you're loved and valid, remember that 💖"
+            #     " (and I really hope you survive this shitty world!)"
         ),
     ]
 
     widget = yuio.widget.Choice(options).with_help()
-    # You can also use `yuio.widget.FilterableChoice`
-    # if you have many options.
 
     yuio.io.question("What should Santa bring you this year?")
     result = widget.run(term, theme)

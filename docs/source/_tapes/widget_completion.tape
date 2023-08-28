@@ -17,14 +17,6 @@ Sleep 1s
 
 Tab
 Sleep 1s
-Tab@250ms 3
-Sleep 500ms
-Enter
-
-Sleep 500ms
-
-Tab
-Sleep 500ms
 Tab@250ms 5
 Sleep 500ms
 Up

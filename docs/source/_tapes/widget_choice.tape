@@ -4,7 +4,7 @@ Enter
 Sleep 2s
 Down@500ms 2
 Sleep 1s
-Down@500ms 2
+Down
 Sleep 1s
 Enter
 Sleep 5s

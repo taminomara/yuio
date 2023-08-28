@@ -258,17 +258,6 @@ def get_stderr_info() -> Term:
     return _get_term_info(_STDERR)
 
 
-def get_cursor_position(term: Term) -> _t.Optional[_t.Tuple[int, int]]:
-    """Query cursor position for the terminal.
-
-    """
-
-    if not term.can_query_terminal:
-        return None
-    else:
-        return _get_dsr(term.stream)
-
-
 _CI_ENV_VARS = [
     'TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE', 'TEAMCITY_VERSION'
 ]
@@ -359,21 +348,6 @@ def _get_lightness(stream: _t.TextIO) -> _t.Tuple[Lightness, _t.Optional[_t.Tupl
             return Lightness.UNKNOWN, (r, g, b)
     except Exception:
         return Lightness.UNKNOWN, None
-
-
-def _get_dsr(stream: _t.TextIO) -> _t.Optional[_t.Tuple[int, int]]:
-    try:
-        response = _query_term(stream, '\x1b[6n', end_sequences=b'R')
-        if response is None:
-            return None
-
-        match = re.match(rb'^\[(\d+);(\d+)R$', response, re.IGNORECASE)
-        if match is None:
-            return None
-
-        return tuple(int(v) - 1 for v in match.groups())[::-1]
-    except Exception:
-        return None
 
 
 def _query_term(stream: _t.TextIO, query: str, timeout: float = 0.3, end_sequences: _t.Union[bytes, _t.Tuple[bytes, ...]] = (b'\a', b'\x1b\\')) -> _t.Optional[bytes]:
@@ -1587,7 +1561,7 @@ class DefaultTheme(Theme):
 
         'menu/input/decoration': 'low_priority_color_a',
         'menu/input/text': 'primary_color',
-        'menu/input/placeholder': 'low_priority_color_a',
+        'menu/input/placeholder': 'secondary_color',
         'menu/choice/normal/plain_text': 'secondary_color',
         'menu/choice/normal/decoration': 'primary_color',
         'menu/choice/normal/text': 'primary_color',
@@ -1614,7 +1588,6 @@ class DefaultTheme(Theme):
         'menu/help/plain_text': 'low_priority_color_b',
         'menu/help/text': 'low_priority_color_b',
         'menu/help/key': 'low_priority_color_a',
-        'menu/help/heading': ['heading_color', 'low_priority_color_a']
     }
 
     def __init__(self, term: Term) -> None:

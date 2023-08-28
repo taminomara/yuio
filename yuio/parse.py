@@ -44,8 +44,6 @@ which describes parsing API.
 
 .. autoclass:: Parser
 
-    .. autodata:: __wrapped_parser__
-
    .. automethod:: parse
 
    .. automethod:: parse_many
@@ -219,7 +217,7 @@ to speed up the process and avoid common bugs:
 
 .. autoclass:: ValidatingParser
 
-   .. autoattribute:: _inner
+   .. autoattribute:: __wrapped_parser__
 
    .. automethod:: _validate
 
@@ -241,23 +239,6 @@ import yuio.complete
 import yuio.widget
 
 
-class _Comparable(_t.Protocol):
-    @abc.abstractmethod
-    def __lt__(self, other, /) -> bool: ...
-
-    @abc.abstractmethod
-    def __gt__(self, other, /) -> bool: ...
-
-    @abc.abstractmethod
-    def __le__(self, other, /) -> bool: ...
-
-    @abc.abstractmethod
-    def __ge__(self, other, /) -> bool: ...
-
-    @abc.abstractmethod
-    def __eq__(self, other, /) -> bool: ...
-
-
 T_co = _t.TypeVar('T_co', covariant=True)
 T = _t.TypeVar('T')
 U = _t.TypeVar('U')
@@ -265,7 +246,7 @@ K = _t.TypeVar('K')
 V = _t.TypeVar('V')
 C = _t.TypeVar('C', bound=_t.Collection)
 Sz = _t.TypeVar('Sz', bound=_t.Sized)
-Cmp = _t.TypeVar('Cmp', bound=_Comparable)
+Cmp = _t.TypeVar('Cmp', bound=yuio.SupportsLt)
 E = _t.TypeVar('E', bound=enum.Enum)
 TU = _t.TypeVar('TU', bound=tuple)
 
@@ -405,13 +386,12 @@ class Parser(_t.Generic[T], abc.ABC):
     ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
         """Return a widget for reading values of this parser.
 
-        This function is used when reading values from user
-        via :func:`yuio.io.ask`.
+        This function is used when reading values from user via :func:`yuio.io.ask`.
 
-        The returned widget must produce values of type `T`.
-        If `default` is given, and the user input is empty (or, in case
-        of `choice` widgets, if the user chooses the default), the widget
-        must produce the :data:`~yuio.MISSING` constant.
+        The returned widget must produce values of type `T`. If `default` is given,
+        and the user input is empty (or, in case of `choice` widgets, if the user
+        chooses the default), the widget must produce
+        the :data:`~yuio.MISSING` constant.
 
         Validating parsers must wrap the widget they got from
         :func:`~ValidatingParser._inner` into :class:`~yuio.widget.Map`
@@ -746,7 +726,7 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
     __wrapped_parser__: Parser[T]
 
     def __init__(self, inner: Parser[T]):
-        self.__wrapped_parser__ = inner
+        self.__wrapped_parser__: Parser[T] = inner
 
     def parse(self, value: str, /) -> T:
         parsed = self.__wrapped_parser__.parse(value)
@@ -1849,17 +1829,17 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
                 raise ParsingError(
                     f'{self._desc} should be greater or equal to {self._lower_bound},'
                     f' got {value} instead')
-            elif not self._lower_bound_is_inclusive and mapped <= self._lower_bound:
+            elif not self._lower_bound_is_inclusive and not self._lower_bound < mapped:
                 raise ParsingError(
                     f'{self._desc} should be greater than {self._lower_bound},'
                     f' got {value} instead')
 
         if self._upper_bound is not None:
-            if self._upper_bound_is_inclusive and mapped > self._upper_bound:
+            if self._upper_bound_is_inclusive and self._upper_bound < mapped:
                 raise ParsingError(
                     f'{self._desc} should be lesser or equal to {self._upper_bound},'
                     f' got {value} instead')
-            elif not self._upper_bound_is_inclusive and mapped >= self._upper_bound:
+            elif not self._upper_bound_is_inclusive and not mapped < self._upper_bound:
                 raise ParsingError(
                     f'{self._desc} should be lesser than {self._upper_bound},'
                     f' got {value} instead')

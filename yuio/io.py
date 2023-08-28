@@ -566,15 +566,15 @@ class _Ask(_t.Generic[T]):
                     % default_description
                 )
             prompt += theme.colorize(": " if needs_colon else " ", default_color="msg/question/text")
+            prompt_s = prompt.merge(term)
             with SuspendLogging() as s:
                 while True:
-                    prompt_s = prompt.merge(term)
                     try:
                         if secure_input:
                             answer = getpass.getpass(prompt_s)
                         else:
                             answer = input(prompt_s)
-                    except EOFError:
+                    except (IOError, OSError) as e:
                         raise UserIoError('unexpected end of input') from None
                     if not answer and default is not yuio.MISSING:
                         return default
@@ -672,7 +672,7 @@ def wait_for_user(
         msg += " "
 
     with SuspendLogging() as s:
-        s.question(msg, *args)
+        s.question(msg, *args, add_newline=False)
         try:
             input()
         except EOFError:
@@ -733,10 +733,10 @@ def edit(
             )
 
         filepath = tempfile.mktemp()
-        with open(filepath, 'w') as file:
-            file.write(text)
-
         try:
+            with open(filepath, 'w') as file:
+                file.write(text)
+
             try:
                 with SuspendLogging():
                     res = subprocess.run(f'{editor} "{filepath}"', shell=True)
@@ -759,7 +759,7 @@ def edit(
 
     if comment_marker is not None:
         text = re.sub(
-            r'^\s*' + re.escape(comment_marker) + r'.*?(\n|\Z)',
+            r'^\s*' + re.escape(comment_marker) + r'.*$',
             '',
             text,
             flags=re.MULTILINE

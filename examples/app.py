@@ -46,13 +46,6 @@ def main(config: Config = yuio.config.inline()):
     yuio.io.info('global config is loaded: `%r`', CONFIG)
 
 
-main.usage = """
-%(prog)s [-q] [-f] [-m] [<branch>]
-%(prog)s [-q] [-f] [-m] --detach [<branch>]
-%(prog)s [-q] [-f] [-m] [--detach] <commit>
-...
-"""
-
 main.epilog = """
 formatting:
     prolog is parsed and colorized according to the general format
@@ -70,10 +63,6 @@ formatting:
       Winding through clouds
 
           -- from heroku art
-      ```
-
-      ```sh
-      cat foo.txt | grep -e "ERROR" | less && echo "1" || true && git add 1;
       ```
 
       And here's another one, with syntax highlighting:

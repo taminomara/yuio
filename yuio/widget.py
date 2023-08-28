@@ -23,6 +23,9 @@ a widget.
 .. autoclass:: Widget
    :members:
 
+.. autoclass:: Result
+   :members:
+
 .. autofunction:: bind
 
 .. autofunction:: help_column
@@ -37,8 +40,8 @@ a widget.
 Drawing and rendering widgets
 -----------------------------
 
-Rendering widgets is done through :class:`RenderContext`, which provides
-simple facilities to print characters on screen and manipulate screen cursor.
+Widgets are rendered through :class:`RenderContext`. It provides simple facilities
+to print characters on screen and manipulate screen cursor.
 
 An important concept here is `Drawing Frames`. Each widget is rendered in its
 drawing frame, which has coordinates and dimensions. Widget's :meth:`~Widget.draw`
@@ -47,6 +50,7 @@ coordinates.
 
 .. autoclass:: RenderContext
    :members:
+
 
 Stacking widgets together
 -------------------------
@@ -72,12 +76,19 @@ Pre-defined widgets
 
 .. autoclass:: Choice
 
+.. autoclass:: Option
+
 .. autoclass:: InputWithCompletion
 
 .. autoclass:: FilterableChoice
 
+.. autoclass:: Map
+
+.. autoclass:: Apply
+
 .. autoclass:: Help
-   :members:
+  :members:
+
 
 """
 
@@ -273,6 +284,7 @@ class RenderContext:
         self._term_color: str = ""
         self._max_term_y: int = 0
         self._out: _t.List[str] = []
+        self._bell: bool = False
 
         # Helpers
         self._none_color: str = _Color.NONE.as_code(term)
@@ -683,14 +695,11 @@ class RenderContext:
             self.write(line, max_width=max_width)
 
     def bell(self):
-        """Immediately ring a terminal bell.
-
-        Cen be used in event handlers to indicate unsuccessful event handling.
+        """Ring a terminal bell.
 
         """
 
-        self._term.stream.write("\a")
-        self._term.stream.flush()
+        self._bell = True
 
     def prepare(self, *, full_redraw: bool = False):
         """Reset output canvas and prepare context for a new round of widget formatting.
@@ -742,8 +751,13 @@ class RenderContext:
         """
 
         if not self.term.can_move_cursor:
-            self._render_dumb()  # For tests, mostly. Widgets can't work with dumb terminals
+             # For tests, mostly. Widgets can't work with dumb terminals
+            self._render_dumb()
             return
+
+        if self._bell:
+            self._out.append("\a");
+            self._bell = False
 
         if self._full_redraw:
             self._move_term_cursor(0, 0, [], True)
@@ -858,8 +872,13 @@ class RenderContext:
 class Result(_t.Generic[T_co]):
     """Result of a widget run.
 
+    We have to wrap the return value of event processors into this class.
+    Otherwise we won't be able to distinguish between returning `None`
+    as result of a ``Widget[None]``, and not returning anything.
+
     """
 
+    #: Result of a widget run.
     value: T_co
 
 
@@ -897,9 +916,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     When widget needs to stop, it can return the :meth:`Result` class
     from its event handler.
 
-    For typing purposes of this process, :class:`Widget` is generic.
-    That is, ``Widget[T]`` returns `T` from its :meth:`~Widget.run` method.
-    So, :class:`Input`, for example, is ``Widget[str]``.
+    For typing purposes, :class:`Widget` is generic. That is, ``Widget[T]``
+    returns `T` from its :meth:`~Widget.run` method. So, :class:`Input`,
+    for example, is ``Widget[str]``.
 
     Some widgets are ``Widget[Never]`` (see :class:`typing.Never`), indicating that
     they don't ever stop. Others are ``Widget[None]``, indicating that they stop,
@@ -907,18 +926,37 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     """
 
+    __keybindings: _t.ClassVar[_t.Dict[KeyboardEvent, _t.Callable[["Widget"], None]]]
+    __callbacks: _t.ClassVar[_t.List[_t.Callable[["Widget"], None]]]
+
+    def __init_subclass__(cls) -> None:
+        cls.__keybindings = {}
+        cls.__callbacks = []
+        event_handler_names = []
+        for base in reversed(cls.__mro__):
+            for name, cb in base.__dict__.items():
+                if (
+                    hasattr(cb, '__yuio_keybindings__')
+                    and name not in event_handler_names
+                ):
+                    event_handler_names.append(name)
+        for name in event_handler_names:
+            cb = getattr(cls, name, None)
+            if cb is not None and hasattr(cb, '__yuio_keybindings__'):
+                cls.__keybindings.update(dict.fromkeys(cb.__yuio_keybindings__, cb))
+                cls.__callbacks.append(cb)
+
     def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
         """Handle incoming keyboard event.
 
-        By default, this function dispatches event
-        to handlers registered via :func:`bind`.
-        If no handler is found, it calls
-        :meth:`~Widget.default_event_handler`.
+        By default, this function dispatches event to handlers registered
+        via :func:`bind`. If no handler is found,
+        it calls :meth:`~Widget.default_event_handler`.
 
         """
 
-        if handler := self._event_bindings.get(e):
-            return handler()
+        if handler := self.__keybindings.get(e):
+            return handler(self)
         else:
             return self.default_event_handler(e)
 
@@ -983,16 +1021,6 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                     rc.finalize()
                     return result.value
 
-    @functools.cached_property
-    def _event_bindings(self) -> _t.Dict[KeyboardEvent, _t.Callable[[], None]]:
-        event_bindings_cache = {}
-        for cls in reversed(self.__class__.__mro__):
-            for name, cb in cls.__dict__.items():
-                if hasattr(cb, '__yuio_keybindings__'):
-                    cb = getattr(self, name)
-                    event_bindings_cache.update(dict.fromkeys(cb.__yuio_keybindings__, cb))
-        return event_bindings_cache
-
     def with_help(self) -> "Widget[T_co]":
         """Return this widget with a :meth:`~Widget.help_widget` added after it.
 
@@ -1045,40 +1073,53 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         """
 
-        bindings: _t.Dict[_t.Callable[[], None], _t.List[KeyboardEvent]] = {}
-        for e, cb in self._event_bindings.items():
-            bindings.setdefault(cb, []).append(e)
+        columns_by_index: _t.Dict[int, Help.Column] = {}
+        free_actions: _t.List[Help.Action] = []
 
-        defined_columns: _t.List["Help.Column"] = []
-        items: _t.List["Help.Action"] = []
-        for cb, events in bindings.items():
-            column = getattr(cb, '__yuio_column__', None)
-            lines = (cb.__doc__ or '').lstrip().splitlines() or ['']
-            help = lines[0]
+        max_defined_column_index = -1
+
+        for cb in self.__callbacks:
+            help = (cb.__doc__ or '').lstrip().split('\n', maxsplit=1)[0]
             if not help:
                 continue
-            item: "Help.Action" = (list(reversed(events)), help)
+
+            events = getattr(cb, '__yuio_help_keybindings__', [])
+            if not events:
+                continue
+
+            item: Help.Action = (list(reversed(events)), help)
+
+            column = getattr(cb, '__yuio_help_column__', None)
             if column is None:
-                items.append(item)
+                free_actions.append(item)
             else:
-                defined_columns += [[] for _ in range((column + 1) - len(defined_columns))]
-                defined_columns[column].append(item)
+                columns_by_index.setdefault(column, []).append(item)
+                max_defined_column_index = max(max_defined_column_index, column)
 
-        if defined_columns and items:
-            return defined_columns + [items]
-        elif defined_columns:
-            return defined_columns
-        else:
-            return [[item] for item in items]
+        columns = [
+            columns_by_index[i]
+            for i in range(max_defined_column_index + 1)
+            if i in columns_by_index
+        ]
+
+        return columns + [[action] for action in free_actions]
 
 
-def bind(key: _t.Union[str, Key], ctrl: bool = False, alt: bool = False) -> _t.Callable[[T], T]:
+def bind(
+    key: _t.Union[str, Key],
+    ctrl: bool = False,
+    alt: bool = False,
+    show_in_help: bool = True,
+) -> _t.Callable[[T], T]:
     """Register an event handler for a widget.
 
     Widget's methods can be registered as handlers for keyboard events.
     When a new event comes in, it is checked to match arguments of this decorator.
     If there is a match, the decorated method is called
     instead of the :meth:`Widget.default_event_handler`.
+
+    If `show_in_help` is false, this binding will be hidden in the automatically
+    generated help message.
 
     Example::
 
@@ -1097,7 +1138,11 @@ def bind(key: _t.Union[str, Key], ctrl: bool = False, alt: bool = False) -> _t.C
     def decorate(f: T) -> T:
         if not hasattr(f, '__yuio_keybindings__'):
             setattr(f, '__yuio_keybindings__', [])
-        getattr(f, '__yuio_keybindings__').append(KeyboardEvent(key=key, ctrl=ctrl, alt=alt))
+            setattr(f, '__yuio_help_keybindings__', [])
+        e = KeyboardEvent(key=key, ctrl=ctrl, alt=alt)
+        getattr(f, '__yuio_keybindings__').append(e)
+        if show_in_help:
+            getattr(f, '__yuio_help_keybindings__').append(e)
         return f
     return decorate
 
@@ -1123,7 +1168,7 @@ def help_column(column: int, /) -> _t.Callable[[T], T]:
     """
 
     def decorate(f: T) -> T:
-        setattr(f, '__yuio_column__', column)
+        setattr(f, '__yuio_help_column__', column)
         return f
     return decorate
 
@@ -1391,11 +1436,19 @@ class Input(Widget[str]):
 
     _WORD_SEPARATORS = string.punctuation + string.whitespace
 
-    def __init__(self, *, text: str = '', placeholder: str = '', decoration: str = ''):
+    def __init__(
+        self,
+        *,
+        text: str = '',
+        placeholder: str = '',
+        decoration: str = '',
+        allow_multiline: bool = False
+    ):
         self._text: str = text
         self._pos: int = len(text)
         self._placeholder: str = placeholder
         self._decoration: str = decoration
+        self._allow_multiline: bool = allow_multiline
 
         self._wrapped_text_width: int = 0
         self._wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
@@ -1404,6 +1457,7 @@ class Input(Widget[str]):
         self._history: _t.List[_t.Tuple[str, int, str]] = [(self._text, self._pos, "sym")]
         self._history_skipped_actions = 0
         self._require_checkpoint: bool = False
+        self._yanked_text: str = ""
 
     @property
     def text(self) -> str:
@@ -1457,6 +1511,7 @@ class Input(Widget[str]):
         self._require_checkpoint = False
 
     @bind(Key.ARROW_UP)
+    @bind('p', ctrl=True)
     def up(self, /, *, checkpoint: bool = True):
         pos = self.pos
         self.home()
@@ -1480,6 +1535,7 @@ class Input(Widget[str]):
         self._require_checkpoint |= checkpoint
 
     @bind(Key.ARROW_DOWN)
+    @bind('n', ctrl=True)
     def down(self, /, *, checkpoint: bool = True):
         pos = self.pos
         self.home()
@@ -1581,6 +1637,7 @@ class Input(Widget[str]):
         self.left_word(checkpoint=False)
         if prev_pos != self.pos:
             self._internal_checkpoint("del", self.text, prev_pos)
+            self._yanked_text = self.text[self.pos:prev_pos]
             self.text = self.text[:self.pos] + self.text[prev_pos:]
 
     @bind(Key.DELETE, alt=True)
@@ -1590,6 +1647,7 @@ class Input(Widget[str]):
         self.right_word(checkpoint=False)
         if prev_pos != self.pos:
             self._internal_checkpoint("del", self.text, prev_pos)
+            self._yanked_text = self.text[prev_pos:self.pos]
             self.text = self.text[:prev_pos] + self.text[self.pos:]
             self.pos = prev_pos
 
@@ -1599,30 +1657,43 @@ class Input(Widget[str]):
         self.home(checkpoint=False)
         if prev_pos != self.pos:
             self._internal_checkpoint("del", self.text, prev_pos)
+            self._yanked_text = self.text[self.pos:prev_pos]
             self.text = self.text[:self.pos] + self.text[prev_pos:]
 
-    @bind(Key.BACKSPACE, alt=True)
     @bind('k', ctrl=True)
     def delete_end(self):
         prev_pos = self.pos
         self.end(checkpoint=False)
         if prev_pos != self.pos:
             self._internal_checkpoint("del", self.text, prev_pos)
+            self._yanked_text = self.text[prev_pos:self.pos]
             self.text = self.text[:prev_pos] + self.text[self.pos:]
             self.pos = prev_pos
 
+    # M-y alternative because C-y sends
+    @bind('y', ctrl=True)
+    @bind('y', alt=True)
+    def yank(self):
+        self.insert(self._yanked_text)
+
     @bind(Key.ENTER)
     def enter(self) -> _t.Optional[Result[str]]:
-        return self.alt_enter()
+        """accept"""
+        return Result(self.text)
 
     @bind(Key.ENTER, alt=True)
     def alt_enter(self) -> _t.Optional[Result[str]]:
-        return Result(self.text)
+        if self._allow_multiline:
+            self.insert("\n")
+        else:
+            return self.enter()
 
-    @bind('7', ctrl=True)  # no idea why, but `^_` and `^7` are the same code...
-    @bind('-', ctrl=True)
+    # the actual shortcut is `C-7`, the rest produce the same code...
+    @bind('7', ctrl=True, show_in_help=False)
+    @bind('-', ctrl=True, show_in_help=False)
     @bind('_', ctrl=True)
     def undo(self):
+        """undo"""
         self.text, self.pos, _ = self._history[-1]
         if len(self._history) > 1:
             self._history.pop()
@@ -1700,6 +1771,15 @@ class Input(Widget[str]):
         if self._pos_after_wrap is not None:
             rc.set_final_pos(*self._pos_after_wrap)
 
+    @functools.cached_property
+    def help_columns(self) -> _t.List["Help.Column"]:
+        columns = []
+        if self._allow_multiline:
+            columns.append([(KeyboardEvent(Key.ENTER, alt=True), "insert newline")])
+        columns += super().help_columns
+        columns.append(["emacs keybindings are supported"])
+        return columns
+
 
 @dataclass(frozen=True, **yuio._with_slots())
 class Option(_t.Generic[T_co]):
@@ -1750,8 +1830,8 @@ class Choice(Widget[T], _t.Generic[T]):
         default_index: _t.Optional[int] = 0,
     ):
         self._options: _t.List[Option[T]]
-        self._current_idx: _t.Optional[int]
-
+        self._index: _t.Optional[int]
+        self.__bell: bool = False
         self._column_width: int
         self._num_rows: int
         self._num_columns: int
@@ -1759,24 +1839,26 @@ class Choice(Widget[T], _t.Generic[T]):
         self._decoration = decoration
 
         self.set_options(options)
-        self.set_index(default_index)
+        self.index = default_index
 
     @property
     def _page_size(self) -> int:
         return self._num_rows * self._num_columns
 
-    def set_index(self, idx: _t.Optional[int]):
-        if idx is None or not self._options:
-            self._current_idx = None
-        elif self._options:
-            self._current_idx = idx % len(self._options) if idx is not None else 0
+    @property
+    def index(self) -> _t.Optional[int]:
+        return self._index
 
-    def get_index(self) -> _t.Optional[int]:
-        return self._current_idx
+    @index.setter
+    def index(self, idx: _t.Optional[int]):
+        if idx is None or not self._options:
+            self._index = None
+        elif self._options:
+            self._index = idx % len(self._options) if idx is not None else 0
 
     def get_option(self) -> _t.Optional[Option[T]]:
-        if self._options and self._current_idx is not None:
-            return self._options[self._current_idx]
+        if self._options and self._index is not None:
+            return self._options[self._index]
 
     def has_options(self) -> bool:
         return bool(self._options)
@@ -1784,7 +1866,7 @@ class Choice(Widget[T], _t.Generic[T]):
     def set_options(self, options: _t.List[Option[T]], /, default_index: _t.Optional[int] = 0):
         self._options = options
         self._column_width = max(0, _MIN_COLUMN_WIDTH, *map(self._get_option_width, options))
-        self.set_index(default_index)
+        self.index = default_index
 
     @bind(Key.ARROW_UP)
     @bind('k')
@@ -1793,10 +1875,10 @@ class Choice(Widget[T], _t.Generic[T]):
         if not self._options:
             return
 
-        if self._current_idx is None:
-            self._current_idx = len(self._options) - 1
+        if self._index is None:
+            self._index = len(self._options) - 1
         else:
-            self._current_idx = (self._current_idx - 1) % len(self._options)
+            self._index = (self._index - 1) % len(self._options)
 
     @bind(Key.ARROW_DOWN)
     @bind('j')
@@ -1805,73 +1887,75 @@ class Choice(Widget[T], _t.Generic[T]):
         if not self._options:
             return
 
-        if self._current_idx is None:
-            self._current_idx = 0
+        if self._index is None:
+            self._index = 0
         else:
-            self._current_idx = (self._current_idx + 1) % len(self._options)
+            self._index = (self._index + 1) % len(self._options)
 
     @bind(Key.ARROW_LEFT)
     @bind('h')
     def prev_column(self):
-        if not self._options or self._current_idx is None:
+        if not self._options or self._index is None:
             return
 
         total_data_size_with_tail = self._num_rows * math.ceil(len(self._options) / self._num_rows)
 
-        self._current_idx = (self._current_idx - self._num_rows) % total_data_size_with_tail
-        if self._current_idx >= len(self._options):
-            self._current_idx = len(self._options) - 1
+        self._index = (self._index - self._num_rows) % total_data_size_with_tail
+        if self._index >= len(self._options):
+            self._index = len(self._options) - 1
 
     @bind(Key.ARROW_RIGHT)
     @bind('l')
     def next_column(self):
-        if not self._options or self._current_idx is None:
+        if not self._options or self._index is None:
             return
 
         total_data_size_with_tail = self._num_rows * math.ceil(len(self._options) / self._num_rows)
 
-        self._current_idx = (self._current_idx + self._num_rows) % total_data_size_with_tail
-        if self._current_idx >= len(self._options):
-            self._current_idx = len(self._options) - 1
+        self._index = (self._index + self._num_rows) % total_data_size_with_tail
+        if self._index >= len(self._options):
+            self._index = len(self._options) - 1
 
     @bind(Key.PAGE_DOWN)
     def next_page(self):
-        if not self._options or self._current_idx is None:
+        if not self._options or self._index is None:
             return
 
-        self._current_idx -= self._current_idx % self._page_size
-        self._current_idx += self._page_size
-        if self._current_idx > len(self._options):
-            self._current_idx = 0
+        self._index -= self._index % self._page_size
+        self._index += self._page_size
+        if self._index > len(self._options):
+            self._index = 0
 
     @bind(Key.PAGE_UP)
     def prev_page(self):
-        if not self._options or self._current_idx is None:
+        if not self._options or self._index is None:
             return
 
-        self._current_idx -= self._current_idx % self._page_size
-        self._current_idx -= 1
-        if self._current_idx < 0:
-            self._current_idx = len(self._options) - 1
+        self._index -= self._index % self._page_size
+        self._index -= 1
+        if self._index < 0:
+            self._index = len(self._options) - 1
 
     @bind(Key.HOME)
     def home(self):
-        if not self._options or self._current_idx is None:
+        if not self._options or self._index is None:
             return
 
-        self._current_idx = 0
+        self._index = 0
 
     @bind(Key.END)
     def end(self):
-        if not self._options or self._current_idx is None:
+        if not self._options or self._index is None:
             return
 
-        self._current_idx = len(self._options) - 1
+        self._index = len(self._options) - 1
 
     @bind(Key.ENTER)
     def enter(self) -> _t.Optional[Result[T]]:
-        if self._options and self._current_idx is not None:
-            return Result(self._options[self._current_idx].value)
+        if self._options and self._index is not None:
+            return Result(self._options[self._index].value)
+        else:
+            self.__bell = True
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         self._column_width = max(1, min(self._column_width, rc.width))
@@ -1881,6 +1965,15 @@ class Choice(Widget[T], _t.Generic[T]):
         return 1, self._num_rows
 
     def draw(self, rc: RenderContext, /):
+        if self.__bell:
+            rc.bell()
+            self.__bell = False
+
+        if not self._options:
+            rc.set_color_path('menu/input/decoration')
+            rc.write('No options to display')
+            return
+
         # Adjust for the actual available height.
         self._num_rows = min(self._num_rows, rc.height)
 
@@ -1889,8 +1982,8 @@ class Choice(Widget[T], _t.Generic[T]):
         page_size = self._page_size
 
         page_start_index = 0
-        if page_size and self._current_idx is not None:
-            page_start_index = self._current_idx - self._current_idx % page_size
+        if page_size and self._index is not None:
+            page_start_index = self._index - self._index % page_size
         page = self._options[page_start_index:page_start_index + page_size]
 
         for i, option in enumerate(page):
@@ -1899,7 +1992,7 @@ class Choice(Widget[T], _t.Generic[T]):
 
             rc.set_pos(x * column_width, y)
 
-            is_current = i + page_start_index == self._current_idx
+            is_current = i + page_start_index == self._index
             self._render_option(rc, column_width - _SPACE_BETWEEN_COLUMNS, option, is_current)
 
     def _get_option_width(self, option: Option):
@@ -2009,7 +2102,7 @@ class InputWithCompletion(Widget[str]):
         self._input = Input(placeholder=placeholder, decoration=decoration)
         self._choice = Choice[yuio.complete.Completion]([], decoration=completion_item_decoration)
         self._choice_active = False
-        self._completion_was_failed: bool = False
+        self.__bell: bool = False
 
         self._prev_text: str = ''
         self._prev_pos: int = 0
@@ -2057,12 +2150,12 @@ class InputWithCompletion(Widget[str]):
             )
             self._activate_completion()
         else:
-            self._completion_was_failed = True
+            self.__bell = True
 
     def default_event_handler(self, e: KeyboardEvent):
         if self._choice_active and e.key in (Key.ARROW_UP, Key.ARROW_DOWN, Key.TAB, Key.SHIFT_TAB, Key.PAGE_UP, Key.PAGE_DOWN):
             self._dispatch_completion_event(e)
-        elif self._choice_active and self._choice.get_index() is not None and e.key in (Key.ARROW_RIGHT, Key.ARROW_LEFT):
+        elif self._choice_active and self._choice.index is not None and e.key in (Key.ARROW_RIGHT, Key.ARROW_LEFT):
             self._dispatch_completion_event(e)
         else:
             self._dispatch_input_event(e)
@@ -2132,9 +2225,9 @@ class InputWithCompletion(Widget[str]):
         return self._layout.layout(rc)
 
     def draw(self, rc: RenderContext, /):
-        if self._completion_was_failed:
+        if self.__bell:
             rc.bell()
-            self._completion_was_failed = False
+            self.__bell = False
 
         self._layout.draw(rc)
 
@@ -2184,7 +2277,6 @@ class FilterableChoice(Widget[T], _t.Generic[T]):
 
         self._input = Input(placeholder='Filter options...', decoration='/')
         self._choice = Choice[T]([])
-        self._no_options_text = Line('No options to display', color_path='menu/input/decoration')
 
         self._enable_search = False
 
@@ -2194,14 +2286,12 @@ class FilterableChoice(Widget[T], _t.Generic[T]):
 
     @bind(Key.ESCAPE)
     def esc(self):
-        """select default"""
         self._input.text = ""
         self._update_completion()
         self._enable_search = False
 
     @bind('/')
     def search(self):
-        """search options"""
         if not self._enable_search:
             self._enable_search = True
         else:
@@ -2230,15 +2320,12 @@ class FilterableChoice(Widget[T], _t.Generic[T]):
                 options.append(option)
 
         self._choice.set_options(options)
-        self._choice.set_index(index)
+        self._choice.index = index
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         self._layout = VerticalLayout()
+        self._layout.append(self._choice)
 
-        if self._choice.has_options():
-            self._layout.append(self._choice)
-        else:
-            self._layout.append(self._no_options_text)
         if self._enable_search:
             self._layout.append(self._input)
         elif len(self._options) > 3:
@@ -2249,8 +2336,42 @@ class FilterableChoice(Widget[T], _t.Generic[T]):
     def draw(self, rc: RenderContext, /):
         self._layout.draw(rc)
 
+    def with_help(self) -> Widget[T]:
+        return self
+
+    @functools.cached_property
+    def help_columns(self) -> _t.List["Help.Column"]:
+        return self._choice.help_columns + [
+            [
+                (
+                    "/",
+                    "search",
+                )
+            ]
+        ]
+
 
 class Map(Widget[U], _t.Generic[T, U]):
+    """A wrapper that maps result of the given widget using the given function.
+
+    ..
+        >>> class Input(Widget):
+        ...     def event(self, e): return Result("10")
+        ...     def layout(self, rc): return 0, 0
+        ...     def draw(self, rc): pass
+        >>> class Map(Map):
+        ...     def run(self, term, theme): return self.event(None).value
+        >>> term, theme = None, None
+
+    Example::
+
+        >>> # Run `Input` widget, then parse user input as `int`.
+        >>> int_input = Map(Input(), int)
+        >>> int_input.run(term, theme)
+        10
+
+    """
+
     def __init__(self, inner: Widget[T], fn: _t.Callable[[T], U], /):
         self._inner: Widget[T] = inner
         self._fn: _t.Callable[[T], U] = fn
@@ -2271,6 +2392,28 @@ class Map(Widget[U], _t.Generic[T, U]):
 
 
 class Apply(Widget[T], _t.Generic[T]):
+    """A wrapper that applies the given function to the return of a wrapped widget.
+
+    ..
+        >>> class Input(Widget):
+        ...     def event(self, e): return Result("foobar!")
+        ...     def layout(self, rc): return 0, 0
+        ...     def draw(self, rc): pass
+        >>> class Apply(Apply):
+        ...     def run(self, term, theme): return self.event(None).value
+        >>> term, theme = None, None
+
+    Example::
+
+        >>> # Run `Input` widget, then print its output before returning
+        >>> print_input = Apply(Input(), print)
+        >>> result = print_input.run(term, theme)
+        foobar!
+        >>> result
+        'foobar!'
+
+    """
+
     def __init__(self, inner: Widget[T], fn: _t.Callable[[T], None], /):
         self._inner: Widget[T] = inner
         self._fn: _t.Callable[[T], None] = fn
@@ -2313,20 +2456,20 @@ class Help(Widget[_t.Never]):
     #: A single column of actions.
     Column: _t.TypeAlias = _t.List["Help.Action"]
 
-    _ALT = '⎇'
-    _CTRL = '⌃'
-    _SHIFT = '⇧'
+    _ALT = 'M-'
+    _CTRL = 'C-'
+    _SHIFT = 'S-'
 
     _KEY_SYMBOLS = {
         Key.ENTER: '⏎',
-        Key.ESCAPE: '⎋',
+        Key.ESCAPE: 'esc',
         Key.DELETE: '⌦',
         Key.BACKSPACE: '⌫',
-        Key.TAB: '⇥',
-        Key.HOME: '↖︎',
-        Key.END: '↘︎',
-        Key.PAGE_UP: '⇞',
-        Key.PAGE_DOWN: '⇟',
+        Key.TAB: 'tab',
+        Key.HOME: 'home',
+        Key.END: 'end',
+        Key.PAGE_UP: 'pgup',
+        Key.PAGE_DOWN: 'pgdn',
         Key.ARROW_UP: '↑',
         Key.ARROW_DOWN: '↓',
         Key.ARROW_LEFT: '←',
@@ -2456,7 +2599,7 @@ class Help(Widget[_t.Never]):
                 rc.move_pos(keys_column_width - keys_width, 0)
                 sep = ''
                 for key in keys:
-                    rc.set_color_path('menu/help/text')
+                    rc.set_color_path('menu/help/plain_text')
                     rc.write(sep)
                     rc.set_color_path('menu/help/key')
                     rc.write(key)
@@ -2464,7 +2607,10 @@ class Help(Widget[_t.Never]):
 
                 if keys_column_width:
                     rc.move_pos(1, 0)
-                rc.set_color_path('menu/help/text')
+                if keys:
+                    rc.set_color_path('menu/help/text')
+                else:
+                    rc.set_color_path('menu/help/key')
                 rc.write(help)
 
             x += column_width
@@ -2486,6 +2632,7 @@ class Help(Widget[_t.Never]):
             [['a1', 'a2'], ['b1', 'b2'], ['c2']]
 
         """
+
         return [list(itertools.chain(*column_parts)) for column_parts in itertools.zip_longest(*columns, fillvalue=[])]
 
     def _draw_action(self, rc: RenderContext, action: _t.Tuple[_t.List[str], str], x: int, y: int, action_keys_width: int):
