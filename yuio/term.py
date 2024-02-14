@@ -92,7 +92,6 @@ Utilities
 
 """
 
-import collections
 import colorsys
 import contextlib
 import dataclasses
@@ -109,10 +108,6 @@ from dataclasses import dataclass
 import yuio
 
 T = _t.TypeVar("T")
-
-_STDIN: _t.TextIO = sys.__stdin__
-_STDOUT: _t.TextIO = sys.__stdout__
-_STDERR: _t.TextIO = sys.__stderr__
 
 
 class Lightness(enum.Enum):
@@ -225,20 +220,6 @@ class Term:
         return self.has_colors and self.interactive_support >= InteractiveSupport.FULL
 
 
-@functools.cache
-def get_stdout_info() -> Term:
-    """Query info about stdout stream."""
-
-    return _get_term_info(_STDOUT)
-
-
-@functools.cache
-def get_stderr_info() -> Term:
-    """Query info about stderr stream."""
-
-    return _get_term_info(_STDERR)
-
-
 _CI_ENV_VARS = [
     "TRAVIS",
     "CIRCLECI",
@@ -250,7 +231,35 @@ _CI_ENV_VARS = [
 ]
 
 
-def _get_term_info(stream: _t.TextIO) -> Term:
+def get_term(*, prefer_stdout: bool = False, query_theme: bool = True) -> Term:
+    """Query info about a terminal attached to :data:`sys.stderr`.
+
+    This function checks if stderr is connected to a TTY, and determines
+    terminal's capabilities. If `query_theme` is true (the default), and both stderr
+    and stdin are tty, this function will query terminal's background color
+    via ANSI escape sequences.
+
+    If `prefer_stdout` is true, this function uses a terminal attached
+    to :data:`sys.stdout` instead of :data:`sys.stderr`. If running in a jupyter
+    notebook, :data:`sys.stdout` is used regardless of this argument's value.
+
+    """
+
+    if is_in_jupyter_notebook():
+        return Term(sys.stdout, color_support=ColorSupport.ANSI_TRUE)
+    else:
+        stream = sys.stdout if prefer_stdout else sys.stderr
+        return get_term_from_stream(stream, query_theme=query_theme)
+
+
+def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> Term:
+    """Query info about a terminal attached to the given stream.
+
+    This function is similar to :func:`get_term`, except that it doesn't handle
+    the case when we're in a jupyter notebook.
+
+    """
+
     # Note: we don't rely on argparse to parse out flags and send them to us
     # because these functions can be called before parsing arguments.
     if (
@@ -266,8 +275,8 @@ def _get_term_info(stream: _t.TextIO) -> Term:
     colorterm = os.environ.get("COLORTERM", "").lower()
 
     has_interactive_output = _is_interactive_output(stream)
-    has_interactive_input = _is_interactive_input(_STDIN)
-    is_foreground = _is_foreground(stream) and _is_foreground(_STDIN)
+    has_interactive_input = _is_interactive_input(sys.stdin)
+    is_foreground = _is_foreground(stream) and _is_foreground(sys.stdin)
 
     color_support = ColorSupport.NONE
     in_ci = "CI" in os.environ
@@ -300,7 +309,8 @@ def _get_term_info(stream: _t.TextIO) -> Term:
     if is_foreground and color_support >= ColorSupport.ANSI and not in_ci:
         if has_interactive_output and has_interactive_input:
             interactive_support = InteractiveSupport.FULL
-            lightness, background_color = _get_lightness(stream)
+            if query_theme:
+                lightness, background_color = _get_lightness(stream)
         else:
             interactive_support = InteractiveSupport.MOVE_CURSOR
 
@@ -400,6 +410,24 @@ def _is_interactive_output(stream: _t.Optional[_t.IO]) -> bool:
         return False
 
 
+def is_in_jupyter_notebook() -> bool:
+    """Return true if we're running in a jupyter notebook.
+
+    """
+
+    try:
+        import IPython  # type: ignore
+        return (
+            IPython.get_ipython() is not None  # type: ignore
+            # Being attached to a TTY means that we're in a terminal, not in a notebook.
+            and not _is_tty(sys.__stderr__)
+            and not _is_tty(sys.__stdout__)
+            and not _is_tty(sys.__stdin__)
+        )
+    except ImportError:
+        return False
+
+
 # Platform-specific code for working with terminals.
 if os.name == "posix":
     import select
@@ -408,22 +436,21 @@ if os.name == "posix":
 
     @contextlib.contextmanager
     def _set_cbreak():
-        prev_mode = termios.tcgetattr(_STDIN)
-        tty.setcbreak(_STDIN, termios.TCSANOW)
+        prev_mode = termios.tcgetattr(sys.stdin)
+        tty.setcbreak(sys.stdin, termios.TCSANOW)
 
         try:
             yield
         finally:
-            termios.tcsetattr(_STDIN, termios.TCSAFLUSH, prev_mode)
+            termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, prev_mode)
 
     def _getch() -> bytes:
-        return os.read(_STDIN.fileno(), 1)
+        return os.read(sys.stdin.fileno(), 1)
 
     def _kbhit(timeout: float = 0) -> bool:
-        return bool(select.select([_STDIN], [], [], timeout)[0])
+        return bool(select.select([sys.stdin], [], [], timeout)[0])
 
 else:
-
     @contextlib.contextmanager
     def _set_cbreak():
         raise OSError("not supported")
@@ -501,6 +528,23 @@ class ColorValue:
 
         return cls(_parse_hex(h))
 
+    def to_hex(self) -> str:
+        """Return color in hex format with leading ``#``.
+
+        Example::
+
+            >>> a = ColorValue.from_hex('#A01E9C')
+            >>> a.to_hex()
+            '#A01E9C'
+
+        """
+
+        if isinstance(self.data, int):
+            r, g, b = _8_to_rgb(self.data)
+        else:
+            r, g, b = self.data
+        return f"#{r:02x}{g:02x}{b:02x}"
+
     def darken(self, amount: float, /) -> "ColorValue":
         """Make this color darker by the given percentage.
 
@@ -575,22 +619,22 @@ class ColorValue:
             return lambda f, /: colors[0]
 
     def _as_fore(self, term: Term, /) -> str:
-        return self._as_code("3", term)
+        return f"3{self._as_code(term)}"
 
     def _as_back(self, term: Term, /) -> str:
-        return self._as_code("4", term)
+        return f"4{self._as_code(term)}"
 
-    def _as_code(self, fg_bg_code: str, term: Term, /) -> str:
+    def _as_code(self, term: Term, /) -> str:
         if not term.has_colors:
             return ""
         elif isinstance(self.data, int):
-            return f"{fg_bg_code}{self.data}"
+            return f"{self.data}"
         elif term.has_colors_true:
-            return f"{fg_bg_code}8;2;{self.data[0]};{self.data[1]};{self.data[2]}"
+            return f"8;2;{self.data[0]};{self.data[1]};{self.data[2]}"
         elif term.has_colors_256:
-            return f"{fg_bg_code}8;5;{_rgb_to_256(*self.data)}"
+            return f"8;5;{_rgb_to_256(*self.data)}"
         else:
-            return f"{fg_bg_code}{_rgb_to_8(*self.data)}"
+            return f"{_rgb_to_8(*self.data)}"
 
     def __repr__(self) -> str:
         if isinstance(self.data, tuple):
@@ -815,6 +859,30 @@ class Color:
         else:
             return "\x1b[m"
 
+    def _as_span(self) -> str:
+        styles = []
+        classes = []
+        if self.fore:
+            if isinstance(self.fore.data, int) and 0 <= self.fore.data < 9:
+                classes.append(f"ansi-{_COLOR_NAMES[self.fore.data]}-fg")
+            else:
+                styles.append(f"color: {self.fore.to_hex()}")
+        if self.back:
+            if isinstance(self.back.data, int) and 0 <= self.back.data < 9:
+                classes.append(f"ansi-{_COLOR_NAMES[self.back.data]}-bg")
+            else:
+                styles.append(f"background-color: {self.back.to_hex()}")
+        if self.bold:
+            styles.append("font-weight: bold")
+        if self.dim:
+            styles.append("opacity: 0.7")
+        res = "<span"
+        if classes:
+            res += f" class=\"{' '.join(classes)}\""
+        if styles:
+            res += f" style=\"{'; '.join(classes)}\""
+        return res + ">"
+
     #: No color.
     NONE: _t.ClassVar["Color"] = lambda: Color()  # type: ignore
 
@@ -891,11 +959,29 @@ def _rgb_to_8(r: int, g: int, b: int) -> int:
         | (1 if b >= 128 else 0) << 2
     )
 
+def _8_to_rgb(code: int) -> _t.Tuple[int, int, int]:
+    return (
+        (code & 1) and 0xFF,
+        (code & 2) and 0xFF,
+        (code & 4) and 0xFF,
+    )
+
+_COLOR_NAMES = [
+    "black",
+    "red",
+    "green",
+    "yellow",
+    "blue",
+    "magenta",
+    "cyan",
+    "white",
+]
+
 
 def _parse_hex(h: str) -> _t.Tuple[int, int, int]:
     if not re.match(r"^#[0-9a-fA-F]{6}$", h):
         raise ValueError(f"invalid hex string {h!r}")
-    return tuple(int(h[i : i + 2], 16) for i in (1, 3, 5))
+    return tuple(int(h[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore
 
 
 def _adjust_lightness(color: ColorValue, factor: float):
@@ -955,11 +1041,25 @@ class Theme:
 
     """
 
+    #: Decorative symbols for certain text elements, such as headings,
+    #: list items, etc.
+    #:
+    #:
     msg_decorations: _t.Mapping[str, str] = {
-        "heading": "⣿",
-        "question": ">",
-        "task": ">",
-        "group": "",
+        "heading/section": "",
+        "heading/1": "⣿ ",
+        "heading/2": "",
+        "heading/3": "",
+        "heading/4": "",
+        "heading/5": "",
+        "heading/6": "",
+        "question": "> ",
+        "task": "> ",
+        "thematic_break": "╌╌╌╌╌",
+        "list": "•   ",
+        "quote": ">   ",
+        "code": " " * 8,
+
         # TODO: support these in widgets
         # 'menu_selected_item': '▶︎',
         # 'menu_default_item': '★',
@@ -988,7 +1088,8 @@ class Theme:
     #: Mapping of color paths to actual colors.
     #:
     #: Themes use color paths to describe styles and colors for different
-    #: parts of an application. Color paths are similar to file paths.
+    #: parts of an application. Color paths are similar to file paths,
+    #: they use snake case identifiers separated by slashes.
     #: For example, a color for the filled part of the task's progress bar
     #: has path ``'task/progressbar/done'``.
     #:
@@ -1064,6 +1165,9 @@ class Theme:
     #: This is possible because `__init_subclass__` wraps any implementation
     #: of `__init__` into a wrapper that sets this variable.
     __expected_source: _t.Optional[type] = None
+
+    def __init__(self):
+        pass
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -1163,7 +1267,7 @@ class Theme:
                 f"_set_color_if_not_overridden should only be called from __init__"
             )
         source = self.__color_sources.get(path, Theme)
-        # The class that's `__init__` is currently running should be a parent
+        # The class who's `__init__` is currently running should be a parent
         # of the color's source. This means that the color was assigned by a parent.
         if source is not None and issubclass(self.__expected_source, source):
             self.set_color(path, color)
@@ -1182,37 +1286,119 @@ class Theme:
         self.__colors[path] = color
         self.__color_sources[path] = self.__expected_source
         self.get_color.cache_clear()
+        self.__dict__.pop("_Theme__color_tree", None)
+
+    @dataclass(**yuio._with_slots())
+    class __ColorTree:
+        """
+        Prefix-like tree that contains all of the theme's colors.
+
+        """
+
+        #: Colors in this node.
+        colors: _t.Union[str, Color, _t.List[_t.Union[str, Color]]] = Color.NONE
+
+        #: Location part of the tree.
+        loc: _t.Dict[str, "Theme.__ColorTree"] = dataclasses.field(default_factory=dict)
+
+        #: Context part of the tree.
+        ctx: _t.Dict[str, "Theme.__ColorTree"] = dataclasses.field(default_factory=dict)
+
+    @functools.cached_property
+    def __color_tree(self) -> "Theme.__ColorTree":
+        root = self.__ColorTree()
+
+        for path, colors in self.__colors.items():
+            loc, ctx = self.__parse_path(path)
+
+            node = root
+
+            for part in loc:
+                if part not in node.loc:
+                    node.loc[part] = self.__ColorTree()
+                node = node.loc[part]
+
+            for part in ctx:
+                if part not in node.ctx:
+                    node.ctx[part] = self.__ColorTree()
+                node = node.ctx[part]
+
+            node.colors = colors
+
+        return root
+
+    @staticmethod
+    def __parse_path(path: str, /) -> _t.Tuple[_t.List[str], _t.List[str]]:
+        path_parts = path.split(':', maxsplit=1)
+        if len(path_parts) == 1:
+            loc, ctx = path_parts[0], ""
+        else:
+            loc, ctx = path_parts
+        return loc.split("/"), ctx.split("/")
 
     @_t.final
     @functools.cache
     def get_color(self, path: str, /) -> Color:
         """Lookup a color by path."""
 
+        loc, ctx = self.__parse_path(path)
+        return self.__get_color_in_loc(self.__color_tree, loc, ctx)
+
+    def __get_color_in_loc(self, node: "Theme.__ColorTree", loc: _t.List[str], ctx: _t.List[str]):
         color = Color.NONE
 
-        for prefix in self.__prefixes(path.split("/")):
-            if (res := self.__colors.get("/".join(prefix))) is not None:
-                if isinstance(res, str):
-                    color |= self.get_color(res)
-                elif isinstance(res, list):
-                    for c in res:
-                        color |= self.get_color(c) if isinstance(c, str) else c
-                else:
-                    color |= res
+        for part in loc:
+            if part not in node.loc:
+                break
+            color |= self.__get_color_in_ctx(node, ctx)
+            node = node.loc[part]
+
+        return color | self.__get_color_in_ctx(node, ctx)
+
+    def __get_color_in_ctx(self, node: "Theme.__ColorTree", ctx: _t.List[str]):
+        color = Color.NONE
+
+        for part in ctx:
+            if part not in node.ctx:
+                break
+            color |= self.__get_color_in_node(node)
+            node = node.ctx[part]
+
+        return color | self.__get_color_in_node(node)
+
+    def __get_color_in_node(self, node: "Theme.__ColorTree") -> Color:
+        color = Color.NONE
+
+        if isinstance(node.colors, str):
+            color |= self.get_color(node.colors)
+        elif isinstance(node.colors, list):
+            for c in node.colors:
+                color |= self.get_color(c) if isinstance(c, str) else c
+        else:
+            color |= node.colors
 
         return color
 
-    @staticmethod
-    def __prefixes(it: _t.List[T]) -> _t.Iterable[_t.List[T]]:
-        for i in range(1, len(it) + 1):
-            yield it[:i]
+    def to_color(self, color_or_path: _t.Union[Color, str, None]) -> Color:
+        """
+        Convert color or color path to color.
+
+        """
+
+        if color_or_path is None:
+            return Color.NONE
+        elif isinstance(color_or_path, Color):
+            return color_or_path
+        else:
+            return self.get_color(color_or_path)
 
     __TAG_RE = re.compile(
         r"""
-              <c:(?P<tag_open>[a-z0-9, _/@]+)>  # Color tag open.
+              <c (?P<tag_open>[a-z0-9 _/@]+)>   # Color tag open.
             | </c>                              # Color tag close.
+            | \\(?P<punct>%(punct)s)
             | `(?P<code>(?:``|[^`])*)`          # Inline code block (backticks).
-        """,
+        """ % { "punct": re.escape(string.punctuation) },
         re.VERBOSE,
     )
     __NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
@@ -1229,14 +1415,17 @@ class Theme:
         """Colorize the given string.
 
         Apply `default_color` to the entire message, and process color tags
-        within the message.
+        and backticks within the message.
+
+        If `parse_cli_flags_in_backticks` is true, anything within backticks that
+        resembles a CLI flag will be highlighted using `cli/flag` tag.
 
         """
 
         if isinstance(default_color, str):
             default_color = self.get_color(default_color)
 
-        raw: "RawColorizedString" = []
+        raw: _t.List[_t.Union[str, Color]] = []
         raw.append(default_color)
 
         stack = [default_color]
@@ -1274,179 +1463,6 @@ class Theme:
 
         return ColorizedString(raw)
 
-    __PY_KWDS = [
-        "and",
-        "as",
-        "assert",
-        "async",
-        "await",
-        "break",
-        "class",
-        "continue",
-        "def",
-        "del",
-        "elif",
-        "else",
-        "except",
-        "False",
-        "finally",
-        "for",
-        "from",
-        "global",
-        "if",
-        "import",
-        "in",
-        "is",
-        "lambda",
-        "None",
-        "nonlocal",
-        "not",
-        "or",
-        "pass",
-        "raise",
-        "return",
-        "True",
-        "try",
-        "while",
-        "with",
-        "yield",
-    ]
-    __PY_SYNTAX = re.compile(
-        r"""
-          (?P<kwd>\b(?:%s)\b)                       # keyword
-        | (?P<str>
-            [rfu]*(                                 # string prefix
-                '(?:\\.|[^\\'])*(?:'|\n)            # singly-quoted string
-              | "(?:\\.|[^\\"])*(?:"|\n)            # doubly-quoted string
-              | \"""(\\.|[^\\]|\n)*?\"""            # long singly-quoted string
-              | \'''(\\.|[^\\]|\n)*?\'''))          # long doubly-quoted string
-        | (?P<lit>
-              \d+(?:\.\d*(?:e[+-]?\d+)?)?           # int or float
-            | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
-            | 0x[0-9a-fA-F]+                        # hex
-            | 0b[01]+)                              # bin
-        | (?P<punct>[{}()[\]\\;|!&])                # punctuation
-        | (?P<comment>\#.*$)                        # comment
-    """
-        % "|".join(map(re.escape, __PY_KWDS)),
-        re.MULTILINE | re.VERBOSE,
-    )
-    __SH_KWDS = [
-        "if",
-        "then",
-        "elif",
-        "else",
-        "fi",
-        "time",
-        "for",
-        "in",
-        "until",
-        "while",
-        "do",
-        "done",
-        "case",
-        "esac",
-        "coproc",
-        "select",
-        "function",
-    ]
-    __SH_SYNTAX = re.compile(
-        r"""
-          (?P<kwd>\b(?:%s)\b|\[\[|\]\])             # keyword
-        | (?P<a0__punct>(?:^|\|\|?|&&|\$\())        # chaining operator (pipe or logic)
-          (?P<a1__>\s*)
-          (?P<a2__prog>\S+)                         # prog
-        | (?P<str>
-            '(?:[.\n]*?)*'                          # singly-quoted string
-            | "(?:\\.|[^\\"])*")                    # doubly-quoted string
-        | (?P<punct>
-              [{}()[\]\\;!&|&]                      # punctuation
-            | <{1,3}                                # input redirect
-            | [12]?>{1,2}(?:&[12])?)                # output redirect
-        | (?P<comment>\#.*$)                        # comment
-        | (?P<flag>(?<![\w-])-[a-zA-Z0-9_-]+\b)     # flag
-    """
-        % "|".join(map(re.escape, __SH_KWDS)),
-        re.MULTILINE | re.VERBOSE,
-    )
-    _SH_USAGE_SYNTAX = re.compile(
-        r"""
-          (?P<kwd>\b(?:%s)\b)                       # keyword
-        | (?P<prog>%%\(prog\)s)                     # prog
-        | (?P<metavar>(?<=<)[^>]+(?=>))             # metavar
-        | (?P<str>
-            '(?:[.\n]*?)*'                          # singly-quoted string
-            | "(?:\\.|[^\\"])*")                    # doubly-quoted string
-        | (?P<comment>\#.*$)                        # comment
-        | (?P<flag>(?<![\w-])-[-a-zA-Z0-9_]+\b)     # flag
-    """
-        % "|".join(map(re.escape, __SH_KWDS)),
-        re.MULTILINE | re.VERBOSE,
-    )
-
-    __SYNTAX: _t.Dict[str, re.Pattern] = {
-        "py": __PY_SYNTAX,
-        "python": __PY_SYNTAX,
-        "sh": __SH_SYNTAX,
-        "bash": __SH_SYNTAX,
-        "sh_usage": _SH_USAGE_SYNTAX,
-        "sh-usage": _SH_USAGE_SYNTAX,
-        "bash_usage": _SH_USAGE_SYNTAX,
-        "bash-usage": _SH_USAGE_SYNTAX,
-    }
-
-    def highlight_code(
-        self,
-        s: str,
-        syntax: str,
-        /,
-        *,
-        default_color: _t.Union[Color, str] = Color.NONE,
-    ) -> "ColorizedString":
-        """Highlight syntax in the given string.
-
-        This is a very simple regexp-based syntax highlighter
-        that applies `default_color` to the entire code,
-        and adds colors for keywords and strings.
-
-        You can pass language name to the `syntax` param (currently
-        we only support ``'py'`` and ``'sh'``).
-
-        """
-
-        if isinstance(default_color, str):
-            default_color = self.get_color(default_color)
-
-        if syntax in self.__SYNTAX:
-            syntax_re = self.__SYNTAX[syntax]
-        else:
-            return ColorizedString([default_color, s])
-
-        raw: "RawColorizedString" = []
-
-        last_pos = 0
-        for code_unit in syntax_re.finditer(s):
-            if last_pos < code_unit.start():
-                raw.append(default_color)
-                raw.append(s[last_pos : code_unit.start()])
-            last_pos = code_unit.end()
-
-            for name, text in sorted(code_unit.groupdict().items()):
-                name = name.split("__", maxsplit=1)[-1]
-                if text:
-                    raw.append(
-                        default_color | self.get_color(f"syntax_highlighting/{name}")
-                    )
-                    raw.append(text)
-
-        if last_pos < len(s):
-            raw.append(default_color)
-            raw.append(s[last_pos:])
-
-        raw.append(Color.NONE)
-
-        return ColorizedString(raw)
-
 
 class DefaultTheme(Theme):
     """Default yuio theme. Adapts for terminal background color,
@@ -1474,10 +1490,9 @@ class DefaultTheme(Theme):
         #
         # Main settings
         # -------------
-        #
         # This section controls the overall theme look.
         # Most likely you'll want to change accent colors from here.
-        "heading_color": "bold",
+        "heading_color": ["bold", "primary_color"],
         "primary_color": "normal",
         "accent_color": "magenta",
         "accent_color_2": "cyan",
@@ -1493,159 +1508,104 @@ class DefaultTheme(Theme):
         "code": "accent_color",
         "note": "accent_color_2",
         #
-        # IO messages
-        # -----------
-        # Elements that are common for all messages.
-        "msg/decoration": "accent_color",
-        "msg/plain_text": Color.NONE,
-        # Colors for each message type.
-        "msg/heading/decoration": "msg/decoration",
-        "msg/heading/text": "heading_color",
-        "msg/heading/plain_text": "msg/plain_text",
-        "msg/question/decoration": "msg/decoration",
-        "msg/question/text": "heading_color",
-        "msg/question/plain_text": "msg/plain_text",
-        "msg/error/decoration": "msg/decoration",
-        "msg/error/text": "error_color",
-        "msg/error/plain_text": "msg/plain_text",
-        "msg/warning/decoration": "msg/decoration",
-        "msg/warning/text": "warning_color",
-        "msg/warning/plain_text": "msg/plain_text",
-        "msg/success/decoration": "msg/decoration",
-        "msg/success/text": "success_color",
-        "msg/success/plain_text": "msg/plain_text",
-        "msg/info/decoration": "msg/decoration",
-        "msg/info/text": "primary_color",
-        "msg/info/plain_text": "msg/plain_text",
-        "msg/hr/decoration": "msg/decoration",
-        "msg/hr/text": "low_priority_color_a",
-        "msg/hr/plain_text": "msg/plain_text",
-        "msg/group/decoration": "msg/decoration",
-        "msg/group/text": "accent_color",
-        "msg/group/plain_text": "msg/plain_text",
+        # IO messages and text
+        # --------------------
+        "msg/decoration": "secondary_color",
+        "msg/decoration:heading": "accent_color",
+        "msg/decoration:thematic_break": "secondary_color",
+        "msg/text": "primary_color",
+        "msg/text:heading": "heading_color",
+        "msg/text:heading/section": "accent_color",
+        "msg/text:question": "heading_color",
+        "msg/text:error": "error_color",
+        "msg/text:warning": "warning_color",
+        "msg/text:success": "success_color",
+        "msg/text:info": "primary_color",
+        "msg/text:thematic_break": "secondary_color",
         #
         # Log messages
         # ------------
-        "log/plain_text": "secondary_color",
         "log/asctime": "secondary_color",
         "log/logger": "secondary_color",
         "log/level": "heading_color",
-        "log/level/critical": "error_color",
-        "log/level/error": "error_color",
-        "log/level/warning": "warning_color",
-        "log/level/info": "success_color",
-        "log/level/debug": "secondary_color",
+        "log/level:critical": "error_color",
+        "log/level:error": "error_color",
+        "log/level:warning": "warning_color",
+        "log/level:info": "success_color",
+        "log/level:debug": "secondary_color",
         "log/message": "primary_color",
-        # Colorized tracebacks
-        # --------------------
-        # Main traceback elements.
-        "tb/plain_text": "secondary_color",
-        "tb/heading": ["heading_color", "error_color"],
-        "tb/message": "tb/heading",
-        # Stack frames for user code.
-        "tb/frame/usr": "primary_color",
-        "tb/frame/usr/file": "primary_color",
-        "tb/frame/usr/file/module": "code",
-        "tb/frame/usr/file/line": "code",
-        "tb/frame/usr/file/path": "code",
-        "tb/frame/usr/code": "primary_color",
-        "tb/frame/usr/highlight": "low_priority_color_a",
-        # Stack frames for library code.
-        "tb/frame/lib": "dim",
-        "tb/frame/lib/file": "tb/frame/usr/file",
-        "tb/frame/lib/file/module": "tb/frame/usr/file/module",
-        "tb/frame/lib/file/line": "tb/frame/usr/file/line",
-        "tb/frame/lib/file/path": "tb/frame/usr/file/path",
-        "tb/frame/lib/code": "tb/frame/usr/code",
-        "tb/frame/lib/highlight": "tb/frame/usr/highlight",
         #
         # Tasks and progress bars
         # -----------------------
-        # Main task elements.
-        "task/plain_text": "secondary_color",
-        "task/heading": "heading_color",
-        "task/progress": "task/plain_text",
-        "task/comment": "primary_color",
-        # Spinner/decoration for finished tasks or tasks without progress.
-        "task/decoration": "accent_color",
-        "task/decoration/done": "success_color",
-        "task/decoration/error": "error_color",
-        # Progressbar.
+        "task/decoration/run": "accent_color",
+        "task/decoration:ok": "success_color",
+        "task/decoration:error": "error_color",
         "task/progressbar/done": "accent_color",
         "task/progressbar/pending": "secondary_color",
-        #
-        # CLI
-        # ---
-        # Main text elements.
-        "cli/text": "primary_color",
-        "cli/plain_text": Color.BACK_GREEN,
-        # Usage elements.
-        "cli/prog": "syntax_highlighting/prog",
-        "cli/flag": "syntax_highlighting/flag",
-        "cli/metavar": "syntax_highlighting/metavar",
-        # Block elements.
-        "cli/section/text": "msg/group/text",
-        "cli/section/plain_text": "msg/group/text",
-        "cli/section/decoration": "msg/group/decoration",
-        "cli/list/decoration": "secondary_color",
-        "cli/list/text": "cli/text",
-        "cli/list/plain_text": "cli/plain_text",
-        "cli/quote/decoration": "secondary_color",
-        "cli/quote/text": "cli/text",
-        "cli/quote/plain_text": "cli/plain_text",
-        "cli/code_block/decoration": "secondary_color",
-        "cli/code_block/text": "cli/text",
-        "cli/code_block/plain_text": "cli/plain_text",
+        "task/heading": "heading_color",
+        "task/progress": "secondary_color",
+        "task/comment": "primary_color",
         #
         # Syntax highlighting
         # -------------------
-        # Primary groups.
-        "syntax_highlighting/kwd": "bold",
-        "syntax_highlighting/str": Color.NONE,
-        "syntax_highlighting/lit": Color.NONE,
-        "syntax_highlighting/punct": "blue",
-        "syntax_highlighting/comment": "secondary_color",
-        # Sh-specific.
-        "syntax_highlighting/prog": "bold",
-        "syntax_highlighting/flag": "cyan",
-        "syntax_highlighting/metavar": "bold",
+        "hl/kwd": "bold",
+        "hl/str": Color.NONE,
+        "hl/lit": Color.NONE,
+        "hl/punct": "blue",
+        "hl/comment": "secondary_color",
+        "hl/prog": "bold",
+        "hl/flag": "cyan",
+        "hl/metavar": "bold",
+        "tb/heading": ["bold", "red"],
+        "tb/message": "tb/heading",
+        "tb/frame/usr/file/module": "code",
+        "tb/frame/usr/file/line": "code",
+        "tb/frame/usr/file/path": "code",
+        "tb/frame/usr/highlight": "low_priority_color_a",
+        "tb/frame/lib": "dim",
+        "tb/frame/lib/file/module": "tb/frame/usr/file/module",
+        "tb/frame/lib/file/line": "tb/frame/usr/file/line",
+        "tb/frame/lib/file/path": "tb/frame/usr/file/path",
+        "tb/frame/lib/highlight": "tb/frame/usr/highlight",
+
         #
         # Menu and widgets
         # ----------------
-        "menu/input/decoration": "low_priority_color_a",
-        "menu/input/text": "primary_color",
-        "menu/input/placeholder": "secondary_color",
-        "menu/choice/normal/plain_text": "secondary_color",
-        "menu/choice/normal/decoration": "primary_color",
-        "menu/choice/normal/text": "primary_color",
-        "menu/choice/normal/text/dir": "blue",
-        "menu/choice/normal/text/exec": "red",
-        "menu/choice/normal/text/symlink": "magenta",
-        "menu/choice/normal/text/socket": "green",
-        "menu/choice/normal/text/pipe": "yellow",
-        "menu/choice/normal/text/block_device": ["cyan", "bold"],
-        "menu/choice/normal/text/char_device": ["yellow", "bold"],
-        "menu/choice/normal/comment": "note",
-        "menu/choice/normal/comment/original": "success_color",
-        "menu/choice/normal/comment/corrected": "error_color",
-        "menu/choice/active/plain_text": "secondary_color",
-        "menu/choice/active/decoration": "accent_color",
-        "menu/choice/active/text": "accent_color",
-        "menu/choice/active/comment": "note",
-        "menu/choice/active/comment/original": "success_color",
-        "menu/choice/active/comment/corrected": "error_color",
-        **{
-            f"menu/choice/{status}/{role}/{color}": color
-            for color in Theme.colors
-            for status in ["normal", "active"]
-            for role in ["plain_text", "decoration", "text", "comment"]
-        },
-        "menu/help/plain_text": "low_priority_color_b",
-        "menu/help/text": "low_priority_color_b",
-        "menu/help/key": "low_priority_color_a",
+
+        # "menu/input/decoration": "low_priority_color_a",
+        # "menu/input/text": "primary_color",
+        # "menu/input/placeholder": "secondary_color",
+        # "menu/choice/normal/plain_text": "secondary_color",
+        # "menu/choice/normal/decoration": "primary_color",
+        # "menu/choice/normal/text": "primary_color",
+        # "menu/choice/normal/text/dir": "blue",
+        # "menu/choice/normal/text/exec": "red",
+        # "menu/choice/normal/text/symlink": "magenta",
+        # "menu/choice/normal/text/socket": "green",
+        # "menu/choice/normal/text/pipe": "yellow",
+        # "menu/choice/normal/text/block_device": ["cyan", "bold"],
+        # "menu/choice/normal/text/char_device": ["yellow", "bold"],
+        # "menu/choice/normal/comment": "note",
+        # "menu/choice/normal/comment/original": "success_color",
+        # "menu/choice/normal/comment/corrected": "error_color",
+        # "menu/choice/active/plain_text": "secondary_color",
+        # "menu/choice/active/decoration": "accent_color",
+        # "menu/choice/active/text": "accent_color",
+        # "menu/choice/active/comment": "note",
+        # "menu/choice/active/comment/original": "success_color",
+        # "menu/choice/active/comment/corrected": "error_color",
+        # **{
+        #     f"menu/choice/{status}/{role}/{color}": color
+        #     for color in Theme.colors
+        #     for status in ["normal", "active"]
+        #     for role in ["plain_text", "decoration", "text", "comment"]
+        # },
+        # "menu/help/plain_text": "low_priority_color_b",
+        # "menu/help/text": "low_priority_color_b",
+        # "menu/help/key": "low_priority_color_a",
     }
 
-    def __init__(self, term: Term) -> None:
+    def __init__(self, term: Term):
         super().__init__()
 
         if term.lightness == Lightness.UNKNOWN or term.background_color is None:
@@ -1698,28 +1658,39 @@ def line_width(s: str, /) -> int:
     of a specific terminal. Since a lot of terminals will not handle such emojis
     correctly, I've decided to go with this simplistic implementation for now.
 
+    If able, this function uses the :mod:`wcwidth` module, as it provides more
+    accurate results.
+
     """
 
-    if s.isascii():
-        # Fast path. Note that our renderer replaces unprintable characters
-        # with spaces, so ascii strings always have width equal to their length.
-        return len(s)
-    else:
-        # Long path. It kinda works, but not always, but most of the times...
-        return sum(
-            (unicodedata.east_asian_width(c) in "WF") + 1
-            for c in s
-            if unicodedata.category(c)[0] not in "MC"
-        )
+    return _line_width(s)
+
+try:
+    import wcwidth  # type: ignore
+
+    def _line_width(s: str, /) -> int:
+        return wcwidth.wcswidth(s)
+except ImportError:
+    def _line_width(s: str, /) -> int:
+        if s.isascii():
+            # Fast path. Note that our renderer replaces unprintable characters
+            # with spaces, so ascii strings always have width equal to their length.
+            return len(s)
+        else:
+            # Long path. It kinda works, but not always, but most of the times...
+            return sum(
+                (unicodedata.east_asian_width(c) in "WF") + 1
+                for c in s
+                if unicodedata.category(c)[0] not in "MC"
+            )
 
 
-#: Raw colorized string (i.e. a list of strings and colors).
-RawColorizedString: _t.TypeAlias = _t.List[_t.Union[str, Color]]
+#: Raw colorized string. This is the underlying type for :class:`ColorizedString`.
+RawString: _t.TypeAlias = _t.Iterable[_t.Union[str, Color]]
+
 
 #: Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
-AnyString: _t.TypeAlias = _t.Union[
-    str, "ColorizedString", "RawColorizedString", "Color"
-]
+AnyString: _t.TypeAlias = _t.Union[str, Color, RawString, "ColorizedString"]
 
 
 @_t.final
@@ -1743,15 +1714,20 @@ class ColorizedString:
 
     def __init__(
         self,
-        contents: _t.Optional["AnyString"] = None,
+        content: AnyString = "",
         /,
         *,
         explicit_newline: str = "",
     ):
-        self._items: "RawColorizedString" = []
+        self._parts: _t.List[_t.Union[str, Color]]
+        if isinstance(content, (str, Color)):
+            self._parts = [content] if content else []
+        elif isinstance(content, ColorizedString):
+            self._parts = list(content._parts)
+        else:
+            self._parts = list(content)
+
         self._explicit_newline = explicit_newline
-        if contents is not None:
-            self += contents
 
     @property
     def explicit_newline(self) -> str:
@@ -1772,41 +1748,32 @@ class ColorizedString:
 
         """
 
-        return sum(line_width(s) for s in self._items if isinstance(s, str))
+        return sum(line_width(s) for s in self._parts if isinstance(s, str))
 
     @functools.cached_property
     def len(self) -> int:
         """Line length in bytes, ignoring all colors."""
 
-        return sum(len(s) for s in self._items if isinstance(s, str))
+        return sum(len(s) for s in self._parts if isinstance(s, str))
 
     def __len__(self) -> int:
         return self.len
 
-    def __bool__(self) -> bool:
-        return self.len > 0
+    def __bool__(self) -> _t.NoReturn:
+        raise NotImplementedError(
+            f"casting {self.__class__.__name__} to bool is forbidden"
+        )
 
-    def iter(self) -> _t.Iterator[str]:
-        """Iterate over code points in this string, ignoring all colors.
-
-        If you want colors included, use :meth:`~ColorizedString.iter_raw`.
-
-        """
-
-        return self.__iter__()
-
-    def iter_raw(self) -> _t.Iterator[_t.Union[str, Color]]:
+    def iter(self) -> _t.Iterator[_t.Union[str, Color]]:
         """Iterate over raw parts of the string,
         i.e. the underlying list of strings and colors.
 
         """
 
-        return self._items.__iter__()
+        return self._parts.__iter__()
 
-    def __iter__(self):
-        for s in self._items:
-            if isinstance(s, str):
-                yield from s
+    def __iter__(self) -> _t.Iterator[_t.Union[str, Color]]:
+        return self.iter()
 
     def wrap(
         self,
@@ -1816,8 +1783,8 @@ class ColorizedString:
         break_on_hyphens: bool = True,
         preserve_spaces: bool = False,
         preserve_newlines: bool = True,
-        first_line_indent: _t.Optional[AnyString] = None,
-        continuation_indent: _t.Optional[AnyString] = None,
+        first_line_indent: _t.Union[str, "ColorizedString"] = "",
+        continuation_indent: _t.Union[str, "ColorizedString"] = "",
     ) -> _t.List["ColorizedString"]:
         """Wrap a long line of text into multiple lines.
 
@@ -1879,86 +1846,78 @@ class ColorizedString:
         return self.percent_format(args)
 
     def __imod__(self, args: _t.Any) -> "ColorizedString":
-        self._items = _percent_format(self, args)
+        self._parts = _percent_format(self, args)
 
         self.__dict__.pop("width", None)
         self.__dict__.pop("len", None)
 
         return self
 
-    def __add__(self, rhs: "AnyString") -> "ColorizedString":
-        if isinstance(rhs, (str, Color)):
-            return ColorizedString(self._items + [rhs])
-        elif isinstance(rhs, list):
-            return ColorizedString(self._items + rhs)
-        elif isinstance(rhs, ColorizedString):
-            return ColorizedString(self._items + rhs._items)
-        else:
-            return NotImplemented
+    def __add__(self, rhs: AnyString) -> "ColorizedString":
+        copy = ColorizedString(self)
+        copy += rhs
+        return copy
 
-    def __radd__(self, rhs: "AnyString") -> "ColorizedString":
-        if isinstance(rhs, (str, Color)):
-            return ColorizedString([rhs] + self._items)
-        elif isinstance(rhs, list):
-            return ColorizedString(rhs + self._items)
-        elif isinstance(rhs, ColorizedString):
-            return ColorizedString(rhs._items + self._items)
-        else:
-            return NotImplemented
+    def __radd__(self, lhs: AnyString) -> "ColorizedString":
+        copy = ColorizedString(lhs)
+        copy += self
+        return copy
 
-    def __iadd__(self, rhs: "AnyString") -> "ColorizedString":
+    def __iadd__(self, rhs: AnyString) -> "ColorizedString":
         if isinstance(rhs, (str, Color)):
-            self._items.append(rhs)
-        elif isinstance(rhs, list):
-            self._items.extend(rhs)
+            if rhs:
+                self._parts.append(rhs)
         elif isinstance(rhs, ColorizedString):
-            self._items.extend(rhs._items)
+            self._parts.extend(rhs._parts)
         else:
-            return NotImplemented
+            self._parts.extend(rhs)
 
         self.__dict__.pop("width", None)
         self.__dict__.pop("len", None)
 
         return self
 
-    def merge(self, term: Term, /) -> str:
-        """Convert this colorized string into a normal string
+    def process_colors(self, term: Term, /) -> _t.List[str]:
+        """Convert colors in this string into a normal string
         with ANSI escape sequences.
 
         """
 
-        return "".join(
-            s if isinstance(s, str) else s.as_code(term) for s in self._items
-        )
+        out: _t.List[str] = []
 
-    def write_to(self, term: Term, /):
-        """Write the given string to a terminal.
+        color: _t.Optional[Color] = None
+        cur_color: _t.Optional[Color] = None
 
-        Will convert all colors into ANSI escape sequences
-        suitable for the given terminals.
+        for part in self._parts:
+            if isinstance(part, Color):
+                color = part
+            else:
+                if color and color != cur_color:
+                    out.append(color.as_code(term))
+                    cur_color = color
+                out.append(part)
 
-        Will not flush the terminal's stream.
+        if color and color != cur_color:
+            out.append(color.as_code(term))
 
-        """
-
-        term.stream.write(self.merge(term))
+        return out
 
     def get_last_color(self) -> _t.Optional[Color]:
         """Get the latest color in this colorized string."""
 
-        for item in reversed(self._items):
-            if isinstance(item, Color):
-                return item
+        for part in reversed(self._parts):
+            if isinstance(part, Color):
+                return part
         return None
 
     def __str__(self) -> str:
-        return "".join(s for s in self._items if isinstance(s, str))
+        return "".join(c for c in self._parts if isinstance(c, str))
 
     def __repr__(self) -> str:
         if self.explicit_newline:
-            return f"<ColorizedString({self.__str__()!r}, explicit_newline={self.explicit_newline!r})>"
+            return f"<ColorizedString({str(self)!r}, explicit_newline={self.explicit_newline!r})>"
         else:
-            return f"<ColorizedString({self.__str__()!r})>"
+            return f"<ColorizedString({str(self)!r})>"
 
 
 _S_SYNTAX = re.compile(
@@ -1975,7 +1934,7 @@ _S_SYNTAX = re.compile(
 )
 
 
-def _percent_format(s: ColorizedString, args: _t.Any) -> "RawColorizedString":
+def _percent_format(s: ColorizedString, args: _t.Any) -> _t.List[_t.Union[str, Color]]:
     if not isinstance(args, (dict, tuple)):
         args = (args,)
 
@@ -2005,7 +1964,7 @@ def _percent_format(s: ColorizedString, args: _t.Any) -> "RawColorizedString":
 
         return m.group(0) % fmt_args
 
-    raw = [_S_SYNTAX.sub(repl, s) if isinstance(s, str) else s for s in s.iter_raw()]
+    raw = [_S_SYNTAX.sub(repl, part) if isinstance(part, str) else part for part in s]
 
     if isinstance(args, tuple) and i < len(args):
         raise TypeError("not all arguments converted during string formatting")
@@ -2055,8 +2014,8 @@ class _TextWrapper:
         break_on_hyphens: bool,
         preserve_spaces: bool,
         preserve_newlines: bool,
-        first_line_indent: _t.Optional[AnyString] = None,
-        continuation_indent: _t.Optional[AnyString] = None,
+        first_line_indent: _t.Union[str, ColorizedString] = "",
+        continuation_indent: _t.Union[str, ColorizedString] = "",
     ):
         self.width: int = width
         self.break_on_hyphens: bool = break_on_hyphens
@@ -2081,9 +2040,7 @@ class _TextWrapper:
 
         self.lines: _t.List[ColorizedString] = []
 
-        self.current_line: "RawColorizedString" = list(
-            self.first_line_indent.iter_raw()
-        )
+        self.current_line: _t.List[_t.Union[str, Color]] = list(self.first_line_indent)
         self.current_line_width: int = self.first_line_indent.width
         self.current_color: _t.Optional[Color] = None
         self.current_line_is_nonempty: bool = False
@@ -2092,9 +2049,7 @@ class _TextWrapper:
         self.lines.append(
             ColorizedString(self.current_line, explicit_newline=explicit_newline)
         )
-        self.current_line: "RawColorizedString" = list(
-            self.continuation_indent.iter_raw()
-        )
+        self.current_line: _t.List[_t.Union[str, Color]] = list(self.continuation_indent)
         self.current_line_width: int = self.continuation_indent.width
         if (
             self.current_color
@@ -2140,15 +2095,15 @@ class _TextWrapper:
         need_space_before_word = False
         at_line_beginning = True
 
-        for item in text.iter_raw():
-            if isinstance(item, Color):
-                self._append_color(item)
+        for part in text:
+            if isinstance(part, Color):
+                self._append_color(part)
                 continue
 
             if self.break_on_hyphens is True:
-                words = _WORDSEP_RE.split(item)
+                words = _WORDSEP_RE.split(part)
             else:
-                words = _WORDSEP_SIMPLE_RE.split(item)
+                words = _WORDSEP_SIMPLE_RE.split(part)
 
             for word in words:
                 if not word:

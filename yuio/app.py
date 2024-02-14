@@ -11,20 +11,64 @@ This module expands on :mod:`yuio.config` to build CLI apps!
 Creating and running an app
 ---------------------------
 
-App arguments
--------------
+CLI applications in Yuio have functional interface. Decorate main function
+with the :func:`app` decorator, and use :meth:`App.run` method to start it::
 
-App help
---------
+    >>> # Let's define an app with one flag and one positional argument.
+    ... @app
+    ... def main(arg: str, flag: int = 0):
+    ...     \"\"\"this command does a thing.\"\"\"
+    ...     yuio.io.info("flag=%r, arg=%r", flag, arg)
+
+    >>> # We can now use `main.run` to parse arguments and invoke `main`.
+    ... # Notice that `run` does not return anything. Instead, it terminates
+    ... # python process with an appropriate exit code.
+    ... main.run("--flag 10 foobar!".split()) # doctest: +SKIP
+    flag=10 arg='foobar!'
+
+..
+    >>> try:
+    ...     main.run()
+    ... except SystemExit as e:
+    ...     print(e)
+
+Function's arguments will become program's flags and positionals, and function's
+docstring will become app's :attr:`~App.description`.
+
+.. autofunction:: app
+
+.. autoclass:: App
+
+   .. automethod:: run
+
+
+App settings
+------------
+
+You can override default usage and help messages as well as control some of the app's
+help formatting using its arguments:
+
+.. class:: App
+   :noindex:
+
+   .. autoattribute:: prog
+
+   .. autoattribute:: usage
+
+   .. autoattribute:: description
+
+   .. autoattribute:: help
+
+   .. autoattribute:: epilog
+
+   .. autoattribute:: allow_abbrev
+
 
 Creating sub-commands
 ---------------------
 
 Controlling how sub-commands are invoked
 ----------------------------------------
-
-.. autoclass:: App
-   :members:
 
 """
 
@@ -92,7 +136,14 @@ def app(
     description: _t.Optional[str] = None,
     epilog: _t.Optional[str] = None,
 ):
-    """ """
+    """Create an application.
+
+    This is a decorator that's supposed to be used on the main method
+    of the application. This decorator returns an :class:`App` object.
+
+    See :class:`App` for description of function's parameters.
+
+    """
 
     def registrar(command: "Command", /) -> App:
         return App(
@@ -111,6 +162,14 @@ def app(
 
 
 class App:
+    """A class that encapsulates app settings and logic for running it.
+
+    It is better to create instances of this class using the :func:`app` decorator,
+    as it provides means to decorate the main function and specify all of the app's
+    parameters.
+
+    """
+
     @dataclass(frozen=True)
     class SubCommand:
         """Data about an invoked subcommand."""
@@ -175,7 +234,10 @@ class App:
         #: If command supports multiple signatures, each of them should be listed
         #: on a separate string. For example::
         #:
-        #:     usage = """
+        #:     @app
+        #:     def main(): ...
+        #:
+        #:     main.usage = """
         #:     %(prog)s [-q] [-f] [-m] [<branch>]
         #:     %(prog)s [-q] [-f] [-m] --detach [<branch>]
         #:     %(prog)s [-q] [-f] [-m] [--detach] <commit>
@@ -193,6 +255,34 @@ class App:
         #: Text that is shown before CLI flags help, usually contains
         #: short description of the program or subcommand.
         #:
+        #: The text should be formatted similar to how argparse formats help messages.
+        #: That is, headings start at the beginning of a line and end with colon,
+        #: and main text is indented with two spaces.
+        #:
+        #: Some markdown-like block formatting is supported, including numbered
+        #: and bulleted lists, fenced code blocks, and quotes. For example::
+        #:
+        #:     @app
+        #:     def main(): ...
+        #:
+        #:     main.description = """
+        #:     this command does a thing.
+        #:
+        #:     different ways to do a thing:
+        #:       this command can apply multiple algorithms to achieve
+        #:       a necessary state in which a thing can be done. This includes:
+        #:
+        #:       - randomly turning the screen on and off;
+        #:
+        #:       - banging a head on a table;
+        #:
+        #:       - fiddling with your PCs power level.
+        #:
+        #:       By default, the best algorithm is determined automatically.
+        #:       However, you can hint a preferred algorithm via `--hint-algo` flag.
+        #:
+        #:     """
+        #:
         #: By default, inferred from command's description.
         #:
         #: See `description <https://docs.python.org/3/library/argparse.html#description>`_.
@@ -208,6 +298,8 @@ class App:
         self.help: _t.Optional[str] = help
 
         #: Text that is shown after CLI flags help.
+        #:
+        #: Test's format is identical to the one for :attr:`~App.description`.
         #:
         #: See `epilog <https://docs.python.org/3/library/argparse.html#epilog>`_.
         self.epilog: _t.Optional[str] = epilog
@@ -323,8 +415,6 @@ class App:
         """Parse arguments and run the application.
 
         If no `args` are given, parse :data:`sys.argv`.
-
-        This function does not return.
 
         """
 
@@ -708,9 +798,9 @@ class _HelpText:
             continuation_indent: yuio.term.ColorizedString,
             theme: yuio.term.Theme,
         ):
-            code = theme.highlight_code(
+            code = yuio.term.SyntaxHighlighter.get_highlighter(self.syntax).highlight(
                 "\n".join(self.lines),
-                self.syntax,
+                theme,
                 default_color="cli/code_block/text",
             )
 
@@ -1141,11 +1231,12 @@ class _HelpFormatter(object):
             first_line, *rest = usage.split("\n", 1)
             usage = first_line + ("\n" + textwrap.dedent(rest[0]) if rest else "")
             usage = usage.strip()
-            c_usage_override = self._theme.highlight_code(
+            sh_usage_highlighter = yuio.term.SyntaxHighlighter.get_highlighter("sh-usage")
+            c_usage_override = sh_usage_highlighter.highlight(
                 usage,
-                "sh-usage",
+                self._theme,
                 default_color="cli/plain_text",
-            ) % dict(prog=self._prog)
+            )
         else:
             c_usage = yuio.term.ColorizedString(
                 [self._theme.get_color("cli/prog"), str(self._prog)]
@@ -1286,7 +1377,7 @@ class _HelpFormatter(object):
 
         out += yuio.term.Color.NONE
 
-        return out.merge(self._term)
+        return "".join(out.process_colors(self._term))
 
     def _format_action_short(
         self,

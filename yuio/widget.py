@@ -508,7 +508,7 @@ class RenderContext:
         self._frame_cursor_color = self._none_color
 
     def write(
-        self, text: "yuio.term.AnyString", /, *, max_width: _t.Optional[int] = None
+        self, text: yuio.term.AnyString, /, *, max_width: _t.Optional[int] = None
     ):
         """Write string at the current position using the current color.
         Move cursor while printing.
@@ -594,7 +594,7 @@ class RenderContext:
         color = self._frame_cursor_color
         i = 0
 
-        for s in text.iter_raw():
+        for s in text:
             if i >= s_end:
                 break
             if isinstance(s, _Color):
@@ -629,7 +629,7 @@ class RenderContext:
 
     def write_text(
         self,
-        lines: _t.Iterable["yuio.term.AnyString"],
+        lines: _t.Iterable[yuio.term.AnyString],
         /,
         *,
         max_width: _t.Optional[int] = None,
@@ -723,6 +723,13 @@ class RenderContext:
 
         # Rendering status
         self._full_redraw = full_redraw
+
+    def clear_screen(self):
+        """Clear screen and prepare for a full redraw."""
+
+        self._out.append("\x1b[2J\x1b[1;1H")
+        self._term_x, self._term_y = 0, 0
+        self.prepare(full_redraw=True)
 
     def _make_empty_canvas(
         self,
@@ -996,27 +1003,29 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
             events = _event_stream()
 
-            while True:
-                rc.prepare()
+            try:
+                while True:
+                    rc.prepare()
 
-                min_h, max_h = self.layout(rc)
-                max_h = max(min_h, min(max_h, rc.height - 1))
-                rc.set_final_pos(0, max_h)
-                with rc.frame(0, 0, height=max_h):
-                    self.draw(rc)
+                    min_h, max_h = self.layout(rc)
+                    max_h = max(min_h, min(max_h, rc.height - 1))
+                    rc.set_final_pos(0, max_h)
+                    with rc.frame(0, 0, height=max_h):
+                        self.draw(rc)
 
-                rc.render()
+                    rc.render()
 
-                try:
-                    result = self.event(next(events))
-                except StopIteration:
-                    assert False, "_event_stream supposed to be infinite"
-                except (Exception, KeyboardInterrupt):
-                    rc.finalize()
-                    raise
-                if result is not None:
-                    rc.finalize()
-                    return result.value
+                    try:
+                        event = next(events)
+                    except StopIteration:
+                        assert False, "_event_stream supposed to be infinite"
+
+                    if event == KeyboardEvent("l", ctrl=True):
+                        rc.clear_screen()
+                    elif result := self.event(event):
+                        return result.value
+            finally:
+                rc.finalize()
 
     def with_help(self) -> "Widget[T_co]":
         """Return this widget with a :meth:`~Widget.help_widget` added after it."""
@@ -1042,7 +1051,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     @functools.cached_property
     def help_columns(self) -> _t.List["Help.Column"]:
-        """Columns for :class:`Help` widget.
+        """Columns for the :class:`Help` widget.
 
         By default, columns are generated using docstrings from all
         event handlers that were registered using :func:`bind`.
@@ -1102,6 +1111,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
 def bind(
     key: _t.Union[str, Key],
+    *,
     ctrl: bool = False,
     alt: bool = False,
     show_in_help: bool = True,
@@ -1187,8 +1197,8 @@ class VerticalLayoutBuilder(_t.Generic[T]):
 
     """
 
-    def __new__(cls) -> "VerticalLayoutBuilder[_t.Never]":
-        return super().__new__(cls)
+    if _t.TYPE_CHECKING:
+        def __new__(cls) -> "VerticalLayoutBuilder[_t.Never]": ...
 
     def __init__(self):
         self._widgets: _t.List[Widget[_t.Any]] = []
@@ -1202,14 +1212,8 @@ class VerticalLayoutBuilder(_t.Generic[T]):
 
     @_t.overload
     def add(
-        self, widget: Widget[T], /, *, receive_events: _t.Literal[True]
-    ) -> "VerticalLayoutBuilder[T]":
-        ...
-
-    @_t.overload
-    def add(
-        self, widget: Widget[U], /, *, receive_events: bool
-    ) -> "VerticalLayoutBuilder[_t.Union[T, U]]":
+        self, widget: Widget[U], /, *, receive_events: _t.Literal[True]
+    ) -> "VerticalLayoutBuilder[U]":
         ...
 
     def add(self, widget: Widget[_t.Any], /, *, receive_events=False) -> _t.Any:
@@ -1240,7 +1244,7 @@ class VerticalLayoutBuilder(_t.Generic[T]):
         layout = VerticalLayout()
         layout._widgets = self._widgets
         layout._event_receiver = self._event_receiver
-        return layout  # type: ignore
+        return _t.cast(VerticalLayout[T], layout)
 
 
 class VerticalLayout(Widget[T], _t.Generic[T]):
@@ -1255,8 +1259,8 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
     """
 
-    def __new__(cls, *widgets: Widget[_t.Any]) -> "VerticalLayout[_t.Never]":
-        return super().__new__(cls)
+    if _t.TYPE_CHECKING:
+        def __new__(cls, *widgets: Widget[_t.Any]) -> "VerticalLayout[_t.Never]": ...
 
     def __init__(self, *widgets: Widget[_t.Any]):
         self._widgets: _t.List[Widget[_t.Any]] = list(widgets)
@@ -1334,50 +1338,45 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 class Line(Widget[_t.Never]):
     """A widget that prints a single line of text."""
 
-    @_t.overload
-    def __init__(self, line: "yuio.term.AnyString", /):
-        ...
-
-    @_t.overload
-    def __init__(self, line: "yuio.term.AnyString", /, *, color: _Color):
-        ...
-
-    @_t.overload
-    def __init__(self, line: "yuio.term.AnyString", /, *, color_path: str):
-        ...
-
     def __init__(
         self,
-        line: "yuio.term.AnyString",
+        text: yuio.term.AnyString,
         /,
         *,
-        color: _t.Optional[_Color] = None,
-        color_path: _t.Optional[str] = None,
+        color: _t.Union[_Color, str, None] = None,
     ):
-        self._line = line
+        self._text = _ColorizedString(text)
         self._color = color
-        self._color_path = color_path
 
     @property
     def text(self) -> yuio.term.ColorizedString:
+        """Currently displayed text."""
         return self._text
 
     @text.setter
-    def test(self, text: yuio.term.AnyString, /):
+    def text(self, text: yuio.term.AnyString, /):
         self._text = _ColorizedString(text)
-        self._wrapped_text = None
-        self._wrapped_text_width = 0
+
+    @property
+    def color(self) -> _t.Union[_Color, str, None]:
+        """Color of the currently displayed text."""
+        return self._color
+
+    @color.setter
+    def color(self, color: _t.Union[_Color, str, None], /):
+        self._color = color
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         return 1, 1
 
     def draw(self, rc: RenderContext, /):
-        if self._color_path is not None:
-            rc.set_color_path(self._color_path)
-        elif self._color is not None:
-            rc.set_color(self._color)
+        if self._color is not None:
+            if isinstance(self._color, str):
+                rc.set_color_path(self._color)
+            else:
+                rc.set_color(self._color)
 
-        rc.write(self._line)
+        rc.write(self._text)
 
 
 class Text(Widget[_t.Never]):
@@ -1390,7 +1389,7 @@ class Text(Widget[_t.Never]):
         *,
         color: _t.Union[_Color, str, None] = None,
     ):
-        self._text: yuio.term.ColorizedString = _ColorizedString(text)
+        self._text = _ColorizedString(text)
         self._color = color
 
         self._wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
@@ -1398,13 +1397,23 @@ class Text(Widget[_t.Never]):
 
     @property
     def text(self) -> yuio.term.ColorizedString:
+        """Currently displayed text."""
         return self._text
 
     @text.setter
-    def test(self, text: yuio.term.AnyString, /):
+    def text(self, text: yuio.term.AnyString, /):
         self._text = _ColorizedString(text)
         self._wrapped_text = None
         self._wrapped_text_width = 0
+
+    @property
+    def color(self) -> _t.Union[_Color, str, None]:
+        """Color of the currently displayed text."""
+        return self._color
+
+    @color.setter
+    def color(self, color: _t.Union[_Color, str, None], /):
+        self._color = color
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         if self._wrapped_text is None or self._wrapped_text_width != rc.width:
@@ -1433,7 +1442,24 @@ class Input(Widget[str]):
 
     """
 
+    # Characters that count as word separators, used when navigating input text
+    # via hotkeys.
     _WORD_SEPARATORS = string.punctuation + string.whitespace
+
+    class _CheckpointType(enum.Enum):
+        """Types of entries in the history buffer."""
+
+        #: User-initiated checkpoint.
+        USR = enum.auto()
+
+        #: Checkpoint before a symbol was inserted.
+        SYM = enum.auto()
+
+        #: Checkpoint before a space was inserted.
+        SEP = enum.auto()
+
+        #: Checkpoint before something was deleted.
+        DEL = enum.auto()
 
     def __init__(
         self,
@@ -1453,15 +1479,28 @@ class Input(Widget[str]):
         self._wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
         self._pos_after_wrap: _t.Optional[_t.Tuple[int, int]] = None
 
-        self._history: _t.List[_t.Tuple[str, int, str]] = [
-            (self._text, self._pos, "sym")
+        # We keep track of edit history by saving input text
+        # and cursor position in this list.
+        self._history: _t.List[_t.Tuple[str, int, Input._CheckpointType]] = [
+            (self._text, self._pos, Input._CheckpointType.SYM)
         ]
+        # Sometimes we don't record all actions. For example, entering multiple spaces
+        # one after the other, or entering multiple symbols one after the other,
+        # will only generate one checkpoint. We keep track of how many items
+        # were skipped this way since the last checkpoint.
         self._history_skipped_actions = 0
+        # After we move a cursor, the logic with skipping checkpoints
+        # should be momentarily disabled. This avoids inconsistencies in situations
+        # where we've typed a word, moved the cursor, then typed another word.
         self._require_checkpoint: bool = False
+
+        # All delete operations save deleted text here. Pressing `C-y` pastes deleted
+        # text at the position of the cursor.
         self._yanked_text: str = ""
 
     @property
     def text(self) -> str:
+        """Current text in the input box."""
         return self._text
 
     @text.setter
@@ -1473,6 +1512,12 @@ class Input(Widget[str]):
 
     @property
     def pos(self) -> int:
+        """Current cursor position, measured in code points before the cursor.
+
+        That is, if the text is `"quick brown fox"` with cursor right before the word
+        "brown", then :attr:`~Input.pos` is equal to `len("quick ")`.
+
+        """
         return self._pos
 
     @pos.setter
@@ -1481,28 +1526,44 @@ class Input(Widget[str]):
         self._pos_after_wrap = None
 
     def checkpoint(self):
-        self._history.append((self.text, self.pos, "usr"))
+        """Manually create an entry in the history buffer."""
+        self._history.append((self.text, self.pos, Input._CheckpointType.USR))
         self._history_skipped_actions = 0
 
     def restore_checkpoint(self):
-        if self._history[-1][2] == "usr":
+        """Restore the last manually created checkpoint."""
+        if self._history[-1][2] is Input._CheckpointType.USR:
             self.undo()
 
-    def _internal_checkpoint(self, action: str, text: str, pos: int):
+    def _internal_checkpoint(self, action: "Input._CheckpointType", text: str, pos: int):
         prev_text, prev_pos, prev_action = self._history[-1]
 
         if action == prev_action and not self._require_checkpoint:
-            # If we're repeating the same action, and the cursor didn't move
+            # If we're repeating the same action, don't create a checkpoint.
+            # I.e. if we're typing a word, we don't want to create checkpoints
+            # for every letter.
             self._history_skipped_actions += 1
             return
-        else:
-            prev_skipped_actions = self._history_skipped_actions
-            self._history_skipped_actions = 0
-            if action == "sym" and prev_action == "sep" and prev_skipped_actions == 0:
-                self._history[-1] = prev_text, prev_pos, action
-                return
+
+        prev_skipped_actions = self._history_skipped_actions
+        self._history_skipped_actions = 0
+
+        if (
+            action == Input._CheckpointType.SYM
+            and prev_action == Input._CheckpointType.SEP
+            and prev_skipped_actions == 0
+            and not self._require_checkpoint
+        ):
+            # If we're inserting a symbol after we've typed a single space,
+            # we only want one checkpoint for both space and symbols.
+            # Thus, we simply change the type of the last checkpoint.
+            self._history[-1] = prev_text, prev_pos, action
+            return
 
         if self.text == prev_text:
+            # This could happen when user presses backspace while the cursor
+            # is at the text's beginning. We don't want to create
+            # a checkpoint for this.
             return
 
         self._history.append((text, pos, action))
@@ -1556,6 +1617,7 @@ class Input(Widget[str]):
                 pos += 1
 
             self.pos = pos
+
         self._require_checkpoint |= checkpoint
 
     @bind(Key.ARROW_LEFT)
@@ -1620,7 +1682,7 @@ class Input(Widget[str]):
         prev_pos = self.pos
         self.left(checkpoint=False)
         if prev_pos != self.pos:
-            self._internal_checkpoint("del", self.text, prev_pos)
+            self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self.text = self.text[: self.pos] + self.text[prev_pos:]
 
     @bind(Key.DELETE)
@@ -1629,7 +1691,7 @@ class Input(Widget[str]):
         prev_pos = self.pos
         self.right(checkpoint=False)
         if prev_pos != self.pos:
-            self._internal_checkpoint("del", self.text, prev_pos)
+            self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self.text = self.text[:prev_pos] + self.text[self.pos :]
             self.pos = prev_pos
 
@@ -1639,7 +1701,7 @@ class Input(Widget[str]):
         prev_pos = self.pos
         self.left_word(checkpoint=False)
         if prev_pos != self.pos:
-            self._internal_checkpoint("del", self.text, prev_pos)
+            self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self._yanked_text = self.text[self.pos : prev_pos]
             self.text = self.text[: self.pos] + self.text[prev_pos:]
 
@@ -1649,7 +1711,7 @@ class Input(Widget[str]):
         prev_pos = self.pos
         self.right_word(checkpoint=False)
         if prev_pos != self.pos:
-            self._internal_checkpoint("del", self.text, prev_pos)
+            self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self._yanked_text = self.text[prev_pos : self.pos]
             self.text = self.text[:prev_pos] + self.text[self.pos :]
             self.pos = prev_pos
@@ -1659,7 +1721,7 @@ class Input(Widget[str]):
         prev_pos = self.pos
         self.home(checkpoint=False)
         if prev_pos != self.pos:
-            self._internal_checkpoint("del", self.text, prev_pos)
+            self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self._yanked_text = self.text[self.pos : prev_pos]
             self.text = self.text[: self.pos] + self.text[prev_pos:]
 
@@ -1668,7 +1730,7 @@ class Input(Widget[str]):
         prev_pos = self.pos
         self.end(checkpoint=False)
         if prev_pos != self.pos:
-            self._internal_checkpoint("del", self.text, prev_pos)
+            self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self._yanked_text = self.text[prev_pos : self.pos]
             self.text = self.text[:prev_pos] + self.text[self.pos :]
             self.pos = prev_pos
@@ -1693,8 +1755,8 @@ class Input(Widget[str]):
 
     # the actual shortcut is `C-7`, the rest produce the same code...
     @bind("7", ctrl=True, show_in_help=False)
-    @bind("-", ctrl=True, show_in_help=False)
-    @bind("_", ctrl=True)
+    @bind("_", ctrl=True, show_in_help=False)
+    @bind("-", ctrl=True)
     def undo(self):
         """undo"""
         self.text, self.pos, _ = self._history[-1]
@@ -1707,7 +1769,7 @@ class Input(Widget[str]):
 
     def insert(self, s: str):
         self._internal_checkpoint(
-            "sep" if s in self._WORD_SEPARATORS else "sym", self.text, self.pos
+            Input._CheckpointType.SEP if s in self._WORD_SEPARATORS else Input._CheckpointType.SYM, self.text, self.pos
         )
 
         self.text = self.text[: self.pos] + s + self.text[self.pos :]
@@ -1848,6 +1910,7 @@ class Choice(Widget[T], _t.Generic[T]):
 
     @property
     def index(self) -> _t.Optional[int]:
+        """Index of the currently selected option."""
         return self._index
 
     @index.setter
@@ -1858,15 +1921,22 @@ class Choice(Widget[T], _t.Generic[T]):
             self._index = idx % len(self._options) if idx is not None else 0
 
     def get_option(self) -> _t.Optional[Option[T]]:
+        """
+        Get the currently selected option,
+        or `None` if there are no options selected.
+
+        """
         if self._options and self._index is not None:
             return self._options[self._index]
 
     def has_options(self) -> bool:
+        """Return true if the options list is not empty."""
         return bool(self._options)
 
     def set_options(
         self, options: _t.List[Option[T]], /, default_index: _t.Optional[int] = 0
     ):
+        """Set a new list of options."""
         self._options = options
         self._column_width = max(
             0, _MIN_COLUMN_WIDTH, *map(self._get_option_width, options)
@@ -2469,7 +2539,7 @@ class Map(Widget[U], _t.Generic[T, U]):
 
 
 class Apply(Widget[T], _t.Generic[T]):
-    """A wrapper that applies the given function to the return of a wrapped widget.
+    """A wrapper that applies the given function to the result of a wrapped widget.
 
     ..
         >>> class Input(Widget):

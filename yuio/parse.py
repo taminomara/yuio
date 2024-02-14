@@ -18,7 +18,7 @@ Use provided classes to construct parsers and add validation::
 
 Pass a parser to other yuio functions::
 
-    >>> yuio.io.ask('List of modules to reformat', parser=idents)# doctest: +SKIP
+    >>> yuio.io.ask('List of modules to reformat', parser=idents) # doctest: +SKIP
 
 Or parse strings yourself::
 
@@ -2091,8 +2091,8 @@ def register_type_hint_conversion(
     ..
         >>> class MyType: ...
         >>> class MyTypeParser(ValueParser[MyType]):
-        ...     def parse(self, value: str, /) -> int: ...
-        ...     def parse_config(self, value: _t.Any, /) -> int: ...
+        ...     def parse(self, value: str, /) -> MyType: ...
+        ...     def parse_config(self, value: _t.Any, /) -> MyType: ...
 
     Example::
 
@@ -2114,7 +2114,7 @@ def register_type_hint_conversion(
 
 class _Annotation:
     parser: _t.Callable[..., Parser]
-    args: _t.Tuple[_t.Any]
+    args: _t.Tuple[_t.Any, ...]
     kwargs: _t.Dict[str, _t.Any]
 
     def __init__(self, parser: _t.Callable[..., Parser], *args, **kwargs) -> None:

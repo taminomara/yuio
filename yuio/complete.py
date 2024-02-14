@@ -122,13 +122,18 @@ class CompletionCollector:
 
     .. code-block:: text
 
-       list_element_1:completed_part:list_element_3
-                      └┬───────────┘
+       list_element_1:list_elements:list_element_3
+                      └┬──────────┘
                        this got replaced
+
+    Finally, there is `rsuffix`:
 
     .. autoattribute:: rsuffix
 
     .. autoattribute:: rsymbols
+
+    So, when completing a colon-separated list, colons will be added and removed
+    automatically, similar to how ZSH does it.
 
     """
 
@@ -156,7 +161,8 @@ class CompletionCollector:
     #: or moves cursor, or alters input in some other way.
     rsuffix: str
 
-    #: If user types one of
+    #: If user types one of the symbols from this string,
+    # :attr:`~.CompletionCollector.rsuffix` will be removed.
     rsymbols: str
 
     #: Similar to :attr:`CompletionCollector.iprefix`, but for suffixes.
@@ -448,7 +454,13 @@ class _CorrectingCollector(CompletionCollector):
 
         if corrections <= 1:
             # this is a simple mistype, add it as usual
-            self._add(completion, comment=comment)
+            self._add(
+                completion,
+                comment=comment,
+                dprefix=dprefix,
+                dsuffix=dsuffix,
+                color_tag=color_tag,
+            )
         elif corrections <= threshold:
             # this is a correction, add it into corrections group
             if comment:
@@ -596,22 +608,21 @@ class List(Completer):
         self._allow_duplicates = allow_duplicates
 
     def process(self, collector: CompletionCollector, /):
-        if not self._allow_duplicates:
-            dedup_words = set(
-                collector.prefix.split(self._delimiter)
-                + collector.suffix.split(self._delimiter)
-            )
-        else:
-            dedup_words = set()
-
         collector.split_off_prefix(self._delimiter)
         collector.split_off_suffix(self._delimiter)
         collector.rsuffix = self._delimiter or " "
         collector.rsymbols += self._delimiter or string.whitespace
 
-        if collector.text in dedup_words:
-            dedup_words.remove(collector.text)
-        collector.dedup_words = frozenset(dedup_words)
+        if not self._allow_duplicates:
+            dedup_words = set(
+                collector.iprefix.split(self._delimiter)
+                + collector.isuffix.split(self._delimiter)
+            )
+            if collector.text in dedup_words:
+                dedup_words.remove(collector.text)
+            collector.dedup_words = frozenset(dedup_words)
+        else:
+            collector.dedup_words = frozenset()
 
         self._inner.process(collector)
 
@@ -655,9 +666,9 @@ class File(Completer):
 
     def process(self, collector: CompletionCollector, /):
         base, name = os.path.split(collector.prefix)
-        collector.iprefix += os.path.join(base, "")
+        collector.iprefix += base
         collector.prefix = name
-        collector.suffix = collector.suffix.split(os.sep, 2)[0]
+        collector.suffix = collector.suffix.split(os.sep, maxsplit=1)[0]
         resolved = pathlib.Path(base).resolve()
         rsuffix = collector.rsuffix
         if resolved.is_dir():

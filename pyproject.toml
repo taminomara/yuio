@@ -24,15 +24,19 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+wcwidth = [
+    "wcwidth~=0.2.0"
+]
 test = [
-    "pytest~=7.0",
-    "pytest-mypy~=0.10.3",
-    "black~=23.0",
-    "isort~=5.12.0",
-    "PyYaml~=5.3",
+    "pytest~=7.4",
+    "pytest-mypy~=0.10",
+    "black~=23.7",
+    "isort~=5.12",
+    "PyYaml~=6.0",
     "types-PyYAML~=5.3",
     "toml~=0.10",
     "types-toml~=0.10",
+    "sphinx-vhs~=0.0",
 ]
 doc = [
     "sphinx~=6.1",

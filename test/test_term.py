@@ -322,7 +322,7 @@ class TestColorizedString:
     )
     def test_format(self, text, args, expect):
         formatted = yuio.term.ColorizedString(text) % args
-        assert formatted._items == expect
+        assert formatted._parts == expect
 
     @pytest.mark.parametrize(
         "text,width,kwargs,expect",
@@ -745,5 +745,5 @@ class TestColorizedString:
     )
     def test_wrap(self, text, width, kwargs, expect):
         wrapped = yuio.term.ColorizedString(text).wrap(width, **kwargs)
-        raw = [line._items for line in wrapped]
+        raw = [line._parts for line in wrapped]
         assert raw == expect
