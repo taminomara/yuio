@@ -95,6 +95,7 @@ import yuio.config
 import yuio.io
 import yuio.parse
 import yuio.term
+import yuio.md
 from yuio.config import field, inline, positional
 
 Command: _t.TypeAlias = _t.Callable[..., None]
@@ -592,588 +593,167 @@ def _command_from_callable_run_impl(
 _MAX_ARGS_COLUMN_WIDTH = 24
 
 
-@dataclass(frozen=True, **yuio._with_slots())
-class _HelpHeading:
-    """Section heading for help message."""
-
-    indent: int
-    text: yuio.term.ColorizedString
-
-    def format(
-        self,
-        out: yuio.term.ColorizedString,
-        width: int,
-        args_column_width: int,
-        theme: yuio.term.Theme,
-    ):
-        indent = yuio.term.ColorizedString(
-            [theme.get_color("cli/plain_text"), "  " * self.indent]
-        )
-        for line in self.text.wrap(
-            width, first_line_indent=indent, continuation_indent=indent
-        ):
-            out += line
-            out += "\n"
-
-
-@dataclass(frozen=True, **yuio._with_slots())
-class _HelpText:
-    """Help section with help message.
-
-    Help messages are parsed from markdown-like language.
-
-    """
-
-    indent: int
-    text: str
-
-    class _Node(abc.ABC):
-        """Base AST node for the parsed help text."""
-
-        @abc.abstractmethod
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-        ):
-            raise NotImplementedError()
-
-    @dataclass(**yuio._with_slots())
-    class _Heading(_Node):
-        """Heading AST node."""
-
-        heading: str
-
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-        ):
-            heading_decoration = theme.colorize(
-                theme.msg_decorations.get("group", ""),
-                default_color="cli/section/decoration",
-            )
-            if heading_decoration:
-                heading_decoration += " "
-            heading = theme.colorize(
-                self.heading,
-                default_color="cli/section",
-                parse_cli_flags_in_backticks=True,
-            )
-            for line in heading.wrap(
-                width,
-                first_line_indent=first_line_indent,
-                continuation_indent=continuation_indent,
-            ):
-                out += line
-                out += "\n"
-
-    @dataclass(**yuio._with_slots())
-    class _Container(_Node):
-        """Base AST node for containers, i.e. nodes that contain lines of text.
-
-        These lines can be displayed directly like in code blocks,
-        wrapped like in paragraphs, or parsed for nested content
-        like in list items or quotes.
-
-        """
-
-        lines: _t.List[str] = dataclasses.field(default_factory=list)
-
-    @dataclass(**yuio._with_slots(), kw_only=True)
-    class _Paragraph(_Container):
-        """Paragraph AST node."""
-
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-        ):
-            text = self.lines[0] + "\n" + textwrap.dedent("\n".join(self.lines[1:]))
-            c_text = theme.colorize(
-                text,
-                default_color="cli/plain_text",
-                parse_cli_flags_in_backticks=True,
-            )
-            for line in c_text.wrap(
-                width,
-                preserve_newlines=False,
-                first_line_indent=first_line_indent,
-                continuation_indent=continuation_indent,
-            ):
-                out += line
-                out += "\n"
-
-    @dataclass(**yuio._with_slots(), kw_only=True)
-    class _ListItem(_Container):
-        """AST node for a single bullet list item."""
-
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-        ):
-            _HelpText._format(
-                "\n".join(self.lines),
-                out,
-                width,
-                first_line_indent + [theme.get_color("cli/list/decoration"), "•   "],
-                continuation_indent + [theme.get_color("cli/list/decoration"), "    "],
-                theme,
-            )
-
-    @dataclass(**yuio._with_slots(), kw_only=True)
-    class _NumberedListItem(_Container):
-        """AST node for a single numbered list item."""
-
-        number: int
-
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-            *,
-            justify: int = 2,
-        ):
-            number = f"{self.number}."
-
-            _HelpText._format(
-                "\n".join(self.lines),
-                out,
-                width,
-                first_line_indent
-                + [theme.get_color("cli/list/decoration"), f"{number:<{justify}}  "],
-                continuation_indent
-                + [theme.get_color("cli/list/decoration"), " " * justify + "  "],
-                theme,
-            )
-
-    @dataclass(**yuio._with_slots(), kw_only=True)
-    class _Quote(_Container):
-        """Quote AST node."""
-
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-        ):
-            _HelpText._format(
-                "\n".join(self.lines),
-                out,
-                width,
-                first_line_indent + [theme.get_color("cli/list/decoration"), ">   "],
-                continuation_indent + [theme.get_color("cli/list/decoration"), ">   "],
-                theme,
-            )
-
-    @dataclass(**yuio._with_slots(), kw_only=True)
-    class _Code(_Container):
-        """Code AST node."""
-
-        syntax: str
-
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-        ):
-            code = yuio.term.SyntaxHighlighter.get_highlighter(self.syntax).highlight(
-                "\n".join(self.lines),
-                theme,
-                default_color="cli/code_block/text",
-            )
-
-            for line in code.wrap(
-                width,
-                break_on_hyphens=False,
-                preserve_spaces=True,
-                preserve_newlines=True,
-                first_line_indent=first_line_indent
-                + [theme.get_color("cli/code_block/decoration"), " " * 8],
-                continuation_indent=continuation_indent
-                + [theme.get_color("cli/code_block/decoration"), " " * 8],
-            ):
-                out += line
-                out += "\n"
-
-    @dataclass(**yuio._with_slots())
-    class _List(_Node):
-        """AST node that holds bullet list items."""
-
-        items: _t.List["_HelpText._ListItem"] = dataclasses.field(default_factory=list)
-
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-        ):
-            sep = False
-            indent = first_line_indent
-            for item in self.items:
-                if sep:
-                    out += continuation_indent
-                    out += theme.get_color("cli/plain_text")
-                    out += "\n"
-                item.format(
-                    out,
-                    width,
-                    indent,
-                    continuation_indent,
-                    theme,
-                )
-                sep = True
-                indent = continuation_indent
-
-    @dataclass(**yuio._with_slots())
-    class _NumberedList(_Node):
-        """AST node that holds numbered list items."""
-
-        items: _t.List["_HelpText._NumberedListItem"] = dataclasses.field(
-            default_factory=list
-        )
-
-        def format(
-            self,
-            out: yuio.term.ColorizedString,
-            width: int,
-            first_line_indent: yuio.term.ColorizedString,
-            continuation_indent: yuio.term.ColorizedString,
-            theme: yuio.term.Theme,
-        ):
-            if not self.items:
-                return
-            justify = max(
-                2, math.ceil(math.log10(max(item.number for item in self.items)))
-            )
-            sep = False
-            indent = first_line_indent
-            for item in self.items:
-                if sep:
-                    out += continuation_indent
-                    out += theme.get_color("cli/plain_text")
-                    out += "\n"
-                item.format(
-                    out,
-                    width,
-                    indent,
-                    continuation_indent,
-                    theme,
-                    justify=justify,
-                )
-                sep = True
-                indent = continuation_indent
-
-    @staticmethod
-    def _parse_text(text: str, allow_headings: bool) -> _t.Iterable["_HelpText._Node"]:
-        first_line, *rest = text.split("\n", 1)
-        text = first_line + ("\n" + textwrap.dedent(rest[0]) if rest else "")
-        text = text.strip()
-
-        result: _t.List["_HelpText._Node"] = []
-
-        NONE, BLOCK, CODE, PARAGRAPH = 1, 2, 3, 4
-        state = NONE
-        continuation_indent = ""
-
-        empty_lines = 1
-
-        for line in text.splitlines():
-            if not line:
-                empty_lines += 1
-
-            if state == BLOCK:
-                if line and not line.startswith(continuation_indent):
-                    state = NONE
-                    continuation_indent = ""
-                    # Go to `NONE` state and parse this line as usual.
-                else:
-                    assert result and isinstance(result[-1], _HelpText._Container)
-                    result[-1].lines.append(line[len(continuation_indent) :])
-                    continue
-
-            if state == PARAGRAPH:
-                if not line or not line.startswith(continuation_indent):
-                    state = NONE
-                    continuation_indent = ""
-                    # Go to `NONE` state and parse this line as usual.
-                else:
-                    assert result and isinstance(result[-1], _HelpText._Paragraph)
-                    result[-1].lines.append(line[len(continuation_indent) :])
-                    continue
-
-            if state == CODE:
-                if line == continuation_indent + "```" or (
-                    line and not line.startswith(continuation_indent)
-                ):
-                    state = NONE
-                    continuation_indent = ""
-                    continue
-                else:
-                    assert result and isinstance(result[-1], _HelpText._Code)
-                    result[-1].lines.append(line[len(continuation_indent) :])
-                    continue
-
-            if state == NONE:
-                line_indent = len(line) - len(line.lstrip())
-                line = line[line_indent:]
-
-                if not line:
-                    pass  # do nothing
-                elif (
-                    line_indent == 0
-                    and line.endswith(":")
-                    and empty_lines
-                    and allow_headings
-                ):
-                    result.append(_HelpText._Heading(line))
-                elif line.startswith("```"):
-                    result.append(_HelpText._Code(syntax=line[3:].strip()))
-                    state = CODE
-                    continuation_indent = " " * line_indent
-                elif line.startswith("- ") or line.startswith("* "):
-                    result.append(_HelpText._ListItem([line[2:]]))
-                    state = BLOCK
-                    continuation_indent = " " * line_indent + "  "
-                elif match := re.match(r"^(\d+)[.:)] ", line):
-                    result.append(
-                        _HelpText._NumberedListItem(
-                            [line[2:]], number=int(match.group(1))
-                        )
-                    )
-                    state = BLOCK
-                    continuation_indent = " " * line_indent + "  "
-                elif line.startswith(">"):
-                    result.append(_HelpText._Quote([line[2:]]))
-                    state = BLOCK
-                    continuation_indent = " " * line_indent + ">"
-                else:
-                    result.append(_HelpText._Paragraph([line]))
-                    state = PARAGRAPH
-                    continuation_indent = " " * line_indent
-
-            if line:
-                empty_lines = 0
-
-        # Group consecutive list items.
-        grouped_result = []
-        prev_container: _t.Union[None, _HelpText._List, _HelpText._NumberedList] = None
-        for node in result:
-            if isinstance(node, _HelpText._ListItem):
-                if not isinstance(prev_container, _HelpText._List):
-                    prev_container = _HelpText._List([node])
-                    grouped_result.append(prev_container)
-                else:
-                    prev_container.items.append(node)
-            elif isinstance(node, _HelpText._NumberedListItem):
-                if not isinstance(prev_container, _HelpText._NumberedList):
-                    prev_container = _HelpText._NumberedList([node])
-                    grouped_result.append(prev_container)
-                else:
-                    node.number = prev_container.items[-1].number + 1
-                    prev_container.items.append(node)
-            else:
-                grouped_result.append(node)
-                prev_container = None
-
-        return grouped_result
-
-    @staticmethod
-    def _format(
-        text: str,
-        out: yuio.term.ColorizedString,
-        width: int,
-        first_line_indent: yuio.term.ColorizedString,
-        continuation_indent: yuio.term.ColorizedString,
-        theme: yuio.term.Theme,
-        *,
-        allow_headings: bool = False,
-    ):
-        indent = first_line_indent
-        section_indent = continuation_indent + [theme.get_color("cli/plain_text"), "  "]
-
-        is_heading = True
-        is_section = False
-        for node in _HelpText._parse_text(text, allow_headings):
-            if not is_heading:
-                out += continuation_indent
-                out += theme.get_color("cli/plain_text")
-                out += "\n"
-            if isinstance(node, _HelpText._Heading):
-                is_heading = True
-                is_section = True
-            else:
-                is_heading = False
-
-            node.format(
-                out,
-                width,
-                section_indent if (is_section and not is_heading) else indent,
-                section_indent
-                if (is_section and not is_heading)
-                else continuation_indent,
-                theme,
-            )
-
-            indent = continuation_indent
-
-    def format(
-        self,
-        out: yuio.term.ColorizedString,
-        width: int,
-        args_column_width: int,
-        theme: yuio.term.Theme,
-    ):
-        self._format(
-            self.text,
-            out,
-            width,
-            yuio.term.ColorizedString(
-                [theme.get_color("cli/plain_text"), "  " * self.indent]
-            ),
-            yuio.term.ColorizedString(
-                [theme.get_color("cli/plain_text"), "  " * self.indent]
-            ),
-            theme,
-            allow_headings=True,
-        )
-
-
-@dataclass(frozen=True, **yuio._with_slots())
-class _HelpArg:
-    indent: int
-    args: yuio.term.ColorizedString
-    help: str
-
-    def format(
-        self,
-        out: yuio.term.ColorizedString,
-        width: int,
-        args_column_width: int,
-        theme: yuio.term.Theme,
-    ):
-        indent = yuio.term.ColorizedString(
-            [theme.get_color("cli/plain_text"), "  " * self.indent]
-        )
-        args = indent + self.args
-
-        if not self.help:
-            out += args
-            out += "\n"
-            return
-
-        continuation_indent = indent + " " * (args_column_width + 2 - indent.width)
-        if args.width > args_column_width:
-            out += args
-            out += "\n"
-            first_line_indent = continuation_indent
-        else:
-            first_line_indent = args + [
-                theme.get_color("cli/plain_text"),
-                " " * (args_column_width + 2 - args.width),
-            ]
-        _HelpText._format(
-            self.help,
-            out,
-            width,
-            first_line_indent,
-            continuation_indent,
-            theme,
-            allow_headings=False,
-        )
-
-
-@dataclass(frozen=True, **yuio._with_slots())
-class _HelpUsage:
-    prefix: yuio.term.ColorizedString
-    usage_override: yuio.term.ColorizedString
-    usage: yuio.term.ColorizedString
-    optionals: _t.List[yuio.term.ColorizedString]
-    positionals: _t.List[yuio.term.ColorizedString]
-
-    def format(
-        self,
-        out: yuio.term.ColorizedString,
-        width: int,
-        args_column_width: int,
-        theme: yuio.term.Theme,
-    ):
-        out += theme.get_color("cli/plain_text")
-        needs_space = False
-
-        if self.usage_override:
-            for line in self.usage_override.wrap(
-                width,
-                preserve_spaces=True,
-                preserve_newlines=True,
-                break_on_hyphens=False,
-                first_line_indent=self.prefix,
-                continuation_indent=" " * self.prefix.width,
-            ):
-                out += line
-                out += "\n"
-            return
-
-        cur_width = 0
-
-        if self.prefix:
-            out += self.prefix
-            cur_width += self.prefix.width
-            needs_space = True
-
-        if self.usage:
-            out += self.usage
-            cur_width += self.usage.width
-            needs_space = True
-
-        for arr in [self.optionals, self.positionals]:
-            total_optionals_width = sum(elem.width for elem in arr) + len(arr) - 1
-            if (
-                cur_width + total_optionals_width + needs_space > width
-                and self.prefix.width + total_optionals_width <= width
-            ):
-                needs_space = False
-                out += theme.get_color("cli/plain_text")
-                out += "\n" + " " * self.prefix.width
-                cur_width = self.prefix.width
-            for elem in arr:
-                if needs_space and cur_width + 1 + elem.width > width:
-                    needs_space = False
-                    out += theme.get_color("cli/plain_text")
-                    out += "\n" + " " * self.prefix.width
-                    cur_width = self.prefix.width
-                if needs_space:
-                    out += theme.get_color("cli/plain_text")
-                    out += " "
-                    cur_width += 1
-                out += elem
-                cur_width += elem.width
-                needs_space = True
-        out += theme.get_color("cli/plain_text")
-        out += "\n"
+# @dataclass(frozen=True, **yuio._with_slots())
+# class _HelpHeading:
+#     """Section heading for help message."""
+
+#     indent: int
+#     text: yuio.term.ColorizedString
+
+#     def format(
+#         self,
+#         out: yuio.term.ColorizedString,
+#         width: int,
+#         args_column_width: int,
+#         theme: yuio.term.Theme,
+#         formatter: yuio.md.MdFormatter,
+#     ):
+#         indent = yuio.term.ColorizedString(
+#             [theme.get_color("cli/plain_text"), "  " * self.indent]
+#         )
+#         for line in self.text.wrap(
+#             width, first_line_indent=indent, continuation_indent=indent
+#         ):
+#             out += line
+#             out += "\n"
+
+
+# @dataclass(frozen=True, **yuio._with_slots())
+# class _HelpText:
+#     """Help section with help message.
+
+#     Help messages are parsed from markdown-like language.
+
+#     """
+
+#     indent: int
+#     text: str
+
+#     def format(
+#         self,
+#         out: yuio.term.ColorizedString,
+#         width: int,
+#         args_column_width: int,
+#         theme: yuio.term.Theme,
+#         formatter: yuio.md.MdFormatter,
+#     ):
+#       pass
+
+
+# @dataclass(frozen=True, **yuio._with_slots())
+# class _HelpArg:
+#     indent: int
+#     args: yuio.term.ColorizedString
+#     help: str
+
+#     def format(
+#         self,
+#         out: yuio.term.ColorizedString,
+#         width: int,
+#         args_column_width: int,
+#         theme: yuio.term.Theme,
+#         formatter: yuio.md.MdFormatter,
+#     ):
+#         indent = yuio.term.ColorizedString(
+#             [theme.get_color("cli/plain_text"), "  " * self.indent]
+#         )
+#         args = indent + self.args
+
+#         if not self.help:
+#             out += args
+#             out += "\n"
+#             return
+
+#         continuation_indent = indent + " " * (args_column_width + 2 - indent.width)
+#         if args.width > args_column_width:
+#             out += args
+#             out += "\n"
+#             first_line_indent = continuation_indent
+#         else:
+#             first_line_indent = args + [
+#                 theme.get_color("cli/plain_text"),
+#                 " " * (args_column_width + 2 - args.width),
+#             ]
+#         _HelpText._format(
+#             self.help,
+#             out,
+#             width,
+#             first_line_indent,
+#             continuation_indent,
+#             theme,
+#             allow_headings=False,
+#         )
+
+
+# @dataclass(frozen=True, **yuio._with_slots())
+# class _HelpUsage:
+#     prefix: yuio.term.ColorizedString
+#     usage_override: yuio.term.ColorizedString
+#     usage: yuio.term.ColorizedString
+#     optionals: _t.List[yuio.term.ColorizedString]
+#     positionals: _t.List[yuio.term.ColorizedString]
+
+#     def format(
+#         self,
+#         out: yuio.term.ColorizedString,
+#         width: int,
+#         args_column_width: int,
+#         theme: yuio.term.Theme,
+#         formatter: yuio.md.MdFormatter,
+#     ):
+#         out += theme.get_color("cli/plain_text")
+#         needs_space = False
+
+#         if self.usage_override:
+#             for line in self.usage_override.wrap(
+#                 width,
+#                 preserve_spaces=True,
+#                 preserve_newlines=True,
+#                 break_on_hyphens=False,
+#                 first_line_indent=self.prefix,
+#                 continuation_indent=" " * self.prefix.width,
+#             ):
+#                 out += line
+#                 out += "\n"
+#             return
+
+#         cur_width = 0
+
+#         if self.prefix:
+#             out += self.prefix
+#             cur_width += self.prefix.width
+#             needs_space = True
+
+#         if self.usage:
+#             out += self.usage
+#             cur_width += self.usage.width
+#             needs_space = True
+
+#         for arr in [self.optionals, self.positionals]:
+#             total_optionals_width = sum(elem.width for elem in arr) + len(arr) - 1
+#             if (
+#                 cur_width + total_optionals_width + needs_space > width
+#                 and self.prefix.width + total_optionals_width <= width
+#             ):
+#                 needs_space = False
+#                 out += theme.get_color("cli/plain_text")
+#                 out += "\n" + " " * self.prefix.width
+#                 cur_width = self.prefix.width
+#             for elem in arr:
+#                 if needs_space and cur_width + 1 + elem.width > width:
+#                     needs_space = False
+#                     out += theme.get_color("cli/plain_text")
+#                     out += "\n" + " " * self.prefix.width
+#                     cur_width = self.prefix.width
+#                 if needs_space:
+#                     out += theme.get_color("cli/plain_text")
+#                     out += " "
+#                     cur_width += 1
+#                 out += elem
+#                 cur_width += elem.width
+#                 needs_space = True
+#         out += theme.get_color("cli/plain_text")
+#         out += "\n"
 
 
 class _HelpFormatter(object):
@@ -1181,29 +761,21 @@ class _HelpFormatter(object):
         self._prog = prog
         self._term = yuio.io.get_term()
         self._theme = yuio.io.get_theme()
-        self._indent = 0
-        self._sections: _t.List[
-            _t.Union[_HelpHeading, _HelpText, _HelpArg, _HelpUsage]
-        ] = []
+        self._formatter = yuio.md.MdFormatter(self._theme)
+        self._nodes: _t.List[yuio.md.AstBase] = []
 
     def start_section(self, heading: _t.Optional[str]):
         if heading:
             if not heading.endswith(":"):
                 heading += ":"
-            c_heading = self._theme.colorize(
-                heading,
-                default_color="cli/section",
-                parse_cli_flags_in_backticks=True,
-            )
-            self._sections.append(_HelpHeading(self._indent, c_heading))
-        self._indent += 1
+            self._nodes.append(yuio.md.Heading([heading], 1))
 
     def end_section(self):
-        self._indent -= 1
+        pass
 
     def add_text(self, text):
         if text is not argparse.SUPPRESS and text:
-            self._sections.append(_HelpText(self._indent, text))
+            self._nodes.append(self._formatter.parse(text))
 
     def add_usage(
         self, usage, actions: _t.Iterable[argparse.Action], groups, prefix=None
@@ -1212,33 +784,31 @@ class _HelpFormatter(object):
             return
 
         if prefix is not None:
-            c_prefix = self._theme.colorize(
+            c_prefix = self._formatter.colorize(
                 prefix,
-                default_color="cli/section",
-                parse_cli_flags_in_backticks=True,
+                default_color="msg/text:heading/section",
             )
         else:
             c_prefix = yuio.term.ColorizedString(
-                [self._theme.get_color("cli/section"), "usage: "]
+                [self._theme.get_color("msg/text:heading/section"), "usage: "]
             )
 
         c_optionals: _t.List[yuio.term.ColorizedString] = []
         c_positionals: _t.List[yuio.term.ColorizedString] = []
 
-        c_usage = yuio.term.ColorizedString()
-        c_usage_override = yuio.term.ColorizedString()
         if usage is not None:
             first_line, *rest = usage.split("\n", 1)
             usage = first_line + ("\n" + textwrap.dedent(rest[0]) if rest else "")
             usage = usage.strip()
-            sh_usage_highlighter = yuio.term.SyntaxHighlighter.get_highlighter("sh-usage")
-            c_usage_override = sh_usage_highlighter.highlight(
-                usage,
+            sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
+
+
+            sh_usage_highlighter.highlight(  # TODO!
                 self._theme,
-                default_color="cli/plain_text",
+                usage,
             )
         else:
-            c_usage = yuio.term.ColorizedString(
+            yuio.term.ColorizedString(  # TODO!
                 [self._theme.get_color("cli/prog"), str(self._prog)]
             )
 
@@ -1287,16 +857,6 @@ class _HelpFormatter(object):
                                 c_elem += ")" if elem.required else "]"
                             res.append(c_elem)
 
-        self._sections.append(
-            _HelpUsage(
-                c_prefix,
-                c_usage_override,
-                c_usage,
-                c_optionals,
-                c_positionals,
-            )
-        )
-
     def add_argument(self, action: argparse.Action):
         if action.help is not argparse.SUPPRESS:
             c_usage = yuio.term.ColorizedString()
@@ -1328,9 +888,7 @@ class _HelpFormatter(object):
             except AttributeError:
                 pass
             else:
-                self._indent += 1
-                self.add_arguments(get_subactions())
-                self._indent -= 1
+                self.add_arguments(get_subactions())  # TODO: indent?
 
     def add_arguments(self, actions):
         for action in actions:

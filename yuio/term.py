@@ -153,7 +153,7 @@ class InteractiveSupport(enum.IntEnum):
     #: Terminal can move cursor and erase lines.
     MOVE_CURSOR = 1
 
-    #: Terminal can process queries, enter CBREAK mode, etc.
+    #: Terminal can process queries, enter ``CBREAK`` mode, etc.
     FULL = 2
 
 
@@ -171,7 +171,7 @@ class Term:
     interactive_support: InteractiveSupport = InteractiveSupport.NONE
 
     #: Background color of a terminal.
-    background_color: _t.Optional[_t.Tuple[int, int, int]] = None
+    background_color: _t.Optional["ColorValue"] = None
 
     #: Overall color theme of a terminal, i.e. dark or light.
     lightness: Lightness = Lightness.UNKNOWN
@@ -240,23 +240,19 @@ def get_term(*, prefer_stdout: bool = False, query_theme: bool = True) -> Term:
     via ANSI escape sequences.
 
     If `prefer_stdout` is true, this function uses a terminal attached
-    to :data:`sys.stdout` instead of :data:`sys.stderr`. If running in a jupyter
-    notebook, :data:`sys.stdout` is used regardless of this argument's value.
+    to :data:`sys.stdout` instead of :data:`sys.stderr`.
 
     """
 
-    if is_in_jupyter_notebook():
-        return Term(sys.stdout, color_support=ColorSupport.ANSI_TRUE)
-    else:
-        stream = sys.stdout if prefer_stdout else sys.stderr
-        return get_term_from_stream(stream, query_theme=query_theme)
+    stream = sys.stdout if prefer_stdout else sys.stderr
+    return get_term_from_stream(stream, query_theme=query_theme)
 
 
 def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> Term:
     """Query info about a terminal attached to the given stream.
 
-    This function is similar to :func:`get_term`, except that it doesn't handle
-    the case when we're in a jupyter notebook.
+    This function is similar to :func:`get_term`, except that it takes stream
+    as an explicit argument.
 
     """
 
@@ -300,7 +296,7 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> T
             color_support = ColorSupport.ANSI_TRUE
         elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
             color_support = ColorSupport.ANSI_256
-        elif term in "linux" or "color" in term or "ansi" in term or "xterm" in term:
+        elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
             color_support = ColorSupport.ANSI
 
     interactive_support = InteractiveSupport.NONE
@@ -325,7 +321,7 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> T
 
 def _get_lightness(
     stream: _t.TextIO,
-) -> _t.Tuple[Lightness, _t.Optional[_t.Tuple[int, int, int]]]:
+) -> _t.Tuple[Lightness, _t.Optional["ColorValue"]]:
     try:
         response = _query_term(stream, "\x1b]11;?\a")
         if response is None:
@@ -344,11 +340,11 @@ def _get_lightness(
         luma = (0.2627 * r + 0.6780 * g + 0.0593 * b) / 256
 
         if luma <= 0.2:
-            return Lightness.DARK, (r, g, b)
+            return Lightness.DARK, ColorValue.from_rgb(r, g, b)
         elif luma >= 0.85:
-            return Lightness.LIGHT, (r, g, b)
+            return Lightness.LIGHT, ColorValue.from_rgb(r, g, b)
         else:
-            return Lightness.UNKNOWN, (r, g, b)
+            return Lightness.UNKNOWN, ColorValue.from_rgb(r, g, b)
     except Exception:
         return Lightness.UNKNOWN, None
 
@@ -407,24 +403,6 @@ def _is_interactive_output(stream: _t.Optional[_t.IO]) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.writable()
     except Exception:
-        return False
-
-
-def is_in_jupyter_notebook() -> bool:
-    """Return true if we're running in a jupyter notebook.
-
-    """
-
-    try:
-        import IPython  # type: ignore
-        return (
-            IPython.get_ipython() is not None  # type: ignore
-            # Being attached to a TTY means that we're in a terminal, not in a notebook.
-            and not _is_tty(sys.__stderr__)
-            and not _is_tty(sys.__stdout__)
-            and not _is_tty(sys.__stdin__)
-        )
-    except ImportError:
         return False
 
 
@@ -652,15 +630,14 @@ class Color:
 
     This class only contains data about the color. It doesn't know anything about
     how to apply it to a terminal, or whether a terminal supports colors at all.
-    These decisions are thus deferred to a lower level of API (see :meth:`Color.as_code`
-    and :func:`join`).
+    These decisions are thus deferred to a lower level of API (see :meth:`Color.as_code`).
 
     When converted to an ANSI code and printed, a color completely overwrites a previous
     color that was used by a terminal. This behavior prevents different colors and styles
     bleeding one into another. So, for example, printing :data:`Color.STYLE_BOLD`
     and then :data:`Color.FORE_RED` will result in non-bold red text.
 
-    Colors can be combined before printing though::
+    Colors can be combined before printing, though::
 
         >>> Color.STYLE_BOLD | Color.FORE_RED  # Bold red
         Color(fore=<ColorValue 1>, back=None, bold=True, dim=None)
@@ -859,30 +836,6 @@ class Color:
         else:
             return "\x1b[m"
 
-    def _as_span(self) -> str:
-        styles = []
-        classes = []
-        if self.fore:
-            if isinstance(self.fore.data, int) and 0 <= self.fore.data < 9:
-                classes.append(f"ansi-{_COLOR_NAMES[self.fore.data]}-fg")
-            else:
-                styles.append(f"color: {self.fore.to_hex()}")
-        if self.back:
-            if isinstance(self.back.data, int) and 0 <= self.back.data < 9:
-                classes.append(f"ansi-{_COLOR_NAMES[self.back.data]}-bg")
-            else:
-                styles.append(f"background-color: {self.back.to_hex()}")
-        if self.bold:
-            styles.append("font-weight: bold")
-        if self.dim:
-            styles.append("opacity: 0.7")
-        res = "<span"
-        if classes:
-            res += f" class=\"{' '.join(classes)}\""
-        if styles:
-            res += f" style=\"{'; '.join(classes)}\""
-        return res + ">"
-
     #: No color.
     NONE: _t.ClassVar["Color"] = lambda: Color()  # type: ignore
 
@@ -965,18 +918,6 @@ def _8_to_rgb(code: int) -> _t.Tuple[int, int, int]:
         (code & 2) and 0xFF,
         (code & 4) and 0xFF,
     )
-
-_COLOR_NAMES = [
-    "black",
-    "red",
-    "green",
-    "yellow",
-    "blue",
-    "magenta",
-    "cyan",
-    "white",
-]
-
 
 def _parse_hex(h: str) -> _t.Tuple[int, int, int]:
     if not re.match(r"^#[0-9a-fA-F]{6}$", h):
@@ -1392,77 +1333,6 @@ class Theme:
         else:
             return self.get_color(color_or_path)
 
-    __TAG_RE = re.compile(
-        r"""
-              <c (?P<tag_open>[a-z0-9 _/@]+)>   # Color tag open.
-            | </c>                              # Color tag close.
-            | \\(?P<punct>%(punct)s)
-            | `(?P<code>(?:``|[^`])*)`          # Inline code block (backticks).
-        """ % { "punct": re.escape(string.punctuation) },
-        re.VERBOSE,
-    )
-    __NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
-    __FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
-
-    def colorize(
-        self,
-        s: str,
-        /,
-        *,
-        default_color: _t.Union[Color, str] = Color.NONE,
-        parse_cli_flags_in_backticks: bool = False,
-    ) -> "ColorizedString":
-        """Colorize the given string.
-
-        Apply `default_color` to the entire message, and process color tags
-        and backticks within the message.
-
-        If `parse_cli_flags_in_backticks` is true, anything within backticks that
-        resembles a CLI flag will be highlighted using `cli/flag` tag.
-
-        """
-
-        if isinstance(default_color, str):
-            default_color = self.get_color(default_color)
-
-        raw: _t.List[_t.Union[str, Color]] = []
-        raw.append(default_color)
-
-        stack = [default_color]
-
-        last_pos = 0
-        for tag in self.__TAG_RE.finditer(s):
-            raw.append(s[last_pos : tag.start()])
-            last_pos = tag.end()
-
-            if name := tag.group("tag_open"):
-                color = stack[-1]
-                for sub_name in name.split(","):
-                    sub_name = sub_name.strip()
-                    color = color | self.get_color(sub_name)
-                raw.append(color)
-                stack.append(color)
-            elif code := tag.group("code"):
-                if (
-                    parse_cli_flags_in_backticks
-                    and self.__FLAG_RE.match(code)
-                    and not self.__NEG_NUM_RE.match(code)
-                ):
-                    raw.append(stack[-1] | self.get_color("cli/flag"))
-                else:
-                    raw.append(stack[-1] | self.get_color("code"))
-                raw.append(code.replace("``", "`"))
-                raw.append(stack[-1])
-            elif len(stack) > 1:
-                stack.pop()
-                raw.append(stack[-1])
-
-        raw.append(s[last_pos:])
-
-        raw.append(Color.NONE)
-
-        return ColorizedString(raw)
-
 
 class DefaultTheme(Theme):
     """Default yuio theme. Adapts for terminal background color,
@@ -1611,9 +1481,9 @@ class DefaultTheme(Theme):
         if term.lightness == Lightness.UNKNOWN or term.background_color is None:
             return
 
-        background_color = ColorValue(term.background_color)
+        background_color = term.background_color
 
-        if term.lightness.DARK:
+        if term.lightness is term.lightness.DARK:
             self._set_color_if_not_overridden(
                 "low_priority_color_a", Color(fore=background_color.lighten(0.25))
             )
@@ -1634,7 +1504,7 @@ def line_width(s: str, /) -> int:
     in a terminal.
 
     This function makes effort to detect wide characters
-    such as emojis. If does not, however, works correctly
+    such as emojis. If does not, however, work correctly
     with extended grapheme clusters, and so it may fail
     for emojis with modifiers, or other complex characters.
 
@@ -1759,10 +1629,8 @@ class ColorizedString:
     def __len__(self) -> int:
         return self.len
 
-    def __bool__(self) -> _t.NoReturn:
-        raise NotImplementedError(
-            f"casting {self.__class__.__name__} to bool is forbidden"
-        )
+    def __bool__(self) -> bool:
+        return self.len > 0
 
     def iter(self) -> _t.Iterator[_t.Union[str, Color]]:
         """Iterate over raw parts of the string,

@@ -16,6 +16,7 @@ import contextlib
 import os
 import re
 import shutil
+import string
 import typing as _t
 import dataclasses
 import math
@@ -97,7 +98,6 @@ class MdFormatter:
         width: _t.Optional[int] = None,
         allow_headings: bool = True,
         initial_heading_level: int = 1,
-        parse_cli_flags_in_backticks: bool = False,
     ):
         if width is None:
             width = min(shutil.get_terminal_size().columns, 90)
@@ -106,7 +106,6 @@ class MdFormatter:
         self._theme: yuio.term.Theme = theme
         self._allow_headings: bool = allow_headings
         self._initial_heading_level: int = initial_heading_level
-        self._parse_cli_flags_in_backticks: bool = parse_cli_flags_in_backticks
 
         self._is_first_line = True
         self._out = yuio.term.ColorizedString()
@@ -124,10 +123,38 @@ class MdFormatter:
         self._continuation_indent = yuio.term.ColorizedString()
         self._width = width or os.get_terminal_size().columns
 
-        self._format(_MdParser(self).parse(s))
+        self._format(self.parse(s))
         self._out += yuio.term.Color.NONE
 
         return self._out
+
+    def colorize(
+        self,
+        s: str,
+        /,
+        *,
+        default_color: _t.Union[yuio.term.Color, str] = yuio.term.Color.NONE,
+    ):
+        """Parse and colorize contents of a paragraph.
+
+        Apply `default_color` to the entire paragraph, and process color tags
+        and backticks within it.
+
+        """
+
+        return _colorize(self._theme, s, default_color=default_color)
+
+    def parse(
+        self,
+        s: str,
+        /
+    ) -> "AstBase":
+        """
+        Parse a markdown document and return an AST node.
+
+        """
+
+        return _MdParser(self).parse(s)
 
     @contextlib.contextmanager
     def _indent(
@@ -168,11 +195,13 @@ class MdFormatter:
     def _format(self, node: "AstBase", /):
         getattr(self, f"_format_{node.__class__.__name__.lstrip('_')}")(node)
 
+    def _format_Pre(self, node: "Pre", /):
+        self._line(node.text)
+
     def _format_Text(self, node: "Text", /, *, default_color: yuio.term.Color):
-        s = self._theme.colorize(
+        s = self.colorize(
             "\n".join(node.lines).strip(),
             default_color=default_color,
-            parse_cli_flags_in_backticks=self._parse_cli_flags_in_backticks,
         )
 
         for line in s.wrap(
@@ -268,7 +297,6 @@ class CliMdFormatter(MdFormatter):
         width: _t.Optional[int] = None,
         allow_headings: bool = True,
         initial_heading_level: int = 1,
-        parse_cli_flags_in_backticks: bool = False,
     ):
         self._heading_indent = contextlib.ExitStack()
 
@@ -277,7 +305,20 @@ class CliMdFormatter(MdFormatter):
             width=width,
             allow_headings=allow_headings,
             initial_heading_level=initial_heading_level,
-            parse_cli_flags_in_backticks=parse_cli_flags_in_backticks,
+        )
+
+    def colorize(
+        self,
+        s: str,
+        /,
+        *,
+        default_color: yuio.term.Color = yuio.term.Color.NONE,
+    ):
+        return _colorize(
+            self._theme,
+            s,
+            default_color=default_color,
+            parse_cli_flags_in_backticks=True,
         )
 
     def _format_Heading(self, node: "Heading"):
@@ -319,6 +360,16 @@ class AstBase(abc.ABC):
         """
 
         return f"{indent}({self._dump_params()})"
+
+
+@dataclass(**yuio._with_slots())
+class Pre(AstBase):
+    """
+    Pre-rendered content.
+
+    """
+
+    text: yuio.term.ColorizedString
 
 
 @dataclass(**yuio._with_slots())
@@ -1204,6 +1255,69 @@ class _TbHighlighter(SyntaxHighlighter):
 
 
 SyntaxHighlighter.register_highlighter(_TbHighlighter())
+
+
+__TAG_RE = re.compile(
+    r"""
+            <c (?P<tag_open>[a-z0-9 _/@]+)>   # Color tag open.
+        | </c>                              # Color tag close.
+        | \\(?P<punct>%(punct)s)
+        | `(?P<code>(?:``|[^`])*)`          # Inline code block (backticks).
+    """
+    % {"punct": re.escape(string.punctuation)},
+    re.VERBOSE,
+)
+__NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
+__FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
+
+
+def _colorize(
+    theme: yuio.term.Theme,
+    s: str,
+    /,
+    *,
+    default_color: _t.Union[yuio.term.Color, str] = yuio.term.Color.NONE,
+    parse_cli_flags_in_backticks: bool = False,
+) -> "yuio.term.ColorizedString":
+    default_color = theme.to_color(default_color)
+
+    raw: _t.List[_t.Union[str, yuio.term.Color]] = []
+    raw.append(default_color)
+
+    stack = [default_color]
+
+    last_pos = 0
+    for tag in __TAG_RE.finditer(s):
+        raw.append(s[last_pos : tag.start()])
+        last_pos = tag.end()
+
+        if name := tag.group("tag_open"):
+            color = stack[-1]
+            for sub_name in name.split(","):
+                sub_name = sub_name.strip()
+                color = color | theme.get_color(sub_name)
+            raw.append(color)
+            stack.append(color)
+        elif code := tag.group("code"):
+            if (
+                parse_cli_flags_in_backticks
+                and __FLAG_RE.match(code)
+                and not __NEG_NUM_RE.match(code)
+            ):
+                raw.append(stack[-1] | theme.get_color("cli/flag"))
+            else:
+                raw.append(stack[-1] | theme.get_color("code"))
+            raw.append(code.replace("``", "`"))
+            raw.append(stack[-1])
+        elif len(stack) > 1:
+            stack.pop()
+            raw.append(stack[-1])
+
+    raw.append(s[last_pos:])
+
+    raw.append(yuio.term.Color.NONE)
+
+    return yuio.term.ColorizedString(raw)
 
 
 if __name__ == "__main__":

@@ -265,10 +265,7 @@ def _make_manager(
         term = yuio.term.get_term()
     if theme is None:
         theme = yuio.term.DefaultTheme(term)
-    if yuio.term.is_in_jupyter_notebook():
-        return _JupyterIoManager(term, theme)
-    else:
-        return _TermIoManager(term, theme)
+    return _TermIoManager(term, theme)
 
 
 class UserIoError(IOError):

@@ -2111,54 +2111,6 @@ def register_type_hint_conversion(
     _FROM_TYPE_HINT_CALLBACKS.append(cb)
     return cb
 
-
-class _Annotation:
-    parser: _t.Callable[..., Parser]
-    args: _t.Tuple[_t.Any, ...]
-    kwargs: _t.Dict[str, _t.Any]
-
-    def __init__(self, parser: _t.Callable[..., Parser], *args, **kwargs) -> None:
-        self.parser = parser
-        self.args = args
-        self.kwargs = kwargs
-
-    def make_parser(self, p: Parser[_t.Any]):
-        return self.parser(p, *self.args, **self.kwargs)
-
-
-#: Non-empty collection.
-NonEmpty: _t.TypeAlias = _t.Annotated[Sz, _Annotation(LenBound, lower=0)]
-
-#: Positive number.
-Positive: _t.TypeAlias = _t.Annotated[Cmp, _Annotation(Bound, lower=0)]
-
-#: Non-negative number.
-NonNegative: _t.TypeAlias = _t.Annotated[Cmp, _Annotation(Bound, lower_inclusive=0)]
-
-#: Negative number.
-Negative: _t.TypeAlias = _t.Annotated[Cmp, _Annotation(Bound, upper=0)]
-
-#: Non-positive number.
-NonPositive: _t.TypeAlias = _t.Annotated[Cmp, _Annotation(Bound, upper_inclusive=0)]
-
-#: Float between `0.0` and `1.0`, inclusive.
-FractionFloat: _t.TypeAlias = _t.Annotated[
-    float, _Annotation(Bound, lower_inclusive=0, upper_inclusive=1)
-]
-
-#: Float greater than `1.0`, inclusive.
-FactorFloat: _t.TypeAlias = _t.Annotated[float, _Annotation(Bound, lower_inclusive=1)]
-
-
-register_type_hint_conversion(
-    lambda ty, origin, args: reduce(
-        lambda p, ann: ann.make_parser(p) if isinstance(ann, _Annotation) else p,
-        args[1:],
-        from_type_hint(args[0]),
-    )
-    if origin is _t.Annotated
-    else None
-)
 try:
     from types import UnionType as _UnionType
 
