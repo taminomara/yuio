@@ -10,9 +10,9 @@ on standard python libraries such as :mod:`logging` and :mod:`argparse`.
 .. _cleo: https://cleo.readthedocs.io/en/latest/
 
 
-.. vhs:: _tapes/widget_help.tape
-   :alt: Demonstration of `InputWithCompletion` widget.
-   :scale: 40%
+.. vhs:: _tapes/demo.tape
+   :alt: Demonstration of yuio capabilities.
+   :scale: 50%
 
 
 Features
@@ -24,21 +24,23 @@ Features
     def main(inputs: list[pathlib.Path]):
         ...
 
-    main.run()
+    if __name__ == "__main__":
+        main.run()
 
-- Colored output with inline tags built on top of the :mod:`logging` module::
+- Colored output with inline tags::
 
-    yuio.io.info('<c:bold>Yuio</c>: a user-friendly io library!')
+    yuio.io.info('<c bold>Yuio</c>: a user-friendly io library!')
 
-- Status indication with progress bars::
+- Status indication with progress bars that don't break your console::
 
     with yuio.io.Task('Loading sources') as task:
         for source in task.iter(sources):
             ...
 
-- User interactions and input parsing::
+- User interactions, input parsing and simple widgets::
 
-    answer = yuio.io.ask('What\'s your favorite treat?', default='waffles')
+    answer = yuio.io.ask("What's your favorite treat?", default="waffles")
+    want_now = yuio.io.ask[bool]("Do you want %s now?", answer)
 
 - Tools to edit things in an external editor::
 
@@ -48,18 +50,19 @@ Features
     // Lines starting with "//" will be ignored,
     // and an empty message aborts the commit.
     '''
+
     text = yuio.io.edit(text, comment_marker='//')
 
 - Tools to run commands::
 
-    yuio.exec.sh('ping 127.0.0.1 -c 5 1>&2')
+    yuio.exec.sh("ping 127.0.0.1 -c 5 1>&2")
 
 - Interactions with git::
 
-    repo = yuio.git.Repo('.')
+    repo = yuio.git.Repo(".")
     status = repo.status()
     yuio.io.info(
-       'At branch <c:code>%s</c>, commit <c:code>%s</c>',
+       'At branch `%s`, commit `%s`',
        status.branch, status.commit
     )
 
@@ -93,8 +96,10 @@ See examples at `taminomara/yuio`_.
 Contents
 --------
 
+**Main functionality:**
+
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    io
    parse
@@ -102,6 +107,13 @@ Contents
    app
    exec
    git
+
+**Lower-level details:**
+
+.. toctree::
+   :maxdepth: 2
+
    complete
+   md
    term
    widget

@@ -1,4 +1,25 @@
-# autoload
+#compdef @prog@
+
+function __@prog@ {
+  local compdata=$(cat "@data@");
+  __yuio_compl_v1
+}
+
+
+# Load Yuio completion system, if not loaded already.
+
+
+_YUIO_COMPL_V1_VERSION=1
+
+if [[ -n YUIO_COMPL_V1_VERSION && YUIO_COMPL_V1_VERSION -ge _YUIO_COMPL_V1_VERSION ]]; then
+    unset _YUIO_COMPL_V1_VERSION
+    __@prog@
+    return
+fi
+
+YUIO_COMPL_V1_VERSION=$_YUIO_COMPL_V1_VERSION
+unset _YUIO_COMPL_V1_VERSION
+
 
 # Entry point for completion.
 #
@@ -30,7 +51,7 @@ function __yuio_compl_v1 {
 }
 
 function __yuio_compl_v1__handle_subcommand {
-  (( $# != 1 )) && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] cmd"; return 2 )
+  (( $# != 1 )) && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] cmd" >&2; return 2 )
 
   local cmd=$1
   local args=()
@@ -57,7 +78,10 @@ function __yuio_compl_v1__handle_subcommand {
     local _desc=${_compspec%%$a*}; _compspec=${_compspec#*$a}
     local desc=${_desc//(#b)([\\:])/\\$match}
     local _meta=${_compspec%%$a*}; _compspec=${_compspec#*$a}
-    local meta=${_meta//(#b)([\\:])/\\$match}
+    local meta=( "${(@s. .)_meta}" )
+    meta=( "${meta[@]//\\S/ }" )
+    meta=( "${meta[@]//\\L/\\}" )
+    meta=( "${meta[@]//(#b)([\\:])/\\$match}" )
     local _nargs=${_compspec%%$a*}; _compspec=${_compspec#*$a}
     local nargs=${_nargs:-0}
 
@@ -90,12 +114,13 @@ function __yuio_compl_v1__handle_subcommand {
           if [[ $nargs == [-0] ]]; then
             : # no argspec needed
           elif [[ $nargs == [+*] ]]; then
-            arg=$arg:*-*:${meta:- }:$argspec
+            arg=$arg:*-*:${meta[1]:- }:$argspec
           elif [[ $nargs == '?' ]]; then
-            arg=$arg::${meta:- }:$argspec
+            arg=$arg::${meta[1]:- }:$argspec
           else
-            repeat $nargs do
-              arg=$arg:${meta:- }:$argspec
+            local i
+            for i in $(seq $nargs); do
+              arg=$arg:${meta[(( ($i - 1) % ${#meta} + 1 ))]:- }:$argspec" --apos $i"
             done
           fi
           args+=$arg
@@ -118,8 +143,9 @@ function __yuio_compl_v1__handle_subcommand {
           elif [[ $nargs == '?' ]]; then
             args+=':'$arg
           else
-            repeat $nargs do
-              args+=$arg
+            local i
+            for i in $(seq $nargs); do
+              args+=$arg" --apos $i"
             done
           fi
         ;;
@@ -158,15 +184,15 @@ function __yuio_compl_v1__handle_subcommand {
 }
 
 function __yuio_compl_v1__complete_opt {
-  local compspec_opt ret=1
-  zparseopts -D -E - -compspec:=compspec_opt
+  local compspec_opt apos_opt ret=1
+  zparseopts -D -E - -compspec:=compspec_opt -apos:=apos_opt
 
-  [[ -z $compspec_opt[1] ]] && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] ... --compspec compspec"; return 2 )
-  [[ -z $compspec_opt[2] ]] && ( echo "$prog: $funcstack[1]: got an empty compspec; perhaps nargs is invalid?"; return 2 )
+  [[ -z $compspec_opt[1] ]] && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] ... --compspec compspec" >&2; return 2 )
+  [[ -z $compspec_opt[2] ]] && ( echo "$prog: $funcstack[1]: got an empty compspec; perhaps nargs is invalid?" >&2; return 2 )
 
   # Read `\a`-separated compspec (or rathe the completer part of it).
   # Also replace back `\b` with colons (because we've replaced colons with `\b`s earlier).
-  local compspec=() compspec_i=1
+  local compspec=() compspec_i=1 apos=${apos_opt[2]:-1}
   local _IFS=$IFS IFS=$'\a' b=$'\b'
   read -rA compspec <<< ${compspec_opt[2]//$b/:}
   IFS=$_IFS
@@ -202,10 +228,29 @@ function __yuio_compl_v1__complete {
     ;;
     c)
       # complete choices
-      __yuio_compl_v1__complete__pop_n $size && local choices=( $reply ) || return
+      __yuio_compl_v1__complete__pop_n $size && local choices=( "${reply[@]}" ) || return
       # Add choices directly, re-using tag and description that was passed from `_arguments`.
       local tag=${curtag:-values}
       compadd $* -a -- choices && ret=0
+    ;;
+    cd)
+      # complete choices with descriptions
+      local half_size; (( half_size = $size / 2 ))
+      __yuio_compl_v1__complete__pop_n $half_size && local choices=( "${reply[@]}" ) || return
+      __yuio_compl_v1__complete__pop_n $half_size && local descriptions=( "${reply[@]}" ) || return
+
+      _message "${#choices[@]}"
+      _message "${#descriptions[@]}"
+
+      for i in $(seq $half_size); do
+        descriptions[i]="${choices[i]/:/\\:}:${descriptions[i]}"
+      done
+
+      local opts; zparseopts -D -E -a opts - o O t:  # extract options for _describe
+
+      # Add choices directly, re-using tag and description that was passed from `_arguments`.
+      local tag=${curtag:-values}
+      _describe $opts "" descriptions choices $@ && ret=0
     ;;
     g)
       # complete git
@@ -219,6 +264,11 @@ function __yuio_compl_v1__complete {
       __yuio_compl_v1__complete__pop && local delim=${REPLY:- } || return
       _sequence $* -s $delim __yuio_compl_v1__complete || return
     ;;
+    lm)
+      # complete list with "supports many"
+      __yuio_compl_v1__complete__pop && local delim=${REPLY:- } || return
+      __yuio_compl_v1__complete $* || return
+    ;;
     t)
       # complete tuple
       __yuio_compl_v1__complete__pop && local delim=${REPLY:- } || return
@@ -230,6 +280,18 @@ function __yuio_compl_v1__complete {
         __yuio_compl_v1__complete --skip
       done
       _sequence $* -s $delim -n $len -d __yuio_compl_v1__complete || return
+    ;;
+    tm)
+      # complete tuple with "supports many"
+      __yuio_compl_v1__complete__pop && local delim=${REPLY:- } || return
+      __yuio_compl_v1__complete__pop && local len=${REPLY:- } || return
+      __yuio_compl_v1__assert_int $len || return
+      local pos=$apos
+      (( pos > len )) && pos=$len
+      while (( --pos )); do
+        __yuio_compl_v1__complete --skip
+      done
+      __yuio_compl_v1__complete $* || return
     ;;
     a)
       # complete alternatives
@@ -296,7 +358,7 @@ function __yuio_compl_v1__complete__pop {
 #
 # @param $1 number of arguments to pop freom compspec.
 function __yuio_compl_v1__complete__pop_n {
-  (( $# != 1 )) && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] n"; return 2 )
+  (( $# != 1 )) && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] n" >&2; return 2 )
 
   if (( $compspec_i + $1 > ${#compspec[@]} + 1 )); then
     echo "$prog: $funcstack[2]: compspec index out of range" >&2
@@ -304,8 +366,8 @@ function __yuio_compl_v1__complete__pop_n {
   fi
 
   local offset; (( offset = compspec_i - 1 ))
-  reply=( ${compspec[@]:$offset:$1} )
-  ((compspec_i+=n))
+  reply=( "${compspec[@]:$offset:$1}" )
+  ((compspec_i+=$1))
 }
 
 # Set current index of the compspec argument, therefore skipping
@@ -313,7 +375,7 @@ function __yuio_compl_v1__complete__pop_n {
 #
 # @param $1 new compspec index.
 function __yuio_compl_v1__complete__set_i {
-  (( $# != 1 )) && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] idx"; return 2 )
+  (( $# != 1 )) && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] idx" >&2; return 2 )
 
   if (( $1 > ${#compspec[@]} + 1 )); then
     echo "$prog: $funcstack[2]: compspec index out of range" >&2
@@ -346,7 +408,7 @@ function __yuio_compl_v1__git {
   zparseopts -D -E -K -a ignored_opts - -modes:=modes_opt x: X: J: V: 1 2
 
   local modes=$modes_opt[2]
-  [[ -z $modes ]] && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] ... --modes modes"; return 2 )
+  [[ -z $modes ]] && ( echo "$prog: $funcstack[1]: USAGE: $funcstack[1] ... --modes modes" >&2; return 2 )
 
   declare -A all_modes=(
     [heads-local]='b:branch:refs/heads'
@@ -382,37 +444,5 @@ function __yuio_compl_v1__git {
   return 0
 }
 
-## ======================================================================================================
 
-
-function foo {
-  printf '%s\n' ${(j:; :)@}
-}
-
-# compdef foo
-function __foo {
-  local compdata;
-  printf -v compdata '%s\n' \
-      '	-L			1	a	13	2	a1	l	5	-	c	2	boo	bar	a2	g	1	t' \
-      '	-t	wow	<metavar>	1	l	12	@	t	9	||	2	c	2	foo	bar	g	1	tbh' \
-      '	-c			1	c	3	foo	q * x	b\ :az' \
-      '	-l		<metavar>	1	l	9	-	l	6	@	c	3	foo	qux	duo' \
-      '	-g		<metavar>	1	g	1	tbh' \
-      '	-P --path	path	<metavar>	2	-	0' \
-      '	-h --help	print help message and exit	<metavar>	-' \
-      '	-V --version	print version and exit	<metavar>	-' \
-      '	*-v *--verbose	increase verbosity level		0' \
-      '	-h --help	print help message and exit	<metavar>	-' \
-      '	0	arg 0	<arg 0>	1	f	1	py|:' \
-      '	c	meow! subcommand!	<cmd>	1	c	3	sub	bus	b:s' \
-      '/sub	-x	do x	<metavar>	0' \
-      '/sub	-g		<metavar>	1	g	1	tbh' \
-      '/sub	-h --help	haaaalp1	<metavar>	-' \
-      '/sub	-V --version	print version and exit	<metavar>	-' \
-      '/sub	*-v *--verbose	increase verbosity level		0' \
-      '/sub	c	subcommand	<cmd>	1	a	11	2	alternative 1	c	2	sub	add	alternative 2	c	2	x	y' \
-
-  __yuio_compl_v1
-}
-
-compdef __foo foo
+__@prog@

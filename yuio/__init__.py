@@ -33,7 +33,7 @@ import os as _os
 import re as _re
 import sys as _sys
 import textwrap as _textwrap
-import typing as _t
+from yuio import _t
 
 try:
     from yuio._version import __version__, __version_tuple__
@@ -127,7 +127,7 @@ def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
 
     sourcelines, _ = inspect.getsourcelines(obj)
 
-    docs = {}
+    docs: _t.Dict[str, str] = {}
 
     node = ast.parse(_textwrap.dedent("".join(sourcelines)))
     assert isinstance(node, ast.Module)
@@ -153,7 +153,7 @@ def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
         return {}
 
     for pos, name in fields:
-        comment_lines = []
+        comment_lines: _t.List[str] = []
         for before_line in sourcelines[pos - 2 :: -1]:
             if match := _COMMENT_RE.match(before_line):
                 comment_lines.append(_textwrap.dedent(match.group(1)))

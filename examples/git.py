@@ -17,8 +17,6 @@ if __name__ == "__main__":
         else:
             pass
 
-    yuio.io.hr()
-
     yuio.io.heading("Changes")
 
     if changes := status.changes:

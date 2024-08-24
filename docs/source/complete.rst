@@ -1,4 +1,4 @@
 Complete — autocomplete user input
 ==================================
 
-.. automodule:: yuio.complete
+.. .. automodule:: yuio.complete

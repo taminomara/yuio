@@ -20,7 +20,6 @@ and its methods. If an interaction fails, a :class:`GitException` is raised.
    :members:
 
 .. autoclass:: GitException
-   :members:
 
 
 Commit and status objects
@@ -45,46 +44,109 @@ Parsing git refs
 ----------------
 
 When you need to query a git ref from a user, :class:`RefParser` will ensure
-that the ref points to a valid git object:
+that the ref points to a valid git object. Use :class:`Ref` in your type hints
+to help Yuio detect that you want to parse it as a git reference:
+
+.. autoclass:: Ref
+
+.. autoclass:: Tag
+
+.. autoclass:: Branch
+
+.. autoclass:: Remote
 
 .. autoclass:: RefParser
+
+.. autoclass:: TagParser
+
+.. autoclass:: BranchParser
+
+.. autoclass:: RemoteParser
+
+If you know path to your repository before hand, and want to make sure that the user
+supplies a valid ref that points to an existing git object, use :class:`CommitParser`:
+
+.. autoclass:: CommitParser
 
 """
 
 import dataclasses
 import enum
+import functools
 import pathlib
 import re
 import subprocess
-import typing as _t
+from yuio import _t
 from dataclasses import dataclass
 from datetime import datetime
 
 import yuio.parse
+import yuio.complete
 
 
 class GitException(subprocess.SubprocessError):
     """Raised when git returns a non-zero exit code."""
 
 
+#: A special kind of string that contains a git object reference.
+#:
+#: Ref is not guaranteed to be valid; this type is used in type hints
+#: to make use of the :class:`RefParser`.
+Ref = _t.NewType("Ref", str)
+
+#: A special kind of string that contains a tag name.
+#:
+#: Ref is not guaranteed to be valid; this type is used in type hints
+#: to make use of the :class:`TagParser`.
+Tag = _t.NewType("Tag", str)
+
+#: A special kind of string that contains a branch name.
+#:
+#: Ref is not guaranteed to be valid; this type is used in type hints
+#: to make use of the :class:`BranchParser`.
+Branch = _t.NewType("Branch", str)
+
+#: A special kind of string that contains a remote branch name.
+#:
+#: Ref is not guaranteed to be valid; this type is used in type hints
+#: to make use of the :class:`RemoteParser`.
+Remote = _t.NewType("Remote", str)
+
+
+_LOG_FMT = "%H%n%aN%n%aE%n%aI%n%cN%n%cE%n%cI%n%w(0,0,1)%B%w(0,0)%n-"
+
+
 class Repo:
-    """A class that allows interactions with a git repository."""
+    """A class that allows interactions with a git repository.
 
-    def __init__(self, path: _t.Union[pathlib.Path, str], /):
-        self._path = pathlib.Path(path)
+    :param path:
+        path to the repo root dir.
+    :param skip_checks:
+        don't check if we're inside a repo.
 
-        if not self._path.joinpath(".git").is_dir():
-            raise GitException(f"{path} is not a git repository")
+    """
+
+    def __init__(self, path: _t.Union[pathlib.Path, str], /, skip_checks: bool = False):
+        self.__path = pathlib.Path(path)
 
         try:
             self.git("--version")
         except FileNotFoundError:
             raise GitException(f"git executable was not found")
 
+        if skip_checks:
+            return
+
         try:
-            self.git("status")
+            self.git("rev-parse", "--is-inside-work-tree")
         except GitException:
             raise GitException(f"{path} is not a git repository")
+
+    @property
+    def path(self) -> pathlib.Path:
+        """Path to the repo, as was passed to the constructor."""
+
+        return self.__path
 
     def git(self, *args: str) -> bytes:
         """Call git and return its stdout."""
@@ -93,7 +155,7 @@ class Repo:
             ["git"] + list(args),
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            cwd=self._path,
+            cwd=self.__path,
         )
 
         if res.returncode != 0:
@@ -103,6 +165,16 @@ class Repo:
             )
 
         return res.stdout
+
+    def root(self) -> pathlib.Path:
+        """Get the root directory of the repo."""
+
+        return pathlib.Path(self.git("rev-parse", "--show-toplevel").decode())
+
+    def git_dir(self) -> pathlib.Path:
+        """Get path to the ``.git`` directory of the repo."""
+
+        return pathlib.Path(self.git("rev-parse", "--git-dir").decode())
 
     def status(self) -> "Status":
         """Query the current repository status."""
@@ -160,8 +232,6 @@ class Repo:
 
         return status
 
-    _LOG_FMT = "%H%n%aN%n%aE%n%aI%n%cN%n%cE%n%cI%n%w(0,0,1)%B%w(0,0)%n-"
-
     def log(self, *refs: str, max_entries: _t.Optional[int] = 10) -> _t.List["Commit"]:
         """Query the log for given git objects.
 
@@ -169,7 +239,7 @@ class Repo:
 
         """
 
-        args = [f"--pretty=format:{self._LOG_FMT}"]
+        args = [f"--pretty=format:{_LOG_FMT}"]
 
         if max_entries is not None:
             args += ["-n", str(max_entries)]
@@ -181,12 +251,12 @@ class Repo:
 
         commits = []
 
-        while commit := self._parse_single_log_entry(lines):
+        while commit := self.__parse_single_log_entry(lines):
             commits.append(commit)
 
         return commits
 
-    def show(self, ref: str, /) -> _t.Optional["Commit"]:
+    def show(self, ref: str, /) -> "_t.Optional[Commit]":
         """Query information for the given git object.
 
         Return `None` if object is not found.
@@ -194,18 +264,20 @@ class Repo:
         """
 
         try:
-            text = self.git(
-                "show",
-                f"--pretty=format:{self._LOG_FMT}",
-                "-s",
-                ref,
-            )
+            self.git("rev-parse", "--verify", ref)
         except GitException:
             return None
 
+        text = self.git(
+            "show",
+            f"--pretty=format:{_LOG_FMT}",
+            "-s",
+            ref,
+        )
+
         lines = iter(text.decode().split("\n"))
 
-        commit = self._parse_single_log_entry(lines)
+        commit = self.__parse_single_log_entry(lines)
 
         if commit is None:
             return None
@@ -215,7 +287,7 @@ class Repo:
         return commit
 
     @staticmethod
-    def _parse_single_log_entry(lines) -> _t.Optional["Commit"]:
+    def __parse_single_log_entry(lines) -> "_t.Optional[Commit]":
         try:
             commit = next(lines)
             author = next(lines)
@@ -251,6 +323,42 @@ class Repo:
             )
         except StopIteration:
             return None
+
+    def tags(self) -> _t.List[str]:
+        """
+        List all tags in this repository.
+
+        """
+
+        return (
+            self.git("for-each-ref", "--format='%(refname:short)'", "refs/tags")
+            .decode()
+            .splitlines()
+        )
+
+    def branches(self) -> _t.List[str]:
+        """
+        List all branches in this repository.
+
+        """
+
+        return (
+            self.git("for-each-ref", "--format='%(refname:short)'", "refs/heads")
+            .decode()
+            .splitlines()
+        )
+
+    def remotes(self) -> _t.List[str]:
+        """
+        List all remote branches in this repository.
+
+        """
+
+        return (
+            self.git("for-each-ref", "--format='%(refname:short)'", "refs/remotes")
+            .decode()
+            .splitlines()
+        )
 
 
 @dataclass
@@ -288,7 +396,7 @@ class Commit:
     #: original input. I.e. if a user enters ``HEAD`` and it gets resolved
     #: into a commit, `orig_ref` will contain string ``'HEAD'``.
     #:
-    #: See also :class:`RefParser`.
+    #: See also :class:`CommitParser`.
     orig_ref: _t.Optional[str] = None
 
     @property
@@ -385,21 +493,197 @@ class Status:
         return self.has_tracked_changes or self.has_untracked_changes
 
 
-class RefParser(yuio.parse.Parser[Commit]):
-    """A parser for git refs (commits, tags, branches, and so on)."""
+class RefCompleter(yuio.complete.Completer):
+    class Mode(enum.Enum):
+        Branch = "b"
+        Remote = "r"
+        Tag = "t"
+        Head = "h"
+
+    def __init__(
+        self, repo: Repo, modes: _t.Optional[_t.Set["RefCompleter.Mode"]] = None
+    ):
+        super().__init__()
+
+        self._repo = repo
+        self._modes = modes or {
+            self.Mode.Branch,
+            self.Mode.Tag,
+            self.Mode.Head,
+        }
+
+    def process(self, collector: yuio.complete.CompletionCollector, /):
+        try:
+            if self.Mode.Head in self._modes:
+                collector.add_group()
+                git_dir = self._repo.git_dir()
+                for head in ["HEAD", "ORIG_HEAD"]:
+                    if (git_dir / head).exists():
+                        collector.add(head)
+            if self.Mode.Branch in self._modes:
+                collector.add_group()
+                for branch in self._repo.branches():
+                    collector.add(branch)
+            if self.Mode.Remote in self._modes:
+                collector.add_group()
+                for remote in self._repo.remotes():
+                    collector.add(remote)
+            if self.Mode.Tag in self._modes:
+                collector.add_group()
+                for tag in self._repo.tags():
+                    collector.add(tag)
+        except GitException:
+            pass
+
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "yuio.complete._CompleterSerializer.Model":
+        return yuio.complete._CompleterSerializer.Git(
+            set(
+                yuio.complete._CompleterSerializer.Git.Mode(mode.value)
+                for mode in self._modes
+            )
+        )
+
+
+class CommitParser(yuio.parse.ValueParser[Commit]):
+    """
+    A parser for git refs (commits, tags, branches, and so on).
+
+    This parser validates that the given ref exists in the given repository,
+    parses it and returns a commit data associated with this ref.
+
+    If you need a simple string without additional validation,
+    use :class:`RefParser`.
+
+    """
 
     def __init__(self, repo: Repo):
         super().__init__()
 
         self._repo = repo
 
-    def _parse(self, value: str, /) -> Commit:
+    def parse(self, value: str, /) -> Commit:
         commit = self._repo.show(value)
         if commit is None:
             raise yuio.parse.ParsingError("invalid git ref")
         return commit
 
-    def _parse_config(self, value: _t.Any, /) -> Commit:
+    def parse_config(self, value: _t.Any, /) -> Commit:
         if not isinstance(value, str):
             raise yuio.parse.ParsingError("expected a string")
         return self.parse(value)
+
+    def completer(self) -> yuio.complete.Completer:
+        return RefCompleter(self._repo)
+
+
+_Str = _t.TypeVar("_Str", bound=str)
+
+
+class _RefParserImpl(yuio.parse.ValidatingParser[_Str], _t.Generic[_Str]):
+    def __init__(
+        self,
+        repo_path: _t.Union[Repo, str, pathlib.Path, None] = None,
+        /,
+        *,
+        should_exist: bool = False,
+    ):
+        super().__init__(_t.cast(yuio.parse.Parser[_Str], yuio.parse.Str()))
+
+        if repo_path is None:
+            repo_path = pathlib.Path.cwd()
+        elif isinstance(repo_path, Repo):
+            repo_path = repo_path.path
+        else:
+            repo_path = pathlib.Path(repo_path)
+
+        self._repo_path = repo_path
+        self._should_exist = should_exist
+
+    @functools.cached_property
+    def _repo(self) -> Repo:
+        try:
+            return Repo(self._repo_path, skip_checks=not self._should_exist)
+        except GitException as e:
+            raise yuio.parse.ParsingError(str(e)) from None
+
+    def _validate(self, value: str, /):
+        if self._should_exist and self._repo.show(value) is None:
+            raise yuio.parse.ParsingError(
+                f"{value} does not exist in {self._repo_path}"
+            )
+
+    def completer(self) -> yuio.complete.Completer:
+        return RefCompleter(self._repo)
+
+
+class RefParser(_RefParserImpl[Ref]):
+    """
+    A parser that provides autocompletion for git refs, but doesn't verify
+    anything else.
+
+    """
+
+
+class TagParser(_RefParserImpl[Tag]):
+    """
+    A parser that checks if the given string is a valid tag name.
+
+    """
+
+    def _validate(self, value: str, /):
+        try:
+            self._repo.git("check-ref-format", f"refs/tags/{value}")
+        except GitException:
+            raise yuio.parse.ParsingError(f"{value} is not a valid tag name") from None
+
+        super()._validate(value)
+
+    def completer(self) -> yuio.complete.Completer:
+        return RefCompleter(self._repo, {RefCompleter.Mode.Tag})
+
+
+class BranchParser(_RefParserImpl[Branch]):
+    """
+    A parser that checks if the given string is a valid tag name.
+
+    """
+
+    def _validate(self, value: str, /):
+        try:
+            self._repo.git("check-ref-format", f"refs/heads/{value}")
+        except GitException:
+            raise yuio.parse.ParsingError(
+                f"{value} is not a valid branch name"
+            ) from None
+
+        super()._validate(value)
+
+    def completer(self) -> yuio.complete.Completer:
+        return RefCompleter(self._repo, {RefCompleter.Mode.Branch})
+
+
+class RemoteParser(_RefParserImpl[Remote]):
+    """
+    A parser that checks if the given string is a valid tag remote branch.
+
+    """
+
+    def _validate(self, value: str, /):
+        try:
+            self._repo.git("check-ref-format", f"refs/remotes/{value}")
+        except GitException:
+            raise yuio.parse.ParsingError(
+                f"{value} is not a valid branch name"
+            ) from None
+
+        super()._validate(value)
+
+    def completer(self) -> yuio.complete.Completer:
+        return RefCompleter(self._repo, {RefCompleter.Mode.Branch})
+
+
+yuio.parse.register_type_hint_conversion(
+    lambda ty, origin, args: RefParser() if ty is Ref else None
+)

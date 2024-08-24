@@ -10,8 +10,7 @@ This module provides a base class for configs that can be loaded from
 files, environment variables or command line arguments (via :mod:`yuio.app`).
 
 Derive your config from the :class:`Config` base class. Inside of its body,
-define config fields using type annotations,
-just like :mod:`dataclasses`::
+define config fields using type annotations, just like :mod:`dataclasses`::
 
     class AppConfig(Config):
         #: trained model to execute
@@ -37,7 +36,6 @@ Config base class
 -----------------
 
 .. autoclass:: Config
-   :members:
 
 
 Advanced field configuration
@@ -56,11 +54,9 @@ If you need to override them, theres the :func:`field` function:
 
 .. autodata:: yuio.POSITIONAL
 
-There are also a few helpers:
+There is also a helper for inlining nested configs:
 
 .. autofunction:: inline
-
-.. autofunction:: positional
 
 
 Nesting configs
@@ -163,73 +159,16 @@ In this example, contents of the above config would be:
 Note that, unlike with environment variables,
 there is no way to inline nested configs.
 
-
-Parsing CLI arguments
----------------------
-
-:mod:`yuio.app` allows you to parse configs from CLI arguments.
-
-Flag names are derived from field names.
-Use the :func:`field` function to override them::
-
-    class KillCmdConfig(Config):
-        # Will be loaded from `--signal`.
-        signal: int
-
-        # Will be loaded from `-p` or `--pid`.
-        pid: int = field(flags=['-p', '--pid'])
-
-In nested configs, flags are prefixed with name
-of a field that contains the nested config::
-
-    class BigConfig(Config):
-        # `kill_cmd.signal` will be loaded from `--kill-cmd-signal`.
-        kill_cmd: KillCmdConfig
-
-        # `copy_cmd_2.signal` will be loaded from `--kill-signal`.
-        kill_cmd_2: KillCmdConfig = field(flags='--kill')
-
-        # `kill_cmd_3.signal` will be loaded from `--signal`.
-        kill_cmd_3: KillCmdConfig = field(flags='')
-
-You can also disable loading a field from CLI flags::
-
-    class KillCmdConfig(Config):
-        # Will not be loaded from args.
-        pid: int = field(flags=yuio.DISABLED)
-
-.. note::
-
-   Positional arguments are not allowed in configs,
-   only in apps and subcommands.
-
-Help messages for the flags are parsed from line comments
-right above the field definition (comments must start with ``#:``).
-The :func:`field` function allows overriding them.
-
-Parsers for CLI argument values are derived from type hints.
-Use the `parser` parameter of the :func:`field` function to override them.
-
-Arguments with bool parsers and parsers that support
-:meth:`parsing collections <yuio.parse.Parser.supports_parse_many>`
-are handled to provide better CLI experience::
-
-    class Config(Config):
-        # Will create flags `--verbose` and `--no-verbose`.
-        verbose: bool = True
-
-        # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`
-        inputs: List[Path]
-
 """
 
 import argparse
 import os
 import pathlib
-import typing as _t
+from yuio import _t
 from dataclasses import dataclass
 
 import yuio
+import yuio.complete
 import yuio.parse
 
 T = _t.TypeVar("T")
@@ -241,7 +180,8 @@ class _FieldSettings:
     parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None
     help: _t.Union[str, yuio.Disabled, None] = None
     env: _t.Union[str, yuio.Disabled, None] = None
-    flags: _t.Union[str, _t.List[str], yuio.Disabled, yuio.Positional, None] = None
+    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None
+    completer: _t.Optional[yuio.complete.Completer] = None
     required: bool = False
 
     def _update_defaults(
@@ -277,7 +217,7 @@ class _FieldSettings:
         if env == "" and not is_subconfig:
             raise TypeError(f"{qualname} got an empty env variable name")
 
-        flags: _t.Union[_t.List[str], yuio.Disabled, yuio.Positional]
+        flags: _t.Union[_t.List[str], yuio.Positional, yuio.Disabled]
         if self.flags is yuio.DISABLED or self.flags is yuio.POSITIONAL:
             flags = self.flags
             if not allow_positionals and flags is yuio.POSITIONAL:
@@ -348,12 +288,15 @@ class _FieldSettings:
                     f"{qualname}: positional multi-value arguments can't have defaults"
                 )
 
+        completer = self.completer
+
         return _Field(
             default,
             parser,
             help,
             env,
             flags,
+            completer,
             is_subconfig,
             ty,
             required,
@@ -366,31 +309,21 @@ class _Field:
     parser: _t.Optional[yuio.parse.Parser[_t.Any]]
     help: _t.Union[str, yuio.Disabled]
     env: _t.Union[str, yuio.Disabled]
-    flags: _t.Union[_t.List[str], yuio.Disabled, yuio.Positional]
+    flags: _t.Union[_t.List[str], yuio.Positional, yuio.Disabled]
+    completer: _t.Optional[yuio.complete.Completer]
     is_subconfig: bool
-    ty: _t.Type
+    ty: type
     required: bool
 
 
 @_t.overload
 def field(
     *,
+    completer: _t.Optional[yuio.complete.Completer] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
 ) -> _t.Any:
-    ...
-
-
-@_t.overload
-def field(
-    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
-    *,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
-) -> T:
     ...
 
 
@@ -402,7 +335,21 @@ def field(
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
+    completer: _t.Optional[yuio.complete.Completer] = None,
 ) -> _t.Optional[T]:
+    ...
+
+
+@_t.overload
+def field(
+    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
+    *,
+    parser: _t.Optional[yuio.parse.Parser[T]] = None,
+    help: _t.Union[str, yuio.Disabled, None] = None,
+    env: _t.Union[str, yuio.Disabled, None] = None,
+    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
+    completer: _t.Optional[yuio.complete.Completer] = None,
+) -> T:
     ...
 
 
@@ -412,7 +359,8 @@ def field(
     parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], yuio.Disabled, yuio.Positional, None] = None,
+    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
+    completer: _t.Optional[yuio.complete.Completer] = None,
 ) -> _t.Any:
     """Field descriptor, used for additional configuration of fields.
 
@@ -427,6 +375,8 @@ def field(
 
         By default, help message is inferred from comments right above the field
         definition (comments must start with ``#:``).
+
+        Help messages are formatted using Markdown (see :mod:`yuio.md`).
     :param env:
         Name of environment variable that will be used for this field.
 
@@ -436,18 +386,24 @@ def field(
     :param flags:
         List of names (or a single name) of CLI flags that will be used for this field.
 
+        This setting is used with :mod:`yuio.app` to configure CLI arguments parsers.
+
         Pass :data:`~yuio.DISABLED` to disable loading this field form CLI arguments.
 
-        Pass :data:`~yuio.POSITIONAL` to make this argument positional (only in apps and subcommands).
+        Pass :data:`~yuio.POSITIONAL` to make this argument positional
+        (only in apps, see :mod:`yuio.app`).
 
         Pass an empty string to disable prefixing nested config flags.
+    :param completer:
+        completer that will be used for autocompletion in CLI.
 
-        See :mod:`yuio.app` for details.
+        This setting is used with :mod:`yuio.app` to configure CLI arguments parsers.
 
     """
 
     return _FieldSettings(
         default=default,
+        completer=completer,
         parser=parser,
         help=help,
         env=env,
@@ -472,18 +428,8 @@ def positional(
     *,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
+    completer: _t.Optional[yuio.complete.Completer] = None,
 ) -> _t.Any:
-    ...
-
-
-@_t.overload
-def positional(
-    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
-    *,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-) -> T:
     ...
 
 
@@ -494,7 +440,20 @@ def positional(
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
+    completer: _t.Optional[yuio.complete.Completer] = None,
 ) -> _t.Optional[T]:
+    ...
+
+
+@_t.overload
+def positional(
+    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
+    *,
+    parser: _t.Optional[yuio.parse.Parser[T]] = None,
+    help: _t.Union[str, yuio.Disabled, None] = None,
+    env: _t.Union[str, yuio.Disabled, None] = None,
+    completer: _t.Optional[yuio.complete.Completer] = None,
+) -> T:
     ...
 
 
@@ -504,6 +463,7 @@ def positional(
     parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
+    completer: _t.Optional[yuio.complete.Completer] = None,
 ) -> _t.Any:
     """A shortcut for adding a positional argument.
 
@@ -517,11 +477,20 @@ def positional(
         help=help,
         env=env,
         flags=yuio.POSITIONAL,
+        completer=completer,
     )
 
 
-def _action(parser: yuio.parse.Parser, parse_many: bool):
+def _action(parser: yuio.parse.Parser[_t.Any], completer: _t.Optional[yuio.complete.Completer], parse_many: bool):
     class Action(argparse.Action):
+        @staticmethod
+        def get_parser():
+            return parser
+
+        @staticmethod
+        def get_completer():
+            return completer
+
         def __call__(self, _, namespace, values, option_string=None):
             try:
                 if parse_many:
@@ -551,6 +520,18 @@ class Config:
     Upon creation, all fields that aren't explicitly initialized
     and don't have defaults are considered missing.
     Accessing them will raise :class:`AttributeError`.
+
+    .. automethod:: update
+
+    .. automethod:: load_from_env
+
+    .. automethod:: load_from_json_file
+
+    .. automethod:: load_from_yaml_file
+
+    .. automethod:: load_from_toml_file
+
+    .. automethod:: load_from_parsed_file
 
     """
 
@@ -582,7 +563,7 @@ class Config:
                 fields.update(getattr(base, "_Config__get_fields")())
 
         try:
-            types = _t.get_type_hints(cls, include_extras=True)
+            types = _t.get_type_hints(cls)
         except NameError as e:
             if "<locals>" in cls.__qualname__:
                 raise NameError(
@@ -637,7 +618,7 @@ class Config:
 
         self.update(kwargs)
 
-    def update(self: _Self, other: _t.Union[_t.Dict[str, _t.Any], _Self], /):
+    def update(self: _Self, other: _t.Union[_Self, _t.Dict[str, _t.Any]], /):
         """Update fields in this config with fields from another config.
 
         This function is similar to :meth:`dict.update`.
@@ -782,7 +763,7 @@ class Config:
 
             parse_many = field.parser.supports_parse_many()
 
-            action = _action(field.parser, parse_many)
+            action = _action(field.parser, field.completer, parse_many)
 
             if flags is yuio.POSITIONAL:
                 metavar = f"<{name.replace('_', '-')}>"
@@ -834,7 +815,7 @@ class Config:
                             help = argparse.SUPPRESS
                         else:
                             help = (
-                                f'disable <c:cli/flag>{(prefix or "--") + flag[2:]}</c>'
+                                f'disable <c hl/flag:sh-usage>{(prefix or "--") + flag[2:]}</c>'
                             )
                         mutex_group.add_argument(
                             flag_neg,
@@ -890,7 +871,7 @@ class Config:
         """
 
         try:
-            import yaml  # type: ignore
+            import yaml
         except ImportError:
             raise ImportError("PyYaml is not available")
 
@@ -917,7 +898,7 @@ class Config:
         """
 
         try:
-            import toml  # type: ignore
+            import toml
         except ImportError:
             try:
                 import tomllib as toml  # type: ignore
@@ -954,7 +935,7 @@ class Config:
 
     @classmethod
     def load_from_parsed_file(
-        cls: _t.Type[_Self], parsed: dict, /, *, ignore_unknown_fields: bool = False
+        cls: _t.Type[_Self], parsed: _t.Dict[str, object], /, *, ignore_unknown_fields: bool = False
     ) -> _Self:
         """Load config from parsed config file.
 
@@ -973,7 +954,7 @@ class Config:
     @classmethod
     def __load_from_parsed_file(
         cls: _t.Type[_Self],
-        parsed: dict,
+        parsed: _t.Dict[str, object],
         ignore_unknown_fields: bool = False,
         field_prefix: str = "",
     ) -> _Self:

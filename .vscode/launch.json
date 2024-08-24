@@ -16,7 +16,8 @@
             "name": "Example: App",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/examples/app.py"
+            "program": "${workspaceFolder}/examples/app.py",
+            "args": ["-h"]
         },
         {
             "name": "Example: Git",

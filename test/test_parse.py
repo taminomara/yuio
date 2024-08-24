@@ -1,7 +1,7 @@
 import datetime
 import enum
 import os.path
-import typing as _t
+from yuio import _t
 
 import pytest
 
@@ -532,37 +532,3 @@ class TestConstraints:
         parser = yuio.parse.OneOf(yuio.parse.Str().lower(), ["qux", "duo"])
         assert parser.parse("Qux") == "qux"
         assert parser.parse("Duo") == "duo"
-
-
-class TestTypeHints:
-    @pytest.mark.parametrize(
-        "hint,data,expected",
-        [
-            (yuio.parse.NonEmpty[_t.List[int]], "10 15", [10, 15]),
-            (yuio.parse.NonEmpty[_t.List[int]], "", ValueError),
-            (yuio.parse.Positive[int], "10", 10),
-            (yuio.parse.Positive[int], "0", ValueError),
-            (yuio.parse.Positive[int], "-5", ValueError),
-            (yuio.parse.Positive[int], "1.1", ValueError),
-            (yuio.parse.Positive[float], "1.1", 1.1),
-            (yuio.parse.Positive[float], "-1.1", ValueError),
-            (yuio.parse.Positive[int], "10", ValueError),
-            (yuio.parse.NonNegative[int], "10", 10),
-            (yuio.parse.NonNegative[int], "0", 0),
-            (yuio.parse.NonNegative[int], "-10", ValueError),
-            (yuio.parse.Negative[int], "10", ValueError),
-            (yuio.parse.NonPositive[int], "10", ValueError),
-            (yuio.parse.FractionFloat, "0", 0),
-            (yuio.parse.FractionFloat, "0.5", 0.5),
-            (yuio.parse.FractionFloat, "1", 1),
-            (yuio.parse.FactorFloat, "1", 1),
-            (yuio.parse.FactorFloat, "10", 10),
-        ]
-    )
-    def test_simple(self, hint, data, expected):
-        parser = yuio.parse.from_type_hint(hint)
-        if isinstance(expected, type) and issubclass(expected, Exception):
-            with pytest.raises(expected):
-                parser.parse(data)
-        else:
-            assert parser.parse(data) == expected

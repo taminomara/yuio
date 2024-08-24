@@ -1,13 +1,12 @@
-import typing as _t
-
 import yuio.io
 import yuio.widget
 from yuio.widget import Key, RenderContext
 
+from typing import Tuple
+
+
 # Let's build a simple widget and see how we can configure it
 # to automatically render help messages for us.
-
-
 class ExampleWidget(yuio.widget.Widget[None]):
     def __init__(self):
         self._last_action = "nothing so far"
@@ -63,7 +62,7 @@ class ExampleWidget(yuio.widget.Widget[None]):
         """close"""
         return yuio.widget.Result(None)
 
-    def layout(self, rc: RenderContext) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext) -> Tuple[int, int]:
         return 1, 1
 
     def draw(self, rc: yuio.widget.RenderContext):
@@ -80,5 +79,5 @@ if __name__ == "__main__":
 
     widget = ExampleWidget().with_help()
 
-    yuio.io.question("Press hotkeys for actions described below:")
+    yuio.io.heading("Press hotkeys for actions described below:")
     widget.run(term, theme)

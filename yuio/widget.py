@@ -102,7 +102,7 @@ import re
 import shutil
 import string
 import sys
-import typing as _t
+from yuio import _t
 from dataclasses import dataclass
 
 import yuio.complete
@@ -183,7 +183,7 @@ class KeyboardEvent:
 
     #: Which key was pressed? Can be a single character,
     #: or a :class:`Key` for non-character keys.
-    key: _t.Union[str, Key]
+    key: _t.Union[Key, str]
 
     #: Whether a `Ctrl` modifier was pressed with keystroke.
     ctrl: bool = False
@@ -386,7 +386,7 @@ class RenderContext:
                         "potentially can span multiple lines"
                     )
 
-                def layout(self, rc: RenderContext) -> tuple[int, int]:
+                def layout(self, rc: RenderContext) -> _t.Tuple[int, int]:
                     # The text will be placed at (4, 1), and we'll also limit
                     # its width. So we'll reflect those constrains
                     # by arranging a drawing frame.
@@ -640,9 +640,8 @@ class RenderContext:
         so newline characters and tabs within each line are replaced with spaces.
         Use :meth:`yuio.term.ColorizedString.wrap` to properly handle them.
 
-        After each line, the cursor is moved done line down,
+        After each line, the cursor is moved one line down,
         and back to its original horizontal position.
-        So, if you write lines at
 
         ..
             >>> term = _Term(sys.stdout)
@@ -753,10 +752,8 @@ class RenderContext:
             self._bell = False
 
         if self._full_redraw:
-            self._move_term_cursor(0, 0, [], True)
+            self._move_term_cursor(0, 0)
             self._out.append("\x1b[J")
-
-        had_color_changes_since_last_print = False
 
         for y in range(self._height):
             line = self._lines[y]
@@ -766,9 +763,7 @@ class RenderContext:
                 color = self._colors[y][x]
 
                 if color != prev_color or line[x] != self._prev_lines[y][x]:
-                    self._move_term_cursor(
-                        x, y, line, had_color_changes_since_last_print
-                    )
+                    self._move_term_cursor(x, y)
 
                     if color != self._term_color:
                         self._out.append(color)
@@ -777,23 +772,9 @@ class RenderContext:
                     self._out.append(line[x])
                     self._term_x += 1
 
-                    had_color_changes_since_last_print = False
-                else:
-                    had_color_changes_since_last_print = (
-                        had_color_changes_since_last_print
-                        or (
-                            color != self._term_color
-                            and (
-                                line[x] != " "
-                                or ";4" in color
-                                or ";4" in self._term_color
-                            )
-                        )
-                    )
-
         final_x = max(0, min(self._width - 1, self._final_x))
         final_y = max(0, min(self._height - 1, self._final_y))
-        self._move_term_cursor(final_x, final_y, [], True)
+        self._move_term_cursor(final_x, final_y)
 
         rendered = "".join(self._out)
         self._term.stream.write(rendered)
@@ -808,13 +789,13 @@ class RenderContext:
             debug_msg = f"dbg:n={self._renders},r={self._bytes_rendered},t={self._total_bytes_rendered}"
             term_x, term_y = self._term_x, self._term_y
             self._move_term_cursor(
-                self._width - len(debug_msg), self._max_term_y, [], True
+                self._width - len(debug_msg), self._max_term_y
             )
             self._out.append(self._none_color)
             self._out.append(debug_msg)
             self._term_x += len(debug_msg)
             self._out.append(self._term_color)
-            self._move_term_cursor(term_x, term_y, [], True)
+            self._move_term_cursor(term_x, term_y)
 
             self._term.stream.write("".join(self._out))
             self._term.stream.flush()
@@ -825,7 +806,7 @@ class RenderContext:
 
         self.prepare(full_redraw=True)
 
-        self._move_term_cursor(0, 0, [], True)
+        self._move_term_cursor(0, 0)
         self._out.append("\x1b[J")
         self._out.append(self._none_color)
         self._term.stream.write("".join(self._out))
@@ -833,31 +814,20 @@ class RenderContext:
         self._out.clear()
         self._term_color = self._none_color
 
-    def _move_term_cursor(
-        self,
-        x: int,
-        y: int,
-        line: _t.List[str],
-        had_color_changes_since_last_print: bool,
-    ):
+    def _move_term_cursor(self, x: int ,y: int):
         dy = y - self._term_y
         if 0 < dy <= 4 or y > self._max_term_y:
             self._out.append("\n" * dy)
             self._term_x = 0
-        elif dy > 4:
+        elif dy > 0:
             self._out.append(f"\x1b[{dy}B")
         elif dy < 0:
             self._out.append(f"\x1b[{-dy}A")
         self._term_y = y
         self._max_term_y = max(self._max_term_y, y)
 
-        dx = x - self._term_x
-        if 0 < dx <= 4 and not had_color_changes_since_last_print:
-            self._out.extend(line[self._term_x : x])
-        elif dx > 0:
-            self._out.append(f"\x1b[{dx}C")
-        elif dx < 0:
-            self._out.append(f"\x1b[{-dx}D")
+        if x != self._term_x:
+            self._out.append(f"\x1b[{x + 1}G")
         self._term_x = x
 
     def _render_dumb(self):
@@ -934,8 +904,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     """
 
-    __keybindings: _t.ClassVar[_t.Dict[KeyboardEvent, _t.Callable[["Widget"], None]]]
-    __callbacks: _t.ClassVar[_t.List[_t.Callable[["Widget"], None]]]
+    __keybindings: _t.ClassVar[_t.Dict[KeyboardEvent, _t.Callable[["Widget[object]"], None]]]
+    __callbacks: _t.ClassVar[_t.List[_t.Callable[["Widget[object]"], None]]]
 
     def __init_subclass__(cls) -> None:
         cls.__keybindings = {}
@@ -1064,7 +1034,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
             class MyWidget(Widget):
                 @functools.cached_property
-                def help_columns(self) -> list[Help.Column]:
+                def help_columns(self) -> _t.List[Help.Column]:
                     # Add an item to the first column.
                     return Help.combine_columns(
                         super().help_columns,
@@ -1110,7 +1080,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
 
 def bind(
-    key: _t.Union[str, Key],
+    key: _t.Union[Key, str],
     *,
     ctrl: bool = False,
     alt: bool = False,
@@ -1260,10 +1230,10 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
     """
 
     if _t.TYPE_CHECKING:
-        def __new__(cls, *widgets: Widget[_t.Any]) -> "VerticalLayout[_t.Never]": ...
+        def __new__(cls, *widgets: Widget[object]) -> "VerticalLayout[_t.Never]": ...
 
-    def __init__(self, *widgets: Widget[_t.Any]):
-        self._widgets: _t.List[Widget[_t.Any]] = list(widgets)
+    def __init__(self, *widgets: Widget[object]):
+        self._widgets: _t.List[Widget[object]] = list(widgets)
 
         self._layouts: _t.List[_t.Tuple[int, int]] = []
         self._min_h: int = 0
@@ -1289,7 +1259,7 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
         """
 
         if self._event_receiver is not None:
-            return self._widgets[self._event_receiver].event(e)
+            return _t.cast(_t.Optional[Result[T]], self._widgets[self._event_receiver].event(e))
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         """Calculate layout of the entire stack."""
@@ -1327,7 +1297,7 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
             y1 = y2
 
-    @property
+    @functools.cached_property
     def help_columns(self) -> _t.List["Help.Column"]:
         if self._event_receiver is not None:
             return self._widgets[self._event_receiver].help_columns
@@ -1796,12 +1766,12 @@ class Input(Widget[str]):
 
             if self._text:
                 self._wrapped_text = _ColorizedString(
-                    [rc.theme.get_color("menu/input/text"), self._text]
+                    [rc.theme.get_color("menu/text:input"), self._text]
                 ).wrap(text_width, preserve_spaces=True)
                 self._pos_after_wrap = None
             else:
                 self._wrapped_text = _ColorizedString(
-                    [rc.theme.get_color("menu/input/placeholder"), self._placeholder]
+                    [rc.theme.get_color("menu/placeholder:input"), self._placeholder]
                 ).wrap(text_width)
                 self._pos_after_wrap = (decoration_width, 0)
 
@@ -1824,7 +1794,7 @@ class Input(Widget[str]):
 
     def draw(self, rc: RenderContext, /):
         if self._decoration:
-            rc.set_color_path("menu/input/decoration")
+            rc.set_color_path("menu/decoration:input")
             rc.write(self._decoration)
             rc.move_pos(1, 0)
 
@@ -1918,7 +1888,7 @@ class Choice(Widget[T], _t.Generic[T]):
         if idx is None or not self._options:
             self._index = None
         elif self._options:
-            self._index = idx % len(self._options) if idx is not None else 0
+            self._index = idx % len(self._options)
 
     def get_option(self) -> _t.Optional[Option[T]]:
         """
@@ -2049,7 +2019,7 @@ class Choice(Widget[T], _t.Generic[T]):
             self.__bell = False
 
         if not self._options:
-            rc.set_color_path("menu/input/decoration")
+            rc.set_color_path("menu/decoration:choice")
             rc.write("No options to display")
             return
 
@@ -2076,7 +2046,7 @@ class Choice(Widget[T], _t.Generic[T]):
                 rc, column_width - _SPACE_BETWEEN_COLUMNS, option, is_current
             )
 
-    def _get_option_width(self, option: Option):
+    def _get_option_width(self, option: Option[object]):
         return (
             _SPACE_BETWEEN_COLUMNS
             + (_line_width(self._decoration) + 1 if self._decoration else 0)
@@ -2088,7 +2058,7 @@ class Choice(Widget[T], _t.Generic[T]):
         )
 
     def _render_option(
-        self, rc: RenderContext, width: int, option: Option, is_active: bool
+        self, rc: RenderContext, width: int, option: Option[object], is_active: bool
     ):
         left_prefix_width = _line_width(option.display_text_prefix)
         left_main_width = _line_width(option.display_text)
@@ -2133,24 +2103,24 @@ class Choice(Widget[T], _t.Generic[T]):
             status_tag = "normal"
 
         if self._decoration and is_active:
-            rc.set_color_path(f"menu/choice/{status_tag}/decoration/{option.color_tag}")
+            rc.set_color_path(f"menu/decoration:choice/{status_tag}/{option.color_tag}")
             rc.write(self._decoration)
-            rc.set_color_path(f"menu/choice/{status_tag}/plain_text/{option.color_tag}")
+            rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
             rc.write(" ")
         elif self._decoration:
-            rc.set_color_path(f"menu/choice/{status_tag}/plain_text/{option.color_tag}")
+            rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
             rc.write(" " * left_decoration_width)
 
-        rc.set_color_path(f"menu/choice/{status_tag}/prefix/{option.color_tag}")
+        rc.set_color_path(f"menu/text/prefix:choice/{status_tag}/{option.color_tag}")
         rc.write(option.display_text_prefix, max_width=left_width)
-        rc.set_color_path(f"menu/choice/{status_tag}/text/{option.color_tag}")
+        rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
         rc.write(option.display_text, max_width=left_width - left_prefix_width)
-        rc.set_color_path(f"menu/choice/{status_tag}/suffix/{option.color_tag}")
+        rc.set_color_path(f"menu/text/suffix:choice/{status_tag}/{option.color_tag}")
         rc.write(
             option.display_text_suffix,
             max_width=left_width - left_prefix_width - left_main_width,
         )
-        rc.set_color_path(f"menu/choice/{status_tag}/plain_text/{option.color_tag}")
+        rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
         rc.write(
             " "
             * (
@@ -2163,11 +2133,11 @@ class Choice(Widget[T], _t.Generic[T]):
         )
 
         if right:
-            rc.set_color_path(f"menu/choice/{status_tag}/plain_text/{option.color_tag}")
+            rc.set_color_path(f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}")
             rc.write(" [")
-            rc.set_color_path(f"menu/choice/{status_tag}/comment/{option.color_tag}")
+            rc.set_color_path(f"menu/text/comment:choice/{status_tag}/{option.color_tag}")
             rc.write(right, max_width=right_width)
-            rc.set_color_path(f"menu/choice/{status_tag}/plain_text/{option.color_tag}")
+            rc.set_color_path(f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}")
             rc.write("]")
 
     @functools.cached_property
@@ -2209,7 +2179,7 @@ class InputWithCompletion(Widget[str]):
         /,
         *,
         placeholder: str = "",
-        decoration: str = "/",
+        decoration: str = "",
         completion_item_decoration: str = ">",
     ):
         self._completer = completer
@@ -2224,7 +2194,7 @@ class InputWithCompletion(Widget[str]):
         self._prev_text: str = ""
         self._prev_pos: int = 0
 
-        self._layout: VerticalLayout
+        self._layout: VerticalLayout[_t.Never]
         self._rsuffix: _t.Optional[yuio.complete.Completion] = None
 
     @bind(Key.ENTER)
@@ -2418,7 +2388,7 @@ class FilterableChoice(Widget[T], _t.Generic[T]):
 
         self._enable_search = False
 
-        self._layout: VerticalLayout
+        self._layout: VerticalLayout[_t.Never]
 
         self._update_completion()
 
@@ -2498,7 +2468,7 @@ class FilterableChoice(Widget[T], _t.Generic[T]):
         ]
 
 
-class Map(Widget[U], _t.Generic[T, U]):
+class Map(Widget[T], _t.Generic[T]):
     """A wrapper that maps result of the given widget using the given function.
 
     ..
@@ -2519,11 +2489,11 @@ class Map(Widget[U], _t.Generic[T, U]):
 
     """
 
-    def __init__(self, inner: Widget[T], fn: _t.Callable[[T], U], /):
-        self._inner: Widget[T] = inner
-        self._fn: _t.Callable[[T], U] = fn
+    def __init__(self, inner: Widget[U], fn: _t.Callable[[U], T], /):
+        self._inner: Widget[U] = inner
+        self._fn: _t.Callable[[U], T] = fn
 
-    def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[U]]:
+    def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T]]:
         if result := self._inner.event(e):
             return Result(self._fn(result.value))
 
@@ -2533,12 +2503,12 @@ class Map(Widget[U], _t.Generic[T, U]):
     def draw(self, rc: RenderContext, /):
         self._inner.draw(rc)
 
-    @property
+    @functools.cached_property
     def help_columns(self) -> _t.List["Help.Column"]:
         return self._inner.help_columns
 
 
-class Apply(Widget[T], _t.Generic[T]):
+class Apply(Map[T], _t.Generic[T]):
     """A wrapper that applies the given function to the result of a wrapped widget.
 
     ..
@@ -2553,8 +2523,8 @@ class Apply(Widget[T], _t.Generic[T]):
     Example::
 
         >>> # Run `Input` widget, then print its output before returning
-        >>> print_input = Apply(Input(), print)
-        >>> result = print_input.run(term, theme)
+        >>> print_output = Apply(Input(), print)
+        >>> result = print_output.run(term, theme)
         foobar!
         >>> result
         'foobar!'
@@ -2562,23 +2532,11 @@ class Apply(Widget[T], _t.Generic[T]):
     """
 
     def __init__(self, inner: Widget[T], fn: _t.Callable[[T], None], /):
-        self._inner: Widget[T] = inner
-        self._fn: _t.Callable[[T], None] = fn
+        def mapper(x: T) -> T:
+            fn(x)
+            return x
 
-    def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T]]:
-        if result := self._inner.event(e):
-            self._fn(result.value)
-            return result
-
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
-        return self._inner.layout(rc)
-
-    def draw(self, rc: RenderContext, /):
-        self._inner.draw(rc)
-
-    @property
-    def help_columns(self) -> _t.List["Help.Column"]:
-        return self._inner.help_columns
+        super().__init__(inner, mapper)
 
 
 class Help(Widget[_t.Never]):
@@ -2742,7 +2700,7 @@ class Help(Widget[_t.Never]):
             rc.set_pos(x, y)
 
             if col_sep_width:
-                rc.set_color_path("menu/help/plain_text")
+                rc.set_color_path("menu/text:help")
                 rc.write(col_sep)
                 x += col_sep_width
 
@@ -2754,18 +2712,18 @@ class Help(Widget[_t.Never]):
                 rc.move_pos(keys_column_width - keys_width, 0)
                 sep = ""
                 for key in keys:
-                    rc.set_color_path("menu/help/plain_text")
+                    rc.set_color_path("menu/text:help")
                     rc.write(sep)
-                    rc.set_color_path("menu/help/key")
+                    rc.set_color_path("menu/text/key:help")
                     rc.write(key)
                     sep = "/"
 
                 if keys_column_width:
                     rc.move_pos(1, 0)
                 if keys:
-                    rc.set_color_path("menu/help/text")
+                    rc.set_color_path("menu/text:help")
                 else:
-                    rc.set_color_path("menu/help/key")
+                    rc.set_color_path("menu/text/key:help")
                 rc.write(help)
 
             x += column_width
@@ -2806,14 +2764,14 @@ class Help(Widget[_t.Never]):
         rc.set_pos(x, y)
         sep = ""
         for key in keys:
-            rc.set_color_path("menu/help/text")
+            rc.set_color_path("menu/text:help")
             rc.write(sep)
-            rc.set_color_path("menu/help/key")
+            rc.set_color_path("menu/text/key:help")
             rc.write(key)
             sep = "/"
 
         rc.set_pos(x + action_keys_width, y)
-        rc.set_color_path("menu/help/text")
+        rc.set_color_path("menu/text:help")
         rc.write(help)
 
 
@@ -2822,7 +2780,8 @@ def _event_stream() -> _t.Iterator[KeyboardEvent]:
         key = _getch()
         while _kbhit():
             key += _getch()
-        key = key.decode(sys.__stdin__.encoding, "replace")
+        encoding = sys.__stdin__.encoding if sys.__stdin__ is not None else "utf-8"
+        key = key.decode(encoding, "replace")
 
         # Esc key
         if key == "\x1b":
@@ -2842,25 +2801,25 @@ def _event_stream() -> _t.Iterator[KeyboardEvent]:
         elif key == "\x1bN":
             yield KeyboardEvent("N", alt=True)
         elif key.startswith("\x1bN"):
-            pass
+            yield from _parse_csi(key[2:])
         elif key.startswith("\x1b\x1bN"):
-            pass
+            yield from _parse_csi(key[3:], alt=True)
 
         # SS3
         elif key == "\x1bO":
             yield KeyboardEvent("O", alt=True)
         elif key.startswith("\x1bO"):
-            pass
+            yield from _parse_csi(key[2:])
         elif key.startswith("\x1b\x1bO"):
-            pass
+            yield from _parse_csi(key[3:], alt=True)
 
         # DSC
         elif key == "\x1bP":
             yield KeyboardEvent("P", alt=True)
         elif key.startswith("\x1bP"):
-            pass
+            yield from _parse_csi(key[2:])
         elif key.startswith("\x1b\x1bP"):
-            pass
+            yield from _parse_csi(key[3:], alt=True)
 
         # Alt + Key
         elif key.startswith("\x1b"):
@@ -2895,7 +2854,7 @@ def _parse_csi(
     if match := re.match(r"^(?P<code>\d+)?(?:;(?P<modifier>\d+))?~$", csi):
         code = match.group("code") or "1"
         modifier = int(match.group("modifier") or "1") - 1
-    elif match := re.match(r"^(?:\d+;)?(?P<modifier>\d+)?(?P<code>[A-Z])$", csi):
+    elif match := re.match(r"^(?:\d+;)?(?P<modifier>\d+)?(?P<code>[A-Z0-9]+)$", csi):
         code = match.group("code") or "1"
         modifier = int(match.group("modifier") or "1") - 1
     else:

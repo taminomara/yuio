@@ -99,9 +99,8 @@ import enum
 import functools
 import os
 import re
-import string
 import sys
-import typing as _t
+from yuio import _t
 import unicodedata
 from dataclasses import dataclass
 
@@ -171,7 +170,7 @@ class Term:
     interactive_support: InteractiveSupport = InteractiveSupport.NONE
 
     #: Background color of a terminal.
-    background_color: _t.Optional["ColorValue"] = None
+    background_color: "_t.Optional[ColorValue]" = None
 
     #: Overall color theme of a terminal, i.e. dark or light.
     lightness: Lightness = Lightness.UNKNOWN
@@ -231,11 +230,11 @@ _CI_ENV_VARS = [
 ]
 
 
-def get_term(*, prefer_stdout: bool = False, query_theme: bool = True) -> Term:
+def get_term(*, prefer_stdout: bool = False, query_theme: bool = False) -> Term:
     """Query info about a terminal attached to :data:`sys.stderr`.
 
     This function checks if stderr is connected to a TTY, and determines
-    terminal's capabilities. If `query_theme` is true (the default), and both stderr
+    terminal's capabilities. If `query_theme` is true, and both stderr
     and stdin are tty, this function will query terminal's background color
     via ANSI escape sequences.
 
@@ -248,7 +247,7 @@ def get_term(*, prefer_stdout: bool = False, query_theme: bool = True) -> Term:
     return get_term_from_stream(stream, query_theme=query_theme)
 
 
-def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> Term:
+def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = False) -> Term:
     """Query info about a terminal attached to the given stream.
 
     This function is similar to :func:`get_term`, except that it takes stream
@@ -264,6 +263,9 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> T
         or "--force-no-color" in sys.argv
         or "--force-no-colors" in sys.argv
         or "FORCE_NO_COLOR" in os.environ
+        or "FORCE_NO_COLORS" in os.environ
+        or "FORCE_NO_COLOUR" in os.environ
+        or "FORCE_NO_COLOURS" in os.environ
     ):
         return Term(stream)
 
@@ -280,6 +282,9 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> T
         "--force-color" in sys.argv
         or "--force-colors" in sys.argv
         or "FORCE_COLOR" in os.environ
+        or "FORCE_COLORS" in os.environ
+        or "FORCE_COLOUR" in os.environ
+        or "FORCE_COLOURS" in os.environ
     ):
         color_support = ColorSupport.ANSI
     if has_interactive_output:
@@ -307,6 +312,8 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> T
             interactive_support = InteractiveSupport.FULL
             if query_theme:
                 lightness, background_color = _get_lightness(stream)
+                if background_color is not None:
+                    print(_get_standard_colors(stream))
         else:
             interactive_support = InteractiveSupport.MOVE_CURSOR
 
@@ -321,9 +328,9 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = True) -> T
 
 def _get_lightness(
     stream: _t.TextIO,
-) -> _t.Tuple[Lightness, _t.Optional["ColorValue"]]:
+) -> _t.Tuple[Lightness, "_t.Optional[ColorValue]"]:
     try:
-        response = _query_term(stream, "\x1b]11;?\a")
+        response = _query_term(stream, "\x1b]11;?\x1b\\")
         if response is None:
             return Lightness.UNKNOWN, None
 
@@ -346,14 +353,46 @@ def _get_lightness(
         else:
             return Lightness.UNKNOWN, ColorValue.from_rgb(r, g, b)
     except Exception:
+        raise
         return Lightness.UNKNOWN, None
+
+
+def _get_standard_colors(
+    stream: _t.TextIO,
+) -> _t.Dict[int, "ColorValue"]:
+    try:
+        queries = "".join(f";{i};?" for i in range(9))
+        response = _query_term(stream, f"\x1b]4;{queries}\x1b\\")
+        if response is None:
+            return {}
+
+        if not re.match(
+            rb"^]4(;\d;rgb:[0-9a-f]{2,4}/[0-9a-f]{2,4}/[0-9a-f]{2,4}){8}",
+            response,
+            re.IGNORECASE,
+        ):
+            return {}
+
+        colors = {}
+
+        response = response[2:]
+        while match := re.match(rb"^;(\d);rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})", response):
+            response = response[match.end():]
+            c = match.group(1)
+            r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups()[1:])
+            colors[c] = ColorValue.from_rgb(r, g, b)
+
+        return colors
+
+    except Exception:
+        return {}
 
 
 def _query_term(
     stream: _t.TextIO,
     query: str,
     timeout: float = 0.3,
-    end_sequences: _t.Union[bytes, _t.Tuple[bytes, ...]] = (b"\a", b"\x1b\\"),
+    end_sequences: _t.Union[bytes, _t.Tuple[bytes, ...]] = (b"\a", b"\x1b\\", b"\x9c"),
 ) -> _t.Optional[bytes]:
     try:
         with _set_cbreak():
@@ -378,28 +417,28 @@ def _query_term(
         return None
 
 
-def _is_tty(stream: _t.Optional[_t.IO]) -> bool:
+def _is_tty(stream: _t.Optional[_t.TextIO]) -> bool:
     try:
         return stream is not None and stream.isatty()
     except Exception:
         return False
 
 
-def _is_foreground(stream: _t.Optional[_t.IO]) -> bool:
+def _is_foreground(stream: _t.Optional[_t.TextIO]) -> bool:
     try:
         return stream is not None and os.getpgrp() == os.tcgetpgrp(stream.fileno())
     except Exception:
         return False
 
 
-def _is_interactive_input(stream: _t.Optional[_t.IO]) -> bool:
+def _is_interactive_input(stream: _t.Optional[_t.TextIO]) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.readable()
     except Exception:
         return False
 
 
-def _is_interactive_output(stream: _t.Optional[_t.IO]) -> bool:
+def _is_interactive_output(stream: _t.Optional[_t.TextIO]) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.writable()
     except Exception:
@@ -476,7 +515,7 @@ class ColorValue:
     """
 
     #: Color data.
-    data: _t.Union[int, _t.Tuple[int, int, int]]
+    data: _t.Union[int, str, _t.Tuple[int, int, int]]
 
     @classmethod
     def from_rgb(cls, r: int, g: int, b: int, /) -> "ColorValue":
@@ -577,9 +616,11 @@ class ColorValue:
 
         if not colors:
             raise TypeError("lerp expected at least 1 argument, got 0")
-        elif len(colors) >= 2 and all(
+        elif len(colors) == 1 or not all(
             isinstance(color.data, tuple) for color in colors
         ):
+            return lambda f, /: colors[0]
+        else:
             l = len(colors) - 1
 
             def lerp(f: float, /) -> ColorValue:
@@ -593,20 +634,20 @@ class ColorValue:
                     return ColorValue(tuple(int(ca + f * (cb - ca)) for ca, cb in zip(a, b)))  # type: ignore
 
             return lerp
-        else:
-            return lambda f, /: colors[0]
 
     def _as_fore(self, term: Term, /) -> str:
-        return f"3{self._as_code(term)}"
+        return self._as_code(term, fg_bg_prefix="3")
 
     def _as_back(self, term: Term, /) -> str:
-        return f"4{self._as_code(term)}"
+        return self._as_code(term, fg_bg_prefix="3")
 
-    def _as_code(self, term: Term, /) -> str:
+    def _as_code(self, term: Term, /, fg_bg_prefix: str) -> str:
         if not term.has_colors:
             return ""
         elif isinstance(self.data, int):
-            return f"{self.data}"
+            return f"{fg_bg_prefix}{self.data}"
+        elif isinstance(self.data, str):
+            return self.data
         elif term.has_colors_true:
             return f"8;2;{self.data[0]};{self.data[1]};{self.data[2]}"
         elif term.has_colors_256:
@@ -788,8 +829,9 @@ class Color:
 
         if not colors:
             raise TypeError("lerp expected at least 1 argument, got 0")
-
-        if len(colors) >= 2:
+        elif len(colors) == 1:
+            return lambda f, /: colors[0]
+        else:
             fore_lerp = all(
                 color.fore is not None and isinstance(color.fore.data, tuple)
                 for color in colors
@@ -810,8 +852,8 @@ class Color:
                 return lambda f: dataclasses.replace(colors[0], fore=fore(f))  # type: ignore
             elif back_lerp:
                 return lambda f: dataclasses.replace(colors[0], back=back(f))  # type: ignore
-
-        return lambda f, /: colors[0]
+            else:
+                return lambda f, /: colors[0]
 
     def as_code(self, term: Term, /) -> str:
         """Convert this color into an ANSI escape code
@@ -848,6 +890,9 @@ class Color:
 
     #: Normal foreground color.
     FORE_NORMAL: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(9))  # type: ignore
+    #: Normal foreground color rendered with dim setting. This is an alternative to
+    #: bright black that works with most terminals and color schemes.
+    FORE_NORMAL_DIM: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue("2"))  # type: ignore
     #: Black foreground color.
     FORE_BLACK: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(0))  # type: ignore
     #: Red foreground color.
@@ -1146,7 +1191,7 @@ class Theme:
                 finally:
                     _self._Theme__expected_source = prev_expected_source
 
-            cls.__init__ = _wrapped_init
+            cls.__init__ = _wrapped_init  # type: ignore
 
     def _set_msg_decoration_if_not_overridden(
         self,
@@ -1275,10 +1320,10 @@ class Theme:
             loc, ctx = path_parts[0], ""
         else:
             loc, ctx = path_parts
-        return loc.split("/"), ctx.split("/")
+        return loc.split("/") if loc else [], ctx.split("/") if ctx else []
 
     @_t.final
-    @functools.cache
+    @functools.lru_cache(maxsize=None)
     def get_color(self, path: str, /) -> Color:
         """Lookup a color by path."""
 
@@ -1366,12 +1411,12 @@ class DefaultTheme(Theme):
         "primary_color": "normal",
         "accent_color": "magenta",
         "accent_color_2": "cyan",
-        "secondary_color": "dim",
+        "secondary_color": Color.FORE_NORMAL_DIM,
         "error_color": "red",
         "warning_color": "yellow",
         "success_color": "green",
-        "low_priority_color_a": "dim",
-        "low_priority_color_b": "dim",
+        "low_priority_color_a": Color.FORE_NORMAL_DIM,
+        "low_priority_color_b": Color.FORE_NORMAL_DIM,
         #
         # Common tags
         # -----------
@@ -1407,8 +1452,9 @@ class DefaultTheme(Theme):
         #
         # Tasks and progress bars
         # -----------------------
-        "task/decoration/run": "accent_color",
-        "task/decoration:ok": "success_color",
+        "task": "secondary_color",
+        "task/decoration:running": "accent_color",
+        "task/decoration:done": "success_color",
         "task/decoration:error": "error_color",
         "task/progressbar/done": "accent_color",
         "task/progressbar/pending": "secondary_color",
@@ -1431,48 +1477,39 @@ class DefaultTheme(Theme):
         "tb/frame/usr/file/module": "code",
         "tb/frame/usr/file/line": "code",
         "tb/frame/usr/file/path": "code",
+        "tb/frame/usr/code": Color.NONE,
         "tb/frame/usr/highlight": "low_priority_color_a",
         "tb/frame/lib": "dim",
         "tb/frame/lib/file/module": "tb/frame/usr/file/module",
         "tb/frame/lib/file/line": "tb/frame/usr/file/line",
         "tb/frame/lib/file/path": "tb/frame/usr/file/path",
+        "tb/frame/lib/code": "tb/frame/usr/code",
         "tb/frame/lib/highlight": "tb/frame/usr/highlight",
 
         #
         # Menu and widgets
         # ----------------
 
-        # "menu/input/decoration": "low_priority_color_a",
-        # "menu/input/text": "primary_color",
-        # "menu/input/placeholder": "secondary_color",
-        # "menu/choice/normal/plain_text": "secondary_color",
-        # "menu/choice/normal/decoration": "primary_color",
-        # "menu/choice/normal/text": "primary_color",
-        # "menu/choice/normal/text/dir": "blue",
-        # "menu/choice/normal/text/exec": "red",
-        # "menu/choice/normal/text/symlink": "magenta",
-        # "menu/choice/normal/text/socket": "green",
-        # "menu/choice/normal/text/pipe": "yellow",
-        # "menu/choice/normal/text/block_device": ["cyan", "bold"],
-        # "menu/choice/normal/text/char_device": ["yellow", "bold"],
-        # "menu/choice/normal/comment": "note",
-        # "menu/choice/normal/comment/original": "success_color",
-        # "menu/choice/normal/comment/corrected": "error_color",
-        # "menu/choice/active/plain_text": "secondary_color",
-        # "menu/choice/active/decoration": "accent_color",
-        # "menu/choice/active/text": "accent_color",
-        # "menu/choice/active/comment": "note",
-        # "menu/choice/active/comment/original": "success_color",
-        # "menu/choice/active/comment/corrected": "error_color",
-        # **{
-        #     f"menu/choice/{status}/{role}/{color}": color
-        #     for color in Theme.colors
-        #     for status in ["normal", "active"]
-        #     for role in ["plain_text", "decoration", "text", "comment"]
-        # },
-        # "menu/help/plain_text": "low_priority_color_b",
-        # "menu/help/text": "low_priority_color_b",
-        # "menu/help/key": "low_priority_color_a",
+        "menu/text": "primary_color",
+        "menu/text:help": "low_priority_color_b",
+        "menu/text/key:help": "low_priority_color_a",
+        "menu/text/comment": "note",
+        "menu/text/comment/decoration": "secondary_color",
+        "menu/text:choice/active": "accent_color",
+        "menu/text:choice/normal/dir": "blue",
+        "menu/text:choice/normal/exec": "red",
+        "menu/text:choice/normal/symlink": "magenta",
+        "menu/text:choice/normal/socket": "green",
+        "menu/text:choice/normal/pipe": "yellow",
+        "menu/text:choice/normal/block_device": ["cyan", "bold"],
+        "menu/text:choice/normal/char_device": ["yellow", "bold"],
+        "menu/text/comment:choice/normal/original": "success_color",
+        "menu/text/comment:choice/normal/corrected": "error_color",
+        "menu/text/prefix:choice": "primary_color",
+        "menu/text/suffix:choice": "primary_color",
+        "menu/placeholder": "secondary_color",
+        "menu/decoration": "accent_color",
+        "menu/decoration:choice/normal": "menu/text",
     }
 
     def __init__(self, term: Term):
@@ -1556,7 +1593,7 @@ except ImportError:
 
 
 #: Raw colorized string. This is the underlying type for :class:`ColorizedString`.
-RawString: _t.TypeAlias = _t.Iterable[_t.Union[str, Color]]
+RawString: _t.TypeAlias = _t.Iterable[_t.Union[Color, str]]
 
 
 #: Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
@@ -1589,7 +1626,7 @@ class ColorizedString:
         *,
         explicit_newline: str = "",
     ):
-        self._parts: _t.List[_t.Union[str, Color]]
+        self._parts: _t.List[_t.Union[Color, str]]
         if isinstance(content, (str, Color)):
             self._parts = [content] if content else []
         elif isinstance(content, ColorizedString):
@@ -1632,7 +1669,7 @@ class ColorizedString:
     def __bool__(self) -> bool:
         return self.len > 0
 
-    def iter(self) -> _t.Iterator[_t.Union[str, Color]]:
+    def iter(self) -> _t.Iterator[_t.Union[Color, str]]:
         """Iterate over raw parts of the string,
         i.e. the underlying list of strings and colors.
 
@@ -1640,7 +1677,7 @@ class ColorizedString:
 
         return self._parts.__iter__()
 
-    def __iter__(self) -> _t.Iterator[_t.Union[str, Color]]:
+    def __iter__(self) -> _t.Iterator[_t.Union[Color, str]]:
         return self.iter()
 
     def wrap(
@@ -1691,6 +1728,41 @@ class ColorizedString:
             continuation_indent=continuation_indent,
         ).wrap(self)
 
+    def indent(
+        self,
+        first_line_indent: _t.Union[str, "ColorizedString"] = "",
+        continuation_indent: _t.Union[str, "ColorizedString"] = "",
+    ) -> "ColorizedString":
+        res = ColorizedString()
+
+        color: _t.Optional[Color] = None
+        cur_color: _t.Optional[Color] = None
+        needs_indent = True
+
+        for part in self._parts:
+            if isinstance(part, Color):
+                color = part
+                continue
+
+            for line in part.splitlines(keepends=True):
+                if needs_indent:
+                    res += first_line_indent
+                    first_line_indent = continuation_indent
+
+                if color and (needs_indent or color != cur_color):
+                    res += color
+                    cur_color = color
+
+                res += line
+
+                needs_indent = part.endswith("\n")
+
+        if color and color != cur_color:
+            res += color
+
+        return res
+
+
     def percent_format(self, args: _t.Any) -> "ColorizedString":
         """Format colorized string as if with ``%``-formatting
         (i.e. `old-style formatting`_).
@@ -1702,7 +1774,7 @@ class ColorizedString:
 
         Example::
 
-            >>> line = theme.colorize("Hello, <c:b>%s!</c>")
+            >>> line = theme.colorize("Hello, <c b>%s!</c>")
             >>> line % "Username"
             <ColorizedString('Hello, Username!')>
 
@@ -1770,14 +1842,6 @@ class ColorizedString:
 
         return out
 
-    def get_last_color(self) -> _t.Optional[Color]:
-        """Get the latest color in this colorized string."""
-
-        for part in reversed(self._parts):
-            if isinstance(part, Color):
-                return part
-        return None
-
     def __str__(self) -> str:
         return "".join(c for c in self._parts if isinstance(c, str))
 
@@ -1802,13 +1866,13 @@ _S_SYNTAX = re.compile(
 )
 
 
-def _percent_format(s: ColorizedString, args: _t.Any) -> _t.List[_t.Union[str, Color]]:
+def _percent_format(s: ColorizedString, args: _t.Any) -> _t.List[_t.Union[Color, str]]:
     if not isinstance(args, (dict, tuple)):
         args = (args,)
 
     i = 0
 
-    def repl(m: re.Match) -> str:
+    def repl(m: re.Match[str]) -> str:
         nonlocal i
         groups = m.groupdict()
         if groups["format"] == "%":
@@ -1850,7 +1914,7 @@ _NOWHITESPACE = r"[^ \r\n\t\v\b\f]"
 _WORDSEP_RE = re.compile(
     r"""
     ( # newlines and line feeds are matched one-by-one
-        (?:\r\n|\r|\n)
+        \v?(?:\r\n|\r|\n)
     | # any whitespace
         [ \t\v\b\f]+
     | # em-dash between words
@@ -1870,7 +1934,7 @@ _WORDSEP_RE = re.compile(
     re.VERBOSE,
 )
 
-_WORDSEP_SIMPLE_RE = re.compile(r"(\r\n|\r|\n|[ \t\v\b\f]+)")
+_WORDSEP_SIMPLE_RE = re.compile(r"(\v?(?:\r\n|\r|\n)|[ \t\b\f\v]+)")
 
 
 class _TextWrapper:
@@ -1890,13 +1954,7 @@ class _TextWrapper:
         self.preserve_spaces: bool = preserve_spaces
         self.preserve_newlines: bool = preserve_newlines
         self.first_line_indent: ColorizedString = ColorizedString(first_line_indent)
-        self.first_line_indent_color: _t.Optional[
-            Color
-        ] = self.first_line_indent.get_last_color()
         self.continuation_indent: ColorizedString = ColorizedString(continuation_indent)
-        self.continuation_indent_color: _t.Optional[
-            Color
-        ] = self.continuation_indent.get_last_color()
 
         if (
             self.width - self.first_line_indent.width <= 1
@@ -1908,7 +1966,7 @@ class _TextWrapper:
 
         self.lines: _t.List[ColorizedString] = []
 
-        self.current_line: _t.List[_t.Union[str, Color]] = list(self.first_line_indent)
+        self.current_line: _t.List[_t.Union[Color, str]] = list(self.first_line_indent)
         self.current_line_width: int = self.first_line_indent.width
         self.current_color: _t.Optional[Color] = None
         self.current_line_is_nonempty: bool = False
@@ -1917,15 +1975,9 @@ class _TextWrapper:
         self.lines.append(
             ColorizedString(self.current_line, explicit_newline=explicit_newline)
         )
-        self.current_line: _t.List[_t.Union[str, Color]] = list(self.continuation_indent)
+        self.current_line: _t.List[_t.Union[Color, str]] = list(self.continuation_indent)
         self.current_line_width: int = self.continuation_indent.width
-        if (
-            self.current_color
-            and self.continuation_indent_color
-            and self.current_color != self.continuation_indent_color
-        ):
-            # Restore color after printing indent.
-            self.current_line.append(self.current_color)
+        self.current_line.append(self.current_color or Color.NONE)
         self.current_line_is_nonempty = False
 
     def _append_word(self, word: str, word_width: int):
@@ -1977,7 +2029,7 @@ class _TextWrapper:
                 if not word:
                     continue
 
-                if word in ("\r", "\n", "\r\n") and self.preserve_newlines:
+                if "\v" in word or (word in ("\r", "\n", "\r\n") and self.preserve_newlines):
                     self._flush_line(explicit_newline=word)
                     need_space_before_word = False
                     at_line_beginning = True

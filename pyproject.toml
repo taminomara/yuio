@@ -29,7 +29,7 @@ wcwidth = [
 ]
 test = [
     "pytest~=7.4",
-    "pytest-mypy~=0.10",
+    "pyright~=1.1",
     "black~=23.7",
     "isort~=5.12",
     "PyYaml~=6.0",
@@ -57,5 +57,26 @@ write_to = "yuio/_version.py"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = ["--mypy", "--strict-markers", "--doctest-modules"]
+addopts = ["--strict-markers", "--doctest-modules"]
 testpaths = ["examples", "test", "yuio"]
+
+[tool.pyright]
+include = ["yuio", "examples"]
+exclude = ["**/__pycache__"]
+typeCheckingMode = "strict"
+pythonVersion = "3.8"
+pythonPlatform = "All"
+
+# deprecateTypingAliases = true
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUnusedFunction = "none"
+reportPrivateUsage = "none"
+reportMissingParameterType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnnecessaryIsInstance = "none"
+reportConstantRedefinition = "none"
+reportRedeclaration = "none"

@@ -21,22 +21,21 @@ import logging
 import pathlib
 import subprocess
 import threading
-import typing as _t
+from yuio import _t
 
 import yuio.io
 
 
 _LOGGER = logging.getLogger("yuio.exec")
-_LOGGER.addHandler(yuio.io.Handler())
 
 
 @_t.overload
 def exec(
     *args: str,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
-    level: int = 0,
+    level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
 ) -> str:
     ...
@@ -45,10 +44,10 @@ def exec(
 @_t.overload
 def exec(
     *args: str,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
-    level: int = 0,
+    level: int = logging.DEBUG,
     text: _t.Literal[False],
 ) -> bytes:
     ...
@@ -59,7 +58,7 @@ def exec(
     cwd: _t.Union[None, str, pathlib.Path] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Union[None, str, bytes] = None,
-    level: int = 0,
+    level: int = logging.DEBUG,
     text: bool = True,
 ):
     """Run an executable and return its stdout.
@@ -78,8 +77,9 @@ def exec(
         string with command's stdin.
     :param level:
         logging level for stderr outputs.
+        By default, it is set to :data:`logging.DEBUG`, which hides all the output.
     :param text:
-        if true (default), decode stdout the system default encoding.
+        if true (default), decode stdout using the system default encoding.
     :return:
         string (or bytes) with command's stdout.
 
@@ -159,12 +159,12 @@ def exec(
 def sh(
     cmd: str,
     /,
-    shell: str = "/bin/sh",
     *,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    shell: str = "/bin/sh",
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
-    level: int = 0,
+    level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
 ) -> str:
     ...
@@ -174,12 +174,12 @@ def sh(
 def sh(
     cmd: str,
     /,
-    shell: str = "/bin/sh",
     *,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    shell: str = "/bin/sh",
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
-    level: int = 0,
+    level: int = logging.DEBUG,
     text: _t.Literal[False],
 ) -> bytes:
     ...
@@ -188,12 +188,12 @@ def sh(
 def sh(
     cmd: str,
     /,
-    shell: str = "/bin/sh",
     *,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    shell: str = "/bin/sh",
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Union[None, str, bytes] = None,
-    level: int = 0,
+    input: _t.Union[str, bytes, None] = None,
+    level: int = logging.DEBUG,
     text: bool = True,
 ):
     """Run command in a shell, return its stdout.
@@ -210,8 +210,9 @@ def sh(
         string with command's stdin.
     :param level:
         logging level for stderr outputs.
+        By default, it is set to :data:`logging.DEBUG`, which hides all the output.
     :param text:
-        if true (default), decode stdout the system default encoding.
+        if true (default), decode stdout using the system default encoding.
     :return:
         string (or bytes) with command's stdout.
 

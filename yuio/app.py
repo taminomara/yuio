@@ -6,17 +6,22 @@
 # just keep this copyright line please :3
 
 """
-This module expands on :mod:`yuio.config` to build CLI apps!
+This module expands on :mod:`yuio.config` to build CLI apps.
 
 Creating and running an app
 ---------------------------
 
-CLI applications in Yuio have functional interface. Decorate main function
+Yuio's CLI applications have functional interface. Decorate main function
 with the :func:`app` decorator, and use :meth:`App.run` method to start it::
 
     >>> # Let's define an app with one flag and one positional argument.
     ... @app
-    ... def main(arg: str, flag: int = 0):
+    ... def main(
+    ...     #: help message for `arg`.
+    ...     arg: str = positional(),
+    ...     #: help message for `--flag`.
+    ...     flag: int = 0
+    ... ):
     ...     \"\"\"this command does a thing.\"\"\"
     ...     yuio.io.info("flag=%r, arg=%r", flag, arg)
 
@@ -42,6 +47,97 @@ docstring will become app's :attr:`~App.description`.
    .. automethod:: run
 
 
+Configuring flags and options
+-----------------------------
+
+Main function parameters, much like :class:`~yuio.config.Config` fields,
+can be configured. Their names and type hints are used to derive default values,
+which can be overridden by the :func:`field` function. They can also contain other
+configs, essentially allowing you to nest CLI flags.
+
+.. autofunction:: field
+   :noindex:
+
+.. autodata:: yuio.DISABLED
+   :noindex:
+
+.. autodata:: yuio.MISSING
+   :noindex:
+
+.. autodata:: yuio.POSITIONAL
+   :noindex:
+
+There are also a few helpers that are specific to the :mod:`yuio.app` module:
+
+.. autofunction:: inline
+   :noindex:
+
+.. autofunction:: positional
+
+Flag names are derived from field names.
+Use the :func:`field` function to override them::
+
+    @app
+    def main(
+        # Will be loaded from `--input`.
+        input: pathlib.Path | None = None,
+
+        # Will be loaded from `-o` or `--output`.
+        output: pathlib.Path | None = field(None, flags=['-p', '--pid'])
+    ):
+        ...
+
+In nested configs, flags are prefixed with name
+of a field that contains the nested config::
+
+    class KillCmdConfig(Config):
+        # Will be loaded from `--signal`.
+        signal: int
+
+        # Will be loaded from `-p` or `--pid`.
+        pid: int = field(flags=['-p', '--pid'])
+
+    @app
+    def main(
+        # `kill_cmd.signal` will be loaded from `--kill-cmd-signal`.
+        kill_cmd: KillCmdConfig,
+
+        # `copy_cmd_2.signal` will be loaded from `--kill-signal`.
+        kill_cmd_2: KillCmdConfig = field(flags='--kill'),
+
+        # `kill_cmd_3.signal` will be loaded from `--signal`.
+        kill_cmd_3: KillCmdConfig = field(flags=''),
+    ):
+        ...
+
+.. note::
+
+   Positional arguments are not allowed in configs,
+   only in apps.
+
+Help messages for the flags are parsed from line comments
+right above the field definition (comments must start with ``#:``).
+This works for both functions and config classes.
+The :func:`field` function allows overriding them. Help messages
+are all formatted using the Markdown (see :mod:`yuio.md`).
+
+Parsers for CLI argument values are derived from type hints.
+Use the `parser` parameter of the :func:`field` function to override them.
+
+Arguments with bool parsers and parsers that support
+:meth:`parsing collections <yuio.parse.Parser.supports_parse_many>`
+are handled to provide better CLI experience::
+
+    @app
+    def main(
+        # Will create flags `--verbose` and `--no-verbose`.
+        verbose: bool = True,
+
+        # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`
+        inputs: list[Path],
+    ):
+
+
 App settings
 ------------
 
@@ -63,40 +159,126 @@ help formatting using its arguments:
 
    .. autoattribute:: allow_abbrev
 
+   .. autoattribute:: subcommand_required
+
+   .. autoattribute:: setup_io
+
+   .. autoattribute:: setup_logging
+
 
 Creating sub-commands
 ---------------------
 
+You can create multiple sub-commands for the main function,
+using the :meth:`App.subcommand` method:
+
+.. class:: App
+   :noindex:
+
+   .. automethod:: subcommand
+
+For example::
+
+    @app
+    def main(): ...
+
+    @main.subcommand
+    def push(): ...
+
+    @main.subcommand
+    def pop(): ...
+
+There is no limit to how deep you can nest subcommands, but for usability reasons
+we suggest not exceeding level of sub-sub-commands (``git stash push``, anyone?)
+
+When user invokes a subcommand, the ``main()`` function is called first,
+then subcommand. In the above example, invoking our app with subcommand ``push``
+will cause ``main()`` to be called first, then ``push()``.
+
+This behavior is useful when you have some global configuration flags
+attached to the ``main()`` command. See the `example app`_ for details.
+
+.. _example app: https://github.com/taminomara/yuio/blob/main/examples/app
+
+
 Controlling how sub-commands are invoked
 ----------------------------------------
+
+By default, if a command has sub-commands, the user is required to provide
+a sub-command. This behavior can be disabled by setting :attr:`App.subcommand_required`
+to :data:`False`.
+
+When this happens, we need to understand whether a subcommand was invoked or not.
+To determine this, you can accept a special parameter called ``_command_info``
+of type :class:`CommandInfo`. It will contain info about the current function,
+including its name and subcommand::
+
+    @app
+    def main(_command_info: CommandInfo):
+        if _command_info.subcommand is not None:
+            # A subcommand was invoked.
+            ...
+
+.. autoclass:: CommandInfo
+
+   .. autoattribute:: name
+
+   .. autoattribute:: subcommand
+
+You can call the subcommand on your own by using ``_command_info`` as a callable.
+However, you must return :data:`False` from your function, this will prevent Yuio
+from calling subcommand for a second time::
+
+    @app
+    def main(_command_info: CommandInfo):
+        if _command_info.subcommand is not None and ...:
+            _command_info()  # manually invoking a subcommand
+
+        # Ensure that Yuio doesn't call a subcommand again.
+        # This interface is similar to one of __exit__ functions,
+        # where you return `True` to suppress an exception.
+        return False
+
+.. autoclass:: CommandInfo
+   :noindex:
+
+   .. automethod:: __call__
 
 """
 
 
-import abc
 import argparse
+import contextlib
 import dataclasses
 import functools
 import inspect
 import logging
-import math
 import os
 import re
-import shutil
 import string
 import sys
-import textwrap
 import types
-import typing as _t
+from yuio import _t
 from dataclasses import dataclass
 
 import yuio
+import yuio.complete
 import yuio.config
+import yuio.exec
 import yuio.io
 import yuio.parse
 import yuio.term
 import yuio.md
 from yuio.config import field, inline, positional
+
+__all__ = [
+    "field",
+    "inline",
+    "positional",
+    "Command",
+    "app",
+    "App",
+]
 
 Command: _t.TypeAlias = _t.Callable[..., None]
 
@@ -109,13 +291,13 @@ def app(
     help: _t.Optional[str] = None,
     description: _t.Optional[str] = None,
     epilog: _t.Optional[str] = None,
-) -> _t.Callable[["Command"], "App"]:
+) -> _t.Callable[[Command], "App"]:
     ...
 
 
 @_t.overload
 def app(
-    command: "Command",
+    command: Command,
     /,
     *,
     prog: _t.Optional[str] = None,
@@ -128,7 +310,7 @@ def app(
 
 
 def app(
-    command: _t.Optional["Command"] = None,
+    command: "_t.Optional[Command]" = None,
     /,
     *,
     prog: _t.Optional[str] = None,
@@ -146,7 +328,7 @@ def app(
 
     """
 
-    def registrar(command: "Command", /) -> App:
+    def registrar(command: Command, /) -> App:
         return App(
             command,
             prog=prog,
@@ -162,6 +344,51 @@ def app(
         return registrar(command)
 
 
+@dataclass(frozen=True)
+class CommandInfo:
+    """Data about the invoked command."""
+
+    #: Name of the current command.
+    #:
+    #: If it was invoked by alias,
+    #: this will contains the primary command name.
+    #:
+    #: For the main function, the name will be set to ``'__main__'``.
+    name: str
+
+    #: Subcommand of this command, if one was given.
+    subcommand: "_t.Optional[CommandInfo]"
+
+    # Internal, do not use.
+    _config: _t.Any = dataclasses.field(repr=False)
+
+    def __call__(self) -> _t.Literal[False]:
+        """Execute this command.
+
+        This function always returns :data:`False`, so you can call a subcommand
+        and exit from a parent command in a single line::
+
+            @app
+            def main(_command_info: CommandInfo):
+                if _command_info.subcommand is not None:
+                    # Manually call a subcommand and return `False`:
+                    return _command_info()
+
+        """
+
+        if self._config is not None:
+            should_invoke_subcommand = self._config._run(self)
+            if should_invoke_subcommand is None:
+                should_invoke_subcommand = True
+        else:
+            should_invoke_subcommand = True
+
+        if should_invoke_subcommand and self.subcommand is not None:
+            self.subcommand()
+
+        return False
+
+
 class App:
     """A class that encapsulates app settings and logic for running it.
 
@@ -172,38 +399,6 @@ class App:
     """
 
     @dataclass(frozen=True)
-    class SubCommand:
-        """Data about an invoked subcommand."""
-
-        #: Name of the invoked subcommand.
-        #:
-        #: If subcommand was invoked by alias,
-        #: this will contains the primary command name.
-        name: str
-
-        #: Subcommand of this command that was invoked.
-        #:
-        #: If this command has no subcommands, or subcommand was not invoked,
-        #: this will be empty.
-        subcommand: _t.Optional["App.SubCommand"]
-
-        # Internal, do not use.
-        _config: _t.Any
-
-        def __call__(self):
-            """Execute this subcommand."""
-
-            if self._config is not None:
-                should_invoke_subcommand = self._config._run(self.subcommand)
-                if should_invoke_subcommand is None:
-                    should_invoke_subcommand = True
-            else:
-                should_invoke_subcommand = True
-
-            if should_invoke_subcommand and self.subcommand is not None:
-                self.subcommand()
-
-    @dataclass(frozen=True)
     class _SubApp:
         app: "App"
         name: str
@@ -212,7 +407,7 @@ class App:
 
     def __init__(
         self,
-        command: "Command",
+        command: Command,
         /,
         *,
         prog: _t.Optional[str] = None,
@@ -250,18 +445,13 @@ class App:
         #: See `usage <https://docs.python.org/3/library/argparse.html#usage>`_.
         self.usage: _t.Optional[str] = usage
 
-        if not description and command is not None:
+        if not description and command.__doc__:
             description = command.__doc__
 
         #: Text that is shown before CLI flags help, usually contains
         #: short description of the program or subcommand.
         #:
-        #: The text should be formatted similar to how argparse formats help messages.
-        #: That is, headings start at the beginning of a line and end with colon,
-        #: and main text is indented with two spaces.
-        #:
-        #: Some markdown-like block formatting is supported, including numbered
-        #: and bulleted lists, fenced code blocks, and quotes. For example::
+        #: The text should be formatted using markdown. For example::
         #:
         #:     @app
         #:     def main(): ...
@@ -269,18 +459,19 @@ class App:
         #:     main.description = """
         #:     this command does a thing.
         #:
-        #:     different ways to do a thing:
-        #:       this command can apply multiple algorithms to achieve
-        #:       a necessary state in which a thing can be done. This includes:
+        #:     # different ways to do a thing
         #:
-        #:       - randomly turning the screen on and off;
+        #      this command can apply multiple algorithms to achieve
+        #:     a necessary state in which a thing can be done. This includes:
         #:
-        #:       - banging a head on a table;
+        #:     - randomly turning the screen on and off;
         #:
-        #:       - fiddling with your PCs power level.
+        #:     - banging a head on a table;
         #:
-        #:       By default, the best algorithm is determined automatically.
-        #:       However, you can hint a preferred algorithm via `--hint-algo` flag.
+        #:     - fiddling with your PCs power levels.
+        #:
+        #:     By default, the best algorithm is determined automatically.
+        #:     However, you can hint a preferred algorithm via the `--hint-algo` flag.
         #:
         #:     """
         #:
@@ -298,19 +489,19 @@ class App:
         #: See `help <https://docs.python.org/3/library/argparse.html#help>`_.
         self.help: _t.Optional[str] = help
 
-        #: Text that is shown after CLI flags help.
+        #: Text that is shown after the main portion of the help message.
         #:
-        #: Test's format is identical to the one for :attr:`~App.description`.
+        #: Text format is identical to the one for :attr:`~App.description`.
         #:
         #: See `epilog <https://docs.python.org/3/library/argparse.html#epilog>`_.
         self.epilog: _t.Optional[str] = epilog
 
         #: Allow abbreviating CLI flags if that doesn't create ambiguity.
         #:
-        #: Enabled by default.
+        #: Disabled by default.
         #:
         #: See `allow_abbrev <https://docs.python.org/3/library/argparse.html#allow-abbrev>`_.
-        self.allow_abbrev: bool = True
+        self.allow_abbrev: bool = False
 
         #: Require the user to provide a subcommand for this command.
         #:
@@ -319,10 +510,20 @@ class App:
         #: Enabled by default.
         self.subcommand_required: bool = True
 
-        self._sub_apps: _t.Dict[str, "App._SubApp"] = {}
+        #: If :data:`True`, the app will call :func:`yuio.io.setup` during
+        #: its initialization. Disable this if you want to customize initialization.
+        self.setup_io: bool = True
+
+        #: If :data:`True`, the app will call :func:`logging.basicConfig` during
+        #: its initialization. Disable this if you want to customize initialization.
+        #:
+        #: Disabling this option also removes the ``--verbose`` flag form the CLI.
+        self.setup_logging: bool = True
+
+        self.__sub_apps: _t.Dict[str, "App._SubApp"] = {}
 
         if callable(command):
-            self._config_type = _command_from_callable(command)
+            self.__config_type = _command_from_callable(command)
         else:
             raise TypeError(f"expected a function, got {command}")
 
@@ -345,13 +546,13 @@ class App:
         help: _t.Optional[str] = None,
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
-    ) -> _t.Callable[["Command"], "App"]:
+    ) -> _t.Callable[[Command], "App"]:
         ...
 
     @_t.overload
     def subcommand(
         self,
-        cb: "Command",
+        cb: Command,
         /,
         *,
         name: _t.Optional[str] = None,
@@ -366,7 +567,7 @@ class App:
 
     def subcommand(
         self,
-        cb_or_name: _t.Union[str, "Command", None] = None,
+        cb_or_name: _t.Union[str, Command, None] = None,
         /,
         *,
         name: _t.Optional[str] = None,
@@ -377,7 +578,11 @@ class App:
         description: _t.Optional[str] = None,
         epilog: _t.Optional[str] = None,
     ):
-        """Register a subcommand for the given app."""
+        """Register a subcommand for the given app.
+
+        This method can be used as a decorator, similar to the :func:`app` function.
+
+        """
 
         if isinstance(cb_or_name, str):
             cb = None
@@ -385,7 +590,7 @@ class App:
         else:
             cb = cb_or_name
 
-        def registrar(cb: "Command", /) -> App:
+        def registrar(cb: Command, /) -> App:
             app = App(
                 cb,
                 prog=prog,
@@ -398,12 +603,12 @@ class App:
             app.allow_abbrev = self.allow_abbrev
 
             main_name = name or yuio.to_dash_case(cb.__name__)
-            self._sub_apps[main_name] = App._SubApp(
+            self.__sub_apps[main_name] = App._SubApp(
                 app, main_name, aliases, is_primary=True
             )
             if aliases:
                 alias_app = App._SubApp(app, main_name)
-                self._sub_apps.update({alias: alias_app for alias in aliases})
+                self.__sub_apps.update({alias: alias_app for alias in aliases})
 
             return app
 
@@ -413,17 +618,37 @@ class App:
             return registrar(cb)
 
     def run(self, args: _t.Optional[_t.List[str]] = None) -> _t.NoReturn:
-        """Parse arguments and run the application.
+        """Parse arguments, set up :mod:`yuio.io` and :mod:`logging`,
+        and run the application.
 
         If no `args` are given, parse :data:`sys.argv`.
 
         """
 
-        logging.basicConfig()
+        if args is None:
+            args = sys.argv[1:]
 
-        parser = self._setup_arg_parser()
+        if "--yuio-custom-completer--" in args:
+            index = args.index("--yuio-custom-completer--")
+            yuio.complete._run_custom_completer(args[index + 1], args[index + 2])
+            exit(0)
+
+        parser = self.__setup_arg_parser()
+        namespace = parser.parse_args(args)
+
+
+        if self.setup_io:
+            yuio.io.setup(query_theme=True)
+
+        if self.setup_logging:
+            verbosity_level = getattr(namespace, "verbosity_level", 0)
+            logging_level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}.get(
+                verbosity_level, logging.WARNING
+            )
+            logging.basicConfig(handlers=[yuio.io.Handler()], level=logging_level)
+
         try:
-            command = self._load_from_namespace(parser.parse_args(args))
+            command = self.__load_from_namespace(namespace)
             command()
             exit(0)
         except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
@@ -432,33 +657,34 @@ class App:
             yuio.io.error_with_tb("Error: %s", e)
             exit(1)
 
-    def _load_from_namespace(self, namespace: argparse.Namespace) -> "App.SubCommand":
-        return self.__load_from_namespace(namespace, "app")
+    def __load_from_namespace(self, namespace: argparse.Namespace) -> CommandInfo:
+        return self.__load_from_namespace_impl(namespace, "app")
 
-    def __load_from_namespace(
+    def __load_from_namespace_impl(
         self, namespace: argparse.Namespace, ns_prefix: str
-    ) -> "App.SubCommand":
-        config = self._config_type._load_from_namespace(namespace, ns_prefix=ns_prefix)
+    ) -> CommandInfo:
+        config = self.__config_type._load_from_namespace(namespace, ns_prefix=ns_prefix)
         subcommand = None
 
-        if ns_prefix + "@subcommand" in namespace:
-            name = getattr(namespace, ns_prefix + "@subcommand")
-            sub_app = self._sub_apps[name]
+        if name := getattr(namespace, ns_prefix + "@subcommand", None):
+            sub_app = self.__sub_apps[name]
             subcommand = dataclasses.replace(
-                sub_app.app.__load_from_namespace(
+                sub_app.app.__load_from_namespace_impl(
                     namespace, f"{ns_prefix}/{sub_app.name}"
                 ),
                 name=sub_app.name,
             )
 
-        return App.SubCommand("", subcommand, _config=config)
+        return CommandInfo("__main__", subcommand, _config=config)
 
-    def _setup_arg_parser(self) -> argparse.ArgumentParser:
+    def __setup_arg_parser(
+        self, parser: _t.Optional[argparse.ArgumentParser] = None
+    ) -> argparse.ArgumentParser:
         prog = self.prog
         if not prog:
             prog = os.path.basename(sys.argv[0])
 
-        parser = argparse.ArgumentParser(
+        parser = parser or argparse.ArgumentParser(
             prog=self.prog,
             usage=self.usage,
             description=self.description,
@@ -467,7 +693,7 @@ class App:
             formatter_class=_HelpFormatter,  # type: ignore
         )
 
-        self.__setup_arg_parser(parser, "app", prog)
+        self.__setup_arg_parser_impl(parser, "app", prog)
 
         aux = parser.add_argument_group("auxiliary options")
         color = aux.add_mutually_exclusive_group()
@@ -482,21 +708,50 @@ class App:
             action="store_true",  # Note: `yuio.term` inspects `sys.argv` on its own
         )
 
+        if self.setup_logging:
+            aux.add_argument(
+                "-v",
+                "--verbose",
+                help="increase output verbosity",
+                action="count",
+                dest="verbosity_level",
+            )
+
+        class CompletionsAction(argparse.Action):
+            @staticmethod
+            def get_parser() -> yuio.parse.Parser[str]:
+                return yuio.parse.Str().lower().one_of(["all", "bash", "zsh", "fish"])
+
+            def __init__(_self, *args, **kwargs):
+                kwargs["metavar"] = _self.get_parser().describe_or_def()
+                super().__init__(*args, **kwargs)
+
+            def __call__(_self, parser, namespace, value, *args):
+                self._App__write_completions(_self.get_parser().parse(value or "all"))  # type: ignore
+                parser.exit()
+
+        aux.add_argument(
+            "--completions",
+            help="generate autocompletion scripts and exit",
+            nargs="?",
+            action=CompletionsAction,
+        )
+
         return parser
 
-    def __setup_arg_parser(
+    def __setup_arg_parser_impl(
         self, parser: argparse.ArgumentParser, ns_prefix: str, prog: str
     ):
-        self._config_type._setup_arg_parser(parser, ns_prefix=ns_prefix)
+        self.__config_type._setup_arg_parser(parser, ns_prefix=ns_prefix)
 
-        if self._sub_apps:
+        if self.__sub_apps:
             subparsers = parser.add_subparsers(
                 required=self.subcommand_required,
                 dest=ns_prefix + "@subcommand",
                 metavar="<subcommand>",
             )
 
-            for name, sub_app in self._sub_apps.items():
+            for name, sub_app in self.__sub_apps.items():
                 if not sub_app.is_primary:
                     continue
 
@@ -513,18 +768,31 @@ class App:
                     formatter_class=_HelpFormatter,  # type: ignore
                 )
 
-                sub_app.app.__setup_arg_parser(
+                sub_app.app.__setup_arg_parser_impl(
                     parser, ns_prefix=f"{ns_prefix}/{name}", prog=sub_prog
                 )
 
+    def __get_completions(self) -> yuio.complete._CompleterSerializer:
+        serializer = yuio.complete._CompleterSerializer()
+        self.__setup_arg_parser(serializer.as_parser())
+        return serializer
 
-def _command_from_callable(cb: "Command") -> _t.Type[yuio.config.Config]:
+    def __write_completions(self, shell: str):
+        self.__get_completions().write_completions(self.prog, shell)
+
+
+class _NoReprConfig(yuio.config.Config):
+    def __repr__(self):
+        return "<move along, nothing to see here>"
+
+
+def _command_from_callable(cb: Command) -> _t.Type[yuio.config.Config]:
     sig = inspect.signature(cb)
 
     dct = {}
     annotations = {}
 
-    accepts_subcommand = False
+    accepts_command_info = False
 
     try:
         docs = yuio._find_docs(cb)
@@ -540,8 +808,8 @@ def _command_from_callable(cb: "Command") -> _t.Type[yuio.config.Config]:
             raise TypeError("positional-only and variadic arguments are not supported")
 
         if name.startswith("_"):
-            if name == "_subcommand":
-                accepts_subcommand = True
+            if name == "_command_info":
+                accepts_command_info = True
                 continue
             else:
                 raise TypeError(f"unknown special param {name}")
@@ -549,9 +817,9 @@ def _command_from_callable(cb: "Command") -> _t.Type[yuio.config.Config]:
         if param.default is not param.empty:
             field = param.default
         else:
-            field = yuio.config.positional()
+            field = yuio.MISSING
         if not isinstance(field, yuio.config._FieldSettings):
-            field = yuio.config.field(field)
+            field = _t.cast(yuio.config._FieldSettings, yuio.config.field(field))
         if field.default is yuio.MISSING:
             field = dataclasses.replace(field, required=True)
         if name in docs:
@@ -564,7 +832,7 @@ def _command_from_callable(cb: "Command") -> _t.Type[yuio.config.Config]:
         annotations[name] = param.annotation
 
     dct["_run"] = _command_from_callable_run_impl(
-        cb, list(annotations.keys()), accepts_subcommand
+        cb, list(annotations.keys()), accepts_command_info
     )
     dct["__annotations__"] = annotations
     dct["__module__"] = getattr(cb, "__module__", None)
@@ -572,19 +840,19 @@ def _command_from_callable(cb: "Command") -> _t.Type[yuio.config.Config]:
 
     return types.new_class(
         cb.__name__,
-        (yuio.config.Config,),
+        (_NoReprConfig,),
         {"_allow_positionals": True},
         exec_body=lambda ns: ns.update(dct),
     )
 
 
 def _command_from_callable_run_impl(
-    cb: "Command", params: _t.List[str], accepts_subcommand
+    cb: Command, params: _t.List[str], accepts_command_info
 ):
-    def run(self, subcommand):
+    def run(self, command_info):
         kw = {name: getattr(self, name) for name in params}
-        if accepts_subcommand:
-            kw["_subcommand"] = subcommand
+        if accepts_command_info:
+            kw["_command_info"] = command_info
         return cb(**kw)
 
     return run
@@ -593,167 +861,150 @@ def _command_from_callable_run_impl(
 _MAX_ARGS_COLUMN_WIDTH = 24
 
 
-# @dataclass(frozen=True, **yuio._with_slots())
-# class _HelpHeading:
-#     """Section heading for help message."""
+class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
+    def __init__(
+        self,
+        theme: yuio.term.Theme,
+        *,
+        width: _t.Optional[int] = None,
+        allow_headings: bool = True,
+    ):
+        self._heading_indent = contextlib.ExitStack()
+        self._args_column_width = _MAX_ARGS_COLUMN_WIDTH
 
-#     indent: int
-#     text: yuio.term.ColorizedString
+        super().__init__(
+            theme,
+            width=width,
+            allow_headings=allow_headings,
+        )
 
-#     def format(
-#         self,
-#         out: yuio.term.ColorizedString,
-#         width: int,
-#         args_column_width: int,
-#         theme: yuio.term.Theme,
-#         formatter: yuio.md.MdFormatter,
-#     ):
-#         indent = yuio.term.ColorizedString(
-#             [theme.get_color("cli/plain_text"), "  " * self.indent]
-#         )
-#         for line in self.text.wrap(
-#             width, first_line_indent=indent, continuation_indent=indent
-#         ):
-#             out += line
-#             out += "\n"
+    def colorize(
+        self,
+        s: str,
+        /,
+        *,
+        default_color: _t.Union[yuio.term.Color, str] = yuio.term.Color.NONE,
+    ):
+        return yuio.md._colorize(
+            self.theme,
+            s,
+            default_color=default_color,
+            parse_cli_flags_in_backticks=True,
+        )
+
+    def _format_Heading(self, node: yuio.md.Heading):
+        if node.level == 1:
+            self._heading_indent.close()
+
+            decoration = self.theme.msg_decorations.get("heading/section", "")
+            with self._indent("msg/decoration:heading/section", decoration):
+                self._format_Text(
+                    node,
+                    default_color=self.theme.get_color(f"msg/text:heading/section"),
+                )
+
+            self._heading_indent.enter_context(self._indent(None, "  "))
+
+            self._is_first_line = True
+        else:
+            super()._format_Heading(node)
+
+    def _format_Usage(self, node: "_Usage"):
+        with self._indent(None, node.prefix):
+            if node.usage_override:
+                for line in node.usage_override.wrap(
+                    self.width,
+                    break_on_hyphens=False,
+                    preserve_spaces=True,
+                    preserve_newlines=True,
+                    first_line_indent=self._first_line_indent,
+                    continuation_indent=self._continuation_indent,
+                ):
+                    self._line(line)
+                return
+
+            line = yuio.term.ColorizedString(self._first_line_indent)
+            cur_width = self._first_line_indent.width
+            needs_space = False
+
+            if node.usage:
+                line += node.usage
+                cur_width += node.usage.width
+                needs_space = True
+
+            for arr in [node.optionals, node.positionals]:
+                total_options_width = sum(elem.width for elem in arr) + len(arr) - 1
+
+                if (
+                    cur_width + total_options_width + needs_space > self.width
+                    and self._continuation_indent.width + total_options_width
+                    <= self.width
+                ):
+                    self._line(line)
+                    line = yuio.term.ColorizedString(self._first_line_indent)
+                    cur_width = self._first_line_indent.width
+                    needs_space = False
+
+                for elem in arr:
+                    if needs_space and cur_width + 1 + elem.width > self.width:
+                        self._line(line)
+                        line = yuio.term.ColorizedString(self._first_line_indent)
+                        cur_width = self._first_line_indent.width
+                        needs_space = False
+                    if needs_space:
+                        line += " "
+                        cur_width += 1
+                    line += elem
+                    cur_width += elem.width
+                    needs_space = True
+
+            if line:
+                self._line(line)
+
+    def _format_HelpArg(self, node: "_HelpArg"):
+        if node.help is None:
+            self._line(self._first_line_indent + node.args)
+            return
+
+        if node.args.width > self._args_column_width:
+            self._line(self._first_line_indent + node.indent + node.args)
+            indent_ctx = self._indent(None, " " * self._args_column_width)
+        else:
+            indent_ctx = self._indent(
+                None,
+                node.indent
+                + node.args
+                + " " * (self._args_column_width - len(node.indent) - node.args.width),
+            )
+
+        with indent_ctx:
+            if node.help:
+                self._format(node.help)
+
+    def _format_HelpArgGroup(self, node: "_HelpArgGroup"):
+        for item in node.items:
+            self._format(item)
 
 
-# @dataclass(frozen=True, **yuio._with_slots())
-# class _HelpText:
-#     """Help section with help message.
-
-#     Help messages are parsed from markdown-like language.
-
-#     """
-
-#     indent: int
-#     text: str
-
-#     def format(
-#         self,
-#         out: yuio.term.ColorizedString,
-#         width: int,
-#         args_column_width: int,
-#         theme: yuio.term.Theme,
-#         formatter: yuio.md.MdFormatter,
-#     ):
-#       pass
+@dataclass(**yuio._with_slots())
+class _Usage(yuio.md.AstBase):
+    prefix: yuio.term.ColorizedString
+    usage_override: yuio.term.ColorizedString
+    usage: yuio.term.ColorizedString
+    optionals: _t.List[yuio.term.ColorizedString]
+    positionals: _t.List[yuio.term.ColorizedString]
 
 
-# @dataclass(frozen=True, **yuio._with_slots())
-# class _HelpArg:
-#     indent: int
-#     args: yuio.term.ColorizedString
-#     help: str
-
-#     def format(
-#         self,
-#         out: yuio.term.ColorizedString,
-#         width: int,
-#         args_column_width: int,
-#         theme: yuio.term.Theme,
-#         formatter: yuio.md.MdFormatter,
-#     ):
-#         indent = yuio.term.ColorizedString(
-#             [theme.get_color("cli/plain_text"), "  " * self.indent]
-#         )
-#         args = indent + self.args
-
-#         if not self.help:
-#             out += args
-#             out += "\n"
-#             return
-
-#         continuation_indent = indent + " " * (args_column_width + 2 - indent.width)
-#         if args.width > args_column_width:
-#             out += args
-#             out += "\n"
-#             first_line_indent = continuation_indent
-#         else:
-#             first_line_indent = args + [
-#                 theme.get_color("cli/plain_text"),
-#                 " " * (args_column_width + 2 - args.width),
-#             ]
-#         _HelpText._format(
-#             self.help,
-#             out,
-#             width,
-#             first_line_indent,
-#             continuation_indent,
-#             theme,
-#             allow_headings=False,
-#         )
+@dataclass(**yuio._with_slots())
+class _HelpArg(yuio.md.AstBase):
+    indent: str
+    args: yuio.term.ColorizedString
+    help: _t.Optional[yuio.md.AstBase]
 
 
-# @dataclass(frozen=True, **yuio._with_slots())
-# class _HelpUsage:
-#     prefix: yuio.term.ColorizedString
-#     usage_override: yuio.term.ColorizedString
-#     usage: yuio.term.ColorizedString
-#     optionals: _t.List[yuio.term.ColorizedString]
-#     positionals: _t.List[yuio.term.ColorizedString]
-
-#     def format(
-#         self,
-#         out: yuio.term.ColorizedString,
-#         width: int,
-#         args_column_width: int,
-#         theme: yuio.term.Theme,
-#         formatter: yuio.md.MdFormatter,
-#     ):
-#         out += theme.get_color("cli/plain_text")
-#         needs_space = False
-
-#         if self.usage_override:
-#             for line in self.usage_override.wrap(
-#                 width,
-#                 preserve_spaces=True,
-#                 preserve_newlines=True,
-#                 break_on_hyphens=False,
-#                 first_line_indent=self.prefix,
-#                 continuation_indent=" " * self.prefix.width,
-#             ):
-#                 out += line
-#                 out += "\n"
-#             return
-
-#         cur_width = 0
-
-#         if self.prefix:
-#             out += self.prefix
-#             cur_width += self.prefix.width
-#             needs_space = True
-
-#         if self.usage:
-#             out += self.usage
-#             cur_width += self.usage.width
-#             needs_space = True
-
-#         for arr in [self.optionals, self.positionals]:
-#             total_optionals_width = sum(elem.width for elem in arr) + len(arr) - 1
-#             if (
-#                 cur_width + total_optionals_width + needs_space > width
-#                 and self.prefix.width + total_optionals_width <= width
-#             ):
-#                 needs_space = False
-#                 out += theme.get_color("cli/plain_text")
-#                 out += "\n" + " " * self.prefix.width
-#                 cur_width = self.prefix.width
-#             for elem in arr:
-#                 if needs_space and cur_width + 1 + elem.width > width:
-#                     needs_space = False
-#                     out += theme.get_color("cli/plain_text")
-#                     out += "\n" + " " * self.prefix.width
-#                     cur_width = self.prefix.width
-#                 if needs_space:
-#                     out += theme.get_color("cli/plain_text")
-#                     out += " "
-#                     cur_width += 1
-#                 out += elem
-#                 cur_width += elem.width
-#                 needs_space = True
-#         out += theme.get_color("cli/plain_text")
-#         out += "\n"
+@dataclass(**yuio._with_slots())
+class _HelpArgGroup(yuio.md.Container[_HelpArg]):
+    pass
 
 
 class _HelpFormatter(object):
@@ -761,8 +1012,9 @@ class _HelpFormatter(object):
         self._prog = prog
         self._term = yuio.io.get_term()
         self._theme = yuio.io.get_theme()
-        self._formatter = yuio.md.MdFormatter(self._theme)
+        self._formatter = _CliMdFormatter(self._theme)
         self._nodes: _t.List[yuio.md.AstBase] = []
+        self._args_column_width = 0
 
     def start_section(self, heading: _t.Optional[str]):
         if heading:
@@ -793,23 +1045,22 @@ class _HelpFormatter(object):
                 [self._theme.get_color("msg/text:heading/section"), "usage: "]
             )
 
+        c_usage = yuio.term.ColorizedString()
+        c_usage_override = yuio.term.ColorizedString()
         c_optionals: _t.List[yuio.term.ColorizedString] = []
         c_positionals: _t.List[yuio.term.ColorizedString] = []
 
         if usage is not None:
-            first_line, *rest = usage.split("\n", 1)
-            usage = first_line + ("\n" + textwrap.dedent(rest[0]) if rest else "")
-            usage = usage.strip()
+            usage = self._formatter._dedent(usage)
             sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
 
-
-            sh_usage_highlighter.highlight(  # TODO!
+            c_usage_override = sh_usage_highlighter.highlight(
                 self._theme,
                 usage,
             )
         else:
-            yuio.term.ColorizedString(  # TODO!
-                [self._theme.get_color("cli/prog"), str(self._prog)]
+            c_usage = yuio.term.ColorizedString(
+                [self._theme.get_color("hl/prog:sh-usage"), str(self._prog)]
             )
 
             optionals: _t.List[
@@ -846,18 +1097,34 @@ class _HelpFormatter(object):
                         for i, action in enumerate(elem._group_actions):
                             c_elem = yuio.term.ColorizedString()
                             if i == 0:
-                                c_elem += self._theme.get_color("cli/plain_text")
+                                c_elem += self._theme.get_color(
+                                    "msg/text:code/sh-usage"
+                                )
                                 c_elem += "(" if elem.required else "["
                             self._format_action_short(action, c_elem, in_group=True)
                             if i + 1 < len(elem._group_actions):
-                                c_elem += self._theme.get_color("cli/plain_text")
+                                c_elem += self._theme.get_color(
+                                    "msg/text:code/sh-usage"
+                                )
                                 c_elem += " |"
                             else:
-                                c_elem += self._theme.get_color("cli/plain_text")
+                                c_elem += self._theme.get_color(
+                                    "msg/text:code/sh-usage"
+                                )
                                 c_elem += ")" if elem.required else "]"
                             res.append(c_elem)
 
-    def add_argument(self, action: argparse.Action):
+        self._nodes.append(
+            _Usage(
+                c_prefix,
+                c_usage_override,
+                c_usage,
+                c_optionals,
+                c_positionals,
+            )
+        )
+
+    def add_argument(self, action: argparse.Action, indent: str = ""):
         if action.help is not argparse.SUPPRESS:
             c_usage = yuio.term.ColorizedString()
             sep = False
@@ -865,77 +1132,51 @@ class _HelpFormatter(object):
                 self._format_action_metavar(action, 0, c_usage)
             for option_string in action.option_strings:
                 if sep:
-                    c_usage += self._theme.get_color("cli/plain_text")
+                    c_usage += self._theme.get_color("msg/text:code/sh-usage")
                     c_usage += ", "
-                c_usage += self._theme.get_color("cli/flag")
+                c_usage += self._theme.get_color("hl/flag:sh-usage")
                 c_usage += option_string
                 if action.nargs != 0:
-                    c_usage += self._theme.get_color("cli/plain_text")
+                    c_usage += self._theme.get_color("msg/text:code/sh-usage")
                     c_usage += " "
                 self._format_action_metavar_expl(action, c_usage)
                 sep = True
 
-            self._sections.append(
+            if self._nodes and isinstance(self._nodes[-1], _HelpArgGroup):
+                group = self._nodes[-1]
+            else:
+                group = _HelpArgGroup([])
+                self._nodes.append(group)
+            group.items.append(
                 _HelpArg(
-                    self._indent,
+                    indent,
                     c_usage,
-                    action.help or "",
+                    self._formatter.parse(action.help) if action.help else None,
                 )
             )
+
+            arg_width = len(indent) + c_usage.width + 2
+            if arg_width <= _MAX_ARGS_COLUMN_WIDTH:
+                self._args_column_width = max(self._args_column_width, arg_width)
 
             try:
                 get_subactions = action._get_subactions  # type: ignore
             except AttributeError:
                 pass
             else:
-                self.add_arguments(get_subactions())  # TODO: indent?
+                self.add_arguments(get_subactions(), indent + "  ")
 
-    def add_arguments(self, actions):
+    def add_arguments(self, actions, indent: str = ""):
         for action in actions:
-            self.add_argument(action)
+            self.add_argument(action, indent)
 
     def format_help(self) -> str:
-        width = max(min(shutil.get_terminal_size().columns, 90), 30)
-        args_column_width = max(
-            [
-                item.args.width + item.indent * 2
-                for item in self._sections
-                if isinstance(item, _HelpArg)
-                if item.args.width + item.indent * 2 <= _MAX_ARGS_COLUMN_WIDTH
-            ]
-            or [0]
+        self._formatter._args_column_width = self._args_column_width
+        return "".join(
+            self._formatter.format_node(yuio.md.Document(self._nodes)).process_colors(
+                self._term
+            )
         )
-
-        out = yuio.term.ColorizedString()
-        for i, section in enumerate(self._sections):
-            if isinstance(section, _HelpHeading) and (
-                i + 1 == len(self._sections)
-                or isinstance(self._sections[i + 1], _HelpHeading)
-            ):
-                # Skip empty sections.
-                continue
-
-            if i > 0 and (
-                # Always add empty line before heading.
-                isinstance(section, _HelpHeading)
-                # Add empty line before this section if it's not following
-                # a heading, and if it's not an arg following another arg.
-                or (
-                    not isinstance(self._sections[i - 1], _HelpHeading)
-                    and not (
-                        isinstance(section, _HelpArg)
-                        and isinstance(self._sections[i - 1], _HelpArg)
-                    )
-                )
-            ):
-                out += self._theme.get_color("cli/plain_text")
-                out += "\n"
-
-            section.format(out, width, args_column_width, self._theme)
-
-        out += yuio.term.Color.NONE
-
-        return "".join(out.process_colors(self._term))
 
     def _format_action_short(
         self,
@@ -944,20 +1185,20 @@ class _HelpFormatter(object):
         in_group: bool = False,
     ):
         if not in_group and not action.required:
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += "["
 
         if action.option_strings:
-            out += self._theme.get_color("cli/flag")
-            out += action.format_usage()
+            out += self._theme.get_color("hl/flag:sh-usage")
+            out += action.option_strings[0]
             if action.nargs != 0:
-                out += self._theme.get_color("cli/plain_text")
+                out += self._theme.get_color("msg/text:code/sh-usage")
                 out += " "
 
         self._format_action_metavar_expl(action, out)
 
         if not in_group and not action.required:
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += "]"
 
     def _format_action_metavar_expl(
@@ -966,44 +1207,44 @@ class _HelpFormatter(object):
         nargs = action.nargs if action.nargs is not None else 1
 
         if nargs == argparse.OPTIONAL:
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += "["
 
             self._format_action_metavar(action, 0, out)
 
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += "]"
         elif nargs == argparse.ZERO_OR_MORE:
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += "["
 
             self._format_action_metavar(action, 0, out)
 
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += " ...]"
         elif nargs == argparse.ONE_OR_MORE:
             self._format_action_metavar(action, 0, out)
 
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += " ["
 
             self._format_action_metavar(action, 1, out)
 
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += " ...]"
         elif nargs == argparse.REMAINDER:
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += "..."
         elif nargs == argparse.PARSER:
             self._format_action_metavar(action, 1, out)
 
-            out += self._theme.get_color("cli/plain_text")
+            out += self._theme.get_color("msg/text:code/sh-usage")
             out += " ..."
         elif isinstance(nargs, int):
             sep = False
             for i in range(nargs):
                 if sep:
-                    out += self._theme.get_color("cli/plain_text")
+                    out += self._theme.get_color("msg/text:code/sh-usage")
                     out += " "
                 self._format_action_metavar(action, i, out)
                 sep = True
@@ -1021,8 +1262,8 @@ class _HelpFormatter(object):
         else:
             metavar = metavar_t
 
-        cli_color = self._theme.get_color("cli/plain_text")
-        metavar_color = self._theme.get_color("cli/metavar")
+        cli_color = self._theme.get_color("msg/text:code/sh-usage")
+        metavar_color = self._theme.get_color("hl/metavar:sh-usage")
         cur_color = None
         is_punctuation = False
         for part in re.split(r"((?:[" + string.punctuation + r"]|\s)+)", metavar):

@@ -11,15 +11,21 @@ This module provides autocompletion functionality for widgets and CLI.
 """
 
 import abc
+import argparse
 import contextlib
 import dataclasses
+import enum
 import functools
 import math
 import os
 import pathlib
+import re
 import string
+import subprocess
 import sys
-import typing as _t
+import pickle
+import base64
+from yuio import _t
 from dataclasses import dataclass
 
 import yuio
@@ -92,8 +98,8 @@ class CompletionCollector:
     .. autoattribute:: suffix
 
     When completions are added to the collector, they are checked against
-    the current prefix to determine if the match the entered text. If they
-    match, the completion system will replace text from `prefix` and `suffix`
+    the current prefix to determine if they match the entered text. If they
+    do, the completion system will replace text from `prefix` and `suffix`
     with the new completion string.
 
     The two additional parts are:
@@ -148,7 +154,7 @@ class CompletionCollector:
     #: list elements.
     iprefix: str
 
-    #: Portion of the completed text before cursor.
+    #: Portion of the completed text before the cursor.
     prefix: str
 
     #: Portion of the completed text after the cursor.
@@ -170,7 +176,7 @@ class CompletionCollector:
 
     #: Completions from this set will not be added. This is useful
     #: when completing lists of unique values.
-    dedup_words: frozenset
+    dedup_words: _t.FrozenSet[str]
 
     # Internal fields.
     _group_id: int
@@ -314,7 +320,7 @@ class CompletionCollector:
         """Add a new completions group.
 
         All completions added after call to this method will be placed to the new group.
-        The will be grouped together, and colored according to the group's color tag.
+        They will be grouped together, and colored according to the group's color tag.
 
         :param sorted:
             controls whether completions in the new group should be sorted.
@@ -541,14 +547,29 @@ def _corrections(a: str, b: str) -> float:
 class Completer(abc.ABC):
     """An interface for text completion providers."""
 
-    def complete(self, text: str, pos: int, /) -> _t.List[Completion]:
-        """Complete the given text at the given cursor position."""
+    def complete(
+        self, text: str, pos: int, /, *, do_corrections: bool = True
+    ) -> _t.List[Completion]:
+        """
+        Complete the given text at the given cursor position.
+
+        :param text:
+            text that is being completed.
+        :param pos:
+            position of the cursor in the text. ``0`` means the cursor
+            is before the first character, ``len(text)`` means the cursor
+            is after the last character.
+        :param do_corrections:
+            if :data:`True` (default), completion system will try to guess
+            if there are any misspells in the ``text``, and offer to correct them.
+
+        """
 
         collector = CompletionCollector(text, pos)
         with collector.save_state():
             self.process(collector)
         completions = collector.finalize()
-        if completions:
+        if completions or not do_corrections:
             return completions
 
         collector = _CorrectingCollector(text, pos)
@@ -560,6 +581,13 @@ class Completer(abc.ABC):
     def process(self, collector: CompletionCollector, /):
         """Add completions to the given collector."""
 
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "_CompleterSerializer.Model":
+        """Internal, do not use."""
+
+        return _CompleterSerializer.CustomCompleter(self)
+
 
 class Empty(Completer):
     """An empty completer that returns no values."""
@@ -567,9 +595,14 @@ class Empty(Completer):
     def process(self, collector: CompletionCollector):
         pass  # nothing to do
 
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "_CompleterSerializer.Model":
+        return _CompleterSerializer.Model()
+
 
 @dataclass(frozen=True, **yuio._with_slots())
-class CompletionChoice:
+class Option:
     """A single completion option for the :chass:`Choice` completer."""
 
     #: This string will replace an element that is being completed.
@@ -582,12 +615,19 @@ class CompletionChoice:
 class Choice(Completer):
     """Completes input from a predefined list of completions."""
 
-    def __init__(self, choices: _t.Collection[CompletionChoice], /):
-        self._choices: _t.Collection[CompletionChoice] = choices
+    def __init__(self, choices: _t.Collection[Option], /):
+        self._choices: _t.Collection[Option] = choices
 
     def process(self, collector: CompletionCollector, /):
         for choice in self._choices:
             collector.add(choice.completion, comment=choice.comment)
+
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "_CompleterSerializer.Model":
+        return _CompleterSerializer.Choice(
+            [option.completion for option in self._choices]
+        )
 
 
 class List(Completer):
@@ -626,6 +666,18 @@ class List(Completer):
 
         self._inner.process(collector)
 
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "_CompleterSerializer.Model":
+        if is_many:
+            return _CompleterSerializer.ListMany(
+                self._delimiter or " ", self._inner._get_completion_model()
+            )
+        else:
+            return _CompleterSerializer.List(
+                self._delimiter or " ", self._inner._get_completion_model()
+            )
+
 
 class Tuple(Completer):
     """Completes a value-separated tuple of elements."""
@@ -659,13 +711,34 @@ class Tuple(Completer):
 
         self._inners[pos].process(collector)
 
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "_CompleterSerializer.Model":
+        if is_many:
+            return _CompleterSerializer.TupleMany(
+                self._delimiter or " ",
+                [inner._get_completion_model() for inner in self._inners],
+            )
+        else:
+            return _CompleterSerializer.Tuple(
+                self._delimiter or " ",
+                [inner._get_completion_model() for inner in self._inners],
+            )
+
 
 class File(Completer):
-    def __init__(self, extensions: _t.Optional[_t.Collection[str]] = None):
-        self._extensions = extensions
+    def __init__(self, extensions: _t.Union[str, _t.Collection[str], None] = None):
+        if isinstance(extensions, str):
+            self._extensions = [extensions]
+        elif extensions is not None:
+            self._extensions = list(extensions)
+        else:
+            self._extensions = None
 
     def process(self, collector: CompletionCollector, /):
         base, name = os.path.split(collector.prefix)
+        if base and not base.endswith(os.path.sep):
+            base += os.path.sep
         collector.iprefix += base
         collector.prefix = name
         collector.suffix = collector.suffix.split(os.sep, maxsplit=1)[0]
@@ -676,48 +749,507 @@ class File(Completer):
                 collector.rsuffix = ""
                 collector.add("./", color_tag="dir")
                 collector.add("../", color_tag="dir")
-            for path in resolved.iterdir():
-                if path.is_dir():
-                    if path.is_symlink():
-                        color_tag = "symlink"
-                        dsuffix = "@"
-                    else:
-                        color_tag = "dir"
-                        dsuffix = ""
-                    collector.rsuffix = ""
-                    collector.add(
-                        path.name + os.sep, color_tag=color_tag, dsuffix=dsuffix
-                    )
-                elif self._extensions is None or any(
-                    path.name.endswith(ext) for ext in self._extensions
-                ):
-                    collector.rsuffix = rsuffix
-                    color_tag = None
-                    dsuffix = ""
-                    if path.is_file():
-                        if os.access(path, os.X_OK):
-                            color_tag = "exec"
-                            dsuffix = "*"
+            try:
+                for path in resolved.iterdir():
+                    if path.is_dir():
+                        if path.is_symlink():
+                            color_tag = "symlink"
+                            dsuffix = "@"
                         else:
-                            color_tag = "file"
-                    elif path.is_symlink():
-                        color_tag = "symlink"
-                        dsuffix = "@"
-                    elif path.is_socket():
-                        color_tag = "socket"
-                        dsuffix = "="
-                    elif path.is_fifo():
-                        color_tag = "pipe"
-                        dsuffix = "|"
-                    elif path.is_block_device():
-                        color_tag = "block_device"
-                        dsuffix = "#"
-                    elif path.is_char_device():
-                        color_tag = "char_device"
-                        dsuffix = "%"
-                    collector.add(path.name, color_tag=color_tag, dsuffix=dsuffix)
+                            color_tag = "dir"
+                            dsuffix = ""
+                        collector.rsuffix = ""
+                        collector.add(
+                            path.name + os.sep, color_tag=color_tag, dsuffix=dsuffix
+                        )
+                    elif self._extensions is None or any(
+                        path.name.endswith(ext) for ext in self._extensions
+                    ):
+                        collector.rsuffix = rsuffix
+                        color_tag = None
+                        dsuffix = ""
+                        if path.is_file():
+                            if os.access(path, os.X_OK):
+                                color_tag = "exec"
+                                dsuffix = "*"
+                            else:
+                                color_tag = "file"
+                        elif path.is_symlink():
+                            color_tag = "symlink"
+                            dsuffix = "@"
+                        elif path.is_socket():
+                            color_tag = "socket"
+                            dsuffix = "="
+                        elif path.is_fifo():
+                            color_tag = "pipe"
+                            dsuffix = "|"
+                        elif path.is_block_device():
+                            color_tag = "block_device"
+                            dsuffix = "#"
+                        elif path.is_char_device():
+                            color_tag = "char_device"
+                            dsuffix = "%"
+                        collector.add(path.name, color_tag=color_tag, dsuffix=dsuffix)
+            except PermissionError:
+                return
+
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "_CompleterSerializer.Model":
+        return _CompleterSerializer.File(
+            "|".join(extension.lstrip(".") for extension in self._extensions or [])
+        )
 
 
 class Dir(File):
     def __init__(self):
         super().__init__([])
+
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "_CompleterSerializer.Model":
+        return _CompleterSerializer.Dir()
+
+
+class _CompleterSerializer:
+    def __init__(self):
+        self._subcommands: _t.Dict[
+            str, _t.Tuple["_CompleterSerializer", bool, str]
+        ] = {}
+        self._positional = 0
+        self._flags: _t.List[
+            _t.Tuple[
+                _t.List[str],
+                _t.Optional[str],
+                _t.Union[str, _t.Tuple[str, ...], None],
+                _t.Union[int, _t.Literal["-", "+", "*", "?"]],
+                "_CompleterSerializer.Model",
+            ]
+        ] = [
+            (
+                ["-h", "--help"],
+                "show help and exit",
+                None,
+                "-",
+                _CompleterSerializer.Model(),
+            )
+        ]
+
+    def add_argument(self, *args: str, **kwargs):
+        help = kwargs.get("help") or ""
+
+        if help is argparse.SUPPRESS:
+            return
+
+        if all(not arg.startswith("-") for arg in args):
+            args = (str(self._positional),)
+            self._positional += 1
+
+        action = kwargs.get("action")
+        metavar = kwargs.get("metavar") or ""
+        nargs = kwargs.get(
+            "nargs",
+            0
+            if action
+            in [
+                "store_const",
+                "store_true",
+                "store_false",
+                "append_const",
+                "count",
+                "help",
+                "version",
+            ]
+            else 1,
+        )
+        if get_parser := getattr(action, "get_parser", None):
+            parser = get_parser()
+            completer = None
+            if get_completer := getattr(action, "get_completer", None):
+                completer = get_completer()
+            if completer is None:
+                completer = parser.completer()
+            completion_model = completer._get_completion_model(
+                is_many=parser.supports_parse_many()
+            )
+        else:
+            completion_model = self.Model()
+
+        self._flags.append((list(args), help, metavar, nargs, completion_model))
+
+    def add_mutually_exclusive_group(self, *args, **kwargs):
+        return self
+
+    def add_argument_group(self, *args, **kwargs):
+        return self
+
+    def add_subparsers(self, *args, **kwargs):
+        return self
+
+    def add_parser(
+        self,
+        name: str,
+        *,
+        aliases: _t.Sequence[str] = (),
+        help: str,
+        **kwargs,
+    ):
+        serializer = _CompleterSerializer()
+        self._subcommands[name] = (serializer, False, str(help or ""))
+        for alias in aliases:
+            self._subcommands[alias] = (serializer, True, str(help))
+        return serializer
+
+    def as_parser(self) -> argparse.ArgumentParser:
+        # We've implemented all methods that `Config._setup_arg_parser` could call.
+        return _t.cast(argparse.ArgumentParser, self)
+
+    def write_completions(self, prog: _t.Optional[str] = None, shell: str = "all"):
+        import yuio.io
+
+        prog = prog or pathlib.Path(sys.argv[0]).name
+
+        yuio.io.heading("Generating completions for `%s`", prog)
+
+        result = []
+        self._dump("", result)
+        compdata = "\n".join(result)
+
+        data_home = pathlib.Path(
+            os.environ.get("XDG_DATA_HOME") or (pathlib.Path.home() / ".local/share")
+        )
+        cache_home = pathlib.Path(
+            os.environ.get("XDG_CACHE_HOME") or (pathlib.Path.home() / ".cache")
+        )
+        config_home = pathlib.Path(
+            os.environ.get("XDG_CONFIG_HOME") or (pathlib.Path.home() / ".config")
+        )
+
+        os.makedirs(data_home / "yuio", exist_ok=True)
+        compdata_path = data_home / f"yuio/{prog}.compdata.tsv"
+        compdata_path.write_text(compdata)
+        yuio.io.info("Wrote completion data to `%s`", compdata_path)
+
+        if shell in ["all", "bash"]:
+            self._write_bash_script(
+                prog, compdata_path, data_home, cache_home, config_home
+            )
+        if shell in ["all", "zsh"]:
+            self._write_zsh_script(
+                prog, compdata_path, data_home, cache_home, config_home
+            )
+        if shell in ["all", "fish"]:
+            self._write_fish_script(
+                prog, compdata_path, data_home, cache_home, config_home
+            )
+
+        yuio.io.success(
+            "All done! Please restart your shell for changes to take effect."
+        )
+
+    def _write_bash_script(
+        self,
+        prog: str,
+        compdata_path: pathlib.Path,
+        data_home: pathlib.Path,
+        cache_home: pathlib.Path,
+        config_home: pathlib.Path,
+    ):
+        import yuio.io
+        import yuio.exec
+
+        try:
+            bash_completions_home = yuio.exec.exec(
+                "bash",
+                "-lic",
+                'echo -n "${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions/"',
+            ).splitlines()[-1]
+        except subprocess.CalledProcessError:
+            bash_completions_home = data_home / "bash-completion/completions/"
+        bash_completions_home = pathlib.Path(bash_completions_home)
+        os.makedirs(bash_completions_home, exist_ok=True)
+
+        script_dest = bash_completions_home / prog
+        script_template = (pathlib.Path(__file__).parent / "complete.bash").read_text()
+        script = script_template.replace("@prog@", prog).replace(
+            "@data@", str(compdata_path)
+        )
+        script_dest.write_text(script)
+
+        yuio.io.info("Wrote bash script to `%s`", script_dest)
+
+    def _write_zsh_script(
+        self,
+        prog: str,
+        compdata_path: pathlib.Path,
+        data_home: pathlib.Path,
+        cache_home: pathlib.Path,
+        config_home: pathlib.Path,
+    ):
+        import yuio.io
+        import yuio.exec
+
+        zsh_completions_home = data_home / "zsh/completions"
+        os.makedirs(zsh_completions_home, exist_ok=True)
+
+        script_dest = zsh_completions_home / ("_" + prog)
+        script_template = (pathlib.Path(__file__).parent / "complete.zsh").read_text()
+        script = script_template.replace("@prog@", prog).replace(
+            "@data@", str(compdata_path)
+        )
+        script_dest.write_text(script)
+
+        yuio.io.info("Wrote zsh script to `%s`", script_dest)
+
+        try:
+            fpath = (
+                yuio.exec.exec(
+                    "zsh",
+                    "-lic",
+                    "echo -n $FPATH",
+                )
+                .splitlines()[-1]
+                .split(":")
+            )
+        except subprocess.CalledProcessError:
+            fpath = []
+
+        try:
+            zhome = yuio.exec.exec(
+                "zsh",
+                "-lic",
+                "echo -n ${ZDOTDIR:-$HOME}",
+            ).splitlines()[-1]
+        except subprocess.CalledProcessError:
+            zhome = pathlib.Path.home()
+
+        zhome = pathlib.Path(zhome)
+
+        if str(zsh_completions_home) not in fpath:
+            zprofile_path = zhome / ".zprofile"
+            with open(zprofile_path, "a") as f:
+                f.write(
+                    f"\n# Generated by Yuio, a python CLI library.\n"
+                    f"fpath=({zsh_completions_home} $fpath)\n"
+                )
+            yuio.io.info(
+                "Modified `%s` to add `%s` to `fpath`",
+                zprofile_path,
+                zsh_completions_home,
+            )
+
+        # Try to remove completions cache from the most common places.
+        for zcomp_basedir in [zhome, cache_home / "prezto"]:
+            if not zcomp_basedir.exists() or not zcomp_basedir.is_dir():
+                continue
+            for file in zcomp_basedir.iterdir():
+                if file.is_file() and re.match(r"^\.?zcompdump", file.name):
+                    os.remove(file)
+                    yuio.io.info("Deleted zsh completions cache at `%s`", file)
+
+        try:
+            # Run zsh with the right flags in case zshrc runs compinit.
+            # If after generating completions user runs `zsh` without the `-l` flag,
+            # our changes to fpath will not be visible, and compinit will dump
+            # an invalid version of cache. To avoid this, we call zsh ourselves
+            # before the user has a chance to do it. Notice, though, that we don't
+            # run `compdump`. This is because we can't be sure that the user uses
+            # the default cache path (~/.zcompdump).
+            yuio.exec.exec("zsh", "-lic", "true")
+        except subprocess.CalledProcessError:
+            pass
+
+    def _write_fish_script(
+        self,
+        prog: str,
+        compdata_path: pathlib.Path,
+        data_home: pathlib.Path,
+        cache_home: pathlib.Path,
+        config_home: pathlib.Path,
+    ):
+        import yuio.io
+
+        fish_completions_home = data_home / "fish/vendor_completions.d"
+        os.makedirs(fish_completions_home, exist_ok=True)
+
+        script_dest = fish_completions_home / (prog + ".fish")
+        script_template = (pathlib.Path(__file__).parent / "complete.fish").read_text()
+        script = script_template.replace("@prog@", prog).replace(
+            "@data@", str(compdata_path)
+        )
+        script_dest.write_text(script)
+
+        yuio.io.info("Wrote fish script to `%s`", script_dest)
+
+    _SPECIAL_SYMBOLS = str.maketrans("\r\n\a\b\t", "     ")
+
+    def _dump(self, path: str, result: _t.List[str]):
+        if self._subcommands:
+            self._flags.append(
+                (
+                    ["c"],
+                    "subcommand",
+                    "<cmd>",
+                    1,
+                    _CompleterSerializer.ChoiceWithDescriptions(
+                        [
+                            (name, help)
+                            for name, (_, is_alias, help) in self._subcommands.items()
+                            if not is_alias
+                        ]
+                    ),
+                )
+            )
+
+        for opts, desc, meta, nargs, completer in self._flags:
+            if not isinstance(meta, tuple):
+                meta = (meta,)
+            compspec: _t.List[str] = [
+                path,
+                " ".join(opts),
+                desc or "",
+                " ".join(
+                    re.sub(
+                        r"[\\ ]",
+                        lambda s: "\\S" if s.group() == " " else f"\\L",
+                        str(m),
+                    )
+                    or ""
+                    for m in meta
+                ),
+                str(nargs),
+                *completer.dump(),
+            ]
+
+            result.append(
+                "\t".join(item.translate(self._SPECIAL_SYMBOLS) for item in compspec)
+            )
+
+        for subcommand, (serializer, *_) in self._subcommands.items():
+            serializer._dump(f"{path}/{subcommand}", result)
+
+    @staticmethod
+    def _dump_nested(compspec: _t.List[object]) -> _t.List[str]:
+        contents = []
+
+        for item in compspec:
+            contents.extend(_CompleterSerializer._dump_nested_item(item))
+
+        return contents
+
+    @staticmethod
+    def _dump_nested_item(item: object) -> _t.List[str]:
+        contents = []
+
+        if isinstance(item, _CompleterSerializer.Model):
+            contents.extend(item.dump())
+        elif isinstance(item, list):
+            contents.append(str(len(item)))
+            for sub_item in item:
+                contents.extend(_CompleterSerializer._dump_nested_item(sub_item))
+        elif isinstance(item, tuple):
+            for sub_item in item:
+                contents.extend(_CompleterSerializer._dump_nested_item(sub_item))
+        else:
+            contents.append(str(item))
+
+        return contents
+
+    class ModelBase:
+        tag: _t.ClassVar[str] = "-"
+
+        def __init_subclass__(cls, tag: str = "-", **kwargs):
+            super(cls).__init_subclass__(**kwargs)
+            cls.tag = tag
+
+    @dataclass()
+    class Model(ModelBase):
+        def dump(self) -> _t.List[str]:
+            compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
+            contents = _CompleterSerializer._dump_nested(compspec)
+            return [self.tag, str(len(contents)), *contents]
+
+    @dataclass()
+    class File(Model, tag="f"):
+        ext: str
+
+    @dataclass()
+    class Dir(Model, tag="d"):
+        pass
+
+    @dataclass()
+    class Choice(Model, tag="c"):
+        choices: _t.List[str]
+
+        def dump(self) -> _t.List[str]:
+            return [self.tag, str(len(self.choices)), *self.choices]
+
+    @dataclass()
+    class ChoiceWithDescriptions(Model, tag="cd"):
+        choices: _t.List[_t.Tuple[str, str]]
+
+        def dump(self) -> _t.List[str]:
+            return [
+                self.tag,
+                str(len(self.choices) * 2),
+                *[c[0] for c in self.choices],
+                *[c[1] for c in self.choices],
+            ]
+
+    @dataclass()
+    class Git(Model, tag="g"):
+        class Mode(enum.Enum):
+            Branch = "b"
+            Remote = "r"
+            Tag = "t"
+            Head = "h"
+
+        modes: _t.Set[Mode] = dataclasses.field(
+            default_factory=lambda: {
+                _CompleterSerializer.Git.Mode.Branch,
+                _CompleterSerializer.Git.Mode.Tag,
+                _CompleterSerializer.Git.Mode.Head,
+            }
+        )
+
+        def dump(self) -> _t.List[str]:
+            return [self.tag, "1", "".join(mode.value for mode in self.modes)]
+
+    @dataclass()
+    class List(Model, tag="l"):
+        delim: str
+        inner: "_CompleterSerializer.Model"
+
+    @dataclass()
+    class ListMany(List, tag="lm"):
+        pass
+
+    @dataclass()
+    class Tuple(Model, tag="t"):
+        delim: str
+        inner: _t.List["_CompleterSerializer.Model"]
+
+    @dataclass()
+    class TupleMany(Tuple, tag="tm"):
+        pass
+
+    @dataclass()
+    class Alternative(Model, tag="a"):
+        alternatives: _t.List[_t.Tuple[str, "_CompleterSerializer.Model"]]
+
+    @dataclass()
+    class CustomCompleter(Model, tag="cc"):
+        completer: Completer
+
+        def dump(self) -> _t.List[str]:
+            return [self.tag, "1", base64.b64encode(pickle.dumps(self.completer)).decode()]
+
+
+def _run_custom_completer(data: str, word: str):
+    completer: Completer = pickle.loads(base64.b64decode(data))
+    completions = completer.complete(word, len(word), do_corrections=False)
+    for completion in completions:
+        print(
+            f"{completion.iprefix}{completion.completion}{completion.isuffix}\t{completion.comment or ''}",
+            file=sys.__stdout__,
+        )

@@ -43,7 +43,6 @@ if __name__ == "__main__":
 
     yuio.io.heading("Yuio's tasks and logging showcase")
     yuio.io.info("Going to install some packages to demonstrate you tasks and logging!")
-    yuio.io.hr()
 
     with yuio.io.Task("Installing packages") as task:
         # A bit of work.

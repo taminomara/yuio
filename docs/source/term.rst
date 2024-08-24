@@ -1,4 +1,4 @@
 Term — building blocks for terminal output
 ==========================================
 
-.. automodule:: yuio.term
+.. .. automodule:: yuio.term

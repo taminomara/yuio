@@ -19,5 +19,5 @@ if __name__ == "__main__":
 
     yuio.io.heading("Color tags")
 
-    yuio.io.info("This text is <c:red,bold>rad!</c>")
-    yuio.io.warning("File <c:code>example.txt</c> does not exist.")
+    yuio.io.info("This text is <c red bold>rad!</c>")
+    yuio.io.warning("File <c code>example.txt</c> does not exist.")

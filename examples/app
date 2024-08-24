@@ -1,7 +1,11 @@
+#! /usr/bin/env python3
+
 import pathlib
 
 import yuio.app
+import yuio.complete
 import yuio.config
+import yuio.git
 import yuio.io
 import yuio.parse
 
@@ -24,9 +28,10 @@ class Config(yuio.config.Config):
 # We will load values into this variable once the program starts.
 CONFIG = Config()
 
-
 @yuio.app.app
-def main(config: Config = yuio.config.inline()):
+def main(
+    config: Config = yuio.config.inline(),
+):
     """some ml stuff idk im not into ml"""
 
     # Load global config:
@@ -43,35 +48,33 @@ def main(config: Config = yuio.config.inline()):
 
     yuio.io.info("global config is loaded: `%r`", CONFIG)
 
+main.subcommand_required = False
 
 main.epilog = """
-formatting:
-    prolog is parsed and colorized according to the general format
-    of help messages:
+# formatting:
 
-    - lines without indent that end with semicolon are considered headings;
-    - the rest of the lines are considered heading sections --
-      they are indented accordingly;
-    - some markdown-like block markup is supported: code snippets, bullet
-      and numbered lists, quotes. For example, here's a code block:
+prolog is formatted using the standard markdown. All markdown blocks are supported.
+Inline markup is not, though: you can only use backticks and color tags.
 
-      ```
-      Beautiful python
-      Explicit and simple form
-      Winding through clouds
+Example of what we can do:
 
-          -- from heroku art
-      ```
+- quotes:
 
-      And here's another one, with syntax highlighting:
+  > Beautiful python\v
+  > Explicit and simple form\v
+  > Winding through clouds
+  >
+  >     -- from heroku art
 
-      ```py
-      for i in range(10):
-          print(f"Hello, {i}!")
-      ```
+- code blocks:
 
-    - Color tags are supported, as well as `backticks`! Btw, backticks highlight
-      `--flags` with appropriate color too!
+  ```py
+  for i in range(10):
+      print(f"Hello, {i}!")
+  ```
+
+- color tags are supported, as well as `backticks`! Btw, backticks highlight
+  `--flags` with appropriate color too!
 
 """
 
@@ -95,7 +98,7 @@ def train(
     #: output data for the model
     output: pathlib.Path = yuio.config.field(
         default=pathlib.Path("trained.model"),
-        flags=["-o", "--out", "--output"],
+        flags=["-o", "--output"],
     ),
 ):
     """train model on a dataset."""
@@ -104,4 +107,4 @@ def train(
 
 
 if __name__ == "__main__":
-    main.run()
+    main.run(["-h"])

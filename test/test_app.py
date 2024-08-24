@@ -1,4 +1,4 @@
-# import typing as _t
+# .from yuio import _t
 
 # from yuio.app import *
 # from yuio.config import *
@@ -211,14 +211,14 @@
 # # optional[int]                     - R (-)
 # # optional[int] = 5                 - O (?)
 
-# # list[int]                         - R (*)
-# # list[int] = []                    - O (*)
+# # _t.List[int]                         - R (*)
+# # _t.List[int] = []                    - O (*)
 
-# # optional[list[int]]               - R (*)
-# # optional[list[int]] = None        - O (*)
+# # optional[_t.List[int]]               - R (*)
+# # optional[_t.List[int]] = None        - O (*)
 
-# # optional[tuple[int, int]]         - R (2)
-# # optional[tuple[int, int]] = None  - O (0|2)
+# # optional[_t.Tuple[int, int]]         - R (2)
+# # optional[_t.Tuple[int, int]] = None  - O (0|2)
 
 # # simple:
 # #  - -> ?

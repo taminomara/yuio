@@ -24,9 +24,13 @@ if __name__ == "__main__":
 
     result = yuio.io.edit(TEXT)
 
+    yuio.io.br()
+
     yuio.io.success("Editing successful!")
     yuio.io.success("So, this is what you've done to Homer's Iliad:")
+
     yuio.io.br()
+
     if result:
         yuio.io.info(result)
     else:

@@ -9,13 +9,13 @@ if __name__ == "__main__":
     completer = yuio.complete.List(
         yuio.complete.Choice(
             [
-                yuio.complete.CompletionChoice("eggs"),
-                yuio.complete.CompletionChoice("bacon"),
-                yuio.complete.CompletionChoice("salad"),
-                yuio.complete.CompletionChoice("hashbrown"),
-                yuio.complete.CompletionChoice("sausages"),
-                yuio.complete.CompletionChoice("granola"),
-                yuio.complete.CompletionChoice("oatmeal"),
+                yuio.complete.Option("eggs"),
+                yuio.complete.Option("bacon"),
+                yuio.complete.Option("salad"),
+                yuio.complete.Option("hashbrown"),
+                yuio.complete.Option("sausages"),
+                yuio.complete.Option("granola"),
+                yuio.complete.Option("oatmeal"),
             ]
         ),
     )
@@ -24,6 +24,6 @@ if __name__ == "__main__":
         completer, placeholder="you can enter multiple items separated by space"
     )
 
-    yuio.io.question("Choose what you'd like for breakfast:")
+    yuio.io.heading("Choose what you'd like for breakfast:")
     result = widget.with_help().run(term, theme)
     yuio.io.success(f"You've entered `%r`", result)

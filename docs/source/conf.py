@@ -5,6 +5,7 @@ import sys
 sys.path.append(str(pathlib.Path(__file__).parent.joinpath("_ext")))
 
 import yuio
+import sphinx_vhs
 
 # -- Project information -----------------------------------------------------
 
@@ -39,6 +40,7 @@ graphviz_output_format = "svg"
 pygments_style = "yuio_pygments.Style"
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
+vhs_min_version = "0.7.0"
 
 # -- Options for HTML output -------------------------------------------------
 

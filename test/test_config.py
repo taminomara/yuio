@@ -1,7 +1,7 @@
 import argparse
 import enum
 import os
-import typing as _t
+from yuio import _t
 
 import pytest
 
@@ -233,7 +233,7 @@ class TestBasics:
         Ty = int
 
         class ResolveConfig(yuio.config.Config):
-            f: "Ty"
+            f: "Ty"  # type: ignore
 
         with pytest.raises(
             NameError, match="forward references do not work inside functions"
@@ -404,7 +404,7 @@ class TestEnv:
                     yuio.parse.Pair(yuio.parse.Str(), yuio.parse.Int())
                 )
             )
-            s: _t.Set[int]
+            s: set[int]
             x: _t.Tuple[int, float]
             d: _t.Dict[str, int]
 
@@ -540,7 +540,7 @@ class TestArgs:
                     yuio.parse.Pair(yuio.parse.Str(), yuio.parse.Int())
                 )
             )
-            s: _t.Set[int]
+            s: set[int]
             x: _t.Tuple[int, float]
             d: _t.Dict[str, int]
 

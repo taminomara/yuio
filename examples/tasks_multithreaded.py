@@ -37,7 +37,6 @@ if __name__ == "__main__":
 
     yuio.io.heading("Yuio's tasks showcase")
     yuio.io.info("Going to install some packages to demonstrate you progressbars!")
-    yuio.io.hr()
 
     with yuio.io.Task("Installing packages") as task:
         time.sleep(2)

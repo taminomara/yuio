@@ -13,7 +13,7 @@ class TestParser:
 
     @pytest.fixture
     def parser(self) -> yuio.md._MdParser:
-        return yuio.md._MdParser(yuio.md.MdFormatter(yuio.term.Theme()))
+        return yuio.md._MdParser()
 
     @pytest.mark.parametrize(
         "md,expected",

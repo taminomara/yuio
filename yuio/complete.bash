@@ -1,10 +1,18 @@
 # -*- shell-script -*-
 
-# Yuio project, MIT license.
-#
-# https://github.com/taminomara/yuio/
+function __@prog@ {
+    local prog="$1"
+    local compdata_path="@data@";
+    __yuio_compl_v1
+}
 
-_YUIO_COMPL_V1_VERSION=1  # do not change this line
+complete -F __@prog@ $1
+
+
+# Load Yuio completion system, if not loaded already.
+
+
+_YUIO_COMPL_V1_VERSION=1
 
 if (( BASH_VERSINFO[0] < 5 )); then
     _YUIO_COMPL_V1_ERR="bash>=5 is required, you have $BASH_VERSION"
@@ -18,11 +26,11 @@ if [[ -n $_YUIO_COMPL_V1_ERR ]]; then
     function __yuio_compl_v1 {
         echo "${prog:+"$prog: "}$_YUIO_COMPL_V1_ERR" >&2; return 1
     }
-
     return 1
 fi
 
-if [[ -n YUIO_COMPL_V1_VERSION && -z YUIO_COMPL_V1_FORCE_RELOAD ]]; then
+if [[ -n YUIO_COMPL_V1_VERSION && YUIO_COMPL_V1_VERSION -ge _YUIO_COMPL_V1_VERSION ]]; then
+    unset _YUIO_COMPL_V1_VERSION
     return 0
 fi
 
@@ -32,22 +40,20 @@ unset _YUIO_COMPL_V1_VERSION
 # Entry point for completion.
 #
 # Completion data is passed by variables. `$prog` should contain
-# name of the program that is being completed, and `$compdata`
+# name of the program that is being completed, and `$compdata_path`
 # should contain completions data.
 function __yuio_compl_v1 {
     [[ -z $prog ]] && (echo "$prog: $FUNCNAME: empty prog" >&2; return 2)
-    [[ -z $compdata ]] && (echo "$prog: $FUNCNAME: empty compdata" >&2; return 2)
+    [[ -z $compdata_path ]] && (echo "$prog: $FUNCNAME: empty compdata_path" >&2; return 2)
 
     local IFS=$' \t\n'
 
     # Variable that are used by functions down the stack:
     local words             # List of words, current word.
     local cword             # Current word index.
-    local cur               # Current word.
+    local cur               # Portion of the current word before cursor.
+    local cur_suffix        # Portion of the current word after cursor.
     local prev              # Previous word.
-    local word              # Value of the option that is being completed.
-    # Unlike `cur`, `word` can be mutated. For example, if `cur=--foo=bar`,
-    # then `word` will be `bar` -- that is, the value of option `--foo`.
 
     # Restore compopts to their defaults:
     compopt +o filenames 2>/dev/null
@@ -62,6 +68,7 @@ function __yuio_compl_v1 {
     compopt -o noquote 2>/dev/null
 
     # Parsing state:
+    local word=             # Current word that is being processed.
     local cmd=''            # Current (sub)command.
     local opt=''            # Current option.
     local nargs=0           # How many nargs left to process in the current option.
@@ -75,7 +82,10 @@ function __yuio_compl_v1 {
     # and option that we're completing:
     local i
     for ((i = 1; i <= $cword; i++)); do
-        if [[ $word =~ -.+ ]]; then
+        if [[ -z $free_opts_only && $word == '--' ]]; then
+            # We're completing free args form now on.
+            free_opts_only=1
+        elif [[ -z $free_opts_only && $word == -* ]]; then
             # Previous word was an option, so in this position we expect option's args,
             # if there are any.
             opt=$word
@@ -83,11 +93,11 @@ function __yuio_compl_v1 {
             if [[ $nargs == '-' ]]; then  # for options like --help or --version
                 return 0
             fi
-        elif [[ -z $opt && $free_nargs -eq 0 ]]; then  # Nb: avoid matching non-numeric $free_nargs
+        elif [[ -z $opt && $free_nargs == 0 ]]; then
             # We've exhausted current free args.
             (( free_opt++ ))
             __yuio_compl_v1__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
-        elif [[ $opt =~ -.+ && $nargs -eq 0 ]]; then  # Nb: avoid matching non-numeric $nargs
+        elif [[ $opt == -* && $nargs == 0 ]]; then
             # We've exhausted nargs for the current option.
             opt=''
         elif [[ $opt == 'c' ]]; then
@@ -98,20 +108,17 @@ function __yuio_compl_v1 {
             free_opt=0
             free_nargs=0
             __yuio_compl_v1__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
-        elif [[ $opt == '--' ]]; then
-            # We're completing free args form now on.
-            free_opts_only=1
         fi
 
         word="${words[$i]}"
 
-        if [[ -z free_opts_only && $word == --*=* ]]; then
+        if [[ -z $free_opts_only && $word == --*=* ]]; then
             # This is a long option with a value (i.e. `--foo=bar`).
             # In this position, we complete option's value.
             opt="${word%%=*}"
             word="${word#*=}"
             nargs=0
-        elif [[ -z free_opts_only && $word == -* ]]; then
+        elif [[ -z $free_opts_only && $word == -* ]]; then
             # This is an option without a value (i.e. `-f` or `--foo`).
             # In this position we complete the option itself.
 
@@ -159,21 +166,50 @@ function __yuio_compl_v1 {
         fi
     done
 
+    local needs_quote=1
+    local _dequoted=$( dequote "$cur"__yuio_delim__"${word#"$cur"}" )
+    if [[ $? != 0 ]]; then
+        # Failed to dequote, probably due to unbalanced quotes in the output.
+        # We let the user deal with all escapes on their own.
+        # This might break list and tuple completions when delimiters contain
+        # special characters, but I don't know any better way of doing this.
+        needs_quote=
+        _dequoted="$cur"__yuio_delim__"${word#"$cur"}"
+    fi
+    cur="${_dequoted%%__yuio_delim__*}"
+    cur_suffix="${_dequoted##*__yuio_delim__}"
+    word="$cur$cur_suffix"
+    unset _dequoted
+
     IFS=$'\n'
-    local compspec_i=4 compspec
-    if [[ -z "$opt" ]]; then
-        if [[ $word =~ -.* ]]; then
+    local compspec_i=5 compspec apos=1
+    if [[ -z $opt ]]; then
+        if [[ -z $free_opts_only && $word == -* ]]; then
             __yuio_compl_v1__complete_opts "$cmd" || return
         else
             __yuio_compl_v1__load_compspec_by_ref compspec "$cmd" "$free_opt"
-            [[ -n ${compspec[*]} ]] && __yuio_compl_v1__complete || return
+
+            if [[ ${compspec[4]} =~ [0-9]+ ]] \
+                    && [[ $free_nargs =~ [0-9]+ ]]; then
+                ((apos = ${compspec[4]} - $free_nargs))
+            fi
+
+            __yuio_compl_v1__complete || return
         fi
     else
         __yuio_compl_v1__load_compspec_by_ref compspec "$cmd" "$opt"
-        [[ -n ${compspec[*]} ]] && __yuio_compl_v1__complete || return
+
+        if [[ ${compspec[4]} =~ [0-9]+ ]] \
+                && [[ $nargs =~ [0-9]+ ]]; then
+            ((apos = ${compspec[4]} - $nargs))
+        fi
+
+        __yuio_compl_v1__complete || return
     fi
 
     __ltrim_colon_completions "$cur"
+
+    [[ -n $needs_quote ]] && (( ${#COMPREPLY[@]} > 0 )) && COMPREPLY=( $( printf '\n%q' "${COMPREPLY[@]}" ) )
 }
 
 # Given (sub)command and option name, load option's `nargs`.
@@ -184,10 +220,10 @@ function __yuio_compl_v1 {
 # @param $3 option, either a flag name (i.e. `--help`), a free option index (i.e. `0`
 #           for the first free option), or `c` for subcommand.
 function __yuio_compl_v1__load_nargs_by_ref {
-    (( $# != 3 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME var cmd opt" )
+    (( $# != 3 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME var cmd opt" >&2 )
 
     local compspec; __yuio_compl_v1__load_compspec_by_ref compspec "$2" "$3"
-    local nargs="${compspec[2]:-0}"
+    local nargs="${compspec[4]:-0}"
     local $1 && __yuio_compl_v1__upvars -v $1 "$nargs"
 }
 
@@ -199,7 +235,7 @@ function __yuio_compl_v1__load_nargs_by_ref {
 # @param $3 option, either a flag name (i.e. `--help`), a free option index (i.e. `0`
 #           for the first free option), or `c` for subcommand.
 function __yuio_compl_v1__load_compspec_by_ref {
-    (( $# != 3 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME var cmd opt" )
+    (( $# != 3 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME var cmd opt" >&2 )
 
     local raw_compspec=$(
         awk -F '\t' -v cmd="$2" -v opt="$3" \
@@ -213,13 +249,14 @@ function __yuio_compl_v1__load_compspec_by_ref {
                         }
                     }
                 }
-            ' <<< "$compdata" | tr $'\t' $'\a'
+            ' $compdata_path | tr $'\t' $'\a'
     )
 
     local IFS=$'\a'
     # We need to split by a non-whitespace character,
-    # otherwise `read` ignores empty fields.
-    local compspec; read -ra compspec <<< "$raw_compspec"
+    # otherwise `read` ignores empty fields. We also need to add dot to the end,
+    # otherwise `read` ignores last field if its empty.
+    local compspec; read -ra compspec <<< "$raw_compspec$IFS."
     local $1 && __yuio_compl_v1__upvars -a${#compspec[@]} $1 ${compspec+"${compspec[@]}"}
 }
 
@@ -227,7 +264,7 @@ function __yuio_compl_v1__load_compspec_by_ref {
 #
 # @param $1 (sub)command path, i.e. for `git stash list` it will be `/stash/list`.
 function __yuio_compl_v1__complete_opts {
-    (( $# != 1 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME cmd" )
+    (( $# != 1 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME cmd" >&2 )
 
     local opts=$(
         awk -F '\t' -v cmd="$1" \
@@ -238,20 +275,27 @@ function __yuio_compl_v1__complete_opts {
                         print options[i]
                     }
                 }
-            ' <<< "$compdata"
+            ' $compdata_path
     )
 
     local IFS=$'\n'
-    COMPREPLY+=( $( IFS=$'\n'; compgen -W "$opts" -- "$word" ) )
+    COMPREPLY+=( $( IFS=$'\n'; compgen -W "$opts" -- "$cur" ) )
 }
 
 # Read compspec and apply it, adding results to compreply.
 #
-# This function requires `compspec_i` and `compspec` variables being set.
+# This function requires `compspec_i`, `compspec`, and `apos` variables being set.
 function __yuio_compl_v1__complete {
+    # compspec will be non-empty due to how we parse it.
+    if [[ ${#compspec[@]} -le 2 ]]; then
+        return 0
+    fi
+
     local completer; __yuio_compl_v1__complete__pop completer || return
     local size; __yuio_compl_v1__complete__pop size || return
+
     __yuio_compl_v1__assert_int "$FUNCNAME: $opt" "$size" || return
+
     local end_index=0
     ((end_index = compspec_i + size))
 
@@ -274,34 +318,47 @@ function __yuio_compl_v1__complete {
         f)
             # complete files
             local ext; __yuio_compl_v1__complete__pop ext || return
-            local cur=$word
             _filedir ${ext:+"$ext"}
-            (( ${#COMPREPLY[@]} > 0 )) && COMPREPLY=( $( printf '\n%q' "${COMPREPLY[@]}" ) )
         ;;
         d)
             # complete directories
-            local cur=$word
             _filedir -d
-            (( ${#COMPREPLY[@]} > 0 )) && COMPREPLY=( $( printf '\n%q' "${COMPREPLY[@]}" ) )
         ;;
         c)
             # complete choices
             local choices=(); __yuio_compl_v1__complete__pop_n $size choices || return
             printf -v choices "%q\n" "${choices[@]}"
-            COMPREPLY+=( $(compgen -W "$choices" -- "$word"))
+            COMPREPLY+=( $(compgen -W "$choices" -- "$cur"))
+        ;;
+        cd)
+            # complete choices with descriptions
+            local half_size; (( half_size = $size / 2 ))
+            local choices=(); __yuio_compl_v1__complete__pop_n $half_size choices || return
+            printf -v choices "%q\n" "${choices[@]}" '$$$'
+            COMPREPLY+=( $(compgen -W "$choices" -- "$cur"))
         ;;
         g)
             # complete git
             if $(command -v git > /dev/null) && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
                 local modes; __yuio_compl_v1__complete__pop modes || return
-                [[ $modes =~ H ]] &&
-                    COMPREPLY+=( $( IFS=' ' compgen -W "HEAD ORIG_HEAD" -- "$word" ) )
-                [[ $modes =~ b ]] &&
-                    COMPREPLY+=( $( IFS=$'\n'; compgen -W "$(git for-each-ref --format='%(refname:short)' refs/heads)" -- "$word" ) )
-                [[ $modes =~ r ]] &&
-                    COMPREPLY+=( $( IFS=$'\n'; compgen -W "$(git for-each-ref --format='%(refname:short)' refs/remotes)" -- "$word" ) )
-                [[ $modes =~ t ]] &&
-                    COMPREPLY+=( $( IFS=$'\n'; compgen -W "$(git for-each-ref --format='%(refname:short)' refs/tags)" -- "$word" ) )
+                local worktree=$( git rev-parse --show-toplevel 2>/dev/null )/.git
+                if [[ $modes == *H* ]]; then
+                    local head heads=( HEAD ORIG_HEAD )
+                    for head in $heads; do
+                        if [[ -e $worktree/$head ]]; then
+                            COMPREPLY+=( $( compgen -W "$worktree/$head" -- "$cur" ) )
+                        fi
+                    done
+                fi
+                if [[ $modes == *b* ]]; then
+                    COMPREPLY+=( $( IFS=$'\n'; compgen -W "$(git for-each-ref --format='%(refname:short)' refs/heads)" -- "$cur" ) )
+                fi
+                if [[ $modes == *r* ]]; then
+                    COMPREPLY+=( $( IFS=$'\n'; compgen -W "$(git for-each-ref --format='%(refname:short)' refs/remotes)" -- "$cur" ) )
+                fi
+                if [[ $modes == *t* ]]; then
+                    COMPREPLY+=( $( IFS=$'\n'; compgen -W "$(git for-each-ref --format='%(refname:short)' refs/tags)" -- "$cur" ) )
+                fi
             fi
         ;;
         l)
@@ -309,27 +366,29 @@ function __yuio_compl_v1__complete {
             compopt -o nospace 2>/dev/null
             local delim; __yuio_compl_v1__complete__pop delim || return
             delim="${delim:- }"
-            # split word by delim or quoted delim
-            local qdelim; printf -v qdelim '%q' "$delim"
-            # and the pattern itself needs to be quoted as well
-            local pat; printf -v pat '@(%q|%q)' "$delim" "$qdelim"
-            local prefix; [[ $word == *$pat* ]] && prefix="${word%$pat*}$delim"
-            local word="${word##*$pat}"
+
+            # split cur by delim
+            local prefix=''; [[ $cur == *"$delim"* ]] && prefix="${cur%"$delim"*}$delim"
+            local cur="${cur##*"$delim"}"
+            local cur_suffix="${cur_suffix#*"$delim"}"
             __yuio_compl_v1__complete || return
-            if [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == "$word" ]]; then
+            if [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == "$cur" ]]; then
                 # append delim on the second tab
                 compopt -o nospace 2>/dev/null
-                COMPREPLY=( "${COMPREPLY[0]}$qdelim" )
+                COMPREPLY=( "${COMPREPLY[0]}$delim" )
+            elif [[ ${#COMPREPLY[@]} -eq 0 ]]; then
+                compopt -o nospace 2>/dev/null
+                COMPREPLY=( "$cur$delim" )
             fi
 
-            local word_prefix_len; ((word_prefix_len=${#word} + 1))
-            local num_word_prefixs=$(printf '%s' "${COMPREPLY[*]}" | cut -c 1-$word_prefix_len | uniq | wc -l)
+            local word_prefix_len; ((word_prefix_len=${#cur} + 1))
+            local num_word_prefixs=$(printf '%s' "${COMPREPLY[*]}" | cut -c 1-$cur_prefix_len | uniq | wc -l)
             if (( ${#COMPREPLY[@]} == 1 || $num_word_prefixs == 1 )); then
                 # COMPREPLY has one element or there is a common prefix that's longer than the current word...
                 local i
                 for (( i = 0; i < ${#COMPREPLY[@]}; i++ )); do
                     # Add prefix because bash will substitute this completion.
-                    COMPREPLY[$i]="$prefix${COMPREPLY[$i]}"
+                    COMPREPLY[$i]="$prefix${COMPREPLY[$i]}$cur_suffix"
                 done
             elif (( ${#COMPREPLY[@]} > 0 )); then
                 # Append zero-width space to prevent bash from deriving common prefix
@@ -337,16 +396,30 @@ function __yuio_compl_v1__complete {
                 COMPREPLY+=( $'\u200b' )
             fi
         ;;
+        lm)
+            # complete list with "supports many"
+            local delim; __yuio_compl_v1__complete__pop delim || return
+
+            # now just pass this to the underlying completer, because each positional
+            # for "lm" mode is its own separate list.
+            __yuio_compl_v1__complete || return
+        ;;
         t)
             # complete tuple
             local delim; __yuio_compl_v1__complete__pop delim || return
             delim="${delim:- }"
-            local qdelim; printf -v qdelim '%q' "$delim"
-            # and the pattern itself needs to be quoted as well
-            local pat; printf -v pat '@(%q|%q)' "$delim" "$qdelim"
-            local pos=$(grep -oF -e "$delim" -e "$qdelim" <<< "$word" | wc -l)
-            local prefix; [[ $word == *$pat* ]] && prefix="${word%$pat*}$delim"
-            local word="${word##*$pat}"
+
+            # split cur by delim
+            local prefix=''; [[ $cur == *"$delim"* ]] && prefix="${cur%"$delim"*}$delim"
+            local cur="${cur##*"$delim"}"
+            local cur_suffix="${cur_suffix#*"$delim"}"
+            __yuio_compl_v1__complete || return
+            if [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == "$cur" ]]; then
+                # append delim on the second tab
+                compopt -o nospace 2>/dev/null
+                COMPREPLY=( "${COMPREPLY[0]}$delim" )
+            fi
+
             local len; __yuio_compl_v1__complete__pop len || return
             __yuio_compl_v1__assert_int "$FUNCNAME: $opt" "$len" || return
             if (( $pos < $len )); then
@@ -358,23 +431,38 @@ function __yuio_compl_v1__complete {
                 if [[ ${#COMPREPLY[@]} -eq 1 ]] && (( $pos + 1 < $len )); then
                     # append delim if we're not at the last tuple element
                     compopt -o nospace 2>/dev/null
-                    COMPREPLY=( "$COMPREPLY$qdelim" )
+                    COMPREPLY=( "$COMPREPLY$delim" )
                 fi
             fi
 
             local word_prefix_len; ((word_prefix_len=${#word} + 1))
-            local num_word_prefixs=$(printf '%s' "${COMPREPLY[*]}" | cut -c 1-$word_prefix_len | uniq | wc -l)
+            local num_word_prefixs=$(printf '%s' "${COMPREPLY[*]}" | cut -c 1-$cur_prefix_len | uniq | wc -l)
             if (( ${#COMPREPLY[@]} == 1 || $num_word_prefixs == 1 )); then
                 # COMPREPLY has one element or there is a common prefix that's longer than the current word...
                 local i
                 for (( i = 0; i < ${#COMPREPLY[@]}; i++ )); do
                     # Add prefix because bash will substitute this completion.
-                    COMPREPLY[$i]="$prefix${COMPREPLY[$i]}"
+                    COMPREPLY[$i]="$prefix${COMPREPLY[$i]}$cur_suffix"
                 done
             else
                 # Append zero-width space to prevent bash from deriving common prefix
                 # and overriding our entire array with it.
                 COMPREPLY+=( $'\u200b' )
+            fi
+        ;;
+        tm)
+            # complete tuple with "supports many"
+            local delim; __yuio_compl_v1__complete__pop delim || return
+
+            local len; __yuio_compl_v1__complete__pop len || return
+            __yuio_compl_v1__assert_int "$FUNCNAME: $opt" "$len" || return
+
+            if (( $apos <= $len )); then
+                local i
+                for ((i = 1; i < $apos; i++)); do
+                    __yuio_compl_v1__complete --skip || return
+                done
+                __yuio_compl_v1__complete || return
             fi
         ;;
         a)
@@ -388,6 +476,12 @@ function __yuio_compl_v1__complete {
                 __yuio_compl_v1__complete__pop # description
                 __yuio_compl_v1__complete || return
             done
+        ;;
+        cc)
+            # Custom completer
+            local data; __yuio_compl_v1__complete__pop data || return
+            local choices=( $( ${words[0]} --no-color --yuio-custom-completer-- "$data" "$cur" "$cur_suffix" ) ) || return
+            COMPREPLY+=( $(compgen -W "${choices[*]%$'\t'*}" -- "$cur"))
         ;;
     esac
 
@@ -492,35 +586,3 @@ function __yuio_compl_v1__assert_int {
         shift
     done
 }
-
-
-
-function foo {
-    echo "$@"
-}
-
-function __foo {
-    local prog="foo"
-
-    local compdata;
-    printf -v compdata '%s\n' \
-            '	-L	1		a	13	2		l	5	-	c	2	boo	bar		g	1	t' \
-            '	-t	1		l	12	:	t	9	-	2	c	2	foo	bar	g	1	tbH' \
-            '	-c	1		c	3	foo	q * x	b az' \
-            '	-l	1		l	9	-	l	6	@	c	3	foo	qux	duo' \
-            '	-P	1		l	4	$	f	1		.' \
-            '	-h --help	-	_' \
-            '	-V --version	-	_' \
-            '	-v --verbose	0	_' \
-            '	0	1	-	f	1		.' \
-            '	c	1	-	c	2	sub	bus' \
-            '/sub	0	1	-	g	1	Hbt' \
-            '/sub	-h --help	-	_' \
-            '/sub	-V --version	-	_' \
-            '/sub	-v --verbose	0	_' \
-            ''
-
-    __yuio_compl_v1
-}
-
-complete -F __foo foo
