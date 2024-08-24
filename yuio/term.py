@@ -311,9 +311,10 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = False) -> 
         if has_interactive_output and has_interactive_input:
             interactive_support = InteractiveSupport.FULL
             if query_theme:
-                lightness, background_color = _get_lightness(stream)
-                if background_color is not None:
-                    print(_get_standard_colors(stream))
+                # lightness, background_color = _get_lightness(stream)
+                # print(lightness, background_color)
+                # if background_color is not None:
+                print(_get_standard_colors(stream))
         else:
             interactive_support = InteractiveSupport.MOVE_CURSOR
 
@@ -326,93 +327,89 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = False) -> 
     )
 
 
-def _get_lightness(
+def _get_standard_colors(
     stream: _t.TextIO,
-) -> _t.Tuple[Lightness, "_t.Optional[ColorValue]"]:
+) -> _t.Tuple[Lightness, _t.Optional["ColorValue"], _t.Dict[int, "ColorValue"]]:
     try:
-        response = _query_term(stream, "\x1b]11;?\x1b\\")
-        if response is None:
-            return Lightness.UNKNOWN, None
+        queries = ["\x1b]11;?\x1b\\"] + [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
+        responses = _query_term(stream, queries)
+        if not responses:
+            return Lightness.UNKNOWN, None, {}
+
+        # Deal with background color.
 
         match = re.match(
             rb"^]11;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})",
-            response,
+            responses[0],
             re.IGNORECASE,
         )
         if match is None:
-            return Lightness.UNKNOWN, None
+            return Lightness.UNKNOWN, None, {}
 
         r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups())
-
+        background = ColorValue.from_rgb(r, g, b)
         luma = (0.2627 * r + 0.6780 * g + 0.0593 * b) / 256
 
         if luma <= 0.2:
-            return Lightness.DARK, ColorValue.from_rgb(r, g, b)
+            lightness = Lightness.DARK
         elif luma >= 0.85:
-            return Lightness.LIGHT, ColorValue.from_rgb(r, g, b)
+            lightness = Lightness.LIGHT
         else:
-            return Lightness.UNKNOWN, ColorValue.from_rgb(r, g, b)
-    except Exception:
-        raise
-        return Lightness.UNKNOWN, None
+            lightness = Lightness.UNKNOWN
 
-
-def _get_standard_colors(
-    stream: _t.TextIO,
-) -> _t.Dict[int, "ColorValue"]:
-    try:
-        queries = "".join(f";{i};?" for i in range(9))
-        response = _query_term(stream, f"\x1b]4;{queries}\x1b\\")
-        if response is None:
-            return {}
-
-        if not re.match(
-            rb"^]4(;\d;rgb:[0-9a-f]{2,4}/[0-9a-f]{2,4}/[0-9a-f]{2,4}){8}",
-            response,
-            re.IGNORECASE,
-        ):
-            return {}
+        # Deal with other colors
 
         colors = {}
 
-        response = response[2:]
-        while match := re.match(rb"^;(\d);rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})", response):
-            response = response[match.end():]
-            c = match.group(1)
-            r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups()[1:])
-            colors[c] = ColorValue.from_rgb(r, g, b)
+        for response in responses:
+            if match := re.match(
+                rb"^]4;(\d+);rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})",
+                response,
+                re.IGNORECASE,
+            ):
+                c = match.group(1)
+                r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups()[1:])
+                colors[c] = ColorValue.from_rgb(r, g, b)
 
-        return colors
+                t=Term(None, ColorSupport.ANSI)
+                print(Color(fore = colors[c]).as_code(t) + "Color # {c}", file=sys.__stderr__)
+
+        # return colors
+        return lightness, background, colors
 
     except Exception:
-        return {}
+        return Lightness.UNKNOWN, None, {}
 
 
 def _query_term(
     stream: _t.TextIO,
-    query: str,
+    queries: _t.List[str],
     timeout: float = 0.3,
-    end_sequences: _t.Union[bytes, _t.Tuple[bytes, ...]] = (b"\a", b"\x1b\\", b"\x9c"),
-) -> _t.Optional[bytes]:
+    end_sequences: _t.Union[bytes, _t.Tuple[bytes, ...]] = (b"\a", b"\x1b\\"),
+) -> _t.Optional[_t.List[bytes]]:
     try:
         with _set_cbreak():
             while _kbhit():
                 _getch()
 
-            stream.write(query)
+            stream.write("".join(queries))
             stream.flush()
 
             if not _kbhit(timeout):
                 return None
 
-            if _getch() != b"\x1b":
-                return None
+            results = []
 
-            buf = b""
-            while _kbhit() and not buf.endswith(end_sequences):
-                buf += _getch()
+            for _ in queries:
+                if _getch() != b"\x1b":
+                    return None
 
-            return buf
+                buf = b""
+                while _kbhit() and not buf.endswith(end_sequences):
+                    buf += _getch()
+                results.append(buf)
+
+            return results
     except Exception:
         return None
 
@@ -639,7 +636,7 @@ class ColorValue:
         return self._as_code(term, fg_bg_prefix="3")
 
     def _as_back(self, term: Term, /) -> str:
-        return self._as_code(term, fg_bg_prefix="3")
+        return self._as_code(term, fg_bg_prefix="4")
 
     def _as_code(self, term: Term, /, fg_bg_prefix: str) -> str:
         if not term.has_colors:
@@ -649,11 +646,11 @@ class ColorValue:
         elif isinstance(self.data, str):
             return self.data
         elif term.has_colors_true:
-            return f"8;2;{self.data[0]};{self.data[1]};{self.data[2]}"
+            return f"{fg_bg_prefix}8;2;{self.data[0]};{self.data[1]};{self.data[2]}"
         elif term.has_colors_256:
-            return f"8;5;{_rgb_to_256(*self.data)}"
+            return f"{fg_bg_prefix}8;5;{_rgb_to_256(*self.data)}"
         else:
-            return f"{_rgb_to_8(*self.data)}"
+            return f"{fg_bg_prefix}{_rgb_to_8(*self.data)}"
 
     def __repr__(self) -> str:
         if isinstance(self.data, tuple):

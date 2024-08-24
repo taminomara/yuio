@@ -636,9 +636,10 @@ class App:
         parser = self.__setup_arg_parser()
         namespace = parser.parse_args(args)
 
-
         if self.setup_io:
-            yuio.io.setup(query_theme=True)
+            term = yuio.term.get_term(query_theme=True)
+            theme = yuio.term.DefaultTheme(term)
+            yuio.io.setup(term=term, theme=theme)
 
         if self.setup_logging:
             verbosity_level = getattr(namespace, "verbosity_level", 0)
