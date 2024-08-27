@@ -107,10 +107,11 @@ from dataclasses import dataclass
 
 import yuio.complete
 import yuio.term
+import yuio.theme
 from yuio.term import Color as _Color
 from yuio.term import ColorizedString as _ColorizedString
 from yuio.term import Term as _Term
-from yuio.term import Theme as _Theme
+from yuio.theme import Theme as _Theme
 from yuio.term import _getch, _kbhit, _set_cbreak
 from yuio.term import line_width as _line_width
 

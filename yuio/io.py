@@ -212,9 +212,11 @@ from yuio.widget import RenderContext
 import yuio.complete
 import yuio.parse
 import yuio.term
+import yuio.theme
 import yuio.widget
 import yuio.md
-from yuio.term import Color, Term, Theme
+from yuio.term import Color, Term
+from yuio.theme import Theme
 
 T = _t.TypeVar("T")
 U = _t.TypeVar("U")
@@ -1275,7 +1277,7 @@ class _IoManager(abc.ABC):
     ):
         self.term = term or yuio.term.get_term_from_stream(sys.stderr)
         if theme is None:
-            self.theme = yuio.term.DefaultTheme(self.term)
+            self.theme = yuio.theme.DefaultTheme(self.term)
         elif isinstance(theme, Theme):
             self.theme = theme
         else:

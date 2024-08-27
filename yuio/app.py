@@ -266,6 +266,7 @@ import yuio.exec
 import yuio.io
 import yuio.parse
 import yuio.term
+import yuio.theme
 import yuio.md
 from yuio.config import field, inline, positional
 
@@ -857,7 +858,7 @@ _MAX_ARGS_COLUMN_WIDTH = 24
 class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
     def __init__(
         self,
-        theme: yuio.term.Theme,
+        theme: yuio.theme.Theme,
         *,
         width: _t.Optional[int] = None,
         allow_headings: bool = True,
