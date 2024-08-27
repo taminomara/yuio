@@ -1,3 +1,5 @@
+Source "docs/source/_tapes/_config.tape"
+
 Sleep 500ms
 Type "python examples/widgets/input.py"
 Enter
@@ -29,4 +31,4 @@ Sleep 250ms
 Type " down!"
 Sleep 3s
 Enter
-Sleep 5s
+Sleep 4s

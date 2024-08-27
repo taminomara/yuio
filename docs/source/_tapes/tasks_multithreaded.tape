@@ -1,6 +1,6 @@
-Require python
+Source "docs/source/_tapes/_config.tape"
 
-Sleep 1s
+Sleep 500ms
 Type "python ./examples/tasks_multithreaded.py"
 Enter
 Sleep 12s

@@ -36,7 +36,7 @@ test = [
     "types-PyYAML~=5.3",
     "toml~=0.10",
     "types-toml~=0.10",
-    "sphinx-vhs~=0.0",
+    "sphinx-vhs~=0.0.3",
 ]
 doc = [
     "sphinx~=6.1",

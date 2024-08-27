@@ -96,8 +96,8 @@ List of all tags that are available by default:
 Customizing colors and using themes
 -----------------------------------
 
-The :func:`setup` function accepts a :class:`~Theme` class.
-You can subclass it and supply custom colors, see :mod:`yuio.term`
+The :func:`setup` function accepts a :class:`~yuio.theme.Theme` class.
+You can subclass it and supply custom colors, see :mod:`yuio.theme`
 for more info.
 
 
@@ -262,7 +262,7 @@ def setup(
         the default is to use a term attached to :data:`sys.stderr`.
     :param theme:
         either a theme that will be used for output, or a theme constructor that takes
-        a :class:`~Term` and returns a theme.
+        a :class:`~yuio.term.Term` and returns a theme.
 
         If not passed, the global theme is not set up; the default is to use
         :class:`yuio.term.DefaultTheme` then.
@@ -975,7 +975,7 @@ class Task:
     create subtasks, set task's progress or add a comment about
     what's currently being done within a task.
 
-    .. vhs:: _tapes/tasks_miltithreaded.tape
+    .. vhs:: _tapes/tasks_multithreaded.tape
        :alt: Demonstration of the `Task` class.
        :scale: 40%
 
@@ -1277,7 +1277,7 @@ class _IoManager(abc.ABC):
     ):
         self.term = term or yuio.term.get_term_from_stream(sys.stderr)
         if theme is None:
-            self.theme = yuio.theme.DefaultTheme(self.term)
+            self.theme = yuio.theme.load(self.term)
         elif isinstance(theme, Theme):
             self.theme = theme
         else:

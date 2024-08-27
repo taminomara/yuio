@@ -116,4 +116,5 @@ Contents
    complete
    md
    term
+   theme
    widget

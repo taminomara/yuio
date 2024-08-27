@@ -1,3 +1,5 @@
+Source "docs/source/_tapes/_config.tape"
+
 Sleep 500ms
 Type "python examples/widgets/completion.py"
 Enter
@@ -25,4 +27,4 @@ Enter
 
 Sleep 1s
 Enter
-Sleep 5s
+Sleep 4s

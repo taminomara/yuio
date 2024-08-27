@@ -1,0 +1,12 @@
+{
+    "colors": {
+        "red": "#e06c75",
+        "green": "#98c379",
+        "yellow": "#e5c07b",
+        "blue": "#61afef",
+        "magenta": "#c678dd",
+        "cyan": "#56b6c2",
+        "task/progressbar/done/start": "blue",
+        "task/progressbar/done/end": "magenta"
+    }
+}

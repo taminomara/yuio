@@ -1,8 +1,4 @@
-Require python
-
-Set Shell "bash"
-Set WindowBar "Colorful"
-Set BorderRadius 10
+Source "docs/source/_tapes/_config.tape"
 
 Hide
 Type "python"

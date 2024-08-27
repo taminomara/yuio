@@ -52,12 +52,17 @@ in a :class:`Theme` object:
 Default theme
 -------------
 
+Use the following loader to create an instance of the default theme:
+
+.. autofunction:: load
+
 .. autoclass:: DefaultTheme
 
 """
 
 import dataclasses
 import functools
+import os
 from yuio import _t
 from dataclasses import dataclass
 
@@ -105,6 +110,8 @@ class _ImmutableDictProxy(_t.Mapping[str, T], _t.Generic[T]):
 
 class Theme:
     """Base class for Yuio themes."""
+
+    _Self = _t.TypeVar("_Self", bound="Theme")
 
     #: Decorative symbols for certain text elements, such as headings,
     #: list items, etc.
@@ -230,6 +237,7 @@ class Theme:
         "dim": Color.STYLE_DIM,
         "d": "dim",
         "normal": Color.FORE_NORMAL,
+        "normal_dim": Color.FORE_NORMAL_DIM,
         "red": Color.FORE_RED,
         "green": Color.FORE_GREEN,
         "yellow": Color.FORE_YELLOW,
@@ -518,12 +526,12 @@ class DefaultTheme(Theme):
         "primary_color": "normal",
         "accent_color": "magenta",
         "accent_color_2": "cyan",
-        "secondary_color": Color.FORE_NORMAL_DIM,
+        "secondary_color": "normal_dim",
         "error_color": "red",
         "warning_color": "yellow",
         "success_color": "green",
-        "low_priority_color_a": Color.FORE_NORMAL_DIM,
-        "low_priority_color_b": Color.FORE_NORMAL_DIM,
+        "low_priority_color_a": "normal_dim",
+        "low_priority_color_b": "normal_dim",
         #
         # Common tags
         # -----------
@@ -653,3 +661,60 @@ class DefaultTheme(Theme):
             self._set_color_if_not_overridden(
                 "low_priority_color_b", Color(fore=background_color.darken(0.15))
             )
+
+
+def load(term: Term, /) -> Theme:
+    """Loads a default theme."""
+
+    # NOTE: loading themes from json is beta, don't use it yet.
+
+    theme = DefaultTheme(term)
+
+    if not (path := os.environ.get("YUIO_THEME_PATH")):
+        return theme
+
+    import yuio.config
+
+    class ThemeData(yuio.config.Config):
+        progress_bar_width: _t.Optional[int] = None
+        progress_bar_start_symbol: _t.Optional[str] = None
+        progress_bar_end_symbol: _t.Optional[str] = None
+        progress_bar_done_symbol: _t.Optional[str] = None
+        progress_bar_pending_symbol: _t.Optional[str] = None
+        spinner_pattern: _t.Optional[str] = None
+        spinner_update_rate_ms: _t.Optional[int] = None
+        spinner_static_symbol: _t.Optional[str] = None
+        msg_decorations: _t.Optional[_t.Dict[str, str]] = None
+        colors: _t.Optional[_t.Dict[str, str]] = None
+
+    theme_data = ThemeData.load_from_json_file(path)
+
+    if theme_data.progress_bar_width is not None:
+        theme.progress_bar_width = theme_data.progress_bar_width
+    if theme_data.progress_bar_start_symbol is not None:
+        theme.progress_bar_start_symbol = theme_data.progress_bar_start_symbol
+    if theme_data.progress_bar_end_symbol is not None:
+        theme.progress_bar_end_symbol = theme_data.progress_bar_end_symbol
+    if theme_data.progress_bar_done_symbol is not None:
+        theme.progress_bar_done_symbol = theme_data.progress_bar_done_symbol
+    if theme_data.progress_bar_pending_symbol is not None:
+        theme.progress_bar_pending_symbol = theme_data.progress_bar_pending_symbol
+    if theme_data.spinner_pattern is not None:
+        theme.spinner_pattern = theme_data.spinner_pattern
+    if theme_data.spinner_update_rate_ms is not None:
+        theme.spinner_update_rate_ms = theme_data.spinner_update_rate_ms
+    if theme_data.spinner_static_symbol is not None:
+        theme.spinner_static_symbol = theme_data.spinner_static_symbol
+
+    if theme_data.msg_decorations is not None:
+        for k, v in theme_data.msg_decorations.items():
+            theme.set_msg_decoration(k, v)
+
+    if theme_data.colors is not None:
+        theme.colors = theme_data.colors
+
+        for k, v in theme_data.colors.items():
+            v = [Color.fore_from_hex(c) if c.startswith("#") else c for c in v.split()]
+            theme.set_color(k, v[0] if len(v) == 1 else v)
+
+    return theme
