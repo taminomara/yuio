@@ -107,4 +107,4 @@ def train(
 
 
 if __name__ == "__main__":
-    main.run(["run", "a", "b"])
+    main.run()
