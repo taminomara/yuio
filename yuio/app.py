@@ -161,8 +161,6 @@ help formatting using its arguments:
 
    .. autoattribute:: subcommand_required
 
-   .. autoattribute:: setup_io
-
    .. autoattribute:: setup_logging
 
 
@@ -510,12 +508,9 @@ class App:
         #: Enabled by default.
         self.subcommand_required: bool = True
 
-        #: If :data:`True`, the app will call :func:`yuio.io.setup` during
-        #: its initialization. Disable this if you want to customize initialization.
-        self.setup_io: bool = True
-
         #: If :data:`True`, the app will call :func:`logging.basicConfig` during
-        #: its initialization. Disable this if you want to customize initialization.
+        #: its initialization. Disable this if you want to customize
+        #: logging initialization.
         #:
         #: Disabling this option also removes the ``--verbose`` flag form the CLI.
         self.setup_logging: bool = True
@@ -636,10 +631,7 @@ class App:
         parser = self.__setup_arg_parser()
         namespace = parser.parse_args(args)
 
-        if self.setup_io:
-            term = yuio.term.get_term(query_theme=True)
-            theme = yuio.term.DefaultTheme(term)
-            yuio.io.setup(term=term, theme=theme)
+        yuio.io.setup(wrap_stdio=True)
 
         if self.setup_logging:
             verbosity_level = getattr(namespace, "verbosity_level", 0)

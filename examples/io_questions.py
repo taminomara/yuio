@@ -11,8 +11,6 @@ class Dish(enum.Enum):
 
 
 if __name__ == "__main__":
-    yuio.io.setup(wrap_stdio=True)
-
     dish = yuio.io.ask[Dish](
         "What would you like for dinner?", default=Dish.VEGAN_BURGER
     )

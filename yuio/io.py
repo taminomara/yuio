@@ -17,15 +17,8 @@ Yuio configures itself upon import using environment variables:
 - ``FORCE_COLORS``: enable colored output.
 
 The only thing it doesn't do automatically is wrapping :data:`sys.stdout`
-and :data:`sys.stderr` into safe proxies that don't break widgets and progressbars
-when someone outputs through them.
-
-.. note::
-
-   If you're working with some other library that wraps :data:`sys.stdout`
-   and :data:`sys.stderr`, such as :mod:`colorama`, initialize it before Yuio.
-
-You can override the initialization process by calling the :func:`setup` function.
+and :data:`sys.stderr` into safe proxies. The :mod:`yuio.app` CLI builder
+will do it for you, though, so you don't need to worry about it.
 
 .. autofunction:: setup
 
@@ -33,11 +26,13 @@ To introspect the current state of Yuio's initialization, use the following func
 
 .. autofunction:: get_term
 
-.. autofunction:: get_formatter
-
 .. autofunction:: get_theme
 
-.. autofunction:: streams_are_wrapped
+.. autofunction:: wrap_streams
+
+.. autofunction:: restore_streams
+
+.. autofunction:: streams_wrapped
 
 .. autofunction:: orig_stderr
 
@@ -219,7 +214,7 @@ import yuio.parse
 import yuio.term
 import yuio.widget
 import yuio.md
-from yuio.term import Color, Theme
+from yuio.term import Color, Term, Theme
 
 T = _t.TypeVar("T")
 U = _t.TypeVar("U")
@@ -232,93 +227,130 @@ _ExcInfo: _t.TypeAlias = _t.Tuple[
 ]
 
 
+_IO_LOCK = threading.Lock()
 _IO_MANAGER: _t.Optional["_IoManager"] = None
-_IO_MANAGER_LOCK = threading.Lock()
 _STREAMS_WRAPPED: bool = False
 _ORIG_STDERR: _t.Optional[_t.TextIO] = None
 _ORIG_STDOUT: _t.Optional[_t.TextIO] = None
+_IO_MANAGER: _t.Optional["_IoManager"] = None
 
 
 def _manager() -> "_IoManager":
     global _IO_MANAGER
+
     if _IO_MANAGER is None:
-        with _IO_MANAGER_LOCK:
+        with _IO_LOCK:
             if _IO_MANAGER is None:
-                _IO_MANAGER = _make_manager()
+                _IO_MANAGER = _IoManager()
     return _IO_MANAGER
-
-
-def _make_manager(
-    term: _t.Optional[yuio.term.Term] = None,
-    theme: _t.Optional[Theme] = None,
-    query_theme: bool = False,
-) -> "_IoManager":
-    if term is None:
-        term = yuio.term.get_term(query_theme=query_theme)
-    if theme is None:
-        theme = yuio.term.DefaultTheme(term)
-    return _IoManager(term, theme)
-
-
-class UserIoError(IOError):
-    """Raised when interaction with user fails."""
 
 
 def setup(
     *,
-    term: _t.Optional[yuio.term.Term] = None,
-    theme: _t.Optional[Theme] = None,
+    term: _t.Optional[Term] = None,
+    theme: _t.Union[Theme, _t.Callable[[Term], Theme], None] = None,
     wrap_stdio: bool = True,
-    query_theme: bool = False,
 ):
     """Initial setup of the logging facilities.
 
     :param term:
         terminal that will be used for output.
+
+        If not passed, the global terminal is not set up;
+        the default is to use a term attached to :data:`sys.stderr`.
     :param theme:
-        theme that will be used for output.
+        either a theme that will be used for output, or a theme constructor that takes
+        a :class:`~Term` and returns a theme.
+
+        If not passed, the global theme is not set up; the default is to use
+        :class:`yuio.term.DefaultTheme` then.
     :param wrap_stdio:
-        if true, wraps :data:`sys.stdout` and :data:`sys.stderr` in a special
-        wrapper that ensures better interaction with Yuio's progress bars and widgets.
-    :param query_theme:
-        if :data:`True`, and no ``term`` and ``theme`` passed,
-        yuio will query the attached terminal for background color.
-        This process might cause a slow initialization delay
-        (up to ``300`` milliseconds), but the default theme will adapt its colors
-        based on the terminal color scheme.
+        if set to :data:`True`, wraps :data:`sys.stdout` and :data:`sys.stderr`
+        in a special wrapper that ensures better interaction
+        with Yuio's progress bars and widgets.
 
-    .. note::
+        .. note::
 
-       You don't need to call this function if you're using
-       a :mod:`yuio.app` CLI interface. The application initialization
-       will do everything for you.
+           If you're working with some other library that wraps :data:`sys.stdout`
+           and :data:`sys.stderr`, such as :mod:`colorama`, initialize it before Yuio.
 
     """
 
     global _IO_MANAGER
+
+    if not (manager := _IO_MANAGER):
+        with _IO_LOCK:
+            if not (manager := _IO_MANAGER):
+                _IO_MANAGER = _IoManager(term, theme)
+    if manager is not None:
+        manager.setup(term, theme)
+
+    if wrap_stdio:
+        wrap_streams()
+
+
+def get_term() -> Term:
+    """Get the global instance of :class:`~yuio.term.Term` that is used
+    with :mod:`yuio.io`.
+
+    If global setup wasn't performed, this function implicitly performs it.
+
+    """
+
+    return _manager().term
+
+
+def get_theme() -> Theme:
+    """Get the global instance of :class:`~yuio.term.Theme`
+    that is used with :mod:`yuio.io`.
+
+    If global setup wasn't performed, this function implicitly performs it.
+
+    """
+
+    return _manager().theme
+
+
+def wrap_streams():
+    """Wrap :data:`sys.stdout` and :data:`sys.stderr` so that they honor
+    Yuio tasks and widgets.
+
+    .. note::
+
+        If you're working with some other library that wraps :data:`sys.stdout`
+        and :data:`sys.stderr`, such as :mod:`colorama`, initialize it before Yuio.
+
+    See :func:`setup`.
+
+    """
+
+    global _STREAMS_WRAPPED, _ORIG_STDOUT, _ORIG_STDERR
+
+    if _STREAMS_WRAPPED:
+        return
+
+    if yuio.term._is_interactive_output(sys.stdout):
+        _ORIG_STDOUT, sys.stdout = sys.stdout, _WrappedOutput(sys.stdout)
+    if yuio.term._is_interactive_output(sys.stderr):
+        _ORIG_STDERR, sys.stderr = sys.stderr, _WrappedOutput(sys.stderr)
+    _STREAMS_WRAPPED = True
+
+    atexit.register(restore_streams)
+
+
+def restore_streams():
+    """Restore wrapped streams.
+
+    See :func:`wrap_streams` and :func:`setup`.
+
+    """
+
     global _STREAMS_WRAPPED
-    global _ORIG_STDERR
-    global _ORIG_STDOUT
 
-    with _IO_MANAGER_LOCK:
-        if _IO_MANAGER is None:
-            _IO_MANAGER = _make_manager(term, theme, query_theme)
-        else:
-            _IO_MANAGER.setup(term, theme)
+    if not _STREAMS_WRAPPED:
+        return
 
-        if wrap_stdio and not _STREAMS_WRAPPED:
-            if yuio.term._is_interactive_output(sys.stdout):
-                _ORIG_STDOUT, sys.stdout = sys.stdout, _WrappedOutput(sys.stdout)
-            if yuio.term._is_interactive_output(sys.stderr):
-                _ORIG_STDERR, sys.stderr = sys.stderr, _WrappedOutput(sys.stderr)
-            _STREAMS_WRAPPED = True
-            atexit.register(_restore_streams)
-
-
-def _restore_streams():
-    global _STREAMS_WRAPPED
-
-    with _IO_MANAGER_LOCK:
+    with _IO_LOCK:
         if _ORIG_STDOUT is not None:
             sys.stdout = _ORIG_STDOUT
         if _ORIG_STDERR is not None:
@@ -326,49 +358,33 @@ def _restore_streams():
         _STREAMS_WRAPPED = False
 
 
-def get_term() -> yuio.term.Term:
-    """Return current terminal."""
+def streams_wrapped() -> bool:
+    """Check if :data:`sys.stdout` and :data:`sys.stderr` are wrapped.
+    See :func:`setup`.
 
-    return _manager().term
+    """
 
-
-def get_formatter() -> yuio.md.MdFormatter:
-    """Return current md formatter."""
-
-    return _manager().formatter
-
-
-def get_theme() -> yuio.term.Theme:
-    """Return current theme."""
-
-    return _manager().theme
-
-
-def streams_are_wrapped() -> bool:
-    """Check if Yuio's stream wrapping logic was invoked."""
     return _STREAMS_WRAPPED
 
 
-def orig_stderr() ->  _t.TextIO:
+def orig_stderr() -> _t.TextIO:
     """Return the original :data:`sys.stderr` before wrapping.
-
-    Note: if some other library wrapped :data:`sys.stderr` after Yuio,
-    the returned stream will not be affected by it.
 
     """
 
     return _ORIG_STDERR or sys.stderr
 
 
-def orig_stdout() ->  _t.TextIO:
+def orig_stdout() -> _t.TextIO:
     """Return the original :data:`sys.stdout` before wrapping.
-
-    Note: if some other library wrapped :data:`sys.stdout` after Yuio,
-    the returned stream will not be affected by it.
 
     """
 
     return _ORIG_STDOUT or sys.stdout
+
+
+class UserIoError(IOError):
+    """Raised when interaction with user fails."""
 
 
 def info(msg: str, /, *args, **kwargs):
@@ -573,9 +589,9 @@ class _Ask(_t.Generic[T]):
         default_description: _t.Optional[str] = None,
         secure_input: bool = False,
     ) -> _t.Any:
-        term = get_term()
-        formatter = get_formatter()
-        theme = get_theme()
+        manager = _manager()
+
+        term, formatter, theme = manager.term, manager.formatter, manager.theme
 
         if sys.stdin is None or not sys.stdin.readable():
             if default is not yuio.MISSING:
@@ -741,7 +757,7 @@ def wait_for_user(
     if msg and not msg[-1].isspace():
         msg += " "
 
-    formatter = get_formatter()
+    formatter = _manager().formatter
     term = get_term()
 
     prompt = formatter.colorize(msg, default_color="msg/text:question")
@@ -1250,16 +1266,23 @@ class Handler(logging.Handler):
 
 
 class _IoManager(abc.ABC):
+    term: Term
+    theme: Theme
+
     def __init__(
         self,
-        term: yuio.term.Term,
-        theme: yuio.term.Theme,
+        term: _t.Optional[Term] = None,
+        theme: _t.Union[Theme, _t.Callable[[Term], Theme], None] = None,
     ):
-        self.term: yuio.term.Term = term
-        self.theme = theme
-        self.formatter = yuio.md.MdFormatter(theme)
-
-        self._rc = yuio.widget.RenderContext(term, self.theme)
+        self.term = term or yuio.term.get_term_from_stream(sys.stderr)
+        if theme is None:
+            self.theme = yuio.term.DefaultTheme(self.term)
+        elif isinstance(theme, Theme):
+            self.theme = theme
+        else:
+            self.theme = theme(self.term)
+        self.formatter = yuio.md.MdFormatter(self.theme)
+        self._rc = yuio.widget.RenderContext(self.term, self.theme)
 
         self._indent = 0
         self._needs_padding: bool = False
@@ -1274,31 +1297,31 @@ class _IoManager(abc.ABC):
         self._last_update_time_us = 0
         self._printed_some_lines = False
 
-        self._lock = threading.Lock()
-
         self._renders = 0
 
         threading.Thread(
             target=self._bg_update, name="yuio_io_thread", daemon=True
         ).start()
+
         atexit.register(self._atexit)
 
     def setup(
         self,
-        term: _t.Optional[yuio.term.Term] = None,
-        theme: _t.Optional[yuio.term.Theme] = None,
+        term: _t.Optional[Term] = None,
+        theme: _t.Union[Theme, _t.Callable[[Term], Theme], None] = None,
     ):
-        with self._lock:
-            self._clear_tasks()
+        self._clear_tasks()
 
-            if term is not None:
-                self.term = term
-            if theme is not None:
-                self.theme = self.formatter.theme = theme
+        if term is not None:
+            self.term = term
+        if theme is not None:
+            if not isinstance(theme, Theme):
+                theme = theme(self.term)
+            self.theme = self.formatter.theme = theme
 
-            self._rc = yuio.widget.RenderContext(self.term, self.theme)
-            self.__dict__.pop("update_rate_us", None)
-            self._update_tasks()
+        self._rc = yuio.widget.RenderContext(self.term, self.theme)
+        self.__dict__.pop("update_rate_us", None)
+        self._update_tasks()
 
     @functools.cached_property
     def update_rate_us(self) -> int:
@@ -1324,14 +1347,14 @@ class _IoManager(abc.ABC):
 
                     time.sleep(sleep_us / 1_000_000)
 
-                    with self._lock:
+                    with _IO_LOCK:
                         self._show_tasks()
                         update_rate_us = self.update_rate_us
             except Exception:
                 yuio._logger.critical("exception in bg updater", exc_info=True)
 
     def _atexit(self):
-        with self._lock:
+        with _IO_LOCK:
             self._show_tasks(immediate_render=True)
 
     def print_msg(
@@ -1345,7 +1368,7 @@ class _IoManager(abc.ABC):
         ignore_suspended: bool = False,
         heading: bool = False,
     ):
-        with self._lock:
+        with _IO_LOCK:
             col_msg = self._format_msg(
                 msg, args, tag, exc_info=exc_info, heading=heading
             )
@@ -1359,7 +1382,7 @@ class _IoManager(abc.ABC):
         *,
         ignore_suspended: bool = False,
     ):
-        with self._lock:
+        with _IO_LOCK:
             col_md = self._format_md(msg, args)
             self._emit_lines(col_md.process_colors(self.term), None, ignore_suspended)
 
@@ -1367,7 +1390,7 @@ class _IoManager(abc.ABC):
         self,
         record: logging.LogRecord,
     ):
-        with self._lock:
+        with _IO_LOCK:
             col_rec = self._format_rec(record)
             self._emit_lines(col_rec.process_colors(self.term))
 
@@ -1378,7 +1401,7 @@ class _IoManager(abc.ABC):
         *,
         ignore_suspended: bool = False,
     ):
-        with self._lock:
+        with _IO_LOCK:
             self._emit_lines(msg.process_colors(self.term), None, ignore_suspended)
 
     def print_direct(
@@ -1389,7 +1412,7 @@ class _IoManager(abc.ABC):
         *,
         ignore_suspended: bool = False,
     ):
-        with self._lock:
+        with _IO_LOCK:
             self._emit_lines([msg], stream, ignore_suspended)
 
     def print_direct_lines(
@@ -1400,19 +1423,19 @@ class _IoManager(abc.ABC):
         *,
         ignore_suspended: bool = False,
     ):
-        with self._lock:
+        with _IO_LOCK:
             self._emit_lines(lines, stream, ignore_suspended)
 
     def start_task(self, task: Task):
-        with self._lock:
+        with _IO_LOCK:
             self._start_task(task)
 
     def start_subtask(self, parent: Task, task: Task):
-        with self._lock:
+        with _IO_LOCK:
             self._start_subtask(parent, task)
 
     def finish_task(self, task: Task, status: Task._Status):
-        with self._lock:
+        with _IO_LOCK:
             self._finish_task(task, status)
 
     def set_task_progress(
@@ -1422,25 +1445,25 @@ class _IoManager(abc.ABC):
         done: _t.Optional[str],
         total: _t.Optional[str],
     ):
-        with self._lock:
+        with _IO_LOCK:
             task._progress = progress
             task._progress_done = done
             task._progress_total = total
             self._update_tasks()
 
     def set_task_comment(self, task: Task, comment: _t.Optional[str], args):
-        with self._lock:
+        with _IO_LOCK:
             task._comment = comment
             task._comment_args = args
             task._cached_comment = None
             self._update_tasks()
 
     def suspend(self):
-        with self._lock:
+        with _IO_LOCK:
             self._suspend()
 
     def resume(self):
-        with self._lock:
+        with _IO_LOCK:
             self._resume()
 
     # Implementation.

@@ -157,6 +157,41 @@ class InteractiveSupport(enum.IntEnum):
 
 
 @dataclass(frozen=True)
+class TerminalColors:
+    """Colors and theme of the attached terminal."""
+
+    #: Background color of a terminal.
+    background: "ColorValue"
+
+    #: Color value for the default "black" color.
+    black: "ColorValue"
+
+    #: Color value for the default "red" color.
+    red: "ColorValue"
+
+    #: Color value for the default "green" color.
+    green: "ColorValue"
+
+    #: Color value for the default "yellow" color.
+    yellow: "ColorValue"
+
+    #: Color value for the default "blue" color.
+    blue: "ColorValue"
+
+    #: Color value for the default "magenta" color.
+    magenta: "ColorValue"
+
+    #: Color value for the default "cyan" color.
+    cyan: "ColorValue"
+
+    #: Color value for the default "white" color.
+    white: "ColorValue"
+
+    #: Overall color theme of a terminal, i.e. dark or light.
+    lightness: Lightness
+
+
+@dataclass(frozen=True)
 class Term:
     """Overall info about a terminal."""
 
@@ -169,11 +204,8 @@ class Term:
     #: Terminal's capability for rendering interactive widgets.
     interactive_support: InteractiveSupport = InteractiveSupport.NONE
 
-    #: Background color of a terminal.
-    background_color: "_t.Optional[ColorValue]" = None
-
-    #: Overall color theme of a terminal, i.e. dark or light.
-    lightness: Lightness = Lightness.UNKNOWN
+    #: Terminal color settings.
+    terminal_colors: _t.Optional[TerminalColors] = None
 
     @property
     def has_colors(self) -> bool:
@@ -247,11 +279,13 @@ def get_term(*, prefer_stdout: bool = False, query_theme: bool = False) -> Term:
     return get_term_from_stream(stream, query_theme=query_theme)
 
 
-def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = False) -> Term:
+def get_term_from_stream(
+    stream: _t.TextIO, /, *, query_terminal_colors: bool = True
+) -> Term:
     """Query info about a terminal attached to the given stream.
 
-    This function is similar to :func:`get_term`, except that it takes stream
-    as an explicit argument.
+    If ``query_terminal_colors`` is :data:`True`, Yuio will try to query background
+    and foreground color of the terminal.
 
     """
 
@@ -264,8 +298,6 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = False) -> 
         or "--force-no-colors" in sys.argv
         or "FORCE_NO_COLOR" in os.environ
         or "FORCE_NO_COLORS" in os.environ
-        or "FORCE_NO_COLOUR" in os.environ
-        or "FORCE_NO_COLOURS" in os.environ
     ):
         return Term(stream)
 
@@ -283,8 +315,6 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = False) -> 
         or "--force-colors" in sys.argv
         or "FORCE_COLOR" in os.environ
         or "FORCE_COLORS" in os.environ
-        or "FORCE_COLOUR" in os.environ
-        or "FORCE_COLOURS" in os.environ
     ):
         color_support = ColorSupport.ANSI
     if has_interactive_output:
@@ -305,16 +335,12 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = False) -> 
             color_support = ColorSupport.ANSI
 
     interactive_support = InteractiveSupport.NONE
-    lightness = Lightness.UNKNOWN
-    background_color = None
+    theme = None
     if is_foreground and color_support >= ColorSupport.ANSI and not in_ci:
         if has_interactive_output and has_interactive_input:
             interactive_support = InteractiveSupport.FULL
-            if query_theme:
-                # lightness, background_color = _get_lightness(stream)
-                # print(lightness, background_color)
-                # if background_color is not None:
-                print(_get_standard_colors(stream))
+            if query_terminal_colors and "YUIO_DISABLE_OSC_QUERIES" not in os.environ:
+                theme = _get_standard_colors(stream)
         else:
             interactive_support = InteractiveSupport.MOVE_CURSOR
 
@@ -322,29 +348,28 @@ def get_term_from_stream(stream: _t.TextIO, /, *, query_theme: bool = False) -> 
         stream=stream,
         color_support=color_support,
         interactive_support=interactive_support,
-        background_color=background_color,
-        lightness=lightness,
+        terminal_colors=theme,
     )
 
 
 def _get_standard_colors(
     stream: _t.TextIO,
-) -> _t.Tuple[Lightness, _t.Optional["ColorValue"], _t.Dict[int, "ColorValue"]]:
+) -> _t.Optional[TerminalColors]:
     try:
-        queries = ["\x1b]11;?\x1b\\"] + [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
-        responses = _query_term(stream, queries)
-        if not responses:
-            return Lightness.UNKNOWN, None, {}
+        query = "\x1b]11;?\x1b\\" + "".join([f"\x1b]4;{i};?\x1b\\" for i in range(8)])
+        response = _query_term(stream, query)
+        if not response:
+            return None
 
         # Deal with background color.
 
         match = re.match(
-            rb"^]11;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})",
-            responses[0],
+            rb"^\x1b]11;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
+            response,
             re.IGNORECASE,
         )
         if match is None:
-            return Lightness.UNKNOWN, None, {}
+            return None
 
         r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups())
         background = ColorValue.from_rgb(r, g, b)
@@ -357,60 +382,100 @@ def _get_standard_colors(
         else:
             lightness = Lightness.UNKNOWN
 
+        response = response[match.end() :]
+
         # Deal with other colors
 
         colors = {}
 
-        for response in responses:
-            if match := re.match(
-                rb"^]4;(\d+);rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})",
+        while response:
+            match = re.match(
+                rb"^\x1b]4;(\d+);rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
                 response,
                 re.IGNORECASE,
-            ):
-                c = match.group(1)
-                r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups()[1:])
-                colors[c] = ColorValue.from_rgb(r, g, b)
+            )
+            if match is None:
+                return None
 
-                t=Term(None, ColorSupport.ANSI)
-                print(Color(fore = colors[c]).as_code(t) + "Color # {c}", file=sys.__stderr__)
+            c = int(match.group(1))
+            r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups()[1:])
+            colors[c] = ColorValue.from_rgb(r, g, b)
+
+            response = response[match.end() :]
+
+        if set(colors.keys()) != {0, 1, 2, 3, 4, 5, 6, 7}:
+            return None
 
         # return colors
-        return lightness, background, colors
+        return TerminalColors(
+            background=background,
+            black=colors[0],
+            red=colors[1],
+            green=colors[2],
+            yellow=colors[3],
+            blue=colors[4],
+            magenta=colors[5],
+            cyan=colors[6],
+            white=colors[7],
+            lightness=lightness,
+        )
 
     except Exception:
-        return Lightness.UNKNOWN, None, {}
+        return None
 
 
 def _query_term(
     stream: _t.TextIO,
-    queries: _t.List[str],
+    query: str,
     timeout: float = 0.3,
-    end_sequences: _t.Union[bytes, _t.Tuple[bytes, ...]] = (b"\a", b"\x1b\\"),
-) -> _t.Optional[_t.List[bytes]]:
+) -> _t.Optional[bytes]:
     try:
         with _set_cbreak():
-            while _kbhit():
-                _getch()
-
-            stream.write("".join(queries))
+            # Lock the keyboard.
+            stream.write("\x1b[2h")
             stream.flush()
 
-            if not _kbhit(timeout):
-                return None
+            # It is important that we unlock keyboard before exiting `cbreak`,
+            # hence the nested `try`.
+            try:
+                # Read out all buffers.
+                while _kbhit():
+                    _getch()
 
-            results = []
+                # Append a DA1 query, as virtually all terminals support it.
+                stream.write(query + "\x1b[c")
+                stream.flush()
 
-            for _ in queries:
-                if _getch() != b"\x1b":
+                if not _kbhit(timeout):
+                    # Prevent deadlocks; hitting this condition means we've miscalculated
+                    # terminal capabilities.
+                    yuio._logger.debug("_query_term timeout")
                     return None
 
-                buf = b""
-                while _kbhit() and not buf.endswith(end_sequences):
-                    buf += _getch()
-                results.append(buf)
+                if _getch() != b"\x1b":
+                    # Same as above.
+                    yuio._logger.debug("_query_term invalid response")
+                    return None
 
-            return results
+                buf = b"\x1b"
+
+                # Read till we find a DA1 response start.
+                while not buf.endswith(b"\x1b[?"):
+                    buf += _getch()
+
+                buf = buf[:-3]  # Chop off the DA1 response start.
+
+                # Skip to the end of a DA1 response.
+                while _getch() != b"c":
+                    pass
+
+                return buf
+            finally:
+                # Release the keyboard.
+                stream.write("\x1b[2i")
+                stream.flush()
     except Exception:
+        yuio._logger.debug("_query_term error", exc_info=True)
         return None
 
 
@@ -465,6 +530,7 @@ if os.name == "posix":
         return bool(select.select([sys.stdin], [], [], timeout)[0])
 
 else:
+
     @contextlib.contextmanager
     def _set_cbreak():
         raise OSError("not supported")
@@ -1512,12 +1578,24 @@ class DefaultTheme(Theme):
     def __init__(self, term: Term):
         super().__init__()
 
-        if term.lightness == Lightness.UNKNOWN or term.background_color is None:
+        if term.terminal_colors is None:
             return
 
-        background_color = term.background_color
+        # Gradients look bad in other modes.
+        if term.has_colors_true:
+            self._set_color_if_not_overridden(
+                "task/progressbar/done/start", Color(fore=term.terminal_colors.blue)
+            )
+            self._set_color_if_not_overridden(
+                "task/progressbar/done/end", Color(fore=term.terminal_colors.magenta)
+            )
 
-        if term.lightness is term.lightness.DARK:
+        if term.terminal_colors.lightness == Lightness.UNKNOWN:
+            return
+
+        background_color = term.terminal_colors.background
+
+        if term.terminal_colors.lightness is term.terminal_colors.lightness.DARK:
             self._set_color_if_not_overridden(
                 "low_priority_color_a", Color(fore=background_color.lighten(0.25))
             )
@@ -1569,12 +1647,15 @@ def line_width(s: str, /) -> int:
 
     return _line_width(s)
 
+
 try:
     import wcwidth  # type: ignore
 
     def _line_width(s: str, /) -> int:
         return wcwidth.wcswidth(s)
+
 except ImportError:
+
     def _line_width(s: str, /) -> int:
         if s.isascii():
             # Fast path. Note that our renderer replaces unprintable characters
@@ -1758,7 +1839,6 @@ class ColorizedString:
             res += color
 
         return res
-
 
     def percent_format(self, args: _t.Any) -> "ColorizedString":
         """Format colorized string as if with ``%``-formatting
