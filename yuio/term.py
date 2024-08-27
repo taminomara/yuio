@@ -1554,6 +1554,7 @@ class DefaultTheme(Theme):
         # ----------------
 
         "menu/text": "primary_color",
+        "menu/text:heading": ["menu/text", "heading_color"],
         "menu/text:help": "low_priority_color_b",
         "menu/text/key:help": "low_priority_color_a",
         "menu/text/comment": "note",
