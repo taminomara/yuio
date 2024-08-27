@@ -20,10 +20,13 @@ if __name__ == "__main__":
         ),
     )
 
-    widget = yuio.widget.InputWithCompletion(
-        completer, placeholder="you can enter multiple items separated by space"
+    widget = (
+        yuio.widget.InputWithCompletion(
+            completer, placeholder="you can enter multiple items separated by space"
+        )
+        .with_title("Choose what you'd like for breakfast:")
+        .with_help()
     )
 
-    yuio.io.heading("Choose what you'd like for breakfast:")
     result = widget.with_help().run(term, theme)
     yuio.io.success(f"You've entered `%r`", result)

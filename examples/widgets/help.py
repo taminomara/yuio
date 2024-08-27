@@ -77,7 +77,10 @@ if __name__ == "__main__":
     term = yuio.io.get_term()
     theme = yuio.io.get_theme()
 
-    widget = ExampleWidget().with_help()
+    widget = (
+        ExampleWidget()
+        .with_title("Press hotkeys for actions described below:")
+        .with_help()
+    )
 
-    yuio.io.heading("Press hotkeys for actions described below:")
     widget.run(term, theme)

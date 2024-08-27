@@ -997,6 +997,16 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             finally:
                 rc.finalize()
 
+    def with_title(self, title: yuio.term.AnyString, /) -> "Widget[T_co]":
+        """Return this widget with a title added before it."""
+
+        return (
+            VerticalLayoutBuilder()
+            .add(Text(title, color="menu/text:heading"))
+            .add(self, receive_events=True)
+            .build()
+        )
+
     def with_help(self) -> "Widget[T_co]":
         """Return this widget with a :meth:`~Widget.help_widget` added after it."""
 
@@ -1203,10 +1213,16 @@ class VerticalLayoutBuilder(_t.Generic[T]):
         other._widgets = self._widgets.copy()
         other._event_receiver = self._event_receiver
 
-        if receive_events:
-            other._event_receiver = len(other._widgets)
-
-        other._widgets.append(widget)
+        if isinstance(widget, VerticalLayout):
+            if receive_events and widget._event_receiver is not None:
+                other._event_receiver = len(other._widgets) + widget._event_receiver
+            elif receive_events:
+                other._event_receiver = None
+            other._widgets.extend(widget._widgets)
+        else:
+            if receive_events:
+                other._event_receiver = len(other._widgets)
+            other._widgets.append(widget)
 
         return other
 
