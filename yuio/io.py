@@ -1766,24 +1766,40 @@ class _IoManager(abc.ABC):
             self._rc.write(self.theme.spinner_static_symbol)
         elif task._progress is None:
             self._rc.set_color_path(f"task/decoration:{task._status.value}")
-            self._rc.write(
-                self.theme.spinner_pattern[
-                    self._spinner_state % len(self.theme.spinner_pattern)
-                ]
-            )
+            if self.theme.spinner_pattern:
+                self._rc.write(
+                    self.theme.spinner_pattern[
+                        self._spinner_state % len(self.theme.spinner_pattern)
+                    ]
+                )
         else:
-            done_width = round(
-                max(0, min(1, task._progress)) * self.theme.progress_bar_width
-            )
-            pending_width = self.theme.progress_bar_width - done_width
+            total_width = self.theme.progress_bar_width
+            done_width = round(max(0, min(1, task._progress)) * total_width)
+
             self._rc.set_color_path(f"task/progressbar:{task._status.value}")
             self._rc.write(self.theme.progress_bar_start_symbol)
-            self._rc.set_color_path(f"task/progressbar/done:{task._status.value}")
-            self._rc.write(self.theme.progress_bar_done_symbol * done_width)
-            self._rc.set_color_path(f"task/progressbar/pending:{task._status.value}")
-            self._rc.write(self.theme.progress_bar_pending_symbol * pending_width)
+
+            done_color = Color.lerp(
+                self.theme.get_color("task/progressbar/done/start"),
+                self.theme.get_color("task/progressbar/done/end"),
+            )
+
+            for i in range(0, done_width):
+                self._rc.set_color(done_color((i + i / total_width) / total_width))
+                self._rc.write(self.theme.progress_bar_done_symbol)
+
+            pending_color = Color.lerp(
+                self.theme.get_color("task/progressbar/pending/start"),
+                self.theme.get_color("task/progressbar/pending/end"),
+            )
+
+            for i in range(done_width, total_width):
+                self._rc.set_color(pending_color((i + i / total_width) / total_width))
+                self._rc.write(self.theme.progress_bar_pending_symbol)
+
             self._rc.set_color_path(f"task/progressbar:{task._status.value}")
             self._rc.write(self.theme.progress_bar_end_symbol)
+
         self._rc.set_color_path(f"task:{task._status.value}")
         self._rc.write(" ")
 
