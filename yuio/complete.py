@@ -8,6 +8,62 @@
 """
 This module provides autocompletion functionality for widgets and CLI.
 
+
+Completer base class
+====================
+
+All completers are derived from the :class:`Completer` base class
+with a simple interface:
+
+.. autoclass:: Completer
+   :members:
+
+.. autoclass:: Completion
+   :members:
+
+
+Completers
+==========
+
+Yuio provides basic completers that cover most of the cases:
+
+.. autoclass:: Empty
+
+.. autoclass:: Choice
+
+.. autoclass:: Option
+
+.. autoclass:: List
+
+.. autoclass:: Tuple
+
+.. autoclass:: File
+
+.. autoclass:: Dir
+
+
+Implementing your own completer
+===============================
+
+To implement a custom completer, subclass :class:`Completer` and implement
+its :meth:`~Completer._process` method.
+
+.. note::
+
+   When using a custom completer for CLI flags in :mod:`yuio.app`,
+   yuio will :mod:`pickle` it, and integrate it into a shell script
+   that provides command line completions.
+
+.. class:: Completer
+   :noindex:
+
+   .. automethod:: _process
+
+The core of the completion system, however, is a :class:`CompletionCollector`.
+This is the class that is responsible for generating a final list of completions:
+
+.. autoclass:: CompletionCollector
+
 """
 
 import abc
@@ -64,9 +120,8 @@ class Completion:
 
     #: Group id, used to sort completions.
     #:
-    #: Group IDs are tuples of ints, but this is an implementation detail,
-    #: and you shouldn't rely on it.
-    group_id: _t.Tuple[int, int]
+    #: Actual content of this property is an implementation detail.
+    group_id: yuio.SupportsLt[_t.Any] = dataclasses.field(repr=False)
 
     #: Color tag that's used when displaying this completion.
     #:
@@ -140,6 +195,28 @@ class CompletionCollector:
 
     So, when completing a colon-separated list, colons will be added and removed
     automatically, similar to how ZSH does it.
+
+    .. autoattribute:: dedup_words
+
+    .. autoattribute:: full_prefix
+
+    .. autoattribute:: full_suffix
+
+    .. autoattribute:: text
+
+    .. autoattribute:: num_completions
+
+    .. automethod:: add
+
+    .. automethod:: add_group
+
+    .. automethod:: save_state
+
+    .. automethod:: split_off_prefix
+
+    .. automethod:: split_off_suffix
+
+    .. automethod:: finalize
 
     """
 
@@ -567,19 +644,30 @@ class Completer(abc.ABC):
 
         collector = CompletionCollector(text, pos)
         with collector.save_state():
-            self.process(collector)
+            self._process(collector)
         completions = collector.finalize()
         if completions or not do_corrections:
             return completions
 
         collector = _CorrectingCollector(text, pos)
         with collector.save_state():
-            self.process(collector)
+            self._process(collector)
         return collector.finalize()
 
     @abc.abstractmethod
-    def process(self, collector: CompletionCollector, /):
-        """Add completions to the given collector."""
+    def _process(self, collector: CompletionCollector, /):
+        """Generate completions and add them to the given collector.
+
+        Implementing this class is straight forward, just feed all possible
+        completions to the collector. For example, let's implement a completer
+        for environment variables::
+
+            class EnvVarCompleter(Completer):
+                def _process(self, collector: CompletionCollector):
+                    for var in os.environ.keys():
+                        collector.add(var)
+
+        """
 
     def _get_completion_model(
         self, *, is_many: bool = False
@@ -592,7 +680,7 @@ class Completer(abc.ABC):
 class Empty(Completer):
     """An empty completer that returns no values."""
 
-    def process(self, collector: CompletionCollector):
+    def _process(self, collector: CompletionCollector):
         pass  # nothing to do
 
     def _get_completion_model(
@@ -603,7 +691,7 @@ class Empty(Completer):
 
 @dataclass(frozen=True, **yuio._with_slots())
 class Option:
-    """A single completion option for the :chass:`Choice` completer."""
+    """A single completion option for the :class:`Choice` completer."""
 
     #: This string will replace an element that is being completed.
     completion: str
@@ -618,7 +706,7 @@ class Choice(Completer):
     def __init__(self, choices: _t.Collection[Option], /):
         self._choices: _t.Collection[Option] = choices
 
-    def process(self, collector: CompletionCollector, /):
+    def _process(self, collector: CompletionCollector, /):
         for choice in self._choices:
             collector.add(choice.completion, comment=choice.comment)
 
@@ -647,7 +735,7 @@ class List(Completer):
         self._delimiter = delimiter
         self._allow_duplicates = allow_duplicates
 
-    def process(self, collector: CompletionCollector, /):
+    def _process(self, collector: CompletionCollector, /):
         collector.split_off_prefix(self._delimiter)
         collector.split_off_suffix(self._delimiter)
         collector.rsuffix = self._delimiter or " "
@@ -664,7 +752,7 @@ class List(Completer):
         else:
             collector.dedup_words = frozenset()
 
-        self._inner.process(collector)
+        self._inner._process(collector)
 
     def _get_completion_model(
         self, *, is_many: bool = False
@@ -688,7 +776,7 @@ class Tuple(Completer):
             raise ValueError("empty delimiter")
         self._delimiter = delimiter
 
-    def process(self, collector: CompletionCollector, /):
+    def _process(self, collector: CompletionCollector, /):
         pos = len(collector.prefix.split(self._delimiter))
         if (
             pos
@@ -709,7 +797,7 @@ class Tuple(Completer):
         collector.rsuffix = self._delimiter or " "
         collector.rsymbols += self._delimiter or string.whitespace
 
-        self._inners[pos].process(collector)
+        self._inners[pos]._process(collector)
 
     def _get_completion_model(
         self, *, is_many: bool = False
@@ -735,7 +823,7 @@ class File(Completer):
         else:
             self._extensions = None
 
-    def process(self, collector: CompletionCollector, /):
+    def _process(self, collector: CompletionCollector, /):
         base, name = os.path.split(collector.prefix)
         if base and not base.endswith(os.path.sep):
             base += os.path.sep

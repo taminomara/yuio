@@ -512,7 +512,7 @@ class RefCompleter(yuio.complete.Completer):
             self.Mode.Head,
         }
 
-    def process(self, collector: yuio.complete.CompletionCollector, /):
+    def _process(self, collector: yuio.complete.CompletionCollector, /):
         try:
             if self.Mode.Head in self._modes:
                 collector.add_group()
