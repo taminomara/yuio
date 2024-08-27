@@ -96,7 +96,7 @@ List of all tags that are available by default:
 Customizing colors and using themes
 -----------------------------------
 
-The :func:`setup` function accepts a :class:`~yuio.term.Theme` class.
+The :func:`setup` function accepts a :class:`~Theme` class.
 You can subclass it and supply custom colors, see :mod:`yuio.term`
 for more info.
 
@@ -420,7 +420,7 @@ def error_with_tb(msg: str, /, *args, **kwargs):
 
     :param: exc_info
         either a boolean indicating that the current exception
-        should be captured (default is true), or a tuple
+        should be captured (default is :data:`True`), or a tuple
         of three elements, as returned by :func:`sys.exc_info`.
 
     """
@@ -644,8 +644,7 @@ class _Ask(_t.Generic[T]):
                     raise UserIoError("unexpected end of input") from e
 
                 confirmation = prompt + (
-                    formatter.colorize(" `%s`\n")
-                    % parser.describe_value_or_def(result)
+                    formatter.colorize(" `%s`\n") % parser.describe_value_or_def(result)
                 )
 
                 s.raw(confirmation)

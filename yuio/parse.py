@@ -306,7 +306,7 @@ class Parser(_t.Generic[T_co], abc.ABC):
 
     @abc.abstractmethod
     def supports_parse_many(self) -> bool:
-        """Return true if this parser returns a collection
+        """Return :data:`True` if this parser returns a collection
         and so supports :meth:`~Parser.parse_many`.
 
         """
@@ -2327,7 +2327,7 @@ def register_type_hint_conversion(
     All registered callbacks are tried in the same order
     as the were registered.
 
-    If ``uses_delim`` is true, callback can use
+    If ``uses_delim`` is :data:`True`, callback can use
     :func:`suggest_delim_for_type_hint_conversion`.
 
     This function can be used as a decorator.

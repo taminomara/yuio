@@ -1,4 +1,4 @@
-Parse — parse user input
-========================
+Parse
+=====
 
 .. automodule:: yuio.parse

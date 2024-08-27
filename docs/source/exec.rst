@@ -1,4 +1,4 @@
-Exec — execute subprocesses
-===========================
+Exec
+====
 
 .. automodule:: yuio.exec

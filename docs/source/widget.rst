@@ -1,4 +1,4 @@
-Widget — building blocks for interactive elements
-=================================================
+Widget
+======
 
 .. .. automodule:: yuio.widget

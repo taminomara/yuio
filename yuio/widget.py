@@ -1916,7 +1916,7 @@ class Choice(Widget[T], _t.Generic[T]):
             return self._options[self._index]
 
     def has_options(self) -> bool:
-        """Return true if the options list is not empty."""
+        """Return :data:`True` if the options list is not empty."""
         return bool(self._options)
 
     def set_options(
@@ -2195,7 +2195,7 @@ class InputWithCompletion(Widget[str]):
         /,
         *,
         placeholder: str = "",
-        decoration: str = "",
+        decoration: str = ">",
         completion_item_decoration: str = ">",
     ):
         self._completer = completer

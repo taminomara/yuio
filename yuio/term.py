@@ -9,17 +9,22 @@
 Everything to do with terminal output: detecting terminal capabilities,
 working with colors and themes, formatting text.
 
+This is a low-level API module, upon which :mod:``yuio.io`` builds
+its higher-level abstraction.
+
 
 Detecting terminal capabilities
 -------------------------------
 
 Terminal capabilities are stored in a :class:`Term` object.
-You can get one for `stdin` and `stderr` streams by using the following
-functions:
 
-.. autofunction:: get_stdout_info
+Usually, you don't need to query terminal capabilities yourself,
+as you gan use yuio global configuration from :mod:`yuio.io`
+(see :func:`yuio.io.get_term`).
 
-.. autofunction:: get_stderr_info
+However, you can get a :class:`Term` object by using :func:`get_term_from_stream`:
+
+.. autofunction:: get_term_from_stream
 
 :class:`Term` contains all info about what kinds of things the terminal
 supports. If available, it will also have info about terminal's theme,
@@ -35,6 +40,9 @@ i.e. dark or light background, etc:
    :members:
 
 .. autoclass:: InteractiveSupport
+   :members:
+
+.. autoclass:: TerminalColors
    :members:
 
 
@@ -64,14 +72,44 @@ The overall look and feel of a Yuio application is declared
 in a :class:`Theme` object:
 
 .. autoclass:: Theme
-   :members:
+
+    .. autoattribute:: progress_bar_width
+
+    .. autoattribute:: progress_bar_start_symbol
+
+    .. autoattribute:: progress_bar_end_symbol
+
+    .. autoattribute:: progress_bar_done_symbol
+
+    .. autoattribute:: progress_bar_pending_symbol
+
+    .. autoattribute:: spinner_pattern
+
+    .. autoattribute:: spinner_update_rate_ms
+
+    .. autoattribute:: spinner_static_symbol
+
+    .. autoattribute:: msg_decorations
+
+    .. automethod:: set_msg_decoration
+
+    .. automethod:: _set_msg_decoration_if_not_overridden
+
+    .. autoattribute:: colors
+
+    .. automethod:: set_color
+
+    .. automethod:: _set_color_if_not_overridden
+
+    .. automethod:: get_color
+
+    .. automethod:: to_color
 
 .. autoclass:: DefaultTheme
-   :members:
 
 
-Colorizing and formatting text
-------------------------------
+Coloring and formatting text
+----------------------------
 
 The higher-level :mod:`io` module uses strings with xml-like color
 tags to transfer information about line formatting. Here, on the lower level,
@@ -79,10 +117,6 @@ these strings are parsed and transformed into :class:`ColorizedString`:
 
 .. autoclass:: ColorizedString
    :members:
-
-.. autodata:: AnyString
-
-.. autodata:: RawColorizedString
 
 
 Utilities
@@ -209,25 +243,25 @@ class Term:
 
     @property
     def has_colors(self) -> bool:
-        """Return true if terminal supports simple 8-bit color codes."""
+        """Return :data:`True` if terminal supports simple 8-bit color codes."""
 
         return self.color_support >= ColorSupport.ANSI
 
     @property
     def has_colors_256(self) -> bool:
-        """Return true if terminal supports 256-encoded colors."""
+        """Return :data:`True` if terminal supports 256-encoded colors."""
 
         return self.color_support >= ColorSupport.ANSI_256
 
     @property
     def has_colors_true(self) -> bool:
-        """Return true if terminal supports true colors."""
+        """Return :data:`True` if terminal supports true colors."""
 
         return self.color_support >= ColorSupport.ANSI_TRUE
 
     @property
     def can_move_cursor(self) -> bool:
-        """Return true if terminal can move cursor and erase lines."""
+        """Return :data:`True` if terminal can move cursor and erase lines."""
 
         return (
             self.has_colors
@@ -236,7 +270,7 @@ class Term:
 
     @property
     def can_query_terminal(self) -> bool:
-        """Return true if terminal can process queries, enter CBREAK mode, etc.
+        """Return :data:`True` if terminal can process queries, enter CBREAK mode, etc.
 
         This is an alias to :attr:`~Term.is_fully_interactive`.
 
@@ -246,7 +280,7 @@ class Term:
 
     @property
     def is_fully_interactive(self) -> bool:
-        """Return true if we're in a fully interactive environment."""
+        """Return :data:`True` if we're in a fully interactive environment."""
 
         return self.has_colors and self.interactive_support >= InteractiveSupport.FULL
 
@@ -260,23 +294,6 @@ _CI_ENV_VARS = [
     "DRONE",
     "TEAMCITY_VERSION",
 ]
-
-
-def get_term(*, prefer_stdout: bool = False, query_theme: bool = False) -> Term:
-    """Query info about a terminal attached to :data:`sys.stderr`.
-
-    This function checks if stderr is connected to a TTY, and determines
-    terminal's capabilities. If `query_theme` is true, and both stderr
-    and stdin are tty, this function will query terminal's background color
-    via ANSI escape sequences.
-
-    If `prefer_stdout` is true, this function uses a terminal attached
-    to :data:`sys.stdout` instead of :data:`sys.stderr`.
-
-    """
-
-    stream = sys.stdout if prefer_stdout else sys.stderr
-    return get_term_from_stream(stream, query_theme=query_theme)
 
 
 def get_term_from_stream(
@@ -953,10 +970,15 @@ class Color:
 
     #: Normal foreground color.
     FORE_NORMAL: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(9))  # type: ignore
-    #: Normal foreground color rendered with dim setting. This is an alternative to
-    #: bright black that works with most terminals and color schemes.
+    #: Normal foreground color rendered with dim setting.
+    #:
+    #: This is an alternative to bright black that works with
+    #: most terminals and color schemes.
     FORE_NORMAL_DIM: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue("2"))  # type: ignore
     #: Black foreground color.
+    #:
+    #: Avoid using it, in most terminals it is same as background color.
+    #: Instead, use :attr:`~Color.FORE_NORMAL_DIM`.
     FORE_BLACK: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(0))  # type: ignore
     #: Red foreground color.
     FORE_RED: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(1))  # type: ignore
@@ -971,6 +993,9 @@ class Color:
     #: Cyan foreground color.
     FORE_CYAN: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(6))  # type: ignore
     #: White foreground color.
+    #:
+    #: Avoid using it, in some terminals, notably in the Mac OS default terminal,
+    #: it is unreadable.
     FORE_WHITE: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(7))  # type: ignore
 
     #: Normal background color.
@@ -1020,12 +1045,14 @@ def _rgb_to_8(r: int, g: int, b: int) -> int:
         | (1 if b >= 128 else 0) << 2
     )
 
+
 def _8_to_rgb(code: int) -> _t.Tuple[int, int, int]:
     return (
         (code & 1) and 0xFF,
         (code & 2) and 0xFF,
         (code & 4) and 0xFF,
     )
+
 
 def _parse_hex(h: str) -> _t.Tuple[int, int, int]:
     if not re.match(r"^#[0-9a-fA-F]{6}$", h):
@@ -1084,16 +1111,14 @@ class _ImmutableDictProxy(_t.Mapping[str, T], _t.Generic[T]):
 
 
 class Theme:
-    """Base class for Yuio themes.
-
-    TODO
-
-    """
+    """Base class for Yuio themes."""
 
     #: Decorative symbols for certain text elements, such as headings,
     #: list items, etc.
     #:
-    #:
+    #: This mapping becomes immutable once a theme class is created. The only possible
+    #: way to modify it is by using :meth:`~Theme.set_msg_decoration`
+    #: or :meth:`~Theme._set_msg_decoration_if_not_overridden`.
     msg_decorations: _t.Mapping[str, str] = {
         "heading/section": "",
         "heading/1": "⣿ ",
@@ -1108,7 +1133,6 @@ class Theme:
         "list": "•   ",
         "quote": ">   ",
         "code": " " * 8,
-
         # TODO: support these in widgets
         # 'menu_selected_item': '▶︎',
         # 'menu_default_item': '★',
@@ -1124,23 +1148,48 @@ class Theme:
     #: to avoid `__init__`-ing message decorations that were overridden in a subclass.
     __msg_decoration_sources: _t.Dict[str, _t.Optional[type]] = {}
 
-    progress_bar_width = 15
-    progress_bar_start_symbol = ""
-    progress_bar_end_symbol = ""
-    progress_bar_done_symbol = "■"
-    progress_bar_pending_symbol = "□"
-
-    spinner_pattern = "⣤⣤⣤⠶⠛⠛⠛⠶"
+    #: Width of a progress bar for :class:`yuio.io.Task`.
+    progress_bar_width: int = 15
+    #: A symbol rendered on a left side of a progressbar.
+    #:
+    #: Set to ``'['`` to enclose progressbar in square brackets, for example.
+    progress_bar_start_symbol: str = ""
+    #: A symbol rendered on a right side of a progressbar.
+    #:
+    #: Set to ``']'`` to enclose progressbar in square brackets, for example.
+    progress_bar_end_symbol: str = ""
+    #: Symbol rendered in the filled portion of a progressbar.
+    progress_bar_done_symbol: str = "■"
+    #: Symbol rendered in the unfilled portion of a progressbar.
+    progress_bar_pending_symbol: str = "□"
+    #: Spinner pattern for running tasks that don't have a progressbar.
+    #:
+    #: Every tick, a symbol in front of a task's heading updates, showing elements
+    #: of this sequence.
+    spinner_pattern: _t.Sequence[str] = "⣤⣤⣤⠶⠛⠛⠛⠶"
+    #: How often the :attr:`~Theme.spinner_pattern` changes.
+    spinner_update_rate_ms: int = 200
+    #: Symbol for finished and failed tasks.
+    #:
+    #: It meant to resemble a static spinner.
     spinner_static_symbol = "⣿"
-    spinner_update_rate_ms = 200
 
     #: Mapping of color paths to actual colors.
     #:
     #: Themes use color paths to describe styles and colors for different
     #: parts of an application. Color paths are similar to file paths,
-    #: they use snake case identifiers separated by slashes.
+    #: they use snake case identifiers separated by slashes, and consist of
+    #: two parts separated by a colon.
+    #:
+    #: The first part represents an object, i.e. what are we coloring.
+    #:
+    #: The second part represents a context, i.e. what is the state or location
+    #: of an object that we're coloring.
+    #:
     #: For example, a color for the filled part of the task's progress bar
-    #: has path ``'task/progressbar/done'``.
+    #: has path ``'task/progressbar/done'``, a color for a text of an error
+    #: log record has path ``'log/message:error'``, and a color for a string escape
+    #: sequence in a highlighted python code has path ``'hl/str/esc:python'``.
     #:
     #: A color at a certain path is propagated to all sub-paths. For example,
     #: if ``'task/progressbar'`` is bold, and ``'task/progressbar/done'`` is green,
@@ -1178,7 +1227,8 @@ class Theme:
     #: in order of method resolution.
     #:
     #: This mapping becomes immutable once a theme class is created. The only possible
-    #: way to modify it is by using :meth:`~Theme._set_color_if_not_overridden`.
+    #: way to modify it is by using :meth:`~Theme.set_color`
+    #: or :meth:`~Theme._set_color_if_not_overridden`.
     colors: _t.Mapping[str, _t.Union[str, Color, _t.List[_t.Union[str, Color]]]] = {
         "code": "magenta",
         "note": "green",
@@ -1187,14 +1237,12 @@ class Theme:
         "dim": Color.STYLE_DIM,
         "d": "dim",
         "normal": Color.FORE_NORMAL,
-        "black": Color.FORE_BLACK,
         "red": Color.FORE_RED,
         "green": Color.FORE_GREEN,
         "yellow": Color.FORE_YELLOW,
         "blue": Color.FORE_BLUE,
         "magenta": Color.FORE_MAGENTA,
         "cyan": Color.FORE_CYAN,
-        "white": Color.FORE_WHITE,
     }
 
     #: An actual mutable version of :attr:`~Theme.colors`
@@ -1378,7 +1426,7 @@ class Theme:
 
     @staticmethod
     def __parse_path(path: str, /) -> _t.Tuple[_t.List[str], _t.List[str]]:
-        path_parts = path.split(':', maxsplit=1)
+        path_parts = path.split(":", maxsplit=1)
         if len(path_parts) == 1:
             loc, ctx = path_parts[0], ""
         else:
@@ -1393,7 +1441,9 @@ class Theme:
         loc, ctx = self.__parse_path(path)
         return self.__get_color_in_loc(self.__color_tree, loc, ctx)
 
-    def __get_color_in_loc(self, node: "Theme.__ColorTree", loc: _t.List[str], ctx: _t.List[str]):
+    def __get_color_in_loc(
+        self, node: "Theme.__ColorTree", loc: _t.List[str], ctx: _t.List[str]
+    ):
         color = Color.NONE
 
         for part in loc:
@@ -1456,7 +1506,8 @@ class DefaultTheme(Theme):
     - ``'warning_color'``: for everything that indicates a warning,
     - ``'success_color'``: for everything that indicates a success,
     - ``'low_priority_color_a'``: for auxiliary elements such as help widget,
-    - ``'low_priority_color_b'``: for auxiliary elements such as help widget.
+    - ``'low_priority_color_b'``: for auxiliary elements such as help widget,
+      even lower priority.
 
     """
 
@@ -1529,6 +1580,7 @@ class DefaultTheme(Theme):
         # -------------------
         "hl/kwd": "bold",
         "hl/str": Color.NONE,
+        "hl/str/esc": "bold",
         "hl/lit": Color.NONE,
         "hl/punct": "blue",
         "hl/comment": "secondary_color",
@@ -1548,11 +1600,9 @@ class DefaultTheme(Theme):
         "tb/frame/lib/file/path": "tb/frame/usr/file/path",
         "tb/frame/lib/code": "tb/frame/usr/code",
         "tb/frame/lib/highlight": "tb/frame/usr/highlight",
-
         #
         # Menu and widgets
         # ----------------
-
         "menu/text": "primary_color",
         "menu/text:heading": ["menu/text", "heading_color"],
         "menu/text:help": "low_priority_color_b",
@@ -2053,7 +2103,9 @@ class _TextWrapper:
         self.lines.append(
             ColorizedString(self.current_line, explicit_newline=explicit_newline)
         )
-        self.current_line: _t.List[_t.Union[Color, str]] = list(self.continuation_indent)
+        self.current_line: _t.List[_t.Union[Color, str]] = list(
+            self.continuation_indent
+        )
         self.current_line_width: int = self.continuation_indent.width
         self.current_line.append(self.current_color or Color.NONE)
         self.current_line_is_nonempty = False
@@ -2107,7 +2159,9 @@ class _TextWrapper:
                 if not word:
                     continue
 
-                if "\v" in word or (word in ("\r", "\n", "\r\n") and self.preserve_newlines):
+                if "\v" in word or (
+                    word in ("\r", "\n", "\r\n") and self.preserve_newlines
+                ):
                     self._flush_line(explicit_newline=word)
                     need_space_before_word = False
                     at_line_beginning = True

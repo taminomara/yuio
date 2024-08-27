@@ -1,4 +1,4 @@
-App — build CLI apps
-====================
+App
+===
 
 .. automodule:: yuio.app

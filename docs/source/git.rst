@@ -1,4 +1,4 @@
-Git — interact with git repos
-=============================
+Git
+===
 
 .. automodule:: yuio.git

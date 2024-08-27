@@ -1,4 +1,4 @@
-Io — interact with the user
-===========================
+Io
+==
 
 .. automodule:: yuio.io

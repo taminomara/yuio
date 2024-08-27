@@ -1,4 +1,4 @@
-Md — parse and format markdown
-==============================
+Md
+==
 
 .. .. automodule:: yuio.md

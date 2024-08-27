@@ -1,4 +1,4 @@
-Config — load configs from files or env
-=======================================
+Config
+======
 
 .. automodule:: yuio.config

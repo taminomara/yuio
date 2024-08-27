@@ -79,7 +79,7 @@ def exec(
         logging level for stderr outputs.
         By default, it is set to :data:`logging.DEBUG`, which hides all the output.
     :param text:
-        if true (default), decode stdout using the system default encoding.
+        if :data:`True` (default), decode stdout using the system default encoding.
     :return:
         string (or bytes) with command's stdout.
 
@@ -212,7 +212,7 @@ def sh(
         logging level for stderr outputs.
         By default, it is set to :data:`logging.DEBUG`, which hides all the output.
     :param text:
-        if true (default), decode stdout using the system default encoding.
+        if :data:`True` (default), decode stdout using the system default encoding.
     :return:
         string (or bytes) with command's stdout.
 
