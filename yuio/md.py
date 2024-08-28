@@ -37,7 +37,7 @@ TAst = _t.TypeVar("TAst", bound="AstBase")
 class MdFormatter:
     """A simple markdown formatter suitable for displaying reach text in the terminal.
 
-    A very limited number of features is common mark supported:
+    All commonmark block markup is supported:
 
     - headings:
 
@@ -49,11 +49,7 @@ class MdFormatter:
       Yuio has only two levels of headings. Headings past level two will look the same
       as level two headings (you can adjust theme to change this).
 
-      If `allow_headings` is set to false, headings are not parsed.
-
-      If `initial_heading_level` is set, heading levels will be adjusted. That is,
-      if `initial_heading_level` is ``2``, first level headings will become second
-      level, and second level headings will become third level.
+      If `allow_headings` is set to false, headings look like paragraphs.
 
     - lists, numbered lists, quotes:
 
@@ -74,7 +70,10 @@ class MdFormatter:
 
          ```python
          for i in range(5, 8):
-             print(f"Hello, world! This is {i}th day past the apocalypse.")
+             print(
+                f"Hello, world! "
+                "This is {i}th day past the apocalypse."
+            )
          ```
 
     Inline markdown only handles inline code blocks:
@@ -111,6 +110,7 @@ class MdFormatter:
     @property
     def width(self) -> int:
         """Target width for soft-wrapping text."""
+
         return self.__width
 
     @width.setter
@@ -1226,13 +1226,13 @@ SyntaxHighlighter.register_highlighter(_TbHighlighter())
 
 __TAG_RE = re.compile(
     r"""
-          <c (?P<tag_open>[a-z0-9 _/@:-]+)> # Color tag open.
-        | </c>                              # Color tag close.
-        | \\(?P<punct>%(punct)s)
-        | `(?P<code>(?:``|[^`])*)`          # Inline code block (backticks).
+          <c (?P<tag_open>[a-z0-9 _/@:-]+)>         # Color tag open.
+        | </c>                                      # Color tag close.
+        | \\(?P<punct>[%(punct)s])                  # Escape character.
+        | (?<!`)(`+)(?!`)(?P<code>.*?)(?<!`)\3(?!`) # Inline code block (backticks).
     """
     % {"punct": re.escape(string.punctuation)},
-    re.VERBOSE,
+    re.VERBOSE | re.MULTILINE,
 )
 __NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
 __FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
@@ -1266,6 +1266,9 @@ def _colorize(
             raw.append(color)
             stack.append(color)
         elif code := tag.group("code"):
+            code = code.replace("\n", " ")
+            if code.startswith(" ") and code.endswith(" ") and not code.isspace():
+                code = code[1:-1]
             if (
                 parse_cli_flags_in_backticks
                 and __FLAG_RE.match(code)
@@ -1274,7 +1277,7 @@ def _colorize(
                 raw.append(stack[-1] | theme.get_color("hl/flag:sh-usage"))
             else:
                 raw.append(stack[-1] | theme.get_color("code"))
-            raw.append(code.replace("``", "`"))
+            raw.append(code)
             raw.append(stack[-1])
         elif len(stack) > 1:
             stack.pop()
