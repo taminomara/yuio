@@ -1,14 +1,12 @@
 Yuio
 ====
 
-Yuio is a lightweight python library for building simple human-friendly CLIs.
+Yuio is everything you'll ever need to write a good CLI, deps-free.
 
-Unlike bigger tools like `click`_ or `cleo`_, Yuio is small, simple, has no dependencies, and relies
-on standard python libraries such as :mod:`logging` and :mod:`argparse`.
-
-.. _click: https://click.palletsprojects.com/
-.. _cleo: https://cleo.readthedocs.io/en/latest/
-
+Forget searching for *that one progressbar library*,
+figuring out how to keep loading configs DRY,
+or having headaches because autocompletion was just an afterthought.
+Yuio got you.
 
 .. vhs:: _tapes/demo.tape
    :alt: Demonstration of yuio capabilities.
@@ -18,16 +16,19 @@ on standard python libraries such as :mod:`logging` and :mod:`argparse`.
 Features
 --------
 
-- Easy to setup CLI apps::
+- Easy to setup CLI apps with autocompletion out of the box::
 
     @yuio.app.app
-    def main(inputs: list[pathlib.Path]):
+    def main(
+        #: input files for the program.
+        inputs: list[pathlib.Path] = yuio.app.positional(),
+    ):
         ...
 
     if __name__ == "__main__":
         main.run()
 
-- Colored output with inline tags::
+- Colored output with inline tags and markdown::
 
     yuio.io.info('<c bold>Yuio</c>: a user-friendly io library!')
 
@@ -40,18 +41,6 @@ Features
 - User interactions, input parsing and simple widgets::
 
     answer = yuio.io.ask("What's your favorite treat?", default="waffles")
-    want_now = yuio.io.ask[bool]("Do you want %s now?", answer)
-
-- Tools to edit things in an external editor::
-
-    text = '''
-
-    // Please enter the commit message for your changes.
-    // Lines starting with "//" will be ignored,
-    // and an empty message aborts the commit.
-    '''
-
-    text = yuio.io.edit(text, comment_marker='//')
 
 - Tools to run commands::
 
@@ -65,6 +54,8 @@ Features
        'At branch `%s`, commit `%s`',
        status.branch, status.commit
     )
+
+- And many more!
 
 
 Requirements

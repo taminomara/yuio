@@ -1457,7 +1457,7 @@ class Input(Widget[str]):
         *,
         text: str = "",
         placeholder: str = "",
-        decoration: str = "",
+        decoration: str = ">",
         allow_multiline: bool = False,
     ):
         self._text: str = text

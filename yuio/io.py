@@ -80,10 +80,10 @@ Only tags that appear in the message itself are processed::
 
     info('Tags in this message --> %s are printed as-is', '<c color>')
 
-For highlighting inline code, Yuio supports parsing backticks,
-similar to markdown::
+For highlighting inline code, Yuio supports parsing CommonMark's backticks::
 
     info('Using the `backticks`.')
+    info('Using the `` nested `backticks` ``, like they do on GitHub!')
 
 List of all tags that are available by default:
 
@@ -439,13 +439,20 @@ def heading(msg: str, /, *args, **kwargs):
 
 
 def md(msg: str, /, *args, **kwargs):
-    """Print a markdown-formatted text."""
+    """Print a markdown-formatted text.
+
+    Yuio supports all CommonMark block markup. Inline markup is limited
+    to backticks and color tags.
+
+    See :mod:`yuio.md` for more info.
+
+    """
 
     _manager().print_md(msg, args, **kwargs)
 
 
 def br(**kwargs):
-    """Log an empty string."""
+    """Print an empty string."""
 
     _manager().print_direct("\n", **kwargs)
 
@@ -788,7 +795,7 @@ def detect_editor() -> _t.Optional[str]:
         return editor
     elif editor := shutil.which("vi"):
         return editor
-    elif editor := shutil.which("notepad"):
+    elif editor := shutil.which("notepad.exe"):
         return editor
     else:
         return None

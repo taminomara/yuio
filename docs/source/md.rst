@@ -1,4 +1,4 @@
 Md
 ==
 
-.. .. automodule:: yuio.md
+.. automodule:: yuio.md

@@ -6,8 +6,67 @@
 # just keep this copyright line please :3
 
 """
+Yuio's primary format for higher-level io is Markdown (well, a reasonably rich subset
+of it).
 
-TODO
+
+Formatting markdown
+-------------------
+
+.. autoclass:: MdFormatter
+   :members:
+
+
+Highlighting code
+-----------------
+
+Yuio supports basic code highlighting; it is just enough to format help messages
+for CLI, and color tracebacks when an error occurs.
+
+.. autoclass:: SyntaxHighlighter
+   :members:
+
+
+Markdown AST
+------------
+
+.. warning::
+
+   This is an experimental API which can change within a minor release.
+
+.. autoclass:: AstBase
+   :members:
+
+.. autoclass:: Text
+   :members:
+
+.. autoclass:: Container
+   :members:
+
+.. autoclass:: Document
+   :members:
+
+.. autoclass:: ThematicBreak
+   :members:
+
+.. autoclass:: Heading
+   :members:
+
+.. autoclass:: Paragraph
+   :members:
+
+.. autoclass:: Quote
+   :members:
+
+.. autoclass:: Code
+   :members:
+
+.. autoclass:: ListItem
+   :members:
+
+.. autoclass:: List
+   :members:
+
 
 """
 
@@ -37,7 +96,7 @@ TAst = _t.TypeVar("TAst", bound="AstBase")
 class MdFormatter:
     """A simple markdown formatter suitable for displaying reach text in the terminal.
 
-    All commonmark block markup is supported:
+    All CommonMark block markup is supported:
 
     - headings:
 
@@ -75,6 +134,8 @@ class MdFormatter:
                 "This is {i}th day past the apocalypse."
             )
          ```
+
+      Yuio supports ``python``, ``traceback``, and ``bash`` syntaxes.
 
     Inline markdown only handles inline code blocks:
 
@@ -131,14 +192,26 @@ class MdFormatter:
         s: str,
         /
     ) -> "AstBase":
-        """Parse a markdown document and return an AST node."""
+        """Parse a markdown document and return an AST node.
+
+        .. warning::
+
+           This is an experimental API which can change within a minor release.
+
+        """
 
         return _MdParser(self.allow_headings).parse(self._dedent(s))
 
     def format_node(
         self, node: "AstBase", /
     ) -> yuio.term.ColorizedString:
-        """Format a parsed markdown document."""
+        """Format a parsed markdown document.
+
+        .. warning::
+
+           This is an experimental API which can change within a minor release.
+
+        """
 
         self._is_first_line = True
         self._out = yuio.term.ColorizedString()
@@ -159,7 +232,7 @@ class MdFormatter:
     ):
         """Parse and colorize contents of a paragraph.
 
-        Apply `default_color` to the entire paragraph, and process color tags
+        Apply ``default_color`` to the entire paragraph, and process color tags
         and backticks within it.
 
         """
