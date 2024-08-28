@@ -2529,8 +2529,8 @@ class Map(Widget[T], _t.Generic[T]):
     """
 
     def __init__(self, inner: Widget[U], fn: _t.Callable[[U], T], /):
-        self._inner: Widget[U] = inner
-        self._fn: _t.Callable[[U], T] = fn
+        self._inner = inner
+        self._fn = fn
 
     def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T]]:
         if result := self._inner.event(e):

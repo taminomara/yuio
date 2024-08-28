@@ -37,6 +37,7 @@ test = [
     "toml~=0.10",
     "types-toml~=0.10",
     "sphinx-vhs~=0.0.3",
+    "typing_extensions~=4.12",
 ]
 doc = [
     "sphinx~=6.1",
