@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>yuio.term &mdash; Yuio 0.1.dev1+gf68526f documentation</title>
+  <title>yuio.term &mdash; Yuio 0.1.dev1+g0a32d2a documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
@@ -33,7 +33,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+gf68526f
+                0.1.dev1+g0a32d2a
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -349,6 +349,15 @@
 <span class="sd">    and foreground color of the terminal.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="s2">&quot;__YUIO_FORCE_FULL_TERM_SUPPORT&quot;</span><span class="p">:</span>
+        <span class="c1"># For building docs in github</span>
+        <span class="k">return</span> <span class="n">Term</span><span class="p">(</span>
+            <span class="n">stream</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
+            <span class="n">color_support</span><span class="o">=</span><span class="n">ColorSupport</span><span class="o">.</span><span class="n">ANSI_TRUE</span><span class="p">,</span>
+            <span class="n">interactive_support</span><span class="o">=</span><span class="n">InteractiveSupport</span><span class="o">.</span><span class="n">FULL</span><span class="p">,</span>
+            <span class="n">terminal_colors</span><span class="o">=</span><span class="n">_get_standard_colors</span><span class="p">(</span><span class="n">stream</span><span class="p">),</span>
+        <span class="p">)</span>
 
     <span class="c1"># Note: we don&#39;t rely on argparse to parse out flags and send them to us</span>
     <span class="c1"># because these functions can be called before parsing arguments.</span>
