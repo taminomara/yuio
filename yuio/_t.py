@@ -1,5 +1,5 @@
-import sys as _sys
 import re as _re
+import sys as _sys
 from typing import *  # type: ignore
 
 if TYPE_CHECKING:
