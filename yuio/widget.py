@@ -1735,14 +1735,14 @@ class Input(Widget[str]):
     @bind(Key.ENTER)
     def enter(self) -> _t.Optional[Result[str]]:
         """accept"""
-        return Result(self.text)
-
-    @bind(Key.ENTER, alt=True)
-    def alt_enter(self) -> _t.Optional[Result[str]]:
         if self._allow_multiline:
             self.insert("\n")
         else:
             return self.enter()
+
+    @bind(Key.ENTER, alt=True)
+    def alt_enter(self) -> _t.Optional[Result[str]]:
+        return Result(self.text)
 
     # the actual shortcut is `C-7`, the rest produce the same code...
     @bind("7", ctrl=True, show_in_help=False)
