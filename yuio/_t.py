@@ -18,10 +18,13 @@ else:
         BinaryIO = object
     del _globals
 
-try:
-    StrRePattern = _re.Pattern[str]
-except TypeError:
-    StrRePattern = _re.Pattern
+if TYPE_CHECKING:
+    StrRePattern: TypeAlias = _re.Pattern[str]
+else:
+    try:
+        StrRePattern = _re.Pattern[str]
+    except TypeError:
+        StrRePattern = _re.Pattern
 
 try:
     from typing_extensions import Union as _TypingExtensionsUnion
