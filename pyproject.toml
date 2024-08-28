@@ -41,6 +41,7 @@ test = [
 ]
 doc = [
     "sphinx~=6.1",
+    "sphinx-vhs~=0.0.3",
     "sphinx-rtd-theme~=1.2",
 ]
 
