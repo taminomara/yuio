@@ -263,6 +263,15 @@ def get_term_from_stream(
 
     """
 
+    if "__YUIO_FORCE_FULL_TERM_SUPPORT":
+        # For building docs in github
+        return Term(
+            stream=stream,
+            color_support=ColorSupport.ANSI_TRUE,
+            interactive_support=InteractiveSupport.FULL,
+            terminal_colors=_get_standard_colors(stream),
+        )
+
     # Note: we don't rely on argparse to parse out flags and send them to us
     # because these functions can be called before parsing arguments.
     if (

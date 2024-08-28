@@ -54,8 +54,10 @@ Sleep 250ms
 Enter
 Sleep 4s
 
+Hide
 Ctrl+D
 Ctrl+L
+Show
 
 Sleep 1s
 Type "python ./examples/tasks_multithreaded.py"
@@ -63,7 +65,9 @@ Enter
 Sleep 12s
 Sleep 4s
 
+Hide
 Ctrl+L
+Show
 
 Sleep 1s
 Type "python ./examples/io_questions.py"
