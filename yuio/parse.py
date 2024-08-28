@@ -819,7 +819,7 @@ class Str(ValueParser[str]):
         return Str(*self.__modifiers, lambda s: s.rstrip(char))
 
     def regex(
-        self, regex: _t.Union[str, re.Pattern[str]], /, group: _t.Union[int, str] = 0
+        self, regex: _t.Union[str, _t.StrRePattern], /, group: _t.Union[int, str] = 0
     ) -> "Str":
         """Return a parser that matches the parsed string with the given regular expression.
 

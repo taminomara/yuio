@@ -1,21 +1,27 @@
-import sys
-import typing
+import sys as _sys
+import re as _re
 from typing import *  # type: ignore
 
 if TYPE_CHECKING:
     from typing_extensions import Annotated, BinaryIO, Never, TextIO, TypeAlias
 else:
-    if not hasattr(typing, "TypeAlias"):
-        TypeAlias = Any
-    if not hasattr(typing, "Never"):
-        Never = NoReturn
-    if not hasattr(typing, "Annotated"):
-        Annotated = Any
-    if not hasattr(typing, "TextIO"):
-        TextIO = Any
-    if not hasattr(typing, "BinaryIO"):
-        BinaryIO = Any
+    _globals = globals()
+    if "TypeAlias" not in _globals:
+        TypeAlias = object
+    if "Never" not in _globals:
+        Never = object
+    if "Annotated" not in _globals:
+        Annotated = object
+    if "TextIO" not in _globals:
+        TextIO = object
+    if "BinaryIO" not in _globals:
+        BinaryIO = object
+    del _globals
 
+try:
+    StrRePattern = _re.Pattern[str]
+except TypeError:
+    StrRePattern = _re.Pattern
 
 try:
     from typing_extensions import Union as _TypingExtensionsUnion
@@ -28,7 +34,7 @@ _union_origin = get_origin(Union[str, int])
 _typing_extensions_union_origin = get_origin(_TypingExtensionsUnion[str, int])
 # Union of this type is created when using new syntax.
 _new_union_origin = (
-    get_origin(eval("str | int")) if sys.version_info >= (3, 10) else _union_origin
+    get_origin(eval("str | int")) if _sys.version_info >= (3, 10) else _union_origin
 )
 
 

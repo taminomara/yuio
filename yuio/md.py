@@ -979,8 +979,8 @@ class _ReSyntaxHighlighter(SyntaxHighlighter):
     def __init__(
         self,
         syntaxes: _t.List[str],
-        pattern: re.Pattern[str],
-        str_esc_pattern: _t.Optional[re.Pattern[str]] = None,
+        pattern: _t.StrRePattern,
+        str_esc_pattern: _t.Optional[_t.StrRePattern] = None,
     ):
         self._syntaxes = syntaxes
         self._pattern = pattern
