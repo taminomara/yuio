@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yuio &mdash; Yuio 0.1.dev1+g864483c documentation</title>
+  <title>Yuio &mdash; Yuio 0.1.dev1+gf68526f documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
@@ -35,7 +35,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g864483c
+                0.1.dev1+gf68526f
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -167,12 +167,56 @@ Yuio got you.</p>
 <p><strong>Main functionality:</strong></p>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="io.html">Io</a></li>
-<li class="toctree-l1"><a class="reference internal" href="parse.html">Parse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
-<li class="toctree-l1"><a class="reference internal" href="app.html">App</a></li>
-<li class="toctree-l1"><a class="reference internal" href="exec.html">Exec</a></li>
-<li class="toctree-l1"><a class="reference internal" href="git.html">Git</a></li>
+<li class="toctree-l1"><a class="reference internal" href="io.html">Io</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="io.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#printing-messages">Printing messages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#coloring-the-output">Coloring the output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#customizing-colors-and-using-themes">Customizing colors and using themes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#indicating-progress">Indicating progress</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#querying-user-input">Querying user input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#suspending-the-output">Suspending the output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#python-s-logging-and-yuio">Python’s <cite>logging</cite> and yuio</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parse.html">Parse</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#parser-basics">Parser basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#building-a-parser">Building a parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#value-parsers">Value parsers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#file-path-parsers">File path parsers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#validators">Validators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#functional-parsers">Functional parsers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#deriving-parsers-from-type-hints">Deriving parsers from type hints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#other-parser-methods">Other parser methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parse.html#building-your-own-parser">Building your own parser</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="config.html#config-base-class">Config base class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#advanced-field-configuration">Advanced field configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#nesting-configs">Nesting configs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#parsing-environment-variables">Parsing environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html#parsing-config-files">Parsing config files</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="app.html">App</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="app.html#creating-and-running-an-app">Creating and running an app</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#configuring-flags-and-options">Configuring flags and options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#app-settings">App settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#creating-sub-commands">Creating sub-commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#controlling-how-sub-commands-are-invoked">Controlling how sub-commands are invoked</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="exec.html">Exec</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="exec.html#yuio.exec.exec"><code class="docutils literal notranslate"><span class="pre">exec()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="exec.html#yuio.exec.sh"><code class="docutils literal notranslate"><span class="pre">sh()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="git.html">Git</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="git.html#interacting-with-a-repository">Interacting with a repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="git.html#commit-and-status-objects">Commit and status objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="git.html#parsing-git-refs">Parsing git refs</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <p><strong>Lower-level details:</strong></p>
@@ -184,10 +228,31 @@ Yuio got you.</p>
 <li class="toctree-l2"><a class="reference internal" href="complete.html#implementing-your-own-completer">Implementing your own completer</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="md.html">Md</a></li>
-<li class="toctree-l1"><a class="reference internal" href="term.html">Term</a></li>
-<li class="toctree-l1"><a class="reference internal" href="theme.html">Theme</a></li>
-<li class="toctree-l1"><a class="reference internal" href="widget.html">Widget</a></li>
+<li class="toctree-l1"><a class="reference internal" href="md.html">Md</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="md.html#formatting-markdown">Formatting markdown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="md.html#highlighting-code">Highlighting code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="md.html#markdown-ast">Markdown AST</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="term.html">Term</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="term.html#detecting-terminal-capabilities">Detecting terminal capabilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="term.html#working-with-colors">Working with colors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="term.html#coloring-and-formatting-text">Coloring and formatting text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="term.html#utilities">Utilities</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="theme.html">Theme</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="theme.html#theme-base-class">Theme base class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="theme.html#default-theme">Default theme</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="widget.html">Widget</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="widget.html#widget-basics">Widget basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="widget.html#drawing-and-rendering-widgets">Drawing and rendering widgets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="widget.html#stacking-widgets-together">Stacking widgets together</a></li>
+<li class="toctree-l2"><a class="reference internal" href="widget.html#pre-defined-widgets">Pre-defined widgets</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </section>

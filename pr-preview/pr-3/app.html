@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>App &mdash; Yuio 0.1.dev1+g864483c documentation</title>
+  <title>App &mdash; Yuio 0.1.dev1+gf68526f documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
@@ -36,7 +36,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g864483c
+                0.1.dev1+gf68526f
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -50,7 +50,45 @@
 <li class="toctree-l1"><a class="reference internal" href="io.html">Io</a></li>
 <li class="toctree-l1"><a class="reference internal" href="parse.html">Parse</a></li>
 <li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">App</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">App</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#creating-and-running-an-app">Creating and running an app</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.app"><code class="docutils literal notranslate"><span class="pre">app()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App"><code class="docutils literal notranslate"><span class="pre">App</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.app.App.run"><code class="docutils literal notranslate"><span class="pre">App.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configuring-flags-and-options">Configuring flags and options</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.positional"><code class="docutils literal notranslate"><span class="pre">positional()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app-settings">App settings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.prog"><code class="docutils literal notranslate"><span class="pre">App.prog</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.usage"><code class="docutils literal notranslate"><span class="pre">App.usage</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.description"><code class="docutils literal notranslate"><span class="pre">App.description</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.help"><code class="docutils literal notranslate"><span class="pre">App.help</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.epilog"><code class="docutils literal notranslate"><span class="pre">App.epilog</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.allow_abbrev"><code class="docutils literal notranslate"><span class="pre">App.allow_abbrev</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.subcommand_required"><code class="docutils literal notranslate"><span class="pre">App.subcommand_required</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.setup_logging"><code class="docutils literal notranslate"><span class="pre">App.setup_logging</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-sub-commands">Creating sub-commands</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.App.subcommand"><code class="docutils literal notranslate"><span class="pre">App.subcommand()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#controlling-how-sub-commands-are-invoked">Controlling how sub-commands are invoked</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.app.CommandInfo"><code class="docutils literal notranslate"><span class="pre">CommandInfo</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.app.CommandInfo.name"><code class="docutils literal notranslate"><span class="pre">CommandInfo.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.app.CommandInfo.subcommand"><code class="docutils literal notranslate"><span class="pre">CommandInfo.subcommand</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.app.CommandInfo.__call__"><code class="docutils literal notranslate"><span class="pre">CommandInfo.__call__()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="exec.html">Exec</a></li>
 <li class="toctree-l1"><a class="reference internal" href="git.html">Git</a></li>
 </ul>
@@ -86,8 +124,402 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="app">
-<h1>App<a class="headerlink" href="#app" title="Permalink to this heading"></a></h1>
+  <section id="module-yuio.app">
+<span id="app"></span><h1>App<a class="headerlink" href="#module-yuio.app" title="Permalink to this heading"></a></h1>
+<p>This module expands on <a class="reference internal" href="config.html#module-yuio.config" title="yuio.config"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.config</span></code></a> to build CLI apps.</p>
+<section id="creating-and-running-an-app">
+<h2>Creating and running an app<a class="headerlink" href="#creating-and-running-an-app" title="Permalink to this heading"></a></h2>
+<p>Yuio’s CLI applications have functional interface. Decorate main function
+with the <a class="reference internal" href="#yuio.app.app" title="yuio.app.app"><code class="xref py py-func docutils literal notranslate"><span class="pre">app()</span></code></a> decorator, and use <a class="reference internal" href="#yuio.app.App.run" title="yuio.app.App.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">App.run()</span></code></a> method to start it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Let&#39;s define an app with one flag and one positional argument.</span>
+<span class="gp">... </span><span class="nd">@app</span>
+<span class="gp">... </span><span class="k">def</span> <span class="nf">main</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="c1">#: help message for `arg`.</span>
+<span class="gp">... </span>    <span class="n">arg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">positional</span><span class="p">(),</span>
+<span class="gp">... </span>    <span class="c1">#: help message for `--flag`.</span>
+<span class="gp">... </span>    <span class="n">flag</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="gp">... </span><span class="p">):</span>
+<span class="gp">... </span><span class="w">    </span><span class="sd">&quot;&quot;&quot;this command does a thing.&quot;&quot;&quot;</span>
+<span class="gp">... </span>    <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;flag=</span><span class="si">%r</span><span class="s2">, arg=</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># We can now use `main.run` to parse arguments and invoke `main`.</span>
+<span class="gp">... </span><span class="c1"># Notice that `run` does not return anything. Instead, it terminates</span>
+<span class="gp">... </span><span class="c1"># python process with an appropriate exit code.</span>
+<span class="gp">... </span><span class="n">main</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;--flag 10 foobar!&quot;</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> 
+<span class="go">flag=10 arg=&#39;foobar!&#39;</span>
+</pre></div>
+</div>
+<p>Function’s arguments will become program’s flags and positionals, and function’s
+docstring will become app’s <a class="reference internal" href="#yuio.app.App.description" title="yuio.app.App.description"><code class="xref py py-attr docutils literal notranslate"><span class="pre">description</span></code></a>.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.app.app">
+<span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prog</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">usage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">help</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epilog</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/app.html#app"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.app.app" title="Permalink to this definition"></a></dt>
+<dd><p>Create an application.</p>
+<p>This is a decorator that’s supposed to be used on the main method
+of the application. This decorator returns an <a class="reference internal" href="#yuio.app.App" title="yuio.app.App"><code class="xref py py-class docutils literal notranslate"><span class="pre">App</span></code></a> object.</p>
+<p>See <a class="reference internal" href="#yuio.app.App" title="yuio.app.App"><code class="xref py py-class docutils literal notranslate"><span class="pre">App</span></code></a> for description of function’s parameters.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.app.App">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">App</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prog</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">usage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">help</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epilog</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/app.html#App"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.app.App" title="Permalink to this definition"></a></dt>
+<dd><p>A class that encapsulates app settings and logic for running it.</p>
+<p>It is better to create instances of this class using the <a class="reference internal" href="#yuio.app.app" title="yuio.app.app"><code class="xref py py-func docutils literal notranslate"><span class="pre">app()</span></code></a> decorator,
+as it provides means to decorate the main function and specify all of the app’s
+parameters.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.app.App.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.NoReturn" title="(in Python v3.12)"><span class="pre">NoReturn</span></a></span></span><a class="reference internal" href="_modules/yuio/app.html#App.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.app.App.run" title="Permalink to this definition"></a></dt>
+<dd><p>Parse arguments, set up <a class="reference internal" href="io.html#module-yuio.io" title="yuio.io"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.io</span></code></a> and <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.12)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a>,
+and run the application.</p>
+<p>If no <cite>args</cite> are given, parse <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.argv" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.argv</span></code></a>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="configuring-flags-and-options">
+<h2>Configuring flags and options<a class="headerlink" href="#configuring-flags-and-options" title="Permalink to this heading"></a></h2>
+<p>Main function parameters, much like <a class="reference internal" href="config.html#yuio.config.Config" title="yuio.config.Config"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a> fields,
+can be configured. Their names and type hints are used to derive default values,
+which can be overridden by the <code class="xref py py-func docutils literal notranslate"><span class="pre">field()</span></code> function. They can also contain other
+configs, essentially allowing you to nest CLI flags.</p>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">default:</span> <span class="pre">~typing.Any</span> <span class="pre">=</span> <span class="pre">_Placeholders.MISSING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parser:</span> <span class="pre">~yuio.parse.Parser[~typing.Any]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">help:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">~typing.Literal[&lt;disabled&gt;]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">~typing.Literal[&lt;disabled&gt;]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flags:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">~typing.List[str]</span> <span class="pre">|</span> <span class="pre">~typing.Literal[&lt;positional&gt;]</span> <span class="pre">|</span> <span class="pre">~typing.Literal[&lt;disabled&gt;]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">completer:</span> <span class="pre">~yuio.complete.Completer</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="_modules/yuio/config.html#field"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Field descriptor, used for additional configuration of fields.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>default</strong> – default value for config field, used if field is missing from config.</p></li>
+<li><p><strong>parser</strong> – parser that will be used to parse env vars, configs and CLI arguments.</p></li>
+<li><p><strong>help</strong> – <p>Help message that will be used in CLI argument description.</p>
+<p>Pass <a class="reference internal" href="config.html#yuio.DISABLED" title="yuio.DISABLED"><code class="xref py py-data docutils literal notranslate"><span class="pre">DISABLED</span></code></a> to remove this field from CLI help.</p>
+<p>By default, help message is inferred from comments right above the field
+definition (comments must start with <code class="docutils literal notranslate"><span class="pre">#:</span></code>).</p>
+<p>Help messages are formatted using Markdown (see <a class="reference internal" href="md.html#module-yuio.md" title="yuio.md"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.md</span></code></a>).</p>
+</p></li>
+<li><p><strong>env</strong> – <p>Name of environment variable that will be used for this field.</p>
+<p>Pass <a class="reference internal" href="config.html#yuio.DISABLED" title="yuio.DISABLED"><code class="xref py py-data docutils literal notranslate"><span class="pre">DISABLED</span></code></a> to disable loading this field form environment variable.</p>
+<p>Pass an empty string to disable prefixing nested config variables.</p>
+</p></li>
+<li><p><strong>flags</strong> – <p>List of names (or a single name) of CLI flags that will be used for this field.</p>
+<p>This setting is used with <a class="reference internal" href="#module-yuio.app" title="yuio.app"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.app</span></code></a> to configure CLI arguments parsers.</p>
+<p>Pass <a class="reference internal" href="config.html#yuio.DISABLED" title="yuio.DISABLED"><code class="xref py py-data docutils literal notranslate"><span class="pre">DISABLED</span></code></a> to disable loading this field form CLI arguments.</p>
+<p>Pass <a class="reference internal" href="config.html#yuio.POSITIONAL" title="yuio.POSITIONAL"><code class="xref py py-data docutils literal notranslate"><span class="pre">POSITIONAL</span></code></a> to make this argument positional
+(only in apps, see <a class="reference internal" href="#module-yuio.app" title="yuio.app"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.app</span></code></a>).</p>
+<p>Pass an empty string to disable prefixing nested config flags.</p>
+</p></li>
+<li><p><strong>completer</strong> – <p>completer that will be used for autocompletion in CLI.</p>
+<p>This setting is used with <a class="reference internal" href="#module-yuio.app" title="yuio.app"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.app</span></code></a> to configure CLI arguments parsers.</p>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">yuio.</span></span><span class="sig-name descname"><span class="pre">DISABLED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Literal[&lt;disabled&gt;]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">_Placeholders.DISABLED</span></em></dt>
+<dd><p>Indicates that some functionality is disabled.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">yuio.</span></span><span class="sig-name descname"><span class="pre">MISSING</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Literal[&lt;missing&gt;]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">_Placeholders.MISSING</span></em></dt>
+<dd><p>Indicates that some value is missing.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">yuio.</span></span><span class="sig-name descname"><span class="pre">POSITIONAL</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Literal[&lt;positional&gt;]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">_Placeholders.POSITIONAL</span></em></dt>
+<dd><p>Used with <code class="xref py py-func docutils literal notranslate"><span class="pre">field()</span></code> to enable positional arguments.</p>
+</dd></dl>
+
+<p>There are also a few helpers that are specific to the <a class="reference internal" href="#module-yuio.app" title="yuio.app"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.app</span></code></a> module:</p>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">inline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">help:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">~typing.Literal[&lt;disabled&gt;]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="_modules/yuio/config.html#inline"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>A shortcut for inlining nested configs.</p>
+<p>Equivalent to calling <code class="xref py py-func docutils literal notranslate"><span class="pre">field()</span></code> with <code class="docutils literal notranslate"><span class="pre">env</span></code> and <code class="docutils literal notranslate"><span class="pre">flags</span></code> set to an empty string.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.app.positional">
+<span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">positional</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">default:</span> <span class="pre">~typing.Any</span> <span class="pre">=</span> <span class="pre">_Placeholders.MISSING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parser:</span> <span class="pre">~yuio.parse.Parser[~typing.Any]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">help:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">~typing.Literal[&lt;disabled&gt;]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">~typing.Literal[&lt;disabled&gt;]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">completer:</span> <span class="pre">~yuio.complete.Completer</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="_modules/yuio/config.html#positional"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.app.positional" title="Permalink to this definition"></a></dt>
+<dd><p>A shortcut for adding a positional argument.</p>
+<p>Equivalent to calling <code class="xref py py-func docutils literal notranslate"><span class="pre">field()</span></code> with <code class="docutils literal notranslate"><span class="pre">flags</span></code> set to <a class="reference internal" href="config.html#yuio.POSITIONAL" title="yuio.POSITIONAL"><code class="xref py py-data docutils literal notranslate"><span class="pre">POSITIONAL</span></code></a>.</p>
+</dd></dl>
+
+<p>Flag names are derived from field names.
+Use the <code class="xref py py-func docutils literal notranslate"><span class="pre">field()</span></code> function to override them:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span>
+    <span class="c1"># Will be loaded from `--input`.</span>
+    <span class="nb">input</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+
+    <span class="c1"># Will be loaded from `-o` or `--output`.</span>
+    <span class="n">output</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;-p&#39;</span><span class="p">,</span> <span class="s1">&#39;--pid&#39;</span><span class="p">])</span>
+<span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>In nested configs, flags are prefixed with name
+of a field that contains the nested config:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">KillCmdConfig</span><span class="p">(</span><span class="n">Config</span><span class="p">):</span>
+    <span class="c1"># Will be loaded from `--signal`.</span>
+    <span class="n">signal</span><span class="p">:</span> <span class="nb">int</span>
+
+    <span class="c1"># Will be loaded from `-p` or `--pid`.</span>
+    <span class="n">pid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;-p&#39;</span><span class="p">,</span> <span class="s1">&#39;--pid&#39;</span><span class="p">])</span>
+
+<span class="nd">@app</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span>
+    <span class="c1"># `kill_cmd.signal` will be loaded from `--kill-cmd-signal`.</span>
+    <span class="n">kill_cmd</span><span class="p">:</span> <span class="n">KillCmdConfig</span><span class="p">,</span>
+
+    <span class="c1"># `copy_cmd_2.signal` will be loaded from `--kill-signal`.</span>
+    <span class="n">kill_cmd_2</span><span class="p">:</span> <span class="n">KillCmdConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">flags</span><span class="o">=</span><span class="s1">&#39;--kill&#39;</span><span class="p">),</span>
+
+    <span class="c1"># `kill_cmd_3.signal` will be loaded from `--signal`.</span>
+    <span class="n">kill_cmd_3</span><span class="p">:</span> <span class="n">KillCmdConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">flags</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">),</span>
+<span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Positional arguments are not allowed in configs,
+only in apps.</p>
+</div>
+<p>Help messages for the flags are parsed from line comments
+right above the field definition (comments must start with <code class="docutils literal notranslate"><span class="pre">#:</span></code>).
+This works for both functions and config classes.
+The <code class="xref py py-func docutils literal notranslate"><span class="pre">field()</span></code> function allows overriding them. Help messages
+are all formatted using the Markdown (see <a class="reference internal" href="md.html#module-yuio.md" title="yuio.md"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.md</span></code></a>).</p>
+<p>Parsers for CLI argument values are derived from type hints.
+Use the <cite>parser</cite> parameter of the <code class="xref py py-func docutils literal notranslate"><span class="pre">field()</span></code> function to override them.</p>
+<p>Arguments with bool parsers and parsers that support
+<a class="reference internal" href="parse.html#yuio.parse.Parser.supports_parse_many" title="yuio.parse.Parser.supports_parse_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">parsing</span> <span class="pre">collections</span></code></a>
+are handled to provide better CLI experience:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span>
+    <span class="c1"># Will create flags `--verbose` and `--no-verbose`.</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+
+    <span class="c1"># Will create a flag with `nargs=*`: `--inputs path1 path2 ...`</span>
+    <span class="n">inputs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
+<span class="p">):</span>
+</pre></div>
+</div>
+</section>
+<section id="app-settings">
+<h2>App settings<a class="headerlink" href="#app-settings" title="Permalink to this heading"></a></h2>
+<p>You can override default usage and help messages as well as control some of the app’s
+help formatting using its arguments:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">App</span></span><a class="reference internal" href="_modules/yuio/app.html#App"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.App.prog">
+<span class="sig-name descname"><span class="pre">prog</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.app.App.prog" title="Permalink to this definition"></a></dt>
+<dd><p>Program or subcommand display name.</p>
+<p>By default, inferred from <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.argv" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.argv</span></code></a> and subcommand names.</p>
+<p>See <a class="reference external" href="https://docs.python.org/3/library/argparse.html#prog">prog</a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.App.usage">
+<span class="sig-name descname"><span class="pre">usage</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.app.App.usage" title="Permalink to this definition"></a></dt>
+<dd><p>Program or subcommand synapsis.</p>
+<p>This string will be colorized according to <cite>bash</cite> syntax,
+and then it will be <code class="docutils literal notranslate"><span class="pre">%</span></code>-formatted with a single keyword argument <cite>prog</cite>.
+If command supports multiple signatures, each of them should be listed
+on a separate string. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span> <span class="o">...</span>
+
+<span class="n">main</span><span class="o">.</span><span class="n">usage</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="si">%(prog)s</span><span class="s2"> [-q] [-f] [-m] [&lt;branch&gt;]</span>
+<span class="si">%(prog)s</span><span class="s2"> [-q] [-f] [-m] --detach [&lt;branch&gt;]</span>
+<span class="si">%(prog)s</span><span class="s2"> [-q] [-f] [-m] [--detach] &lt;commit&gt;</span>
+<span class="s2">...</span>
+<span class="s2">&quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>By default, generated from CLI flags by argparse.</p>
+<p>See <a class="reference external" href="https://docs.python.org/3/library/argparse.html#usage">usage</a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.App.description">
+<span class="sig-name descname"><span class="pre">description</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.app.App.description" title="Permalink to this definition"></a></dt>
+<dd><p>a necessary state in which a thing can be done. This includes:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>randomly turning the screen on and off;</p></li>
+<li><p>banging a head on a table;</p></li>
+<li><p>fiddling with your PCs power levels.</p></li>
+</ul>
+<p>By default, the best algorithm is determined automatically.
+However, you can hint a preferred algorithm via the <cite>–hint-algo</cite> flag.</p>
+<p>“””</p>
+</div></blockquote>
+<p>By default, inferred from command’s description.</p>
+<p>See <a class="reference external" href="https://docs.python.org/3/library/argparse.html#description">description</a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.App.help">
+<span class="sig-name descname"><span class="pre">help</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.app.App.help" title="Permalink to this definition"></a></dt>
+<dd><p>Short help message that is shown when listing subcommands.</p>
+<p>See <a class="reference external" href="https://docs.python.org/3/library/argparse.html#help">help</a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.App.epilog">
+<span class="sig-name descname"><span class="pre">epilog</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.app.App.epilog" title="Permalink to this definition"></a></dt>
+<dd><p>Text that is shown after the main portion of the help message.</p>
+<p>Text format is identical to the one for <a class="reference internal" href="#yuio.app.App.description" title="yuio.app.App.description"><code class="xref py py-attr docutils literal notranslate"><span class="pre">description</span></code></a>.</p>
+<p>See <a class="reference external" href="https://docs.python.org/3/library/argparse.html#epilog">epilog</a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.App.allow_abbrev">
+<span class="sig-name descname"><span class="pre">allow_abbrev</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.app.App.allow_abbrev" title="Permalink to this definition"></a></dt>
+<dd><p>Allow abbreviating CLI flags if that doesn’t create ambiguity.</p>
+<p>Disabled by default.</p>
+<p>See <a class="reference external" href="https://docs.python.org/3/library/argparse.html#allow-abbrev">allow_abbrev</a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.App.subcommand_required">
+<span class="sig-name descname"><span class="pre">subcommand_required</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.app.App.subcommand_required" title="Permalink to this definition"></a></dt>
+<dd><p>Require the user to provide a subcommand for this command.</p>
+<p>If this command doesn’t have any subcommands, this option is ignored.</p>
+<p>Enabled by default.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.App.setup_logging">
+<span class="sig-name descname"><span class="pre">setup_logging</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.app.App.setup_logging" title="Permalink to this definition"></a></dt>
+<dd><p>If <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a>, the app will call <a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.basicConfig" title="(in Python v3.12)"><code class="xref py py-func docutils literal notranslate"><span class="pre">logging.basicConfig()</span></code></a> during
+its initialization. Disable this if you want to customize
+logging initialization.</p>
+<p>Disabling this option also removes the <code class="docutils literal notranslate"><span class="pre">--verbose</span></code> flag form the CLI.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="creating-sub-commands">
+<h2>Creating sub-commands<a class="headerlink" href="#creating-sub-commands" title="Permalink to this heading"></a></h2>
+<p>You can create multiple sub-commands for the main function,
+using the <a class="reference internal" href="#yuio.app.App.subcommand" title="yuio.app.App.subcommand"><code class="xref py py-meth docutils literal notranslate"><span class="pre">App.subcommand()</span></code></a> method:</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">App</span></span><a class="reference internal" href="_modules/yuio/app.html#App"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="yuio.app.App.subcommand">
+<span class="sig-name descname"><span class="pre">subcommand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cb_or_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aliases</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prog</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">usage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">help</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epilog</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/app.html#App.subcommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.app.App.subcommand" title="Permalink to this definition"></a></dt>
+<dd><p>Register a subcommand for the given app.</p>
+<p>This method can be used as a decorator, similar to the <a class="reference internal" href="#yuio.app.app" title="yuio.app.app"><code class="xref py py-func docutils literal notranslate"><span class="pre">app()</span></code></a> function.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span> <span class="o">...</span>
+
+<span class="nd">@main</span><span class="o">.</span><span class="n">subcommand</span>
+<span class="k">def</span> <span class="nf">push</span><span class="p">():</span> <span class="o">...</span>
+
+<span class="nd">@main</span><span class="o">.</span><span class="n">subcommand</span>
+<span class="k">def</span> <span class="nf">pop</span><span class="p">():</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>There is no limit to how deep you can nest subcommands, but for usability reasons
+we suggest not exceeding level of sub-sub-commands (<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">stash</span> <span class="pre">push</span></code>, anyone?)</p>
+<p>When user invokes a subcommand, the <code class="docutils literal notranslate"><span class="pre">main()</span></code> function is called first,
+then subcommand. In the above example, invoking our app with subcommand <code class="docutils literal notranslate"><span class="pre">push</span></code>
+will cause <code class="docutils literal notranslate"><span class="pre">main()</span></code> to be called first, then <code class="docutils literal notranslate"><span class="pre">push()</span></code>.</p>
+<p>This behavior is useful when you have some global configuration flags
+attached to the <code class="docutils literal notranslate"><span class="pre">main()</span></code> command. See the <a class="reference external" href="https://github.com/taminomara/yuio/blob/main/examples/app">example app</a> for details.</p>
+</section>
+<section id="controlling-how-sub-commands-are-invoked">
+<h2>Controlling how sub-commands are invoked<a class="headerlink" href="#controlling-how-sub-commands-are-invoked" title="Permalink to this heading"></a></h2>
+<p>By default, if a command has sub-commands, the user is required to provide
+a sub-command. This behavior can be disabled by setting <a class="reference internal" href="#yuio.app.App.subcommand_required" title="yuio.app.App.subcommand_required"><code class="xref py py-attr docutils literal notranslate"><span class="pre">App.subcommand_required</span></code></a>
+to <a class="reference external" href="https://docs.python.org/3/library/constants.html#False" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">False</span></code></a>.</p>
+<p>When this happens, we need to understand whether a subcommand was invoked or not.
+To determine this, you can accept a special parameter called <code class="docutils literal notranslate"><span class="pre">_command_info</span></code>
+of type <a class="reference internal" href="#yuio.app.CommandInfo" title="yuio.app.CommandInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">CommandInfo</span></code></a>. It will contain info about the current function,
+including its name and subcommand:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">_command_info</span><span class="p">:</span> <span class="n">CommandInfo</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">_command_info</span><span class="o">.</span><span class="n">subcommand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># A subcommand was invoked.</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.app.CommandInfo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">CommandInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">subcommand</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.app.CommandInfo" title="yuio.app.CommandInfo"><span class="pre">CommandInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/app.html#CommandInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.app.CommandInfo" title="Permalink to this definition"></a></dt>
+<dd><p>Data about the invoked command.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.CommandInfo.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#yuio.app.CommandInfo.name" title="Permalink to this definition"></a></dt>
+<dd><p>Name of the current command.</p>
+<p>If it was invoked by alias,
+this will contains the primary command name.</p>
+<p>For the main function, the name will be set to <code class="docutils literal notranslate"><span class="pre">'__main__'</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.app.CommandInfo.subcommand">
+<span class="sig-name descname"><span class="pre">subcommand</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.app.CommandInfo" title="yuio.app.CommandInfo"><span class="pre">CommandInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.app.CommandInfo.subcommand" title="Permalink to this definition"></a></dt>
+<dd><p>Subcommand of this command, if one was given.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>You can call the subcommand on your own by using <code class="docutils literal notranslate"><span class="pre">_command_info</span></code> as a callable.
+However, you must return <a class="reference external" href="https://docs.python.org/3/library/constants.html#False" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">False</span></code></a> from your function, this will prevent Yuio
+from calling subcommand for a second time:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">_command_info</span><span class="p">:</span> <span class="n">CommandInfo</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">_command_info</span><span class="o">.</span><span class="n">subcommand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="o">...</span><span class="p">:</span>
+        <span class="n">_command_info</span><span class="p">()</span>  <span class="c1"># manually invoking a subcommand</span>
+
+    <span class="c1"># Ensure that Yuio doesn&#39;t call a subcommand again.</span>
+    <span class="c1"># This interface is similar to one of __exit__ functions,</span>
+    <span class="c1"># where you return `True` to suppress an exception.</span>
+    <span class="k">return</span> <span class="kc">False</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.app.</span></span><span class="sig-name descname"><span class="pre">CommandInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">subcommand</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.app.CommandInfo" title="yuio.app.CommandInfo"><span class="pre">CommandInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/app.html#CommandInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Data about the invoked command.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.app.CommandInfo.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.12)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="k"><span class="pre">False</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/app.html#CommandInfo.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.app.CommandInfo.__call__" title="Permalink to this definition"></a></dt>
+<dd><p>Execute this command.</p>
+<p>This function always returns <a class="reference external" href="https://docs.python.org/3/library/constants.html#False" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">False</span></code></a>, so you can call a subcommand
+and exit from a parent command in a single line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@app</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">_command_info</span><span class="p">:</span> <span class="n">CommandInfo</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">_command_info</span><span class="o">.</span><span class="n">subcommand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Manually call a subcommand and return `False`:</span>
+        <span class="k">return</span> <span class="n">_command_info</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
 </section>
 
 

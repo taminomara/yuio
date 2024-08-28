@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Term &mdash; Yuio 0.1.dev1+g864483c documentation</title>
+  <title>Term &mdash; Yuio 0.1.dev1+gf68526f documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
@@ -36,7 +36,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g864483c
+                0.1.dev1+gf68526f
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -57,7 +57,126 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="complete.html">Complete</a></li>
 <li class="toctree-l1"><a class="reference internal" href="md.html">Md</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Term</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Term</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#detecting-terminal-capabilities">Detecting terminal capabilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.get_term_from_stream"><code class="docutils literal notranslate"><span class="pre">get_term_from_stream()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.Term"><code class="docutils literal notranslate"><span class="pre">Term</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.stream"><code class="docutils literal notranslate"><span class="pre">Term.stream</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.color_support"><code class="docutils literal notranslate"><span class="pre">Term.color_support</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.interactive_support"><code class="docutils literal notranslate"><span class="pre">Term.interactive_support</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.terminal_colors"><code class="docutils literal notranslate"><span class="pre">Term.terminal_colors</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.has_colors"><code class="docutils literal notranslate"><span class="pre">Term.has_colors</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.has_colors_256"><code class="docutils literal notranslate"><span class="pre">Term.has_colors_256</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.has_colors_true"><code class="docutils literal notranslate"><span class="pre">Term.has_colors_true</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.can_move_cursor"><code class="docutils literal notranslate"><span class="pre">Term.can_move_cursor</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.can_query_terminal"><code class="docutils literal notranslate"><span class="pre">Term.can_query_terminal</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Term.is_fully_interactive"><code class="docutils literal notranslate"><span class="pre">Term.is_fully_interactive</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.Lightness"><code class="docutils literal notranslate"><span class="pre">Lightness</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Lightness.UNKNOWN"><code class="docutils literal notranslate"><span class="pre">Lightness.UNKNOWN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Lightness.DARK"><code class="docutils literal notranslate"><span class="pre">Lightness.DARK</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Lightness.LIGHT"><code class="docutils literal notranslate"><span class="pre">Lightness.LIGHT</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.ColorSupport"><code class="docutils literal notranslate"><span class="pre">ColorSupport</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorSupport.NONE"><code class="docutils literal notranslate"><span class="pre">ColorSupport.NONE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorSupport.ANSI"><code class="docutils literal notranslate"><span class="pre">ColorSupport.ANSI</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorSupport.ANSI_256"><code class="docutils literal notranslate"><span class="pre">ColorSupport.ANSI_256</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorSupport.ANSI_TRUE"><code class="docutils literal notranslate"><span class="pre">ColorSupport.ANSI_TRUE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.InteractiveSupport"><code class="docutils literal notranslate"><span class="pre">InteractiveSupport</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.InteractiveSupport.NONE"><code class="docutils literal notranslate"><span class="pre">InteractiveSupport.NONE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.InteractiveSupport.MOVE_CURSOR"><code class="docutils literal notranslate"><span class="pre">InteractiveSupport.MOVE_CURSOR</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.InteractiveSupport.FULL"><code class="docutils literal notranslate"><span class="pre">InteractiveSupport.FULL</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.TerminalColors"><code class="docutils literal notranslate"><span class="pre">TerminalColors</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.background"><code class="docutils literal notranslate"><span class="pre">TerminalColors.background</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.black"><code class="docutils literal notranslate"><span class="pre">TerminalColors.black</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.red"><code class="docutils literal notranslate"><span class="pre">TerminalColors.red</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.green"><code class="docutils literal notranslate"><span class="pre">TerminalColors.green</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.yellow"><code class="docutils literal notranslate"><span class="pre">TerminalColors.yellow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.blue"><code class="docutils literal notranslate"><span class="pre">TerminalColors.blue</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.magenta"><code class="docutils literal notranslate"><span class="pre">TerminalColors.magenta</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.cyan"><code class="docutils literal notranslate"><span class="pre">TerminalColors.cyan</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.white"><code class="docutils literal notranslate"><span class="pre">TerminalColors.white</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.TerminalColors.lightness"><code class="docutils literal notranslate"><span class="pre">TerminalColors.lightness</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#working-with-colors">Working with colors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.Color"><code class="docutils literal notranslate"><span class="pre">Color</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.fore"><code class="docutils literal notranslate"><span class="pre">Color.fore</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.back"><code class="docutils literal notranslate"><span class="pre">Color.back</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.bold"><code class="docutils literal notranslate"><span class="pre">Color.bold</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.dim"><code class="docutils literal notranslate"><span class="pre">Color.dim</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.fore_from_rgb"><code class="docutils literal notranslate"><span class="pre">Color.fore_from_rgb()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.fore_from_hex"><code class="docutils literal notranslate"><span class="pre">Color.fore_from_hex()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.back_from_rgb"><code class="docutils literal notranslate"><span class="pre">Color.back_from_rgb()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.back_from_hex"><code class="docutils literal notranslate"><span class="pre">Color.back_from_hex()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.darken"><code class="docutils literal notranslate"><span class="pre">Color.darken()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.lighten"><code class="docutils literal notranslate"><span class="pre">Color.lighten()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.lerp"><code class="docutils literal notranslate"><span class="pre">Color.lerp()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.as_code"><code class="docutils literal notranslate"><span class="pre">Color.as_code()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.NONE"><code class="docutils literal notranslate"><span class="pre">Color.NONE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.STYLE_BOLD"><code class="docutils literal notranslate"><span class="pre">Color.STYLE_BOLD</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.STYLE_DIM"><code class="docutils literal notranslate"><span class="pre">Color.STYLE_DIM</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.STYLE_NORMAL"><code class="docutils literal notranslate"><span class="pre">Color.STYLE_NORMAL</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_NORMAL"><code class="docutils literal notranslate"><span class="pre">Color.FORE_NORMAL</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_NORMAL_DIM"><code class="docutils literal notranslate"><span class="pre">Color.FORE_NORMAL_DIM</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_BLACK"><code class="docutils literal notranslate"><span class="pre">Color.FORE_BLACK</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_RED"><code class="docutils literal notranslate"><span class="pre">Color.FORE_RED</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_GREEN"><code class="docutils literal notranslate"><span class="pre">Color.FORE_GREEN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_YELLOW"><code class="docutils literal notranslate"><span class="pre">Color.FORE_YELLOW</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_BLUE"><code class="docutils literal notranslate"><span class="pre">Color.FORE_BLUE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_MAGENTA"><code class="docutils literal notranslate"><span class="pre">Color.FORE_MAGENTA</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_CYAN"><code class="docutils literal notranslate"><span class="pre">Color.FORE_CYAN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.FORE_WHITE"><code class="docutils literal notranslate"><span class="pre">Color.FORE_WHITE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_NORMAL"><code class="docutils literal notranslate"><span class="pre">Color.BACK_NORMAL</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_BLACK"><code class="docutils literal notranslate"><span class="pre">Color.BACK_BLACK</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_RED"><code class="docutils literal notranslate"><span class="pre">Color.BACK_RED</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_GREEN"><code class="docutils literal notranslate"><span class="pre">Color.BACK_GREEN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_YELLOW"><code class="docutils literal notranslate"><span class="pre">Color.BACK_YELLOW</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_BLUE"><code class="docutils literal notranslate"><span class="pre">Color.BACK_BLUE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_MAGENTA"><code class="docutils literal notranslate"><span class="pre">Color.BACK_MAGENTA</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_CYAN"><code class="docutils literal notranslate"><span class="pre">Color.BACK_CYAN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.Color.BACK_WHITE"><code class="docutils literal notranslate"><span class="pre">Color.BACK_WHITE</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.ColorValue"><code class="docutils literal notranslate"><span class="pre">ColorValue</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorValue.data"><code class="docutils literal notranslate"><span class="pre">ColorValue.data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorValue.from_rgb"><code class="docutils literal notranslate"><span class="pre">ColorValue.from_rgb()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorValue.from_hex"><code class="docutils literal notranslate"><span class="pre">ColorValue.from_hex()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorValue.to_hex"><code class="docutils literal notranslate"><span class="pre">ColorValue.to_hex()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorValue.darken"><code class="docutils literal notranslate"><span class="pre">ColorValue.darken()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorValue.lighten"><code class="docutils literal notranslate"><span class="pre">ColorValue.lighten()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorValue.lerp"><code class="docutils literal notranslate"><span class="pre">ColorValue.lerp()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#coloring-and-formatting-text">Coloring and formatting text</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.ColorizedString"><code class="docutils literal notranslate"><span class="pre">ColorizedString</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorizedString.explicit_newline"><code class="docutils literal notranslate"><span class="pre">ColorizedString.explicit_newline</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorizedString.width"><code class="docutils literal notranslate"><span class="pre">ColorizedString.width</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorizedString.len"><code class="docutils literal notranslate"><span class="pre">ColorizedString.len</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorizedString.iter"><code class="docutils literal notranslate"><span class="pre">ColorizedString.iter()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorizedString.wrap"><code class="docutils literal notranslate"><span class="pre">ColorizedString.wrap()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorizedString.percent_format"><code class="docutils literal notranslate"><span class="pre">ColorizedString.percent_format()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.term.ColorizedString.process_colors"><code class="docutils literal notranslate"><span class="pre">ColorizedString.process_colors()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#utilities">Utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.term.line_width"><code class="docutils literal notranslate"><span class="pre">line_width()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="theme.html">Theme</a></li>
 <li class="toctree-l1"><a class="reference internal" href="widget.html">Widget</a></li>
 </ul>
@@ -86,8 +205,774 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="term">
-<h1>Term<a class="headerlink" href="#term" title="Permalink to this heading"></a></h1>
+  <section id="module-yuio.term">
+<span id="term"></span><h1>Term<a class="headerlink" href="#module-yuio.term" title="Permalink to this heading"></a></h1>
+<p>Everything to do with terminal output: detecting terminal capabilities,
+working with colors and themes, formatting text.</p>
+<p>This is a low-level API module, upon which :mod:<code class="docutils literal notranslate"><span class="pre">yuio.io</span></code> builds
+its higher-level abstraction.</p>
+<section id="detecting-terminal-capabilities">
+<h2>Detecting terminal capabilities<a class="headerlink" href="#detecting-terminal-capabilities" title="Permalink to this heading"></a></h2>
+<p>Terminal capabilities are stored in a <a class="reference internal" href="#yuio.term.Term" title="yuio.term.Term"><code class="xref py py-class docutils literal notranslate"><span class="pre">Term</span></code></a> object.</p>
+<p>Usually, you don’t need to query terminal capabilities yourself,
+as you gan use yuio global configuration from <a class="reference internal" href="io.html#module-yuio.io" title="yuio.io"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.io</span></code></a>
+(see <a class="reference internal" href="io.html#yuio.io.get_term" title="yuio.io.get_term"><code class="xref py py-func docutils literal notranslate"><span class="pre">yuio.io.get_term()</span></code></a>).</p>
+<p>However, you can get a <a class="reference internal" href="#yuio.term.Term" title="yuio.term.Term"><code class="xref py py-class docutils literal notranslate"><span class="pre">Term</span></code></a> object by using <a class="reference internal" href="#yuio.term.get_term_from_stream" title="yuio.term.get_term_from_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_term_from_stream()</span></code></a>:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.term.get_term_from_stream">
+<span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">get_term_from_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TextIO" title="(in Python v3.12)"><span class="pre">TextIO</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query_terminal_colors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#get_term_from_stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.get_term_from_stream" title="Permalink to this definition"></a></dt>
+<dd><p>Query info about a terminal attached to the given stream.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">query_terminal_colors</span></code> is <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a>, Yuio will try to query background
+and foreground color of the terminal.</p>
+</dd></dl>
+
+<p><a class="reference internal" href="#yuio.term.Term" title="yuio.term.Term"><code class="xref py py-class docutils literal notranslate"><span class="pre">Term</span></code></a> contains all info about what kinds of things the terminal
+supports. If available, it will also have info about terminal’s theme,
+i.e. dark or light background, etc:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.term.Term">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">Term</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TextIO" title="(in Python v3.12)"><span class="pre">TextIO</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_support</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorSupport" title="yuio.term.ColorSupport"><span class="pre">ColorSupport</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">ColorSupport.NONE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interactive_support</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.InteractiveSupport" title="yuio.term.InteractiveSupport"><span class="pre">InteractiveSupport</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">InteractiveSupport.NONE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">terminal_colors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.TerminalColors" title="yuio.term.TerminalColors"><span class="pre">TerminalColors</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/term.html#Term"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Term" title="Permalink to this definition"></a></dt>
+<dd><p>Overall info about a terminal.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Term.stream">
+<span class="sig-name descname"><span class="pre">stream</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TextIO" title="(in Python v3.12)"><span class="pre">TextIO</span></a></em><a class="headerlink" href="#yuio.term.Term.stream" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal’s output stream.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Term.color_support">
+<span class="sig-name descname"><span class="pre">color_support</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorSupport" title="yuio.term.ColorSupport"><span class="pre">ColorSupport</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#yuio.term.Term.color_support" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal’s capability for coloring output.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Term.interactive_support">
+<span class="sig-name descname"><span class="pre">interactive_support</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.InteractiveSupport" title="yuio.term.InteractiveSupport"><span class="pre">InteractiveSupport</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#yuio.term.Term.interactive_support" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal’s capability for rendering interactive widgets.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Term.terminal_colors">
+<span class="sig-name descname"><span class="pre">terminal_colors</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.TerminalColors" title="yuio.term.TerminalColors"><span class="pre">TerminalColors</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#yuio.term.Term.terminal_colors" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal color settings.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.Term.has_colors">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_colors</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.term.Term.has_colors" title="Permalink to this definition"></a></dt>
+<dd><p>Return <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a> if terminal supports simple 8-bit color codes.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.Term.has_colors_256">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_colors_256</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.term.Term.has_colors_256" title="Permalink to this definition"></a></dt>
+<dd><p>Return <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a> if terminal supports 256-encoded colors.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.Term.has_colors_true">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_colors_true</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.term.Term.has_colors_true" title="Permalink to this definition"></a></dt>
+<dd><p>Return <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a> if terminal supports true colors.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.Term.can_move_cursor">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">can_move_cursor</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.term.Term.can_move_cursor" title="Permalink to this definition"></a></dt>
+<dd><p>Return <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a> if terminal can move cursor and erase lines.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.Term.can_query_terminal">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">can_query_terminal</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.term.Term.can_query_terminal" title="Permalink to this definition"></a></dt>
+<dd><p>Return <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a> if terminal can process queries, enter CBREAK mode, etc.</p>
+<p>This is an alias to <a class="reference internal" href="#yuio.term.Term.is_fully_interactive" title="yuio.term.Term.is_fully_interactive"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_fully_interactive</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.Term.is_fully_interactive">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_fully_interactive</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.term.Term.is_fully_interactive" title="Permalink to this definition"></a></dt>
+<dd><p>Return <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a> if we’re in a fully interactive environment.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.term.Lightness">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">Lightness</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/term.html#Lightness"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Lightness" title="Permalink to this definition"></a></dt>
+<dd><p>Overall color theme of a terminal.</p>
+<p>Can help with deciding which colors to use when printing output.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Lightness.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#yuio.term.Lightness.UNKNOWN" title="Permalink to this definition"></a></dt>
+<dd><p>We couldn’t determine terminal background, or it wasn’t dark
+or bright enough to fall in one category or another.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Lightness.DARK">
+<span class="sig-name descname"><span class="pre">DARK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#yuio.term.Lightness.DARK" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal background is dark.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Lightness.LIGHT">
+<span class="sig-name descname"><span class="pre">LIGHT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#yuio.term.Lightness.LIGHT" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal background is light.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.term.ColorSupport">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">ColorSupport</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/term.html#ColorSupport"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorSupport" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal’s capability for coloring output.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.ColorSupport.NONE">
+<span class="sig-name descname"><span class="pre">NONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#yuio.term.ColorSupport.NONE" title="Permalink to this definition"></a></dt>
+<dd><p>Color codes are not supported.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.ColorSupport.ANSI">
+<span class="sig-name descname"><span class="pre">ANSI</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#yuio.term.ColorSupport.ANSI" title="Permalink to this definition"></a></dt>
+<dd><p>Only simple 8-bit color codes are supported.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.ColorSupport.ANSI_256">
+<span class="sig-name descname"><span class="pre">ANSI_256</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#yuio.term.ColorSupport.ANSI_256" title="Permalink to this definition"></a></dt>
+<dd><p>256-encoded colors are supported.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.ColorSupport.ANSI_TRUE">
+<span class="sig-name descname"><span class="pre">ANSI_TRUE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#yuio.term.ColorSupport.ANSI_TRUE" title="Permalink to this definition"></a></dt>
+<dd><p>True colors are supported.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.term.InteractiveSupport">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">InteractiveSupport</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/term.html#InteractiveSupport"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.InteractiveSupport" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal’s capability for rendering interactive widgets.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.InteractiveSupport.NONE">
+<span class="sig-name descname"><span class="pre">NONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#yuio.term.InteractiveSupport.NONE" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal can’t render anything interactive.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.InteractiveSupport.MOVE_CURSOR">
+<span class="sig-name descname"><span class="pre">MOVE_CURSOR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#yuio.term.InteractiveSupport.MOVE_CURSOR" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal can move cursor and erase lines.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.InteractiveSupport.FULL">
+<span class="sig-name descname"><span class="pre">FULL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#yuio.term.InteractiveSupport.FULL" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal can process queries, enter <code class="docutils literal notranslate"><span class="pre">CBREAK</span></code> mode, etc.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">TerminalColors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">background</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">black</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">red</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">green</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">yellow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">blue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">magenta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cyan</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">white</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lightness</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.Lightness" title="yuio.term.Lightness"><span class="pre">Lightness</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/term.html#TerminalColors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.TerminalColors" title="Permalink to this definition"></a></dt>
+<dd><p>Colors and theme of the attached terminal.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.background">
+<span class="sig-name descname"><span class="pre">background</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.background" title="Permalink to this definition"></a></dt>
+<dd><p>Background color of a terminal.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.black">
+<span class="sig-name descname"><span class="pre">black</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.black" title="Permalink to this definition"></a></dt>
+<dd><p>Color value for the default “black” color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.red">
+<span class="sig-name descname"><span class="pre">red</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.red" title="Permalink to this definition"></a></dt>
+<dd><p>Color value for the default “red” color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.green">
+<span class="sig-name descname"><span class="pre">green</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.green" title="Permalink to this definition"></a></dt>
+<dd><p>Color value for the default “green” color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.yellow">
+<span class="sig-name descname"><span class="pre">yellow</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.yellow" title="Permalink to this definition"></a></dt>
+<dd><p>Color value for the default “yellow” color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.blue">
+<span class="sig-name descname"><span class="pre">blue</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.blue" title="Permalink to this definition"></a></dt>
+<dd><p>Color value for the default “blue” color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.magenta">
+<span class="sig-name descname"><span class="pre">magenta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.magenta" title="Permalink to this definition"></a></dt>
+<dd><p>Color value for the default “magenta” color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.cyan">
+<span class="sig-name descname"><span class="pre">cyan</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.cyan" title="Permalink to this definition"></a></dt>
+<dd><p>Color value for the default “cyan” color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.white">
+<span class="sig-name descname"><span class="pre">white</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.white" title="Permalink to this definition"></a></dt>
+<dd><p>Color value for the default “white” color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.TerminalColors.lightness">
+<span class="sig-name descname"><span class="pre">lightness</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.Lightness" title="yuio.term.Lightness"><span class="pre">Lightness</span></a></em><a class="headerlink" href="#yuio.term.TerminalColors.lightness" title="Permalink to this definition"></a></dt>
+<dd><p>Overall color theme of a terminal, i.e. dark or light.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="working-with-colors">
+<h2>Working with colors<a class="headerlink" href="#working-with-colors" title="Permalink to this heading"></a></h2>
+<p>Text background and foreground color, as well as its style, is defined
+by the <a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><code class="xref py py-class docutils literal notranslate"><span class="pre">Color</span></code></a> class. It stores RGB components and ANSI escape codes
+for every aspect of text presentation:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.term.Color">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">Color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fore</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">back</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/term.html#Color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color" title="Permalink to this definition"></a></dt>
+<dd><p>Data about terminal output style. Contains
+foreground and background color, as well as text styles.</p>
+<p>This class only contains data about the color. It doesn’t know anything about
+how to apply it to a terminal, or whether a terminal supports colors at all.
+These decisions are thus deferred to a lower level of API (see <a class="reference internal" href="#yuio.term.Color.as_code" title="yuio.term.Color.as_code"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Color.as_code()</span></code></a>).</p>
+<p>When converted to an ANSI code and printed, a color completely overwrites a previous
+color that was used by a terminal. This behavior prevents different colors and styles
+bleeding one into another. So, for example, printing <a class="reference internal" href="#yuio.term.Color.STYLE_BOLD" title="yuio.term.Color.STYLE_BOLD"><code class="xref py py-data docutils literal notranslate"><span class="pre">Color.STYLE_BOLD</span></code></a>
+and then <a class="reference internal" href="#yuio.term.Color.FORE_RED" title="yuio.term.Color.FORE_RED"><code class="xref py py-data docutils literal notranslate"><span class="pre">Color.FORE_RED</span></code></a> will result in non-bold red text.</p>
+<p>Colors can be combined before printing, though:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Color</span><span class="o">.</span><span class="n">STYLE_BOLD</span> <span class="o">|</span> <span class="n">Color</span><span class="o">.</span><span class="n">FORE_RED</span>  <span class="c1"># Bold red</span>
+<span class="go">Color(fore=&lt;ColorValue 1&gt;, back=None, bold=True, dim=None)</span>
+</pre></div>
+</div>
+<p>Yuio supports true RGB colors. They are automatically converted
+to 256- or 8-bit colors if needed.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.fore">
+<span class="sig-name descname"><span class="pre">fore</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.term.Color.fore" title="Permalink to this definition"></a></dt>
+<dd><p>Foreground color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.back">
+<span class="sig-name descname"><span class="pre">back</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.term.Color.back" title="Permalink to this definition"></a></dt>
+<dd><p>Background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.bold">
+<span class="sig-name descname"><span class="pre">bold</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.term.Color.bold" title="Permalink to this definition"></a></dt>
+<dd><p>If true, render text as bold.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.dim">
+<span class="sig-name descname"><span class="pre">dim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.term.Color.dim" title="Permalink to this definition"></a></dt>
+<dd><p>If true, render text as dim.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.Color.fore_from_rgb">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fore_from_rgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">g</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#Color.fore_from_rgb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color.fore_from_rgb" title="Permalink to this definition"></a></dt>
+<dd><p>Create a foreground color value from rgb components.</p>
+<p>Each component should be between 0 and 255.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Color</span><span class="o">.</span><span class="n">fore_from_rgb</span><span class="p">(</span><span class="mh">0xA0</span><span class="p">,</span> <span class="mh">0x1E</span><span class="p">,</span> <span class="mh">0x9C</span><span class="p">)</span>
+<span class="go">Color(fore=&lt;ColorValue #A01E9C&gt;, back=None, bold=None, dim=None)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.Color.fore_from_hex">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fore_from_hex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#Color.fore_from_hex"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color.fore_from_hex" title="Permalink to this definition"></a></dt>
+<dd><p>Create a foreground color value from a hex string.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Color</span><span class="o">.</span><span class="n">fore_from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span>
+<span class="go">Color(fore=&lt;ColorValue #A01E9C&gt;, back=None, bold=None, dim=None)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.Color.back_from_rgb">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">back_from_rgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">g</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#Color.back_from_rgb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color.back_from_rgb" title="Permalink to this definition"></a></dt>
+<dd><p>Create a background color value from rgb components.</p>
+<p>Each component should be between 0 and 255.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Color</span><span class="o">.</span><span class="n">back_from_rgb</span><span class="p">(</span><span class="mh">0xA0</span><span class="p">,</span> <span class="mh">0x1E</span><span class="p">,</span> <span class="mh">0x9C</span><span class="p">)</span>
+<span class="go">Color(fore=None, back=&lt;ColorValue #A01E9C&gt;, bold=None, dim=None)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.Color.back_from_hex">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">back_from_hex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#Color.back_from_hex"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color.back_from_hex" title="Permalink to this definition"></a></dt>
+<dd><p>Create a background color value from a hex string.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Color</span><span class="o">.</span><span class="n">back_from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span>
+<span class="go">Color(fore=None, back=&lt;ColorValue #A01E9C&gt;, bold=None, dim=None)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.Color.darken">
+<span class="sig-name descname"><span class="pre">darken</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amount</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#Color.darken"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color.darken" title="Permalink to this definition"></a></dt>
+<dd><p>Make this color darker by the given percentage.</p>
+<p>Amount should be between 0 and 1.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Darken by 30%.</span>
+<span class="gp">... </span><span class="n">Color</span><span class="o">.</span><span class="n">fore_from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">darken</span><span class="p">(</span><span class="mf">0.30</span><span class="p">)</span>
+<span class="go">Color(fore=&lt;ColorValue #70156D&gt;, back=None, bold=None, dim=None)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.Color.lighten">
+<span class="sig-name descname"><span class="pre">lighten</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amount</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#Color.lighten"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color.lighten" title="Permalink to this definition"></a></dt>
+<dd><p>Make this color lighter by the given percentage.</p>
+<p>Amount should be between 0 and 1.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Lighten by 30%.</span>
+<span class="gp">... </span><span class="n">Color</span><span class="o">.</span><span class="n">fore_from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">lighten</span><span class="p">(</span><span class="mf">0.30</span><span class="p">)</span>
+<span class="go">Color(fore=&lt;ColorValue #DB42D6&gt;, back=None, bold=None, dim=None)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.Color.lerp">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lerp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">colors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/term.html#Color.lerp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color.lerp" title="Permalink to this definition"></a></dt>
+<dd><p>Return a lambda that allows linear interpolation between several colors.</p>
+<p>If either color is a single ANSI escape code, the first color is always returned
+from the lambda.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">fore_from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">fore_from_hex</span><span class="p">(</span><span class="s1">&#39;#22C60C&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lerp</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">lerp</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lerp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">Color(fore=&lt;ColorValue #A01E9C&gt;, back=None, bold=None, dim=None)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lerp</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="go">Color(fore=&lt;ColorValue #617254&gt;, back=None, bold=None, dim=None)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lerp</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">Color(fore=&lt;ColorValue #22C60C&gt;, back=None, bold=None, dim=None)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.Color.as_code">
+<span class="sig-name descname"><span class="pre">as_code</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">term</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#Color.as_code"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.Color.as_code" title="Permalink to this definition"></a></dt>
+<dd><p>Convert this color into an ANSI escape code
+with respect to the given terminal capabilities.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.NONE">
+<span class="sig-name descname"><span class="pre">NONE</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.NONE" title="Permalink to this definition"></a></dt>
+<dd><p>No color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.STYLE_BOLD">
+<span class="sig-name descname"><span class="pre">STYLE_BOLD</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=None,</span> <span class="pre">bold=True,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.STYLE_BOLD" title="Permalink to this definition"></a></dt>
+<dd><p>Bold font style.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.STYLE_DIM">
+<span class="sig-name descname"><span class="pre">STYLE_DIM</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=True)</span></em><a class="headerlink" href="#yuio.term.Color.STYLE_DIM" title="Permalink to this definition"></a></dt>
+<dd><p>Dim font style.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.STYLE_NORMAL">
+<span class="sig-name descname"><span class="pre">STYLE_NORMAL</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=None,</span> <span class="pre">bold=False,</span> <span class="pre">dim=False)</span></em><a class="headerlink" href="#yuio.term.Color.STYLE_NORMAL" title="Permalink to this definition"></a></dt>
+<dd><p>Not bold nor dim.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_NORMAL">
+<span class="sig-name descname"><span class="pre">FORE_NORMAL</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">9&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_NORMAL" title="Permalink to this definition"></a></dt>
+<dd><p>Normal foreground color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_NORMAL_DIM">
+<span class="sig-name descname"><span class="pre">FORE_NORMAL_DIM</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">2&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_NORMAL_DIM" title="Permalink to this definition"></a></dt>
+<dd><p>Normal foreground color rendered with dim setting.</p>
+<p>This is an alternative to bright black that works with
+most terminals and color schemes.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_BLACK">
+<span class="sig-name descname"><span class="pre">FORE_BLACK</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">0&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_BLACK" title="Permalink to this definition"></a></dt>
+<dd><p>Black foreground color.</p>
+<p>Avoid using it, in most terminals it is same as background color.
+Instead, use <a class="reference internal" href="#yuio.term.Color.FORE_NORMAL_DIM" title="yuio.term.Color.FORE_NORMAL_DIM"><code class="xref py py-attr docutils literal notranslate"><span class="pre">FORE_NORMAL_DIM</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_RED">
+<span class="sig-name descname"><span class="pre">FORE_RED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">1&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_RED" title="Permalink to this definition"></a></dt>
+<dd><p>Red foreground color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_GREEN">
+<span class="sig-name descname"><span class="pre">FORE_GREEN</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">2&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_GREEN" title="Permalink to this definition"></a></dt>
+<dd><p>Green foreground color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_YELLOW">
+<span class="sig-name descname"><span class="pre">FORE_YELLOW</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">3&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_YELLOW" title="Permalink to this definition"></a></dt>
+<dd><p>Yellow foreground color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_BLUE">
+<span class="sig-name descname"><span class="pre">FORE_BLUE</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">4&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_BLUE" title="Permalink to this definition"></a></dt>
+<dd><p>Blue foreground color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_MAGENTA">
+<span class="sig-name descname"><span class="pre">FORE_MAGENTA</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">5&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_MAGENTA" title="Permalink to this definition"></a></dt>
+<dd><p>Magenta foreground color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_CYAN">
+<span class="sig-name descname"><span class="pre">FORE_CYAN</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">6&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_CYAN" title="Permalink to this definition"></a></dt>
+<dd><p>Cyan foreground color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.FORE_WHITE">
+<span class="sig-name descname"><span class="pre">FORE_WHITE</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">7&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.FORE_WHITE" title="Permalink to this definition"></a></dt>
+<dd><p>White foreground color.</p>
+<p>Avoid using it, in some terminals, notably in the Mac OS default terminal,
+it is unreadable.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_NORMAL">
+<span class="sig-name descname"><span class="pre">BACK_NORMAL</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">9&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_NORMAL" title="Permalink to this definition"></a></dt>
+<dd><p>Normal background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_BLACK">
+<span class="sig-name descname"><span class="pre">BACK_BLACK</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">0&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_BLACK" title="Permalink to this definition"></a></dt>
+<dd><p>Black background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_RED">
+<span class="sig-name descname"><span class="pre">BACK_RED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">1&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_RED" title="Permalink to this definition"></a></dt>
+<dd><p>Red background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_GREEN">
+<span class="sig-name descname"><span class="pre">BACK_GREEN</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">2&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_GREEN" title="Permalink to this definition"></a></dt>
+<dd><p>Green background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_YELLOW">
+<span class="sig-name descname"><span class="pre">BACK_YELLOW</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">3&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_YELLOW" title="Permalink to this definition"></a></dt>
+<dd><p>Yellow background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_BLUE">
+<span class="sig-name descname"><span class="pre">BACK_BLUE</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">4&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_BLUE" title="Permalink to this definition"></a></dt>
+<dd><p>Blue background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_MAGENTA">
+<span class="sig-name descname"><span class="pre">BACK_MAGENTA</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">5&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_MAGENTA" title="Permalink to this definition"></a></dt>
+<dd><p>Magenta background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_CYAN">
+<span class="sig-name descname"><span class="pre">BACK_CYAN</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">6&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_CYAN" title="Permalink to this definition"></a></dt>
+<dd><p>Cyan background color.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.Color.BACK_WHITE">
+<span class="sig-name descname"><span class="pre">BACK_WHITE</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.12)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">Color(fore=None,</span> <span class="pre">back=&lt;ColorValue</span> <span class="pre">7&gt;,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></em><a class="headerlink" href="#yuio.term.Color.BACK_WHITE" title="Permalink to this definition"></a></dt>
+<dd><p>White background color.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>A single color value is stored in the <a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColorValue</span></code></a> class.
+Usually you don’t need to use these directly, as you will be working
+with <a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><code class="xref py py-class docutils literal notranslate"><span class="pre">Color</span></code></a> instances. Nevertheless, you can operate individual
+colors should you need such thing:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.term.ColorValue">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">ColorValue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/term.html#ColorValue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorValue" title="Permalink to this definition"></a></dt>
+<dd><p>Data about a single color.</p>
+<p>Can be either a single ANSI escape code, or an RGB-tuple.</p>
+<p>Single ANSI escape code represents a standard terminal color code.
+The actual color value for it is controlled by the terminal’s user.
+Therefore, it doesn’t permit operations on colors,
+such as <a class="reference internal" href="#yuio.term.Color.darken" title="yuio.term.Color.darken"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Color.darken()</span></code></a> or <code class="xref py py-meth docutils literal notranslate"><span class="pre">Color.interpolate()</span></code>.</p>
+<p>An RGB-tuple represents a true color. When displaying on a terminal that
+doesn’t support true colors, it will be converted to a corresponding
+256-color or an 8-color automatically.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.term.ColorValue.data">
+<span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yuio.term.ColorValue.data" title="Permalink to this definition"></a></dt>
+<dd><p>Color data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorValue.from_rgb">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_rgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">g</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorValue.from_rgb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorValue.from_rgb" title="Permalink to this definition"></a></dt>
+<dd><p>Create a color value from rgb components.</p>
+<p>Each component should be between 0 and 255.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ColorValue</span><span class="o">.</span><span class="n">from_rgb</span><span class="p">(</span><span class="mh">0xA0</span><span class="p">,</span> <span class="mh">0x1E</span><span class="p">,</span> <span class="mh">0x9C</span><span class="p">)</span>
+<span class="go">&lt;ColorValue #A01E9C&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorValue.from_hex">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_hex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorValue.from_hex"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorValue.from_hex" title="Permalink to this definition"></a></dt>
+<dd><p>Create a color value from a hex string.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ColorValue</span><span class="o">.</span><span class="n">from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span>
+<span class="go">&lt;ColorValue #A01E9C&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorValue.to_hex">
+<span class="sig-name descname"><span class="pre">to_hex</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorValue.to_hex"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorValue.to_hex" title="Permalink to this definition"></a></dt>
+<dd><p>Return color in hex format with leading <code class="docutils literal notranslate"><span class="pre">#</span></code>.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">ColorValue</span><span class="o">.</span><span class="n">from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">to_hex</span><span class="p">()</span>
+<span class="go">&#39;#A01E9C&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorValue.darken">
+<span class="sig-name descname"><span class="pre">darken</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amount</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorValue.darken"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorValue.darken" title="Permalink to this definition"></a></dt>
+<dd><p>Make this color darker by the given percentage.</p>
+<p>Amount should be between 0 and 1.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Darken by 30%.</span>
+<span class="gp">... </span><span class="n">ColorValue</span><span class="o">.</span><span class="n">from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">darken</span><span class="p">(</span><span class="mf">0.30</span><span class="p">)</span>
+<span class="go">&lt;ColorValue #70156D&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorValue.lighten">
+<span class="sig-name descname"><span class="pre">lighten</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">amount</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorValue.lighten"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorValue.lighten" title="Permalink to this definition"></a></dt>
+<dd><p>Make this color lighter by the given percentage.</p>
+<p>Amount should be between 0 and 1.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Lighten by 30%.</span>
+<span class="gp">... </span><span class="n">ColorValue</span><span class="o">.</span><span class="n">from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">lighten</span><span class="p">(</span><span class="mf">0.30</span><span class="p">)</span>
+<span class="go">&lt;ColorValue #DB42D6&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorValue.lerp">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lerp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">colors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorValue" title="yuio.term.ColorValue"><span class="pre">ColorValue</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorValue.lerp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorValue.lerp" title="Permalink to this definition"></a></dt>
+<dd><p>Return a lambda that allows linear interpolation between several colors.</p>
+<p>If either color is a single ANSI escape code, the first color is always returned
+from the lambda.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">ColorValue</span><span class="o">.</span><span class="n">from_hex</span><span class="p">(</span><span class="s1">&#39;#A01E9C&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">ColorValue</span><span class="o">.</span><span class="n">from_hex</span><span class="p">(</span><span class="s1">&#39;#22C60C&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lerp</span> <span class="o">=</span> <span class="n">ColorValue</span><span class="o">.</span><span class="n">lerp</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lerp</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="go">&lt;ColorValue #A01E9C&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lerp</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="go">&lt;ColorValue #617254&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lerp</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">&lt;ColorValue #22C60C&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="coloring-and-formatting-text">
+<h2>Coloring and formatting text<a class="headerlink" href="#coloring-and-formatting-text" title="Permalink to this heading"></a></h2>
+<p>The higher-level <a class="reference external" href="https://docs.python.org/3/library/io.html#module-io" title="(in Python v3.12)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">io</span></code></a> module uses strings with xml-like color
+tags to transfer information about line formatting. Here, on the lower level,
+these strings are parsed and transformed into <a class="reference internal" href="#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColorizedString</span></code></a>:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.term.ColorizedString">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">ColorizedString</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">explicit_newline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/term.html#ColorizedString"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorizedString" title="Permalink to this definition"></a></dt>
+<dd><p>A string with colors.</p>
+<p>This class is a wrapper over a list of strings and colors.
+Each color applies to strings after it, right until the next color.</p>
+<p><a class="reference internal" href="#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColorizedString</span></code></a> supports some basic string operations.
+Most notable, it supports wide-character-aware wrapping (see <a class="reference internal" href="#yuio.term.line_width" title="yuio.term.line_width"><code class="xref py py-func docutils literal notranslate"><span class="pre">line_width()</span></code></a>),
+and <code class="docutils literal notranslate"><span class="pre">%</span></code>-formatting.</p>
+<p>Unlike <cite>str</cite> instances, <a class="reference internal" href="#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColorizedString</span></code></a> is mutable through
+the <code class="docutils literal notranslate"><span class="pre">+=</span></code> operator.</p>
+<p>You can build a colorized string from raw parts,
+or you can use <code class="xref py py-meth docutils literal notranslate"><span class="pre">Theme.colorize()</span></code>.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.ColorizedString.explicit_newline">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">explicit_newline</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#yuio.term.ColorizedString.explicit_newline" title="Permalink to this definition"></a></dt>
+<dd><p>Explicit newline indicates that a line of a wrapped text
+was broken because the original text contained a new line character.</p>
+<p>See <a class="reference internal" href="#yuio.term.ColorizedString.wrap" title="yuio.term.ColorizedString.wrap"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wrap()</span></code></a> for details.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.ColorizedString.width">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">width</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#yuio.term.ColorizedString.width" title="Permalink to this definition"></a></dt>
+<dd><p>String width when the string is displayed in a terminal.</p>
+<p>See <a class="reference internal" href="#yuio.term.line_width" title="yuio.term.line_width"><code class="xref py py-func docutils literal notranslate"><span class="pre">line_width()</span></code></a> for more information.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.term.ColorizedString.len">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">len</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#yuio.term.ColorizedString.len" title="Permalink to this definition"></a></dt>
+<dd><p>Line length in bytes, ignoring all colors.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorizedString.iter">
+<span class="sig-name descname"><span class="pre">iter</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" title="(in Python v3.12)"><span class="pre">Iterator</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorizedString.iter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorizedString.iter" title="Permalink to this definition"></a></dt>
+<dd><p>Iterate over raw parts of the string,
+i.e. the underlying list of strings and colors.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorizedString.wrap">
+<span class="sig-name descname"><span class="pre">wrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">break_on_hyphens</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_newlines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">first_line_indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">continuation_indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorizedString.wrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorizedString.wrap" title="Permalink to this definition"></a></dt>
+<dd><p>Wrap a long line of text into multiple lines.</p>
+<p>If <cite>break_on_hyphens</cite> is <cite>True</cite> (default),
+lines can be broken after hyphens in hyphenated words.</p>
+<p>If <cite>preserve_spaces</cite> is <cite>True</cite>, all spaces are preserved.
+Otherwise, consecutive spaces are collapsed into a single space.
+Note that tabs are always treated as a single space.</p>
+<p>If <cite>preserve_newlines</cite> is <cite>True</cite> (default), text is additionally wrapped
+on newline characters. When this happens, the newline sequence that wrapped
+the line will be placed into <a class="reference internal" href="#yuio.term.ColorizedString.explicit_newline" title="yuio.term.ColorizedString.explicit_newline"><code class="xref py py-attr docutils literal notranslate"><span class="pre">explicit_newline</span></code></a>.</p>
+<p>If <cite>preserve_newlines</cite> is <cite>False</cite>, newlines are treated as whitespaces.</p>
+<p>If <cite>first_line_indent</cite> and <cite>continuation_indent</cite> are given, they are placed
+in the beginning of respective lines. Passing colorized strings as indents
+does not break coloring of the wrapped text.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ColorizedString</span><span class="p">(</span><span class="s2">&quot;hello, world!</span><span class="se">\n</span><span class="s2">it&#39;s a good day!&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">wrap</span><span class="p">(</span><span class="mi">13</span><span class="p">)</span>  
+<span class="go">[&lt;ColorizedString(&#39;hello, world!&#39;, explicit_newline=&#39;\n&#39;)&gt;,</span>
+<span class="go"> &lt;ColorizedString(&quot;it&#39;s a good&quot;)&gt;,</span>
+<span class="go"> &lt;ColorizedString(&#39;day!&#39;)&gt;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorizedString.percent_format">
+<span class="sig-name descname"><span class="pre">percent_format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorizedString.percent_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorizedString.percent_format" title="Permalink to this definition"></a></dt>
+<dd><p>Format colorized string as if with <code class="docutils literal notranslate"><span class="pre">%</span></code>-formatting
+(i.e. <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting">old-style formatting</a>).</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">line</span> <span class="o">=</span> <span class="n">theme</span><span class="o">.</span><span class="n">colorize</span><span class="p">(</span><span class="s2">&quot;Hello, &lt;c b&gt;</span><span class="si">%s</span><span class="s2">!&lt;/c&gt;&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">line</span> <span class="o">%</span> <span class="s2">&quot;Username&quot;</span>
+<span class="go">&lt;ColorizedString(&#39;Hello, Username!&#39;)&gt;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.term.ColorizedString.process_colors">
+<span class="sig-name descname"><span class="pre">process_colors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">term</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/term.html#ColorizedString.process_colors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.ColorizedString.process_colors" title="Permalink to this definition"></a></dt>
+<dd><p>Convert colors in this string into a normal string
+with ANSI escape sequences.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="utilities">
+<h2>Utilities<a class="headerlink" href="#utilities" title="Permalink to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.term.line_width">
+<span class="sig-prename descclassname"><span class="pre">yuio.term.</span></span><span class="sig-name descname"><span class="pre">line_width</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></span><a class="reference internal" href="_modules/yuio/term.html#line_width"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.term.line_width" title="Permalink to this definition"></a></dt>
+<dd><p>Calculates string width when the string is displayed
+in a terminal.</p>
+<p>This function makes effort to detect wide characters
+such as emojis. If does not, however, work correctly
+with extended grapheme clusters, and so it may fail
+for emojis with modifiers, or other complex characters.</p>
+<p>Example where it fails is <code class="docutils literal notranslate"><span class="pre">👩🏽‍💻</span></code>. It consists
+of four code points:</p>
+<ul class="simple">
+<li><p>Unicode Character <cite>WOMAN</cite> (<code class="docutils literal notranslate"><span class="pre">U+1F469</span></code>, <code class="docutils literal notranslate"><span class="pre">👩</span></code>),</p></li>
+<li><p>Unicode Character <cite>EMOJI MODIFIER FITZPATRICK TYPE-4</cite> (<code class="docutils literal notranslate"><span class="pre">U+1F3FD</span></code>),</p></li>
+<li><p>Unicode Character <cite>ZERO WIDTH JOINER</cite> (<code class="docutils literal notranslate"><span class="pre">U+200D</span></code>),</p></li>
+<li><p>Unicode Character <cite>PERSONAL COMPUTER</cite> (<code class="docutils literal notranslate"><span class="pre">U+1F4BB</span></code>, <code class="docutils literal notranslate"><span class="pre">💻</span></code>).</p></li>
+</ul>
+<p>Since <a class="reference internal" href="#yuio.term.line_width" title="yuio.term.line_width"><code class="xref py py-func docutils literal notranslate"><span class="pre">line_width()</span></code></a> can’t understand that these code points
+are combined into a single emoji, it treats them separately,
+resulting in answer <cite>6</cite> (<cite>2</cite> for every code point except <cite>ZERO WIDTH JOINER</cite>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">line_width</span><span class="p">(</span><span class="s2">&quot;👩🏽‍💻&quot;</span><span class="p">)</span>
+<span class="go">6</span>
+</pre></div>
+</div>
+<p>In all fairness, detecting how much space such an emoji will take
+is not so straight forward, as that will depend on unicode capabilities
+of a specific terminal. Since a lot of terminals will not handle such emojis
+correctly, I’ve decided to go with this simplistic implementation for now.</p>
+<p>If able, this function uses the <code class="xref py py-mod docutils literal notranslate"><span class="pre">wcwidth</span></code> module, as it provides more
+accurate results.</p>
+</dd></dl>
+
+</section>
 </section>
 
 

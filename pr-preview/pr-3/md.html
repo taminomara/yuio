@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Md &mdash; Yuio 0.1.dev1+g864483c documentation</title>
+  <title>Md &mdash; Yuio 0.1.dev1+gf68526f documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
@@ -36,7 +36,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g864483c
+                0.1.dev1+gf68526f
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -56,7 +56,65 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="complete.html">Complete</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Md</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Md</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#formatting-markdown">Formatting markdown</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.MdFormatter"><code class="docutils literal notranslate"><span class="pre">MdFormatter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.MdFormatter.width"><code class="docutils literal notranslate"><span class="pre">MdFormatter.width</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.MdFormatter.format"><code class="docutils literal notranslate"><span class="pre">MdFormatter.format()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.MdFormatter.parse"><code class="docutils literal notranslate"><span class="pre">MdFormatter.parse()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.MdFormatter.format_node"><code class="docutils literal notranslate"><span class="pre">MdFormatter.format_node()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.MdFormatter.colorize"><code class="docutils literal notranslate"><span class="pre">MdFormatter.colorize()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#highlighting-code">Highlighting code</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.SyntaxHighlighter"><code class="docutils literal notranslate"><span class="pre">SyntaxHighlighter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.SyntaxHighlighter.syntaxes"><code class="docutils literal notranslate"><span class="pre">SyntaxHighlighter.syntaxes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.SyntaxHighlighter.syntax"><code class="docutils literal notranslate"><span class="pre">SyntaxHighlighter.syntax</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.SyntaxHighlighter.register_highlighter"><code class="docutils literal notranslate"><span class="pre">SyntaxHighlighter.register_highlighter()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.SyntaxHighlighter.get_highlighter"><code class="docutils literal notranslate"><span class="pre">SyntaxHighlighter.get_highlighter()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.SyntaxHighlighter.highlight"><code class="docutils literal notranslate"><span class="pre">SyntaxHighlighter.highlight()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#markdown-ast">Markdown AST</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.AstBase"><code class="docutils literal notranslate"><span class="pre">AstBase</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.AstBase.dump"><code class="docutils literal notranslate"><span class="pre">AstBase.dump()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.Text"><code class="docutils literal notranslate"><span class="pre">Text</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.Text.lines"><code class="docutils literal notranslate"><span class="pre">Text.lines</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.Text.dump"><code class="docutils literal notranslate"><span class="pre">Text.dump()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.Container"><code class="docutils literal notranslate"><span class="pre">Container</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.Container.items"><code class="docutils literal notranslate"><span class="pre">Container.items</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.Container.dump"><code class="docutils literal notranslate"><span class="pre">Container.dump()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.Document"><code class="docutils literal notranslate"><span class="pre">Document</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.ThematicBreak"><code class="docutils literal notranslate"><span class="pre">ThematicBreak</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.Heading"><code class="docutils literal notranslate"><span class="pre">Heading</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.Heading.level"><code class="docutils literal notranslate"><span class="pre">Heading.level</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.Paragraph"><code class="docutils literal notranslate"><span class="pre">Paragraph</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.Quote"><code class="docutils literal notranslate"><span class="pre">Quote</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.Code"><code class="docutils literal notranslate"><span class="pre">Code</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.Code.syntax"><code class="docutils literal notranslate"><span class="pre">Code.syntax</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.ListItem"><code class="docutils literal notranslate"><span class="pre">ListItem</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.md.ListItem.number"><code class="docutils literal notranslate"><span class="pre">ListItem.number</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.md.List"><code class="docutils literal notranslate"><span class="pre">List</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="term.html">Term</a></li>
 <li class="toctree-l1"><a class="reference internal" href="theme.html">Theme</a></li>
 <li class="toctree-l1"><a class="reference internal" href="widget.html">Widget</a></li>
@@ -86,8 +144,271 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="md">
-<h1>Md<a class="headerlink" href="#md" title="Permalink to this heading"></a></h1>
+  <section id="module-yuio.md">
+<span id="md"></span><h1>Md<a class="headerlink" href="#module-yuio.md" title="Permalink to this heading"></a></h1>
+<p>Yuio’s primary format for higher-level io is Markdown (well, a reasonably rich subset
+of it).</p>
+<section id="formatting-markdown">
+<h2>Formatting markdown<a class="headerlink" href="#formatting-markdown" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.MdFormatter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">MdFormatter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_headings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#MdFormatter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.MdFormatter" title="Permalink to this definition"></a></dt>
+<dd><p>A simple markdown formatter suitable for displaying reach text in the terminal.</p>
+<p>All CommonMark block markup is supported:</p>
+<ul>
+<li><p>headings:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span><span class="gh"># Heading 1</span>
+<span class="gu">## Heading 2</span>
+</pre></div>
+</div>
+<p>Yuio has only two levels of headings. Headings past level two will look the same
+as level two headings (you can adjust theme to change this).</p>
+<p>If <cite>allow_headings</cite> is set to false, headings look like paragraphs.</p>
+</li>
+<li><p>lists, numbered lists, quotes:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span><span class="k">-</span><span class="w"> </span> List item 1,
+<span class="k">-</span><span class="w"> </span> list item 2.
+
+<span class="k">1.</span> Numbered list item 1,
+<span class="k">1.</span> numbered list item 2.
+
+<span class="k">&gt; </span><span class="ge">Quoted text.</span>
+</pre></div>
+</div>
+</li>
+<li><p>fenced code blocks with minimal syntax highlighting
+(see <a class="reference internal" href="#yuio.md.SyntaxHighlighter" title="yuio.md.SyntaxHighlighter"><code class="xref py py-class docutils literal notranslate"><span class="pre">SyntaxHighlighter</span></code></a>):</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span><span class="sb">```python</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span>
+       <span class="sa">f</span><span class="s2">&quot;Hello, world! &quot;</span>
+       <span class="s2">&quot;This is </span><span class="si">{i}</span><span class="s2">th day past the apocalypse.&quot;</span>
+   <span class="p">)</span>
+<span class="sb">```</span>
+</pre></div>
+</div>
+<p>Yuio supports <code class="docutils literal notranslate"><span class="pre">python</span></code>, <code class="docutils literal notranslate"><span class="pre">traceback</span></code>, and <code class="docutils literal notranslate"><span class="pre">bash</span></code> syntaxes.</p>
+</li>
+</ul>
+<p>Inline markdown only handles inline code blocks:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>This is <span class="sb">`code`</span>. It will be rendered as code.
+Other inline styles, such as <span class="ge">_italic_</span>, are not supported!
+</pre></div>
+</div>
+<p>However, color tags are supported, so you can highlight text as follows:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>This is &lt;c b&gt;bold text&lt;/c&gt;. It will be rendered bold.
+</pre></div>
+</div>
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.md.MdFormatter.width">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">width</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#yuio.md.MdFormatter.width" title="Permalink to this definition"></a></dt>
+<dd><p>Target width for soft-wrapping text.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.MdFormatter.format">
+<span class="sig-name descname"><span class="pre">format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></span><a class="reference internal" href="_modules/yuio/md.html#MdFormatter.format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.MdFormatter.format" title="Permalink to this definition"></a></dt>
+<dd><p>Format a markdown document.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.MdFormatter.parse">
+<span class="sig-name descname"><span class="pre">parse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.md.AstBase" title="yuio.md.AstBase"><span class="pre">AstBase</span></a></span></span><a class="reference internal" href="_modules/yuio/md.html#MdFormatter.parse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.MdFormatter.parse" title="Permalink to this definition"></a></dt>
+<dd><p>Parse a markdown document and return an AST node.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This is an experimental API which can change within a minor release.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.MdFormatter.format_node">
+<span class="sig-name descname"><span class="pre">format_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.md.AstBase" title="yuio.md.AstBase"><span class="pre">AstBase</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></span><a class="reference internal" href="_modules/yuio/md.html#MdFormatter.format_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.MdFormatter.format_node" title="Permalink to this definition"></a></dt>
+<dd><p>Format a parsed markdown document.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This is an experimental API which can change within a minor release.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.MdFormatter.colorize">
+<span class="sig-name descname"><span class="pre">colorize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Color(fore=None,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#MdFormatter.colorize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.MdFormatter.colorize" title="Permalink to this definition"></a></dt>
+<dd><p>Parse and colorize contents of a paragraph.</p>
+<p>Apply <code class="docutils literal notranslate"><span class="pre">default_color</span></code> to the entire paragraph, and process color tags
+and backticks within it.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="highlighting-code">
+<h2>Highlighting code<a class="headerlink" href="#highlighting-code" title="Permalink to this heading"></a></h2>
+<p>Yuio supports basic code highlighting; it is just enough to format help messages
+for CLI, and color tracebacks when an error occurs.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.SyntaxHighlighter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">SyntaxHighlighter</span></span><a class="reference internal" href="_modules/yuio/md.html#SyntaxHighlighter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.SyntaxHighlighter" title="Permalink to this definition"></a></dt>
+<dd><dl class="py property">
+<dt class="sig sig-object py" id="yuio.md.SyntaxHighlighter.syntaxes">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">syntaxes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yuio.md.SyntaxHighlighter.syntaxes" title="Permalink to this definition"></a></dt>
+<dd><p>List of syntax names that should be associated with this highlighter.</p>
+<p>The first name in this list is a canonical syntax name,
+i.e. it will be used to look up colors in a theme.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.md.SyntaxHighlighter.syntax">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">syntax</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#yuio.md.SyntaxHighlighter.syntax" title="Permalink to this definition"></a></dt>
+<dd><p>The primary syntax name for this highlighter.</p>
+<p>This name is used to look up colors in a theme.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.SyntaxHighlighter.register_highlighter">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">register_highlighter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">highlighter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.md.SyntaxHighlighter" title="yuio.md.SyntaxHighlighter"><span class="pre">SyntaxHighlighter</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#SyntaxHighlighter.register_highlighter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.SyntaxHighlighter.register_highlighter" title="Permalink to this definition"></a></dt>
+<dd><p>Register a highlighter in a global registry, and allow looking it up
+via the <a class="reference internal" href="#yuio.md.SyntaxHighlighter.get_highlighter" title="yuio.md.SyntaxHighlighter.get_highlighter"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_highlighter()</span></code></a> method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.SyntaxHighlighter.get_highlighter">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_highlighter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">syntax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.md.SyntaxHighlighter" title="yuio.md.SyntaxHighlighter"><span class="pre">SyntaxHighlighter</span></a></span></span><a class="reference internal" href="_modules/yuio/md.html#SyntaxHighlighter.get_highlighter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.SyntaxHighlighter.get_highlighter" title="Permalink to this definition"></a></dt>
+<dd><p>Look up highlighter by a syntax name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.SyntaxHighlighter.highlight">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">highlight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></span><a class="reference internal" href="_modules/yuio/md.html#SyntaxHighlighter.highlight"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.SyntaxHighlighter.highlight" title="Permalink to this definition"></a></dt>
+<dd><p>Highlight the given code using the given theme.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="markdown-ast">
+<h2>Markdown AST<a class="headerlink" href="#markdown-ast" title="Permalink to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This is an experimental API which can change within a minor release.</p>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.AstBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">AstBase</span></span><a class="reference internal" href="_modules/yuio/md.html#AstBase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.AstBase" title="Permalink to this definition"></a></dt>
+<dd><p>Base class for all AST nodes that represent parsed markdown document.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.AstBase.dump">
+<span class="sig-name descname"><span class="pre">dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/yuio/md.html#AstBase.dump"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.AstBase.dump" title="Permalink to this definition"></a></dt>
+<dd><p>Dump an AST node into a lisp-like text representation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.Text">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">Text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#Text"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Text" title="Permalink to this definition"></a></dt>
+<dd><p>Base class for all text-based AST nodes, i.e. paragraphs.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.md.Text.lines">
+<span class="sig-name descname"><span class="pre">lines</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yuio.md.Text.lines" title="Permalink to this definition"></a></dt>
+<dd><p>Text lines as parsed from the original document.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.Text.dump">
+<span class="sig-name descname"><span class="pre">dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/yuio/md.html#Text.dump"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Text.dump" title="Permalink to this definition"></a></dt>
+<dd><p>Dump an AST node into a lisp-like text representation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.Container">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">Container</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">TAst</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#Container"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Container" title="Permalink to this definition"></a></dt>
+<dd><p>Base class for all container-based AST nodes, i.e. list items or quotes.</p>
+<p>This class works as a list of items. Usually it contains arbitrary AST nodes,
+but it can also be limited to specific kinds of nodes via its generic variable.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.md.Container.items">
+<span class="sig-name descname"><span class="pre">items</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">TAst</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yuio.md.Container.items" title="Permalink to this definition"></a></dt>
+<dd><p>Inner AST nodes in the container.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.md.Container.dump">
+<span class="sig-name descname"><span class="pre">dump</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/yuio/md.html#Container.dump"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Container.dump" title="Permalink to this definition"></a></dt>
+<dd><p>Dump an AST node into a lisp-like text representation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.Document">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">Document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">TAst</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#Document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Document" title="Permalink to this definition"></a></dt>
+<dd><p>Root node that contains the entire markdown document.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.ThematicBreak">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">ThematicBreak</span></span><a class="reference internal" href="_modules/yuio/md.html#ThematicBreak"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.ThematicBreak" title="Permalink to this definition"></a></dt>
+<dd><p>Represents a visual break in text, a.k.a. an asterism.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.Heading">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">Heading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#Heading"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Heading" title="Permalink to this definition"></a></dt>
+<dd><p>Represents a heading.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.md.Heading.level">
+<span class="sig-name descname"><span class="pre">level</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#yuio.md.Heading.level" title="Permalink to this definition"></a></dt>
+<dd><p>Level of the heading, <cite>1</cite>-based.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.Paragraph">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">Paragraph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#Paragraph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Paragraph" title="Permalink to this definition"></a></dt>
+<dd><p>Represents a regular paragraph.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.Quote">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">Quote</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">TAst</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#Quote"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Quote" title="Permalink to this definition"></a></dt>
+<dd><p>Represents a quotation block.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.Code">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">Code</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syntax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#Code"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.Code" title="Permalink to this definition"></a></dt>
+<dd><p>Represents a highlighted block of code.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.md.Code.syntax">
+<span class="sig-name descname"><span class="pre">syntax</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#yuio.md.Code.syntax" title="Permalink to this definition"></a></dt>
+<dd><p>Syntax indicator as parsed form the original document.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.ListItem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">ListItem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">TAst</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#ListItem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.ListItem" title="Permalink to this definition"></a></dt>
+<dd><p>A possibly numbered element of a list.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.md.ListItem.number">
+<span class="sig-name descname"><span class="pre">number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="headerlink" href="#yuio.md.ListItem.number" title="Permalink to this definition"></a></dt>
+<dd><p>If present, this is the item’s number in a numbered list.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.md.List">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.md.</span></span><span class="sig-name descname"><span class="pre">List</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">items</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">TAst</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/md.html#List"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.md.List" title="Permalink to this definition"></a></dt>
+<dd><p>A collection of list items.</p>
+</dd></dl>
+
+</section>
 </section>
 
 

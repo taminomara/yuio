@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Widget &mdash; Yuio 0.1.dev1+g864483c documentation</title>
+  <title>Widget &mdash; Yuio 0.1.dev1+gf68526f documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
@@ -35,7 +35,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g864483c
+                0.1.dev1+gf68526f
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -58,7 +58,115 @@
 <li class="toctree-l1"><a class="reference internal" href="md.html">Md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="term.html">Term</a></li>
 <li class="toctree-l1"><a class="reference internal" href="theme.html">Theme</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Widget</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Widget</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#widget-basics">Widget basics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Widget"><code class="docutils literal notranslate"><span class="pre">Widget</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.event"><code class="docutils literal notranslate"><span class="pre">Widget.event()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.default_event_handler"><code class="docutils literal notranslate"><span class="pre">Widget.default_event_handler()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.layout"><code class="docutils literal notranslate"><span class="pre">Widget.layout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.draw"><code class="docutils literal notranslate"><span class="pre">Widget.draw()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.run"><code class="docutils literal notranslate"><span class="pre">Widget.run()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.with_title"><code class="docutils literal notranslate"><span class="pre">Widget.with_title()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.with_help"><code class="docutils literal notranslate"><span class="pre">Widget.with_help()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.help_widget"><code class="docutils literal notranslate"><span class="pre">Widget.help_widget</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Widget.help_columns"><code class="docutils literal notranslate"><span class="pre">Widget.help_columns</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Result"><code class="docutils literal notranslate"><span class="pre">Result</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Result.value"><code class="docutils literal notranslate"><span class="pre">Result.value</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.bind"><code class="docutils literal notranslate"><span class="pre">bind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.help_column"><code class="docutils literal notranslate"><span class="pre">help_column()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Key"><code class="docutils literal notranslate"><span class="pre">Key</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.ENTER"><code class="docutils literal notranslate"><span class="pre">Key.ENTER</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.ESCAPE"><code class="docutils literal notranslate"><span class="pre">Key.ESCAPE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.DELETE"><code class="docutils literal notranslate"><span class="pre">Key.DELETE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.BACKSPACE"><code class="docutils literal notranslate"><span class="pre">Key.BACKSPACE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.TAB"><code class="docutils literal notranslate"><span class="pre">Key.TAB</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.SHIFT_TAB"><code class="docutils literal notranslate"><span class="pre">Key.SHIFT_TAB</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.HOME"><code class="docutils literal notranslate"><span class="pre">Key.HOME</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.END"><code class="docutils literal notranslate"><span class="pre">Key.END</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.PAGE_UP"><code class="docutils literal notranslate"><span class="pre">Key.PAGE_UP</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.PAGE_DOWN"><code class="docutils literal notranslate"><span class="pre">Key.PAGE_DOWN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.ARROW_UP"><code class="docutils literal notranslate"><span class="pre">Key.ARROW_UP</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.ARROW_DOWN"><code class="docutils literal notranslate"><span class="pre">Key.ARROW_DOWN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.ARROW_LEFT"><code class="docutils literal notranslate"><span class="pre">Key.ARROW_LEFT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Key.ARROW_RIGHT"><code class="docutils literal notranslate"><span class="pre">Key.ARROW_RIGHT</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.KeyboardEvent"><code class="docutils literal notranslate"><span class="pre">KeyboardEvent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.KeyboardEvent.key"><code class="docutils literal notranslate"><span class="pre">KeyboardEvent.key</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.KeyboardEvent.ctrl"><code class="docutils literal notranslate"><span class="pre">KeyboardEvent.ctrl</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.KeyboardEvent.alt"><code class="docutils literal notranslate"><span class="pre">KeyboardEvent.alt</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#drawing-and-rendering-widgets">Drawing and rendering widgets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.RenderContext"><code class="docutils literal notranslate"><span class="pre">RenderContext</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.term"><code class="docutils literal notranslate"><span class="pre">RenderContext.term</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.theme"><code class="docutils literal notranslate"><span class="pre">RenderContext.theme</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.frame"><code class="docutils literal notranslate"><span class="pre">RenderContext.frame()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.width"><code class="docutils literal notranslate"><span class="pre">RenderContext.width</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.height"><code class="docutils literal notranslate"><span class="pre">RenderContext.height</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.set_pos"><code class="docutils literal notranslate"><span class="pre">RenderContext.set_pos()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.move_pos"><code class="docutils literal notranslate"><span class="pre">RenderContext.move_pos()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.new_line"><code class="docutils literal notranslate"><span class="pre">RenderContext.new_line()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.set_final_pos"><code class="docutils literal notranslate"><span class="pre">RenderContext.set_final_pos()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.set_color_path"><code class="docutils literal notranslate"><span class="pre">RenderContext.set_color_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.set_color"><code class="docutils literal notranslate"><span class="pre">RenderContext.set_color()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.reset_color"><code class="docutils literal notranslate"><span class="pre">RenderContext.reset_color()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.write"><code class="docutils literal notranslate"><span class="pre">RenderContext.write()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.write_text"><code class="docutils literal notranslate"><span class="pre">RenderContext.write_text()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.bell"><code class="docutils literal notranslate"><span class="pre">RenderContext.bell()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.prepare"><code class="docutils literal notranslate"><span class="pre">RenderContext.prepare()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.clear_screen"><code class="docutils literal notranslate"><span class="pre">RenderContext.clear_screen()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.render"><code class="docutils literal notranslate"><span class="pre">RenderContext.render()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.RenderContext.finalize"><code class="docutils literal notranslate"><span class="pre">RenderContext.finalize()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#stacking-widgets-together">Stacking widgets together</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.VerticalLayout"><code class="docutils literal notranslate"><span class="pre">VerticalLayout</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.VerticalLayout.append"><code class="docutils literal notranslate"><span class="pre">VerticalLayout.append()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.VerticalLayout.extend"><code class="docutils literal notranslate"><span class="pre">VerticalLayout.extend()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.VerticalLayout.event"><code class="docutils literal notranslate"><span class="pre">VerticalLayout.event()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.VerticalLayout.layout"><code class="docutils literal notranslate"><span class="pre">VerticalLayout.layout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.VerticalLayout.draw"><code class="docutils literal notranslate"><span class="pre">VerticalLayout.draw()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.VerticalLayoutBuilder"><code class="docutils literal notranslate"><span class="pre">VerticalLayoutBuilder</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.VerticalLayoutBuilder.add"><code class="docutils literal notranslate"><span class="pre">VerticalLayoutBuilder.add()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pre-defined-widgets">Pre-defined widgets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Line"><code class="docutils literal notranslate"><span class="pre">Line</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Text"><code class="docutils literal notranslate"><span class="pre">Text</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Input"><code class="docutils literal notranslate"><span class="pre">Input</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Choice"><code class="docutils literal notranslate"><span class="pre">Choice</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Option"><code class="docutils literal notranslate"><span class="pre">Option</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.InputWithCompletion"><code class="docutils literal notranslate"><span class="pre">InputWithCompletion</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.FilterableChoice"><code class="docutils literal notranslate"><span class="pre">FilterableChoice</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Map"><code class="docutils literal notranslate"><span class="pre">Map</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Apply"><code class="docutils literal notranslate"><span class="pre">Apply</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.widget.Help"><code class="docutils literal notranslate"><span class="pre">Help</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Help.ActionKey"><code class="docutils literal notranslate"><span class="pre">Help.ActionKey</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Help.ActionKeys"><code class="docutils literal notranslate"><span class="pre">Help.ActionKeys</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Help.Action"><code class="docutils literal notranslate"><span class="pre">Help.Action</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Help.Column"><code class="docutils literal notranslate"><span class="pre">Help.Column</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Help.layout"><code class="docutils literal notranslate"><span class="pre">Help.layout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Help.draw"><code class="docutils literal notranslate"><span class="pre">Help.draw()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.widget.Help.combine_columns"><code class="docutils literal notranslate"><span class="pre">Help.combine_columns()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -85,8 +193,830 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="widget">
-<h1>Widget<a class="headerlink" href="#widget" title="Permalink to this heading"></a></h1>
+  <section id="module-yuio.widget">
+<span id="widget"></span><h1>Widget<a class="headerlink" href="#module-yuio.widget" title="Permalink to this heading"></a></h1>
+<p>Basic blocks for building interactive elements.</p>
+<p>This is a low-level API module, upon which <a class="reference internal" href="io.html#module-yuio.io" title="yuio.io"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.io</span></code></a> builds
+its higher-level abstraction.</p>
+<section id="widget-basics">
+<h2>Widget basics<a class="headerlink" href="#widget-basics" title="Permalink to this heading"></a></h2>
+<p>All widgets are are derived from the <a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><code class="xref py py-class docutils literal notranslate"><span class="pre">Widget</span></code></a> class, where they implement
+event handlers, layout and rendering routines. Specifically,
+<a class="reference internal" href="#yuio.widget.Widget.layout" title="yuio.widget.Widget.layout"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Widget.layout()</span></code></a> and <a class="reference internal" href="#yuio.widget.Widget.draw" title="yuio.widget.Widget.draw"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Widget.draw()</span></code></a> are required to implement
+a widget.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Widget">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Widget</span></span><a class="reference internal" href="_modules/yuio/widget.html#Widget"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Widget" title="Permalink to this definition"></a></dt>
+<dd><p>Base class for all interactive console elements.</p>
+<p>Widgets are displayed with their <a class="reference internal" href="#yuio.widget.Widget.run" title="yuio.widget.Widget.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a> method.
+They always go through the same event loop:</p>
+digraph G {
+    node [ width=2; fixedsize=true; ];
+
+    start [ label=&quot;&quot;; shape=doublecircle; width=0.3; ];
+    layout [ label=&quot;Widget.layout()&quot;; shape=rect; ];
+    draw [ label=&quot;Widget.draw()&quot;; shape=rect; ];
+    wait [ label=&quot;&lt;wait for keyboard event&gt;&quot;; shape=plain; fixedsize=false; ];
+    event [ label=&quot;Widget.event()&quot;; shape=rect; ];
+    stop [ label=&quot;Result(...)?&quot;; shape=diamond; ];
+    end [ label=&quot;&quot;; shape=doublecircle; width=0.3; ];
+
+    start -&gt; layout;
+    layout -&gt; draw;
+    draw -&gt; wait [ arrowhead=none ];
+    wait -&gt; event;
+    event -&gt; stop;
+    stop:e -&gt; layout:e [ weight=0; taillabel=&quot;no&quot; ];
+    stop -&gt; end [ taillabel=&quot;yes&quot; ];
+}<p>Widgets run indefinitely until they stop themselves and return a value.
+For example, <a class="reference internal" href="#yuio.widget.Input" title="yuio.widget.Input"><code class="xref py py-class docutils literal notranslate"><span class="pre">Input</span></code></a> will return when user presses <cite>Enter</cite>.
+When widget needs to stop, it can return the <a class="reference internal" href="#yuio.widget.Result" title="yuio.widget.Result"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Result()</span></code></a> class
+from its event handler.</p>
+<p>For typing purposes, <a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><code class="xref py py-class docutils literal notranslate"><span class="pre">Widget</span></code></a> is generic. That is, <code class="docutils literal notranslate"><span class="pre">Widget[T]</span></code>
+returns <cite>T</cite> from its <a class="reference internal" href="#yuio.widget.Widget.run" title="yuio.widget.Widget.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a> method. So, <a class="reference internal" href="#yuio.widget.Input" title="yuio.widget.Input"><code class="xref py py-class docutils literal notranslate"><span class="pre">Input</span></code></a>,
+for example, is <code class="docutils literal notranslate"><span class="pre">Widget[str]</span></code>.</p>
+<p>Some widgets are <code class="docutils literal notranslate"><span class="pre">Widget[Never]</span></code> (see <code class="xref py py-class docutils literal notranslate"><span class="pre">typing.Never</span></code>), indicating that
+they don’t ever stop. Others are <code class="docutils literal notranslate"><span class="pre">Widget[None]</span></code>, indicating that they stop,
+but don’t return a value.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Widget.event">
+<span class="sig-name descname"><span class="pre">event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.widget.Result" title="yuio.widget.Result"><span class="pre">Result</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="_modules/yuio/widget.html#Widget.event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Widget.event" title="Permalink to this definition"></a></dt>
+<dd><p>Handle incoming keyboard event.</p>
+<p>By default, this function dispatches event to handlers registered
+via <a class="reference internal" href="#yuio.widget.bind" title="yuio.widget.bind"><code class="xref py py-func docutils literal notranslate"><span class="pre">bind()</span></code></a>. If no handler is found,
+it calls <a class="reference internal" href="#yuio.widget.Widget.default_event_handler" title="yuio.widget.Widget.default_event_handler"><code class="xref py py-meth docutils literal notranslate"><span class="pre">default_event_handler()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Widget.default_event_handler">
+<span class="sig-name descname"><span class="pre">default_event_handler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.widget.Result" title="yuio.widget.Result"><span class="pre">Result</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="_modules/yuio/widget.html#Widget.default_event_handler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Widget.default_event_handler" title="Permalink to this definition"></a></dt>
+<dd><p>Process any event that wasn’t caught by other event handlers.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Widget.layout">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">layout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.RenderContext" title="yuio.widget.RenderContext"><span class="pre">RenderContext</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/widget.html#Widget.layout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Widget.layout" title="Permalink to this definition"></a></dt>
+<dd><p>Prepare widget for drawing, and recalculate its dimensions
+according to new frame dimensions.</p>
+<p>Yuio’s widgets always take all available width. They should return
+their minimum height that they will definitely take, and their maximum
+height that they can potentially take.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Widget.draw">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.RenderContext" title="yuio.widget.RenderContext"><span class="pre">RenderContext</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Widget.draw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Widget.draw" title="Permalink to this definition"></a></dt>
+<dd><p>Draw the widget.</p>
+<p>Render context’s drawing frame dimensions are guaranteed to be between
+the minimum and the maximum height returned from the last call
+to <a class="reference internal" href="#yuio.widget.Widget.layout" title="yuio.widget.Widget.layout"><code class="xref py py-meth docutils literal notranslate"><span class="pre">layout()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Widget.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">term</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">T_co</span></span></span><a class="reference internal" href="_modules/yuio/widget.html#Widget.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Widget.run" title="Permalink to this definition"></a></dt>
+<dd><p>Read user input and run the widget.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Widget.with_title">
+<span class="sig-name descname"><span class="pre">with_title</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><span class="pre">Widget</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/widget.html#Widget.with_title"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Widget.with_title" title="Permalink to this definition"></a></dt>
+<dd><p>Return this widget with a title added before it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Widget.with_help">
+<span class="sig-name descname"><span class="pre">with_help</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><span class="pre">Widget</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T_co</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/widget.html#Widget.with_help"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Widget.with_help" title="Permalink to this definition"></a></dt>
+<dd><p>Return this widget with a <a class="reference internal" href="#yuio.widget.Widget.help_widget" title="yuio.widget.Widget.help_widget"><code class="xref py py-meth docutils literal notranslate"><span class="pre">help_widget()</span></code></a> added after it.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.widget.Widget.help_widget">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">help_widget</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.Help" title="yuio.widget.Help"><span class="pre">Help</span></a></em><a class="headerlink" href="#yuio.widget.Widget.help_widget" title="Permalink to this definition"></a></dt>
+<dd><p>Help widget that you can show in your <code class="xref py py-meth docutils literal notranslate"><span class="pre">render()</span></code> method
+to display available hotkeys and actions.</p>
+<p>You can control contents of the help message by overriding
+<a class="reference internal" href="#yuio.widget.Widget.help_columns" title="yuio.widget.Widget.help_columns"><code class="xref py py-attr docutils literal notranslate"><span class="pre">help_columns</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.widget.Widget.help_columns">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">help_columns</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#yuio.widget.Widget.help_columns" title="Permalink to this definition"></a></dt>
+<dd><p>Columns for the <a class="reference internal" href="#yuio.widget.Help" title="yuio.widget.Help"><code class="xref py py-class docutils literal notranslate"><span class="pre">Help</span></code></a> widget.</p>
+<p>By default, columns are generated using docstrings from all
+event handlers that were registered using <a class="reference internal" href="#yuio.widget.bind" title="yuio.widget.bind"><code class="xref py py-func docutils literal notranslate"><span class="pre">bind()</span></code></a>.</p>
+<p>You can control this process by decorating your handlers
+with <a class="reference internal" href="#yuio.widget.help_column" title="yuio.widget.help_column"><code class="xref py py-func docutils literal notranslate"><span class="pre">help_column()</span></code></a>.</p>
+<p>You can also override this property to provide custom help data.
+Use <a class="reference internal" href="#yuio.widget.Help.combine_columns" title="yuio.widget.Help.combine_columns"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Help.combine_columns()</span></code></a> to add onto the default value:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyWidget</span><span class="p">(</span><span class="n">Widget</span><span class="p">):</span>
+    <span class="nd">@functools</span><span class="o">.</span><span class="n">cached_property</span>
+    <span class="k">def</span> <span class="nf">help_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Help</span><span class="o">.</span><span class="n">Column</span><span class="p">]:</span>
+        <span class="c1"># Add an item to the first column.</span>
+        <span class="k">return</span> <span class="n">Help</span><span class="o">.</span><span class="n">combine_columns</span><span class="p">(</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">help_columns</span><span class="p">,</span>
+            <span class="p">[</span>
+                <span class="p">[</span>
+                    <span class="p">([],</span> <span class="s2">&quot;start typing to filter values&quot;</span><span class="p">),</span>
+                <span class="p">],</span>
+            <span class="p">],</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Result">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">T_co</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Result" title="Permalink to this definition"></a></dt>
+<dd><p>Result of a widget run.</p>
+<p>We have to wrap the return value of event processors into this class.
+Otherwise we won’t be able to distinguish between returning <cite>None</cite>
+as result of a <code class="docutils literal notranslate"><span class="pre">Widget[None]</span></code>, and not returning anything.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Result.value">
+<span class="sig-name descname"><span class="pre">value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">T_co</span></em><a class="headerlink" href="#yuio.widget.Result.value" title="Permalink to this definition"></a></dt>
+<dd><p>Result of a widget run.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.widget.bind">
+<span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">bind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ctrl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_in_help</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/widget.html#bind"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.bind" title="Permalink to this definition"></a></dt>
+<dd><p>Register an event handler for a widget.</p>
+<p>Widget’s methods can be registered as handlers for keyboard events.
+When a new event comes in, it is checked to match arguments of this decorator.
+If there is a match, the decorated method is called
+instead of the <a class="reference internal" href="#yuio.widget.Widget.default_event_handler" title="yuio.widget.Widget.default_event_handler"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Widget.default_event_handler()</span></code></a>.</p>
+<p>If <cite>show_in_help</cite> is <a class="reference external" href="https://docs.python.org/3/library/constants.html#False" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">False</span></code></a>, this binding will be hidden
+in the automatically generated help message.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyWidget</span><span class="p">(</span><span class="n">Widget</span><span class="p">):</span>
+    <span class="nd">@bind</span><span class="p">(</span><span class="n">Key</span><span class="o">.</span><span class="n">ENTER</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">enter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># all `ENTER` events go here.</span>
+        <span class="o">...</span>
+
+    <span class="k">def</span> <span class="nf">default_event_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="n">KeyboardEvent</span><span class="p">):</span>
+        <span class="c1"># all non-`ENTER` events go here (including `ALT+ENTER`).</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.widget.help_column">
+<span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">help_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/widget.html#help_column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.help_column" title="Permalink to this definition"></a></dt>
+<dd><p>Set index of help column for a bound event handler.</p>
+<p>This decorator controls automatic generation of help messages for a widget.
+Specifically, it controls column in which an item will be placed,
+allowing to stack multiple event handlers together.
+All bound event handlers that don’t have an explicit column index
+will end up after the elements that do.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyWidget</span><span class="p">(</span><span class="n">Widget</span><span class="p">):</span>
+    <span class="nd">@bind</span><span class="p">(</span><span class="n">Key</span><span class="o">.</span><span class="n">ENTER</span><span class="p">)</span>
+    <span class="nd">@help_column</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">enter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;help message&quot;&quot;&quot;</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Key">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Key" title="Permalink to this definition"></a></dt>
+<dd><p>Non-character keys.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.ENTER">
+<span class="sig-name descname"><span class="pre">ENTER</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#yuio.widget.Key.ENTER" title="Permalink to this definition"></a></dt>
+<dd><p><cite>Enter</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.ESCAPE">
+<span class="sig-name descname"><span class="pre">ESCAPE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#yuio.widget.Key.ESCAPE" title="Permalink to this definition"></a></dt>
+<dd><p><cite>Escape</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.DELETE">
+<span class="sig-name descname"><span class="pre">DELETE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#yuio.widget.Key.DELETE" title="Permalink to this definition"></a></dt>
+<dd><p><cite>Delete</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.BACKSPACE">
+<span class="sig-name descname"><span class="pre">BACKSPACE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#yuio.widget.Key.BACKSPACE" title="Permalink to this definition"></a></dt>
+<dd><p><cite>Backspace</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.TAB">
+<span class="sig-name descname"><span class="pre">TAB</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#yuio.widget.Key.TAB" title="Permalink to this definition"></a></dt>
+<dd><p><cite>Tab</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.SHIFT_TAB">
+<span class="sig-name descname"><span class="pre">SHIFT_TAB</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">6</span></em><a class="headerlink" href="#yuio.widget.Key.SHIFT_TAB" title="Permalink to this definition"></a></dt>
+<dd><p><cite>Tab</cite> key with <cite>Shift</cite> modifier.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.HOME">
+<span class="sig-name descname"><span class="pre">HOME</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">7</span></em><a class="headerlink" href="#yuio.widget.Key.HOME" title="Permalink to this definition"></a></dt>
+<dd><p><cite>Home</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.END">
+<span class="sig-name descname"><span class="pre">END</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#yuio.widget.Key.END" title="Permalink to this definition"></a></dt>
+<dd><p><cite>End</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.PAGE_UP">
+<span class="sig-name descname"><span class="pre">PAGE_UP</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">9</span></em><a class="headerlink" href="#yuio.widget.Key.PAGE_UP" title="Permalink to this definition"></a></dt>
+<dd><p><cite>PageUp</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.PAGE_DOWN">
+<span class="sig-name descname"><span class="pre">PAGE_DOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10</span></em><a class="headerlink" href="#yuio.widget.Key.PAGE_DOWN" title="Permalink to this definition"></a></dt>
+<dd><p><cite>PageDown</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.ARROW_UP">
+<span class="sig-name descname"><span class="pre">ARROW_UP</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">11</span></em><a class="headerlink" href="#yuio.widget.Key.ARROW_UP" title="Permalink to this definition"></a></dt>
+<dd><p><cite>ArrowUp</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.ARROW_DOWN">
+<span class="sig-name descname"><span class="pre">ARROW_DOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">12</span></em><a class="headerlink" href="#yuio.widget.Key.ARROW_DOWN" title="Permalink to this definition"></a></dt>
+<dd><p><cite>ArrowDown</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.ARROW_LEFT">
+<span class="sig-name descname"><span class="pre">ARROW_LEFT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">13</span></em><a class="headerlink" href="#yuio.widget.Key.ARROW_LEFT" title="Permalink to this definition"></a></dt>
+<dd><p><cite>ArrowLeft</cite> key.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Key.ARROW_RIGHT">
+<span class="sig-name descname"><span class="pre">ARROW_RIGHT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">14</span></em><a class="headerlink" href="#yuio.widget.Key.ARROW_RIGHT" title="Permalink to this definition"></a></dt>
+<dd><p><cite>ArrowRight</cite> key.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.KeyboardEvent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">KeyboardEvent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ctrl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#KeyboardEvent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.KeyboardEvent" title="Permalink to this definition"></a></dt>
+<dd><p>A single keyboard event.</p>
+<p>Note that we don’t have separate flag for when <cite>Shift</cite> was pressed with keystroke
+because that results in <a class="reference internal" href="#yuio.widget.KeyboardEvent.key" title="yuio.widget.KeyboardEvent.key"><code class="xref py py-attr docutils literal notranslate"><span class="pre">key</span></code></a> being a capital letter.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.KeyboardEvent.key">
+<span class="sig-name descname"><span class="pre">key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#yuio.widget.KeyboardEvent.key" title="Permalink to this definition"></a></dt>
+<dd><p>Which key was pressed? Can be a single character,
+or a <a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><code class="xref py py-class docutils literal notranslate"><span class="pre">Key</span></code></a> for non-character keys.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.KeyboardEvent.ctrl">
+<span class="sig-name descname"><span class="pre">ctrl</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.widget.KeyboardEvent.ctrl" title="Permalink to this definition"></a></dt>
+<dd><p>Whether a <cite>Ctrl</cite> modifier was pressed with keystroke.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.KeyboardEvent.alt">
+<span class="sig-name descname"><span class="pre">alt</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="headerlink" href="#yuio.widget.KeyboardEvent.alt" title="Permalink to this definition"></a></dt>
+<dd><p>Whether an <cite>Alt</cite> (<cite>Option</cite> on macs) modifier was pressed with keystroke.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="drawing-and-rendering-widgets">
+<h2>Drawing and rendering widgets<a class="headerlink" href="#drawing-and-rendering-widgets" title="Permalink to this heading"></a></h2>
+<p>Widgets are rendered through <a class="reference internal" href="#yuio.widget.RenderContext" title="yuio.widget.RenderContext"><code class="xref py py-class docutils literal notranslate"><span class="pre">RenderContext</span></code></a>. It provides simple facilities
+to print characters on screen and manipulate screen cursor.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">RenderContext</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">term</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext" title="Permalink to this definition"></a></dt>
+<dd><p>A canvas onto which widgets render themselves.</p>
+<p>This class represents a canvas with size equal to the available space on the terminal.
+Like a real terminal, it has a character grid and a virtual cursor that can be moved
+around freely.</p>
+<p>Before each render, context’s canvas is cleared, and then widgets print themselves onto it.
+When render ends, context compares new canvas with what’s been rendered previously,
+and then updates those parts of the real terminal’s grid that changed between renders.</p>
+<p>This approach allows simplifying widgets (they don’t have to track changes and do conditional
+screen updates themselves), while still minimizing the amount of data that’s sent between
+the program and the terminal. It is especially helpful with rendering larger widgets over ssh.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.term">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">term</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></em><a class="headerlink" href="#yuio.widget.RenderContext.term" title="Permalink to this definition"></a></dt>
+<dd><p>Terminal where we render the widgets.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.theme">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">theme</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a></em><a class="headerlink" href="#yuio.widget.RenderContext.theme" title="Permalink to this definition"></a></dt>
+<dd><p>Current color theme.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.frame">
+<span class="sig-name descname"><span class="pre">frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.frame"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.frame" title="Permalink to this definition"></a></dt>
+<dd><p>Override drawing frame.</p>
+<p>Widgets are always drawn in the frame’s top-left corner,
+and they can take the entire frame size.</p>
+<p>The idea is that, if you want to draw a widget at specific coordinates,
+you make a frame and draw the widget inside said frame.</p>
+<p>When new frame is created, cursor’s position and color are reset.
+When frame is dropped, they are restored.
+Therefore, drawing widgets in a frame will not affect current drawing state.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span> <span class="o">=</span> <span class="n">RenderContext</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">theme</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># By default, our frame is located at (0, 0)...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ...and spans the entire canvas.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">rc</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+<span class="go">20 5</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Let&#39;s write something at (4, 0).</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">set_pos</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Hello, world!&quot;</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Now we set our drawing frame to be at (2, 2).</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">rc</span><span class="o">.</span><span class="n">frame</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="c1"># Out current pos was reset to the frame&#39;s top-left corner,</span>
+<span class="gp">... </span>    <span class="c1"># which is now (2, 2).</span>
+<span class="gp">... </span>    <span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="c1"># Frame dimensions were automatically reduced.</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">rc</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="c1"># Set pos and all other functions work relative</span>
+<span class="gp">... </span>    <span class="c1"># to the current frame, so writing at (4, 0)</span>
+<span class="gp">... </span>    <span class="c1"># in the current frame will result in text at (6, 2).</span>
+<span class="gp">... </span>    <span class="n">rc</span><span class="o">.</span><span class="n">set_pos</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Hello, world!&quot;</span><span class="p">)</span>
+<span class="go">18 3</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>  
+<span class="go">+   Hello, world!</span>
+
+<span class="go">  +   Hello, world!</span>
+
+</pre></div>
+</div>
+<p>Usually you don’t have to think about frames. If you want to stack
+multiple widgets one on top of another, simply use <a class="reference internal" href="#yuio.widget.VerticalLayout" title="yuio.widget.VerticalLayout"><code class="xref py py-class docutils literal notranslate"><span class="pre">VerticalLayout</span></code></a>.
+In cases where it’s not enough though, you’ll have to call
+<a class="reference internal" href="#yuio.widget.Widget.layout" title="yuio.widget.Widget.layout"><code class="xref py py-meth docutils literal notranslate"><span class="pre">layout()</span></code></a> for each of the nested widgets, and then manually
+create frames and execute <a class="reference internal" href="#yuio.widget.Widget.draw" title="yuio.widget.Widget.draw"><code class="xref py py-meth docutils literal notranslate"><span class="pre">draw()</span></code></a> methods:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyWidget</span><span class="p">(</span><span class="n">Widget</span><span class="p">):</span>
+    <span class="c1"># Let&#39;s say we want to print a text indented by four spaces,</span>
+    <span class="c1"># and limit its with by 15. And we also want to print a small</span>
+    <span class="c1"># un-indented heading before it.</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># This is the text we&#39;ll print.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nested_widget</span> <span class="o">=</span> <span class="n">Text</span><span class="p">(</span>
+            <span class="s2">&quot;very long paragraph which &quot;</span>
+            <span class="s2">&quot;potentially can span multiple lines&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">layout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rc</span><span class="p">:</span> <span class="n">RenderContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+        <span class="c1"># The text will be placed at (4, 1), and we&#39;ll also limit</span>
+        <span class="c1"># its width. So we&#39;ll reflect those constrains</span>
+        <span class="c1"># by arranging a drawing frame.</span>
+        <span class="k">with</span> <span class="n">rc</span><span class="o">.</span><span class="n">frame</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">width</span> <span class="o">-</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">15</span><span class="p">)):</span>
+            <span class="n">min_h</span><span class="p">,</span> <span class="n">max_h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nested_widget</span><span class="o">.</span><span class="n">layout</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+
+        <span class="c1"># Our own widget will take as much space as the nested text,</span>
+        <span class="c1"># plus one line for our heading.</span>
+        <span class="k">return</span> <span class="n">min_h</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">max_h</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">draw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rc</span><span class="p">:</span> <span class="n">RenderContext</span><span class="p">):</span>
+        <span class="c1"># Print a small heading.</span>
+        <span class="n">rc</span><span class="o">.</span><span class="n">set_color_path</span><span class="p">(</span><span class="s2">&quot;bold&quot;</span><span class="p">)</span>
+        <span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Small heading&quot;</span><span class="p">)</span>
+
+        <span class="c1"># And draw our nested widget, controlling its position</span>
+        <span class="c1"># via a frame.</span>
+        <span class="k">with</span> <span class="n">rc</span><span class="o">.</span><span class="n">frame</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">width</span> <span class="o">-</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">15</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nested_widget</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.width">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">width</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#yuio.widget.RenderContext.width" title="Permalink to this definition"></a></dt>
+<dd><p>Get width of the current frame.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.height">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">height</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#yuio.widget.RenderContext.height" title="Permalink to this definition"></a></dt>
+<dd><p>Get height of the current frame.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.set_pos">
+<span class="sig-name descname"><span class="pre">set_pos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.set_pos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.set_pos" title="Permalink to this definition"></a></dt>
+<dd><p>Set current cursor position within the frame.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.move_pos">
+<span class="sig-name descname"><span class="pre">move_pos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.move_pos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.move_pos" title="Permalink to this definition"></a></dt>
+<dd><p>Move current cursor position by the given amount.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.new_line">
+<span class="sig-name descname"><span class="pre">new_line</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.new_line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.new_line" title="Permalink to this definition"></a></dt>
+<dd><p>Move cursor to new line within the current frame.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.set_final_pos">
+<span class="sig-name descname"><span class="pre">set_final_pos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.set_final_pos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.set_final_pos" title="Permalink to this definition"></a></dt>
+<dd><p>Set position where the cursor should end up
+after everything has been rendered.</p>
+<p>By default, cursor will end up at the beginning of the last line.
+Components such as <a class="reference internal" href="#yuio.widget.Input" title="yuio.widget.Input"><code class="xref py py-class docutils literal notranslate"><span class="pre">Input</span></code></a> can modify this behavior
+and move the cursor into the correct position.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.set_color_path">
+<span class="sig-name descname"><span class="pre">set_color_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.set_color_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.set_color_path" title="Permalink to this definition"></a></dt>
+<dd><p>Set current color by fetching it from the theme by path.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.set_color">
+<span class="sig-name descname"><span class="pre">set_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.set_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.set_color" title="Permalink to this definition"></a></dt>
+<dd><p>Set current color.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.reset_color">
+<span class="sig-name descname"><span class="pre">reset_color</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.reset_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.reset_color" title="Permalink to this definition"></a></dt>
+<dd><p>Set current color to the default color of the terminal.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.write" title="Permalink to this definition"></a></dt>
+<dd><p>Write string at the current position using the current color.
+Move cursor while printing.</p>
+<p>While the displayed text will not be clipped at frame’s borders,
+its width can be limited by passing <cite>max_width</cite>. Note that
+<code class="docutils literal notranslate"><span class="pre">rc.write(text,</span> <span class="pre">max_width)</span></code> is not the same
+as <code class="docutils literal notranslate"><span class="pre">rc.write(text[:max_width])</span></code>, because the later case
+doesn’t account for double-width characters.</p>
+<p>All whitespace characters in the text, including tabs and newlines,
+will be treated as single spaces. If you need to print multiline text,
+use <a class="reference internal" href="term.html#yuio.term.ColorizedString.wrap" title="yuio.term.ColorizedString.wrap"><code class="xref py py-meth docutils literal notranslate"><span class="pre">yuio.term.ColorizedString.wrap()</span></code></a> and <a class="reference internal" href="#yuio.widget.RenderContext.write_text" title="yuio.widget.RenderContext.write_text"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_text()</span></code></a>.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span> <span class="o">=</span> <span class="n">RenderContext</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">theme</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Hello, world!&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">new_line</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Hello,</span><span class="se">\n</span><span class="s2">world!&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">new_line</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s2">&quot;Hello, 🌍!&lt;this text will be clipped&gt;&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">max_width</span><span class="o">=</span><span class="mi">10</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">new_line</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s2">&quot;Hello, 🌍!&lt;this text will be clipped&gt;&quot;</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">new_line</span><span class="p">()</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>  
+<span class="go">Hello, world!</span>
+<span class="go">Hello, world!</span>
+<span class="go">Hello, 🌍!</span>
+<span class="go">Hello, 🌍!&lt;</span>
+</pre></div>
+</div>
+<p>Notice that <code class="docutils literal notranslate"><span class="pre">'\n'</span></code> on the second line was replaced with a space.
+Notice also that the last line wasn’t properly clipped.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.write_text">
+<span class="sig-name descname"><span class="pre">write_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.write_text"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.write_text" title="Permalink to this definition"></a></dt>
+<dd><p>Write multiple lines.</p>
+<p>Each line is printed using <a class="reference internal" href="#yuio.widget.RenderContext.write" title="yuio.widget.RenderContext.write"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write()</span></code></a>,
+so newline characters and tabs within each line are replaced with spaces.
+Use <a class="reference internal" href="term.html#yuio.term.ColorizedString.wrap" title="yuio.term.ColorizedString.wrap"><code class="xref py py-meth docutils literal notranslate"><span class="pre">yuio.term.ColorizedString.wrap()</span></code></a> to properly handle them.</p>
+<p>After each line, the cursor is moved one line down,
+and back to its original horizontal position.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span> <span class="o">=</span> <span class="n">RenderContext</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">theme</span><span class="p">)</span>  
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Cursor is at (0, 0).</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;+ &gt; &quot;</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># First line is printed at the cursor&#39;s position.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># All consequent lines are horizontally aligned with first line.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write_text</span><span class="p">([</span><span class="s2">&quot;Hello,&quot;</span><span class="p">,</span> <span class="s2">&quot;world!&quot;</span><span class="p">])</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Cursor is at the last line.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rc</span><span class="o">.</span><span class="n">render</span><span class="p">()</span>  
+<span class="go">+ &gt; Hello,</span>
+<span class="go">    world!+</span>
+
+
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.bell">
+<span class="sig-name descname"><span class="pre">bell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.bell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.bell" title="Permalink to this definition"></a></dt>
+<dd><p>Ring a terminal bell.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.prepare">
+<span class="sig-name descname"><span class="pre">prepare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">full_redraw</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.prepare"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.prepare" title="Permalink to this definition"></a></dt>
+<dd><p>Reset output canvas and prepare context for a new round of widget formatting.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.clear_screen">
+<span class="sig-name descname"><span class="pre">clear_screen</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.clear_screen"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.clear_screen" title="Permalink to this definition"></a></dt>
+<dd><p>Clear screen and prepare for a full redraw.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.render">
+<span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.render"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.render" title="Permalink to this definition"></a></dt>
+<dd><p>Render current canvas onto the terminal.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.RenderContext.finalize">
+<span class="sig-name descname"><span class="pre">finalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#RenderContext.finalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.RenderContext.finalize" title="Permalink to this definition"></a></dt>
+<dd><p>Erase any rendered widget and move cursor to the initial position.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="stacking-widgets-together">
+<h2>Stacking widgets together<a class="headerlink" href="#stacking-widgets-together" title="Permalink to this heading"></a></h2>
+<p>To get help with drawing multiple widgets and setting their own frames,
+you can use the <a class="reference internal" href="#yuio.widget.VerticalLayout" title="yuio.widget.VerticalLayout"><code class="xref py py-class docutils literal notranslate"><span class="pre">VerticalLayout</span></code></a> class:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.VerticalLayout">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">VerticalLayout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">widgets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><span class="pre">Widget</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.12)"><span class="pre">object</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#VerticalLayout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.VerticalLayout" title="Permalink to this definition"></a></dt>
+<dd><p>Helper class for stacking widgets together.</p>
+<p>You can stack your widgets together, then calculate their layout
+and draw them all at once.</p>
+<p>You can use this class as a helper component inside your own widgets,
+or you can use it as a standalone widget. See <a class="reference internal" href="#yuio.widget.VerticalLayoutBuilder" title="yuio.widget.VerticalLayoutBuilder"><code class="xref py py-class docutils literal notranslate"><span class="pre">VerticalLayoutBuilder</span></code></a>
+for an example.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.VerticalLayout.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">widget</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><span class="pre">Widget</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#VerticalLayout.append"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.VerticalLayout.append" title="Permalink to this definition"></a></dt>
+<dd><p>Add a widget to the end of the stack.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.VerticalLayout.extend">
+<span class="sig-name descname"><span class="pre">extend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">widgets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><span class="pre">Widget</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#VerticalLayout.extend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.VerticalLayout.extend" title="Permalink to this definition"></a></dt>
+<dd><p>Add multiple widgets to the end of the stack.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.VerticalLayout.event">
+<span class="sig-name descname"><span class="pre">event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.widget.Result" title="yuio.widget.Result"><span class="pre">Result</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="_modules/yuio/widget.html#VerticalLayout.event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.VerticalLayout.event" title="Permalink to this definition"></a></dt>
+<dd><p>Dispatch event to the widget that was added with <code class="docutils literal notranslate"><span class="pre">receive_events=True</span></code>.</p>
+<p>See <a class="reference internal" href="#yuio.widget.VerticalLayoutBuilder" title="yuio.widget.VerticalLayoutBuilder"><code class="xref py py-class docutils literal notranslate"><span class="pre">VerticalLayoutBuilder</span></code></a> for details.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.VerticalLayout.layout">
+<span class="sig-name descname"><span class="pre">layout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.RenderContext" title="yuio.widget.RenderContext"><span class="pre">RenderContext</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/widget.html#VerticalLayout.layout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.VerticalLayout.layout" title="Permalink to this definition"></a></dt>
+<dd><p>Calculate layout of the entire stack.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.VerticalLayout.draw">
+<span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.RenderContext" title="yuio.widget.RenderContext"><span class="pre">RenderContext</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#VerticalLayout.draw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.VerticalLayout.draw" title="Permalink to this definition"></a></dt>
+<dd><p>Draw the stack according to the calculated layout and available height.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.VerticalLayoutBuilder">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">VerticalLayoutBuilder</span></span><a class="reference internal" href="_modules/yuio/widget.html#VerticalLayoutBuilder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.VerticalLayoutBuilder" title="Permalink to this definition"></a></dt>
+<dd><p>Builder for <a class="reference internal" href="#yuio.widget.VerticalLayout" title="yuio.widget.VerticalLayout"><code class="xref py py-class docutils literal notranslate"><span class="pre">VerticalLayout</span></code></a> that allows for precise control
+of keyboard events.</p>
+<p>By default, <a class="reference internal" href="#yuio.widget.VerticalLayout" title="yuio.widget.VerticalLayout"><code class="xref py py-class docutils literal notranslate"><span class="pre">VerticalLayout</span></code></a> does not handle incoming keyboard events.
+However, you can create <a class="reference internal" href="#yuio.widget.VerticalLayout" title="yuio.widget.VerticalLayout"><code class="xref py py-class docutils literal notranslate"><span class="pre">VerticalLayout</span></code></a> that forwards all keyboard events
+to a particular widget within the stack:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">widget</span> <span class="o">=</span> <span class="n">VerticalLayout</span><span class="o">.</span><span class="n">builder</span><span class="p">()</span> \
+    <span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Line</span><span class="p">(</span><span class="s2">&quot;Enter something:&quot;</span><span class="p">))</span> \
+    <span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Input</span><span class="p">(),</span> <span class="n">receive_events</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> \
+    <span class="o">.</span><span class="n">build</span><span class="p">()</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">widget</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">theme</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.VerticalLayoutBuilder.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">widget</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><span class="pre">Widget</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receive_events</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="_modules/yuio/widget.html#VerticalLayoutBuilder.add"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.VerticalLayoutBuilder.add" title="Permalink to this definition"></a></dt>
+<dd><p>Add a new widget to the bottom of the layout.</p>
+<p>If <cite>receive_events</cite> is <cite>True</cite>, all incoming events will be forwarded
+to the added widget. Only the latest widget added with <code class="docutils literal notranslate"><span class="pre">receive_events=True</span></code>
+will receive events.</p>
+<p>This method does not mutate the builder, but instead returns a new one.
+Use it with method chaining.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="pre-defined-widgets">
+<h2>Pre-defined widgets<a class="headerlink" href="#pre-defined-widgets" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Line">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Line" title="Permalink to this definition"></a></dt>
+<dd><p>A widget that prints a single line of text.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Text">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Text"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Text" title="Permalink to this definition"></a></dt>
+<dd><p>A widget that prints wrapped text.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Input">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">placeholder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'&gt;'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_multiline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Input"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Input" title="Permalink to this definition"></a></dt>
+<dd><p>An input box.</p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="_images/vhs-b2b894e8f400f9d9cbf52b52119d0f12e4a61a6c3fc3aa5518f925d819128cba.gif"><img alt="Demonstration of `Input` widget." src="_images/vhs-b2b894e8f400f9d9cbf52b52119d0f12e4a61a6c3fc3aa5518f925d819128cba.gif" style="width: 480.0px; height: 240.0px;" /></a>
+</figure>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Choice">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Choice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Option" title="yuio.widget.Option"><span class="pre">Option</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'&gt;'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Choice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Choice" title="Permalink to this definition"></a></dt>
+<dd><p>Allows choosing from pre-defined options.</p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="_images/vhs-9d8ef00bef74ef291be25093d9a449f9a6bb1ef59f7163536bcd2a78afe500d1.gif"><img alt="Demonstration of `Choice` widget." src="_images/vhs-9d8ef00bef74ef291be25093d9a449f9a6bb1ef59f7163536bcd2a78afe500d1.gif" style="width: 480.0px; height: 240.0px;" /></a>
+</figure>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Option">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Option</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">T_co</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_text_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_text_suffix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comment</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Option"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Option" title="Permalink to this definition"></a></dt>
+<dd><p>An option for the <a class="reference internal" href="#yuio.widget.Choice" title="yuio.widget.Choice"><code class="xref py py-class docutils literal notranslate"><span class="pre">Choice</span></code></a> widget.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.InputWithCompletion">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">InputWithCompletion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">completer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="complete.html#yuio.complete.Completer" title="yuio.complete.Completer"><span class="pre">Completer</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">placeholder</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'&gt;'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">completion_item_decoration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'&gt;'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#InputWithCompletion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.InputWithCompletion" title="Permalink to this definition"></a></dt>
+<dd><p>An input box with tab completion.</p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="_images/vhs-afd20851dddae17a7e60f70e195694540f5735c66221f8d07ed4c43ee07ed223.gif"><img alt="Demonstration of `InputWithCompletion` widget." src="_images/vhs-afd20851dddae17a7e60f70e195694540f5735c66221f8d07ed4c43ee07ed223.gif" style="width: 480.0px; height: 240.0px;" /></a>
+</figure>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.FilterableChoice">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">FilterableChoice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">options:</span> <span class="pre">~typing.List[~yuio.widget.Option[~yuio.widget.T]],</span> <span class="pre">/,</span> <span class="pre">*,</span> <span class="pre">mapper:</span> <span class="pre">~typing.Callable[[~yuio.widget.Option[~yuio.widget.T]],</span> <span class="pre">str]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">FilterableChoice.&lt;lambda&gt;&gt;,</span> <span class="pre">filter:</span> <span class="pre">~typing.Callable[[~yuio.widget.Option[~yuio.widget.T],</span> <span class="pre">str],</span> <span class="pre">bool]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">default_index:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#FilterableChoice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.FilterableChoice" title="Permalink to this definition"></a></dt>
+<dd><p>Allows choosing from pre-defined options, with search functionality.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Map">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><span class="pre">Widget</span></a><span class="p"><span class="pre">[</span></span><span class="pre">U</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">U</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Map" title="Permalink to this definition"></a></dt>
+<dd><p>A wrapper that maps result of the given widget using the given function.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Run `Input` widget, then parse user input as `int`.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">int_input</span> <span class="o">=</span> <span class="n">Map</span><span class="p">(</span><span class="n">Input</span><span class="p">(),</span> <span class="nb">int</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">int_input</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">theme</span><span class="p">)</span>
+<span class="go">10</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Apply">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.Widget" title="yuio.widget.Widget"><span class="pre">Widget</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Apply" title="Permalink to this definition"></a></dt>
+<dd><p>A wrapper that applies the given function to the result of a wrapped widget.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Run `Input` widget, then print its output before returning</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">print_output</span> <span class="o">=</span> <span class="n">Apply</span><span class="p">(</span><span class="n">Input</span><span class="p">(),</span> <span class="nb">print</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">print_output</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">theme</span><span class="p">)</span>
+<span class="go">foobar!</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span>
+<span class="go">&#39;foobar!&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.widget.Help">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.widget.</span></span><span class="sig-name descname"><span class="pre">Help</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Collection" title="(in Python v3.12)"><span class="pre">Collection</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Help"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Help" title="Permalink to this definition"></a></dt>
+<dd><p>Displays help messages.</p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="_images/vhs-8b6c356dd60ca46113404f090f34bf2c12444a4e5dbc9661b3df73010cb16f61.gif"><img alt="Demonstration of `Help` widget." src="_images/vhs-8b6c356dd60ca46113404f090f34bf2c12444a4e5dbc9661b3df73010cb16f61.gif" style="width: 480.0px; height: 240.0px;" /></a>
+</figure>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Help.ActionKey">
+<span class="sig-name descname"><span class="pre">ActionKey</span></span><a class="headerlink" href="#yuio.widget.Help.ActionKey" title="Permalink to this definition"></a></dt>
+<dd><p>A single key associated with an action.
+Can be either a hotkey or a string with an arbitrary description.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><code class="xref py py-class docutils literal notranslate"><span class="pre">Key</span></code></a>, <a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><code class="xref py py-class docutils literal notranslate"><span class="pre">KeyboardEvent</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Help.ActionKeys">
+<span class="sig-name descname"><span class="pre">ActionKeys</span></span><a class="headerlink" href="#yuio.widget.Help.ActionKeys" title="Permalink to this definition"></a></dt>
+<dd><p>A list of keys associated with an action.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference internal" href="#yuio.widget.Help.ActionKey" title="yuio.widget.Help.ActionKey"><code class="xref py py-class docutils literal notranslate"><span class="pre">Help.ActionKey</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference internal" href="#yuio.widget.Help.ActionKey" title="yuio.widget.Help.ActionKey"><code class="xref py py-class docutils literal notranslate"><span class="pre">Help.ActionKey</span></code></a>]]</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Help.Action">
+<span class="sig-name descname"><span class="pre">Action</span></span><a class="headerlink" href="#yuio.widget.Help.Action" title="Permalink to this definition"></a></dt>
+<dd><p>An action itself, i.e. a set of hotkeys and a description for them.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Union</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<a class="reference internal" href="#yuio.widget.Help.ActionKeys" title="yuio.widget.Help.ActionKeys"><code class="xref py py-class docutils literal notranslate"><span class="pre">Help.ActionKeys</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]]</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.widget.Help.Column">
+<span class="sig-name descname"><span class="pre">Column</span></span><a class="headerlink" href="#yuio.widget.Help.Column" title="Permalink to this definition"></a></dt>
+<dd><p>A single column of actions.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference internal" href="#yuio.widget.Help.Action" title="yuio.widget.Help.Action"><code class="xref py py-class docutils literal notranslate"><span class="pre">Help.Action</span></code></a>]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Help.layout">
+<span class="sig-name descname"><span class="pre">layout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.RenderContext" title="yuio.widget.RenderContext"><span class="pre">RenderContext</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/widget.html#Help.layout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Help.layout" title="Permalink to this definition"></a></dt>
+<dd><p>Prepare widget for drawing, and recalculate its dimensions
+according to new frame dimensions.</p>
+<p>Yuio’s widgets always take all available width. They should return
+their minimum height that they will definitely take, and their maximum
+height that they can potentially take.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Help.draw">
+<span class="sig-name descname"><span class="pre">draw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.widget.RenderContext" title="yuio.widget.RenderContext"><span class="pre">RenderContext</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/widget.html#Help.draw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Help.draw" title="Permalink to this definition"></a></dt>
+<dd><p>Draw the widget.</p>
+<p>Render context’s drawing frame dimensions are guaranteed to be between
+the minimum and the maximum height returned from the last call
+to <a class="reference internal" href="#yuio.widget.Widget.layout" title="yuio.widget.Widget.layout"><code class="xref py py-meth docutils literal notranslate"><span class="pre">layout()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.widget.Help.combine_columns">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">combine_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">columns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#yuio.widget.Key" title="yuio.widget.Key"><span class="pre">Key</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#yuio.widget.KeyboardEvent" title="yuio.widget.KeyboardEvent"><span class="pre">KeyboardEvent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/widget.html#Help.combine_columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.widget.Help.combine_columns" title="Permalink to this definition"></a></dt>
+<dd><p>Given multiple column lists, stack column contents on top of each other.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Help</span><span class="o">.</span><span class="n">combine_columns</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="s2">&quot;a1&quot;</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;b1&quot;</span><span class="p">]],</span>
+<span class="gp">... </span>    <span class="p">[[</span><span class="s2">&quot;a2&quot;</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;b2&quot;</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;c2&quot;</span><span class="p">]],</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[[&#39;a1&#39;, &#39;a2&#39;], [&#39;b1&#39;, &#39;b2&#39;], [&#39;c2&#39;]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
 </section>
 
 

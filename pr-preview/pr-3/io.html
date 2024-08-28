@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Io &mdash; Yuio 0.1.dev1+g864483c documentation</title>
+  <title>Io &mdash; Yuio 0.1.dev1+gf68526f documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
@@ -36,7 +36,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g864483c
+                0.1.dev1+gf68526f
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -47,7 +47,76 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Io</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Io</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.setup"><code class="docutils literal notranslate"><span class="pre">setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.get_term"><code class="docutils literal notranslate"><span class="pre">get_term()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.get_theme"><code class="docutils literal notranslate"><span class="pre">get_theme()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.wrap_streams"><code class="docutils literal notranslate"><span class="pre">wrap_streams()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.restore_streams"><code class="docutils literal notranslate"><span class="pre">restore_streams()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.streams_wrapped"><code class="docutils literal notranslate"><span class="pre">streams_wrapped()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.orig_stderr"><code class="docutils literal notranslate"><span class="pre">orig_stderr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.orig_stdout"><code class="docutils literal notranslate"><span class="pre">orig_stdout()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#printing-messages">Printing messages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.info"><code class="docutils literal notranslate"><span class="pre">info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.warning"><code class="docutils literal notranslate"><span class="pre">warning()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.success"><code class="docutils literal notranslate"><span class="pre">success()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.error"><code class="docutils literal notranslate"><span class="pre">error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.error_with_tb"><code class="docutils literal notranslate"><span class="pre">error_with_tb()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.heading"><code class="docutils literal notranslate"><span class="pre">heading()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.md"><code class="docutils literal notranslate"><span class="pre">md()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.br"><code class="docutils literal notranslate"><span class="pre">br()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.raw"><code class="docutils literal notranslate"><span class="pre">raw()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#coloring-the-output">Coloring the output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#customizing-colors-and-using-themes">Customizing colors and using themes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#indicating-progress">Indicating progress</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.Task"><code class="docutils literal notranslate"><span class="pre">Task</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.Task.progress"><code class="docutils literal notranslate"><span class="pre">Task.progress()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.Task.progress_size"><code class="docutils literal notranslate"><span class="pre">Task.progress_size()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.Task.progress_scale"><code class="docutils literal notranslate"><span class="pre">Task.progress_scale()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.Task.iter"><code class="docutils literal notranslate"><span class="pre">Task.iter()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.Task.comment"><code class="docutils literal notranslate"><span class="pre">Task.comment()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.Task.done"><code class="docutils literal notranslate"><span class="pre">Task.done()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.Task.error"><code class="docutils literal notranslate"><span class="pre">Task.error()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.Task.subtask"><code class="docutils literal notranslate"><span class="pre">Task.subtask()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#querying-user-input">Querying user input</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.ask"><code class="docutils literal notranslate"><span class="pre">ask()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.wait_for_user"><code class="docutils literal notranslate"><span class="pre">wait_for_user()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.edit"><code class="docutils literal notranslate"><span class="pre">edit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.detect_editor"><code class="docutils literal notranslate"><span class="pre">detect_editor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.UserIoError"><code class="docutils literal notranslate"><span class="pre">UserIoError</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#suspending-the-output">Suspending the output</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.SuspendLogging"><code class="docutils literal notranslate"><span class="pre">SuspendLogging</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.resume"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.resume()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.info"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.info()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.warning"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.warning()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.success"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.success()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.error"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.error()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.error_with_tb"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.error_with_tb()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.heading"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.heading()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.md"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.md()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.br"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.br()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.io.SuspendLogging.raw"><code class="docutils literal notranslate"><span class="pre">SuspendLogging.raw()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#python-s-logging-and-yuio">Python’s <cite>logging</cite> and yuio</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.io.Handler"><code class="docutils literal notranslate"><span class="pre">Handler</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="parse.html">Parse</a></li>
 <li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="app.html">App</a></li>
@@ -86,8 +155,513 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="io">
-<h1>Io<a class="headerlink" href="#io" title="Permalink to this heading"></a></h1>
+  <section id="module-yuio.io">
+<span id="io"></span><h1>Io<a class="headerlink" href="#module-yuio.io" title="Permalink to this heading"></a></h1>
+<p>This module implements user-friendly console input and output.</p>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this heading"></a></h2>
+<p>Yuio configures itself upon import using environment variables:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">FORCE_NO_COLORS</span></code>: disable colored output,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FORCE_COLORS</span></code>: enable colored output.</p></li>
+</ul>
+<p>The only thing it doesn’t do automatically is wrapping <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stdout" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stdout</span></code></a>
+and <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a> into safe proxies. The <a class="reference internal" href="app.html#module-yuio.app" title="yuio.app"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.app</span></code></a> CLI builder
+will do it for you, though, so you don’t need to worry about it.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.setup">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">term</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.12)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wrap_stdio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.setup" title="Permalink to this definition"></a></dt>
+<dd><p>Initial setup of the logging facilities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>term</strong> – <p>terminal that will be used for output.</p>
+<p>If not passed, the global terminal is not set up;
+the default is to use a term attached to <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a>.</p>
+</p></li>
+<li><p><strong>theme</strong> – <p>either a theme that will be used for output, or a theme constructor that takes
+a <a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><code class="xref py py-class docutils literal notranslate"><span class="pre">Term</span></code></a> and returns a theme.</p>
+<p>If not passed, the global theme is not set up; the default is to use
+<code class="xref py py-class docutils literal notranslate"><span class="pre">yuio.term.DefaultTheme</span></code> then.</p>
+</p></li>
+<li><p><strong>wrap_stdio</strong> – <p>if set to <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a>, wraps <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stdout" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stdout</span></code></a> and <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a>
+in a special wrapper that ensures better interaction
+with Yuio’s progress bars and widgets.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you’re working with some other library that wraps <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stdout" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stdout</span></code></a>
+and <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a>, such as <code class="xref py py-mod docutils literal notranslate"><span class="pre">colorama</span></code>, initialize it before Yuio.</p>
+</div>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p>To introspect the current state of Yuio’s initialization, use the following functions:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.get_term">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">get_term</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></span></span><a class="reference internal" href="_modules/yuio/io.html#get_term"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.get_term" title="Permalink to this definition"></a></dt>
+<dd><p>Get the global instance of <a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><code class="xref py py-class docutils literal notranslate"><span class="pre">Term</span></code></a> that is used
+with <a class="reference internal" href="#module-yuio.io" title="yuio.io"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.io</span></code></a>.</p>
+<p>If global setup wasn’t performed, this function implicitly performs it.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.get_theme">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">get_theme</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a></span></span><a class="reference internal" href="_modules/yuio/io.html#get_theme"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.get_theme" title="Permalink to this definition"></a></dt>
+<dd><p>Get the global instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">Theme</span></code>
+that is used with <a class="reference internal" href="#module-yuio.io" title="yuio.io"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.io</span></code></a>.</p>
+<p>If global setup wasn’t performed, this function implicitly performs it.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.wrap_streams">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">wrap_streams</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#wrap_streams"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.wrap_streams" title="Permalink to this definition"></a></dt>
+<dd><p>Wrap <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stdout" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stdout</span></code></a> and <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a> so that they honor
+Yuio tasks and widgets.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you’re working with some other library that wraps <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stdout" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stdout</span></code></a>
+and <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a>, such as <code class="xref py py-mod docutils literal notranslate"><span class="pre">colorama</span></code>, initialize it before Yuio.</p>
+</div>
+<p>See <a class="reference internal" href="#yuio.io.setup" title="yuio.io.setup"><code class="xref py py-func docutils literal notranslate"><span class="pre">setup()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.restore_streams">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">restore_streams</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#restore_streams"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.restore_streams" title="Permalink to this definition"></a></dt>
+<dd><p>Restore wrapped streams.</p>
+<p>See <a class="reference internal" href="#yuio.io.wrap_streams" title="yuio.io.wrap_streams"><code class="xref py py-func docutils literal notranslate"><span class="pre">wrap_streams()</span></code></a> and <a class="reference internal" href="#yuio.io.setup" title="yuio.io.setup"><code class="xref py py-func docutils literal notranslate"><span class="pre">setup()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.streams_wrapped">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">streams_wrapped</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="_modules/yuio/io.html#streams_wrapped"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.streams_wrapped" title="Permalink to this definition"></a></dt>
+<dd><p>Check if <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stdout" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stdout</span></code></a> and <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a> are wrapped.
+See <a class="reference internal" href="#yuio.io.setup" title="yuio.io.setup"><code class="xref py py-func docutils literal notranslate"><span class="pre">setup()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.orig_stderr">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">orig_stderr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TextIO" title="(in Python v3.12)"><span class="pre">TextIO</span></a></span></span><a class="reference internal" href="_modules/yuio/io.html#orig_stderr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.orig_stderr" title="Permalink to this definition"></a></dt>
+<dd><p>Return the original <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a> before wrapping.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.orig_stdout">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">orig_stdout</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TextIO" title="(in Python v3.12)"><span class="pre">TextIO</span></a></span></span><a class="reference internal" href="_modules/yuio/io.html#orig_stdout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.orig_stdout" title="Permalink to this definition"></a></dt>
+<dd><p>Return the original <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stdout" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stdout</span></code></a> before wrapping.</p>
+</dd></dl>
+
+</section>
+<section id="printing-messages">
+<h2>Printing messages<a class="headerlink" href="#printing-messages" title="Permalink to this heading"></a></h2>
+<p>To print messages for the user, use these functions:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.info">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.info" title="Permalink to this definition"></a></dt>
+<dd><p>Print an info message.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.warning">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">warning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#warning"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.warning" title="Permalink to this definition"></a></dt>
+<dd><p>Print a warning message.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.success">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">success</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#success"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.success" title="Permalink to this definition"></a></dt>
+<dd><p>Print a success message.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.error">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.error" title="Permalink to this definition"></a></dt>
+<dd><p>Print an error message.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.error_with_tb">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">error_with_tb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#error_with_tb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.error_with_tb" title="Permalink to this definition"></a></dt>
+<dd><p>Print an error message and capture the current exception.</p>
+<p>Call this function in the <cite>except</cite> clause of a <cite>try</cite> block
+or in an <cite>__exit__</cite> function of a context manager to attach
+current exception details to the log message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param<span class="colon">:</span></dt>
+<dd class="field-odd"><p>exc_info
+either a boolean indicating that the current exception
+should be captured (default is <a class="reference external" href="https://docs.python.org/3/library/constants.html#True" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">True</span></code></a>), or a tuple
+of three elements, as returned by <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.exc_info" title="(in Python v3.12)"><code class="xref py py-func docutils literal notranslate"><span class="pre">sys.exc_info()</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.heading">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">heading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#heading"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.heading" title="Permalink to this definition"></a></dt>
+<dd><p>Print a heading message.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.md">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">md</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#md"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.md" title="Permalink to this definition"></a></dt>
+<dd><p>Print a markdown-formatted text.</p>
+<p>Yuio supports all CommonMark block markup. Inline markup is limited
+to backticks and color tags.</p>
+<p>See <a class="reference internal" href="md.html#module-yuio.md" title="yuio.md"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.md</span></code></a> for more info.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.br">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">br</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#br"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.br" title="Permalink to this definition"></a></dt>
+<dd><p>Print an empty string.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.raw">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">raw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#raw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.raw" title="Permalink to this definition"></a></dt>
+<dd><p>Print a <a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColorizedString</span></code></a>.</p>
+<p>This is a bridge between <a class="reference internal" href="#module-yuio.io" title="yuio.io"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.io</span></code></a> and lower-level
+modules like <a class="reference internal" href="term.html#module-yuio.term" title="yuio.term"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.term</span></code></a>.</p>
+<p>In most cases, you won’t need this function. The only exception
+is when you need to build a <a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColorizedString</span></code></a>
+yourself.</p>
+</dd></dl>
+
+</section>
+<section id="coloring-the-output">
+<h2>Coloring the output<a class="headerlink" href="#coloring-the-output" title="Permalink to this heading"></a></h2>
+<p>By default, all messages are colored according to their level.</p>
+<p>If you need inline colors, you can use special tags in your log messages:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Using the &lt;c code&gt;code&lt;/c&gt; tag.&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can combine multiple colors in the same tag:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;&lt;c bold green&gt;Success!&lt;/c&gt;&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Only tags that appear in the message itself are processed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Tags in this message --&gt; </span><span class="si">%s</span><span class="s1"> are printed as-is&#39;</span><span class="p">,</span> <span class="s1">&#39;&lt;c color&gt;&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For highlighting inline code, Yuio supports parsing CommonMark’s backticks:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Using the `backticks`.&#39;</span><span class="p">)</span>
+<span class="n">info</span><span class="p">(</span><span class="s1">&#39;Using the `` nested `backticks` ``, like they do on GitHub!&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>List of all tags that are available by default:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">code</span></code>, <code class="docutils literal notranslate"><span class="pre">note</span></code>: highlights,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bold</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">dim</span></code>, <code class="docutils literal notranslate"><span class="pre">d</span></code>: font style,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">normal</span></code>, <code class="docutils literal notranslate"><span class="pre">black</span></code>, <code class="docutils literal notranslate"><span class="pre">red</span></code>, <code class="docutils literal notranslate"><span class="pre">green</span></code>, <code class="docutils literal notranslate"><span class="pre">yellow</span></code>, <code class="docutils literal notranslate"><span class="pre">blue</span></code>,
+<code class="docutils literal notranslate"><span class="pre">magenta</span></code>, <code class="docutils literal notranslate"><span class="pre">cyan</span></code>, <code class="docutils literal notranslate"><span class="pre">white</span></code>: colors.</p></li>
+</ul>
+</section>
+<section id="customizing-colors-and-using-themes">
+<h2>Customizing colors and using themes<a class="headerlink" href="#customizing-colors-and-using-themes" title="Permalink to this heading"></a></h2>
+<p>The <a class="reference internal" href="#yuio.io.setup" title="yuio.io.setup"><code class="xref py py-func docutils literal notranslate"><span class="pre">setup()</span></code></a> function accepts a <a class="reference internal" href="theme.html#yuio.theme.Theme" title="yuio.theme.Theme"><code class="xref py py-class docutils literal notranslate"><span class="pre">Theme</span></code></a> class.
+You can subclass it and supply custom colors, see <a class="reference internal" href="theme.html#module-yuio.theme" title="yuio.theme"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.theme</span></code></a>
+for more info.</p>
+</section>
+<section id="indicating-progress">
+<h2>Indicating progress<a class="headerlink" href="#indicating-progress" title="Permalink to this heading"></a></h2>
+<p>You can use the <a class="reference internal" href="#yuio.io.Task" title="yuio.io.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a> class to indicate status and progress
+of some task:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.io.Task">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">Task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_parent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#yuio.io.Task" title="yuio.io.Task"><span class="pre">Task</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#Task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task" title="Permalink to this definition"></a></dt>
+<dd><p>A class for indicating progress of some task.</p>
+<p>You can have multiple tasks at the same time,
+create subtasks, set task’s progress or add a comment about
+what’s currently being done within a task.</p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="_images/vhs-15bf65ba94c3ab5abe8c0725712b68c7896d44dd4d6f59f1cb74cee04ce56444.gif"><img alt="Demonstration of the `Task` class." src="_images/vhs-15bf65ba94c3ab5abe8c0725712b68c7896d44dd4d6f59f1cb74cee04ce56444.gif" style="width: 480.0px; height: 240.0px;" /></a>
+</figure>
+<p>This class can be used as a context manager:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Task</span><span class="p">(</span><span class="s1">&#39;Processing input&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">t</span><span class="p">:</span>
+    <span class="o">...</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.Task.progress">
+<span class="sig-name descname"><span class="pre">progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndigits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#Task.progress"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task.progress" title="Permalink to this definition"></a></dt>
+<dd><p>Indicate progress of this task.</p>
+<p>If given one argument, it is treated as percentage between <cite>0</cite> and <cite>1</cite>.</p>
+<p>If given two arguments, they are treated as amount of finished work,
+and a total amount of work. In this case, optional argument <cite>unit</cite>
+can be used to indicate units, in which amount is calculated:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Task</span><span class="p">(</span><span class="s2">&quot;Loading cargo&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">task</span><span class="p">:</span>
+    <span class="n">task</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="mi">110</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;Kg&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will print the following:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>■■■■■■■■■■■□□□□ Loading cargo - 110/150Kg
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.Task.progress_size">
+<span class="sig-name descname"><span class="pre">progress_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">done</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndigits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#Task.progress_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task.progress_size" title="Permalink to this definition"></a></dt>
+<dd><p>Indicate progress of this task using human-readable 1024-based size units.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Task</span><span class="p">(</span><span class="s2">&quot;Downloading a file&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">task</span><span class="p">:</span>
+    <span class="n">task</span><span class="o">.</span><span class="n">progress_size</span><span class="p">(</span><span class="mf">31.05</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="p">,</span> <span class="mi">150</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will print:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>■■■□□□□□□□□□□□□ Downloading a file - 31.05/150.00M
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.Task.progress_scale">
+<span class="sig-name descname"><span class="pre">progress_scale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">done</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndigits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#Task.progress_scale"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task.progress_scale" title="Permalink to this definition"></a></dt>
+<dd><p>Indicate progress of this task while scaling numbers in accordance
+with SI system.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">Task</span><span class="p">(</span><span class="s2">&quot;Charging a capacitor&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">task</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">task</span><span class="o">.</span><span class="n">progress_scale</span><span class="p">(</span><span class="mf">889.25E-3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;V&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will print:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>■■■■■■■■■■■■■□□ Charging a capacitor - 889.25mV/1.00V
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.Task.iter">
+<span class="sig-name descname"><span class="pre">iter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">collection</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Collection" title="(in Python v3.12)"><span class="pre">Collection</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.12)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/yuio/io.html#Task.iter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task.iter" title="Permalink to this definition"></a></dt>
+<dd><p>Helper for updating progress automatically
+while iterating over a collection.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Task</span><span class="p">(</span><span class="s1">&#39;Fetching data&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">t</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">iter</span><span class="p">(</span><span class="n">urls</span><span class="p">):</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>■■■■■□□□□□□□□□□ Fetching data - 1/3
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.Task.comment">
+<span class="sig-name descname"><span class="pre">comment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comment</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#Task.comment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task.comment" title="Permalink to this definition"></a></dt>
+<dd><p>Set a comment for a task.</p>
+<p>Comment is displayed after the progress.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Task</span><span class="p">(</span><span class="s1">&#39;Fetching data&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">t</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">urls</span><span class="p">:</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">comment</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>⣿ Fetching data - https://google.com
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.Task.done">
+<span class="sig-name descname"><span class="pre">done</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#Task.done"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task.done" title="Permalink to this definition"></a></dt>
+<dd><p>Indicate that this task has finished successfully.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.Task.error">
+<span class="sig-name descname"><span class="pre">error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#Task.error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task.error" title="Permalink to this definition"></a></dt>
+<dd><p>Indicate that this task has finished with an error.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.Task.subtask">
+<span class="sig-name descname"><span class="pre">subtask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.io.Task" title="yuio.io.Task"><span class="pre">Task</span></a></span></span><a class="reference internal" href="_modules/yuio/io.html#Task.subtask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Task.subtask" title="Permalink to this definition"></a></dt>
+<dd><p>Create a subtask within this task.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="querying-user-input">
+<h2>Querying user input<a class="headerlink" href="#querying-user-input" title="Permalink to this heading"></a></h2>
+<p>If you need to get something from the user, <a class="reference internal" href="#yuio.io.ask" title="yuio.io.ask"><code class="xref py py-func docutils literal notranslate"><span class="pre">ask()</span></code></a> is the way to do it.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.ask">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">ask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parser</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="parse.html#yuio.parse.Parser" title="yuio.parse.Parser"><span class="pre">Parser</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">_Placeholders.MISSING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secure_input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#yuio.io.ask" title="Permalink to this definition"></a></dt>
+<dd><p>Ask user to provide an input, parse it and return a value.</p>
+<p>If <cite>stdin</cite> is not readable, return default if one is present,
+or raise a <a class="reference internal" href="#yuio.io.UserIoError" title="yuio.io.UserIoError"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserIoError</span></code></a>.</p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="_images/vhs-cbe8d1203137b8923350269dcc04515e7e21fd0ff1a5984f5e5e972821307501.gif"><img alt="Demonstration of the `ask` function." src="_images/vhs-cbe8d1203137b8923350269dcc04515e7e21fd0ff1a5984f5e5e972821307501.gif" style="width: 480.0px; height: 240.0px;" /></a>
+</figure>
+<p><a class="reference internal" href="#yuio.io.ask" title="yuio.io.ask"><code class="xref py py-func docutils literal notranslate"><span class="pre">ask()</span></code></a> accepts generic parameters, which determine how input is parsed.
+For example, if you’re asking for an enum element,
+Yuio will show user a choice widget.</p>
+<p>You can also supply a custom <a class="reference internal" href="parse.html#yuio.parse.Parser" title="yuio.parse.Parser"><code class="xref py py-class docutils literal notranslate"><span class="pre">Parser</span></code></a>,
+which will determine the widget that is displayed to the user,
+the way auto completions work, etc.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Level</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">WARNING</span> <span class="o">=</span> <span class="s2">&quot;Warning&quot;</span><span class="p">,</span>
+    <span class="n">INFO</span> <span class="o">=</span> <span class="s2">&quot;Info&quot;</span><span class="p">,</span>
+    <span class="n">DEBUG</span> <span class="o">=</span> <span class="s2">&quot;Debug&quot;</span><span class="p">,</span>
+
+<span class="n">answer</span> <span class="o">=</span> <span class="n">ask</span><span class="p">[</span><span class="n">Level</span><span class="p">](</span><span class="s1">&#39;Choose a logging level&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">Level</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>msg</strong> – prompt to display to user.</p></li>
+<li><p><strong>args</strong> – arguments for prompt formatting.</p></li>
+<li><p><strong>parser</strong> – parser to use to parse user input. See <a class="reference internal" href="parse.html#module-yuio.parse" title="yuio.parse"><code class="xref py py-mod docutils literal notranslate"><span class="pre">yuio.parse</span></code></a> for more info.</p></li>
+<li><p><strong>default</strong> – default value to return if user input is empty.</p></li>
+<li><p><strong>input_description</strong> – description of the expected input, like <code class="docutils literal notranslate"><span class="pre">'yes/no'</span></code> for boolean
+inputs.</p></li>
+<li><p><strong>default_description</strong> – description of the <cite>default</cite> value.</p></li>
+<li><p><strong>secure_input</strong> – if enabled, treats input as password, and uses secure input methods.
+This option also hides errors from the parser, because they may contain
+user input.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.wait_for_user">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">wait_for_user</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Press</span> <span class="pre">&lt;c</span> <span class="pre">note&gt;enter&lt;/c&gt;</span> <span class="pre">to</span> <span class="pre">continue'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#wait_for_user"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.wait_for_user" title="Permalink to this definition"></a></dt>
+<dd><p>A simple function to wait for user to press enter.</p>
+<p>If <cite>stdin</cite> is not readable, does not do anything.</p>
+</dd></dl>
+
+<p>You can also prompt the user to edit something with the <a class="reference internal" href="#yuio.io.edit" title="yuio.io.edit"><code class="xref py py-func docutils literal notranslate"><span class="pre">edit()</span></code></a> function:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.edit">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">edit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comment_marker</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'#'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">editor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/yuio/io.html#edit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.edit" title="Permalink to this definition"></a></dt>
+<dd><p>Ask user to edit some text.</p>
+<p>This function creates a temporary file with the given text
+and opens it in an editor. After editing is done, it strips away
+all lines that start with <cite>comment_marker</cite>, if one is given.</p>
+<p>If editor is not available or returns a non-zero exit code,
+a <a class="reference internal" href="#yuio.io.UserIoError" title="yuio.io.UserIoError"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserIoError</span></code></a> is raised.</p>
+<p>If launched in a non-interactive environment, returns the text
+unedited (comments are still removed, though).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.io.detect_editor">
+<span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">detect_editor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="_modules/yuio/io.html#detect_editor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.detect_editor" title="Permalink to this definition"></a></dt>
+<dd><p>Detect the user’s preferred editor.</p>
+<p>This function checks the <code class="docutils literal notranslate"><span class="pre">EDITOR</span></code> environment variable.
+If it’s not found, it checks whether <code class="docutils literal notranslate"><span class="pre">nano</span></code> or <code class="docutils literal notranslate"><span class="pre">vi</span></code>
+are available. Otherwise, it returns <cite>None</cite>.</p>
+</dd></dl>
+
+<p>All of these functions throw a error if something goes wrong:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.io.UserIoError">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">UserIoError</span></span><a class="reference internal" href="_modules/yuio/io.html#UserIoError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.UserIoError" title="Permalink to this definition"></a></dt>
+<dd><p>Raised when interaction with user fails.</p>
+</dd></dl>
+
+</section>
+<section id="suspending-the-output">
+<h2>Suspending the output<a class="headerlink" href="#suspending-the-output" title="Permalink to this heading"></a></h2>
+<p>You can temporarily disable printing of tasks and messages
+using the <a class="reference internal" href="#yuio.io.SuspendLogging" title="yuio.io.SuspendLogging"><code class="xref py py-class docutils literal notranslate"><span class="pre">SuspendLogging</span></code></a> context manager.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">SuspendLogging</span></span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging" title="Permalink to this definition"></a></dt>
+<dd><p>A context manager for pausing log output.</p>
+<p>This is handy for when you need to take control over the output stream.
+For example, the <a class="reference internal" href="#yuio.io.ask" title="yuio.io.ask"><code class="xref py py-func docutils literal notranslate"><span class="pre">ask()</span></code></a> function uses this class internally.</p>
+<p>This context manager also suspends all prints that go to <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stdout" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stdout</span></code></a>
+and <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.stderr" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.stderr</span></code></a> if they were wrapped (see <a class="reference internal" href="#yuio.io.setup" title="yuio.io.setup"><code class="xref py py-func docutils literal notranslate"><span class="pre">setup()</span></code></a>).
+To print through them, use <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.__stdout__" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.__stdout__</span></code></a> and <a class="reference external" href="https://docs.python.org/3/library/sys.html#sys.__stderr__" title="(in Python v3.12)"><code class="xref py py-data docutils literal notranslate"><span class="pre">sys.__stderr__</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.resume">
+<span class="sig-name descname"><span class="pre">resume</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.resume"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.resume" title="Permalink to this definition"></a></dt>
+<dd><p>Manually resume the logging process.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.info">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.info" title="Permalink to this definition"></a></dt>
+<dd><p>Log an <a class="reference internal" href="#yuio.io.info" title="yuio.io.info"><code class="xref py py-func docutils literal notranslate"><span class="pre">info()</span></code></a> message, ignore suspended status.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.warning">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">warning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.warning"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.warning" title="Permalink to this definition"></a></dt>
+<dd><p>Log a <a class="reference internal" href="#yuio.io.warning" title="yuio.io.warning"><code class="xref py py-func docutils literal notranslate"><span class="pre">warning()</span></code></a> message, ignore suspended status.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.success">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">success</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.success"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.success" title="Permalink to this definition"></a></dt>
+<dd><p>Log a <a class="reference internal" href="#yuio.io.success" title="yuio.io.success"><code class="xref py py-func docutils literal notranslate"><span class="pre">success()</span></code></a> message, ignore suspended status.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.error">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.error" title="Permalink to this definition"></a></dt>
+<dd><p>Log an <a class="reference internal" href="#yuio.io.error" title="yuio.io.error"><code class="xref py py-func docutils literal notranslate"><span class="pre">error()</span></code></a> message, ignore suspended status.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.error_with_tb">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error_with_tb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.error_with_tb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.error_with_tb" title="Permalink to this definition"></a></dt>
+<dd><p>Log an <a class="reference internal" href="#yuio.io.error_with_tb" title="yuio.io.error_with_tb"><code class="xref py py-func docutils literal notranslate"><span class="pre">error_with_tb()</span></code></a> message, ignore suspended status.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.heading">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">heading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.heading"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.heading" title="Permalink to this definition"></a></dt>
+<dd><p>Log a <a class="reference internal" href="#yuio.io.heading" title="yuio.io.heading"><code class="xref py py-func docutils literal notranslate"><span class="pre">heading()</span></code></a> message, ignore suspended status.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.md">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">md</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.md"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.md" title="Permalink to this definition"></a></dt>
+<dd><p>Log a markdown-formatted text.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.br">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">br</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.br"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.br" title="Permalink to this definition"></a></dt>
+<dd><p>Log an empty string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.io.SuspendLogging.raw">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">raw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><span class="pre">ColorizedString</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#SuspendLogging.raw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.SuspendLogging.raw" title="Permalink to this definition"></a></dt>
+<dd><p>Log a <a class="reference internal" href="term.html#yuio.term.ColorizedString" title="yuio.term.ColorizedString"><code class="xref py py-class docutils literal notranslate"><span class="pre">ColorizedString</span></code></a>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="python-s-logging-and-yuio">
+<h2>Python’s <cite>logging</cite> and yuio<a class="headerlink" href="#python-s-logging-and-yuio" title="Permalink to this heading"></a></h2>
+<p>If you want to direct messages from the <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.12)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> to Yuio,
+you can add a <a class="reference internal" href="#yuio.io.Handler" title="yuio.io.Handler"><code class="xref py py-class docutils literal notranslate"><span class="pre">Handler</span></code></a>:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.io.Handler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.io.</span></span><span class="sig-name descname"><span class="pre">Handler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/io.html#Handler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.io.Handler" title="Permalink to this definition"></a></dt>
+<dd><p>A handler that redirects all log messages to yuio.</p>
+</dd></dl>
+
+</section>
 </section>
 
 
