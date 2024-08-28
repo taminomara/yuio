@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>yuio.complete &mdash; Yuio 0.1.dev1+g864483c documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Yuio
+          </a>
+              <div class="version">
+                0.1.dev1+g864483c
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../io.html">Io</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../parse.html">Parse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../app.html">App</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../exec.html">Exec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../git.html">Git</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../complete.html">Complete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../md.html">Md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../term.html">Term</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../theme.html">Theme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../widget.html">Widget</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Yuio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">yuio.complete</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for yuio.complete</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Yuio project, MIT license.</span>
+<span class="c1">#</span>
+<span class="c1"># https://github.com/taminomara/yuio/</span>
+<span class="c1">#</span>
+<span class="c1"># You&#39;re free to copy this file to your project and edit it for your needs,</span>
+<span class="c1"># just keep this copyright line please :3</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module provides autocompletion functionality for widgets and CLI.</span>
+
+
+<span class="sd">Completer basics</span>
+<span class="sd">----------------</span>
+
+<span class="sd">All completers are derived from the :class:`Completer` base class</span>
+<span class="sd">with a simple interface:</span>
+
+<span class="sd">.. autoclass:: Completer</span>
+<span class="sd">   :members:</span>
+
+<span class="sd">.. autoclass:: Completion</span>
+<span class="sd">   :members:</span>
+
+
+<span class="sd">Completers</span>
+<span class="sd">----------</span>
+
+<span class="sd">Yuio provides basic completers that cover most of the cases:</span>
+
+<span class="sd">.. autoclass:: Empty</span>
+
+<span class="sd">.. autoclass:: Choice</span>
+
+<span class="sd">.. autoclass:: Option</span>
+
+<span class="sd">.. autoclass:: List</span>
+
+<span class="sd">.. autoclass:: Tuple</span>
+
+<span class="sd">.. autoclass:: File</span>
+
+<span class="sd">.. autoclass:: Dir</span>
+
+
+<span class="sd">Implementing your own completer</span>
+<span class="sd">-------------------------------</span>
+
+<span class="sd">To implement a custom completer, subclass :class:`Completer` and implement</span>
+<span class="sd">its :meth:`~Completer._process` method.</span>
+
+<span class="sd">.. note::</span>
+
+<span class="sd">   When using a custom completer for CLI flags in :mod:`yuio.app`,</span>
+<span class="sd">   yuio will :mod:`pickle` it, and integrate it into a shell script</span>
+<span class="sd">   that provides command line completions.</span>
+
+<span class="sd">.. class:: Completer</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">   .. automethod:: _process</span>
+
+<span class="sd">The core of the completion system, however, is a :class:`CompletionCollector`.</span>
+<span class="sd">This is the class that is responsible for generating a final list of completions:</span>
+
+<span class="sd">.. autoclass:: CompletionCollector</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">import</span> <span class="nn">dataclasses</span>
+<span class="kn">import</span> <span class="nn">enum</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pathlib</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">string</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span> <span class="nn">yuio</span>
+<span class="kn">from</span> <span class="nn">yuio</span> <span class="kn">import</span> <span class="n">_t</span>
+
+
+<div class="viewcode-block" id="Completion"><a class="viewcode-back" href="../../complete.html#yuio.complete.Completion">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">yuio</span><span class="o">.</span><span class="n">_with_slots</span><span class="p">())</span>
+<span class="nd">@functools</span><span class="o">.</span><span class="n">total_ordering</span>
+<span class="k">class</span> <span class="nc">Completion</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single completion.&quot;&quot;&quot;</span>
+
+    <span class="c1">#: See :class:`CompletionCollector.iprefix` for details.</span>
+    <span class="n">iprefix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Text of the completion.</span>
+    <span class="n">completion</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: See :class:`CompletionCollector.rsuffix` for details.</span>
+    <span class="n">rsuffix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: See :class:`CompletionCollector.rsymbols` for details.</span>
+    <span class="n">rsymbols</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: See :class:`CompletionCollector.isuffix` for details.</span>
+    <span class="n">isuffix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Short comment displayed alongside the completion.</span>
+    <span class="n">comment</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="c1">#: Prefix that will be displayed before :attr:`~Completion.completion`</span>
+    <span class="c1">#: when listing completions, but will not be inserted once completion</span>
+    <span class="c1">#: is applied.</span>
+    <span class="n">dprefix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Like :attr:`~Completion.dprefix`, but it&#39;s a suffix.</span>
+    <span class="n">dsuffix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Group id, used to sort completions.</span>
+    <span class="c1">#:</span>
+    <span class="c1">#: Actual content of this property is an implementation detail.</span>
+    <span class="n">group_id</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">SupportsLt</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1">#: Color tag that&#39;s used when displaying this completion.</span>
+    <span class="c1">#:</span>
+    <span class="c1">#: See :meth:`CompletionCollector.add_group` for details.</span>
+    <span class="n">group_color_tag</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="s2">&quot;Completion&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Completions are ordered by their groups and then alphabetically.&quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_id</span> <span class="o">&lt;</span> <span class="n">other</span><span class="o">.</span><span class="n">group_id</span> <span class="ow">or</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">group_id</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">group_id</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">completion</span> <span class="o">&lt;</span> <span class="n">other</span><span class="o">.</span><span class="n">completion</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CompletionCollector"><a class="viewcode-back" href="../../complete.html#yuio.complete.CompletionCollector">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span>
+    <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="p">({}</span> <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;match_args&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}),</span>
+<span class="p">)</span>
+<span class="k">class</span> <span class="nc">CompletionCollector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A class that collects completions as completers are running.</span>
+
+<span class="sd">    The text that is being completed is split into four parts, similar</span>
+<span class="sd">    to what you might see in ZSH completion widgets. The main two are:</span>
+
+<span class="sd">    .. autoattribute:: prefix</span>
+
+<span class="sd">    .. autoattribute:: suffix</span>
+
+<span class="sd">    When completions are added to the collector, they are checked against</span>
+<span class="sd">    the current prefix to determine if they match the entered text. If they</span>
+<span class="sd">    do, the completion system will replace text from `prefix` and `suffix`</span>
+<span class="sd">    with the new completion string.</span>
+
+<span class="sd">    The two additional parts are:</span>
+
+<span class="sd">    .. autoattribute:: iprefix</span>
+
+<span class="sd">    .. autoattribute:: isuffix</span>
+
+<span class="sd">    For example, suppose you&#39;re completing a second element</span>
+<span class="sd">    of a colon-separated list. The list completer will set up</span>
+<span class="sd">    the collector so that `prefix` and `suffix` contain parts of the</span>
+<span class="sd">    current list element, while `iprefix` and `isuffix` contain</span>
+<span class="sd">    the rest of the elements:</span>
+
+<span class="sd">    .. code-block:: text</span>
+
+<span class="sd">       list_element_1:list_el|ement_2:list_element_3</span>
+<span class="sd">       └┬────────────┘└┬────┘│└┬────┘└┬────────────┘</span>
+<span class="sd">        iprefix       prefix │ suffix isuffix</span>
+<span class="sd">                             └ cursor</span>
+
+<span class="sd">    Now, if the completer adds a completion ``&#39;list_elements&#39;``,</span>
+<span class="sd">    this text will replace the `prefix` and `suffix`, but not `iprefix`</span>
+<span class="sd">    and `isuffix`. So, after the completion is applied, the string will</span>
+<span class="sd">    look like so:</span>
+
+<span class="sd">    .. code-block:: text</span>
+
+<span class="sd">       list_element_1:list_elements:list_element_3</span>
+<span class="sd">                      └┬──────────┘</span>
+<span class="sd">                       this got replaced</span>
+
+<span class="sd">    Finally, there is `rsuffix`:</span>
+
+<span class="sd">    .. autoattribute:: rsuffix</span>
+
+<span class="sd">    .. autoattribute:: rsymbols</span>
+
+<span class="sd">    So, when completing a colon-separated list, colons will be added and removed</span>
+<span class="sd">    automatically, similar to how ZSH does it.</span>
+
+<span class="sd">    .. autoattribute:: dedup_words</span>
+
+<span class="sd">    .. autoattribute:: full_prefix</span>
+
+<span class="sd">    .. autoattribute:: full_suffix</span>
+
+<span class="sd">    .. autoattribute:: text</span>
+
+<span class="sd">    .. autoattribute:: num_completions</span>
+
+<span class="sd">    .. automethod:: add</span>
+
+<span class="sd">    .. automethod:: add_group</span>
+
+<span class="sd">    .. automethod:: save_state</span>
+
+<span class="sd">    .. automethod:: split_off_prefix</span>
+
+<span class="sd">    .. automethod:: split_off_suffix</span>
+
+<span class="sd">    .. automethod:: finalize</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#: Contains text that goes before the :attr:`~CompletionCollector.prefix`.</span>
+    <span class="c1">#:</span>
+    <span class="c1">#: This prefix is not considered when checking whether a completion</span>
+    <span class="c1">#: matches a text, and it is not replaced by the completion. It will also</span>
+    <span class="c1">#: not be shown in the table of completions.</span>
+    <span class="c1">#:</span>
+    <span class="c1">#: This prefix starts empty, and then parts of :attr:`~CompletionCollector.prefix`</span>
+    <span class="c1">#: are moved to :attr:`~CompletionCollector.iprefix` as completers split it into</span>
+    <span class="c1">#: list elements.</span>
+    <span class="n">iprefix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Portion of the completed text before the cursor.</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Portion of the completed text after the cursor.</span>
+    <span class="n">suffix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Starts empty, and may be set to hold a list separator.</span>
+    <span class="c1">#:</span>
+    <span class="c1">#: This suffix will be added after the completion. However, it will be automatically</span>
+    <span class="c1">#: removed if the user types one of :attr:`CompletionCollector.rsymbols`,</span>
+    <span class="c1">#: or moves cursor, or alters input in some other way.</span>
+    <span class="n">rsuffix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: If user types one of the symbols from this string,</span>
+    <span class="c1"># :attr:`~.CompletionCollector.rsuffix` will be removed.</span>
+    <span class="n">rsymbols</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Similar to :attr:`CompletionCollector.iprefix`, but for suffixes.</span>
+    <span class="n">isuffix</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Completions from this set will not be added. This is useful</span>
+    <span class="c1">#: when completing lists of unique values.</span>
+    <span class="n">dedup_words</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">FrozenSet</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="c1"># Internal fields.</span>
+    <span class="n">_group_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">_group_sorted</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">_group_color_tag</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">iprefix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">text</span><span class="p">[:</span><span class="n">pos</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">suffix</span> <span class="o">=</span> <span class="n">text</span><span class="p">[</span><span class="n">pos</span><span class="p">:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rsuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rsymbols</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedup_words</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_group_id</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_group_sorted</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_group_color_tag</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Completion</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">full_prefix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Portion of the final completed text that goes before the cursor.&quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">iprefix</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">full_suffix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Portion of the final completed text that goes after the cursor.&quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">suffix</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">isuffix</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">text</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Portion of the text that is being autocompleted.&quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">suffix</span>
+
+<div class="viewcode-block" id="CompletionCollector.save_state"><a class="viewcode-back" href="../../complete.html#yuio.complete.CompletionCollector.save_state">[docs]</a>    <span class="nd">@contextlib</span><span class="o">.</span><span class="n">contextmanager</span>
+    <span class="k">def</span> <span class="nf">save_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save current state of the collector, i.e. prefixes,</span>
+<span class="sd">        suffixes, etc., upon entering this context manager,</span>
+<span class="sd">        then restore state upon exiting.</span>
+
+<span class="sd">        Use this context manager when you need to call nested</span>
+<span class="sd">        completers more than once to prevent changes made in</span>
+<span class="sd">        one nested completer bleeding out into another</span>
+<span class="sd">        nested completer.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">state</span> <span class="o">=</span> <span class="p">{</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">fields</span><span class="p">(</span><span class="bp">self</span><span class="p">)}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CompletionCollector.add"><a class="viewcode-back" href="../../complete.html#yuio.complete.CompletionCollector.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">completion</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">comment</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dprefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">dsuffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">color_tag</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a new completion.</span>
+
+<span class="sd">        :param completion:</span>
+<span class="sd">            completed text without :attr:`~CompletionCollector.iprefix`</span>
+<span class="sd">            and :attr:`~CompletionCollector.isuffix`. This text will replace</span>
+<span class="sd">            :attr:`~CompletionCollector.prefix` and :attr:`~CompletionCollector.suffix`.</span>
+<span class="sd">        :param comment:</span>
+<span class="sd">            additional comment that will be displayed near the completion.</span>
+<span class="sd">        :param color_tag:</span>
+<span class="sd">            allows overriding color tag from the group.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">completion</span>
+            <span class="ow">and</span> <span class="n">completion</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dedup_words</span>
+            <span class="ow">and</span> <span class="n">completion</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span>
+                <span class="n">completion</span><span class="p">,</span>
+                <span class="n">comment</span><span class="o">=</span><span class="n">comment</span><span class="p">,</span>
+                <span class="n">dprefix</span><span class="o">=</span><span class="n">dprefix</span><span class="p">,</span>
+                <span class="n">dsuffix</span><span class="o">=</span><span class="n">dsuffix</span><span class="p">,</span>
+                <span class="n">color_tag</span><span class="o">=</span><span class="n">color_tag</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_add</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">completion</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">comment</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dprefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">dsuffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">color_tag</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">isuffix</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">isuffix</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">whitespace</span><span class="p">:</span>
+            <span class="c1"># Only add `rsuffix` if we&#39;re at the end of an array element.</span>
+            <span class="c1"># Don&#39;t add `rsuffix` if we&#39;re in the middle of an array, unless the array</span>
+            <span class="c1"># is separated by spaces.</span>
+            <span class="n">rsuffix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rsuffix</span>
+            <span class="n">rsymbols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rsymbols</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rsuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">rsymbols</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_group_sorted</span><span class="p">:</span>
+            <span class="n">group_id</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_group_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">group_id</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_group_id</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">color_tag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">color_tag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_group_color_tag</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Completion</span><span class="p">(</span>
+                <span class="n">iprefix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">iprefix</span><span class="p">,</span>
+                <span class="n">completion</span><span class="o">=</span><span class="n">completion</span><span class="p">,</span>
+                <span class="n">rsuffix</span><span class="o">=</span><span class="n">rsuffix</span><span class="p">,</span>
+                <span class="n">rsymbols</span><span class="o">=</span><span class="n">rsymbols</span><span class="p">,</span>
+                <span class="n">isuffix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">isuffix</span><span class="p">,</span>
+                <span class="n">comment</span><span class="o">=</span><span class="n">comment</span><span class="p">,</span>
+                <span class="n">dprefix</span><span class="o">=</span><span class="n">dprefix</span><span class="p">,</span>
+                <span class="n">dsuffix</span><span class="o">=</span><span class="n">dsuffix</span><span class="p">,</span>
+                <span class="n">group_id</span><span class="o">=</span><span class="n">group_id</span><span class="p">,</span>
+                <span class="n">group_color_tag</span><span class="o">=</span><span class="n">color_tag</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="CompletionCollector.add_group"><a class="viewcode-back" href="../../complete.html#yuio.complete.CompletionCollector.add_group">[docs]</a>    <span class="k">def</span> <span class="nf">add_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">sorted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">color_tag</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a new completions group.</span>
+
+<span class="sd">        All completions added after call to this method will be placed to the new group.</span>
+<span class="sd">        They will be grouped together, and colored according to the group&#39;s color tag.</span>
+
+<span class="sd">        :param sorted:</span>
+<span class="sd">            controls whether completions in the new group should be sorted.</span>
+<span class="sd">        :param color_tag:</span>
+<span class="sd">            which color tag should be used to display completions</span>
+<span class="sd">            and their help messages for this group.</span>
+
+<span class="sd">            See :attr:`yuio.widget.Option.color_tag` for details.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_group_id</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_group_sorted</span> <span class="o">=</span> <span class="nb">sorted</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_group_color_tag</span> <span class="o">=</span> <span class="n">color_tag</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">num_completions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return number of completions that were added so far.&quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CompletionCollector.split_off_prefix"><a class="viewcode-back" href="../../complete.html#yuio.complete.CompletionCollector.split_off_prefix">[docs]</a>    <span class="k">def</span> <span class="nf">split_off_prefix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delim</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Move everything up to the last occurrence of `delim`</span>
+<span class="sd">        from :attr:`~CompletionCollector.prefix`</span>
+<span class="sd">        to :attr:`~CompletionCollector.iprefix`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">delim</span> <span class="o">=</span> <span class="n">delim</span> <span class="ow">or</span> <span class="s2">&quot; &quot;</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="n">delim</span><span class="p">,</span> <span class="n">maxsplit</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">iprefix</span> <span class="o">+=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">delim</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="CompletionCollector.split_off_suffix"><a class="viewcode-back" href="../../complete.html#yuio.complete.CompletionCollector.split_off_suffix">[docs]</a>    <span class="k">def</span> <span class="nf">split_off_suffix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delim</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Move everything past the first occurrence of `delim`</span>
+<span class="sd">        from :attr:`~CompletionCollector.suffix`</span>
+<span class="sd">        to :attr:`~CompletionCollector.isuffix`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">delim</span> <span class="o">=</span> <span class="n">delim</span> <span class="ow">or</span> <span class="s2">&quot; &quot;</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">delim</span><span class="p">,</span> <span class="n">maxsplit</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">suffix</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">isuffix</span> <span class="o">=</span> <span class="n">delim</span> <span class="o">+</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">isuffix</span></div>
+
+<div class="viewcode-block" id="CompletionCollector.finalize"><a class="viewcode-back" href="../../complete.html#yuio.complete.CompletionCollector.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Completion</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finish collecting completions and return everything that was collected.</span>
+
+<span class="sd">        Do not reuse a collector after it was finalized.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">c0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">iprefix</span> <span class="o">=</span> <span class="n">c0</span><span class="o">.</span><span class="n">iprefix</span>
+            <span class="n">isuffix</span> <span class="o">=</span> <span class="n">c0</span><span class="o">.</span><span class="n">isuffix</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">full_prefix</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">iprefix</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_suffix</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">isuffix</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+                    <span class="n">c</span><span class="o">.</span><span class="n">iprefix</span> <span class="o">==</span> <span class="n">iprefix</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">isuffix</span> <span class="o">==</span> <span class="n">isuffix</span>
+                    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span>
+                <span class="p">)</span>
+            <span class="p">):</span>
+                <span class="c1"># If all completions have the same `iprefix` and `isuffix`...</span>
+                <span class="n">common_prefix</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">_commonprefix</span><span class="p">(</span>
+                    <span class="nb">list</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">completion</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">common_prefix</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">iprefix</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">common_prefix</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">iprefix</span>
+                <span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">):</span>
+                    <span class="c1"># ...and they have a common prefix that is longer than what&#39;s entered so far,</span>
+                    <span class="c1"># then complete this common prefix.</span>
+                    <span class="n">rsuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                    <span class="n">rsymbols</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                    <span class="k">if</span> <span class="nb">all</span><span class="p">(</span>
+                        <span class="n">common_prefix</span> <span class="o">==</span> <span class="n">c</span><span class="o">.</span><span class="n">completion</span> <span class="ow">and</span> <span class="n">rsuffix</span> <span class="o">==</span> <span class="n">c</span><span class="o">.</span><span class="n">rsuffix</span>
+                        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span>
+                    <span class="p">):</span>
+                        <span class="c1"># If completing common prefix actually fulfills a completion, add `rsuffix` as well.</span>
+                        <span class="n">rsuffix</span> <span class="o">=</span> <span class="n">c0</span><span class="o">.</span><span class="n">rsuffix</span>
+                        <span class="n">rsymbols</span> <span class="o">=</span> <span class="n">c0</span><span class="o">.</span><span class="n">rsymbols</span>
+                    <span class="k">return</span> <span class="p">[</span>
+                        <span class="n">Completion</span><span class="p">(</span>
+                            <span class="n">iprefix</span><span class="o">=</span><span class="n">iprefix</span><span class="p">,</span>
+                            <span class="n">completion</span><span class="o">=</span><span class="n">common_prefix</span><span class="p">,</span>
+                            <span class="n">rsuffix</span><span class="o">=</span><span class="n">rsuffix</span><span class="p">,</span>
+                            <span class="n">rsymbols</span><span class="o">=</span><span class="n">rsymbols</span><span class="p">,</span>
+                            <span class="n">isuffix</span><span class="o">=</span><span class="n">isuffix</span><span class="p">,</span>
+                            <span class="n">comment</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="n">dprefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+                            <span class="n">dsuffix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+                            <span class="n">group_id</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                            <span class="n">group_color_tag</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span></div></div>
+
+
+<span class="n">_MAX_COMPLETION_CORRECTIONS</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">_MAX_COMPLETION_CORRECTIONS_RATE</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span>
+
+
+<span class="nd">@_t</span><span class="o">.</span><span class="n">final</span>
+<span class="k">class</span> <span class="nc">_CorrectingCollector</span><span class="p">(</span><span class="n">CompletionCollector</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_has_corrections</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">completion</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">comment</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dprefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">dsuffix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">color_tag</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">completion</span> <span class="ow">or</span> <span class="n">completion</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dedup_words</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">suffix</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">completion</span>
+        <span class="n">corrections</span> <span class="o">=</span> <span class="n">_corrections</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+        <span class="n">threshold</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">_MAX_COMPLETION_CORRECTIONS</span>
+            <span class="o">+</span> <span class="n">_MAX_COMPLETION_CORRECTIONS_RATE</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">corrections</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># this is a simple mistype, add it as usual</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span>
+                <span class="n">completion</span><span class="p">,</span>
+                <span class="n">comment</span><span class="o">=</span><span class="n">comment</span><span class="p">,</span>
+                <span class="n">dprefix</span><span class="o">=</span><span class="n">dprefix</span><span class="p">,</span>
+                <span class="n">dsuffix</span><span class="o">=</span><span class="n">dsuffix</span><span class="p">,</span>
+                <span class="n">color_tag</span><span class="o">=</span><span class="n">color_tag</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">corrections</span> <span class="o">&lt;=</span> <span class="n">threshold</span><span class="p">:</span>
+            <span class="c1"># this is a correction, add it into corrections group</span>
+            <span class="k">if</span> <span class="n">comment</span><span class="p">:</span>
+                <span class="n">comment</span> <span class="o">=</span> <span class="s2">&quot;corrected: &quot;</span> <span class="o">+</span> <span class="n">comment</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">comment</span> <span class="o">=</span> <span class="s2">&quot;corrected&quot;</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_state</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_group_id</span> <span class="o">=</span> <span class="mh">0xFFFFFFFE</span>  <span class="c1"># (big enough) - 1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_group_color_tag</span> <span class="o">=</span> <span class="s2">&quot;corrected&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span>
+                    <span class="n">completion</span><span class="p">,</span>
+                    <span class="n">comment</span><span class="o">=</span><span class="n">comment</span><span class="p">,</span>
+                    <span class="n">dprefix</span><span class="o">=</span><span class="n">dprefix</span><span class="p">,</span>
+                    <span class="n">dsuffix</span><span class="o">=</span><span class="n">dsuffix</span><span class="p">,</span>
+                    <span class="n">color_tag</span><span class="o">=</span><span class="n">color_tag</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_has_corrections</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Completion</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_corrections</span><span class="p">:</span>
+            <span class="n">c0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">iprefix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_prefix</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_suffix</span>
+            <span class="n">isuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+            <span class="k">if</span> <span class="n">prefix</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">c0</span><span class="o">.</span><span class="n">iprefix</span><span class="p">):</span>
+                <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">c0</span><span class="o">.</span><span class="n">iprefix</span><span class="p">)</span>
+                <span class="n">iprefix</span> <span class="o">=</span> <span class="n">prefix</span><span class="p">[:</span><span class="n">l</span><span class="p">]</span>
+                <span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span><span class="p">[</span><span class="n">l</span><span class="p">:]</span>
+
+            <span class="k">if</span> <span class="n">suffix</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">c0</span><span class="o">.</span><span class="n">isuffix</span><span class="p">):</span>
+                <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">c0</span><span class="o">.</span><span class="n">isuffix</span><span class="p">)</span>
+                <span class="n">isuffix</span> <span class="o">=</span> <span class="n">suffix</span><span class="p">[</span><span class="o">-</span><span class="n">l</span><span class="p">:]</span>
+                <span class="n">suffix</span> <span class="o">=</span> <span class="n">suffix</span><span class="p">[:</span><span class="o">-</span><span class="n">l</span><span class="p">]</span>
+
+            <span class="c1"># If we have corrections, add original value to the end.</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_state</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_group_id</span> <span class="o">=</span> <span class="mh">0xFFFFFFFF</span>  <span class="c1"># (big enough)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_group_color_tag</span> <span class="o">=</span> <span class="s2">&quot;original&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">iprefix</span> <span class="o">=</span> <span class="n">iprefix</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">isuffix</span> <span class="o">=</span> <span class="n">isuffix</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">comment</span><span class="o">=</span><span class="s2">&quot;original&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_completions</span>
+
+
+<span class="k">def</span> <span class="nf">_corrections</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="c1"># Damerau–Levenshtein distance (Optimal String Alignment distance)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">casefold</span><span class="p">()</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">casefold</span><span class="p">()</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[:]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">j</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+                <span class="c1"># Add to `a`:</span>
+                <span class="n">d</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="c1"># Add to `b`:</span>
+                <span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="c1"># Replace:</span>
+                <span class="n">d</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">b</span><span class="p">[</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]),</span>
+                <span class="c1"># Transpose:</span>
+                <span class="n">d</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">2</span><span class="p">][</span><span class="n">j</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">b</span><span class="p">[</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">2</span> <span class="p">:</span> <span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">b</span><span class="p">[</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:</span> <span class="n">j</span> <span class="o">-</span> <span class="mi">3</span> <span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">else</span> <span class="n">math</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">d</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Completer"><a class="viewcode-back" href="../../complete.html#yuio.complete.Completer">[docs]</a><span class="k">class</span> <span class="nc">Completer</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An interface for text completion providers.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Completer.complete"><a class="viewcode-back" href="../../complete.html#yuio.complete.Completer.complete">[docs]</a>    <span class="k">def</span> <span class="nf">complete</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">do_corrections</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">Completion</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Complete the given text at the given cursor position.</span>
+
+<span class="sd">        :param text:</span>
+<span class="sd">            text that is being completed.</span>
+<span class="sd">        :param pos:</span>
+<span class="sd">            position of the cursor in the text. ``0`` means the cursor</span>
+<span class="sd">            is before the first character, ``len(text)`` means the cursor</span>
+<span class="sd">            is after the last character.</span>
+<span class="sd">        :param do_corrections:</span>
+<span class="sd">            if :data:`True` (default), completion system will try to guess</span>
+<span class="sd">            if there are any misspells in the ``text``, and offer to correct them.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">collector</span> <span class="o">=</span> <span class="n">CompletionCollector</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">collector</span><span class="o">.</span><span class="n">save_state</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="p">(</span><span class="n">collector</span><span class="p">)</span>
+        <span class="n">completions</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">completions</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">do_corrections</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">completions</span>
+
+        <span class="n">collector</span> <span class="o">=</span> <span class="n">_CorrectingCollector</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">collector</span><span class="o">.</span><span class="n">save_state</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="p">(</span><span class="n">collector</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">collector</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Completer._process"><a class="viewcode-back" href="../../complete.html#yuio.complete.Completer._process">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">_process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collector</span><span class="p">:</span> <span class="n">CompletionCollector</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate completions and add them to the given collector.</span>
+
+<span class="sd">        Implementing this class is straight forward, just feed all possible</span>
+<span class="sd">        completions to the collector. For example, let&#39;s implement a completer</span>
+<span class="sd">        for environment variables::</span>
+
+<span class="sd">            class EnvVarCompleter(Completer):</span>
+<span class="sd">                def _process(self, collector: CompletionCollector):</span>
+<span class="sd">                    for var in os.environ.keys():</span>
+<span class="sd">                        collector.add(var)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_completion_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_many</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal, do not use.&quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">CustomCompleter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Empty"><a class="viewcode-back" href="../../complete.html#yuio.complete.Empty">[docs]</a><span class="k">class</span> <span class="nc">Empty</span><span class="p">(</span><span class="n">Completer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;An empty completer that returns no values.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collector</span><span class="p">:</span> <span class="n">CompletionCollector</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># nothing to do</span>
+
+    <span class="k">def</span> <span class="nf">_get_completion_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_many</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Model</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Option"><a class="viewcode-back" href="../../complete.html#yuio.complete.Option">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">yuio</span><span class="o">.</span><span class="n">_with_slots</span><span class="p">())</span>
+<span class="k">class</span> <span class="nc">Option</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single completion option for the :class:`Choice` completer.&quot;&quot;&quot;</span>
+
+    <span class="c1">#: This string will replace an element that is being completed.</span>
+    <span class="n">completion</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Short comment displayed alongside the completion.</span>
+    <span class="n">comment</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="Choice"><a class="viewcode-back" href="../../complete.html#yuio.complete.Choice">[docs]</a><span class="k">class</span> <span class="nc">Choice</span><span class="p">(</span><span class="n">Completer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Completes input from a predefined list of completions.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">choices</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Collection</span><span class="p">[</span><span class="n">Option</span><span class="p">],</span> <span class="o">/</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_choices</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Collection</span><span class="p">[</span><span class="n">Option</span><span class="p">]</span> <span class="o">=</span> <span class="n">choices</span>
+
+    <span class="k">def</span> <span class="nf">_process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collector</span><span class="p">:</span> <span class="n">CompletionCollector</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">choice</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_choices</span><span class="p">:</span>
+            <span class="n">collector</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">choice</span><span class="o">.</span><span class="n">completion</span><span class="p">,</span> <span class="n">comment</span><span class="o">=</span><span class="n">choice</span><span class="o">.</span><span class="n">comment</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_completion_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_many</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Choice</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">option</span><span class="o">.</span><span class="n">completion</span> <span class="k">for</span> <span class="n">option</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_choices</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="List"><a class="viewcode-back" href="../../complete.html#yuio.complete.List">[docs]</a><span class="k">class</span> <span class="nc">List</span><span class="p">(</span><span class="n">Completer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Completes a value-separated list of elements.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">inner</span><span class="p">:</span> <span class="n">Completer</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">delimiter</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">allow_duplicates</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span> <span class="o">=</span> <span class="n">inner</span>
+        <span class="k">if</span> <span class="n">delimiter</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;empty delimiter&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="o">=</span> <span class="n">delimiter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_allow_duplicates</span> <span class="o">=</span> <span class="n">allow_duplicates</span>
+
+    <span class="k">def</span> <span class="nf">_process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collector</span><span class="p">:</span> <span class="n">CompletionCollector</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">split_off_prefix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span><span class="p">)</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">split_off_suffix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span><span class="p">)</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">rsuffix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">or</span> <span class="s2">&quot; &quot;</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">rsymbols</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">or</span> <span class="n">string</span><span class="o">.</span><span class="n">whitespace</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_allow_duplicates</span><span class="p">:</span>
+            <span class="n">dedup_words</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
+                <span class="n">collector</span><span class="o">.</span><span class="n">iprefix</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span><span class="p">)</span>
+                <span class="o">+</span> <span class="n">collector</span><span class="o">.</span><span class="n">isuffix</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">collector</span><span class="o">.</span><span class="n">text</span> <span class="ow">in</span> <span class="n">dedup_words</span><span class="p">:</span>
+                <span class="n">dedup_words</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">collector</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="n">collector</span><span class="o">.</span><span class="n">dedup_words</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">dedup_words</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">collector</span><span class="o">.</span><span class="n">dedup_words</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">_process</span><span class="p">(</span><span class="n">collector</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_completion_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_many</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">is_many</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">ListMany</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">or</span> <span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">_get_completion_model</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">List</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">or</span> <span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">_get_completion_model</span><span class="p">()</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Tuple"><a class="viewcode-back" href="../../complete.html#yuio.complete.Tuple">[docs]</a><span class="k">class</span> <span class="nc">Tuple</span><span class="p">(</span><span class="n">Completer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Completes a value-separated tuple of elements.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">inners</span><span class="p">:</span> <span class="n">Completer</span><span class="p">,</span> <span class="n">delimiter</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inners</span> <span class="o">=</span> <span class="n">inners</span>
+        <span class="k">if</span> <span class="n">delimiter</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;empty delimiter&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="o">=</span> <span class="n">delimiter</span>
+
+    <span class="k">def</span> <span class="nf">_process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collector</span><span class="p">:</span> <span class="n">CompletionCollector</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">collector</span><span class="o">.</span><span class="n">prefix</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span><span class="p">))</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">pos</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">collector</span><span class="o">.</span><span class="n">prefix</span>
+            <span class="ow">and</span> <span class="n">collector</span><span class="o">.</span><span class="n">prefix</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">whitespace</span>
+        <span class="p">):</span>
+            <span class="c1"># `.split(None)` will trim whitespaces at the end.</span>
+            <span class="c1"># Make sure we count those towards the current position in the tuple.</span>
+            <span class="n">pos</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">pos</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_inners</span><span class="p">):</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_inners</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pos</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">pos</span> <span class="o">-=</span> <span class="mi">1</span>
+
+        <span class="n">collector</span><span class="o">.</span><span class="n">split_off_prefix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span><span class="p">)</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">split_off_suffix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span><span class="p">)</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">rsuffix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">or</span> <span class="s2">&quot; &quot;</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">rsymbols</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">or</span> <span class="n">string</span><span class="o">.</span><span class="n">whitespace</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inners</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span><span class="o">.</span><span class="n">_process</span><span class="p">(</span><span class="n">collector</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_completion_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_many</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">is_many</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">TupleMany</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">or</span> <span class="s2">&quot; &quot;</span><span class="p">,</span>
+                <span class="p">[</span><span class="n">inner</span><span class="o">.</span><span class="n">_get_completion_model</span><span class="p">()</span> <span class="k">for</span> <span class="n">inner</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inners</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Tuple</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_delimiter</span> <span class="ow">or</span> <span class="s2">&quot; &quot;</span><span class="p">,</span>
+                <span class="p">[</span><span class="n">inner</span><span class="o">.</span><span class="n">_get_completion_model</span><span class="p">()</span> <span class="k">for</span> <span class="n">inner</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inners</span><span class="p">],</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="File"><a class="viewcode-back" href="../../complete.html#yuio.complete.File">[docs]</a><span class="k">class</span> <span class="nc">File</span><span class="p">(</span><span class="n">Completer</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extensions</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">_t</span><span class="o">.</span><span class="n">Collection</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">extensions</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_extensions</span> <span class="o">=</span> <span class="p">[</span><span class="n">extensions</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">extensions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_extensions</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">extensions</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_extensions</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collector</span><span class="p">:</span> <span class="n">CompletionCollector</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+        <span class="n">base</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">collector</span><span class="o">.</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">base</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">base</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">):</span>
+            <span class="n">base</span> <span class="o">+=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">iprefix</span> <span class="o">+=</span> <span class="n">base</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">collector</span><span class="o">.</span><span class="n">suffix</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span> <span class="n">maxsplit</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">resolved</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">base</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="n">rsuffix</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">rsuffix</span>
+        <span class="k">if</span> <span class="n">resolved</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">):</span>
+                <span class="n">collector</span><span class="o">.</span><span class="n">rsuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                <span class="n">collector</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;./&quot;</span><span class="p">,</span> <span class="n">color_tag</span><span class="o">=</span><span class="s2">&quot;dir&quot;</span><span class="p">)</span>
+                <span class="n">collector</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;../&quot;</span><span class="p">,</span> <span class="n">color_tag</span><span class="o">=</span><span class="s2">&quot;dir&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">resolved</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_symlink</span><span class="p">():</span>
+                            <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;symlink&quot;</span>
+                            <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;@&quot;</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;dir&quot;</span>
+                            <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                        <span class="n">collector</span><span class="o">.</span><span class="n">rsuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                        <span class="n">collector</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+                            <span class="n">path</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span> <span class="n">color_tag</span><span class="o">=</span><span class="n">color_tag</span><span class="p">,</span> <span class="n">dsuffix</span><span class="o">=</span><span class="n">dsuffix</span>
+                        <span class="p">)</span>
+                    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extensions</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+                        <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">ext</span><span class="p">)</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extensions</span>
+                    <span class="p">):</span>
+                        <span class="n">collector</span><span class="o">.</span><span class="n">rsuffix</span> <span class="o">=</span> <span class="n">rsuffix</span>
+                        <span class="n">color_tag</span> <span class="o">=</span> <span class="kc">None</span>
+                        <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">X_OK</span><span class="p">):</span>
+                                <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;exec&quot;</span>
+                                <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;*&quot;</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;file&quot;</span>
+                        <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">is_symlink</span><span class="p">():</span>
+                            <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;symlink&quot;</span>
+                            <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;@&quot;</span>
+                        <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">is_socket</span><span class="p">():</span>
+                            <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;socket&quot;</span>
+                            <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;=&quot;</span>
+                        <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">is_fifo</span><span class="p">():</span>
+                            <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;pipe&quot;</span>
+                            <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;|&quot;</span>
+                        <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">is_block_device</span><span class="p">():</span>
+                            <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;block_device&quot;</span>
+                            <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;#&quot;</span>
+                        <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">is_char_device</span><span class="p">():</span>
+                            <span class="n">color_tag</span> <span class="o">=</span> <span class="s2">&quot;char_device&quot;</span>
+                            <span class="n">dsuffix</span> <span class="o">=</span> <span class="s2">&quot;%&quot;</span>
+                        <span class="n">collector</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">color_tag</span><span class="o">=</span><span class="n">color_tag</span><span class="p">,</span> <span class="n">dsuffix</span><span class="o">=</span><span class="n">dsuffix</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">PermissionError</span><span class="p">:</span>
+                <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_get_completion_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_many</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">File</span><span class="p">(</span>
+            <span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">extension</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">extension</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extensions</span> <span class="ow">or</span> <span class="p">[])</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Dir"><a class="viewcode-back" href="../../complete.html#yuio.complete.Dir">[docs]</a><span class="k">class</span> <span class="nc">Dir</span><span class="p">(</span><span class="n">File</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">([])</span>
+
+    <span class="k">def</span> <span class="nf">_get_completion_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">is_many</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Dir</span><span class="p">()</span></div>
+
+
+<span class="k">class</span> <span class="nc">_CompleterSerializer</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subcommands</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span>
+            <span class="nb">str</span><span class="p">,</span> <span class="n">_t</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="s2">&quot;_CompleterSerializer&quot;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_positional</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_flags</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span>
+            <span class="n">_t</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span>
+                <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+                <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+                <span class="n">_t</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">_t</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+                <span class="n">_t</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">_t</span><span class="o">.</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;+&quot;</span><span class="p">,</span> <span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">]],</span>
+                <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span>
+                <span class="p">[</span><span class="s2">&quot;-h&quot;</span><span class="p">,</span> <span class="s2">&quot;--help&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;show help and exit&quot;</span><span class="p">,</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;-&quot;</span><span class="p">,</span>
+                <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Model</span><span class="p">(),</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">add_argument</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">help</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;help&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">help</span> <span class="ow">is</span> <span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="ow">not</span> <span class="n">arg</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">):</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_positional</span><span class="p">),)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_positional</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">action</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action&quot;</span><span class="p">)</span>
+        <span class="n">metavar</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metavar&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">nargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;nargs&quot;</span><span class="p">,</span>
+            <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">action</span>
+            <span class="ow">in</span> <span class="p">[</span>
+                <span class="s2">&quot;store_const&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;store_false&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;append_const&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;count&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;help&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;version&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+            <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">get_parser</span> <span class="o">:=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s2">&quot;get_parser&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">parser</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">()</span>
+            <span class="n">completer</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">get_completer</span> <span class="o">:=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s2">&quot;get_completer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+                <span class="n">completer</span> <span class="o">=</span> <span class="n">get_completer</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">completer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">completer</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">completer</span><span class="p">()</span>
+            <span class="n">completion_model</span> <span class="o">=</span> <span class="n">completer</span><span class="o">.</span><span class="n">_get_completion_model</span><span class="p">(</span>
+                <span class="n">is_many</span><span class="o">=</span><span class="n">parser</span><span class="o">.</span><span class="n">supports_parse_many</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">completion_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Model</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_flags</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">),</span> <span class="n">help</span><span class="p">,</span> <span class="n">metavar</span><span class="p">,</span> <span class="n">nargs</span><span class="p">,</span> <span class="n">completion_model</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">add_mutually_exclusive_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">add_argument_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">add_subparsers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">add_parser</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">aliases</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+        <span class="n">help</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">serializer</span> <span class="o">=</span> <span class="n">_CompleterSerializer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subcommands</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">serializer</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">help</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">alias</span> <span class="ow">in</span> <span class="n">aliases</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_subcommands</span><span class="p">[</span><span class="n">alias</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">serializer</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">help</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">serializer</span>
+
+    <span class="k">def</span> <span class="nf">as_parser</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
+        <span class="c1"># We&#39;ve implemented all methods that `Config._setup_arg_parser` could call.</span>
+        <span class="k">return</span> <span class="n">_t</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">write_completions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shell</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;all&quot;</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">yuio.io</span>
+
+        <span class="n">prog</span> <span class="o">=</span> <span class="n">prog</span> <span class="ow">or</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">heading</span><span class="p">(</span><span class="s2">&quot;Generating completions for `</span><span class="si">%s</span><span class="s2">`&quot;</span><span class="p">,</span> <span class="n">prog</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dump</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="n">compdata</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="n">data_home</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;XDG_DATA_HOME&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;.local/share&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">cache_home</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;XDG_CACHE_HOME&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;.cache&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">config_home</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;XDG_CONFIG_HOME&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;.config&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">data_home</span> <span class="o">/</span> <span class="s2">&quot;yuio&quot;</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">compdata_path</span> <span class="o">=</span> <span class="n">data_home</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;yuio/</span><span class="si">{</span><span class="n">prog</span><span class="si">}</span><span class="s2">.compdata.tsv&quot;</span>
+        <span class="n">compdata_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">compdata</span><span class="p">)</span>
+        <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote completion data to `</span><span class="si">%s</span><span class="s2">`&quot;</span><span class="p">,</span> <span class="n">compdata_path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">shell</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="s2">&quot;bash&quot;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_bash_script</span><span class="p">(</span>
+                <span class="n">prog</span><span class="p">,</span> <span class="n">compdata_path</span><span class="p">,</span> <span class="n">data_home</span><span class="p">,</span> <span class="n">cache_home</span><span class="p">,</span> <span class="n">config_home</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">shell</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="s2">&quot;zsh&quot;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_zsh_script</span><span class="p">(</span>
+                <span class="n">prog</span><span class="p">,</span> <span class="n">compdata_path</span><span class="p">,</span> <span class="n">data_home</span><span class="p">,</span> <span class="n">cache_home</span><span class="p">,</span> <span class="n">config_home</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">shell</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="s2">&quot;fish&quot;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_fish_script</span><span class="p">(</span>
+                <span class="n">prog</span><span class="p">,</span> <span class="n">compdata_path</span><span class="p">,</span> <span class="n">data_home</span><span class="p">,</span> <span class="n">cache_home</span><span class="p">,</span> <span class="n">config_home</span>
+            <span class="p">)</span>
+
+        <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+            <span class="s2">&quot;All done! Please restart your shell for changes to take effect.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_write_bash_script</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prog</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">compdata_path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">data_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">cache_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">config_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">yuio.exec</span>
+        <span class="kn">import</span> <span class="nn">yuio.io</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">bash_completions_home</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">exec</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span>
+                <span class="s2">&quot;bash&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;-lic&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;echo -n &quot;${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions/&quot;&#39;</span><span class="p">,</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">:</span>
+            <span class="n">bash_completions_home</span> <span class="o">=</span> <span class="n">data_home</span> <span class="o">/</span> <span class="s2">&quot;bash-completion/completions/&quot;</span>
+        <span class="n">bash_completions_home</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">bash_completions_home</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">bash_completions_home</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">script_dest</span> <span class="o">=</span> <span class="n">bash_completions_home</span> <span class="o">/</span> <span class="n">prog</span>
+        <span class="n">script_template</span> <span class="o">=</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;complete.bash&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">script_template</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;@prog@&quot;</span><span class="p">,</span> <span class="n">prog</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="s2">&quot;@data@&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">compdata_path</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">script_dest</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+
+        <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote bash script to `</span><span class="si">%s</span><span class="s2">`&quot;</span><span class="p">,</span> <span class="n">script_dest</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_write_zsh_script</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prog</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">compdata_path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">data_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">cache_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">config_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">yuio.exec</span>
+        <span class="kn">import</span> <span class="nn">yuio.io</span>
+
+        <span class="n">zsh_completions_home</span> <span class="o">=</span> <span class="n">data_home</span> <span class="o">/</span> <span class="s2">&quot;zsh/completions&quot;</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">zsh_completions_home</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">script_dest</span> <span class="o">=</span> <span class="n">zsh_completions_home</span> <span class="o">/</span> <span class="p">(</span><span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">prog</span><span class="p">)</span>
+        <span class="n">script_template</span> <span class="o">=</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;complete.zsh&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">script_template</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;@prog@&quot;</span><span class="p">,</span> <span class="n">prog</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="s2">&quot;@data@&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">compdata_path</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">script_dest</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+
+        <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote zsh script to `</span><span class="si">%s</span><span class="s2">`&quot;</span><span class="p">,</span> <span class="n">script_dest</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fpath</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">yuio</span><span class="o">.</span><span class="n">exec</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span>
+                    <span class="s2">&quot;zsh&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;-lic&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;echo -n $FPATH&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">:</span>
+            <span class="n">fpath</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">zhome</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">exec</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span>
+                <span class="s2">&quot;zsh&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;-lic&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;echo -n ${ZDOTDIR:-$HOME}&quot;</span><span class="p">,</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">:</span>
+            <span class="n">zhome</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span>
+
+        <span class="n">zhome</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">zhome</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">zsh_completions_home</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fpath</span><span class="p">:</span>
+            <span class="n">zprofile_path</span> <span class="o">=</span> <span class="n">zhome</span> <span class="o">/</span> <span class="s2">&quot;.zprofile&quot;</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">zprofile_path</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"># Generated by Yuio, a python CLI library.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;fpath=(</span><span class="si">{</span><span class="n">zsh_completions_home</span><span class="si">}</span><span class="s2"> $fpath)</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Modified `</span><span class="si">%s</span><span class="s2">` to add `</span><span class="si">%s</span><span class="s2">` to `fpath`&quot;</span><span class="p">,</span>
+                <span class="n">zprofile_path</span><span class="p">,</span>
+                <span class="n">zsh_completions_home</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Try to remove completions cache from the most common places.</span>
+        <span class="k">for</span> <span class="n">zcomp_basedir</span> <span class="ow">in</span> <span class="p">[</span><span class="n">zhome</span><span class="p">,</span> <span class="n">cache_home</span> <span class="o">/</span> <span class="s2">&quot;prezto&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">zcomp_basedir</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">zcomp_basedir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">zcomp_basedir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^\.?zcompdump&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+                    <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Deleted zsh completions cache at `</span><span class="si">%s</span><span class="s2">`&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Run zsh with the right flags in case zshrc runs compinit.</span>
+            <span class="c1"># If after generating completions user runs `zsh` without the `-l` flag,</span>
+            <span class="c1"># our changes to fpath will not be visible, and compinit will dump</span>
+            <span class="c1"># an invalid version of cache. To avoid this, we call zsh ourselves</span>
+            <span class="c1"># before the user has a chance to do it. Notice, though, that we don&#39;t</span>
+            <span class="c1"># run `compdump`. This is because we can&#39;t be sure that the user uses</span>
+            <span class="c1"># the default cache path (~/.zcompdump).</span>
+            <span class="n">yuio</span><span class="o">.</span><span class="n">exec</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="s2">&quot;zsh&quot;</span><span class="p">,</span> <span class="s2">&quot;-lic&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_write_fish_script</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prog</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">compdata_path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">data_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">cache_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">config_home</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">yuio.io</span>
+
+        <span class="n">fish_completions_home</span> <span class="o">=</span> <span class="n">data_home</span> <span class="o">/</span> <span class="s2">&quot;fish/vendor_completions.d&quot;</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">fish_completions_home</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">script_dest</span> <span class="o">=</span> <span class="n">fish_completions_home</span> <span class="o">/</span> <span class="p">(</span><span class="n">prog</span> <span class="o">+</span> <span class="s2">&quot;.fish&quot;</span><span class="p">)</span>
+        <span class="n">script_template</span> <span class="o">=</span> <span class="p">(</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;complete.fish&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">script_template</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;@prog@&quot;</span><span class="p">,</span> <span class="n">prog</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="s2">&quot;@data@&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">compdata_path</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">script_dest</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
+
+        <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote fish script to `</span><span class="si">%s</span><span class="s2">`&quot;</span><span class="p">,</span> <span class="n">script_dest</span><span class="p">)</span>
+
+    <span class="n">_SPECIAL_SYMBOLS</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\r\n\a\b\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;     &quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subcommands</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;subcommand&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;&lt;cmd&gt;&quot;</span><span class="p">,</span>
+                    <span class="mi">1</span><span class="p">,</span>
+                    <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">ChoiceWithDescriptions</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">help</span><span class="p">)</span>
+                            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">is_alias</span><span class="p">,</span> <span class="n">help</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subcommands</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_alias</span>
+                        <span class="p">]</span>
+                    <span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">opts</span><span class="p">,</span> <span class="n">desc</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">nargs</span><span class="p">,</span> <span class="n">completer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flags</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="n">meta</span> <span class="o">=</span> <span class="p">(</span><span class="n">meta</span><span class="p">,)</span>
+            <span class="n">compspec</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">path</span><span class="p">,</span>
+                <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">opts</span><span class="p">),</span>
+                <span class="n">desc</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                    <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+                        <span class="sa">r</span><span class="s2">&quot;[</span><span class="se">\\</span><span class="s2"> ]&quot;</span><span class="p">,</span>
+                        <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">S&quot;</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">group</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot; &quot;</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">L&quot;</span><span class="p">,</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="p">),</span>
+                    <span class="p">)</span>
+                    <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+                    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">meta</span>
+                <span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">nargs</span><span class="p">),</span>
+                <span class="o">*</span><span class="n">completer</span><span class="o">.</span><span class="n">dump</span><span class="p">(),</span>
+            <span class="p">]</span>
+
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_SPECIAL_SYMBOLS</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">compspec</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">subcommand</span><span class="p">,</span> <span class="p">(</span><span class="n">serializer</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subcommands</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">serializer</span><span class="o">.</span><span class="n">_dump</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">subcommand</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_dump_nested</span><span class="p">(</span><span class="n">compspec</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">contents</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">compspec</span><span class="p">:</span>
+            <span class="n">contents</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">_dump_nested_item</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">contents</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_dump_nested_item</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">contents</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+            <span class="n">contents</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">dump</span><span class="p">())</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">contents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">sub_item</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                <span class="n">contents</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">_dump_nested_item</span><span class="p">(</span><span class="n">sub_item</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">sub_item</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                <span class="n">contents</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">_dump_nested_item</span><span class="p">(</span><span class="n">sub_item</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">contents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">contents</span>
+
+    <span class="k">class</span> <span class="nc">ModelBase</span><span class="p">:</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;-&quot;</span>
+
+        <span class="k">def</span> <span class="nf">__init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="nb">super</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">tag</span> <span class="o">=</span> <span class="n">tag</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">Model</span><span class="p">(</span><span class="n">ModelBase</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+            <span class="n">compspec</span> <span class="o">=</span> <span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">fields</span><span class="p">(</span><span class="bp">self</span><span class="p">)]</span>
+            <span class="n">contents</span> <span class="o">=</span> <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">_dump_nested</span><span class="p">(</span><span class="n">compspec</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">contents</span><span class="p">)),</span> <span class="o">*</span><span class="n">contents</span><span class="p">]</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">File</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;f&quot;</span><span class="p">):</span>
+        <span class="n">ext</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">Dir</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;d&quot;</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">Choice</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;c&quot;</span><span class="p">):</span>
+        <span class="n">choices</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+        <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">)),</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">]</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">ChoiceWithDescriptions</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;cd&quot;</span><span class="p">):</span>
+        <span class="n">choices</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span>
+
+        <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span><span class="p">),</span>
+                <span class="o">*</span><span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">],</span>
+                <span class="o">*</span><span class="p">[</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">choices</span><span class="p">],</span>
+            <span class="p">]</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">Git</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;g&quot;</span><span class="p">):</span>
+        <span class="k">class</span> <span class="nc">Mode</span><span class="p">(</span><span class="n">enum</span><span class="o">.</span><span class="n">Enum</span><span class="p">):</span>
+            <span class="n">Branch</span> <span class="o">=</span> <span class="s2">&quot;b&quot;</span>
+            <span class="n">Remote</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span>
+            <span class="n">Tag</span> <span class="o">=</span> <span class="s2">&quot;t&quot;</span>
+            <span class="n">Head</span> <span class="o">=</span> <span class="s2">&quot;h&quot;</span>
+
+        <span class="n">modes</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Set</span><span class="p">[</span><span class="n">Mode</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+            <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+                <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Git</span><span class="o">.</span><span class="n">Mode</span><span class="o">.</span><span class="n">Branch</span><span class="p">,</span>
+                <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Git</span><span class="o">.</span><span class="n">Mode</span><span class="o">.</span><span class="n">Tag</span><span class="p">,</span>
+                <span class="n">_CompleterSerializer</span><span class="o">.</span><span class="n">Git</span><span class="o">.</span><span class="n">Mode</span><span class="o">.</span><span class="n">Head</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">mode</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modes</span><span class="p">)]</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">List</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;l&quot;</span><span class="p">):</span>
+        <span class="n">delim</span><span class="p">:</span> <span class="nb">str</span>
+        <span class="n">inner</span><span class="p">:</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">ListMany</span><span class="p">(</span><span class="n">List</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;lm&quot;</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">Tuple</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;t&quot;</span><span class="p">):</span>
+        <span class="n">delim</span><span class="p">:</span> <span class="nb">str</span>
+        <span class="n">inner</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">]</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">TupleMany</span><span class="p">(</span><span class="n">Tuple</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;tm&quot;</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">Alternative</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">):</span>
+        <span class="n">alternatives</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;_CompleterSerializer.Model&quot;</span><span class="p">]]</span>
+
+    <span class="nd">@dataclass</span><span class="p">()</span>
+    <span class="k">class</span> <span class="nc">CustomCompleter</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;cc&quot;</span><span class="p">):</span>
+        <span class="n">completer</span><span class="p">:</span> <span class="n">Completer</span>
+
+        <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+                <span class="s2">&quot;1&quot;</span><span class="p">,</span>
+                <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">completer</span><span class="p">))</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span>
+            <span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">_run_custom_completer</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">word</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="n">completer</span><span class="p">:</span> <span class="n">Completer</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+    <span class="n">completions</span> <span class="o">=</span> <span class="n">completer</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">word</span><span class="p">),</span> <span class="n">do_corrections</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">completion</span> <span class="ow">in</span> <span class="n">completions</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">completion</span><span class="o">.</span><span class="n">iprefix</span><span class="si">}{</span><span class="n">completion</span><span class="o">.</span><span class="n">completion</span><span class="si">}{</span><span class="n">completion</span><span class="o">.</span><span class="n">isuffix</span><span class="si">}</span><span class="se">\t</span><span class="si">{</span><span class="n">completion</span><span class="o">.</span><span class="n">comment</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">__stdout__</span><span class="p">,</span>
+        <span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Tamika Nomara.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
