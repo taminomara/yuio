@@ -1,8 +1,8 @@
+from typing import Tuple
+
 import yuio.io
 import yuio.widget
 from yuio.widget import Key, RenderContext
-
-from typing import Tuple
 
 
 # Let's build a simple widget and see how we can configure it

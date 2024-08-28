@@ -76,12 +76,12 @@ import functools
 import pathlib
 import re
 import subprocess
-from yuio import _t
 from dataclasses import dataclass
 from datetime import datetime
 
-import yuio.parse
 import yuio.complete
+import yuio.parse
+from yuio import _t
 
 
 class GitException(subprocess.SubprocessError):

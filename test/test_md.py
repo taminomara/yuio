@@ -1,9 +1,7 @@
-import yuio.md
-import yuio.term
-
 import pytest
 
-
+import yuio.md
+import yuio.term
 
 
 class TestParser:
@@ -146,7 +144,6 @@ class TestParser:
             #     ),
             # ),
             # (r"\→\A\a\ \φ\«", "(P '\\\\→\\\\A\\\\a\\\\ \\\\φ\\\\«')"),
-
             (
                 """
                     foo
@@ -156,10 +153,9 @@ class TestParser:
                 (Code ''
                   'foo'
                   'bar')
-                """
+                """,
             ),
             (
-
                 """
                 1\\. not a list
                 \\* not a list
@@ -170,7 +166,7 @@ class TestParser:
                   '1\\\\. not a list'
                   '\\\\* not a list'
                   '\\\\# not a heading')
-                """
+                """,
             ),
             (
                 """
@@ -185,7 +181,7 @@ class TestParser:
                   (ListItem 2
                     (Paragraph
                       'Item two.')))
-                """
+                """,
             ),
             (
                 """
@@ -200,8 +196,8 @@ class TestParser:
                   (ListItem 3
                     (Paragraph
                       'Item three.')))
-                """
-            )
+                """,
+            ),
         ],
     )
     def test_ast(self, parser: yuio.md._MdParser, md: str, expected: str):

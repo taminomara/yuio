@@ -1,9 +1,10 @@
+from typing import NoReturn, Optional, Tuple
+
 import yuio.io
 import yuio.term
 import yuio.widget
 from yuio.widget import KeyboardEvent, RenderContext, VerticalLayout, Widget
 
-from typing import Tuple, Optional, NoReturn
 
 # Let's build a simple widget that displays an input box with a heading
 # and a caption that will only show when entered text is long enough.

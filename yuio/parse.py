@@ -243,11 +243,11 @@ import fractions
 import pathlib
 import re
 import threading
-from yuio import _t
 
 import yuio
 import yuio.complete
 import yuio.widget
+from yuio import _t
 
 T = _t.TypeVar("T")
 U = _t.TypeVar("U")
@@ -273,9 +273,7 @@ class ParsingError(ValueError, argparse.ArgumentTypeError):
 
 
 class Parser(_t.Generic[T_co], abc.ABC):
-    """Base class for parsers.
-
-    """
+    """Base class for parsers."""
 
     #: An attribute for unwrapping parsers that validate or map results
     #: of other parsers.
@@ -1956,7 +1954,9 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
                     f"{self.__desc} should be greater or equal to {self.__lower_bound},"
                     f" got {value} instead"
                 )
-            elif not self.__lower_bound_is_inclusive and not self.__lower_bound < mapped:
+            elif (
+                not self.__lower_bound_is_inclusive and not self.__lower_bound < mapped
+            ):
                 raise ParsingError(
                     f"{self.__desc} should be greater than {self.__lower_bound},"
                     f" got {value} instead"
@@ -1968,7 +1968,9 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
                     f"{self.__desc} should be lesser or equal to {self.__upper_bound},"
                     f" got {value} instead"
                 )
-            elif not self.__upper_bound_is_inclusive and not mapped < self.__upper_bound:
+            elif (
+                not self.__upper_bound_is_inclusive and not mapped < self.__upper_bound
+            ):
                 raise ParsingError(
                     f"{self.__desc} should be lesser than {self.__upper_bound},"
                     f" got {value} instead"

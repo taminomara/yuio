@@ -68,6 +68,7 @@ This is the class that is responsible for generating a final list of completions
 
 import abc
 import argparse
+import base64
 import contextlib
 import dataclasses
 import enum
@@ -75,16 +76,15 @@ import functools
 import math
 import os
 import pathlib
+import pickle
 import re
 import string
 import subprocess
 import sys
-import pickle
-import base64
-from yuio import _t
 from dataclasses import dataclass
 
 import yuio
+from yuio import _t
 
 
 @dataclass(frozen=True, **yuio._with_slots())
@@ -1043,8 +1043,8 @@ class _CompleterSerializer:
         cache_home: pathlib.Path,
         config_home: pathlib.Path,
     ):
-        import yuio.io
         import yuio.exec
+        import yuio.io
 
         try:
             bash_completions_home = yuio.exec.exec(
@@ -1074,8 +1074,8 @@ class _CompleterSerializer:
         cache_home: pathlib.Path,
         config_home: pathlib.Path,
     ):
-        import yuio.io
         import yuio.exec
+        import yuio.io
 
         zsh_completions_home = data_home / "zsh/completions"
         os.makedirs(zsh_completions_home, exist_ok=True)
@@ -1330,7 +1330,11 @@ class _CompleterSerializer:
         completer: Completer
 
         def dump(self) -> _t.List[str]:
-            return [self.tag, "1", base64.b64encode(pickle.dumps(self.completer)).decode()]
+            return [
+                self.tag,
+                "1",
+                base64.b64encode(pickle.dumps(self.completer)).decode(),
+            ]
 
 
 def _run_custom_completer(data: str, word: str):

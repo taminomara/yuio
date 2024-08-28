@@ -63,10 +63,10 @@ Use the following loader to create an instance of the default theme:
 import dataclasses
 import functools
 import os
-from yuio import _t
 from dataclasses import dataclass
 
 import yuio.term
+from yuio import _t
 from yuio.term import Color, Term
 
 T = _t.TypeVar("T")

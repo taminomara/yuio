@@ -256,7 +256,6 @@ import re
 import string
 import sys
 import types
-from yuio import _t
 from dataclasses import dataclass
 
 import yuio
@@ -264,10 +263,11 @@ import yuio.complete
 import yuio.config
 import yuio.exec
 import yuio.io
+import yuio.md
 import yuio.parse
 import yuio.term
 import yuio.theme
-import yuio.md
+from yuio import _t
 from yuio.config import field, inline, positional
 
 __all__ = [

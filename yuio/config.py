@@ -164,12 +164,12 @@ there is no way to inline nested configs.
 import argparse
 import os
 import pathlib
-from yuio import _t
 from dataclasses import dataclass
 
 import yuio
 import yuio.complete
 import yuio.parse
+from yuio import _t
 
 T = _t.TypeVar("T")
 
@@ -481,7 +481,11 @@ def positional(
     )
 
 
-def _action(parser: yuio.parse.Parser[_t.Any], completer: _t.Optional[yuio.complete.Completer], parse_many: bool):
+def _action(
+    parser: yuio.parse.Parser[_t.Any],
+    completer: _t.Optional[yuio.complete.Completer],
+    parse_many: bool,
+):
     class Action(argparse.Action):
         @staticmethod
         def get_parser():
@@ -814,9 +818,7 @@ class Config:
                         if current_suppress_help:
                             help = argparse.SUPPRESS
                         else:
-                            help = (
-                                f'disable <c hl/flag:sh-usage>{(prefix or "--") + flag[2:]}</c>'
-                            )
+                            help = f'disable <c hl/flag:sh-usage>{(prefix or "--") + flag[2:]}</c>'
                         mutex_group.add_argument(
                             flag_neg,
                             default=yuio.MISSING,
@@ -935,7 +937,11 @@ class Config:
 
     @classmethod
     def load_from_parsed_file(
-        cls: _t.Type[_Self], parsed: _t.Dict[str, object], /, *, ignore_unknown_fields: bool = False
+        cls: _t.Type[_Self],
+        parsed: _t.Dict[str, object],
+        /,
+        *,
+        ignore_unknown_fields: bool = False,
     ) -> _Self:
         """Load config from parsed config file.
 

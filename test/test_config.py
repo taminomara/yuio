@@ -1,12 +1,12 @@
 import argparse
 import enum
 import os
-from yuio import _t
 
 import pytest
 
 import yuio.config
 import yuio.parse
+from yuio import _t
 
 
 class TestBasics:

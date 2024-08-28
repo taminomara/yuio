@@ -91,11 +91,11 @@ import functools
 import os
 import re
 import sys
-from yuio import _t
 import unicodedata
 from dataclasses import dataclass
 
 import yuio
+from yuio import _t
 
 T = _t.TypeVar("T")
 

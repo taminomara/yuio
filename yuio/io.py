@@ -186,13 +186,17 @@ you can add a :class:`Handler`:
 
 """
 
+import abc
+import atexit
 import enum
 import functools
 import getpass
 import logging
+import math
 import os
 import re
 import shutil
+import string
 import subprocess
 import sys
 import tempfile
@@ -200,23 +204,18 @@ import threading
 import time
 import traceback
 import types
-from yuio import _t
 from logging import LogRecord
-import abc
-import atexit
-import math
-import string
-
-from yuio.widget import RenderContext
 
 import yuio.complete
+import yuio.md
 import yuio.parse
 import yuio.term
 import yuio.theme
 import yuio.widget
-import yuio.md
+from yuio import _t
 from yuio.term import Color, Term
 from yuio.theme import Theme
+from yuio.widget import RenderContext
 
 T = _t.TypeVar("T")
 U = _t.TypeVar("U")
@@ -370,17 +369,13 @@ def streams_wrapped() -> bool:
 
 
 def orig_stderr() -> _t.TextIO:
-    """Return the original :data:`sys.stderr` before wrapping.
-
-    """
+    """Return the original :data:`sys.stderr` before wrapping."""
 
     return _ORIG_STDERR or sys.stderr
 
 
 def orig_stdout() -> _t.TextIO:
-    """Return the original :data:`sys.stdout` before wrapping.
-
-    """
+    """Return the original :data:`sys.stdout` before wrapping."""
 
     return _ORIG_STDOUT or sys.stdout
 

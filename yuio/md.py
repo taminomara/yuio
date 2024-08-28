@@ -72,21 +72,20 @@ Markdown AST
 
 import abc
 import contextlib
+import dataclasses
+import math
 import os
 import re
 import shutil
 import string
 import textwrap
-from yuio import _t
-import dataclasses
-import math
 from dataclasses import dataclass
 
 import yuio.term
 import yuio.theme
+from yuio import _t
 from yuio.term import Color
 from yuio.theme import Theme
-
 
 T = _t.TypeVar("T")
 TAst = _t.TypeVar("TAst", bound="AstBase")
@@ -180,18 +179,12 @@ class MdFormatter:
             width = min(shutil.get_terminal_size().columns, 90)
         self.__width = max(width, 30)
 
-    def format(
-        self, s: str, /
-    ) -> yuio.term.ColorizedString:
+    def format(self, s: str, /) -> yuio.term.ColorizedString:
         """Format a markdown document."""
 
         return self.format_node(self.parse(s))
 
-    def parse(
-        self,
-        s: str,
-        /
-    ) -> "AstBase":
+    def parse(self, s: str, /) -> "AstBase":
         """Parse a markdown document and return an AST node.
 
         .. warning::
@@ -202,9 +195,7 @@ class MdFormatter:
 
         return _MdParser(self.allow_headings).parse(self._dedent(s))
 
-    def format_node(
-        self, node: "AstBase", /
-    ) -> yuio.term.ColorizedString:
+    def format_node(self, node: "AstBase", /) -> yuio.term.ColorizedString:
         """Format a parsed markdown document.
 
         .. warning::
@@ -956,9 +947,8 @@ class SyntaxHighlighter(abc.ABC):
         theme: Theme,
         default_color: _t.Union[Color, str, None],
     ) -> Color:
-        return (
-            theme.to_color(default_color)
-            | theme.get_color(f"msg/text:code/{self.syntax}")
+        return theme.to_color(default_color) | theme.get_color(
+            f"msg/text:code/{self.syntax}"
         )
 
 
@@ -1144,9 +1134,7 @@ class _TbHighlighter(SyntaxHighlighter):
         ]
 
     class _StackColors:
-        def __init__(
-            self, theme: Theme, default_color: Color, tag: str
-        ):
+        def __init__(self, theme: Theme, default_color: Color, tag: str):
             self.file_color = default_color | theme.get_color(f"tb/frame/{tag}/file")
             self.file_path_color = default_color | theme.get_color(
                 f"tb/frame/{tag}/file/path"

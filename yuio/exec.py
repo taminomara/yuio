@@ -21,10 +21,9 @@ import logging
 import pathlib
 import subprocess
 import threading
-from yuio import _t
 
 import yuio.io
-
+from yuio import _t
 
 _LOGGER = logging.getLogger("yuio.exec")
 

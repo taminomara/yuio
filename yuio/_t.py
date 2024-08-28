@@ -3,7 +3,7 @@ import typing
 from typing import *  # type: ignore
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias, Never, Annotated, TextIO, BinaryIO
+    from typing_extensions import Annotated, BinaryIO, Never, TextIO, TypeAlias
 else:
     if not hasattr(typing, "TypeAlias"):
         TypeAlias = Any
@@ -27,7 +27,9 @@ _union_origin = get_origin(Union[str, int])
 # Union of this type is created when using `typing_extensions.Union`.
 _typing_extensions_union_origin = get_origin(_TypingExtensionsUnion[str, int])
 # Union of this type is created when using new syntax.
-_new_union_origin = get_origin(eval("str | int")) if sys.version_info >= (3, 10) else _union_origin
+_new_union_origin = (
+    get_origin(eval("str | int")) if sys.version_info >= (3, 10) else _union_origin
+)
 
 
 def is_union(origin: object):

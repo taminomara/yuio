@@ -96,18 +96,18 @@ import re
 import shutil
 import string
 import sys
-from yuio import _t
 from dataclasses import dataclass
 
 import yuio.complete
 import yuio.term
 import yuio.theme
+from yuio import _t
 from yuio.term import Color as _Color
 from yuio.term import ColorizedString as _ColorizedString
 from yuio.term import Term as _Term
-from yuio.theme import Theme as _Theme
 from yuio.term import _getch, _kbhit, _set_cbreak
 from yuio.term import line_width as _line_width
+from yuio.theme import Theme as _Theme
 
 _SPACE_BETWEEN_COLUMNS = 2
 _MIN_COLUMN_WIDTH = 10
@@ -783,9 +783,7 @@ class RenderContext:
 
             debug_msg = f"dbg:n={self._renders},r={self._bytes_rendered},t={self._total_bytes_rendered}"
             term_x, term_y = self._term_x, self._term_y
-            self._move_term_cursor(
-                self._width - len(debug_msg), self._max_term_y
-            )
+            self._move_term_cursor(self._width - len(debug_msg), self._max_term_y)
             self._out.append(self._none_color)
             self._out.append(debug_msg)
             self._term_x += len(debug_msg)
@@ -809,7 +807,7 @@ class RenderContext:
         self._out.clear()
         self._term_color = self._none_color
 
-    def _move_term_cursor(self, x: int ,y: int):
+    def _move_term_cursor(self, x: int, y: int):
         dy = y - self._term_y
         if 0 < dy <= 4 or y > self._max_term_y:
             self._out.append("\n" * dy)
@@ -898,7 +896,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     """
 
-    __keybindings: _t.ClassVar[_t.Dict[KeyboardEvent, _t.Callable[["Widget[object]"], None]]]
+    __keybindings: _t.ClassVar[
+        _t.Dict[KeyboardEvent, _t.Callable[["Widget[object]"], None]]
+    ]
     __callbacks: _t.ClassVar[_t.List[_t.Callable[["Widget[object]"], None]]]
 
     def __init_subclass__(cls) -> None:
@@ -1173,7 +1173,9 @@ class VerticalLayoutBuilder(_t.Generic[T]):
     """
 
     if _t.TYPE_CHECKING:
-        def __new__(cls) -> "VerticalLayoutBuilder[_t.Never]": ...
+
+        def __new__(cls) -> "VerticalLayoutBuilder[_t.Never]":
+            ...
 
     def __init__(self):
         self._widgets: _t.List[Widget[_t.Any]] = []
@@ -1251,7 +1253,9 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
     """
 
     if _t.TYPE_CHECKING:
-        def __new__(cls, *widgets: Widget[object]) -> "VerticalLayout[_t.Never]": ...
+
+        def __new__(cls, *widgets: Widget[object]) -> "VerticalLayout[_t.Never]":
+            ...
 
     def __init__(self, *widgets: Widget[object]):
         self._widgets: _t.List[Widget[object]] = list(widgets)
@@ -1280,7 +1284,9 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
         """
 
         if self._event_receiver is not None:
-            return _t.cast(_t.Optional[Result[T]], self._widgets[self._event_receiver].event(e))
+            return _t.cast(
+                _t.Optional[Result[T]], self._widgets[self._event_receiver].event(e)
+            )
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         """Calculate layout of the entire stack."""
@@ -1526,7 +1532,9 @@ class Input(Widget[str]):
         if self._history[-1][2] is Input._CheckpointType.USR:
             self.undo()
 
-    def _internal_checkpoint(self, action: "Input._CheckpointType", text: str, pos: int):
+    def _internal_checkpoint(
+        self, action: "Input._CheckpointType", text: str, pos: int
+    ):
         prev_text, prev_pos, prev_action = self._history[-1]
 
         if action == prev_action and not self._require_checkpoint:
@@ -1760,7 +1768,11 @@ class Input(Widget[str]):
 
     def insert(self, s: str):
         self._internal_checkpoint(
-            Input._CheckpointType.SEP if s in self._WORD_SEPARATORS else Input._CheckpointType.SYM, self.text, self.pos
+            Input._CheckpointType.SEP
+            if s in self._WORD_SEPARATORS
+            else Input._CheckpointType.SYM,
+            self.text,
+            self.pos,
         )
 
         self.text = self.text[: self.pos] + s + self.text[self.pos :]
@@ -2154,11 +2166,17 @@ class Choice(Widget[T], _t.Generic[T]):
         )
 
         if right:
-            rc.set_color_path(f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}")
+            rc.set_color_path(
+                f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}"
+            )
             rc.write(" [")
-            rc.set_color_path(f"menu/text/comment:choice/{status_tag}/{option.color_tag}")
+            rc.set_color_path(
+                f"menu/text/comment:choice/{status_tag}/{option.color_tag}"
+            )
             rc.write(right, max_width=right_width)
-            rc.set_color_path(f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}")
+            rc.set_color_path(
+                f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}"
+            )
             rc.write("]")
 
     @functools.cached_property

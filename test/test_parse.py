@@ -1,11 +1,11 @@
 import datetime
 import enum
 import os.path
-from yuio import _t
 
 import pytest
 
 import yuio.parse
+from yuio import _t
 
 
 class TestSimple:
@@ -272,7 +272,7 @@ class TestContainers:
             yuio.parse.Tuple(yuio.parse.Int(), delimiter="")
 
         assert parser.describe() == "int int str"
-        assert parser.describe_many() == ('value', 'value', 'value')
+        assert parser.describe_many() == ("value", "value", "value")
 
 
 class TestTime:
