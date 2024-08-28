@@ -12,10 +12,10 @@ This is a low-level API module, upon which :mod:`yuio.io` builds
 its higher-level abstraction.
 
 
-Base widget
------------
+Widget basics
+-------------
 
-All widgets are based on the :class:`Widget` class, where they implement
+All widgets are are derived from the :class:`Widget` class, where they implement
 event handlers, layout and rendering routines. Specifically,
 :meth:`Widget.layout` and :meth:`Widget.draw` are required to implement
 a widget.
@@ -43,11 +43,6 @@ Drawing and rendering widgets
 Widgets are rendered through :class:`RenderContext`. It provides simple facilities
 to print characters on screen and manipulate screen cursor.
 
-An important concept here is `Drawing Frames`. Each widget is rendered in its
-drawing frame, which has coordinates and dimensions. Widget's :meth:`~Widget.draw`
-method uses zero-based coordinates, which are then translated to the frame's
-coordinates.
-
 .. autoclass:: RenderContext
    :members:
 
@@ -59,7 +54,6 @@ To get help with drawing multiple widgets and setting their own frames,
 you can use the :class:`VerticalLayout` class:
 
 .. autoclass:: VerticalLayout
-   :members:
 
 .. autoclass:: VerticalLayoutBuilder
    :members:
@@ -87,7 +81,7 @@ Pre-defined widgets
 .. autoclass:: Apply
 
 .. autoclass:: Help
-  :members:
+   :members:
 
 
 """
@@ -178,7 +172,7 @@ class KeyboardEvent:
     """A single keyboard event.
 
     Note that we don't have separate flag for when `Shift` was pressed with keystroke
-    because that renders different :attr:`~KeyboardEvent.key` value.
+    because that results in :attr:`~KeyboardEvent.key` being a capital letter.
 
     """
 
@@ -877,17 +871,16 @@ class Widget(abc.ABC, _t.Generic[T_co]):
            draw [ label="Widget.draw()"; shape=rect; ];
            wait [ label="<wait for keyboard event>"; shape=plain; fixedsize=false; ];
            event [ label="Widget.event()"; shape=rect; ];
-           stop [ label=""; shape=diamond; width=0.5; height=0.5 ];
+           stop [ label="Result(...)?"; shape=diamond; ];
            end [ label=""; shape=doublecircle; width=0.3; ];
 
            start -> layout;
            layout -> draw;
-           draw:w -> layout:w [ weight=0; style=dashed; ];
            draw -> wait [ arrowhead=none ];
            wait -> event;
            event -> stop;
-           stop:e -> layout:e [ weight=0; ];
-           stop -> end [ taillabel="returned   \\nResult(v)   " ];
+           stop:e -> layout:e [ weight=0; taillabel="no" ];
+           stop -> end [ taillabel="yes" ];
        }
 
     Widgets run indefinitely until they stop themselves and return a value.
@@ -940,7 +933,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             return self.default_event_handler(e)
 
     def default_event_handler(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
-        """Process any event that wasn't handled by other event handlers."""
+        """Process any event that wasn't caught by other event handlers."""
 
     @abc.abstractmethod
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
@@ -958,7 +951,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         """Draw the widget.
 
         Render context's drawing frame dimensions are guaranteed to be between
-        the minimum and the maximum height returned from :meth:`~Widget.layout`.
+        the minimum and the maximum height returned from the last call
+        to :meth:`~Widget.layout`.
 
         """
 
@@ -1104,8 +1098,8 @@ def bind(
     If there is a match, the decorated method is called
     instead of the :meth:`Widget.default_event_handler`.
 
-    If `show_in_help` is false, this binding will be hidden in the automatically
-    generated help message.
+    If `show_in_help` is :data:`False`, this binding will be hidden
+    in the automatically generated help message.
 
     Example::
 
@@ -1243,6 +1237,16 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
     You can use this class as a helper component inside your own widgets,
     or you can use it as a standalone widget. See :class:`~VerticalLayoutBuilder`
     for an example.
+
+    .. automethod:: append
+
+    .. automethod:: extend
+
+    .. automethod:: event
+
+    .. automethod:: layout
+
+    .. automethod:: draw
 
     """
 

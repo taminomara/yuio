@@ -5,6 +5,6 @@ Set BorderRadius 25
 Set Theme "OneHalfDark"
 
 Hide
-Type "export YUIO_THEME_PATH=docs/source/_tapes/theme.json"
+Type "export YUIO_THEME_PATH=docs/source/_tapes/theme.json && clear"
 Enter
 Show

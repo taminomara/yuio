@@ -1,4 +1,4 @@
 Widget
 ======
 
-.. .. automodule:: yuio.widget
+.. automodule:: yuio.widget

@@ -9,8 +9,8 @@
 This module provides autocompletion functionality for widgets and CLI.
 
 
-Completer base class
-====================
+Completer basics
+----------------
 
 All completers are derived from the :class:`Completer` base class
 with a simple interface:
@@ -23,7 +23,7 @@ with a simple interface:
 
 
 Completers
-==========
+----------
 
 Yuio provides basic completers that cover most of the cases:
 
@@ -43,7 +43,7 @@ Yuio provides basic completers that cover most of the cases:
 
 
 Implementing your own completer
-===============================
+-------------------------------
 
 To implement a custom completer, subclass :class:`Completer` and implement
 its :meth:`~Completer._process` method.
