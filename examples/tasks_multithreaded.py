@@ -44,7 +44,9 @@ if __name__ == "__main__":
         threads = []
 
         for package in packages:
-            thread = threading.Thread(target=install_package, args=(package, task))
+            thread = threading.Thread(
+                target=install_package, args=(package, task), daemon=True
+            )
             thread.start()
             threads.append(thread)
 

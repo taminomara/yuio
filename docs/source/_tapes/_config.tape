@@ -1,7 +1,6 @@
 Require python
 
 Set Shell "bash"
-Set BorderRadius 25
 Set Theme "OneHalfDark"
 
 Hide
