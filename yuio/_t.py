@@ -20,11 +20,14 @@ else:
 
 if TYPE_CHECKING:
     StrRePattern: TypeAlias = _re.Pattern[str]
+    StrReMatch: TypeAlias = _re.Match[str]
 else:
     try:
         StrRePattern = _re.Pattern[str]
+        StrReMatch = _re.Match[str]
     except TypeError:
         StrRePattern = _re.Pattern
+        StrReMatch = _re.Match
 
 try:
     from typing_extensions import Union as _TypingExtensionsUnion

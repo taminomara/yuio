@@ -1375,7 +1375,7 @@ def _percent_format(s: ColorizedString, args: _t.Any) -> _t.List[_t.Union[Color,
 
     i = 0
 
-    def repl(m: re.Match[str]) -> str:
+    def repl(m: _t.StrReMatch) -> str:
         nonlocal i
         groups = m.groupdict()
         if groups["format"] == "%":
