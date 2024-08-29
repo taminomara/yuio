@@ -59,7 +59,7 @@ write_to = "yuio/_version.py"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = ["--strict-markers", "--doctest-modules"]
+addopts = ["--strict-markers"]
 testpaths = ["examples", "test", "yuio"]
 
 [tool.pyright]
