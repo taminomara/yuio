@@ -616,7 +616,7 @@ class ValueParser(Parser[T], _t.Generic[T]):
         >>> from dataclasses import dataclass
         >>> @dataclass
         ... class MyType:
-        ...     value: int
+        ...     value: str
 
     Example::
 
@@ -954,7 +954,7 @@ class Enum(ValueParser[E], _t.Generic[E]):
         if len(candidates) == 1:
             return candidates[0]
         elif len(candidates) > 1:
-            enum_values = ", ".join(str(self.__getter(e)) for e in self.__enum_type)
+            enum_values = ", ".join(str(self.__getter(e)) for e in candidates)
             raise ParsingError(
                 f"could not parse value {value!r}"
                 f" as {self.__enum_type.__name__},"
@@ -974,7 +974,7 @@ class Enum(ValueParser[E], _t.Generic[E]):
 
         result = self.parse(value)
 
-        if self.__getter(result) != value:
+        if str(self.__getter(result)).casefold() != value.casefold():
             raise ParsingError(
                 f"could not parse value {value!r}"
                 f" as {self.__enum_type.__name__},"
@@ -2287,7 +2287,10 @@ def from_type_hint(ty: _t.Any, /) -> "Parser[_t.Any]":
             _FROM_TYPE_HINT_DEPTH.uses_delim = prev_uses_delim
             _FROM_TYPE_HINT_DEPTH.depth -= uses_delim
 
-    raise TypeError(f"unsupported type {ty}")
+    if _t.is_union(origin):
+        raise TypeError(f"unsupported type {ty}; unions are not supported")
+    else:
+        raise TypeError(f"unsupported type {ty}")
 
 
 @_t.overload
@@ -2481,6 +2484,11 @@ register_type_hint_conversion(
 )
 register_type_hint_conversion(
     lambda ty, origin, args: Path() if ty is pathlib.Path else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args: Path() if _t.is_union(origin) and len(
+        args
+    ) == 2 and str in args and pathlib.Path in args else None
 )
 register_type_hint_conversion(
     lambda ty, origin, args: DateTime() if ty is datetime.datetime else None
