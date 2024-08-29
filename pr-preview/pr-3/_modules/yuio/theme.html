@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>yuio.theme &mdash; Yuio 0.1.dev1+g0a32d2a documentation</title>
+  <title>yuio.theme &mdash; Yuio 0.1.dev1+gfa9eb1b documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
@@ -33,7 +33,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g0a32d2a
+                0.1.dev1+gfa9eb1b
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -360,9 +360,14 @@
         <span class="n">colors</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">color_sources</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">):</span>
-            <span class="n">base_colors</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s2">&quot;colors&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">base_colors</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s2">&quot;_Theme__colors&quot;</span><span class="p">,</span> <span class="p">{})</span>
             <span class="n">colors</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">base_colors</span><span class="p">)</span>
-            <span class="n">color_sources</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">base_colors</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="bp">cls</span><span class="p">))</span>
+            <span class="n">base_color_sources</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s2">&quot;_Theme__color_sources&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">color_sources</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">base_color_sources</span><span class="p">)</span>
+
+        <span class="n">colors</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">colors</span><span class="p">)</span>
+        <span class="n">color_sources</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="bp">cls</span><span class="p">))</span>
+
         <span class="bp">cls</span><span class="o">.</span><span class="n">__colors</span> <span class="o">=</span> <span class="n">colors</span>
         <span class="bp">cls</span><span class="o">.</span><span class="n">__color_sources</span> <span class="o">=</span> <span class="n">color_sources</span>
         <span class="bp">cls</span><span class="o">.</span><span class="n">colors</span> <span class="o">=</span> <span class="n">_ImmutableDictProxy</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">__colors</span><span class="p">,</span> <span class="n">attr</span><span class="o">=</span><span class="s2">&quot;colors&quot;</span><span class="p">)</span>
@@ -370,9 +375,16 @@
         <span class="n">msg_decorations</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">msg_decoration_sources</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">):</span>
-            <span class="n">base_msg_decorations</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s2">&quot;msg_decorations&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">base_msg_decorations</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s2">&quot;_Theme__msg_decorations&quot;</span><span class="p">,</span> <span class="p">{})</span>
             <span class="n">msg_decorations</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">base_msg_decorations</span><span class="p">)</span>
-            <span class="n">msg_decoration_sources</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">base_msg_decorations</span><span class="p">,</span> <span class="bp">cls</span><span class="p">))</span>
+            <span class="n">base_msg_decoration_sources</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
+                <span class="n">base</span><span class="p">,</span> <span class="s2">&quot;_Theme__msg_decoration_sources&quot;</span><span class="p">,</span> <span class="p">{}</span>
+            <span class="p">)</span>
+            <span class="n">msg_decoration_sources</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">base_msg_decoration_sources</span><span class="p">)</span>
+
+        <span class="n">msg_decorations</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">msg_decorations</span><span class="p">)</span>
+        <span class="n">msg_decoration_sources</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">msg_decorations</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="bp">cls</span><span class="p">))</span>
+
         <span class="bp">cls</span><span class="o">.</span><span class="n">__msg_decorations</span> <span class="o">=</span> <span class="n">msg_decorations</span>
         <span class="bp">cls</span><span class="o">.</span><span class="n">__msg_decoration_sources</span> <span class="o">=</span> <span class="n">msg_decoration_sources</span>
         <span class="bp">cls</span><span class="o">.</span><span class="n">msg_decorations</span> <span class="o">=</span> <span class="n">_ImmutableDictProxy</span><span class="p">(</span>
@@ -430,6 +442,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">__msg_decoration_sources</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">__msg_decoration_sources</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
             <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">msg_decorations</span> <span class="o">=</span> <span class="n">_ImmutableDictProxy</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__msg_decorations</span><span class="p">,</span> <span class="n">attr</span><span class="o">=</span><span class="s2">&quot;msg_decorations&quot;</span>
+            <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__msg_decorations</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">msg_decoration</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__msg_decoration_sources</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expected_source</span></div>
 
@@ -468,6 +483,7 @@
         <span class="k">if</span> <span class="s2">&quot;_Theme__colors&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">__colors</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__color_sources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">__color_sources</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">colors</span> <span class="o">=</span> <span class="n">_ImmutableDictProxy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__colors</span><span class="p">,</span> <span class="n">attr</span><span class="o">=</span><span class="s2">&quot;colors&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__colors</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__color_sources</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expected_source</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">get_color</span><span class="o">.</span><span class="n">cache_clear</span><span class="p">()</span>
@@ -580,8 +596,11 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="n">color_or_path</span><span class="p">)</span></div></div>
 
 
+<span class="n">Theme</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">()</span>
+
+
 <div class="viewcode-block" id="DefaultTheme"><a class="viewcode-back" href="../../theme.html#yuio.theme.DefaultTheme">[docs]</a><span class="k">class</span> <span class="nc">DefaultTheme</span><span class="p">(</span><span class="n">Theme</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Default yuio theme. Adapts for terminal background color,</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Default Yuio theme. Adapts for terminal background color,</span>
 <span class="sd">    if one can be detected.</span>
 
 <span class="sd">    This theme defines *main colors*, which you can override by subclassing.</span>

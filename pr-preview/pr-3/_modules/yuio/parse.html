@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>yuio.parse &mdash; Yuio 0.1.dev1+g0a32d2a documentation</title>
+  <title>yuio.parse &mdash; Yuio 0.1.dev1+gfa9eb1b documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
@@ -33,7 +33,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g0a32d2a
+                0.1.dev1+gfa9eb1b
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -703,7 +703,7 @@
 <span class="sd">        &gt;&gt;&gt; from dataclasses import dataclass</span>
 <span class="sd">        &gt;&gt;&gt; @dataclass</span>
 <span class="sd">        ... class MyType:</span>
-<span class="sd">        ...     value: int</span>
+<span class="sd">        ...     value: str</span>
 
 <span class="sd">    Example::</span>
 
@@ -1041,7 +1041,7 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">candidates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">enum_values</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__getter</span><span class="p">(</span><span class="n">e</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__enum_type</span><span class="p">)</span>
+            <span class="n">enum_values</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__getter</span><span class="p">(</span><span class="n">e</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">)</span>
             <span class="k">raise</span> <span class="n">ParsingError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;could not parse value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">&quot;</span>
                 <span class="sa">f</span><span class="s2">&quot; as </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__enum_type</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">,&quot;</span>
@@ -1061,7 +1061,7 @@
 
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__getter</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">!=</span> <span class="n">value</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__getter</span><span class="p">(</span><span class="n">result</span><span class="p">))</span><span class="o">.</span><span class="n">casefold</span><span class="p">()</span> <span class="o">!=</span> <span class="n">value</span><span class="o">.</span><span class="n">casefold</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">ParsingError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;could not parse value </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">&quot;</span>
                 <span class="sa">f</span><span class="s2">&quot; as </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__enum_type</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">,&quot;</span>
@@ -2002,32 +2002,32 @@
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">inner</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">Cmp</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound_is_inclusive</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">Cmp</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound_is_inclusive</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">Cmp</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound_is_inclusive</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">Cmp</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound_is_inclusive</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">if</span> <span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">lower_inclusive</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
                 <span class="s2">&quot;lower and lower_inclusive cannot be given at the same time&quot;</span>
             <span class="p">)</span>
         <span class="k">elif</span> <span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span> <span class="o">=</span> <span class="n">lower</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound_is_inclusive</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span> <span class="o">=</span> <span class="n">lower</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound_is_inclusive</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">elif</span> <span class="n">lower_inclusive</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span> <span class="o">=</span> <span class="n">lower_inclusive</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound_is_inclusive</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span> <span class="o">=</span> <span class="n">lower_inclusive</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound_is_inclusive</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="k">if</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">upper_inclusive</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
                 <span class="s2">&quot;upper and upper_inclusive cannot be given at the same time&quot;</span>
             <span class="p">)</span>
         <span class="k">elif</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span> <span class="o">=</span> <span class="n">upper</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound_is_inclusive</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span> <span class="o">=</span> <span class="n">upper</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound_is_inclusive</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">elif</span> <span class="n">upper_inclusive</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span> <span class="o">=</span> <span class="n">upper_inclusive</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound_is_inclusive</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span> <span class="o">=</span> <span class="n">upper_inclusive</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound_is_inclusive</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">__mapper</span> <span class="o">=</span> <span class="n">mapper</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__desc</span> <span class="o">=</span> <span class="n">desc</span>
@@ -2035,47 +2035,43 @@
     <span class="k">def</span> <span class="nf">_validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
         <span class="n">mapped</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapper</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound_is_inclusive</span> <span class="ow">and</span> <span class="n">mapped</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound_is_inclusive</span> <span class="ow">and</span> <span class="n">mapped</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">ParsingError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__desc</span><span class="si">}</span><span class="s2"> should be greater or equal to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span><span class="si">}</span><span class="s2">,&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__desc</span><span class="si">}</span><span class="s2"> should be greater or equal to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span><span class="si">}</span><span class="s2">,&quot;</span>
                     <span class="sa">f</span><span class="s2">&quot; got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> instead&quot;</span>
                 <span class="p">)</span>
-            <span class="k">elif</span> <span class="p">(</span>
-                <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound_is_inclusive</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span> <span class="o">&lt;</span> <span class="n">mapped</span>
-            <span class="p">):</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound_is_inclusive</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span> <span class="o">&lt;</span> <span class="n">mapped</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">ParsingError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__desc</span><span class="si">}</span><span class="s2"> should be greater than </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span><span class="si">}</span><span class="s2">,&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__desc</span><span class="si">}</span><span class="s2"> should be greater than </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span><span class="si">}</span><span class="s2">,&quot;</span>
                     <span class="sa">f</span><span class="s2">&quot; got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> instead&quot;</span>
                 <span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound_is_inclusive</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span> <span class="o">&lt;</span> <span class="n">mapped</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound_is_inclusive</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span> <span class="o">&lt;</span> <span class="n">mapped</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">ParsingError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__desc</span><span class="si">}</span><span class="s2"> should be lesser or equal to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span><span class="si">}</span><span class="s2">,&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__desc</span><span class="si">}</span><span class="s2"> should be lesser or equal to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span><span class="si">}</span><span class="s2">,&quot;</span>
                     <span class="sa">f</span><span class="s2">&quot; got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> instead&quot;</span>
                 <span class="p">)</span>
-            <span class="k">elif</span> <span class="p">(</span>
-                <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound_is_inclusive</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">mapped</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span>
-            <span class="p">):</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound_is_inclusive</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">mapped</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">ParsingError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__desc</span><span class="si">}</span><span class="s2"> should be lesser than </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span><span class="si">}</span><span class="s2">,&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__desc</span><span class="si">}</span><span class="s2"> should be lesser than </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span><span class="si">}</span><span class="s2">,&quot;</span>
                     <span class="sa">f</span><span class="s2">&quot; got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> instead&quot;</span>
                 <span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">desc</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">desc</span> <span class="o">+=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span><span class="p">)</span>
-            <span class="n">desc</span> <span class="o">+=</span> <span class="s2">&quot; &lt;= &quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound_is_inclusive</span> <span class="k">else</span> <span class="s2">&quot; &lt; &quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">desc</span> <span class="o">+=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span><span class="p">)</span>
+            <span class="n">desc</span> <span class="o">+=</span> <span class="s2">&quot; &lt;= &quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound_is_inclusive</span> <span class="k">else</span> <span class="s2">&quot; &lt; &quot;</span>
         <span class="n">mapper_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__mapper</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">mapper_name</span> <span class="ow">and</span> <span class="n">mapper_name</span> <span class="o">!=</span> <span class="s2">&quot;&lt;lambda&gt;&quot;</span><span class="p">:</span>
             <span class="n">desc</span> <span class="o">+=</span> <span class="n">mapper_name</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">desc</span> <span class="o">+=</span> <span class="s2">&quot;x&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">desc</span> <span class="o">+=</span> <span class="s2">&quot; &lt;= &quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound_is_inclusive</span> <span class="k">else</span> <span class="s2">&quot; &lt; &quot;</span>
-            <span class="n">desc</span> <span class="o">+=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">desc</span> <span class="o">+=</span> <span class="s2">&quot; &lt;= &quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound_is_inclusive</span> <span class="k">else</span> <span class="s2">&quot; &lt; &quot;</span>
+            <span class="n">desc</span> <span class="o">+=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span><span class="p">)</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__wrapped_parser__</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="n">desc</span><span class="si">}</span><span class="s2">)&quot;</span>
 
 
@@ -2139,11 +2135,11 @@
             <span class="c1"># somebody bound len of a string?</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__wrapped_parser__</span><span class="o">.</span><span class="n">get_nargs</span><span class="p">()</span>
 
-        <span class="n">lower</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound</span>
-        <span class="k">if</span> <span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lower_bound_is_inclusive</span><span class="p">:</span>
+        <span class="n">lower</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound</span>
+        <span class="k">if</span> <span class="n">lower</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lower_bound_is_inclusive</span><span class="p">:</span>
             <span class="n">lower</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">upper</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound</span>
-        <span class="k">if</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__upper_bound_is_inclusive</span><span class="p">:</span>
+        <span class="n">upper</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound</span>
+        <span class="k">if</span> <span class="n">upper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_upper_bound_is_inclusive</span><span class="p">:</span>
             <span class="n">upper</span> <span class="o">-=</span> <span class="mi">1</span>
 
         <span class="k">if</span> <span class="n">lower</span> <span class="o">==</span> <span class="n">upper</span><span class="p">:</span>
@@ -2374,7 +2370,10 @@
             <span class="n">_FROM_TYPE_HINT_DEPTH</span><span class="o">.</span><span class="n">uses_delim</span> <span class="o">=</span> <span class="n">prev_uses_delim</span>
             <span class="n">_FROM_TYPE_HINT_DEPTH</span><span class="o">.</span><span class="n">depth</span> <span class="o">-=</span> <span class="n">uses_delim</span>
 
-    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported type </span><span class="si">{</span><span class="n">ty</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+    <span class="k">if</span> <span class="n">_t</span><span class="o">.</span><span class="n">is_union</span><span class="p">(</span><span class="n">origin</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported type </span><span class="si">{</span><span class="n">ty</span><span class="si">}</span><span class="s2">; unions are not supported&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported type </span><span class="si">{</span><span class="n">ty</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 <span class="nd">@_t</span><span class="o">.</span><span class="n">overload</span>
@@ -2568,6 +2567,11 @@
 <span class="p">)</span>
 <span class="n">register_type_hint_conversion</span><span class="p">(</span>
     <span class="k">lambda</span> <span class="n">ty</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">Path</span><span class="p">()</span> <span class="k">if</span> <span class="n">ty</span> <span class="ow">is</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="p">)</span>
+<span class="n">register_type_hint_conversion</span><span class="p">(</span>
+    <span class="k">lambda</span> <span class="n">ty</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">Path</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">_t</span><span class="o">.</span><span class="n">is_union</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="nb">str</span> <span class="ow">in</span> <span class="n">args</span> <span class="ow">and</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="ow">in</span> <span class="n">args</span>
+    <span class="k">else</span> <span class="kc">None</span>
 <span class="p">)</span>
 <span class="n">register_type_hint_conversion</span><span class="p">(</span>
     <span class="k">lambda</span> <span class="n">ty</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">DateTime</span><span class="p">()</span> <span class="k">if</span> <span class="n">ty</span> <span class="ow">is</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span> <span class="k">else</span> <span class="kc">None</span>

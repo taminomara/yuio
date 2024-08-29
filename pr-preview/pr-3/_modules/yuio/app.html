@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>yuio.app &mdash; Yuio 0.1.dev1+g0a32d2a documentation</title>
+  <title>yuio.app &mdash; Yuio 0.1.dev1+gfa9eb1b documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
@@ -33,7 +33,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g0a32d2a
+                0.1.dev1+gfa9eb1b
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -117,12 +117,6 @@
 <span class="sd">    ... # python process with an appropriate exit code.</span>
 <span class="sd">    ... main.run(&quot;--flag 10 foobar!&quot;.split()) # doctest: +SKIP</span>
 <span class="sd">    flag=10 arg=&#39;foobar!&#39;</span>
-
-<span class="sd">..</span>
-<span class="sd">    &gt;&gt;&gt; try:</span>
-<span class="sd">    ...     main.run()</span>
-<span class="sd">    ... except SystemExit as e:</span>
-<span class="sd">    ...     print(e)</span>
 
 <span class="sd">Function&#39;s arguments will become program&#39;s flags and positionals, and function&#39;s</span>
 <span class="sd">docstring will become app&#39;s :attr:`~App.description`.</span>
@@ -700,7 +694,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">registrar</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="App.run"><a class="viewcode-back" href="../../app.html#yuio.app.App.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">NoReturn</span><span class="p">:</span>
+<div class="viewcode-block" id="App.run"><a class="viewcode-back" href="../../app.html#yuio.app.App.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">NoReturn</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse arguments, set up :mod:`yuio.io` and :mod:`logging`,</span>
 <span class="sd">        and run the application.</span>
 

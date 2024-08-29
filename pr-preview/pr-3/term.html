@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Term &mdash; Yuio 0.1.dev1+g0a32d2a documentation</title>
+  <title>Term &mdash; Yuio 0.1.dev1+gfa9eb1b documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
@@ -36,7 +36,7 @@
             Yuio
           </a>
               <div class="version">
-                0.1.dev1+g0a32d2a
+                0.1.dev1+gfa9eb1b
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -921,7 +921,7 @@ does not break coloring of the wrapped text.</p>
 <dd><p>Format colorized string as if with <code class="docutils literal notranslate"><span class="pre">%</span></code>-formatting
 (i.e. <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting">old-style formatting</a>).</p>
 <p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">line</span> <span class="o">=</span> <span class="n">theme</span><span class="o">.</span><span class="n">colorize</span><span class="p">(</span><span class="s2">&quot;Hello, &lt;c b&gt;</span><span class="si">%s</span><span class="s2">!&lt;/c&gt;&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">line</span> <span class="o">=</span> <span class="n">ColorizedString</span><span class="p">(</span><span class="s2">&quot;Hello, </span><span class="si">%s</span><span class="s2">!&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">line</span> <span class="o">%</span> <span class="s2">&quot;Username&quot;</span>
 <span class="go">&lt;ColorizedString(&#39;Hello, Username!&#39;)&gt;</span>
 </pre></div>
