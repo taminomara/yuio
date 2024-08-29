@@ -469,7 +469,10 @@ class TestPath:
         assert parser.parse("/a/s/d") == pathlib.Path("/a/s/d").resolve()
         assert parser.parse("/a/s/d/..") == pathlib.Path("/a/s").resolve()
         assert parser.parse("a/s/d") == pathlib.Path(os.path.abspath("a/s/d")).resolve()
-        assert parser.parse("./a/s/./d") == pathlib.Path(os.path.abspath("a/s/d")).resolve()
+        assert (
+            parser.parse("./a/s/./d")
+            == pathlib.Path(os.path.abspath("a/s/d")).resolve()
+        )
         assert parser.parse("~/a") == pathlib.Path(os.path.expanduser("~/a")).resolve()
 
         parser = yuio.parse.Path(extensions=[".cfg", ".txt"])
