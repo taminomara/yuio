@@ -15,7 +15,7 @@ Yuio got you.
 
 ## Resources
 
-- [Documentation](https://yuio.readthedocs.io/en/stable/)
+- [Documentation](https://taminomara.github.io/yuio/)
 - [Issues](https://github.com/taminomara/yuio/issues)
 - [Source](https://github.com/taminomara/yuio/)
 - [PyPi](https://pypi.org/project/yuio/)

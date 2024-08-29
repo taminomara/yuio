@@ -46,7 +46,7 @@ doc = [
 ]
 
 [project.urls]
-Documentation = "https://yuio.readthedocs.io/en/stable/"
+Documentation = "https://taminomara.github.io/yuio/"
 Issues = "https://github.com/taminomara/yuio/issues"
 Source = "https://github.com/taminomara/yuio/"
 Changelog = "https://github.com/taminomara/yuio/blob/main/CHANGELOG.md"
