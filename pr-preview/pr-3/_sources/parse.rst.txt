@@ -1,4 +1,0 @@
-Parse
-=====
-
-.. automodule:: yuio.parse

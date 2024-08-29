@@ -1,4 +1,0 @@
-Complete
-========
-
-.. automodule:: yuio.complete

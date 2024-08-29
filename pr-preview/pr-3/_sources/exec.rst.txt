@@ -1,4 +1,0 @@
-Exec
-====
-
-.. automodule:: yuio.exec

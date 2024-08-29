@@ -1,4 +1,0 @@
-App
-===
-
-.. automodule:: yuio.app

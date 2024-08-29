@@ -1,4 +1,0 @@
-Md
-==
-
-.. automodule:: yuio.md

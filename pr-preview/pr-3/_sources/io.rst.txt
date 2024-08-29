@@ -1,4 +1,0 @@
-Io
-==
-
-.. automodule:: yuio.io
