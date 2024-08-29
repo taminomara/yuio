@@ -54,9 +54,8 @@ jobs:
           black --check .
           isort --check --diff .
           pyright
-      # Temporarily disabled to check docs build
-      # - name: Test package
-      #   run: pytest -vv --showlocals --tb=short --color=yes --junit-xml=test-results.xml
+      - name: Test package
+        run: pytest -vv --showlocals --tb=short --color=yes --junit-xml=test-results.xml
 
   # Builds and publishes python packages.
   #

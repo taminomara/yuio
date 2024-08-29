@@ -1,5 +1,3 @@
-import os.path
-
 import pytest
 
 import yuio.complete
@@ -15,7 +13,6 @@ import yuio.complete
 )
 def test_commonprefix(strings, expected):
     assert yuio._commonprefix(strings) == expected
-
 
 @pytest.mark.parametrize(
     "a,b,expected",

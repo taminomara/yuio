@@ -543,7 +543,7 @@ class Config:
 
     # Value is generated lazily by `__get_fields`.
     __allow_positionals: _t.ClassVar[bool] = False
-    __fields: _t.ClassVar[_t.Optional[_t.Dict[str, _Field]]] = None
+    __fields: _t.ClassVar[_t.Optional[_t.Dict[str, _Field]]]
 
     @classmethod
     def __get_fields(cls) -> _t.Dict[str, _Field]:
@@ -1017,3 +1017,5 @@ class Config:
             return f"{self.__class__.__name__}(\n{field_desc}\n{prefix})"
         else:
             return f"{self.__class__.__name__}()"
+
+Config.__init_subclass__()

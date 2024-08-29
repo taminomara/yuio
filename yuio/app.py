@@ -31,12 +31,6 @@ with the :func:`app` decorator, and use :meth:`App.run` method to start it::
     ... main.run("--flag 10 foobar!".split()) # doctest: +SKIP
     flag=10 arg='foobar!'
 
-..
-    >>> try:
-    ...     main.run()
-    ... except SystemExit as e:
-    ...     print(e)
-
 Function's arguments will become program's flags and positionals, and function's
 docstring will become app's :attr:`~App.description`.
 
@@ -613,7 +607,7 @@ class App:
         else:
             return registrar(cb)
 
-    def run(self, args: _t.Optional[_t.List[str]] = None) -> _t.NoReturn:
+    def run(self, args: _t.Optional[_t.Sequence[str]] = None) -> _t.NoReturn:
         """Parse arguments, set up :mod:`yuio.io` and :mod:`logging`,
         and run the application.
 

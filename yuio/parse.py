@@ -1915,32 +1915,32 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
     ):
         super().__init__(inner)
 
-        self.__lower_bound: _t.Optional[Cmp] = None
-        self.__lower_bound_is_inclusive: bool = True
-        self.__upper_bound: _t.Optional[Cmp] = None
-        self.__upper_bound_is_inclusive: bool = True
+        self._lower_bound: _t.Optional[Cmp] = None
+        self._lower_bound_is_inclusive: bool = True
+        self._upper_bound: _t.Optional[Cmp] = None
+        self._upper_bound_is_inclusive: bool = True
 
         if lower is not None and lower_inclusive is not None:
             raise TypeError(
                 "lower and lower_inclusive cannot be given at the same time"
             )
         elif lower is not None:
-            self.__lower_bound = lower
-            self.__lower_bound_is_inclusive = False
+            self._lower_bound = lower
+            self._lower_bound_is_inclusive = False
         elif lower_inclusive is not None:
-            self.__lower_bound = lower_inclusive
-            self.__lower_bound_is_inclusive = True
+            self._lower_bound = lower_inclusive
+            self._lower_bound_is_inclusive = True
 
         if upper is not None and upper_inclusive is not None:
             raise TypeError(
                 "upper and upper_inclusive cannot be given at the same time"
             )
         elif upper is not None:
-            self.__upper_bound = upper
-            self.__upper_bound_is_inclusive = False
+            self._upper_bound = upper
+            self._upper_bound_is_inclusive = False
         elif upper_inclusive is not None:
-            self.__upper_bound = upper_inclusive
-            self.__upper_bound_is_inclusive = True
+            self._upper_bound = upper_inclusive
+            self._upper_bound_is_inclusive = True
 
         self.__mapper = mapper
         self.__desc = desc
@@ -1948,47 +1948,47 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
     def _validate(self, value: T, /):
         mapped = self.__mapper(value)
 
-        if self.__lower_bound is not None:
-            if self.__lower_bound_is_inclusive and mapped < self.__lower_bound:
+        if self._lower_bound is not None:
+            if self._lower_bound_is_inclusive and mapped < self._lower_bound:
                 raise ParsingError(
-                    f"{self.__desc} should be greater or equal to {self.__lower_bound},"
+                    f"{self.__desc} should be greater or equal to {self._lower_bound},"
                     f" got {value} instead"
                 )
             elif (
-                not self.__lower_bound_is_inclusive and not self.__lower_bound < mapped
+                not self._lower_bound_is_inclusive and not self._lower_bound < mapped
             ):
                 raise ParsingError(
-                    f"{self.__desc} should be greater than {self.__lower_bound},"
+                    f"{self.__desc} should be greater than {self._lower_bound},"
                     f" got {value} instead"
                 )
 
-        if self.__upper_bound is not None:
-            if self.__upper_bound_is_inclusive and self.__upper_bound < mapped:
+        if self._upper_bound is not None:
+            if self._upper_bound_is_inclusive and self._upper_bound < mapped:
                 raise ParsingError(
-                    f"{self.__desc} should be lesser or equal to {self.__upper_bound},"
+                    f"{self.__desc} should be lesser or equal to {self._upper_bound},"
                     f" got {value} instead"
                 )
             elif (
-                not self.__upper_bound_is_inclusive and not mapped < self.__upper_bound
+                not self._upper_bound_is_inclusive and not mapped < self._upper_bound
             ):
                 raise ParsingError(
-                    f"{self.__desc} should be lesser than {self.__upper_bound},"
+                    f"{self.__desc} should be lesser than {self._upper_bound},"
                     f" got {value} instead"
                 )
 
     def __repr__(self):
         desc = ""
-        if self.__lower_bound is not None:
-            desc += repr(self.__lower_bound)
-            desc += " <= " if self.__lower_bound_is_inclusive else " < "
+        if self._lower_bound is not None:
+            desc += repr(self._lower_bound)
+            desc += " <= " if self._lower_bound_is_inclusive else " < "
         mapper_name = getattr(self.__mapper, "__name__")
         if mapper_name and mapper_name != "<lambda>":
             desc += mapper_name
         else:
             desc += "x"
-        if self.__upper_bound is not None:
-            desc += " <= " if self.__upper_bound_is_inclusive else " < "
-            desc += repr(self.__upper_bound)
+        if self._upper_bound is not None:
+            desc += " <= " if self._upper_bound_is_inclusive else " < "
+            desc += repr(self._upper_bound)
         return f"{self.__class__.__name__}({self.__wrapped_parser__!r}, {desc})"
 
 
@@ -2052,11 +2052,11 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             # somebody bound len of a string?
             return self.__wrapped_parser__.get_nargs()
 
-        lower = self.__lower_bound
-        if lower is not None and not self.__lower_bound_is_inclusive:
+        lower = self._lower_bound
+        if lower is not None and not self._lower_bound_is_inclusive:
             lower += 1
-        upper = self.__upper_bound
-        if upper is not None and not self.__upper_bound_is_inclusive:
+        upper = self._upper_bound
+        if upper is not None and not self._upper_bound_is_inclusive:
             upper -= 1
 
         if lower == upper:

@@ -354,8 +354,8 @@ class TestEnv:
             _ = MyConfig1.load_from_env()
 
         class E(enum.Enum):
-            A = enum.auto()
-            B = enum.auto()
+            A = "A"
+            B = "B"
 
         class MyConfig2(yuio.config.Config):
             b: bool
@@ -401,10 +401,10 @@ class TestEnv:
         class MyConfig(yuio.config.Config):
             b: list = yuio.config.field(
                 parser=yuio.parse.List(
-                    yuio.parse.Pair(yuio.parse.Str(), yuio.parse.Int())
+                    yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Int(), delimiter=":")
                 )
             )
-            s: set[int]
+            s: _t.Set[int]
             x: _t.Tuple[int, float]
             d: _t.Dict[str, int]
 
@@ -537,10 +537,10 @@ class TestArgs:
         class MyConfig(yuio.config.Config):
             b: list = yuio.config.field(
                 parser=yuio.parse.List(
-                    yuio.parse.Pair(yuio.parse.Str(), yuio.parse.Int())
+                    yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Int(), delimiter=":")
                 )
             )
-            s: set[int]
+            s: _t.Set[int]
             x: _t.Tuple[int, float]
             d: _t.Dict[str, int]
 
@@ -637,9 +637,9 @@ class TestArgs:
         TestArgs.DocConfig._setup_arg_parser(parser)
         help = parser.format_help()
         assert "help for `sub`:\n" in help
-        assert "  --sub-a {str}     help for `a`.\n" in help
-        assert "  --sub-b           help for `b`. [default: disabled]\n" in help
-        assert "  --sub-no-b        disable --sub-b\n" in help
+        assert "  --sub-a {str}  help for `a`.\n" in help
+        assert "  --sub-b        help for `b`.\n" in help
+        assert "  --sub-no-b     disable <c hl/flag:sh-usage>--sub-b</c>\n" in help
         assert "  --sub-c {int}\n" in help
 
     def test_help_disabled(self):
@@ -662,7 +662,7 @@ class TestArgs:
         print(help)
         assert "  --c {str}\n" in help
         assert "sub:\n" in help
-        assert "  --sub-a {str}     help for a\n" in help
+        assert "  --sub-a {str}  help for a\n" in help
         assert "help for b" not in help
         assert "-b" not in help
         assert "sub_no_help" not in help

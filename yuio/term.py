@@ -1469,20 +1469,24 @@ class _TextWrapper:
 
         self.lines: _t.List[ColorizedString] = []
 
-        self.current_line: _t.List[_t.Union[Color, str]] = list(self.first_line_indent)
+        self.current_line: _t.List[_t.Union[Color, str]] = [Color.NONE]
+        if self.first_line_indent:
+            self.current_line.extend(list(self.first_line_indent))
+            self.current_line.append(Color.NONE)
         self.current_line_width: int = self.first_line_indent.width
-        self.current_color: _t.Optional[Color] = None
+        self.current_color: Color = Color.NONE
         self.current_line_is_nonempty: bool = False
 
     def _flush_line(self, explicit_newline=""):
         self.lines.append(
             ColorizedString(self.current_line, explicit_newline=explicit_newline)
         )
-        self.current_line: _t.List[_t.Union[Color, str]] = list(
-            self.continuation_indent
-        )
+        self.current_line: _t.List[_t.Union[Color, str]] = []
+        if self.continuation_indent:
+            self.current_line.append(Color.NONE)
+            self.current_line.extend(list(self.continuation_indent))
+        self.current_line.append(self.current_color)
         self.current_line_width: int = self.continuation_indent.width
-        self.current_line.append(self.current_color or Color.NONE)
         self.current_line_is_nonempty = False
 
     def _append_word(self, word: str, word_width: int):

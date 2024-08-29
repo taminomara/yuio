@@ -273,9 +273,14 @@ class Theme:
         colors = {}
         color_sources = {}
         for base in reversed(cls.__mro__):
-            base_colors = getattr(base, "colors", {})
+            base_colors = getattr(base, "_Theme__colors", {})
             colors.update(base_colors)
-            color_sources.update(dict.fromkeys(base_colors.keys(), cls))
+            base_color_sources = getattr(base, "_Theme__color_sources", {})
+            color_sources.update(base_color_sources)
+
+        colors.update(cls.colors)
+        color_sources.update(dict.fromkeys(cls.colors.keys(), cls))
+
         cls.__colors = colors
         cls.__color_sources = color_sources
         cls.colors = _ImmutableDictProxy(cls.__colors, attr="colors")
@@ -283,9 +288,16 @@ class Theme:
         msg_decorations = {}
         msg_decoration_sources = {}
         for base in reversed(cls.__mro__):
-            base_msg_decorations = getattr(base, "msg_decorations", {})
+            base_msg_decorations = getattr(base, "_Theme__msg_decorations", {})
             msg_decorations.update(base_msg_decorations)
-            msg_decoration_sources.update(dict.fromkeys(base_msg_decorations, cls))
+            base_msg_decoration_sources = getattr(
+                base, "_Theme__msg_decoration_sources", {}
+            )
+            msg_decoration_sources.update(base_msg_decoration_sources)
+
+        msg_decorations.update(cls.msg_decorations)
+        msg_decoration_sources.update(dict.fromkeys(cls.msg_decorations.keys(), cls))
+
         cls.__msg_decorations = msg_decorations
         cls.__msg_decoration_sources = msg_decoration_sources
         cls.msg_decorations = _ImmutableDictProxy(
@@ -343,6 +355,9 @@ class Theme:
             self.__msg_decoration_sources = (
                 self.__class__.__msg_decoration_sources.copy()
             )
+            self.msg_decorations = _ImmutableDictProxy(
+                self.__msg_decorations, attr="msg_decorations"
+            )
         self.__msg_decorations[name] = msg_decoration
         self.__msg_decoration_sources[name] = self.__expected_source
 
@@ -381,6 +396,7 @@ class Theme:
         if "_Theme__colors" not in self.__dict__:
             self.__colors = self.__class__.__colors.copy()
             self.__color_sources = self.__class__.__color_sources.copy()
+            self.colors = _ImmutableDictProxy(self.__colors, attr="colors")
         self.__colors[path] = color
         self.__color_sources[path] = self.__expected_source
         self.get_color.cache_clear()
@@ -493,8 +509,11 @@ class Theme:
             return self.get_color(color_or_path)
 
 
+Theme.__init_subclass__()
+
+
 class DefaultTheme(Theme):
-    """Default yuio theme. Adapts for terminal background color,
+    """Default Yuio theme. Adapts for terminal background color,
     if one can be detected.
 
     This theme defines *main colors*, which you can override by subclassing.
