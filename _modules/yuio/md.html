@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>yuio.md &mdash; Yuio 2.0.0b0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Yuio
+          </a>
+              <div class="version">
+                2.0.0b0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../io.html">Io</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../parse.html">Parse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../app.html">App</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../exec.html">Exec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../git.html">Git</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../complete.html">Complete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../md.html">Md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../term.html">Term</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../theme.html">Theme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../widget.html">Widget</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Yuio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../yuio.html">yuio</a></li>
+      <li class="breadcrumb-item active">yuio.md</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for yuio.md</h1><div class="highlight"><pre>
+<span></span># Yuio project, MIT license.
+#
+# https://github.com/taminomara/yuio/
+#
+# You&#39;re free to copy this file to your project and edit it for your needs,
+# just keep this copyright line please :3
+
+&quot;&quot;&quot;
+Yuio&#39;s primary format for higher-level io is Markdown (well, a reasonably rich subset
+of it).
+
+
+Formatting markdown
+-------------------
+
+.. autoclass:: MdFormatter
+   :members:
+
+
+Highlighting code
+-----------------
+
+Yuio supports basic code highlighting; it is just enough to format help messages
+for CLI, and color tracebacks when an error occurs.
+
+.. autoclass:: SyntaxHighlighter
+   :members:
+
+
+Markdown AST
+------------
+
+.. warning::
+
+   This is an experimental API which can change within a minor release.
+
+.. autoclass:: AstBase
+   :members:
+
+.. autoclass:: Text
+   :members:
+
+.. autoclass:: Container
+   :members:
+
+.. autoclass:: Document
+   :members:
+
+.. autoclass:: ThematicBreak
+   :members:
+
+.. autoclass:: Heading
+   :members:
+
+.. autoclass:: Paragraph
+   :members:
+
+.. autoclass:: Quote
+   :members:
+
+.. autoclass:: Code
+   :members:
+
+.. autoclass:: ListItem
+   :members:
+
+.. autoclass:: List
+   :members:
+
+
+&quot;&quot;&quot;
+
+import abc
+import contextlib
+import dataclasses
+import math
+import os
+import re
+import shutil
+import string
+import textwrap
+from dataclasses import dataclass
+
+import yuio.term
+import yuio.theme
+from yuio import _t
+from yuio.term import Color
+from yuio.theme import Theme
+
+T = _t.TypeVar(&quot;T&quot;)
+TAst = _t.TypeVar(&quot;TAst&quot;, bound=&quot;AstBase&quot;)
+
+
+<div class="viewcode-block" id="MdFormatter"><a class="viewcode-back" href="../../md.html#yuio.md.MdFormatter">[docs]</a>@_t.final
+class MdFormatter:
+    &quot;&quot;&quot;A simple markdown formatter suitable for displaying reach text in the terminal.
+
+    All CommonMark block markup is supported:
+
+    - headings:
+
+      .. code-block:: markdown
+
+         # Heading 1
+         ## Heading 2
+
+      Yuio has only two levels of headings. Headings past level two will look the same
+      as level two headings (you can adjust theme to change this).
+
+      If `allow_headings` is set to false, headings look like paragraphs.
+
+    - lists, numbered lists, quotes:
+
+      .. code-block:: markdown
+
+         -  List item 1,
+         -  list item 2.
+
+         1. Numbered list item 1,
+         1. numbered list item 2.
+
+         &gt; Quoted text.
+
+    - fenced code blocks with minimal syntax highlighting
+      (see :class:`SyntaxHighlighter`):
+
+      .. code-block:: markdown
+
+         ```python
+         for i in range(5, 8):
+             print(
+                f&quot;Hello, world! &quot;
+                &quot;This is {i}th day past the apocalypse.&quot;
+            )
+         ```
+
+      Yuio supports ``python``, ``traceback``, and ``bash`` syntaxes.
+
+    Inline markdown only handles inline code blocks:
+
+    .. code-block:: markdown
+
+       This is `code`. It will be rendered as code.
+       Other inline styles, such as _italic_, are not supported!
+
+    However, color tags are supported, so you can highlight text as follows:
+
+    .. code-block:: markdown
+
+       This is &lt;c b&gt;bold text&lt;/c&gt;. It will be rendered bold.
+
+    &quot;&quot;&quot;
+
+    def __init__(
+        self,
+        theme: Theme,
+        *,
+        width: _t.Optional[int] = None,
+        allow_headings: bool = True,
+    ):
+        self.width = width
+        self.theme: Theme = theme
+        self.allow_headings: bool = allow_headings
+
+        self._is_first_line: bool
+        self._out: yuio.term.ColorizedString
+        self._first_line_indent: yuio.term.ColorizedString
+        self._continuation_indent: yuio.term.ColorizedString
+
+    @property
+    def width(self) -&gt; int:
+        &quot;&quot;&quot;Target width for soft-wrapping text.&quot;&quot;&quot;
+
+        return self.__width
+
+    @width.setter
+    def width(self, width: _t.Optional[int]):
+        if width is None:
+            width = min(shutil.get_terminal_size().columns, 90)
+        self.__width = max(width, 30)
+
+<div class="viewcode-block" id="MdFormatter.format"><a class="viewcode-back" href="../../md.html#yuio.md.MdFormatter.format">[docs]</a>    def format(self, s: str, /) -&gt; yuio.term.ColorizedString:
+        &quot;&quot;&quot;Format a markdown document.&quot;&quot;&quot;
+
+        return self.format_node(self.parse(s))</div>
+
+<div class="viewcode-block" id="MdFormatter.parse"><a class="viewcode-back" href="../../md.html#yuio.md.MdFormatter.parse">[docs]</a>    def parse(self, s: str, /) -&gt; &quot;AstBase&quot;:
+        &quot;&quot;&quot;Parse a markdown document and return an AST node.
+
+        .. warning::
+
+           This is an experimental API which can change within a minor release.
+
+        &quot;&quot;&quot;
+
+        return _MdParser(self.allow_headings).parse(self._dedent(s))</div>
+
+<div class="viewcode-block" id="MdFormatter.format_node"><a class="viewcode-back" href="../../md.html#yuio.md.MdFormatter.format_node">[docs]</a>    def format_node(self, node: &quot;AstBase&quot;, /) -&gt; yuio.term.ColorizedString:
+        &quot;&quot;&quot;Format a parsed markdown document.
+
+        .. warning::
+
+           This is an experimental API which can change within a minor release.
+
+        &quot;&quot;&quot;
+
+        self._is_first_line = True
+        self._out = yuio.term.ColorizedString()
+        self._first_line_indent = yuio.term.ColorizedString()
+        self._continuation_indent = yuio.term.ColorizedString()
+
+        self._format(node)
+        self._out += Color.NONE
+
+        return self._out</div>
+
+<div class="viewcode-block" id="MdFormatter.colorize"><a class="viewcode-back" href="../../md.html#yuio.md.MdFormatter.colorize">[docs]</a>    def colorize(
+        self,
+        s: str,
+        /,
+        *,
+        default_color: _t.Union[Color, str] = Color.NONE,
+    ):
+        &quot;&quot;&quot;Parse and colorize contents of a paragraph.
+
+        Apply ``default_color`` to the entire paragraph, and process color tags
+        and backticks within it.
+
+        &quot;&quot;&quot;
+
+        return _colorize(self.theme, s, default_color=default_color)</div>
+
+    @contextlib.contextmanager
+    def _indent(
+        self,
+        color: _t.Union[Color, str, None],
+        s: yuio.term.AnyString,
+        /,
+        *,
+        continue_with_spaces: bool = True,
+    ):
+        color = self.theme.to_color(color)
+        indent = yuio.term.ColorizedString(color) + s
+
+        old_first_line_indent = self._first_line_indent
+        old_continuation_indent = self._continuation_indent
+
+        if continue_with_spaces:
+            continuation_indent = yuio.term.ColorizedString(&quot; &quot; * indent.width)
+        else:
+            continuation_indent = indent
+
+        self._first_line_indent = self._first_line_indent + indent
+        self._continuation_indent = self._continuation_indent + continuation_indent
+
+        try:
+            yield
+        finally:
+            self._first_line_indent = old_first_line_indent
+            self._continuation_indent = old_continuation_indent
+
+    @staticmethod
+    def _dedent(s: str, /) -&gt; str:
+        first_line, *rest = s.split(&quot;\n&quot;, 1)
+        return (first_line + (&quot;\n&quot; + textwrap.dedent(rest[0]) if rest else &quot;&quot;)).strip()
+
+    def _line(self, line: yuio.term.AnyString, /):
+        self._out += line
+        self._out += &quot;\n&quot;
+
+        self._is_first_line = False
+        self._first_line_indent = self._continuation_indent
+
+    def _format(self, node: &quot;AstBase&quot;, /):
+        getattr(self, f&quot;_format_{node.__class__.__name__.lstrip(&#39;_&#39;)}&quot;)(node)
+
+    def _format_Text(self, node: &quot;Text&quot;, /, *, default_color: Color):
+        s = self.colorize(
+            &quot;\n&quot;.join(node.lines).strip(),
+            default_color=default_color,
+        )
+
+        for line in s.wrap(
+            self.width,
+            preserve_newlines=False,
+            first_line_indent=self._first_line_indent,
+            continuation_indent=self._continuation_indent,
+        ):
+            self._line(line)
+
+    def _format_Container(self, node: &quot;Container[TAst]&quot;, /):
+        self._is_first_line = True
+        for item in node.items:
+            if not self._is_first_line:
+                self._line(self._first_line_indent)
+            self._format(item)
+
+    def _format_Document(self, node: &quot;Document&quot;, /):
+        self._format_Container(node)
+
+    def _format_ThematicBreak(self, _: &quot;ThematicBreak&quot;):
+        decoration = self.theme.msg_decorations.get(&quot;thematic_break&quot;, &quot;&quot;)
+        self._line(self._first_line_indent + decoration)
+
+    def _format_Heading(self, node: &quot;Heading&quot;, /):
+        if not self._is_first_line:
+            self._line(self._first_line_indent)
+
+        decoration = self.theme.msg_decorations.get(f&quot;heading/{node.level}&quot;, &quot;&quot;)
+        with self._indent(f&quot;msg/decoration:heading/{node.level}&quot;, decoration):
+            self._format_Text(
+                node,
+                default_color=self.theme.get_color(f&quot;msg/text:heading/{node.level}&quot;),
+            )
+
+        self._line(self._first_line_indent)
+        self._is_first_line = True
+
+    def _format_Paragraph(self, node: &quot;Paragraph&quot;, /):
+        self._format_Text(
+            node, default_color=self.theme.get_color(&quot;msg/text:paragraph&quot;)
+        )
+
+    def _format_ListItem(self, node: &quot;ListItem&quot;, /, *, min_width: int = 0):
+        decoration = self.theme.msg_decorations.get(&quot;list&quot;, &quot;&quot;)
+        if node.number is not None:
+            decoration = f&quot;{node.number:&gt;{min_width}}.&quot; + &quot; &quot; * (
+                yuio.term.line_width(decoration) - min_width - 1
+            )
+        with self._indent(&quot;msg/decoration:list&quot;, decoration):
+            self._format_Container(node)
+
+    def _format_Quote(self, node: &quot;Quote&quot;, /):
+        decoration = self.theme.msg_decorations.get(&quot;quote&quot;, &quot;&quot;)
+        with self._indent(
+            &quot;msg/decoration:quote&quot;, decoration, continue_with_spaces=False
+        ):
+            self._format_Container(node)
+
+    def _format_Code(self, node: &quot;Code&quot;, /):
+        s = SyntaxHighlighter.get_highlighter(node.syntax).highlight(
+            self.theme,
+            &quot;\n&quot;.join(node.lines),
+        )
+
+        decoration = self.theme.msg_decorations.get(&quot;code&quot;, &quot;&quot;)
+        with self._indent(&quot;msg/decoration:code&quot;, decoration):
+            for line in s.wrap(
+                self.width,
+                break_on_hyphens=False,
+                preserve_spaces=True,
+                preserve_newlines=True,
+                first_line_indent=self._first_line_indent,
+                continuation_indent=self._continuation_indent,
+            ):
+                self._line(line)
+
+    def _format_List(self, node: &quot;List&quot;, /):
+        max_number = max(item.number or 0 for item in node.items)
+        min_width = math.ceil(math.log10(max_number)) if max_number &gt; 0 else 1
+        self._is_first_line = True
+        for item in node.items:
+            if not self._is_first_line:
+                self._line(self._first_line_indent)
+            self._format_ListItem(item, min_width=min_width)</div>
+
+
+<div class="viewcode-block" id="AstBase"><a class="viewcode-back" href="../../md.html#yuio.md.AstBase">[docs]</a>@dataclass(**yuio._with_slots())
+class AstBase(abc.ABC):
+    &quot;&quot;&quot;
+    Base class for all AST nodes that represent parsed markdown document.
+
+    &quot;&quot;&quot;
+
+    def _dump_params(self) -&gt; str:
+        s = self.__class__.__name__.lstrip(&quot;_&quot;)
+        for field in dataclasses.fields(self):
+            if field.repr:
+                s += f&quot; {getattr(self, field.name)!r}&quot;
+        return s
+
+<div class="viewcode-block" id="AstBase.dump"><a class="viewcode-back" href="../../md.html#yuio.md.AstBase.dump">[docs]</a>    def dump(self, indent: str = &quot;&quot;) -&gt; str:
+        &quot;&quot;&quot;
+        Dump an AST node into a lisp-like text representation.
+
+        &quot;&quot;&quot;
+
+        return f&quot;{indent}({self._dump_params()})&quot;</div></div>
+
+
+<div class="viewcode-block" id="Text"><a class="viewcode-back" href="../../md.html#yuio.md.Text">[docs]</a>@dataclass(**yuio._with_slots())
+class Text(AstBase):
+    &quot;&quot;&quot;
+    Base class for all text-based AST nodes, i.e. paragraphs.
+
+    &quot;&quot;&quot;
+
+    #: Text lines as parsed from the original document.
+    lines: _t.List[str] = dataclasses.field(repr=False)
+
+<div class="viewcode-block" id="Text.dump"><a class="viewcode-back" href="../../md.html#yuio.md.Text.dump">[docs]</a>    def dump(self, indent: str = &quot;&quot;) -&gt; str:
+        s = f&quot;{indent}({self._dump_params()}&quot;
+        indent += &quot;  &quot;
+        for line in self.lines:
+            s += &quot;\n&quot; + indent
+            s += repr(line)
+        s += &quot;)&quot;
+        return s</div></div>
+
+
+<div class="viewcode-block" id="Container"><a class="viewcode-back" href="../../md.html#yuio.md.Container">[docs]</a>@dataclass(**yuio._with_slots())
+class Container(AstBase, _t.Generic[TAst]):
+    &quot;&quot;&quot;
+    Base class for all container-based AST nodes, i.e. list items or quotes.
+
+    This class works as a list of items. Usually it contains arbitrary AST nodes,
+    but it can also be limited to specific kinds of nodes via its generic variable.
+
+    &quot;&quot;&quot;
+
+    #: Inner AST nodes in the container.
+    items: _t.List[TAst] = dataclasses.field(repr=False)
+
+<div class="viewcode-block" id="Container.dump"><a class="viewcode-back" href="../../md.html#yuio.md.Container.dump">[docs]</a>    def dump(self, indent: str = &quot;&quot;) -&gt; str:
+        s = f&quot;{indent or &#39;&#39;}({self._dump_params()}&quot;
+        indent += &quot;  &quot;
+        for items in self.items:
+            s += &quot;\n&quot;
+            s += items.dump(indent)
+        s += &quot;)&quot;
+        return s</div></div>
+
+
+<div class="viewcode-block" id="Document"><a class="viewcode-back" href="../../md.html#yuio.md.Document">[docs]</a>@dataclass(**yuio._with_slots())
+class Document(Container[AstBase]):
+    &quot;&quot;&quot;
+    Root node that contains the entire markdown document.
+
+    &quot;&quot;&quot;</div>
+
+
+<div class="viewcode-block" id="ThematicBreak"><a class="viewcode-back" href="../../md.html#yuio.md.ThematicBreak">[docs]</a>@dataclass(**yuio._with_slots())
+class ThematicBreak(AstBase):
+    &quot;&quot;&quot;
+    Represents a visual break in text, a.k.a. an asterism.
+
+    &quot;&quot;&quot;</div>
+
+
+<div class="viewcode-block" id="Heading"><a class="viewcode-back" href="../../md.html#yuio.md.Heading">[docs]</a>@dataclass(**yuio._with_slots())
+class Heading(Text):
+    &quot;&quot;&quot;
+    Represents a heading.
+
+    &quot;&quot;&quot;
+
+    #: Level of the heading, `1`-based.
+    level: int</div>
+
+
+<div class="viewcode-block" id="Paragraph"><a class="viewcode-back" href="../../md.html#yuio.md.Paragraph">[docs]</a>@dataclass(**yuio._with_slots())
+class Paragraph(Text):
+    &quot;&quot;&quot;
+    Represents a regular paragraph.
+
+    &quot;&quot;&quot;</div>
+
+
+<div class="viewcode-block" id="Quote"><a class="viewcode-back" href="../../md.html#yuio.md.Quote">[docs]</a>@dataclass(**yuio._with_slots())
+class Quote(Container[AstBase]):
+    &quot;&quot;&quot;
+    Represents a quotation block.
+
+    &quot;&quot;&quot;</div>
+
+
+<div class="viewcode-block" id="Code"><a class="viewcode-back" href="../../md.html#yuio.md.Code">[docs]</a>@dataclass(**yuio._with_slots())
+class Code(Text):
+    &quot;&quot;&quot;
+    Represents a highlighted block of code.
+
+    &quot;&quot;&quot;
+
+    #: Syntax indicator as parsed form the original document.
+    syntax: str</div>
+
+
+<div class="viewcode-block" id="ListItem"><a class="viewcode-back" href="../../md.html#yuio.md.ListItem">[docs]</a>@dataclass(**yuio._with_slots())
+class ListItem(Container[AstBase]):
+    &quot;&quot;&quot;
+    A possibly numbered element of a list.
+
+    &quot;&quot;&quot;
+
+    #: If present, this is the item&#39;s number in a numbered list.
+    number: _t.Optional[int]</div>
+
+
+<div class="viewcode-block" id="List"><a class="viewcode-back" href="../../md.html#yuio.md.List">[docs]</a>@dataclass(**yuio._with_slots())
+class List(Container[ListItem]):
+    &quot;&quot;&quot;
+    A collection of list items.
+
+    &quot;&quot;&quot;</div>
+
+
+_HEADING_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    \s{0,3}                     # - Initial indent.
+    (?P&lt;marker&gt;\#{1,6})         # - Heading marker.
+    (?P&lt;text&gt;\s.*?)?            # - Heading text. Unless empty, text must be separated
+                                #   from the heading marker by a space.
+    (?:(?&lt;=\s)\#+)?             # - Optional closing hashes. Must be separated from
+                                #   the previous content by a space. We use lookbehind
+                                #   here, because if the text is empty, the space
+                                #   between heading marker and closing hashes will be
+                                #   matched by the `text` group.
+    \s*                         # - Closing spaces.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_SETEXT_HEADING_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    (?P&lt;indent&gt;\s{0,3})         # - Initial indent.
+    (?P&lt;level&gt;-|=)              # - Heading underline.
+    \2*                         # - More heading underline.
+    \s*                         # - Closing spaces.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_LIST_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    (?P&lt;marker&gt;
+      \s{0,3}                   # - Initial indent.
+      (?P&lt;type&gt;[-*+])           # - List marker.
+      (?:
+          \s(?:\s{0,3}(?=\S))?  # - One mandatory and up to three optional spaces;
+                                #   When there are more than three optional spaces,
+                                #   we treat then as a list marker followed
+                                #   by a single space, followed by a code block.
+        | $))                   # - For cases when a list starts with an empty line.
+    (?P&lt;text&gt;.*)                # - Text of the first line in the list.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_NUMBERED_LIST_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    (?P&lt;marker&gt;
+      \s{0,3}                   # - Initial indent.
+      (?P&lt;number&gt;\d{1,9})       # - Number.
+      (?P&lt;type&gt;[.:)])           # - Numbered list marker.
+      (?:
+          \s(?:\s{0,3}(?=\S))?  # - One mandatory and up to three optional spaces;
+                                #   When there are more than three optional spaces,
+                                #   we treat then as a list marker followed
+                                #   by a single space, followed by a code block.
+        | $))                   # - For cases when a list starts with an empty line.
+    (?P&lt;text&gt;.*)                # - Text of the first line in the list.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_CODE_BACKTICK_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    (?P&lt;indent&gt;\s{0,3})         # - Initial indent.
+    (?P&lt;fence&gt;```+)             # - Backtick fence.
+    (?P&lt;syntax&gt;[^`]*)           # - Syntax, can&#39;t contain backtick.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_CODE_TILDE_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    (?P&lt;indent&gt;\s{0,3})         # - Initial indent.
+    (?P&lt;fence&gt;~~~+)             # - Backtick fence.
+    (?P&lt;syntax&gt;.*)              # - Syntax, can be anything.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_CODE_FENCE_END_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    (?P&lt;indent&gt;\s{0,3})         # - Initial indent.
+    (?P&lt;fence&gt;~~~+|```+)        # - Fence.
+    \s*                         # - Closing spaces.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_CODE_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    \s{4}                       # - Initial code indent.
+    (?P&lt;text&gt;.*)                # - First code line.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_QUOTE_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    (?P&lt;indent&gt;\s{0,3})         # - Initial quote indent.
+    &gt;                           # - Quote marker.
+    \s?                         # - Optional space after the marker.
+    (?P&lt;text&gt;.*)                # - Text of the first line in the quote.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_THEMATIC_BREAK_RE = re.compile(
+    r&quot;&quot;&quot;
+    ^
+    (?P&lt;indent&gt;\s{0,3})         # - Initial quote indent.
+    ([-*_])\s*(\2\s*){2,}       # - At least three break characters separated by spaces.
+    $
+    &quot;&quot;&quot;,
+    re.VERBOSE,
+)
+_LINE_FEED_RE = re.compile(r&quot;\r\n|\r|\n&quot;)
+
+
+class _MdParser:
+    @dataclass(**yuio._with_slots())
+    class Default:
+        pass
+
+    @dataclass(**yuio._with_slots())
+    class List:
+        type: str
+        marker_len: int
+        list: List
+        parser: &quot;_MdParser&quot;
+        number: _t.Optional[int] = None
+
+    @dataclass(**yuio._with_slots())
+    class Quote:
+        parser: &quot;_MdParser&quot;
+
+    @dataclass(**yuio._with_slots())
+    class Code:
+        lines: _t.List[str]
+
+    @dataclass(**yuio._with_slots())
+    class FencedCode:
+        indent: int
+        fence_symbol: str
+        fence_length: int
+        syntax: str
+        lines: _t.List[str]
+
+    @dataclass(**yuio._with_slots())
+    class Paragraph:
+        lines: _t.List[str]
+
+    State: _t.TypeAlias = _t.Union[Default, List, Quote, Code, FencedCode, Paragraph]
+
+    def __init__(self, allow_headings: bool = True):
+        self._allow_headings = allow_headings
+        self._nodes: _t.List[AstBase] = []
+        self._state: _MdParser.State = self.Default()
+
+    def _parser(self) -&gt; &quot;_MdParser&quot;:
+        return _MdParser(self._allow_headings)
+
+    @staticmethod
+    def _is_blank(s: str) -&gt; bool:
+        return not s or s.isspace()
+
+    def parse(self, s: str) -&gt; AstBase:
+        s = s.expandtabs(tabsize=4)
+        for line in _LINE_FEED_RE.split(s):
+            self._handle_line(line)
+        return Document(self._finalize())
+
+    def _handle_line(self, line: str):
+        getattr(self, f&quot;_handle_line_{self._state.__class__.__name__}&quot;)(line)
+
+    def _handle_lazy_line(self, line: str) -&gt; bool:
+        return getattr(self, f&quot;_handle_lazy_line_{self._state.__class__.__name__}&quot;)(
+            line
+        )
+
+    def _flush(self):
+        getattr(self, f&quot;_flush_{self._state.__class__.__name__}&quot;)()
+
+    def _handle_line_List(self, line: str):
+        assert type(self._state) is self.List
+        if not line or line[: self._state.marker_len].isspace():
+            self._state.parser._handle_line(line[self._state.marker_len :])
+        elif (
+            (match := _LIST_RE.match(line)) or (match := _NUMBERED_LIST_RE.match(line))
+        ) and match.group(&quot;type&quot;) == self._state.type:
+            item = ListItem(self._state.parser._finalize(), self._state.number)
+            self._state.list.items.append(item)
+            self._state.marker_len = len(match.group(&quot;marker&quot;))
+            self._state.parser._handle_line(match.group(&quot;text&quot;))
+            if self._state.number is not None:
+                self._state.number += 1
+        elif not self._state.parser._handle_lazy_line(line):
+            self._flush_List()
+            self._handle_line_Default(line)
+
+    def _handle_lazy_line_List(self, line: str) -&gt; bool:
+        assert type(self._state) is self.List
+        return self._state.parser._handle_lazy_line(line)
+
+    def _flush_List(self):
+        assert type(self._state) is self.List
+        item = ListItem(self._state.parser._finalize(), self._state.number)
+        self._state.list.items.append(item)
+        self._nodes.append(self._state.list)
+        self._state = self.Default()
+
+    def _handle_line_Quote(self, line: str):
+        assert type(self._state) is self.Quote
+        if match := _QUOTE_RE.match(line):
+            self._state.parser._handle_line(match.group(&quot;text&quot;))
+        elif self._is_blank(line) or not self._state.parser._handle_lazy_line(line):
+            self._flush_Quote()
+            self._handle_line_Default(line)
+
+    def _handle_lazy_line_Quote(self, line: str) -&gt; bool:
+        assert type(self._state) is self.Quote
+        return self._state.parser._handle_lazy_line(line)
+
+    def _flush_Quote(self):
+        assert type(self._state) is self.Quote
+        items = self._state.parser._finalize()
+        self._nodes.append(Quote(items))
+        self._state = self.Default()
+
+    def _handle_line_Code(self, line: str):
+        assert type(self._state) == self.Code
+        if self._is_blank(line) or line.startswith(&quot;    &quot;):
+            self._state.lines.append(line[4:])
+        else:
+            self._flush_Code()
+            self._handle_line_Default(line)
+
+    def _handle_lazy_line_Code(self, line: str) -&gt; bool:
+        assert type(self._state) == self.Code
+        return False  # No lazy continuations for code!
+
+    def _flush_Code(self):
+        assert type(self._state) == self.Code
+        while self._state.lines and self._is_blank(self._state.lines[-1]):
+            self._state.lines.pop()
+        self._nodes.append(Code(self._state.lines, &quot;&quot;))
+        self._state = self.Default()
+
+    def _handle_line_FencedCode(self, line: str):
+        assert type(self._state) == self.FencedCode
+        if (
+            (match := _CODE_FENCE_END_RE.match(line))
+            and match.group(&quot;fence&quot;)[0] == self._state.fence_symbol
+            and len(match.group(&quot;fence&quot;)) &gt;= self._state.fence_length
+        ):
+            self._flush_FencedCode()
+        else:
+            if self._state.indent == 0:
+                pass
+            elif line[: self._state.indent].isspace():
+                line = line[self._state.indent :]
+            else:
+                line = line.lstrip()
+            self._state.lines.append(line)
+
+    def _handle_lazy_line_FencedCode(self, line: str) -&gt; bool:
+        assert type(self._state) == self.FencedCode
+        return False
+
+    def _flush_FencedCode(self):
+        assert type(self._state) == self.FencedCode
+        self._nodes.append(Code(self._state.lines, self._state.syntax))
+        self._state = self.Default()
+
+    def _handle_line_Paragraph(self, line: str):
+        assert type(self._state) == self.Paragraph
+        if match := _SETEXT_HEADING_RE.match(line):
+            level = 1 if match.group(&quot;level&quot;) == &quot;=&quot; else 2
+            self._nodes.append(Heading(self._state.lines, level))
+            self._state = self.Default()
+        elif (
+            self._is_blank(line)
+            or _THEMATIC_BREAK_RE.match(line)
+            or (self._allow_headings and _HEADING_RE.match(line))
+            or _CODE_BACKTICK_RE.match(line)
+            or _CODE_TILDE_RE.match(line)
+            or _LIST_RE.match(line)
+            or _NUMBERED_LIST_RE.match(line)
+            or _QUOTE_RE.match(line)
+        ):
+            self._flush_Paragraph()
+            self._handle_line_Default(line)
+        else:
+            self._state.lines.append(line)
+
+    def _handle_lazy_line_Paragraph(self, line: str) -&gt; bool:
+        assert type(self._state) == self.Paragraph
+        if (
+            self._is_blank(line)
+            or _THEMATIC_BREAK_RE.match(line)
+            or (self._allow_headings and _HEADING_RE.match(line))
+            or _CODE_BACKTICK_RE.match(line)
+            or _CODE_TILDE_RE.match(line)
+            or _LIST_RE.match(line)
+            or _NUMBERED_LIST_RE.match(line)
+            or _QUOTE_RE.match(line)
+        ):
+            self._flush_Paragraph()
+            return False
+        else:
+            self._state.lines.append(line)
+            return True
+
+    def _flush_Paragraph(self):
+        assert type(self._state) == self.Paragraph
+        self._nodes.append(Paragraph(self._state.lines))
+        self._state = self.Default()
+
+    def _handle_line_Default(self, line: str):
+        assert type(self._state) == self.Default
+        if self._is_blank(line):
+            pass  # do nothing
+        elif _THEMATIC_BREAK_RE.match(line):
+            self._nodes.append(ThematicBreak())
+        elif self._allow_headings and (match := _HEADING_RE.match(line)):
+            level = len(match.group(&quot;marker&quot;))
+            self._nodes.append(Heading([match.group(&quot;text&quot;).strip()], level))
+        elif (match := _CODE_BACKTICK_RE.match(line)) or (
+            match := _CODE_TILDE_RE.match(line)
+        ):
+            indent = len(match.group(&quot;indent&quot;))
+            syntax = match.group(&quot;syntax&quot;).strip()
+            fence_symbol = match.group(&quot;fence&quot;)[0]
+            fence_length = len(match.group(&quot;fence&quot;))
+            self._state = self.FencedCode(
+                indent, fence_symbol, fence_length, syntax, []
+            )
+        elif match := _CODE_RE.match(line):
+            self._state = self.Code([match.group(&quot;text&quot;)])
+        elif (match := _LIST_RE.match(line)) or (
+            match := _NUMBERED_LIST_RE.match(line)
+        ):
+            indent = len(match.group(&quot;marker&quot;))
+            list_type = match.group(&quot;type&quot;)
+            number_str = match.groupdict().get(&quot;number&quot;, None)
+            number = int(number_str) if number_str else None
+            self._state = self.List(list_type, indent, List([]), self._parser(), number)
+            self._state.parser._handle_line(match.group(&quot;text&quot;))
+        elif match := _QUOTE_RE.match(line):
+            self._state = self.Quote(self._parser())
+            self._state.parser._handle_line(match.group(&quot;text&quot;))
+        else:
+            self._state = self.Paragraph([line])
+
+    def _handle_lazy_line_Default(self, line: str) -&gt; bool:
+        assert type(self._state) == self.Default
+        return False
+
+    def _flush_Default(self):
+        assert type(self._state) == self.Default
+
+    def _finalize(self) -&gt; _t.List[AstBase]:
+        self._flush()
+        result = self._nodes
+        self._nodes = []
+        return result
+
+
+#: Global syntax registry.
+_SYNTAXES: _t.Dict[str, &quot;SyntaxHighlighter&quot;] = {}
+
+
+<div class="viewcode-block" id="SyntaxHighlighter"><a class="viewcode-back" href="../../md.html#yuio.md.SyntaxHighlighter">[docs]</a>class SyntaxHighlighter(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def syntaxes(self) -&gt; _t.List[str]:
+        &quot;&quot;&quot;
+        List of syntax names that should be associated with this highlighter.
+
+        The first name in this list is a canonical syntax name,
+        i.e. it will be used to look up colors in a theme.
+
+        &quot;&quot;&quot;
+
+        return []
+
+    @property
+    def syntax(self) -&gt; str:
+        &quot;&quot;&quot;
+        The primary syntax name for this highlighter.
+
+        This name is used to look up colors in a theme.
+
+        &quot;&quot;&quot;
+
+        return self.syntaxes[0] if self.syntaxes else &quot;unknown&quot;
+
+<div class="viewcode-block" id="SyntaxHighlighter.register_highlighter"><a class="viewcode-back" href="../../md.html#yuio.md.SyntaxHighlighter.register_highlighter">[docs]</a>    @classmethod
+    def register_highlighter(cls, highlighter: &quot;SyntaxHighlighter&quot;):
+        &quot;&quot;&quot;
+        Register a highlighter in a global registry, and allow looking it up
+        via the :meth:`~SyntaxHighlighter.get_highlighter` method.
+
+        &quot;&quot;&quot;
+
+        for syntax in highlighter.syntaxes:
+            _SYNTAXES[syntax.lower().replace(&quot;_&quot;, &quot;-&quot;)] = highlighter</div>
+
+<div class="viewcode-block" id="SyntaxHighlighter.get_highlighter"><a class="viewcode-back" href="../../md.html#yuio.md.SyntaxHighlighter.get_highlighter">[docs]</a>    @classmethod
+    def get_highlighter(cls, syntax: str, /) -&gt; &quot;SyntaxHighlighter&quot;:
+        &quot;&quot;&quot;
+        Look up highlighter by a syntax name.
+
+        &quot;&quot;&quot;
+
+        return _SYNTAXES.get(
+            syntax.lower().replace(&quot;_&quot;, &quot;-&quot;),
+            _DummySyntaxHighlighter(),
+        )</div>
+
+<div class="viewcode-block" id="SyntaxHighlighter.highlight"><a class="viewcode-back" href="../../md.html#yuio.md.SyntaxHighlighter.highlight">[docs]</a>    @abc.abstractmethod
+    def highlight(
+        self,
+        theme: Theme,
+        code: str,
+        default_color: _t.Union[Color, str, None] = None,
+    ) -&gt; yuio.term.ColorizedString:
+        &quot;&quot;&quot;
+        Highlight the given code using the given theme.
+
+        &quot;&quot;&quot;</div>
+
+    def _get_default_color(
+        self,
+        theme: Theme,
+        default_color: _t.Union[Color, str, None],
+    ) -&gt; Color:
+        return theme.to_color(default_color) | theme.get_color(
+            f&quot;msg/text:code/{self.syntax}&quot;
+        )</div>
+
+
+class _DummySyntaxHighlighter(SyntaxHighlighter):
+    @property
+    def syntaxes(self) -&gt; _t.List[str]:
+        return [&quot;text&quot;, &quot;plain-text&quot;]
+
+    def highlight(
+        self,
+        theme: Theme,
+        code: str,
+        default_color: _t.Union[Color, str, None] = None,
+    ) -&gt; yuio.term.ColorizedString:
+        return yuio.term.ColorizedString(
+            [
+                self._get_default_color(theme, default_color),
+                code,
+                Color.NONE,
+            ]
+        )
+
+
+SyntaxHighlighter.register_highlighter(_DummySyntaxHighlighter())
+
+
+class _ReSyntaxHighlighter(SyntaxHighlighter):
+    def __init__(
+        self,
+        syntaxes: _t.List[str],
+        pattern: _t.StrRePattern,
+        str_esc_pattern: _t.Optional[_t.StrRePattern] = None,
+    ):
+        self._syntaxes = syntaxes
+        self._pattern = pattern
+        self._str_esc_pattern = str_esc_pattern
+
+    @property
+    def syntaxes(self) -&gt; _t.List[str]:
+        return self._syntaxes
+
+    def highlight(
+        self,
+        theme: Theme,
+        code: str,
+        default_color: _t.Union[Color, str, None] = None,
+    ) -&gt; yuio.term.ColorizedString:
+        default_color = self._get_default_color(theme, default_color)
+
+        out = yuio.term.ColorizedString()
+
+        last_pos = 0
+        for code_unit in self._pattern.finditer(code):
+            if last_pos &lt; code_unit.start():
+                out += default_color
+                out += code[last_pos : code_unit.start()]
+            last_pos = code_unit.end()
+
+            for name, text in sorted(code_unit.groupdict().items()):
+                if not text:
+                    continue
+                name = name.split(&quot;__&quot;, maxsplit=1)[-1]
+                str_color = default_color | theme.get_color(f&quot;hl/str:{self.syntax}&quot;)
+                esc_color = default_color | theme.get_color(f&quot;hl/str/esc:{self.syntax}&quot;)
+                if self._str_esc_pattern is not None and name == &quot;str&quot;:
+                    last_escape_pos = 0
+                    for escape_unit in self._str_esc_pattern.finditer(text):
+                        if last_escape_pos &lt; escape_unit.start():
+                            out += str_color
+                            out += text[last_escape_pos : escape_unit.start()]
+                        last_escape_pos = escape_unit.end()
+                        if escape := code_unit.group(0):
+                            out += esc_color
+                            out += escape
+                    if last_escape_pos &lt; len(text):
+                        out += str_color
+                        out += code[last_escape_pos:]
+                else:
+                    out += default_color | theme.get_color(f&quot;hl/{name}:{self.syntax}&quot;)
+                    out += text
+
+        if last_pos &lt; len(code):
+            out += default_color
+            out += code[last_pos:]
+
+        out += Color.NONE
+
+        return out
+
+
+SyntaxHighlighter.register_highlighter(
+    _ReSyntaxHighlighter(
+        [&quot;py&quot;, &quot;py3&quot;, &quot;py-3&quot;, &quot;python&quot;, &quot;python3&quot;, &quot;python-3&quot;],
+        re.compile(
+            r&quot;&quot;&quot;
+          (?P&lt;kwd&gt;
+            \b(?:                                   # keyword
+              and|as|assert|async|await|break|class|continue|def|del|elif|else|
+              except|False|finally|for|from|global|if|import|in|is|lambda|None|
+              nonlocal|not|or|pass|raise|return|True|try|while|with|yield
+            )\b)
+        | (?P&lt;str&gt;
+            [rfu]*(                                 # string prefix
+                &#39;(?:\\.|[^\\&#39;])*(?:&#39;|\n)            # singly-quoted string
+              | &quot;(?:\\.|[^\\&quot;])*(?:&quot;|\n)            # doubly-quoted string
+              | \&quot;&quot;&quot;(\\.|[^\\]|\n)*?\&quot;&quot;&quot;            # long singly-quoted string
+              | \&#39;&#39;&#39;(\\.|[^\\]|\n)*?\&#39;&#39;&#39;))          # long doubly-quoted string
+        | (?P&lt;lit&gt;
+              \d+(?:\.\d*(?:e[+-]?\d+)?)?           # int or float
+            | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
+            | 0x[0-9a-fA-F]+                        # hex
+            | 0b[01]+)                              # bin
+        | (?P&lt;punct&gt;[{}()[\]\\;|!&amp;])                # punctuation
+        | (?P&lt;comment&gt;\#.*$)                        # comment
+        &quot;&quot;&quot;,
+            re.MULTILINE | re.VERBOSE,
+        ),
+    )
+)
+SyntaxHighlighter.register_highlighter(
+    _ReSyntaxHighlighter(
+        [&quot;sh&quot;, &quot;bash&quot;],
+        re.compile(
+            r&quot;&quot;&quot;
+        (?P&lt;kwd&gt;
+            \b(?:                                   # keyword
+              if|then|elif|else|fi|time|for|in|until|while|do|done|case|
+              esac|coproc|select|function
+            )\b
+          | \[\[                                    # `test` syntax: if [[ ... ]]
+          | \]\])
+        | (?P&lt;a0__punct&gt;(?:^|\|\|?|&amp;&amp;|\$\())        # chaining operator: pipe or logic
+          (?P&lt;a1__&gt;\s*)
+          (?P&lt;a2__prog&gt;\S+)                         # prog
+        | (?P&lt;str&gt;
+            &#39;(?:[.\n]*?)*&#39;                          # singly-quoted string
+          | &quot;(?:\\.|[^\\&quot;])*&quot;)                      # doubly-quoted string
+        | (?P&lt;punct&gt;
+              [{}()[\]\\;!&amp;|&amp;]                      # punctuation
+            | &lt;{1,3}                                # input redirect
+            | [12]?&gt;{1,2}(?:&amp;[12])?)                # output redirect
+        | (?P&lt;comment&gt;\#.*$)                        # comment
+        | (?P&lt;flag&gt;(?&lt;![\w-])-[a-zA-Z0-9_-]+\b)     # flag
+        &quot;&quot;&quot;,
+            re.MULTILINE | re.VERBOSE,
+        ),
+    ),
+)
+SyntaxHighlighter.register_highlighter(
+    _ReSyntaxHighlighter(
+        [&quot;sh-usage&quot;, &quot;bash-usage&quot;],
+        re.compile(
+            r&quot;&quot;&quot;
+        (?P&lt;kwd&gt;
+          \b(?:                                     # keyword
+            if|then|elif|else|fi|time|for|in|until|while|do|done|case|
+            esac|coproc|select|function
+          )\b)
+        | (?P&lt;prog&gt;%%\(prog\)s)                     # prog
+        | (?P&lt;metavar&gt;(?&lt;=&lt;)[^&gt;]+(?=&gt;))             # metavar
+        | (?P&lt;str&gt;
+              &#39;(?:[.\n]*?)*&#39;                        # singly-quoted string
+            | &quot;(?:\\.|[^\\&quot;])*&quot;)                    # doubly-quoted string
+        | (?P&lt;comment&gt;\#.*$)                        # comment
+        | (?P&lt;flag&gt;(?&lt;![\w-])-[-a-zA-Z0-9_]+\b)     # flag
+    &quot;&quot;&quot;,
+            re.MULTILINE | re.VERBOSE,
+        ),
+    )
+)
+
+
+class _TbHighlighter(SyntaxHighlighter):
+    @property
+    def syntaxes(self) -&gt; _t.List[str]:
+        return [
+            &quot;tb&quot;,
+            &quot;traceback&quot;,
+            &quot;py-tb&quot;,
+            &quot;py-traceback&quot;,
+            &quot;python-tb&quot;,
+            &quot;python-traceback&quot;,
+        ]
+
+    class _StackColors:
+        def __init__(self, theme: Theme, default_color: Color, tag: str):
+            self.file_color = default_color | theme.get_color(f&quot;tb/frame/{tag}/file&quot;)
+            self.file_path_color = default_color | theme.get_color(
+                f&quot;tb/frame/{tag}/file/path&quot;
+            )
+            self.file_line_color = default_color | theme.get_color(
+                f&quot;tb/frame/{tag}/file/line&quot;
+            )
+            self.file_module_color = default_color | theme.get_color(
+                f&quot;tb/frame/{tag}/file/module&quot;
+            )
+            self.code_color = default_color | theme.get_color(f&quot;tb/frame/{tag}/code&quot;)
+            self.highlight_color = default_color | theme.get_color(
+                f&quot;tb/frame/{tag}/highlight&quot;
+            )
+
+    _TB_RE = re.compile(
+        r&quot;^(?P&lt;indent&gt;[ |+]*)(Stack|Traceback|Exception Group Traceback) \(most recent call last\):$&quot;
+    )
+    _TB_MSG_RE = re.compile(r&quot;^(?P&lt;indent&gt;[ |+]*)[A-Za-z_][A-Za-z0-9_]*($|:.*$)&quot;)
+    _TB_LINE_FILE = re.compile(
+        r&#39;^[ |+]*File (?P&lt;file&gt;&quot;[^&quot;]*&quot;), line (?P&lt;line&gt;\d+)(?:, in (?P&lt;loc&gt;.*))?$&#39;
+    )
+    _TB_LINE_HIGHLIGHT = re.compile(r&quot;^[ |+^~-]*$&quot;)
+    _SITE_PACKAGES = os.sep + &quot;lib&quot; + os.sep + &quot;site-packages&quot; + os.sep
+    _LIB_PYTHON = os.sep + &quot;lib&quot; + os.sep + &quot;python&quot;
+
+    def highlight(
+        self,
+        theme: Theme,
+        code: str,
+        default_color: _t.Union[Color, str, None] = None,
+    ) -&gt; yuio.term.ColorizedString:
+        default_color = self._get_default_color(theme, default_color)
+
+        py_highlighter = SyntaxHighlighter.get_highlighter(&quot;python&quot;)
+
+        heading_color = default_color | theme.get_color(&quot;tb/heading&quot;)
+        message_color = default_color | theme.get_color(&quot;tb/message&quot;)
+
+        stack_normal_colors = self._StackColors(theme, default_color, &quot;usr&quot;)
+        stack_lib_colors = self._StackColors(theme, default_color, &quot;lib&quot;)
+        stack_colors = stack_normal_colors
+
+        res = yuio.term.ColorizedString()
+
+        PLAIN_TEXT, STACK, MESSAGE = 1, 2, 3
+        state = PLAIN_TEXT
+        stack_indent = &quot;&quot;
+        message_indent = &quot;&quot;
+
+        for line in code.splitlines(keepends=True):
+            if state is STACK:
+                if line.startswith(stack_indent):
+                    # We&#39;re still in the stack.
+                    if match := self._TB_LINE_FILE.match(line):
+                        file, line, loc = match.group(&quot;file&quot;, &quot;line&quot;, &quot;loc&quot;)
+
+                        if self._SITE_PACKAGES in file or self._LIB_PYTHON in file:
+                            stack_colors = stack_lib_colors
+                        else:
+                            stack_colors = stack_normal_colors
+
+                        res += Color.NONE
+                        res += stack_indent
+                        res += stack_colors.file_color
+                        res += &quot;File &quot;
+                        res += stack_colors.file_path_color
+                        res += file
+                        res += stack_colors.file_color
+                        res += &quot;, line &quot;
+                        res += stack_colors.file_line_color
+                        res += line
+                        res += stack_colors.file_color
+
+                        if loc:
+                            res += &quot;, in &quot;
+                            res += stack_colors.file_module_color
+                            res += loc
+                            res += stack_colors.file_color
+
+                        res += &quot;\n&quot;
+                    elif match := self._TB_LINE_HIGHLIGHT.match(line):
+                        res += Color.NONE
+                        res += stack_indent
+                        res += stack_colors.highlight_color
+                        res += line[len(stack_indent) :]
+                    else:
+                        res += Color.NONE
+                        res += stack_indent
+                        res += py_highlighter.highlight(
+                            theme,
+                            line[len(stack_indent) :],
+                            stack_colors.code_color,
+                        )
+                    continue
+                else:
+                    # Stack has ended, this line is actually a message.
+                    state = MESSAGE
+
+            if state is MESSAGE:
+                if line and line != &quot;\n&quot; and line.startswith(message_indent):
+                    # We&#39;re still in the message.
+                    res += Color.NONE
+                    res += message_indent
+                    res += message_color
+                    res += line[len(message_indent) :]
+                    continue
+                else:
+                    # Message has ended, this line is actually a plain text.
+                    state = PLAIN_TEXT
+
+            if state is PLAIN_TEXT:
+                if match := self._TB_RE.match(line):
+                    # Plain text has ended, this is actually a heading.
+                    message_indent = match.group(&quot;indent&quot;).replace(&quot;+&quot;, &quot;|&quot;)
+                    stack_indent = message_indent + &quot;  &quot;
+
+                    res += Color.NONE
+                    res += message_indent
+                    res += heading_color
+                    res += line[len(message_indent) :]
+
+                    state = STACK
+                    continue
+                elif match := self._TB_MSG_RE.match(line):
+                    # Plain text has ended, this is an error message (without a traceback).
+                    message_indent = match.group(&quot;indent&quot;).replace(&quot;+&quot;, &quot;|&quot;)
+                    stack_indent = message_indent + &quot;  &quot;
+
+                    res += Color.NONE
+                    res += message_indent
+                    res += message_color
+                    res += line[len(message_indent) :]
+
+                    state = MESSAGE
+                    continue
+                else:
+                    # We&#39;re still in plain text.
+                    res += Color.NONE
+                    res += line
+                    continue
+
+        res += Color.NONE
+
+        return res
+
+
+SyntaxHighlighter.register_highlighter(_TbHighlighter())
+
+
+__TAG_RE = re.compile(
+    r&quot;&quot;&quot;
+          &lt;c (?P&lt;tag_open&gt;[a-z0-9 _/@:-]+)&gt;         # Color tag open.
+        | &lt;/c&gt;                                      # Color tag close.
+        | \\(?P&lt;punct&gt;[%(punct)s])                  # Escape character.
+        | (?&lt;!`)(`+)(?!`)(?P&lt;code&gt;.*?)(?&lt;!`)\3(?!`) # Inline code block (backticks).
+    &quot;&quot;&quot;
+    % {&quot;punct&quot;: re.escape(string.punctuation)},
+    re.VERBOSE | re.MULTILINE,
+)
+__NEG_NUM_RE = re.compile(r&quot;^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$&quot;)
+__FLAG_RE = re.compile(r&quot;^-[-a-zA-Z0-9_]*$&quot;)
+
+
+def _colorize(
+    theme: Theme,
+    s: str,
+    /,
+    *,
+    default_color: _t.Union[Color, str] = Color.NONE,
+    parse_cli_flags_in_backticks: bool = False,
+) -&gt; &quot;yuio.term.ColorizedString&quot;:
+    default_color = theme.to_color(default_color)
+
+    raw: _t.List[_t.Union[str, Color]] = []
+    raw.append(default_color)
+
+    stack = [default_color]
+
+    last_pos = 0
+    for tag in __TAG_RE.finditer(s):
+        raw.append(s[last_pos : tag.start()])
+        last_pos = tag.end()
+
+        if name := tag.group(&quot;tag_open&quot;):
+            color = stack[-1]
+            for sub_name in name.split():
+                sub_name = sub_name.strip()
+                color = color | theme.get_color(sub_name)
+            raw.append(color)
+            stack.append(color)
+        elif code := tag.group(&quot;code&quot;):
+            code = code.replace(&quot;\n&quot;, &quot; &quot;)
+            if code.startswith(&quot; &quot;) and code.endswith(&quot; &quot;) and not code.isspace():
+                code = code[1:-1]
+            if (
+                parse_cli_flags_in_backticks
+                and __FLAG_RE.match(code)
+                and not __NEG_NUM_RE.match(code)
+            ):
+                raw.append(stack[-1] | theme.get_color(&quot;hl/flag:sh-usage&quot;))
+            else:
+                raw.append(stack[-1] | theme.get_color(&quot;code&quot;))
+            raw.append(code)
+            raw.append(stack[-1])
+        elif len(stack) &gt; 1:
+            stack.pop()
+            raw.append(stack[-1])
+
+    raw.append(s[last_pos:])
+
+    raw.append(Color.NONE)
+
+    return yuio.term.ColorizedString(raw)
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Tamika Nomara.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

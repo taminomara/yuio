@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>yuio.app &mdash; Yuio 2.0.0b0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Yuio
+          </a>
+              <div class="version">
+                2.0.0b0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../io.html">Io</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../parse.html">Parse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../app.html">App</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../exec.html">Exec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../git.html">Git</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../complete.html">Complete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../md.html">Md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../term.html">Term</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../theme.html">Theme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../widget.html">Widget</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Yuio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../yuio.html">yuio</a></li>
+      <li class="breadcrumb-item active">yuio.app</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for yuio.app</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Yuio project, MIT license.</span>
+<span class="c1">#</span>
+<span class="c1"># https://github.com/taminomara/yuio/</span>
+<span class="c1">#</span>
+<span class="c1"># You&#39;re free to copy this file to your project and edit it for your needs,</span>
+<span class="c1"># just keep this copyright line please :3</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module expands on :mod:`yuio.config` to build CLI apps.</span>
+
+<span class="sd">Creating and running an app</span>
+<span class="sd">---------------------------</span>
+
+<span class="sd">Yuio&#39;s CLI applications have functional interface. Decorate main function</span>
+<span class="sd">with the :func:`app` decorator, and use :meth:`App.run` method to start it::</span>
+
+<span class="sd">    &gt;&gt;&gt; # Let&#39;s define an app with one flag and one positional argument.</span>
+<span class="sd">    ... @app</span>
+<span class="sd">    ... def main(</span>
+<span class="sd">    ...     #: help message for `arg`.</span>
+<span class="sd">    ...     arg: str = positional(),</span>
+<span class="sd">    ...     #: help message for `--flag`.</span>
+<span class="sd">    ...     flag: int = 0</span>
+<span class="sd">    ... ):</span>
+<span class="sd">    ...     \&quot;\&quot;\&quot;this command does a thing.\&quot;\&quot;\&quot;</span>
+<span class="sd">    ...     yuio.io.info(&quot;flag=%r, arg=%r&quot;, flag, arg)</span>
+
+<span class="sd">    &gt;&gt;&gt; # We can now use `main.run` to parse arguments and invoke `main`.</span>
+<span class="sd">    ... # Notice that `run` does not return anything. Instead, it terminates</span>
+<span class="sd">    ... # python process with an appropriate exit code.</span>
+<span class="sd">    ... main.run(&quot;--flag 10 foobar!&quot;.split()) # doctest: +SKIP</span>
+<span class="sd">    flag=10 arg=&#39;foobar!&#39;</span>
+
+<span class="sd">Function&#39;s arguments will become program&#39;s flags and positionals, and function&#39;s</span>
+<span class="sd">docstring will become app&#39;s :attr:`~App.description`.</span>
+
+<span class="sd">.. autofunction:: app</span>
+
+<span class="sd">.. autoclass:: App</span>
+
+<span class="sd">   .. automethod:: run</span>
+
+
+<span class="sd">Configuring flags and options</span>
+<span class="sd">-----------------------------</span>
+
+<span class="sd">Main function parameters, much like :class:`~yuio.config.Config` fields,</span>
+<span class="sd">can be configured. Their names and type hints are used to derive default values,</span>
+<span class="sd">which can be overridden by the :func:`field` function. They can also contain other</span>
+<span class="sd">configs, essentially allowing you to nest CLI flags.</span>
+
+<span class="sd">.. autofunction:: field</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">.. autodata:: yuio.DISABLED</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">.. autodata:: yuio.MISSING</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">.. autodata:: yuio.POSITIONAL</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">There are also a few helpers that are specific to the :mod:`yuio.app` module:</span>
+
+<span class="sd">.. autofunction:: inline</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">.. autofunction:: positional</span>
+
+<span class="sd">Flag names are derived from field names.</span>
+<span class="sd">Use the :func:`field` function to override them::</span>
+
+<span class="sd">    @app</span>
+<span class="sd">    def main(</span>
+<span class="sd">        # Will be loaded from `--input`.</span>
+<span class="sd">        input: pathlib.Path | None = None,</span>
+
+<span class="sd">        # Will be loaded from `-o` or `--output`.</span>
+<span class="sd">        output: pathlib.Path | None = field(None, flags=[&#39;-p&#39;, &#39;--pid&#39;])</span>
+<span class="sd">    ):</span>
+<span class="sd">        ...</span>
+
+<span class="sd">In nested configs, flags are prefixed with name</span>
+<span class="sd">of a field that contains the nested config::</span>
+
+<span class="sd">    class KillCmdConfig(Config):</span>
+<span class="sd">        # Will be loaded from `--signal`.</span>
+<span class="sd">        signal: int</span>
+
+<span class="sd">        # Will be loaded from `-p` or `--pid`.</span>
+<span class="sd">        pid: int = field(flags=[&#39;-p&#39;, &#39;--pid&#39;])</span>
+
+<span class="sd">    @app</span>
+<span class="sd">    def main(</span>
+<span class="sd">        # `kill_cmd.signal` will be loaded from `--kill-cmd-signal`.</span>
+<span class="sd">        kill_cmd: KillCmdConfig,</span>
+
+<span class="sd">        # `copy_cmd_2.signal` will be loaded from `--kill-signal`.</span>
+<span class="sd">        kill_cmd_2: KillCmdConfig = field(flags=&#39;--kill&#39;),</span>
+
+<span class="sd">        # `kill_cmd_3.signal` will be loaded from `--signal`.</span>
+<span class="sd">        kill_cmd_3: KillCmdConfig = field(flags=&#39;&#39;),</span>
+<span class="sd">    ):</span>
+<span class="sd">        ...</span>
+
+<span class="sd">.. note::</span>
+
+<span class="sd">   Positional arguments are not allowed in configs,</span>
+<span class="sd">   only in apps.</span>
+
+<span class="sd">Help messages for the flags are parsed from line comments</span>
+<span class="sd">right above the field definition (comments must start with ``#:``).</span>
+<span class="sd">This works for both functions and config classes.</span>
+<span class="sd">The :func:`field` function allows overriding them. Help messages</span>
+<span class="sd">are all formatted using the Markdown (see :mod:`yuio.md`).</span>
+
+<span class="sd">Parsers for CLI argument values are derived from type hints.</span>
+<span class="sd">Use the `parser` parameter of the :func:`field` function to override them.</span>
+
+<span class="sd">Arguments with bool parsers and parsers that support</span>
+<span class="sd">:meth:`parsing collections &lt;yuio.parse.Parser.supports_parse_many&gt;`</span>
+<span class="sd">are handled to provide better CLI experience::</span>
+
+<span class="sd">    @app</span>
+<span class="sd">    def main(</span>
+<span class="sd">        # Will create flags `--verbose` and `--no-verbose`.</span>
+<span class="sd">        verbose: bool = True,</span>
+
+<span class="sd">        # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`</span>
+<span class="sd">        inputs: list[Path],</span>
+<span class="sd">    ):</span>
+
+
+<span class="sd">App settings</span>
+<span class="sd">------------</span>
+
+<span class="sd">You can override default usage and help messages as well as control some of the app&#39;s</span>
+<span class="sd">help formatting using its arguments:</span>
+
+<span class="sd">.. class:: App</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">   .. autoattribute:: prog</span>
+
+<span class="sd">   .. autoattribute:: usage</span>
+
+<span class="sd">   .. autoattribute:: description</span>
+
+<span class="sd">   .. autoattribute:: help</span>
+
+<span class="sd">   .. autoattribute:: epilog</span>
+
+<span class="sd">   .. autoattribute:: allow_abbrev</span>
+
+<span class="sd">   .. autoattribute:: subcommand_required</span>
+
+<span class="sd">   .. autoattribute:: setup_logging</span>
+
+
+<span class="sd">Creating sub-commands</span>
+<span class="sd">---------------------</span>
+
+<span class="sd">You can create multiple sub-commands for the main function,</span>
+<span class="sd">using the :meth:`App.subcommand` method:</span>
+
+<span class="sd">.. class:: App</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">   .. automethod:: subcommand</span>
+
+<span class="sd">For example::</span>
+
+<span class="sd">    @app</span>
+<span class="sd">    def main(): ...</span>
+
+<span class="sd">    @main.subcommand</span>
+<span class="sd">    def push(): ...</span>
+
+<span class="sd">    @main.subcommand</span>
+<span class="sd">    def pop(): ...</span>
+
+<span class="sd">There is no limit to how deep you can nest subcommands, but for usability reasons</span>
+<span class="sd">we suggest not exceeding level of sub-sub-commands (``git stash push``, anyone?)</span>
+
+<span class="sd">When user invokes a subcommand, the ``main()`` function is called first,</span>
+<span class="sd">then subcommand. In the above example, invoking our app with subcommand ``push``</span>
+<span class="sd">will cause ``main()`` to be called first, then ``push()``.</span>
+
+<span class="sd">This behavior is useful when you have some global configuration flags</span>
+<span class="sd">attached to the ``main()`` command. See the `example app`_ for details.</span>
+
+<span class="sd">.. _example app: https://github.com/taminomara/yuio/blob/main/examples/app</span>
+
+
+<span class="sd">Controlling how sub-commands are invoked</span>
+<span class="sd">----------------------------------------</span>
+
+<span class="sd">By default, if a command has sub-commands, the user is required to provide</span>
+<span class="sd">a sub-command. This behavior can be disabled by setting :attr:`App.subcommand_required`</span>
+<span class="sd">to :data:`False`.</span>
+
+<span class="sd">When this happens, we need to understand whether a subcommand was invoked or not.</span>
+<span class="sd">To determine this, you can accept a special parameter called ``_command_info``</span>
+<span class="sd">of type :class:`CommandInfo`. It will contain info about the current function,</span>
+<span class="sd">including its name and subcommand::</span>
+
+<span class="sd">    @app</span>
+<span class="sd">    def main(_command_info: CommandInfo):</span>
+<span class="sd">        if _command_info.subcommand is not None:</span>
+<span class="sd">            # A subcommand was invoked.</span>
+<span class="sd">            ...</span>
+
+<span class="sd">.. autoclass:: CommandInfo</span>
+
+<span class="sd">   .. autoattribute:: name</span>
+
+<span class="sd">   .. autoattribute:: subcommand</span>
+
+<span class="sd">You can call the subcommand on your own by using ``_command_info`` as a callable.</span>
+<span class="sd">However, you must return :data:`False` from your function, this will prevent Yuio</span>
+<span class="sd">from calling subcommand for a second time::</span>
+
+<span class="sd">    @app</span>
+<span class="sd">    def main(_command_info: CommandInfo):</span>
+<span class="sd">        if _command_info.subcommand is not None and ...:</span>
+<span class="sd">            _command_info()  # manually invoking a subcommand</span>
+
+<span class="sd">        # Ensure that Yuio doesn&#39;t call a subcommand again.</span>
+<span class="sd">        # This interface is similar to one of __exit__ functions,</span>
+<span class="sd">        # where you return `True` to suppress an exception.</span>
+<span class="sd">        return False</span>
+
+<span class="sd">.. autoclass:: CommandInfo</span>
+<span class="sd">   :noindex:</span>
+
+<span class="sd">   .. automethod:: __call__</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">import</span> <span class="nn">dataclasses</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">string</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">types</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span> <span class="nn">yuio</span>
+<span class="kn">import</span> <span class="nn">yuio.complete</span>
+<span class="kn">import</span> <span class="nn">yuio.config</span>
+<span class="kn">import</span> <span class="nn">yuio.exec</span>
+<span class="kn">import</span> <span class="nn">yuio.io</span>
+<span class="kn">import</span> <span class="nn">yuio.md</span>
+<span class="kn">import</span> <span class="nn">yuio.parse</span>
+<span class="kn">import</span> <span class="nn">yuio.term</span>
+<span class="kn">import</span> <span class="nn">yuio.theme</span>
+<span class="kn">from</span> <span class="nn">yuio</span> <span class="kn">import</span> <span class="n">_t</span>
+<span class="kn">from</span> <span class="nn">yuio.config</span> <span class="kn">import</span> <span class="n">field</span><span class="p">,</span> <span class="n">inline</span><span class="p">,</span> <span class="n">positional</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;field&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;inline&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;positional&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Command&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;app&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;App&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">Command</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">_t</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+
+<span class="nd">@_t</span><span class="o">.</span><span class="n">overload</span>
+<span class="k">def</span> <span class="nf">app</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">usage</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">description</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">epilog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Command</span><span class="p">],</span> <span class="s2">&quot;App&quot;</span><span class="p">]:</span>
+    <span class="o">...</span>
+
+
+<span class="nd">@_t</span><span class="o">.</span><span class="n">overload</span>
+<span class="k">def</span> <span class="nf">app</span><span class="p">(</span>
+    <span class="n">command</span><span class="p">:</span> <span class="n">Command</span><span class="p">,</span>
+    <span class="o">/</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">usage</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">description</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">epilog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;App&quot;</span><span class="p">:</span>
+    <span class="o">...</span>
+
+
+<div class="viewcode-block" id="app"><a class="viewcode-back" href="../../app.html#yuio.app.app">[docs]</a><span class="k">def</span> <span class="nf">app</span><span class="p">(</span>
+    <span class="n">command</span><span class="p">:</span> <span class="s2">&quot;_t.Optional[Command]&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">/</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">usage</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">description</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">epilog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create an application.</span>
+
+<span class="sd">    This is a decorator that&#39;s supposed to be used on the main method</span>
+<span class="sd">    of the application. This decorator returns an :class:`App` object.</span>
+
+<span class="sd">    See :class:`App` for description of function&#39;s parameters.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">registrar</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="n">Command</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">App</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">App</span><span class="p">(</span>
+            <span class="n">command</span><span class="p">,</span>
+            <span class="n">prog</span><span class="o">=</span><span class="n">prog</span><span class="p">,</span>
+            <span class="n">usage</span><span class="o">=</span><span class="n">usage</span><span class="p">,</span>
+            <span class="n">help</span><span class="o">=</span><span class="n">help</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+            <span class="n">epilog</span><span class="o">=</span><span class="n">epilog</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">command</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">registrar</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">registrar</span><span class="p">(</span><span class="n">command</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CommandInfo"><a class="viewcode-back" href="../../app.html#yuio.app.CommandInfo">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">CommandInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Data about the invoked command.&quot;&quot;&quot;</span>
+
+    <span class="c1">#: Name of the current command.</span>
+    <span class="c1">#:</span>
+    <span class="c1">#: If it was invoked by alias,</span>
+    <span class="c1">#: this will contains the primary command name.</span>
+    <span class="c1">#:</span>
+    <span class="c1">#: For the main function, the name will be set to ``&#39;__main__&#39;``.</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1">#: Subcommand of this command, if one was given.</span>
+    <span class="n">subcommand</span><span class="p">:</span> <span class="s2">&quot;_t.Optional[CommandInfo]&quot;</span>
+
+    <span class="c1"># Internal, do not use.</span>
+    <span class="n">_config</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Any</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CommandInfo.__call__"><a class="viewcode-back" href="../../app.html#yuio.app.CommandInfo.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">Literal</span><span class="p">[</span><span class="kc">False</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute this command.</span>
+
+<span class="sd">        This function always returns :data:`False`, so you can call a subcommand</span>
+<span class="sd">        and exit from a parent command in a single line::</span>
+
+<span class="sd">            @app</span>
+<span class="sd">            def main(_command_info: CommandInfo):</span>
+<span class="sd">                if _command_info.subcommand is not None:</span>
+<span class="sd">                    # Manually call a subcommand and return `False`:</span>
+<span class="sd">                    return _command_info()</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">should_invoke_subcommand</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">should_invoke_subcommand</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">should_invoke_subcommand</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">should_invoke_subcommand</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">should_invoke_subcommand</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">subcommand</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">subcommand</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div></div>
+
+
+<div class="viewcode-block" id="App"><a class="viewcode-back" href="../../app.html#yuio.app.App">[docs]</a><span class="k">class</span> <span class="nc">App</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A class that encapsulates app settings and logic for running it.</span>
+
+<span class="sd">    It is better to create instances of this class using the :func:`app` decorator,</span>
+<span class="sd">    as it provides means to decorate the main function and specify all of the app&#39;s</span>
+<span class="sd">    parameters.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">class</span> <span class="nc">_SubApp</span><span class="p">:</span>
+        <span class="n">app</span><span class="p">:</span> <span class="s2">&quot;App&quot;</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+        <span class="n">aliases</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">is_primary</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">command</span><span class="p">:</span> <span class="n">Command</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">usage</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">epilog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="c1">#: Program or subcommand display name.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: By default, inferred from :data:`sys.argv` and subcommand names.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: See `prog &lt;https://docs.python.org/3/library/argparse.html#prog&gt;`_.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">prog</span>
+
+        <span class="c1">#: Program or subcommand synapsis.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: This string will be colorized according to `bash` syntax,</span>
+        <span class="c1">#: and then it will be ``%``-formatted with a single keyword argument `prog`.</span>
+        <span class="c1">#: If command supports multiple signatures, each of them should be listed</span>
+        <span class="c1">#: on a separate string. For example::</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     @app</span>
+        <span class="c1">#:     def main(): ...</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     main.usage = &quot;&quot;&quot;</span>
+        <span class="c1">#:     %(prog)s [-q] [-f] [-m] [&lt;branch&gt;]</span>
+        <span class="c1">#:     %(prog)s [-q] [-f] [-m] --detach [&lt;branch&gt;]</span>
+        <span class="c1">#:     %(prog)s [-q] [-f] [-m] [--detach] &lt;commit&gt;</span>
+        <span class="c1">#:     ...</span>
+        <span class="c1">#:     &quot;&quot;&quot;</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: By default, generated from CLI flags by argparse.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: See `usage &lt;https://docs.python.org/3/library/argparse.html#usage&gt;`_.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">usage</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">usage</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">description</span> <span class="ow">and</span> <span class="n">command</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">:</span>
+            <span class="n">description</span> <span class="o">=</span> <span class="n">command</span><span class="o">.</span><span class="vm">__doc__</span>
+
+        <span class="c1">#: Text that is shown before CLI flags help, usually contains</span>
+        <span class="c1">#: short description of the program or subcommand.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: The text should be formatted using markdown. For example::</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     @app</span>
+        <span class="c1">#:     def main(): ...</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     main.description = &quot;&quot;&quot;</span>
+        <span class="c1">#:     this command does a thing.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     # different ways to do a thing</span>
+        <span class="c1">#:</span>
+        <span class="c1">#      this command can apply multiple algorithms to achieve</span>
+        <span class="c1">#:     a necessary state in which a thing can be done. This includes:</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     - randomly turning the screen on and off;</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     - banging a head on a table;</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     - fiddling with your PCs power levels.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     By default, the best algorithm is determined automatically.</span>
+        <span class="c1">#:     However, you can hint a preferred algorithm via the `--hint-algo` flag.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#:     &quot;&quot;&quot;</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: By default, inferred from command&#39;s description.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: See `description &lt;https://docs.python.org/3/library/argparse.html#description&gt;`_.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">description</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">help</span> <span class="ow">and</span> <span class="n">description</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">description</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">help</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+
+        <span class="c1">#: Short help message that is shown when listing subcommands.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: See `help &lt;https://docs.python.org/3/library/argparse.html#help&gt;`_.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">help</span>
+
+        <span class="c1">#: Text that is shown after the main portion of the help message.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: Text format is identical to the one for :attr:`~App.description`.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: See `epilog &lt;https://docs.python.org/3/library/argparse.html#epilog&gt;`_.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">epilog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">epilog</span>
+
+        <span class="c1">#: Allow abbreviating CLI flags if that doesn&#39;t create ambiguity.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: Disabled by default.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: See `allow_abbrev &lt;https://docs.python.org/3/library/argparse.html#allow-abbrev&gt;`_.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allow_abbrev</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1">#: Require the user to provide a subcommand for this command.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: If this command doesn&#39;t have any subcommands, this option is ignored.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: Enabled by default.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subcommand_required</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1">#: If :data:`True`, the app will call :func:`logging.basicConfig` during</span>
+        <span class="c1">#: its initialization. Disable this if you want to customize</span>
+        <span class="c1">#: logging initialization.</span>
+        <span class="c1">#:</span>
+        <span class="c1">#: Disabling this option also removes the ``--verbose`` flag form the CLI.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_logging</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__sub_apps</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;App._SubApp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">command</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__config_type</span> <span class="o">=</span> <span class="n">_command_from_callable</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;expected a function, got </span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">functools</span><span class="o">.</span><span class="n">update_wrapper</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+            <span class="n">command</span><span class="p">,</span>
+            <span class="n">assigned</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;__module__&quot;</span><span class="p">,</span> <span class="s2">&quot;__name__&quot;</span><span class="p">,</span> <span class="s2">&quot;__qualname__&quot;</span><span class="p">,</span> <span class="s2">&quot;__doc__&quot;</span><span class="p">),</span>
+            <span class="n">updated</span><span class="o">=</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@_t</span><span class="o">.</span><span class="n">overload</span>
+    <span class="k">def</span> <span class="nf">subcommand</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">aliases</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">usage</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">epilog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Command</span><span class="p">],</span> <span class="s2">&quot;App&quot;</span><span class="p">]:</span>
+        <span class="o">...</span>
+
+    <span class="nd">@_t</span><span class="o">.</span><span class="n">overload</span>
+    <span class="k">def</span> <span class="nf">subcommand</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cb</span><span class="p">:</span> <span class="n">Command</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">aliases</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">usage</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">epilog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;App&quot;</span><span class="p">:</span>
+        <span class="o">...</span>
+
+<div class="viewcode-block" id="App.subcommand"><a class="viewcode-back" href="../../app.html#yuio.app.App.subcommand">[docs]</a>    <span class="k">def</span> <span class="nf">subcommand</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cb_or_name</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Command</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">aliases</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">prog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">usage</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">epilog</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a subcommand for the given app.</span>
+
+<span class="sd">        This method can be used as a decorator, similar to the :func:`app` function.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cb_or_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">cb</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">cb_or_name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cb</span> <span class="o">=</span> <span class="n">cb_or_name</span>
+
+        <span class="k">def</span> <span class="nf">registrar</span><span class="p">(</span><span class="n">cb</span><span class="p">:</span> <span class="n">Command</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">App</span><span class="p">:</span>
+            <span class="n">app</span> <span class="o">=</span> <span class="n">App</span><span class="p">(</span>
+                <span class="n">cb</span><span class="p">,</span>
+                <span class="n">prog</span><span class="o">=</span><span class="n">prog</span><span class="p">,</span>
+                <span class="n">usage</span><span class="o">=</span><span class="n">usage</span><span class="p">,</span>
+                <span class="n">help</span><span class="o">=</span><span class="n">help</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+                <span class="n">epilog</span><span class="o">=</span><span class="n">epilog</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">app</span><span class="o">.</span><span class="n">allow_abbrev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_abbrev</span>
+
+            <span class="n">main_name</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="n">yuio</span><span class="o">.</span><span class="n">to_dash_case</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__sub_apps</span><span class="p">[</span><span class="n">main_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">App</span><span class="o">.</span><span class="n">_SubApp</span><span class="p">(</span>
+                <span class="n">app</span><span class="p">,</span> <span class="n">main_name</span><span class="p">,</span> <span class="n">aliases</span><span class="p">,</span> <span class="n">is_primary</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">aliases</span><span class="p">:</span>
+                <span class="n">alias_app</span> <span class="o">=</span> <span class="n">App</span><span class="o">.</span><span class="n">_SubApp</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">main_name</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__sub_apps</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">alias</span><span class="p">:</span> <span class="n">alias_app</span> <span class="k">for</span> <span class="n">alias</span> <span class="ow">in</span> <span class="n">aliases</span><span class="p">})</span>
+
+            <span class="k">return</span> <span class="n">app</span>
+
+        <span class="k">if</span> <span class="n">cb</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">registrar</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">registrar</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="App.run"><a class="viewcode-back" href="../../app.html#yuio.app.App.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">_t</span><span class="o">.</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">NoReturn</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse arguments, set up :mod:`yuio.io` and :mod:`logging`,</span>
+<span class="sd">        and run the application.</span>
+
+<span class="sd">        If no `args` are given, parse :data:`sys.argv`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="k">if</span> <span class="s2">&quot;--yuio-custom-completer--&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;--yuio-custom-completer--&quot;</span><span class="p">)</span>
+            <span class="n">yuio</span><span class="o">.</span><span class="n">complete</span><span class="o">.</span><span class="n">_run_custom_completer</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">args</span><span class="p">[</span><span class="n">index</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">parser</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__setup_arg_parser</span><span class="p">()</span>
+        <span class="n">namespace</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+        <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">setup</span><span class="p">(</span><span class="n">wrap_stdio</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_logging</span><span class="p">:</span>
+            <span class="n">verbosity_level</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="s2">&quot;verbosity_level&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">logging_level</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="n">verbosity_level</span><span class="p">,</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span>
+            <span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">Handler</span><span class="p">()],</span> <span class="n">level</span><span class="o">=</span><span class="n">logging_level</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__load_from_namespace</span><span class="p">(</span><span class="n">namespace</span><span class="p">)</span>
+            <span class="n">command</span><span class="p">()</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">,</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">error_with_tb</span><span class="p">(</span><span class="s2">&quot;Error: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+            <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__load_from_namespace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">namespace</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CommandInfo</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__load_from_namespace_impl</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="s2">&quot;app&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__load_from_namespace_impl</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">namespace</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">ns_prefix</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CommandInfo</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__config_type</span><span class="o">.</span><span class="n">_load_from_namespace</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="n">ns_prefix</span><span class="o">=</span><span class="n">ns_prefix</span><span class="p">)</span>
+        <span class="n">subcommand</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">name</span> <span class="o">:=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="n">ns_prefix</span> <span class="o">+</span> <span class="s2">&quot;@subcommand&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">sub_app</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sub_apps</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">subcommand</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+                <span class="n">sub_app</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">__load_from_namespace_impl</span><span class="p">(</span>
+                    <span class="n">namespace</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ns_prefix</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">sub_app</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">sub_app</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">CommandInfo</span><span class="p">(</span><span class="s2">&quot;__main__&quot;</span><span class="p">,</span> <span class="n">subcommand</span><span class="p">,</span> <span class="n">_config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__setup_arg_parser</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
+        <span class="n">prog</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prog</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">prog</span><span class="p">:</span>
+            <span class="n">prog</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">parser</span> <span class="o">=</span> <span class="n">parser</span> <span class="ow">or</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+            <span class="n">prog</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prog</span><span class="p">,</span>
+            <span class="n">usage</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">usage</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
+            <span class="n">epilog</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">epilog</span><span class="p">,</span>
+            <span class="n">allow_abbrev</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">allow_abbrev</span><span class="p">,</span>
+            <span class="n">formatter_class</span><span class="o">=</span><span class="n">_HelpFormatter</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup_arg_parser_impl</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="s2">&quot;app&quot;</span><span class="p">,</span> <span class="n">prog</span><span class="p">)</span>
+
+        <span class="n">aux</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s2">&quot;auxiliary options&quot;</span><span class="p">)</span>
+        <span class="n">color</span> <span class="o">=</span> <span class="n">aux</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
+        <span class="n">color</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+            <span class="s2">&quot;--force-color&quot;</span><span class="p">,</span>
+            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;force-enable colored output&quot;</span><span class="p">,</span>
+            <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>  <span class="c1"># Note: `yuio.term` inspects `sys.argv` on its own</span>
+        <span class="p">)</span>
+        <span class="n">color</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+            <span class="s2">&quot;--force-no-color&quot;</span><span class="p">,</span>
+            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;force-disable colored output&quot;</span><span class="p">,</span>
+            <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>  <span class="c1"># Note: `yuio.term` inspects `sys.argv` on its own</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_logging</span><span class="p">:</span>
+            <span class="n">aux</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+                <span class="s2">&quot;-v&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;--verbose&quot;</span><span class="p">,</span>
+                <span class="n">help</span><span class="o">=</span><span class="s2">&quot;increase output verbosity&quot;</span><span class="p">,</span>
+                <span class="n">action</span><span class="o">=</span><span class="s2">&quot;count&quot;</span><span class="p">,</span>
+                <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;verbosity_level&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">class</span> <span class="nc">CompletionsAction</span><span class="p">(</span><span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+            <span class="nd">@staticmethod</span>
+            <span class="k">def</span> <span class="nf">get_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">yuio</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">Parser</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="n">yuio</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">Str</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">one_of</span><span class="p">([</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="s2">&quot;bash&quot;</span><span class="p">,</span> <span class="s2">&quot;zsh&quot;</span><span class="p">,</span> <span class="s2">&quot;fish&quot;</span><span class="p">])</span>
+
+            <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">_self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;metavar&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_self</span><span class="o">.</span><span class="n">get_parser</span><span class="p">()</span><span class="o">.</span><span class="n">describe_or_def</span><span class="p">()</span>
+                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="n">_self</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">namespace</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_App__write_completions</span><span class="p">(</span><span class="n">_self</span><span class="o">.</span><span class="n">get_parser</span><span class="p">()</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">value</span> <span class="ow">or</span> <span class="s2">&quot;all&quot;</span><span class="p">))</span>  <span class="c1"># type: ignore</span>
+                <span class="n">parser</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+
+        <span class="n">aux</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+            <span class="s2">&quot;--completions&quot;</span><span class="p">,</span>
+            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;generate autocompletion scripts and exit&quot;</span><span class="p">,</span>
+            <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;?&quot;</span><span class="p">,</span>
+            <span class="n">action</span><span class="o">=</span><span class="n">CompletionsAction</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">parser</span>
+
+    <span class="k">def</span> <span class="nf">__setup_arg_parser_impl</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span> <span class="n">ns_prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prog</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__config_type</span><span class="o">.</span><span class="n">_setup_arg_parser</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="n">ns_prefix</span><span class="o">=</span><span class="n">ns_prefix</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sub_apps</span><span class="p">:</span>
+            <span class="n">subparsers</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_subparsers</span><span class="p">(</span>
+                <span class="n">required</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subcommand_required</span><span class="p">,</span>
+                <span class="n">dest</span><span class="o">=</span><span class="n">ns_prefix</span> <span class="o">+</span> <span class="s2">&quot;@subcommand&quot;</span><span class="p">,</span>
+                <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;&lt;subcommand&gt;&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">sub_app</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sub_apps</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">sub_app</span><span class="o">.</span><span class="n">is_primary</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">sub_prog</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prog</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+                <span class="n">parser</span> <span class="o">=</span> <span class="n">subparsers</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
+                    <span class="n">name</span><span class="p">,</span>
+                    <span class="n">aliases</span><span class="o">=</span><span class="n">sub_app</span><span class="o">.</span><span class="n">aliases</span> <span class="ow">or</span> <span class="p">[],</span>
+                    <span class="n">prog</span><span class="o">=</span><span class="n">sub_prog</span><span class="p">,</span>
+                    <span class="n">help</span><span class="o">=</span><span class="n">sub_app</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">help</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="n">sub_app</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
+                    <span class="n">epilog</span><span class="o">=</span><span class="n">sub_app</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">epilog</span><span class="p">,</span>
+                    <span class="n">allow_abbrev</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">allow_abbrev</span><span class="p">,</span>
+                    <span class="n">formatter_class</span><span class="o">=</span><span class="n">_HelpFormatter</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+                <span class="p">)</span>
+
+                <span class="n">sub_app</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">__setup_arg_parser_impl</span><span class="p">(</span>
+                    <span class="n">parser</span><span class="p">,</span> <span class="n">ns_prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ns_prefix</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">prog</span><span class="o">=</span><span class="n">sub_prog</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get_completions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">yuio</span><span class="o">.</span><span class="n">complete</span><span class="o">.</span><span class="n">_CompleterSerializer</span><span class="p">:</span>
+        <span class="n">serializer</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">complete</span><span class="o">.</span><span class="n">_CompleterSerializer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup_arg_parser</span><span class="p">(</span><span class="n">serializer</span><span class="o">.</span><span class="n">as_parser</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">serializer</span>
+
+    <span class="k">def</span> <span class="nf">__write_completions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shell</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__get_completions</span><span class="p">()</span><span class="o">.</span><span class="n">write_completions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prog</span><span class="p">,</span> <span class="n">shell</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">_NoReprConfig</span><span class="p">(</span><span class="n">yuio</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">Config</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;move along, nothing to see here&gt;&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">_command_from_callable</span><span class="p">(</span><span class="n">cb</span><span class="p">:</span> <span class="n">Command</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_t</span><span class="o">.</span><span class="n">Type</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">Config</span><span class="p">]:</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+
+    <span class="n">dct</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">annotations</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">accepts_command_info</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">docs</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">_find_docs</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">yuio</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+            <span class="s2">&quot;Unable to get documentation for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">cb</span><span class="o">.</span><span class="vm">__qualname__</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">docs</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">KEYWORD_ONLY</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;positional-only and variadic arguments are not supported&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;_command_info&quot;</span><span class="p">:</span>
+                <span class="n">accepts_command_info</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unknown special param </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">param</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">field</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">field</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">MISSING</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">yuio</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">_FieldSettings</span><span class="p">):</span>
+            <span class="n">field</span> <span class="o">=</span> <span class="n">_t</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">yuio</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">_FieldSettings</span><span class="p">,</span> <span class="n">yuio</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">field</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">field</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">yuio</span><span class="o">.</span><span class="n">MISSING</span><span class="p">:</span>
+            <span class="n">field</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
+            <span class="n">field</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="n">docs</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span> <span class="ow">is</span> <span class="n">param</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;param </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> requires type annotation&quot;</span><span class="p">)</span>
+
+        <span class="n">dct</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span>
+        <span class="n">annotations</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span>
+
+    <span class="n">dct</span><span class="p">[</span><span class="s2">&quot;_run&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_command_from_callable_run_impl</span><span class="p">(</span>
+        <span class="n">cb</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">annotations</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="n">accepts_command_info</span>
+    <span class="p">)</span>
+    <span class="n">dct</span><span class="p">[</span><span class="s2">&quot;__annotations__&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">annotations</span>
+    <span class="n">dct</span><span class="p">[</span><span class="s2">&quot;__module__&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;__module__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">dct</span><span class="p">[</span><span class="s2">&quot;__doc__&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="s2">&quot;__doc__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">types</span><span class="o">.</span><span class="n">new_class</span><span class="p">(</span>
+        <span class="n">cb</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">_NoReprConfig</span><span class="p">,),</span>
+        <span class="p">{</span><span class="s2">&quot;_allow_positionals&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+        <span class="n">exec_body</span><span class="o">=</span><span class="k">lambda</span> <span class="n">ns</span><span class="p">:</span> <span class="n">ns</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">dct</span><span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_command_from_callable_run_impl</span><span class="p">(</span>
+    <span class="n">cb</span><span class="p">:</span> <span class="n">Command</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">accepts_command_info</span>
+<span class="p">):</span>
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command_info</span><span class="p">):</span>
+        <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">params</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">accepts_command_info</span><span class="p">:</span>
+            <span class="n">kw</span><span class="p">[</span><span class="s2">&quot;_command_info&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">command_info</span>
+        <span class="k">return</span> <span class="n">cb</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">run</span>
+
+
+<span class="n">_MAX_ARGS_COLUMN_WIDTH</span> <span class="o">=</span> <span class="mi">24</span>
+
+
+<span class="k">class</span> <span class="nc">_CliMdFormatter</span><span class="p">(</span><span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">MdFormatter</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">theme</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">theme</span><span class="o">.</span><span class="n">Theme</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">width</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">allow_headings</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_heading_indent</span> <span class="o">=</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">ExitStack</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_args_column_width</span> <span class="o">=</span> <span class="n">_MAX_ARGS_COLUMN_WIDTH</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">theme</span><span class="p">,</span>
+            <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span>
+            <span class="n">allow_headings</span><span class="o">=</span><span class="n">allow_headings</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">colorize</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">/</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">default_color</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">Color</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">Color</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">_colorize</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">theme</span><span class="p">,</span>
+            <span class="n">s</span><span class="p">,</span>
+            <span class="n">default_color</span><span class="o">=</span><span class="n">default_color</span><span class="p">,</span>
+            <span class="n">parse_cli_flags_in_backticks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_format_Heading</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">Heading</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_heading_indent</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+            <span class="n">decoration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">theme</span><span class="o">.</span><span class="n">msg_decorations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;heading/section&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indent</span><span class="p">(</span><span class="s2">&quot;msg/decoration:heading/section&quot;</span><span class="p">,</span> <span class="n">decoration</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_format_Text</span><span class="p">(</span>
+                    <span class="n">node</span><span class="p">,</span>
+                    <span class="n">default_color</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;msg/text:heading/section&quot;</span><span class="p">),</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_heading_indent</span><span class="o">.</span><span class="n">enter_context</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_indent</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;  &quot;</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_is_first_line</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_format_Heading</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_format_Usage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="s2">&quot;_Usage&quot;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indent</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">prefix</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">usage_override</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">usage_override</span><span class="o">.</span><span class="n">wrap</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span>
+                    <span class="n">break_on_hyphens</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">preserve_spaces</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">preserve_newlines</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">first_line_indent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span><span class="p">,</span>
+                    <span class="n">continuation_indent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_continuation_indent</span><span class="p">,</span>
+                <span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="n">line</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span><span class="p">)</span>
+            <span class="n">cur_width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span><span class="o">.</span><span class="n">width</span>
+            <span class="n">needs_space</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">usage</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">+=</span> <span class="n">node</span><span class="o">.</span><span class="n">usage</span>
+                <span class="n">cur_width</span> <span class="o">+=</span> <span class="n">node</span><span class="o">.</span><span class="n">usage</span><span class="o">.</span><span class="n">width</span>
+                <span class="n">needs_space</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="k">for</span> <span class="n">arr</span> <span class="ow">in</span> <span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">optionals</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">positionals</span><span class="p">]:</span>
+                <span class="n">total_options_width</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">width</span> <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">arr</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">cur_width</span> <span class="o">+</span> <span class="n">total_options_width</span> <span class="o">+</span> <span class="n">needs_space</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_continuation_indent</span><span class="o">.</span><span class="n">width</span> <span class="o">+</span> <span class="n">total_options_width</span>
+                    <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span>
+                <span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span><span class="p">)</span>
+                    <span class="n">cur_width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span><span class="o">.</span><span class="n">width</span>
+                    <span class="n">needs_space</span> <span class="o">=</span> <span class="kc">False</span>
+
+                <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">arr</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">needs_space</span> <span class="ow">and</span> <span class="n">cur_width</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">elem</span><span class="o">.</span><span class="n">width</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                        <span class="n">line</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span><span class="p">)</span>
+                        <span class="n">cur_width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span><span class="o">.</span><span class="n">width</span>
+                        <span class="n">needs_space</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">if</span> <span class="n">needs_space</span><span class="p">:</span>
+                        <span class="n">line</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span>
+                        <span class="n">cur_width</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">line</span> <span class="o">+=</span> <span class="n">elem</span>
+                    <span class="n">cur_width</span> <span class="o">+=</span> <span class="n">elem</span><span class="o">.</span><span class="n">width</span>
+                    <span class="n">needs_space</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_format_HelpArg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="s2">&quot;_HelpArg&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">help</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_line</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span> <span class="o">+</span> <span class="n">node</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">width</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args_column_width</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_line</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_line_indent</span> <span class="o">+</span> <span class="n">node</span><span class="o">.</span><span class="n">indent</span> <span class="o">+</span> <span class="n">node</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+            <span class="n">indent_ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indent</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args_column_width</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indent_ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indent</span><span class="p">(</span>
+                <span class="kc">None</span><span class="p">,</span>
+                <span class="n">node</span><span class="o">.</span><span class="n">indent</span>
+                <span class="o">+</span> <span class="n">node</span><span class="o">.</span><span class="n">args</span>
+                <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_args_column_width</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">indent</span><span class="p">)</span> <span class="o">-</span> <span class="n">node</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">width</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">indent_ctx</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">help</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_format</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">help</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_format_HelpArgGroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="s2">&quot;_HelpArgGroup&quot;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">items</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_format</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="o">**</span><span class="n">yuio</span><span class="o">.</span><span class="n">_with_slots</span><span class="p">())</span>
+<span class="k">class</span> <span class="nc">_Usage</span><span class="p">(</span><span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">AstBase</span><span class="p">):</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span>
+    <span class="n">usage_override</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span>
+    <span class="n">usage</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span>
+    <span class="n">optionals</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">]</span>
+    <span class="n">positionals</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">]</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="o">**</span><span class="n">yuio</span><span class="o">.</span><span class="n">_with_slots</span><span class="p">())</span>
+<span class="k">class</span> <span class="nc">_HelpArg</span><span class="p">(</span><span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">AstBase</span><span class="p">):</span>
+    <span class="n">indent</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span>
+    <span class="n">help</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">AstBase</span><span class="p">]</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="o">**</span><span class="n">yuio</span><span class="o">.</span><span class="n">_with_slots</span><span class="p">())</span>
+<span class="k">class</span> <span class="nc">_HelpArgGroup</span><span class="p">(</span><span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">Container</span><span class="p">[</span><span class="n">_HelpArg</span><span class="p">]):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">_HelpFormatter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prog</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prog</span> <span class="o">=</span> <span class="n">prog</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_term</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">get_term</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">get_theme</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_formatter</span> <span class="o">=</span> <span class="n">_CliMdFormatter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">AstBase</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_args_column_width</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">start_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">heading</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">heading</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">heading</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">):</span>
+                <span class="n">heading</span> <span class="o">+=</span> <span class="s2">&quot;:&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">Heading</span><span class="p">([</span><span class="n">heading</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">end_section</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">add_text</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">text</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span> <span class="ow">and</span> <span class="n">text</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_formatter</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">text</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">add_usage</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">usage</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">Iterable</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">],</span> <span class="n">groups</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">usage</span> <span class="ow">is</span> <span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">c_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_formatter</span><span class="o">.</span><span class="n">colorize</span><span class="p">(</span>
+                <span class="n">prefix</span><span class="p">,</span>
+                <span class="n">default_color</span><span class="o">=</span><span class="s2">&quot;msg/text:heading/section&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">c_prefix</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">(</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:heading/section&quot;</span><span class="p">),</span> <span class="s2">&quot;usage: &quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="n">c_usage</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">()</span>
+        <span class="n">c_usage_override</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">()</span>
+        <span class="n">c_optionals</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">c_positionals</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">usage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_formatter</span><span class="o">.</span><span class="n">_dedent</span><span class="p">(</span><span class="n">usage</span><span class="p">)</span>
+            <span class="n">sh_usage_highlighter</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">SyntaxHighlighter</span><span class="o">.</span><span class="n">get_highlighter</span><span class="p">(</span><span class="s2">&quot;sh-usage&quot;</span><span class="p">)</span>
+
+            <span class="n">c_usage_override</span> <span class="o">=</span> <span class="n">sh_usage_highlighter</span><span class="o">.</span><span class="n">highlight</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="p">,</span>
+                <span class="n">usage</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">c_usage</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">(</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;hl/prog:sh-usage&quot;</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_prog</span><span class="p">)]</span>
+            <span class="p">)</span>
+
+            <span class="n">optionals</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span>
+                <span class="n">_t</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">,</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_MutuallyExclusiveGroup</span><span class="p">]</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">positionals</span><span class="p">:</span> <span class="n">_t</span><span class="o">.</span><span class="n">List</span><span class="p">[</span>
+                <span class="n">_t</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">,</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_MutuallyExclusiveGroup</span><span class="p">]</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">option_strings</span><span class="p">:</span>
+                    <span class="n">optionals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">positionals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">_group_actions</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">for</span> <span class="n">arr</span> <span class="ow">in</span> <span class="p">[</span><span class="n">optionals</span><span class="p">,</span> <span class="n">positionals</span><span class="p">]:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">start</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">_group_actions</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">):</span>
+                        <span class="k">continue</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">end</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">_group_actions</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">arr</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">==</span> <span class="n">group</span><span class="o">.</span><span class="n">_group_actions</span><span class="p">:</span>
+                            <span class="n">arr</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">group</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">res</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">c_optionals</span><span class="p">,</span> <span class="n">optionals</span><span class="p">),</span> <span class="p">(</span><span class="n">c_positionals</span><span class="p">,</span> <span class="n">positionals</span><span class="p">)]:</span>
+                <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">arr</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+                        <span class="n">c_elem</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_short</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">c_elem</span><span class="p">)</span>
+                        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c_elem</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">elem</span><span class="o">.</span><span class="n">_group_actions</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">action</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">_group_actions</span><span class="p">):</span>
+                            <span class="n">c_elem</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">()</span>
+                            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                                <span class="n">c_elem</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span>
+                                    <span class="s2">&quot;msg/text:code/sh-usage&quot;</span>
+                                <span class="p">)</span>
+                                <span class="n">c_elem</span> <span class="o">+=</span> <span class="s2">&quot;(&quot;</span> <span class="k">if</span> <span class="n">elem</span><span class="o">.</span><span class="n">required</span> <span class="k">else</span> <span class="s2">&quot;[&quot;</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_short</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">c_elem</span><span class="p">,</span> <span class="n">in_group</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">elem</span><span class="o">.</span><span class="n">_group_actions</span><span class="p">):</span>
+                                <span class="n">c_elem</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span>
+                                    <span class="s2">&quot;msg/text:code/sh-usage&quot;</span>
+                                <span class="p">)</span>
+                                <span class="n">c_elem</span> <span class="o">+=</span> <span class="s2">&quot; |&quot;</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">c_elem</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span>
+                                    <span class="s2">&quot;msg/text:code/sh-usage&quot;</span>
+                                <span class="p">)</span>
+                                <span class="n">c_elem</span> <span class="o">+=</span> <span class="s2">&quot;)&quot;</span> <span class="k">if</span> <span class="n">elem</span><span class="o">.</span><span class="n">required</span> <span class="k">else</span> <span class="s2">&quot;]&quot;</span>
+                            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c_elem</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">_Usage</span><span class="p">(</span>
+                <span class="n">c_prefix</span><span class="p">,</span>
+                <span class="n">c_usage_override</span><span class="p">,</span>
+                <span class="n">c_usage</span><span class="p">,</span>
+                <span class="n">c_optionals</span><span class="p">,</span>
+                <span class="n">c_positionals</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_argument</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">,</span> <span class="n">indent</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">help</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span><span class="p">:</span>
+            <span class="n">c_usage</span> <span class="o">=</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">()</span>
+            <span class="n">sep</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">option_strings</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">c_usage</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">option_string</span> <span class="ow">in</span> <span class="n">action</span><span class="o">.</span><span class="n">option_strings</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">sep</span><span class="p">:</span>
+                    <span class="n">c_usage</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+                    <span class="n">c_usage</span> <span class="o">+=</span> <span class="s2">&quot;, &quot;</span>
+                <span class="n">c_usage</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;hl/flag:sh-usage&quot;</span><span class="p">)</span>
+                <span class="n">c_usage</span> <span class="o">+=</span> <span class="n">option_string</span>
+                <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">nargs</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">c_usage</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+                    <span class="n">c_usage</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar_expl</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">c_usage</span><span class="p">)</span>
+                <span class="n">sep</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">_HelpArgGroup</span><span class="p">):</span>
+                <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">group</span> <span class="o">=</span> <span class="n">_HelpArgGroup</span><span class="p">([])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">_HelpArg</span><span class="p">(</span>
+                    <span class="n">indent</span><span class="p">,</span>
+                    <span class="n">c_usage</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_formatter</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">help</span><span class="p">)</span> <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">help</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="n">arg_width</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">indent</span><span class="p">)</span> <span class="o">+</span> <span class="n">c_usage</span><span class="o">.</span><span class="n">width</span> <span class="o">+</span> <span class="mi">2</span>
+            <span class="k">if</span> <span class="n">arg_width</span> <span class="o">&lt;=</span> <span class="n">_MAX_ARGS_COLUMN_WIDTH</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_args_column_width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_args_column_width</span><span class="p">,</span> <span class="n">arg_width</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">get_subactions</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">_get_subactions</span>  <span class="c1"># type: ignore</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_arguments</span><span class="p">(</span><span class="n">get_subactions</span><span class="p">(),</span> <span class="n">indent</span> <span class="o">+</span> <span class="s2">&quot;  &quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_arguments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">indent</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">indent</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">format_help</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_formatter</span><span class="o">.</span><span class="n">_args_column_width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_args_column_width</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_formatter</span><span class="o">.</span><span class="n">format_node</span><span class="p">(</span><span class="n">yuio</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">Document</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="p">))</span><span class="o">.</span><span class="n">process_colors</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_term</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_format_action_short</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">action</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">,</span>
+        <span class="n">out</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span><span class="p">,</span>
+        <span class="n">in_group</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">in_group</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">required</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot;[&quot;</span>
+
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">option_strings</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;hl/flag:sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="n">action</span><span class="o">.</span><span class="n">option_strings</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">nargs</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+                <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar_expl</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">in_group</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">required</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot;]&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_format_action_metavar_expl</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span>
+    <span class="p">):</span>
+        <span class="n">nargs</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">nargs</span> <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">nargs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">nargs</span> <span class="o">==</span> <span class="n">argparse</span><span class="o">.</span><span class="n">OPTIONAL</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot;[&quot;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot;]&quot;</span>
+        <span class="k">elif</span> <span class="n">nargs</span> <span class="o">==</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ZERO_OR_MORE</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot;[&quot;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot; ...]&quot;</span>
+        <span class="k">elif</span> <span class="n">nargs</span> <span class="o">==</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ONE_OR_MORE</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot; [&quot;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot; ...]&quot;</span>
+        <span class="k">elif</span> <span class="n">nargs</span> <span class="o">==</span> <span class="n">argparse</span><span class="o">.</span><span class="n">REMAINDER</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot;...&quot;</span>
+        <span class="k">elif</span> <span class="n">nargs</span> <span class="o">==</span> <span class="n">argparse</span><span class="o">.</span><span class="n">PARSER</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+
+            <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot; ...&quot;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nargs</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">sep</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nargs</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">sep</span><span class="p">:</span>
+                    <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+                    <span class="n">out</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_format_action_metavar</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+                <span class="n">sep</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_format_action_metavar</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">yuio</span><span class="o">.</span><span class="n">term</span><span class="o">.</span><span class="n">ColorizedString</span>
+    <span class="p">):</span>
+        <span class="n">metavar_t</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">metavar</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">metavar_t</span> <span class="ow">and</span> <span class="n">action</span><span class="o">.</span><span class="n">option_strings</span><span class="p">:</span>
+            <span class="n">metavar_t</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;</span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">option_strings</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&gt;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">metavar_t</span><span class="p">:</span>
+            <span class="n">metavar_t</span> <span class="o">=</span> <span class="s2">&quot;&lt;value&gt;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metavar_t</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">metavar</span> <span class="o">=</span> <span class="n">metavar_t</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">metavar_t</span><span class="p">)</span> <span class="k">else</span> <span class="n">metavar_t</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">metavar</span> <span class="o">=</span> <span class="n">metavar_t</span>
+
+        <span class="n">cli_color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;msg/text:code/sh-usage&quot;</span><span class="p">)</span>
+        <span class="n">metavar_color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_theme</span><span class="o">.</span><span class="n">get_color</span><span class="p">(</span><span class="s2">&quot;hl/metavar:sh-usage&quot;</span><span class="p">)</span>
+        <span class="n">cur_color</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">is_punctuation</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;((?:[&quot;</span> <span class="o">+</span> <span class="n">string</span><span class="o">.</span><span class="n">punctuation</span> <span class="o">+</span> <span class="sa">r</span><span class="s2">&quot;]|\s)+)&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">is_punctuation</span> <span class="ow">and</span> <span class="n">cur_color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">cli_color</span><span class="p">:</span>
+                <span class="n">cur_color</span> <span class="o">=</span> <span class="n">cli_color</span>
+                <span class="n">out</span> <span class="o">+=</span> <span class="n">cli_color</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_punctuation</span> <span class="ow">and</span> <span class="n">cur_color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">metavar_color</span><span class="p">:</span>
+                <span class="n">cur_color</span> <span class="o">=</span> <span class="n">metavar_color</span>
+                <span class="n">out</span> <span class="o">+=</span> <span class="n">metavar_color</span>
+            <span class="n">out</span> <span class="o">+=</span> <span class="n">part</span>
+            <span class="n">is_punctuation</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">is_punctuation</span>
+
+    <span class="k">def</span> <span class="nf">_format_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">):</span>
+        <span class="c1"># argparse calls this method sometimes</span>
+        <span class="c1"># to check if given metavar is valid or not (TODO!)</span>
+        <span class="k">pass</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Tamika Nomara.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

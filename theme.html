@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Theme &mdash; Yuio 2.0.0b0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Widget" href="widget.html" />
+    <link rel="prev" title="Term" href="term.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Yuio
+          </a>
+              <div class="version">
+                2.0.0b0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="io.html">Io</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parse.html">Parse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="app.html">App</a></li>
+<li class="toctree-l1"><a class="reference internal" href="exec.html">Exec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="git.html">Git</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="complete.html">Complete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="md.html">Md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="term.html">Term</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Theme</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#theme-base-class">Theme base class</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.theme.Theme"><code class="docutils literal notranslate"><span class="pre">Theme</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.progress_bar_width"><code class="docutils literal notranslate"><span class="pre">Theme.progress_bar_width</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.progress_bar_start_symbol"><code class="docutils literal notranslate"><span class="pre">Theme.progress_bar_start_symbol</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.progress_bar_end_symbol"><code class="docutils literal notranslate"><span class="pre">Theme.progress_bar_end_symbol</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.progress_bar_done_symbol"><code class="docutils literal notranslate"><span class="pre">Theme.progress_bar_done_symbol</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.progress_bar_pending_symbol"><code class="docutils literal notranslate"><span class="pre">Theme.progress_bar_pending_symbol</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.spinner_pattern"><code class="docutils literal notranslate"><span class="pre">Theme.spinner_pattern</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.spinner_update_rate_ms"><code class="docutils literal notranslate"><span class="pre">Theme.spinner_update_rate_ms</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.spinner_static_symbol"><code class="docutils literal notranslate"><span class="pre">Theme.spinner_static_symbol</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.msg_decorations"><code class="docutils literal notranslate"><span class="pre">Theme.msg_decorations</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.set_msg_decoration"><code class="docutils literal notranslate"><span class="pre">Theme.set_msg_decoration()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme._set_msg_decoration_if_not_overridden"><code class="docutils literal notranslate"><span class="pre">Theme._set_msg_decoration_if_not_overridden()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.colors"><code class="docutils literal notranslate"><span class="pre">Theme.colors</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.set_color"><code class="docutils literal notranslate"><span class="pre">Theme.set_color()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme._set_color_if_not_overridden"><code class="docutils literal notranslate"><span class="pre">Theme._set_color_if_not_overridden()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.get_color"><code class="docutils literal notranslate"><span class="pre">Theme.get_color()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yuio.theme.Theme.to_color"><code class="docutils literal notranslate"><span class="pre">Theme.to_color()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#default-theme">Default theme</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.theme.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yuio.theme.DefaultTheme"><code class="docutils literal notranslate"><span class="pre">DefaultTheme</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="widget.html">Widget</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Yuio</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Theme</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/theme.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-yuio.theme">
+<span id="theme"></span><h1>Theme<a class="headerlink" href="#module-yuio.theme" title="Permalink to this heading"></a></h1>
+<p>Controlling visual aspects of Yuio with themes.</p>
+<section id="theme-base-class">
+<h2>Theme base class<a class="headerlink" href="#theme-base-class" title="Permalink to this heading"></a></h2>
+<p>The overall look and feel of a Yuio application is declared
+in a <a class="reference internal" href="#yuio.theme.Theme" title="yuio.theme.Theme"><code class="xref py py-class docutils literal notranslate"><span class="pre">Theme</span></code></a> object:</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.theme.Theme">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.theme.</span></span><span class="sig-name descname"><span class="pre">Theme</span></span><a class="reference internal" href="_modules/yuio/theme.html#Theme"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.Theme" title="Permalink to this definition"></a></dt>
+<dd><p>Base class for Yuio themes.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.progress_bar_width">
+<span class="sig-name descname"><span class="pre">progress_bar_width</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">15</span></em><a class="headerlink" href="#yuio.theme.Theme.progress_bar_width" title="Permalink to this definition"></a></dt>
+<dd><p>Width of a progress bar for <a class="reference internal" href="io.html#yuio.io.Task" title="yuio.io.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">yuio.io.Task</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.progress_bar_start_symbol">
+<span class="sig-name descname"><span class="pre">progress_bar_start_symbol</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#yuio.theme.Theme.progress_bar_start_symbol" title="Permalink to this definition"></a></dt>
+<dd><p>A symbol rendered on a left side of a progressbar.</p>
+<p>Set to <code class="docutils literal notranslate"><span class="pre">'['</span></code> to enclose progressbar in square brackets, for example.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.progress_bar_end_symbol">
+<span class="sig-name descname"><span class="pre">progress_bar_end_symbol</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#yuio.theme.Theme.progress_bar_end_symbol" title="Permalink to this definition"></a></dt>
+<dd><p>A symbol rendered on a right side of a progressbar.</p>
+<p>Set to <code class="docutils literal notranslate"><span class="pre">']'</span></code> to enclose progressbar in square brackets, for example.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.progress_bar_done_symbol">
+<span class="sig-name descname"><span class="pre">progress_bar_done_symbol</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'■'</span></em><a class="headerlink" href="#yuio.theme.Theme.progress_bar_done_symbol" title="Permalink to this definition"></a></dt>
+<dd><p>Symbol rendered in the filled portion of a progressbar.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.progress_bar_pending_symbol">
+<span class="sig-name descname"><span class="pre">progress_bar_pending_symbol</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'□'</span></em><a class="headerlink" href="#yuio.theme.Theme.progress_bar_pending_symbol" title="Permalink to this definition"></a></dt>
+<dd><p>Symbol rendered in the unfilled portion of a progressbar.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.spinner_pattern">
+<span class="sig-name descname"><span class="pre">spinner_pattern</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Sequence" title="(in Python v3.12)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'⣤⣤⣤⠶⠛⠛⠛⠶'</span></em><a class="headerlink" href="#yuio.theme.Theme.spinner_pattern" title="Permalink to this definition"></a></dt>
+<dd><p>Spinner pattern for running tasks that don’t have a progressbar.</p>
+<p>Every tick, a symbol in front of a task’s heading updates, showing elements
+of this sequence.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.spinner_update_rate_ms">
+<span class="sig-name descname"><span class="pre">spinner_update_rate_ms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">200</span></em><a class="headerlink" href="#yuio.theme.Theme.spinner_update_rate_ms" title="Permalink to this definition"></a></dt>
+<dd><p>How often the <a class="reference internal" href="#yuio.theme.Theme.spinner_pattern" title="yuio.theme.Theme.spinner_pattern"><code class="xref py py-attr docutils literal notranslate"><span class="pre">spinner_pattern</span></code></a> changes.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.spinner_static_symbol">
+<span class="sig-name descname"><span class="pre">spinner_static_symbol</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'⣿'</span></em><a class="headerlink" href="#yuio.theme.Theme.spinner_static_symbol" title="Permalink to this definition"></a></dt>
+<dd><p>Symbol for finished and failed tasks.</p>
+<p>It meant to resemble a static spinner.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.msg_decorations">
+<span class="sig-name descname"><span class="pre">msg_decorations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.12)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'heading/section':</span> <span class="pre">'',</span> <span class="pre">'heading/1':</span> <span class="pre">'⣿</span> <span class="pre">',</span> <span class="pre">'heading/2':</span> <span class="pre">'',</span> <span class="pre">'heading/3':</span> <span class="pre">'',</span> <span class="pre">'heading/4':</span> <span class="pre">'',</span> <span class="pre">'heading/5':</span> <span class="pre">'',</span> <span class="pre">'heading/6':</span> <span class="pre">'',</span> <span class="pre">'question':</span> <span class="pre">'&gt;</span> <span class="pre">',</span> <span class="pre">'task':</span> <span class="pre">'&gt;</span> <span class="pre">',</span> <span class="pre">'thematic_break':</span> <span class="pre">'╌╌╌╌╌',</span> <span class="pre">'list':</span> <span class="pre">'•</span>&#160;&#160; <span class="pre">',</span> <span class="pre">'quote':</span> <span class="pre">'&gt;</span>&#160;&#160; <span class="pre">',</span> <span class="pre">'code':</span> <span class="pre">'</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">'}</span></em><a class="headerlink" href="#yuio.theme.Theme.msg_decorations" title="Permalink to this definition"></a></dt>
+<dd><p>Decorative symbols for certain text elements, such as headings,
+list items, etc.</p>
+<p>This mapping becomes immutable once a theme class is created. The only possible
+way to modify it is by using <a class="reference internal" href="#yuio.theme.Theme.set_msg_decoration" title="yuio.theme.Theme.set_msg_decoration"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_msg_decoration()</span></code></a>
+or <a class="reference internal" href="#yuio.theme.Theme._set_msg_decoration_if_not_overridden" title="yuio.theme.Theme._set_msg_decoration_if_not_overridden"><code class="xref py py-meth docutils literal notranslate"><span class="pre">_set_msg_decoration_if_not_overridden()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.theme.Theme.set_msg_decoration">
+<span class="sig-name descname"><span class="pre">set_msg_decoration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">msg_decoration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/theme.html#Theme.set_msg_decoration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.Theme.set_msg_decoration" title="Permalink to this definition"></a></dt>
+<dd><p>Set message decoration by name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.theme.Theme._set_msg_decoration_if_not_overridden">
+<span class="sig-name descname"><span class="pre">_set_msg_decoration_if_not_overridden</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">msg_decoration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/theme.html#Theme._set_msg_decoration_if_not_overridden"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.Theme._set_msg_decoration_if_not_overridden" title="Permalink to this definition"></a></dt>
+<dd><p>Set message decoration by name, but only if it wasn’t overridden
+in a subclass.</p>
+<p>This method should be called from <cite>__init__</cite> implementations
+to dynamically set message decorations. It will only set the decoration
+if it was not overridden by any child class.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yuio.theme.Theme.colors">
+<span class="sig-name descname"><span class="pre">colors</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.12)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'code':</span> <span class="pre">'magenta',</span> <span class="pre">'note':</span> <span class="pre">'green',</span> <span class="pre">'bold':</span> <span class="pre">Color(fore=None,</span> <span class="pre">back=None,</span> <span class="pre">bold=True,</span> <span class="pre">dim=None),</span> <span class="pre">'b':</span> <span class="pre">'bold',</span> <span class="pre">'dim':</span> <span class="pre">Color(fore=None,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=True),</span> <span class="pre">'d':</span> <span class="pre">'dim',</span> <span class="pre">'normal':</span> <span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">9&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None),</span> <span class="pre">'normal_dim':</span> <span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">2&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None),</span> <span class="pre">'red':</span> <span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">1&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None),</span> <span class="pre">'green':</span> <span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">2&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None),</span> <span class="pre">'yellow':</span> <span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">3&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None),</span> <span class="pre">'blue':</span> <span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">4&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None),</span> <span class="pre">'magenta':</span> <span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">5&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None),</span> <span class="pre">'cyan':</span> <span class="pre">Color(fore=&lt;ColorValue</span> <span class="pre">6&gt;,</span> <span class="pre">back=None,</span> <span class="pre">bold=None,</span> <span class="pre">dim=None)}</span></em><a class="headerlink" href="#yuio.theme.Theme.colors" title="Permalink to this definition"></a></dt>
+<dd><p>Mapping of color paths to actual colors.</p>
+<p>Themes use color paths to describe styles and colors for different
+parts of an application. Color paths are similar to file paths,
+they use snake case identifiers separated by slashes, and consist of
+two parts separated by a colon.</p>
+<p>The first part represents an object, i.e. what are we coloring.</p>
+<p>The second part represents a context, i.e. what is the state or location
+of an object that we’re coloring.</p>
+<p>For example, a color for the filled part of the task’s progress bar
+has path <code class="docutils literal notranslate"><span class="pre">'task/progressbar/done'</span></code>, a color for a text of an error
+log record has path <code class="docutils literal notranslate"><span class="pre">'log/message:error'</span></code>, and a color for a string escape
+sequence in a highlighted python code has path <code class="docutils literal notranslate"><span class="pre">'hl/str/esc:python'</span></code>.</p>
+<p>A color at a certain path is propagated to all sub-paths. For example,
+if <code class="docutils literal notranslate"><span class="pre">'task/progressbar'</span></code> is bold, and <code class="docutils literal notranslate"><span class="pre">'task/progressbar/done'</span></code> is green,
+the final color will be bold green.</p>
+<p>Each color path can be associated with either an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">Color</span></code>,
+another path, or a list of colors and paths.</p>
+<p>If path is mapped to a <code class="xref py py-class docutils literal notranslate"><span class="pre">Color</span></code>, then the path is associated
+with that particular color.</p>
+<p>If path is mapped to another path, then the path is associated with
+the color value for that other path (please don’t create recursions here).</p>
+<p>If path is mapped to a list of colors and paths, then those colors and paths
+are combined.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">colors</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;heading_color&#39;</span><span class="p">:</span> <span class="n">Color</span><span class="o">.</span><span class="n">BOLD</span><span class="p">,</span>
+    <span class="s1">&#39;error_color&#39;</span><span class="p">:</span> <span class="n">Color</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+    <span class="s1">&#39;tb/heading&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;heading_color&#39;</span><span class="p">,</span> <span class="s1">&#39;error_color&#39;</span><span class="p">],</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Here, color of traceback’s heading <code class="docutils literal notranslate"><span class="pre">'tb/heading'</span></code> will be bold and red.</p>
+<p>The base theme class provides colors for basic tags, such as <cite>bold</cite>, <cite>red</cite>,
+<cite>code</cite>, <cite>note</cite>, etc. <a class="reference internal" href="#yuio.theme.DefaultTheme" title="yuio.theme.DefaultTheme"><code class="xref py py-class docutils literal notranslate"><span class="pre">DefaultTheme</span></code></a> expands on it, providing main
+colors that control the overall look of the theme, and then colors for all
+interface elements.</p>
+<p>When deriving from a theme, you can override this mapping. When looking up
+colors via <a class="reference internal" href="#yuio.theme.Theme.get_color" title="yuio.theme.Theme.get_color"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_color()</span></code></a>, base classes will be tried for color,
+in order of method resolution.</p>
+<p>This mapping becomes immutable once a theme class is created. The only possible
+way to modify it is by using <a class="reference internal" href="#yuio.theme.Theme.set_color" title="yuio.theme.Theme.set_color"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_color()</span></code></a>
+or <a class="reference internal" href="#yuio.theme.Theme._set_color_if_not_overridden" title="yuio.theme.Theme._set_color_if_not_overridden"><code class="xref py py-meth docutils literal notranslate"><span class="pre">_set_color_if_not_overridden()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.theme.Theme.set_color">
+<span class="sig-name descname"><span class="pre">set_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/theme.html#Theme.set_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.Theme.set_color" title="Permalink to this definition"></a></dt>
+<dd><p>Set color by path.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.theme.Theme._set_color_if_not_overridden">
+<span class="sig-name descname"><span class="pre">_set_color_if_not_overridden</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/theme.html#Theme._set_color_if_not_overridden"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.Theme._set_color_if_not_overridden" title="Permalink to this definition"></a></dt>
+<dd><p>Set color by path, but only if the color was not overridden in a subclass.</p>
+<p>This method should be called from <cite>__init__</cite> implementations
+to dynamically set colors. It will only set the color if it was not overridden
+by any child class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.theme.Theme.get_color">
+<span class="sig-name descname"><span class="pre">get_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></span><a class="reference internal" href="_modules/yuio/theme.html#Theme.get_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.Theme.get_color" title="Permalink to this definition"></a></dt>
+<dd><p>Lookup a color by path.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yuio.theme.Theme.to_color">
+<span class="sig-name descname"><span class="pre">to_color</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">color_or_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="term.html#yuio.term.Color" title="yuio.term.Color"><span class="pre">Color</span></a></span></span><a class="reference internal" href="_modules/yuio/theme.html#Theme.to_color"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.Theme.to_color" title="Permalink to this definition"></a></dt>
+<dd><p>Convert color or color path to color.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="default-theme">
+<h2>Default theme<a class="headerlink" href="#default-theme" title="Permalink to this heading"></a></h2>
+<p>Use the following loader to create an instance of the default theme:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="yuio.theme.load">
+<span class="sig-prename descclassname"><span class="pre">yuio.theme.</span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">term</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yuio.theme.Theme" title="yuio.theme.Theme"><span class="pre">Theme</span></a></span></span><a class="reference internal" href="_modules/yuio/theme.html#load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.load" title="Permalink to this definition"></a></dt>
+<dd><p>Loads a default theme.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yuio.theme.DefaultTheme">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yuio.theme.</span></span><span class="sig-name descname"><span class="pre">DefaultTheme</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">term</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="term.html#yuio.term.Term" title="yuio.term.Term"><span class="pre">Term</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yuio/theme.html#DefaultTheme"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yuio.theme.DefaultTheme" title="Permalink to this definition"></a></dt>
+<dd><p>Default Yuio theme. Adapts for terminal background color,
+if one can be detected.</p>
+<p>This theme defines <em>main colors</em>, which you can override by subclassing.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">'heading_color'</span></code>: for headings,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'primary_color'</span></code>: for main text,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'accent_color'</span></code>: for visually highlighted elements,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'secondary_color'</span></code>: for visually dimmed elements,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'error_color'</span></code>: for everything that indicates an error,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'warning_color'</span></code>: for everything that indicates a warning,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'success_color'</span></code>: for everything that indicates a success,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'low_priority_color_a'</span></code>: for auxiliary elements such as help widget,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'low_priority_color_b'</span></code>: for auxiliary elements such as help widget,
+even lower priority.</p></li>
+</ul>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="term.html" class="btn btn-neutral float-left" title="Term" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="widget.html" class="btn btn-neutral float-right" title="Widget" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Tamika Nomara.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
