@@ -1,4 +1,4 @@
-Parsing
-=======
+Parse
+=====
 
 .. automodule:: yuio.parse

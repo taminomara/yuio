@@ -1,73 +1,61 @@
 Yuio
 ====
 
-Yuio is a lightweight python library for building simple human-friendly CLIs.
+Yuio is everything you'll ever need to write a good CLI, deps-free.
 
-Unlike bigger tools like `click`_ or `cleo`_, Yuio is small, simple, has no dependencies, and relies
-on standard python libraries such as :mod:`logging` and :mod:`argparse`.
+Forget searching for *that one progressbar library*,
+figuring out how to keep loading configs DRY,
+or having headaches because autocompletion was just an afterthought.
+Yuio got you.
 
-It is ideal for things like automation scripts, utilities for CI, or any other small tools.
-Without dependencies, it is easy to use in places where you either don't or don't want to have
-access to dependency management systems. Just copy-paste its source files into your project,
-and be done with it.
+.. vhs:: _tapes/demo.tape
+   :alt: Demonstration of yuio capabilities.
+   :scale: 50%
 
-Yuio is MyPy-friendly!
-
-.. _click: https://click.palletsprojects.com/
-.. _cleo: https://cleo.readthedocs.io/en/latest/
-
-----
-
-.. image:: _static/yuio_small.png
-
-----
 
 Features
 --------
 
-- Colored output with inline tags built on top of the :mod:`logging` module::
+- Easy to setup CLI apps with autocompletion out of the box::
 
-    yuio.io.setup()
-    yuio.io.info('<c:bold>Yuio</c>: a user-friendly io library!')
+    @yuio.app.app
+    def main(
+        #: input files for the program.
+        inputs: list[pathlib.Path] = yuio.app.positional(),
+    ):
+        ...
 
-- Status indication with progress bars::
+    if __name__ == "__main__":
+        main.run()
+
+- Colored output with inline tags and markdown::
+
+    yuio.io.info('<c bold>Yuio</c>: a user-friendly io library!')
+
+- Status indication with progress bars that don't break your console::
 
     with yuio.io.Task('Loading sources') as task:
-        for i, source in enumerate(sources):
-            source.load()
-            task.progress(float(i) / len(sources))
+        for source in task.iter(sources):
+            ...
 
-- User interactions and input parsing::
+- User interactions, input parsing and simple widgets::
 
-    answer = yuio.io.ask(
-        'Do you want a choco bar?',
-        parser=yuio.parse.Bool(),
-        default=True,
-    )
-
-- Tools to edit things in an external editor::
-
-    text = (
-        '\n'
-        '\n'
-        '// Please enter the commit message for your changes.\n'
-        '// Lines starting with "//" will be ignored,\n'
-        '// and an empty message aborts the commit.\n'
-    )
-    text = yuio.edit.edit(text, comment_marker='//')
+    answer = yuio.io.ask("What's your favorite treat?", default="waffles")
 
 - Tools to run commands::
 
-    yuio.exec.sh('ping 127.0.0.1 -c 5 1>&2')
+    yuio.exec.sh("ping 127.0.0.1 -c 5 1>&2")
 
 - Interactions with git::
 
-    repo = yuio.git.Repo('.')
+    repo = yuio.git.Repo(".")
     status = repo.status()
     yuio.io.info(
-       'At branch <c:code>%s</c>, commit <c:code>%s</c>',
+       'At branch `%s`, commit `%s`',
        status.branch, status.commit
     )
+
+- And many more!
 
 
 Requirements
@@ -88,16 +76,18 @@ Install ``yuio`` with pip:
 Or just copy-paste the ``yuio`` directory to somewhere in the ``PYTHONPATH`` of your project.
 
 
-Use cases
----------
+Examples
+--------
 
-- `Example`_: a script that cuts Yuio's releases.
+See examples at `taminomara/yuio`_.
 
-.. _Example: https://github.com/taminomara/yuio/blob/main/examples/release.py
+.. _taminomara/yuio: https://github.com/taminomara/yuio/blob/main/examples/
 
 
 Contents
 --------
+
+**Main functionality:**
 
 .. toctree::
    :maxdepth: 2
@@ -105,5 +95,17 @@ Contents
    io
    parse
    config
+   app
    exec
    git
+
+**Lower-level details:**
+
+.. toctree::
+   :maxdepth: 2
+
+   complete
+   md
+   term
+   theme
+   widget

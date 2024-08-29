@@ -1,23 +1,15 @@
 # Yuio
 
-Yuio is a lightweight python library for building simple human-friendly CLIs.
+Yuio is everything you'll ever need to write a good CLI, deps-free.
 
-Unlike bigger tools like [`click`] or [`cleo`], Yuio is small, simple, has no dependencies, and relies
-on standard python libraries such as `logging` and `argparse`. 
-
-It is ideal for things like automation scripts, utilities for CI, or any other small tools.
-Without dependencies, it is easy to use in places where you either don't or don't want to have
-access to dependency management systems. Just copy-paste its source files into your project,
-and be done with it.
-
-Yuio is MyPy-friendly!
-
-[`click`]: https://click.palletsprojects.com/
-[`cleo`]: https://cleo.readthedocs.io/en/latest/
+Forget searching for *that one progressbar library*,
+figuring out how to keep loading configs DRY,
+or having headaches because autocompletion was just an afterthought.
+Yuio got you.
 
 ---
 
-![A light-purple-haired catgirl smiling at you and showing heart with her hands](https://github.com/taminomara/yuio/raw/main/docs/source/_static/yuio_small.png "Picture of Yuio")
+...
 
 ---
 
@@ -45,4 +37,4 @@ Or just copy-paste the `yuio` directory to somewhere in the `PYTHONPATH` of your
 
 ## Use cases
 
-- See the [example](https://github.com/taminomara/yuio/blob/main/examples/release.py). 
+- See the [example](https://github.com/taminomara/yuio/blob/main/examples/release.py).

@@ -6,7 +6,7 @@
 # just keep this copyright line please :3
 
 """
-This module provides helpers to run subprocesses.
+This module provides helpers to run subprocesses and get their output.
 
 It handles subprocesses stderr and stdout in a way that doesn't break
 loggers from :mod:`yuio.io`.
@@ -21,36 +21,35 @@ import logging
 import pathlib
 import subprocess
 import threading
-import typing as _t
 
 import yuio.io
+from yuio import _t
 
-
-_LOGGER = logging.getLogger('yuio.io.msg.exec')
+_LOGGER = logging.getLogger("yuio.exec")
 
 
 @_t.overload
 def exec(
     *args: str,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
-    level: int = yuio.io.INFO,
+    level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
 ) -> str:
-    pass
+    ...
 
 
 @_t.overload
 def exec(
     *args: str,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
-    level: int = yuio.io.INFO,
+    level: int = logging.DEBUG,
     text: _t.Literal[False],
 ) -> bytes:
-    pass
+    ...
 
 
 def exec(
@@ -58,7 +57,7 @@ def exec(
     cwd: _t.Union[None, str, pathlib.Path] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Union[None, str, bytes] = None,
-    level: int = yuio.io.INFO,
+    level: int = logging.DEBUG,
     text: bool = True,
 ):
     """Run an executable and return its stdout.
@@ -77,8 +76,9 @@ def exec(
         string with command's stdin.
     :param level:
         logging level for stderr outputs.
+        By default, it is set to :data:`logging.DEBUG`, which hides all the output.
     :param text:
-        if true (default), decode stdout the system default encoding.
+        if :data:`True` (default), decode stdout using the system default encoding.
     :return:
         string (or bytes) with command's stdout.
 
@@ -106,8 +106,15 @@ def exec(
                 if not line:
                     return
                 if isinstance(line, bytes):
-                    line = line.decode()
-                _LOGGER.log(level, line.rstrip('\n'))
+                    try:
+                        line = line.decode()
+                    except UnicodeDecodeError:
+                        yuio._logger.exception(
+                            "unable to decode stderr line:\n%r",
+                            line,
+                        )
+                        line = line.decode(errors="replace")
+                _LOGGER.log(level, line.rstrip("\n"))
 
         def read_stdout(fh):
             stdout.append(fh.read())
@@ -118,7 +125,7 @@ def exec(
         stdout_thread = threading.Thread(
             target=read_stdout,
             args=(process.stdout,),
-            name=f'yuio stdin handler for {process_desc}'
+            name=f"yuio stdout handler for {process_desc}",
         )
         stdout_thread.daemon = True
         stdout_thread.start()
@@ -127,7 +134,7 @@ def exec(
         stderr_thread = threading.Thread(
             target=read_stderr,
             args=(process.stderr,),
-            name=f'yuio stderr handler for {process_desc}'
+            name=f"yuio stderr handler for {process_desc}",
         )
         stderr_thread.daemon = True
         stderr_thread.start()
@@ -150,42 +157,45 @@ def exec(
 @_t.overload
 def sh(
     cmd: str,
-    shell: str = '/bin/sh',
+    /,
     *,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    shell: str = "/bin/sh",
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[str] = None,
-    level: int = yuio.io.INFO,
+    level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
 ) -> str:
-    pass
+    ...
 
 
 @_t.overload
 def sh(
     cmd: str,
-    shell: str = '/bin/sh',
+    /,
     *,
-    cwd: _t.Optional[_t.Union[str, pathlib.Path]] = None,
+    shell: str = "/bin/sh",
+    cwd: _t.Union[str, pathlib.Path, None] = None,
     env: _t.Optional[_t.Dict[str, str]] = None,
     input: _t.Optional[bytes] = None,
-    level: int = yuio.io.INFO,
+    level: int = logging.DEBUG,
     text: _t.Literal[False],
 ) -> bytes:
-    pass
+    ...
 
 
 def sh(
     cmd: str,
-    shell='/bin/sh',
+    /,
     *,
-    cwd=None,
-    env=None,
-    input=None,
-    level=yuio.io.INFO,
-    text=True,
+    shell: str = "/bin/sh",
+    cwd: _t.Union[str, pathlib.Path, None] = None,
+    env: _t.Optional[_t.Dict[str, str]] = None,
+    input: _t.Union[str, bytes, None] = None,
+    level: int = logging.DEBUG,
+    text: bool = True,
 ):
-    """Run command in a shell, returns its stdout.
+    """Run command in a shell, return its stdout.
 
     :param cmd:
         shell command.
@@ -199,18 +209,21 @@ def sh(
         string with command's stdin.
     :param level:
         logging level for stderr outputs.
+        By default, it is set to :data:`logging.DEBUG`, which hides all the output.
     :param text:
-        if true (default), decode stdout the system default encoding.
+        if :data:`True` (default), decode stdout using the system default encoding.
     :return:
         string (or bytes) with command's stdout.
 
     """
 
     return exec(
-        shell, '-c', cmd,
+        shell,
+        "-c",
+        cmd,
         cwd=cwd,
         env=env,
-        input=input,
+        input=input,  # type: ignore
         level=level,
-        text=text,
+        text=text,  # type: ignore
     )

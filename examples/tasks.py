@@ -1,32 +1,67 @@
+import logging
 import time
-import random
 
-import yuio
+import yuio.io
 
-if __name__ == '__main__':
+
+def download(package):
+    logging.debug("%s: fetching versions", package)
+    time.sleep(0.7)
+    logging.debug("%s: will use latest version", package)
+    time.sleep(0.4)
+    logging.debug("%s: downloading package...", package)
+    time.sleep(0.9)
+    logging.info("%s: download successful", package)
+    time.sleep(0.1)
+
+
+def install(package):
+    logging.debug("%s: unpacking %s.tar.gz into %s", package, package, package)
+    time.sleep(0.4)
+    logging.debug("%s: running `configure`", package)
+    time.sleep(0.4)
+    logging.debug("%s: `configure` successful", package)
+    time.sleep(0.2)
+    logging.debug("%s: building a package", package)
+    time.sleep(1.2)
+    logging.debug("%s: build successful", package)
+    time.sleep(0.2)
+    logging.debug("%s: installing a package to `/usr/local`", package)
+    time.sleep(0.3)
+    logging.info("%s: install successful", package)
+    time.sleep(0.1)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, handlers=[yuio.io.Handler()])
+
     packages = [
-        'htop',
-        'pyenv',
-        'virtualenv',
-        'node',
-        'rust',
-        'ruby',
-        'cpp@20',
+        "pyenv",
+        "virtualenv",
+        "yuio",
     ]
 
-    with yuio.io.Task('Installing packages') as task:
+    yuio.io.heading("Yuio's tasks and logging showcase")
+    yuio.io.info("Going to install some packages to demonstrate you tasks and logging!")
+
+    with yuio.io.Task("Installing packages") as task:
         # A bit of work.
-        time.sleep(random.randint(5, 10) / 10)
+        time.sleep(0.5)
 
-        for i, package in enumerate(packages):
-            task.progress((i, len(packages)))
-
-            task.comment(f'downloading {package}')
+        # `task.iter` will update progress as we iterate over packages.
+        for package in task.iter(packages):
+            # Set task's comment.
+            task.comment(f"downloading %s", package)
 
             # Some heavy work.
-            time.sleep(random.randint(5, 20) / 10)
+            download(package)
 
-            task.comment(f'installing {package}')
+            # Update task's comment.
+            task.comment(f"installing %s", package)
 
             # More heavy work.
-            time.sleep(random.randint(5, 20) / 10)
+            install(package)
+
+        time.sleep(0.3)
+
+    yuio.io.success("Successfully installed %s", ", ".join(packages))

@@ -1,0 +1,4 @@
+Term
+====
+
+.. automodule:: yuio.term

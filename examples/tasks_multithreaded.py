@@ -1,59 +1,56 @@
-import time
-import random
 import threading
+import time
 
-import yuio
+import yuio.io
 
 
 def install_package(package: str, task: yuio.io.Task):
-    time.sleep(random.randint(0, 30) / 10)
-
-    sleep_time = random.randint(2, 7) / 10
+    time.sleep(0.7)
 
     with task.subtask(package) as pkg_task:
-        pkg_task.comment('downloading')
+        # Set task's comment.
+        pkg_task.comment("downloading")
 
-        for i in range(10):
-            pkg_task.progress(i / 10)
-            time.sleep(sleep_time)
+        for i in range(25):
+            # Set progress as percentage, just for demonstration.
+            pkg_task.progress(i / 24)
 
-            if random.randint(1, 70) <= 5:
-                yuio.io.warning('Warning: connection lost, retrying')
+            time.sleep(0.2)
 
+        # Clear progress, update task's comment.
         pkg_task.progress(None)
-        pkg_task.comment('installing')
+        pkg_task.comment("installing")
 
-        time.sleep(random.randint(10, 30) / 10)
+        time.sleep(1.6)
 
 
-if __name__ == '__main__':
-    yuio.io.setup()
-
+if __name__ == "__main__":
     packages = [
-        'htop',
-        'pyenv',
-        'virtualenv',
-        'node',
-        'rust',
-        'ruby',
-        'cpp@20',
+        "htop",
+        "pyenv",
+        "virtualenv",
+        "node",
+        "rust",
+        "ruby",
+        "cpp@20",
     ]
 
-    yuio.io.info('Going to install some packages '
-                 'to demonstrate you progressbars!')
+    yuio.io.heading("Yuio's tasks showcase")
+    yuio.io.info("Going to install some packages to demonstrate you progressbars!")
 
-    with yuio.io.Task('Installing packages') as task:
-        time.sleep(random.randint(5, 20) / 10)
+    with yuio.io.Task("Installing packages") as task:
+        time.sleep(2)
 
         threads = []
 
         for package in packages:
-            thread = threading.Thread(
-                target=install_package, args=(package, task))
+            thread = threading.Thread(target=install_package, args=(package, task))
             thread.start()
             threads.append(thread)
+
+            time.sleep(0.3)
 
         for thread in threads:
             thread.join()
 
-    yuio.io.info('<c:success>TADA!</c>')
+    yuio.io.success("Successfully installed %s", ", ".join(packages))
