@@ -1018,4 +1018,5 @@ class Config:
         else:
             return f"{self.__class__.__name__}()"
 
+
 Config.__init_subclass__()

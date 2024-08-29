@@ -3,9 +3,9 @@ import enum
 import os.path
 import pathlib
 import sys
-import typing_extensions
 
 import pytest
+import typing_extensions
 
 import yuio.parse
 from yuio import _t
@@ -169,8 +169,8 @@ class TestContainers:
         "ctor",
         [
             lambda: yuio.parse.Optional(yuio.parse.Int()),
-            lambda: yuio.parse.from_type_hint(_t.Optional[int])
-        ]
+            lambda: yuio.parse.from_type_hint(_t.Optional[int]),
+        ],
     )
     def test_optional(self, ctor):
         parser = ctor()
@@ -193,8 +193,8 @@ class TestContainers:
         "ctor",
         [
             lambda: yuio.parse.List(yuio.parse.Int()),
-            lambda: yuio.parse.from_type_hint(_t.List[int])
-        ]
+            lambda: yuio.parse.from_type_hint(_t.List[int]),
+        ],
     )
     def test_list(self, ctor):
         parser = ctor()
@@ -222,8 +222,8 @@ class TestContainers:
         "ctor",
         [
             lambda: yuio.parse.Set(yuio.parse.Int()),
-            lambda: yuio.parse.from_type_hint(_t.Set[int])
-        ]
+            lambda: yuio.parse.from_type_hint(_t.Set[int]),
+        ],
     )
     def test_set(self, ctor):
         parser = ctor()
@@ -250,8 +250,8 @@ class TestContainers:
         "ctor",
         [
             lambda: yuio.parse.FrozenSet(yuio.parse.Int()),
-            lambda: yuio.parse.from_type_hint(_t.FrozenSet[int])
-        ]
+            lambda: yuio.parse.from_type_hint(_t.FrozenSet[int]),
+        ],
     )
     def test_frozenset(self, ctor):
         parser = ctor()
@@ -278,8 +278,8 @@ class TestContainers:
         "ctor",
         [
             lambda: yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Str()),
-            lambda: yuio.parse.from_type_hint(_t.Dict[int, str])
-        ]
+            lambda: yuio.parse.from_type_hint(_t.Dict[int, str]),
+        ],
     )
     def test_frozenset(self, ctor):
         parser = ctor()
@@ -311,9 +311,11 @@ class TestContainers:
     @pytest.mark.parametrize(
         "ctor",
         [
-            lambda: yuio.parse.Tuple(yuio.parse.Int(), yuio.parse.Int(), yuio.parse.Str()),
-            lambda: yuio.parse.from_type_hint(_t.Tuple[int, int, str])
-        ]
+            lambda: yuio.parse.Tuple(
+                yuio.parse.Int(), yuio.parse.Int(), yuio.parse.Str()
+            ),
+            lambda: yuio.parse.from_type_hint(_t.Tuple[int, int, str]),
+        ],
     )
     def test_tuple(self, ctor):
         parser = ctor()
@@ -352,7 +354,9 @@ class TestTime:
             parser.parse("2007 01 02")
         with pytest.raises(ValueError, match="expected a datetime"):
             parser.parse_config(10)
-        assert isinstance(yuio.parse.from_type_hint(datetime.datetime), yuio.parse.DateTime)
+        assert isinstance(
+            yuio.parse.from_type_hint(datetime.datetime), yuio.parse.DateTime
+        )
 
     def test_date(self):
         parser = yuio.parse.Date()
@@ -452,7 +456,9 @@ class TestTime:
         with pytest.raises(ValueError, match="could not parse"):
             parser.parse("00")
 
-        assert isinstance(yuio.parse.from_type_hint(datetime.timedelta), yuio.parse.TimeDelta)
+        assert isinstance(
+            yuio.parse.from_type_hint(datetime.timedelta), yuio.parse.TimeDelta
+        )
 
 
 class TestPath:
@@ -473,7 +479,9 @@ class TestPath:
             parser.parse("file.sql")
 
         assert isinstance(yuio.parse.from_type_hint(pathlib.Path), yuio.parse.Path)
-        assert isinstance(yuio.parse.from_type_hint(_t.Union[pathlib.Path, str]), yuio.parse.Path)
+        assert isinstance(
+            yuio.parse.from_type_hint(_t.Union[pathlib.Path, str]), yuio.parse.Path
+        )
 
     def test_file(self, tmpdir):
         tmpdir.join("file.cfg").write("hi!")
@@ -608,6 +616,7 @@ class TestFunctional:
 
     def test_apply(self):
         value = None
+
         def fn(x):
             nonlocal value
             value = x
@@ -633,10 +642,12 @@ class TestFromTypeHint:
             lambda: typing_extensions.Optional[int],
             lambda: typing_extensions.Union[int, None],
             pytest.param(
-                lambda: int | None, # type: ignore
-                marks=pytest.mark.skipif(sys.version_info < (3, 10), reason="New union syntax")
-            )
-        ]
+                lambda: int | None,  # type: ignore
+                marks=pytest.mark.skipif(
+                    sys.version_info < (3, 10), reason="New union syntax"
+                ),
+            ),
+        ],
     )
     def test_optionals(self, typehint_ctor):
         parser = yuio.parse.from_type_hint(typehint_ctor())
@@ -649,10 +660,12 @@ class TestFromTypeHint:
             lambda: _t.Union[int, str],
             lambda: typing_extensions.Union[int, str],
             pytest.param(
-                lambda: int | str, # type: ignore
-                marks=pytest.mark.skipif(sys.version_info < (3, 10), reason="New union syntax")
-            )
-        ]
+                lambda: int | str,  # type: ignore
+                marks=pytest.mark.skipif(
+                    sys.version_info < (3, 10), reason="New union syntax"
+                ),
+            ),
+        ],
     )
     def test_union(self, typehint_ctor):
         with pytest.raises(TypeError, match="unions are not supported"):

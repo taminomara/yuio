@@ -655,7 +655,14 @@ class TestColorizedString:
                 100,
                 {"first_line_indent": ">>"},
                 [
-                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single", " ", "string"],
+                    [
+                        yuio.term.Color.NONE,
+                        ">>",
+                        yuio.term.Color.NONE,
+                        "single",
+                        " ",
+                        "string",
+                    ],
                 ],
             ),
             (
@@ -689,7 +696,14 @@ class TestColorizedString:
                 {"first_line_indent": ">>>", "continuation_indent": "|"},
                 [
                     [yuio.term.Color.NONE, ">>>", yuio.term.Color.NONE, "foo"],
-                    [yuio.term.Color.NONE, "|", yuio.term.Color.NONE, "bar", " ", "baz"],
+                    [
+                        yuio.term.Color.NONE,
+                        "|",
+                        yuio.term.Color.NONE,
+                        "bar",
+                        " ",
+                        "baz",
+                    ],
                 ],
             ),
             (
@@ -724,7 +738,14 @@ class TestColorizedString:
                 [
                     [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single"],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "string"],
-                    [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "next", " ", "string"],
+                    [
+                        yuio.term.Color.NONE,
+                        "..",
+                        yuio.term.Color.NONE,
+                        "next",
+                        " ",
+                        "string",
+                    ],
                 ],
             ),
             (

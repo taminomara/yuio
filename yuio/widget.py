@@ -1083,6 +1083,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         return columns + [[action] for action in free_actions]
 
+
 Widget.__init_subclass__()
 
 

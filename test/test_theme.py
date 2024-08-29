@@ -1,7 +1,7 @@
 import pytest
 
-import yuio.theme
 import yuio.term
+import yuio.theme
 
 
 class TestColors:
@@ -98,10 +98,23 @@ class TestColors:
         a = A()
 
         assert a.get_color("x") == yuio.term.Color.STYLE_BOLD
-        assert a.get_color("x:y") == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
-        assert a.get_color("x:a") == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_GREEN
-        assert a.get_color("x/a/q:y") == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
-        assert a.get_color("x:y/z") == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED | yuio.term.Color.STYLE_DIM
+        assert (
+            a.get_color("x:y") == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
+        )
+        assert (
+            a.get_color("x:a")
+            == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_GREEN
+        )
+        assert (
+            a.get_color("x/a/q:y")
+            == yuio.term.Color.STYLE_BOLD | yuio.term.Color.FORE_RED
+        )
+        assert (
+            a.get_color("x:y/z")
+            == yuio.term.Color.STYLE_BOLD
+            | yuio.term.Color.FORE_RED
+            | yuio.term.Color.STYLE_DIM
+        )
         assert a.get_color("q/q") == yuio.term.Color.FORE_BLUE
         assert a.get_color("q/q:y") == yuio.term.Color.FORE_BLUE
 

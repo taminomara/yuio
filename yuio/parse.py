@@ -1954,9 +1954,7 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
                     f"{self.__desc} should be greater or equal to {self._lower_bound},"
                     f" got {value} instead"
                 )
-            elif (
-                not self._lower_bound_is_inclusive and not self._lower_bound < mapped
-            ):
+            elif not self._lower_bound_is_inclusive and not self._lower_bound < mapped:
                 raise ParsingError(
                     f"{self.__desc} should be greater than {self._lower_bound},"
                     f" got {value} instead"
@@ -1968,9 +1966,7 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
                     f"{self.__desc} should be lesser or equal to {self._upper_bound},"
                     f" got {value} instead"
                 )
-            elif (
-                not self._upper_bound_is_inclusive and not mapped < self._upper_bound
-            ):
+            elif not self._upper_bound_is_inclusive and not mapped < self._upper_bound:
                 raise ParsingError(
                     f"{self.__desc} should be lesser than {self._upper_bound},"
                     f" got {value} instead"
@@ -2486,9 +2482,9 @@ register_type_hint_conversion(
     lambda ty, origin, args: Path() if ty is pathlib.Path else None
 )
 register_type_hint_conversion(
-    lambda ty, origin, args: Path() if _t.is_union(origin) and len(
-        args
-    ) == 2 and str in args and pathlib.Path in args else None
+    lambda ty, origin, args: Path()
+    if _t.is_union(origin) and len(args) == 2 and str in args and pathlib.Path in args
+    else None
 )
 register_type_hint_conversion(
     lambda ty, origin, args: DateTime() if ty is datetime.datetime else None

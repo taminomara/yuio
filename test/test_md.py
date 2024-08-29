@@ -1,4 +1,5 @@
 import re
+
 import pytest
 
 import yuio.md
@@ -389,6 +390,7 @@ class TestParser:
             self.normalize(parser.parse(md).dump())
             == f"(Document {self.normalize(expected)})"
         )
+
 
 # I'm pretty sure MD works as expected, barring some rare edge cases.
 # Coverage for yuio.md is low priority rn.
