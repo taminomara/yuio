@@ -1152,8 +1152,8 @@ class Task:
 
         Example::
 
-            >>> with Task("Charging a capacitor") as task:
-            ...     task.progress_scale(889.25E-3, 1, unit="V")
+            with Task("Charging a capacitor") as task:
+                task.progress_scale(889.25E-3, 1, unit="V")
 
 
         This will print:
