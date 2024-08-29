@@ -606,7 +606,7 @@ class ColorValue:
             r, g, b = _8_to_rgb(self.data)
         else:
             r, g, b = self.data
-        return f"#{r:02x}{g:02x}{b:02x}"
+        return f"#{r:02X}{g:02X}{b:02X}"
 
     def darken(self, amount: float, /) -> "ColorValue":
         """Make this color darker by the given percentage.
@@ -1275,12 +1275,9 @@ class ColorizedString:
 
         .. _old-style formatting: https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting
 
-        ..
-            >>> theme = Theme()
-
         Example::
 
-            >>> line = theme.colorize("Hello, <c b>%s!</c>")
+            >>> line = ColorizedString("Hello, %s!")
             >>> line % "Username"
             <ColorizedString('Hello, Username!')>
 
