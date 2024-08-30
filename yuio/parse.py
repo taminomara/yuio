@@ -1044,7 +1044,7 @@ class Enum(ValueParser[E], _t.Generic[E]):
             options.insert(0, yuio.widget.Option(yuio.MISSING, default_description))
             default_index = 0
 
-        return yuio.widget.FilterableChoice(options, default_index=default_index)
+        return yuio.widget.Choice(options, default_index=default_index)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.__enum_type!r})"
@@ -1359,6 +1359,15 @@ class Set(CollectionParser[_t.Set[T], T], _t.Generic[T]):
 
     def __init__(self, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None):
         super().__init__(inner, set, set, delimiter=delimiter)
+
+    def widget(
+        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+    ) -> yuio.widget.Widget[_t.Union[_t.Set[T], yuio.Missing]]:
+        options = self._inner.options()
+        if options is not None and len(options) <= 25:
+            return yuio.widget.Map(yuio.widget.Multiselect(list(options)), set)
+        else:
+            return super().widget(default, default_description)
 
 
 class FrozenSet(CollectionParser[_t.FrozenSet[T], T], _t.Generic[T]):
@@ -2174,7 +2183,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
             options.insert(0, yuio.widget.Option(yuio.MISSING, default_description))
             default_index = 0
 
-        return yuio.widget.FilterableChoice(options, default_index=default_index)
+        return yuio.widget.Choice(options, default_index=default_index)
 
 
 class Map(Parser[T], _t.Generic[T, U]):

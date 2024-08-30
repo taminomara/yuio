@@ -491,7 +491,7 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         builder = (
             yuio.widget.VerticalLayoutBuilder()
-            .add(self._prompt, receive_events=True)
+            .add(self._prompt)
             .add(self._inner, receive_events=True)
         )
         if self._error_msg is not None:
@@ -640,7 +640,10 @@ class _Ask(_t.Generic[T]):
                     % input_description
                 )
 
-            widget = _AskWidget(prompt, parser.widget(default, default_description))
+            widget = _AskWidget(
+                prompt,
+                yuio.widget.InteractiveHelp(parser.widget(default, default_description))
+            )
             with SuspendLogging() as s:
                 try:
                     result = widget.run(term, theme)
