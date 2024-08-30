@@ -901,7 +901,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     ]
     __callbacks: _t.ClassVar[_t.List[_t.Callable[["Widget[object]"], None]]]
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
         cls.__keybindings = {}
         cls.__callbacks = []
         event_handler_names = []
@@ -2510,7 +2512,7 @@ class FilterableChoice(Widget[T], _t.Generic[T]):
         ]
 
 
-class Map(Widget[T], _t.Generic[T]):
+class Map(Widget[T], _t.Generic[T, U]):
     """A wrapper that maps result of the given widget using the given function.
 
     ..
@@ -2550,7 +2552,7 @@ class Map(Widget[T], _t.Generic[T]):
         return self._inner.help_columns
 
 
-class Apply(Map[T], _t.Generic[T]):
+class Apply(Map[T, T], _t.Generic[T]):
     """A wrapper that applies the given function to the result of a wrapped widget.
 
     ..

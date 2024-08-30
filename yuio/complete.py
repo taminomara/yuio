@@ -1247,7 +1247,7 @@ class _CompleterSerializer:
         tag: _t.ClassVar[str] = "-"
 
         def __init_subclass__(cls, tag: str = "-", **kwargs):
-            super(cls).__init_subclass__(**kwargs)
+            super().__init_subclass__(**kwargs)
             cls.tag = tag
 
     @dataclass()

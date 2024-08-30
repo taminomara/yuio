@@ -2121,7 +2121,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
         return yuio.widget.FilterableChoice(options, default_index=default_index)
 
 
-class Map(Parser[T], _t.Generic[T]):
+class Map(Parser[T], _t.Generic[T, U]):
     """A wrapper that maps result of the given parser using the given function.
 
     Example::
@@ -2183,7 +2183,7 @@ class Map(Parser[T], _t.Generic[T]):
         )
 
 
-class Apply(Map[T], _t.Generic[T]):
+class Apply(Map[T, T], _t.Generic[T]):
     """A wrapper that applies the given function to the result of a wrapped widget.
 
     Example::
