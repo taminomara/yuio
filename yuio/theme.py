@@ -664,21 +664,26 @@ class DefaultTheme(Theme):
         if term.terminal_colors.lightness == yuio.term.Lightness.UNKNOWN:
             return
 
-        background_color = term.terminal_colors.background
+        background = term.terminal_colors.background
+        foreground = term.terminal_colors.foreground
 
         if term.terminal_colors.lightness is term.terminal_colors.lightness.DARK:
             self._set_color_if_not_overridden(
-                "low_priority_color_a", Color(fore=background_color.lighten(0.25))
+                "low_priority_color_a",
+                Color(fore=foreground.match_luminosity(background.lighten(0.35))),
             )
             self._set_color_if_not_overridden(
-                "low_priority_color_b", Color(fore=background_color.lighten(0.15))
+                "low_priority_color_b",
+                Color(fore=foreground.match_luminosity(background.lighten(0.25))),
             )
         else:
             self._set_color_if_not_overridden(
-                "low_priority_color_a", Color(fore=background_color.darken(0.25))
+                "low_priority_color_a",
+                Color(fore=foreground.match_luminosity(background.darken(0.35))),
             )
             self._set_color_if_not_overridden(
-                "low_priority_color_b", Color(fore=background_color.darken(0.15))
+                "low_priority_color_b",
+                Color(fore=foreground.match_luminosity(background.darken(0.25))),
             )
 
 

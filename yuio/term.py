@@ -610,7 +610,7 @@ class ColorValue:
 
         return cls(_parse_hex(h))
 
-    def to_hex(self) -> str:
+    def to_hex(self) -> _t.Optional[str]:
         """Return color in hex format with leading ``#``.
 
         Example::
@@ -621,11 +621,28 @@ class ColorValue:
 
         """
 
-        if isinstance(self.data, int):
-            r, g, b = _8_to_rgb(self.data)
+        rgb = self.to_rgb()
+        if rgb is not None:
+            return f"#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}"
         else:
-            r, g, b = self.data
-        return f"#{r:02X}{g:02X}{b:02X}"
+            return None
+
+    def to_rgb(self) -> _t.Optional[_t.Tuple[int, int, int]]:
+        """Return RGB components of the color.
+
+        Example::
+
+            >>> a = ColorValue.from_hex('#A01E9C')
+            >>> a.to_rgb()
+            (0xA0, 0x1e, 0x9c)
+        """
+
+        if isinstance(self.data, int):
+            return _8_to_rgb(self.data)
+        elif isinstance(self.data, tuple):
+            return self.data
+        else:
+            return None
 
     def darken(self, amount: float, /) -> "ColorValue":
         """Make this color darker by the given percentage.
@@ -640,7 +657,16 @@ class ColorValue:
 
         """
 
-        return _adjust_lightness(self, -amount)
+        rgb = self.to_rgb()
+        if rgb is None:
+            return self
+
+        amount = max(min(amount, 1), 0)
+        r, g, b = rgb
+        h, s, v = colorsys.rgb_to_hsv(r / 0xFF, g / 0xFF, b / 0xFF)
+        v = v - v * amount
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
 
     def lighten(self, amount: float, /) -> "ColorValue":
         """Make this color lighter by the given percentage.
@@ -655,7 +681,34 @@ class ColorValue:
 
         """
 
-        return _adjust_lightness(self, amount)
+        rgb = self.to_rgb()
+        if rgb is None:
+            return self
+
+        amount = max(min(amount, 1), 0)
+        r, g, b = rgb
+        h, s, v = colorsys.rgb_to_hsv(r / 0xFF, g / 0xFF, b / 0xFF)
+        v = 1 - v
+        v = 1 - (v - v * amount)
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
+
+    def match_luminosity(self, other: "ColorValue", /) -> "ColorValue":
+        """Set luminosity of this color equal to one of the other color.
+
+        This function will keep hue and saturation of the color intact,
+        but it will become as bright as the other color.
+
+        """
+
+        rgb1, rgb2 = self.to_rgb(), other.to_rgb()
+        if rgb1 is None or rgb2 is None:
+            return self
+
+        h, s, _ = colorsys.rgb_to_hsv(rgb1[0] / 0xFF, rgb1[1] / 0xFF, rgb1[2] / 0xFF)
+        _, _, v = colorsys.rgb_to_hsv(rgb2[0] / 0xFF, rgb2[1] / 0xFF, rgb2[2] / 0xFF)
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
 
     @staticmethod
     def lerp(*colors: "ColorValue") -> _t.Callable[[float], "ColorValue"]:
@@ -722,9 +775,7 @@ class ColorValue:
 
     def __repr__(self) -> str:
         if isinstance(self.data, tuple):
-            return (
-                f"<ColorValue #{self.data[0]:02X}{self.data[1]:02X}{self.data[2]:02X}>"
-            )
+            return f"<ColorValue {self.to_hex()}>"
         else:
             return f"<ColorValue {self.data}>"
 
@@ -831,44 +882,6 @@ class Color:
         """
 
         return cls(back=ColorValue.from_hex(h))
-
-    def darken(self, amount: float) -> "Color":
-        """Make this color darker by the given percentage.
-
-        Amount should be between 0 and 1.
-
-        Example::
-
-            >>> # Darken by 30%.
-            ... Color.fore_from_hex('#A01E9C').darken(0.30)
-            Color(fore=<ColorValue #70156D>, back=None, bold=None, dim=None)
-
-        """
-
-        return dataclasses.replace(
-            self,
-            fore=self.fore.darken(amount) if self.fore else None,
-            back=self.back.darken(amount) if self.back else None,
-        )
-
-    def lighten(self, amount: float) -> "Color":
-        """Make this color lighter by the given percentage.
-
-        Amount should be between 0 and 1.
-
-        Example::
-
-            >>> # Lighten by 30%.
-            ... Color.fore_from_hex('#A01E9C').lighten(0.30)
-            Color(fore=<ColorValue #DB42D6>, back=None, bold=None, dim=None)
-
-        """
-
-        return dataclasses.replace(
-            self,
-            fore=self.fore.lighten(amount) if self.fore else None,
-            back=self.back.lighten(amount) if self.back else None,
-        )
 
     @staticmethod
     def lerp(*colors: "Color") -> _t.Callable[[float], "Color"]:
@@ -1043,20 +1056,6 @@ def _parse_hex(h: str) -> _t.Tuple[int, int, int]:
     if not re.match(r"^#[0-9a-fA-F]{6}$", h):
         raise ValueError(f"invalid hex string {h!r}")
     return tuple(int(h[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore
-
-
-def _adjust_lightness(color: ColorValue, factor: float):
-    if isinstance(color.data, tuple):
-        r, g, b = color.data
-        h, l, s = colorsys.rgb_to_hls(r / 0xFF, g / 0xFF, b / 0xFF)
-        if 1 >= factor > 0:
-            l = 1 - ((1 - l) * (1 - factor))
-        elif -1 <= factor < 0:
-            l = l * (1 + factor)
-        r, g, b = colorsys.hls_to_rgb(h, l, s)
-        return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
-    else:
-        return color
 
 
 def line_width(s: str, /) -> int:
