@@ -154,6 +154,9 @@ class TerminalColors:
     #: Background color of a terminal.
     background: "ColorValue"
 
+    #: Foreground color of a terminal.
+    foreground: "ColorValue"
+
     #: Color value for the default "black" color.
     black: "ColorValue"
 
@@ -339,10 +342,25 @@ def _get_standard_colors(
     stream: _t.TextIO,
 ) -> _t.Optional[TerminalColors]:
     try:
-        query = "\x1b]11;?\x1b\\" + "".join([f"\x1b]4;{i};?\x1b\\" for i in range(8)])
+        query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join([f"\x1b]4;{i};?\x1b\\" for i in range(8)])
         response = _query_term(stream, query)
         if not response:
             return None
+
+        # Deal with foreground color.
+
+        match = re.match(
+            rb"^\x1b]10;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
+            response,
+            re.IGNORECASE,
+        )
+        if match is None:
+            return None
+
+        r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups())
+        foreground = ColorValue.from_rgb(r, g, b)
+
+        response = response[match.end() :]
 
         # Deal with background color.
 
@@ -392,6 +410,7 @@ def _get_standard_colors(
         # return colors
         return TerminalColors(
             background=background,
+            foreground=foreground,
             black=colors[0],
             red=colors[1],
             green=colors[2],
