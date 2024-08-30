@@ -957,6 +957,8 @@ class _CompleterSerializer:
                 completer = get_completer()
             if completer is None:
                 completer = parser.completer()
+            if completer is None:
+                completer = Empty()
             completion_model = completer._get_completion_model(
                 is_many=parser.supports_parse_many()
             )

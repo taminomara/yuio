@@ -205,6 +205,8 @@ However, you can still use them in case you need to.
 
    .. automethod:: describe_value_or_def
 
+   .. automethod:: options
+
    .. automethod:: completer
 
    .. automethod:: widget
@@ -236,6 +238,7 @@ to speed up the process and avoid common bugs:
 
 import abc
 import argparse
+import dataclasses
 import datetime
 import decimal
 import enum
@@ -246,6 +249,7 @@ import threading
 
 import yuio
 import yuio.complete
+import yuio.term
 import yuio.widget
 from yuio import _t
 
@@ -376,7 +380,19 @@ class Parser(_t.Generic[T_co], abc.ABC):
         """
 
     @abc.abstractmethod
-    def completer(self) -> yuio.complete.Completer:
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T_co]]]:
+        """Return options for a :class:`~yuio.widget.Multiselect` widget.
+
+        This function can be implemented for parsers that return a fixed set
+        of pre-defined values, like :class:`Enum` or :class:`OneOf` widgets.
+        Collection parsers may use this data to improve their widgets.
+        For example, the :class:`Set` parser will use
+        a :class:`~yuio.widget.Multiselect` widget.
+
+        """
+
+    @abc.abstractmethod
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         """Return a completer for values of this parser.
 
         This function is used when assembling autocompletion functions for shells,
@@ -661,8 +677,11 @@ class ValueParser(Parser[T], _t.Generic[T]):
     def describe_value_or_def(self, value: object, /) -> str:
         return self.describe_value(value) or str(value) or "<empty>"
 
-    def completer(self) -> yuio.complete.Completer:
-        return yuio.complete.Empty()
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+        return None
+
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+        return None
 
     def widget(
         self, default: _t.Union[object, yuio.Missing], default_description: str, /
@@ -673,6 +692,10 @@ class ValueParser(Parser[T], _t.Generic[T]):
             default,
             yuio.widget.InputWithCompletion(
                 completer,
+                placeholder=f" default: {default_description}"
+                if default_description
+                else "",
+            ) if completer is not None else yuio.widget.Input(
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
@@ -742,7 +765,10 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
     def describe_value_or_def(self, value: object, /) -> str:
         return self.__wrapped_parser__.describe_value_or_def(value)
 
-    def completer(self) -> yuio.complete.Completer:
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+        return self.__wrapped_parser__.options()
+
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return self.__wrapped_parser__.completer()
 
     def widget(
@@ -902,7 +928,7 @@ class Bool(ValueParser[bool]):
             return None
         return "yes" if value else "no"
 
-    def completer(self) -> yuio.complete.Completer:
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return yuio.complete.Choice(
             [
                 yuio.complete.Option("no"),
@@ -992,7 +1018,13 @@ class Enum(ValueParser[E], _t.Generic[E]):
             return None
         return str(self.__getter(value))
 
-    def completer(self) -> yuio.complete.Completer:
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[E]]]:
+        return [
+            yuio.widget.Option(e, display_text=str(self.__getter(e)))
+            for e in self.__enum_type
+        ]
+
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return yuio.complete.Choice(
             [yuio.complete.Option(str(self.__getter(e))) for e in self.__enum_type]
         )
@@ -1116,7 +1148,10 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
             return "<none>"
         return self.__wrapped_parser__.describe_value_or_def(value)
 
-    def completer(self) -> yuio.complete.Completer:
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[_t.Optional[T]]]]:
+        return self.__wrapped_parser__.options()
+
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return self.__wrapped_parser__.completer()
 
     def widget(
@@ -1256,21 +1291,30 @@ class CollectionParser(Parser[C], _t.Generic[C, T]):
             self._inner.describe_value_or_def(item) for item in self._iter(value)
         )
 
-    def completer(self) -> yuio.complete.Completer:
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[C]]]:
+        return None
+
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+        completer = self._inner.completer()
         return yuio.complete.List(
-            self._inner.completer(),
+            completer,
             delimiter=self._delimiter,
             allow_duplicates=self._allow_completing_duplicates,
-        )
+        ) if completer is not None else None
 
     def widget(
         self, default: _t.Union[object, yuio.Missing], default_description: str, /
     ) -> yuio.widget.Widget[_t.Union[C, yuio.Missing]]:
+        completer = self.completer()
         return _map_widget_result(
             self,
             default,
             yuio.widget.InputWithCompletion(
-                self.completer(),
+                completer,
+                placeholder=f" default: {default_description}"
+                if default_description
+                else "",
+            ) if completer is not None else yuio.widget.Input(
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
@@ -1636,9 +1680,12 @@ class Tuple(Parser[TU], _t.Generic[TU]):
 
         return delimiter.join(desc)
 
-    def completer(self) -> yuio.complete.Completer:
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[TU]]]:
+        return None
+
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return yuio.complete.Tuple(
-            *[parser.completer() for parser in self.__parsers],
+            *[parser.completer() or yuio.complete.Empty() for parser in self.__parsers],
             delimiter=self.__delimiter,
         )
 
@@ -1652,6 +1699,10 @@ class Tuple(Parser[TU], _t.Generic[TU]):
             default,
             yuio.widget.InputWithCompletion(
                 completer,
+                placeholder=f" default: {default_description}"
+                if default_description
+                else "",
+            ) if completer is not None else yuio.widget.Input(
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
@@ -1832,7 +1883,7 @@ class Path(ValueParser[pathlib.Path]):
                 exts = ", ".join(self.__extensions)
                 raise ParsingError(f"{value} should have extension {exts}")
 
-    def completer(self) -> yuio.complete.Completer:
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return yuio.complete.File(extensions=self.__extensions)
 
 
@@ -1879,7 +1930,7 @@ class Dir(ExistingPath):
         if not value.is_dir():
             raise ParsingError(f"{value} is not a directory")
 
-    def completer(self) -> yuio.complete.Completer:
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return yuio.complete.Dir()
 
 
@@ -2092,7 +2143,13 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
     def describe_or_def(self) -> str:
         return self.describe() or super().describe_or_def()
 
-    def completer(self) -> yuio.complete.Completer:
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+        return [
+            yuio.widget.Option(e, self.__wrapped_parser__.describe_value_or_def(e))
+            for e in self.__allowed_values
+        ]
+
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return yuio.complete.Choice(
             [
                 yuio.complete.Option(self.describe_value_or_def(e))
@@ -2105,10 +2162,9 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
     ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
         allowed_values = list(self.__allowed_values)
 
-        options: _t.List[yuio.widget.Option[_t.Union[T, yuio.Missing]]] = [
-            yuio.widget.Option(e, self.__wrapped_parser__.describe_value_or_def(e))
-            for e in allowed_values
-        ]
+        options = _t.cast(
+            _t.List[yuio.widget.Option[_t.Union[T, yuio.Missing]]], self.options()
+        )
 
         if default is yuio.MISSING:
             default_index = 0
@@ -2170,7 +2226,20 @@ class Map(Parser[T], _t.Generic[T, U]):
     def describe_value_or_def(self, value: object, /) -> str:
         return self.__inner.describe_value_or_def(value)
 
-    def completer(self) -> yuio.complete.Completer:
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+        options = self.__inner.options()
+        if options is not None:
+            return [
+                _t.cast(
+                    yuio.widget.Option[T],
+                    dataclasses.replace(option, value=self.__fn(option.value)),
+                )
+                for option in options
+            ]
+        else:
+            return None
+
+    def completer(self) -> _t.Optional[yuio.complete.Completer]:
         return self.__inner.completer()
 
     def widget(
@@ -2203,6 +2272,9 @@ class Apply(Map[T, T], _t.Generic[T]):
             return x
 
         super().__init__(inner, mapper)
+
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+        return self.__inner.options()
 
 
 def _map_widget_result(
