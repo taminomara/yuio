@@ -513,8 +513,8 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
     def draw(self, rc: RenderContext, /):
         self._layout.draw(rc)
 
-    @functools.cached_property
-    def help_columns(self) -> _t.List["yuio.widget.Help.Column"]:
+    @property
+    def help_columns(self) -> "yuio.widget.HelpData":
         return self._inner.help_columns
 
 
@@ -640,10 +640,7 @@ class _Ask(_t.Generic[T]):
                     % input_description
                 )
 
-            widget = _AskWidget(
-                prompt,
-                yuio.widget.InteractiveHelp(parser.widget(default, default_description))
-            )
+            widget = _AskWidget(prompt, parser.widget(default, default_description))
             with SuspendLogging() as s:
                 try:
                     result = widget.run(term, theme)
@@ -1614,8 +1611,6 @@ class _IoManager(abc.ABC):
             self.formatter.width,
             first_line_indent=first_line_indent,
             continuation_indent=continuation_indent,
-            break_on_hyphens=False,
-            preserve_spaces=True,
         ):
             res += line
             res += "\n"

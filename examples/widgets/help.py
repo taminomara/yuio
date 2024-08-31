@@ -12,52 +12,44 @@ class ExampleWidget(yuio.widget.Widget[None]):
         self._last_action = "nothing so far"
 
     # For all actions we'll provide a short docstring.
-    # We'll also group actions into columns
-    # using `yuio.widget.help_column`.
+    # We'll also use `show_in_inline_help` to show some of them under the widget.
 
     @yuio.widget.bind(Key.ARROW_UP)
     @yuio.widget.bind("k")
-    @yuio.widget.help_column(0)
     def on_up(self):
         """move up"""
         self._last_action = "Arrow Up / K"
 
     @yuio.widget.bind(Key.ARROW_DOWN)
     @yuio.widget.bind("j")
-    @yuio.widget.help_column(0)
     def on_down(self):
         """move down"""
         self._last_action = "Arrow Down / J"
 
     @yuio.widget.bind(Key.ARROW_LEFT)
     @yuio.widget.bind("h")
-    @yuio.widget.help_column(0)
     def on_left(self):
         """move left"""
         self._last_action = "Arrow Left / H"
 
     @yuio.widget.bind(Key.ARROW_RIGHT)
     @yuio.widget.bind("l")
-    @yuio.widget.help_column(0)
     def on_right(self):
         """move right"""
         self._last_action = "Arrow Right / L"
 
-    @yuio.widget.bind(Key.ENTER)
-    @yuio.widget.help_column(1)
+    @yuio.widget.bind(Key.ENTER, show_in_inline_help=True)
     def on_enter(self):
         """accept input"""
         self._last_action = "Enter"
 
-    @yuio.widget.bind("/")
-    @yuio.widget.help_column(1)
+    @yuio.widget.bind("/", show_in_inline_help=True)
     def on_slash(self):
         """filter items"""
         self._last_action = "Slash"
 
-    @yuio.widget.bind(Key.ESCAPE)
-    @yuio.widget.bind("q")
-    @yuio.widget.help_column(1)
+    @yuio.widget.bind(Key.ESCAPE, show_in_inline_help=True)
+    @yuio.widget.bind("q", show_in_inline_help=True)
     def on_escape(self):
         """close"""
         return yuio.widget.Result(None)
@@ -72,15 +64,25 @@ class ExampleWidget(yuio.widget.Widget[None]):
         rc.reset_color()
         rc.write(".")
 
+    # Let's further customize our help.
+
+    @property
+    def help_columns(self) -> yuio.widget.WidgetHelp:
+        # Add a custom item to the inline help.
+        return super().help_columns.with_action(
+            Key.ARROW_UP,
+            Key.ARROW_DOWN,
+            Key.ARROW_LEFT,
+            Key.ARROW_RIGHT,
+            inline_msg="navigate",
+            prepend=True,
+        )
+
 
 if __name__ == "__main__":
     term = yuio.io.get_term()
     theme = yuio.io.get_theme()
 
-    widget = (
-        ExampleWidget()
-        .with_title("Press hotkeys for actions described below:")
-        .with_help()
-    )
+    widget = ExampleWidget().with_title("Press hotkeys for actions described below:")
 
     widget.run(term, theme)

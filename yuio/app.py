@@ -873,7 +873,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         *,
         default_color: _t.Union[yuio.term.Color, str] = yuio.term.Color.NONE,
     ):
-        return yuio.md._colorize(
+        return yuio.md.colorize(
             self.theme,
             s,
             default_color=default_color,
@@ -902,9 +902,6 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             if node.usage_override:
                 for line in node.usage_override.wrap(
                     self.width,
-                    break_on_hyphens=False,
-                    preserve_spaces=True,
-                    preserve_newlines=True,
                     first_line_indent=self._first_line_indent,
                     continuation_indent=self._continuation_indent,
                 ):

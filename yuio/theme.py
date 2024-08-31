@@ -605,7 +605,7 @@ class DefaultTheme(Theme):
         "hl/punct": "blue",
         "hl/comment": "secondary_color",
         "hl/prog": "bold",
-        "hl/flag": "cyan",
+        "hl/flag": "accent_color_2",
         "hl/metavar": "bold",
         "tb/heading": ["bold", "red"],
         "tb/message": "tb/heading",
@@ -624,14 +624,18 @@ class DefaultTheme(Theme):
         # Menu and widgets
         # ----------------
         "menu/text": "primary_color",
-        "menu/text:heading": ["menu/text", "heading_color"],
-        "menu/text:help": "low_priority_color_b",
-        "menu/text/key:help": "low_priority_color_a",
+        "menu/text/heading": ["menu/text", "heading_color"],
+        "menu/text/help_info:help": "low_priority_color_a",
+        "menu/text/help_msg:help": "low_priority_color_b",
+        "menu/text/help_key:help": "low_priority_color_a",
+        "menu/text/help_sep:help": "low_priority_color_b",
+        "menu/text/help_key:help_menu": "accent_color_2",
+        "menu/text/help_sep:help_menu": "secondary_color",
         "menu/text/comment": "note",
         "menu/text/comment/decoration": "secondary_color",
         "menu/text:choice/active": "accent_color",
         "menu/text:choice/active/selected": ["bold"],
-        "menu/text:choice/normal/selected": ["cyan", "bold"],
+        "menu/text:choice/normal/selected": ["accent_color_2", "bold"],
         "menu/text:choice/normal/dir": "blue",
         "menu/text:choice/normal/exec": "red",
         "menu/text:choice/normal/symlink": "magenta",
@@ -642,11 +646,11 @@ class DefaultTheme(Theme):
         "menu/text/comment:choice/normal/original": "success_color",
         "menu/text/comment:choice/normal/corrected": "error_color",
         "menu/text/prefix:choice/normal": "primary_color",
-        "menu/text/prefix:choice/normal/selected": ["cyan", "bold"],
+        "menu/text/prefix:choice/normal/selected": ["accent_color_2", "bold"],
         "menu/text/prefix:choice/active": "accent_color",
         "menu/text/prefix:choice/active/selected": ["bold"],
         "menu/text/suffix:choice/normal": "primary_color",
-        "menu/text/suffix:choice/normal/selected": ["cyan", "bold"],
+        "menu/text/suffix:choice/normal/selected": ["accent_color_2", "bold"],
         "menu/text/suffix:choice/active": "accent_color",
         "menu/text/suffix:choice/active/selected": ["bold"],
         "menu/text:choice/status_line": "low_priority_color_b",
@@ -680,7 +684,7 @@ class DefaultTheme(Theme):
         if term.terminal_colors.lightness is term.terminal_colors.lightness.DARK:
             self._set_color_if_not_overridden(
                 "low_priority_color_a",
-                Color(fore=foreground.match_luminosity(background.lighten(0.35))),
+                Color(fore=foreground.match_luminosity(background.lighten(0.30))),
             )
             self._set_color_if_not_overridden(
                 "low_priority_color_b",
@@ -689,7 +693,7 @@ class DefaultTheme(Theme):
         else:
             self._set_color_if_not_overridden(
                 "low_priority_color_a",
-                Color(fore=foreground.match_luminosity(background.darken(0.35))),
+                Color(fore=foreground.match_luminosity(background.darken(0.30))),
             )
             self._set_color_if_not_overridden(
                 "low_priority_color_b",

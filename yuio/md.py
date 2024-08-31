@@ -228,7 +228,7 @@ class MdFormatter:
 
         """
 
-        return _colorize(self.theme, s, default_color=default_color)
+        return colorize(self.theme, s, default_color=default_color)
 
     @contextlib.contextmanager
     def _indent(
@@ -282,6 +282,8 @@ class MdFormatter:
 
         for line in s.wrap(
             self.width,
+            break_on_hyphens=True,
+            preserve_spaces=False,
             preserve_newlines=False,
             first_line_indent=self._first_line_indent,
             continuation_indent=self._continuation_indent,
@@ -347,9 +349,6 @@ class MdFormatter:
         with self._indent("msg/decoration:code", decoration):
             for line in s.wrap(
                 self.width,
-                break_on_hyphens=False,
-                preserve_spaces=True,
-                preserve_newlines=True,
                 first_line_indent=self._first_line_indent,
                 continuation_indent=self._continuation_indent,
             ):
@@ -1299,7 +1298,7 @@ __NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
 __FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
 
 
-def _colorize(
+def colorize(
     theme: Theme,
     s: str,
     /,
@@ -1307,6 +1306,13 @@ def _colorize(
     default_color: _t.Union[Color, str] = Color.NONE,
     parse_cli_flags_in_backticks: bool = False,
 ) -> "yuio.term.ColorizedString":
+    """Parse and colorize contents of a paragraph.
+
+    Apply ``default_color`` to the entire paragraph, and process color tags
+    and backticks within it.
+
+    """
+
     default_color = theme.to_color(default_color)
 
     raw: _t.List[_t.Union[str, Color]] = []

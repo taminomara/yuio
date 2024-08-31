@@ -342,7 +342,9 @@ def _get_standard_colors(
     stream: _t.TextIO,
 ) -> _t.Optional[TerminalColors]:
     try:
-        query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join([f"\x1b]4;{i};?\x1b\\" for i in range(8)])
+        query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join(
+            [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
+        )
         response = _query_term(stream, query)
         if not response:
             return None
@@ -1210,8 +1212,8 @@ class ColorizedString:
         width: int,
         /,
         *,
-        break_on_hyphens: bool = True,
-        preserve_spaces: bool = False,
+        break_on_hyphens: bool = False,
+        preserve_spaces: bool = True,
         preserve_newlines: bool = True,
         first_line_indent: _t.Union[str, "ColorizedString"] = "",
         continuation_indent: _t.Union[str, "ColorizedString"] = "",

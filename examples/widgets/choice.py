@@ -23,10 +23,8 @@ if __name__ == "__main__":
         ),
     ]
 
-    widget = (
-        yuio.widget.Choice(options)
-        .with_title("What should Santa bring you this year?")
-        .with_help()
+    widget = yuio.widget.Choice(options).with_title(
+        "What should Santa bring you this year?"
     )
 
     result = widget.run(term, theme)

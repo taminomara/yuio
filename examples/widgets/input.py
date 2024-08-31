@@ -9,7 +9,7 @@ if __name__ == "__main__":
         placeholder="Enter something nice?",
         decoration=">",
         allow_multiline=True,
-    ).with_help()
+    )
 
     result = widget.run(term, theme)
     yuio.io.success("You've entered `%r`", result)

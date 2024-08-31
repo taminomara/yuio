@@ -695,7 +695,9 @@ class ValueParser(Parser[T], _t.Generic[T]):
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
-            ) if completer is not None else yuio.widget.Input(
+            )
+            if completer is not None
+            else yuio.widget.Input(
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
@@ -1296,11 +1298,15 @@ class CollectionParser(Parser[C], _t.Generic[C, T]):
 
     def completer(self) -> _t.Optional[yuio.complete.Completer]:
         completer = self._inner.completer()
-        return yuio.complete.List(
-            completer,
-            delimiter=self._delimiter,
-            allow_duplicates=self._allow_completing_duplicates,
-        ) if completer is not None else None
+        return (
+            yuio.complete.List(
+                completer,
+                delimiter=self._delimiter,
+                allow_duplicates=self._allow_completing_duplicates,
+            )
+            if completer is not None
+            else None
+        )
 
     def widget(
         self, default: _t.Union[object, yuio.Missing], default_description: str, /
@@ -1314,7 +1320,9 @@ class CollectionParser(Parser[C], _t.Generic[C, T]):
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
-            ) if completer is not None else yuio.widget.Input(
+            )
+            if completer is not None
+            else yuio.widget.Input(
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
@@ -1711,7 +1719,9 @@ class Tuple(Parser[TU], _t.Generic[TU]):
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
-            ) if completer is not None else yuio.widget.Input(
+            )
+            if completer is not None
+            else yuio.widget.Input(
                 placeholder=f" default: {default_description}"
                 if default_description
                 else "",
