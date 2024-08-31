@@ -261,7 +261,7 @@ class TestColorizedString:
             (
                 ["hello world!     this will wrap"],
                 15,
-                {},
+                {"preserve_spaces": False},
                 [
                     [yuio.term.Color.NONE, "hello", " ", "world!"],
                     [yuio.term.Color.NONE, "this", " ", "will", " ", "wrap"],
@@ -270,7 +270,7 @@ class TestColorizedString:
             (
                 ["hello     world!     this     will     wrap"],
                 15,
-                {},
+                {"preserve_spaces": False},
                 [
                     [yuio.term.Color.NONE, "hello", " ", "world!"],
                     [yuio.term.Color.NONE, "this", " ", "will", " ", "wrap"],
@@ -279,7 +279,7 @@ class TestColorizedString:
             (
                 ["this-will-wrap-on-hyphen"],
                 15,
-                {},
+                {"break_on_hyphens": True},
                 [
                     [yuio.term.Color.NONE, "this-", "will-", "wrap-"],
                     [yuio.term.Color.NONE, "on-", "hyphen"],
@@ -288,7 +288,7 @@ class TestColorizedString:
             (
                 ["this.will.not.wrap.on.hyphen.this.is.too.long"],
                 15,
-                {},
+                {"break_on_hyphens": True},
                 [
                     [yuio.term.Color.NONE, "this.will.not.w"],
                     [yuio.term.Color.NONE, "rap.on.hyphen.t"],
@@ -298,7 +298,7 @@ class TestColorizedString:
             (
                 ["this-will-not-wrap-on-hyphen-this-is-too-long"],
                 15,
-                {"break_on_hyphens": False},
+                {},
                 [
                     [yuio.term.Color.NONE, "this-will-not-w"],
                     [yuio.term.Color.NONE, "rap-on-hyphen-t"],
@@ -308,7 +308,7 @@ class TestColorizedString:
             (
                 ["newlines will\nbe\nhonored!"],
                 15,
-                {"break_on_hyphens": False},
+                {},
                 [
                     [yuio.term.Color.NONE, "newlines", " ", "will"],
                     [yuio.term.Color.NONE, "be"],
@@ -318,7 +318,7 @@ class TestColorizedString:
             (
                 ["space before nl    \nis removed"],
                 15,
-                {},
+                {"preserve_spaces": False},
                 [
                     [yuio.term.Color.NONE, "space", " ", "before", " ", "nl"],
                     [yuio.term.Color.NONE, "is", " ", "removed"],
@@ -498,14 +498,11 @@ class TestColorizedString:
                         " ",
                         "[-v]",
                         " ",
-                        "[--force-",
-                        "color",
+                        "[--force-color",
                         " ",
                         "|",
                         " ",
-                        "--force-",
-                        "no-",
-                        "color]",
+                        "--force-no-color]",
                         " ",
                         "[-o",
                         " ",
@@ -590,8 +587,8 @@ class TestColorizedString:
                         yuio.term.Color.NONE,
                         yuio.term.Color.FORE_MAGENTA,
                         "usage:",
-                        yuio.term.Color.NONE,
                         " ",
+                        yuio.term.Color.NONE,
                         "app.py",
                         " ",
                         "train",
@@ -610,16 +607,13 @@ class TestColorizedString:
                         " ",
                         "[",
                         yuio.term.Color.FORE_BLUE,
-                        "--force-",
-                        "color",
+                        "--force-color",
                         yuio.term.Color.NONE,
                         " ",
                         "|",
-                        yuio.term.Color.FORE_BLUE,
                         " ",
-                        "--force-",
-                        "no-",
-                        "color",
+                        yuio.term.Color.FORE_BLUE,
+                        "--force-no-color",
                         yuio.term.Color.NONE,
                         "]",
                         " ",
@@ -627,9 +621,9 @@ class TestColorizedString:
                         yuio.term.Color.FORE_BLUE,
                         "-o",
                         yuio.term.Color.NONE,
+                        " ",
                         yuio.term.Color.FORE_MAGENTA,
                         yuio.term.Color.NONE,
-                        " ",
                         "{",
                         yuio.term.Color.FORE_MAGENTA,
                         "path",
@@ -638,9 +632,9 @@ class TestColorizedString:
                         yuio.term.Color.FORE_MAGENTA,
                         yuio.term.Color.NONE,
                         "]",
+                        " ",
                         yuio.term.Color.FORE_MAGENTA,
                         yuio.term.Color.NONE,
-                        " ",
                         "<",
                         yuio.term.Color.FORE_MAGENTA,
                         "data",
