@@ -28,8 +28,6 @@ a widget.
 
 .. autofunction:: bind
 
-.. autofunction:: help_column
-
 .. autoclass:: Key
    :members:
 
@@ -59,6 +57,37 @@ you can use the :class:`VerticalLayout` class:
    :members:
 
 
+Widget help
+-----------
+
+Widgets automatically generate help: the help menu is available via the ``F1`` key,
+and there's also inline help that is displayed under the widget.
+
+By default, help items are generated from event handler docstrings:
+all event handlers that have them will be displayed in the help menu.
+
+You can control which keybindings appear in the help menu and inline help
+by supplying ``show_in_inline_help`` and ``show_in_detailed_help`` arguments
+to the :func:`bind` function.
+
+For even more detailed customization you can decorate an event handler with
+the :func:`help` decorator:
+
+.. autofunction:: help
+
+Lastly, you can override :attr:`Widget.help_data` and generate
+the :class:`WidgetHelp` yourself:
+
+.. autoclass:: WidgetHelp
+   :members:
+
+.. autodata:: ActionKey
+
+.. autodata:: ActionKeys
+
+.. autodata:: Action
+
+
 Pre-defined widgets
 -------------------
 
@@ -77,9 +106,6 @@ Pre-defined widgets
 .. autoclass:: Map
 
 .. autoclass:: Apply
-
-.. autoclass:: Help
-   :members:
 
 
 """
@@ -934,7 +960,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         for name in event_handler_names:
             cb = getattr(cls, name, None)
             if cb is not None and hasattr(cb, "__yuio_keybindings__"):
-                bindings: _t.List["Binding"] = cb.__yuio_keybindings__
+                bindings: _t.List["_Binding"] = cb.__yuio_keybindings__
                 cls.__bindings.update((binding.event, cb) for binding in bindings)
                 cls.__callbacks.append(cb)
 
@@ -1043,14 +1069,10 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         )
 
     @property
-    def help_columns(self) -> "WidgetHelp":
-        """Columns for the :class:`Help` widget.
+    def help_data(self) -> "WidgetHelp":
+        """Data for displaying help messages.
 
-        By default, columns are generated using docstrings from all
-        event handlers that were registered using :func:`bind`.
-
-        You can control this process by decorating your handlers
-        with :func:`help`.
+        See :func:`help` for more info.
 
         """
 
@@ -1062,20 +1084,17 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         groups: _t.Dict[str, _t.List[Action]] = {}
 
         for cb in self.__callbacks:
-            bindings: _t.List[Binding] = getattr(cb, "__yuio_keybindings__", [])
-            help: _t.Optional[Help] = getattr(cb, "__yuio_help__", None)
+            bindings: _t.List[_Binding] = getattr(cb, "__yuio_keybindings__", [])
+            help: _t.Optional[_Help] = getattr(cb, "__yuio_help__", None)
             if not bindings:
                 continue
             if help is None:
-                help = Help(
+                help = _Help(
                     "Actions",
-                    False,
                     getattr(cb, "__doc__", None),
                     getattr(cb, "__doc__", None),
                 )
             if not help.inline_msg and not help.long_msg:
-                continue
-            if help.hide:
                 continue
 
             if help.inline_msg:
@@ -1141,19 +1160,19 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         )
 
     def __help_menu_layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
-        if self.__width == rc.width and self.__last_help_columns == self.help_columns:
+        if self.__width == rc.width and self.__last_help_columns == self.help_data:
             return rc.height, rc.height
 
         if self.__width != rc.width:
             self.__help_menu_line = 0
-        if self.__last_help_columns != self.help_columns:
+        if self.__last_help_columns != self.help_data:
             # Clear the cache...
             self.__dict__.pop("_Widget__prepared_inline_help", None)
             self.__dict__.pop("_Widget__prepared_groups", None)
 
         self.__width = rc.width
         self.__height = rc.height
-        self.__last_help_columns = self.help_columns
+        self.__last_help_columns = self.help_data
 
         max_key_width = max(
             key_width
@@ -1215,12 +1234,12 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         self.__menu_content_height = y - self.__help_menu_line
 
     def __help_menu_draw_inline(self, rc: RenderContext, /):
-        if self.__last_help_columns != self.help_columns:
+        if self.__last_help_columns != self.help_data:
             # Clear the cache...
             self.__dict__.pop("_Widget__prepared_inline_help", None)
             self.__dict__.pop("_Widget__prepared_groups", None)
 
-        self.__last_help_columns = self.help_columns
+        self.__last_help_columns = self.help_data
 
         used_width = _line_width(self._KEY_SYMBOLS[Key.F1]) + 5
         col_sep = ""
@@ -1289,7 +1308,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         self,
     ) -> _t.List[_t.Tuple[_t.List[str], _ColorizedString, int]]:
         return [
-            self.__prepare_action(action) for action in self.help_columns.inline_help
+            self.__prepare_action(action) for action in self.help_data.inline_help
         ]
 
     @functools.cached_property
@@ -1301,7 +1320,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         groups.update(
             (title, [self.__prepare_action(action) for action in actions])
-            for title, actions in self.help_columns.groups.items()
+            for title, actions in self.help_data.groups.items()
             if actions
         )
 
@@ -1404,7 +1423,7 @@ Widget.__init_subclass__()
 
 
 @dataclass(frozen=True, **yuio._with_slots())
-class Binding:
+class _Binding:
     event: KeyboardEvent
     show_in_inline_help: bool
     show_in_detailed_help: bool
@@ -1424,7 +1443,7 @@ def bind(
     alt: bool = False,
     show_in_inline_help: bool = False,
     show_in_detailed_help: bool = True,
-) -> Binding:
+) -> _Binding:
     """Register an event handler for a widget.
 
     Widget's methods can be registered as handlers for keyboard events.
@@ -1436,9 +1455,9 @@ def bind(
 
        ``Ctrl+L`` and ``F1`` are always reserved by the widget itself.
 
-    If `show_in_help` is :data:`True`, this binding will be shown in an inline help
-    of the :class:`Help` widget. If `show_in_detailed_help` is :data:`True`,
-    this binding will be shown in a help menu
+    If `show_in_help` is :data:`True`, this binding will be shown in the widget's
+    inline help. If `show_in_detailed_help` is :data:`True`,
+    this binding will be shown in the widget's help menu.
 
     Example::
 
@@ -1455,27 +1474,13 @@ def bind(
     """
 
     e = KeyboardEvent(key=key, ctrl=ctrl, alt=alt)
-    return Binding(e, show_in_inline_help, show_in_detailed_help)
+    return _Binding(e, show_in_inline_help, show_in_detailed_help)
 
 
 @dataclass(frozen=True, **yuio._with_slots())
-class Help:
-    """Help formatting settings of an action.
-
-    See :func:`help` for more info.
-
-    """
-
-    #: See :func:`help` for more info.
+class _Help:
     group: str = "Actions"
-
-    #: See :func:`help` for more info.
-    hide: bool = False
-
-    #: See :func:`help` for more info.
     inline_msg: _t.Optional[str] = None
-
-    #: See :func:`help` for more info.
     long_msg: _t.Optional[str] = None
 
     def __call__(self, fn: T, /) -> T:
@@ -1493,28 +1498,13 @@ class Help:
         return fn
 
 
-@_t.overload
 def help(
     *,
     group: str = "Actions",
     inline_msg: _t.Optional[str] = None,
     long_msg: _t.Optional[str] = None,
-) -> Help:
-    ...
-
-
-@_t.overload
-def help(*, hide: bool) -> Help:
-    ...
-
-
-def help(
-    *,
-    group: str = "Actions",
-    hide: bool = False,
-    inline_msg: _t.Optional[str] = None,
-    long_msg: _t.Optional[str] = None,
-) -> Help:
+    msg: _t.Optional[str] = None,
+) -> _Help:
     """Set options for how this callback should be displayed.
 
     This decorator controls automatic generation of help messages for a widget.
@@ -1522,46 +1512,42 @@ def help(
     :param group:
         title of a group that this action will appear in when the user opens
         a help menu. Groups appear in order of declaration of their first element.
-
-        This parameter can't be given if ``hide`` is :data:`True`.
-    :param msg:
+    :param inline_msg:
         this parameter overrides a message in the inline help. By default,
         it will be taken from a docstring.
-
-        This parameter can't be given if ``hide`` is :data:`True`.
-    :param msg:
+    :param inline_msg:
         this parameter overrides a message in the help menu. By default,
         it will be taken from a docstring.
-
-        This parameter can't be given if ``hide`` is :data:`True`.
-    :param hide:
-        setting this to :data:`True` will completely hide this action from
-        the inline help and the help menu.
-
-        This parameter can't be :data:`True` if ``group`` is not :data:`None`.
+    :param long_msg:
+        a shortcut parameter for setting both ``inline_msg`` and ``long_msg``
+        at the same time.
 
     Example::
 
         class MyWidget(Widget):
-            MAIN_ACTIONS = "Main actions"
+            NAVIGATE = "Navigate"
 
-            @bind(Key.ENTER)
-            @help(group=MAIN_ACTIONS)
-            def enter(self):
-                \"\"\"accept\"\"\"
+            @bind(Key.TAB)
+            @help(group=NAVIGATE)
+            def tab(self):
+                \"\"\"next item\"\"\"
                 ...
 
-            @bind(Key.ESC)
-            @help(group=MAIN_ACTIONS)
-            def enter(self):
-                \"\"\"cancel\"\"\"
+            @bind(Key.SHIFT_TAB)
+            @help(group=NAVIGATE)
+            def shift_tab(self):
+                \"\"\"previous item\"\"\"
                 ...
 
     """
 
-    return Help(
+    if msg is not None and inline_msg is None:
+        inline_msg = msg
+    if msg is not None and long_msg is None:
+        long_msg = msg
+
+    return _Help(
         group,
-        hide,
         inline_msg,
         long_msg,
     )
@@ -1580,32 +1566,48 @@ Action: _t.TypeAlias = _t.Union[str, _t.Tuple[ActionKeys, str]]
 
 @dataclass(frozen=True, **yuio._with_slots())
 class WidgetHelp:
+    """Data for automatic help generation.
+
+    .. warning::
+
+       Do not modify contents of this class in-place. This might break layout
+       caching in the widget rendering routine, which will cause displaying
+       outdated help messages.
+
+       Use the provided helpers to modify contents of this class.
+
+    """
+
+    #: List of actions to show in the inline help.
     inline_help: _t.List[Action] = dataclasses.field(default_factory=list)
+
+    #: Dict of group titles and actions to show in the help menu.
     groups: _t.Dict[str, _t.List[Action]] = dataclasses.field(default_factory=dict)
 
     def with_action(
         self,
-        *bindings: _t.Union[Binding, ActionKey],
+        *bindings: _t.Union[_Binding, ActionKey],
         group: str = "Actions",
         msg: _t.Optional[str] = None,
         inline_msg: _t.Optional[str] = None,
         long_msg: _t.Optional[str] = None,
         prepend: bool = False,
     ) -> "WidgetHelp":
-        if msg is not None and inline_msg is None:
-            inline_msg = msg
-        if msg is not None and long_msg is None:
-            long_msg = msg
-
+        """Return a new :class:`WidgetHelp` that has an extra action."""
         return WidgetHelp(self.inline_help.copy(), self.groups.copy()).__add_action(
             *bindings,
             group=group,
             inline_msg=inline_msg,
             long_msg=long_msg,
             prepend=prepend,
+            msg=msg,
         )
 
     def merge(self, other: "WidgetHelp", /) -> "WidgetHelp":
+        """Merge this help data with another one
+        and return a new instance of :class:`WidgetHelp`.
+
+        """
         result = WidgetHelp(self.inline_help.copy(), self.groups.copy())
         result.inline_help.extend(other.inline_help)
         for title, actions in other.groups.items():
@@ -1613,11 +1615,19 @@ class WidgetHelp:
         return result
 
     def without_group(self, title: str, /) -> "WidgetHelp":
+        """Return a new :class:`WidgetHelp` that has
+        a group with the given title removed.
+
+        """
         result = WidgetHelp(self.inline_help.copy(), self.groups.copy())
         result.groups.pop(title, None)
         return result
 
     def rename_group(self, title: str, new_title: str, /) -> "WidgetHelp":
+        """Return a new :class:`WidgetHelp` that has
+        a group with the given title renamed.
+
+        """
         result = WidgetHelp(self.inline_help.copy(), self.groups.copy())
         if group := result.groups.pop(title, None):
             result.groups[new_title] = result.groups.get(new_title, []) + group
@@ -1625,22 +1635,25 @@ class WidgetHelp:
 
     def __add_action(
         self,
-        *bindings: _t.Union[Binding, ActionKey],
+        *bindings: _t.Union[_Binding, ActionKey],
         group: str,
         inline_msg: _t.Optional[str],
         long_msg: _t.Optional[str],
         prepend: bool,
+        msg: _t.Optional[str],
     ) -> "WidgetHelp":
-        settings = help(group=group, inline_msg=inline_msg, long_msg=long_msg)
-
-        if settings.hide:
-            return self
+        settings = help(
+            group=group,
+            inline_msg=inline_msg,
+            long_msg=long_msg,
+            msg=msg,
+        )
 
         if settings.inline_msg:
             inline_keys: ActionKeys = [
-                binding.event if isinstance(binding, Binding) else binding
+                binding.event if isinstance(binding, _Binding) else binding
                 for binding in bindings
-                if not isinstance(binding, Binding) or binding.show_in_inline_help
+                if not isinstance(binding, _Binding) or binding.show_in_inline_help
             ]
             if inline_keys:
                 if prepend:
@@ -1650,9 +1663,9 @@ class WidgetHelp:
 
         if settings.long_msg:
             menu_keys: ActionKeys = [
-                binding.event if isinstance(binding, Binding) else binding
+                binding.event if isinstance(binding, _Binding) else binding
                 for binding in bindings
-                if not isinstance(binding, Binding) or binding.show_in_detailed_help
+                if not isinstance(binding, _Binding) or binding.show_in_detailed_help
             ]
             if menu_keys:
                 if prepend:
@@ -1841,9 +1854,9 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
             y1 = y2
 
     @property
-    def help_columns(self) -> WidgetHelp:
+    def help_data(self) -> WidgetHelp:
         if self._event_receiver is not None:
-            return self._widgets[self._event_receiver].help_columns
+            return self._widgets[self._event_receiver].help_data
         else:
             return WidgetHelp()
 
@@ -2901,10 +2914,10 @@ class Choice(Widget[T], _t.Generic[T]):
         self.__layout.draw(rc)
 
     @property
-    def help_columns(self) -> WidgetHelp:
+    def help_data(self) -> WidgetHelp:
         if self.__enable_search:
             help_columns = dataclasses.replace(
-                super().help_columns,
+                super().help_data,
                 inline_help=[
                     (
                         Key.ESCAPE,
@@ -2913,7 +2926,7 @@ class Choice(Widget[T], _t.Generic[T]):
                 ],
             )
         else:
-            help_columns = super().help_columns.with_action(
+            help_columns = super().help_data.with_action(
                 Key.ARROW_UP,
                 Key.ARROW_DOWN,
                 Key.ARROW_LEFT,
@@ -2922,7 +2935,7 @@ class Choice(Widget[T], _t.Generic[T]):
                 prepend=True,
             )
 
-        return help_columns.merge(self.__grid.help_columns)
+        return help_columns.merge(self.__grid.help_data)
 
 
 class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
@@ -3075,10 +3088,10 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
         self.__layout.draw(rc)
 
     @property
-    def help_columns(self) -> WidgetHelp:
+    def help_data(self) -> WidgetHelp:
         if self.__enable_search:
             help_columns = dataclasses.replace(
-                super().help_columns,
+                super().help_data,
                 inline_help=[
                     (
                         Key.ESCAPE,
@@ -3087,7 +3100,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
                 ],
             )
         else:
-            help_columns = super().help_columns.with_action(
+            help_columns = super().help_data.with_action(
                 Key.ARROW_UP,
                 Key.ARROW_DOWN,
                 Key.ARROW_LEFT,
@@ -3096,7 +3109,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
                 prepend=True,
             )
 
-        return help_columns.merge(self.__grid.help_columns)
+        return help_columns.merge(self.__grid.help_data)
 
 
 class InputWithCompletion(Widget[str]):
@@ -3278,16 +3291,16 @@ class InputWithCompletion(Widget[str]):
         self.__layout.draw(rc)
 
     @property
-    def help_columns(self) -> WidgetHelp:
+    def help_data(self) -> WidgetHelp:
         return (
             super()
-            .help_columns.merge(
-                self.__grid.help_columns.rename_group(
+            .help_data.merge(
+                self.__grid.help_data.rename_group(
                     Grid._NAVIGATE, "Navigate Completions"
                 )
             )
             .merge(
-                self.__input.help_columns.without_group("Actions")
+                self.__input.help_data.without_group("Actions")
                 .rename_group(Input._NAVIGATE, "Navigate Input")
                 .rename_group(Input._MODIFY, "Modify Input")
             )
@@ -3330,8 +3343,8 @@ class Map(Widget[T], _t.Generic[T, U]):
         self.__inner.draw(rc)
 
     @property
-    def help_columns(self) -> WidgetHelp:
-        return self.__inner.help_columns
+    def help_data(self) -> WidgetHelp:
+        return self.__inner.help_data
 
 
 class Apply(Map[T, T], _t.Generic[T]):

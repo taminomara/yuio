@@ -67,9 +67,9 @@ class ExampleWidget(yuio.widget.Widget[None]):
     # Let's further customize our help.
 
     @property
-    def help_columns(self) -> yuio.widget.WidgetHelp:
+    def help_data(self) -> yuio.widget.WidgetHelp:
         # Add a custom item to the inline help.
-        return super().help_columns.with_action(
+        return super().help_data.with_action(
             Key.ARROW_UP,
             Key.ARROW_DOWN,
             Key.ARROW_LEFT,

@@ -514,8 +514,8 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
         self._layout.draw(rc)
 
     @property
-    def help_columns(self) -> "yuio.widget.HelpData":
-        return self._inner.help_columns
+    def help_data(self) -> yuio.widget.WidgetHelp:
+        return self._inner.help_data
 
 
 class _Ask(_t.Generic[T]):
