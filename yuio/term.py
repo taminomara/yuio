@@ -266,7 +266,7 @@ def get_term_from_stream(
 
     """
 
-    if "__YUIO_FORCE_FULL_TERM_SUPPORT":
+    if "__YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ:
         # For building docs in github
         return Term(
             stream=stream,
@@ -291,8 +291,8 @@ def get_term_from_stream(
     colorterm = os.environ.get("COLORTERM", "").lower()
 
     has_interactive_output = _is_interactive_output(stream)
-    has_interactive_input = _is_interactive_input(sys.stdin)
-    is_foreground = _is_foreground(stream) and _is_foreground(sys.stdin)
+    has_interactive_input = _is_interactive_input(sys.__stdin__)
+    is_foreground = _is_foreground(stream) and _is_foreground(sys.__stdin__)
 
     color_support = ColorSupport.NONE
     in_ci = "CI" in os.environ
@@ -325,7 +325,11 @@ def get_term_from_stream(
     if is_foreground and color_support >= ColorSupport.ANSI and not in_ci:
         if has_interactive_output and has_interactive_input:
             interactive_support = InteractiveSupport.FULL
-            if query_terminal_colors and "YUIO_DISABLE_OSC_QUERIES" not in os.environ:
+            if (
+                query_terminal_colors
+                and color_support >= ColorSupport.ANSI_256
+                and "YUIO_DISABLE_OSC_QUERIES" not in os.environ
+            ):
                 theme = _get_standard_colors(stream)
         else:
             interactive_support = InteractiveSupport.MOVE_CURSOR
@@ -519,19 +523,23 @@ if os.name == "posix":
 
     @contextlib.contextmanager
     def _set_cbreak():
-        prev_mode = termios.tcgetattr(sys.stdin)
-        tty.setcbreak(sys.stdin, termios.TCSANOW)
+        assert sys.__stdin__ is not None
+
+        prev_mode = termios.tcgetattr(sys.__stdin__)
+        tty.setcbreak(sys.__stdin__, termios.TCSANOW)
 
         try:
             yield
         finally:
-            termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, prev_mode)
+            termios.tcsetattr(sys.__stdin__, termios.TCSAFLUSH, prev_mode)
 
     def _getch() -> bytes:
-        return os.read(sys.stdin.fileno(), 1)
+        assert sys.__stdin__ is not None
+
+        return os.read(sys.__stdin__.fileno(), 1)
 
     def _kbhit(timeout: float = 0) -> bool:
-        return bool(select.select([sys.stdin], [], [], timeout)[0])
+        return bool(select.select([sys.__stdin__], [], [], timeout)[0])
 
 else:
 
@@ -1260,10 +1268,24 @@ class ColorizedString:
         first_line_indent: _t.Union[str, "ColorizedString"] = "",
         continuation_indent: _t.Union[str, "ColorizedString"] = "",
     ) -> "ColorizedString":
+        r"""Indent this string by the given sequence.
+
+        :param: first_line_indent
+            this will be appended to the first line in the string.
+        :param: continuation_indent
+            this will be appended to all of the rest lines in the string.
+
+        Example::
+
+            >>> ColorizedString("hello, world!\nit's a good day!").indent("# ", "  ")
+            <ColorizedString("# hello, world!\n  it's a good day!")>
+
+        """
+
         res = ColorizedString()
 
-        color: _t.Optional[Color] = None
-        cur_color: _t.Optional[Color] = None
+        color: Color = Color.NONE
+        cur_color: Color = Color.NONE
         needs_indent = True
 
         for part in self._parts:
@@ -1273,6 +1295,8 @@ class ColorizedString:
 
             for line in part.splitlines(keepends=True):
                 if needs_indent:
+                    if cur_color != Color.NONE:
+                        res += Color.NONE
                     res += first_line_indent
                     first_line_indent = continuation_indent
 
@@ -1282,7 +1306,7 @@ class ColorizedString:
 
                 res += line
 
-                needs_indent = part.endswith("\n")
+                needs_indent = line.endswith("\n")
 
         if color and color != cur_color:
             res += color
