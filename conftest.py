@@ -8,5 +8,5 @@ pytest_collect_file = Sybil(
         DocTestParser(),
         PythonCodeBlockParser(),
     ],
-    patterns=['*.rst', '*.py'],
+    patterns=["*.rst", "*.py"],
 ).pytest()

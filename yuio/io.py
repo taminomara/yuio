@@ -1090,7 +1090,7 @@ class Task:
             _manager().set_task_progress(self, progress, done_str + unit, None)
         else:
             total_str = "%.*f" % (ndigits, total)
-            progress = done / total
+            progress = done / total if total else 0
             _manager().set_task_progress(self, progress, done_str, total_str + unit)
 
     def progress_size(

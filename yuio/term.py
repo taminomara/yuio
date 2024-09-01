@@ -636,7 +636,7 @@ class ColorValue:
 
             >>> a = ColorValue.from_hex('#A01E9C')
             >>> a.to_rgb()
-            (0xA0, 0x1e, 0x9c)
+            (160, 30, 156)
         """
 
         if isinstance(self.data, int):
@@ -679,7 +679,7 @@ class ColorValue:
 
             >>> # Lighten by 30%.
             ... ColorValue.from_hex('#A01E9C').lighten(0.30)
-            <ColorValue #DB42D6>
+            <ColorValue #BC23B7>
 
         """
 
@@ -1218,7 +1218,7 @@ class ColorizedString:
         first_line_indent: _t.Union[str, "ColorizedString"] = "",
         continuation_indent: _t.Union[str, "ColorizedString"] = "",
     ) -> _t.List["ColorizedString"]:
-        """Wrap a long line of text into multiple lines.
+        r"""Wrap a long line of text into multiple lines.
 
         If `break_on_hyphens` is `True` (default),
         lines can be broken after hyphens in hyphenated words.
@@ -1239,8 +1239,8 @@ class ColorizedString:
 
         Example::
 
-            >>> ColorizedString("hello, world!\\nit's a good day!").wrap(13)  # doctest: +NORMALIZE_WHITESPACE
-            [<ColorizedString('hello, world!', explicit_newline='\\n')>,
+            >>> ColorizedString("hello, world!\nit's a good day!").wrap(13)  # doctest: +NORMALIZE_WHITESPACE
+            [<ColorizedString('hello, world!', explicit_newline='\n')>,
              <ColorizedString("it's a good")>,
              <ColorizedString('day!')>]
 
@@ -1546,6 +1546,13 @@ class _TextWrapper:
 
         for part in text:
             if isinstance(part, Color):
+                if (
+                    need_space_before_word
+                    and self.current_line_width + need_space_before_word <= self.width
+                ):
+                    # Make sure any space that was issued before the color is flushed.
+                    self._append_word(" ", 1)
+                    need_space_before_word = False
                 self._append_color(part)
                 continue
 
@@ -1567,7 +1574,7 @@ class _TextWrapper:
                     continue
 
                 if word.isspace():
-                    if at_line_beginning or self.preserve_spaces:
+                    if at_line_beginning or (len(word) > 1 and self.preserve_spaces):
                         word = word.translate(_SPACE_TRANS)
                         self._append_word_with_breaks(word, len(word))
                     else:

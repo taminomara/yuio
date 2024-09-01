@@ -542,7 +542,7 @@ class RenderContext:
     def write(
         self, text: yuio.term.AnyString, /, *, max_width: _t.Optional[int] = None
     ):
-        """Write string at the current position using the current color.
+        r"""Write string at the current position using the current color.
         Move cursor while printing.
 
         While the displayed text will not be clipped at frame's borders,
@@ -568,7 +568,7 @@ class RenderContext:
 
             >>> rc.write("Hello, world!")
             >>> rc.new_line()
-            >>> rc.write("Hello,\\nworld!")
+            >>> rc.write("Hello,\nworld!")
             >>> rc.new_line()
             >>> rc.write(
             ...     "Hello, 🌍!<this text will be clipped>",
@@ -587,7 +587,7 @@ class RenderContext:
             Hello, 🌍!<
             <BLANKLINE>
 
-        Notice that ``'\\n'`` on the second line was replaced with a space.
+        Notice that ``'\n'`` on the second line was replaced with a space.
         Notice also that the last line wasn't properly clipped.
 
         """
@@ -1307,9 +1307,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     def __prepared_inline_help(
         self,
     ) -> _t.List[_t.Tuple[_t.List[str], _ColorizedString, int]]:
-        return [
-            self.__prepare_action(action) for action in self.help_data.inline_help
-        ]
+        return [self.__prepare_action(action) for action in self.help_data.inline_help]
 
     @functools.cached_property
     def __prepared_groups(

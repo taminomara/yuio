@@ -5,7 +5,7 @@
 # You're free to copy this file to your project and edit it for your needs,
 # just keep this copyright line please :3
 
-"""
+'''
 This module expands on :mod:`yuio.config` to build CLI apps.
 
 Creating and running an app
@@ -14,22 +14,22 @@ Creating and running an app
 Yuio's CLI applications have functional interface. Decorate main function
 with the :func:`app` decorator, and use :meth:`App.run` method to start it::
 
-    >>> # Let's define an app with one flag and one positional argument.
-    ... @app
-    ... def main(
-    ...     #: help message for `arg`.
-    ...     arg: str = positional(),
-    ...     #: help message for `--flag`.
-    ...     flag: int = 0
-    ... ):
-    ...     \"\"\"this command does a thing.\"\"\"
-    ...     yuio.io.info("flag=%r, arg=%r", flag, arg)
+    # Let's define an app with one flag and one positional argument.
+    @app
+    def main(
+        #: help message for `arg`.
+        arg: str = positional(),
+        #: help message for `--flag`.
+        flag: int = 0
+    ):
+        """this command does a thing."""
+        yuio.io.info("flag=%r, arg=%r", flag, arg)
 
-    >>> # We can now use `main.run` to parse arguments and invoke `main`.
-    ... # Notice that `run` does not return anything. Instead, it terminates
-    ... # python process with an appropriate exit code.
-    ... main.run("--flag 10 foobar!".split()) # doctest: +SKIP
-    flag=10 arg='foobar!'
+    if __name__ == "__main__":
+        # We can now use `main.run` to parse arguments and invoke `main`.
+        # Notice that `run` does not return anything. Instead, it terminates
+        # python process with an appropriate exit code.
+        main.run("--flag 10 foobar!".split())
 
 Function's arguments will become program's flags and positionals, and function's
 docstring will become app's :attr:`~App.description`.
@@ -236,7 +236,7 @@ from calling subcommand for a second time::
 
    .. automethod:: __call__
 
-"""
+'''
 
 
 import argparse
