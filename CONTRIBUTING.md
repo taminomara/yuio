@@ -34,7 +34,7 @@ pyright
 
 To build docs, you'll need to install a latest [`VHS`] release.
 If you run linux, [`sphinx-vhs`] will download the binaries for you,
-otherwise you will have to install it yourself. Note that you're running WSL
+otherwise you will have to install it yourself. Note that if you're running WSL
 or other system that doesn't have a browser,
 you might need to install additional packages:
 

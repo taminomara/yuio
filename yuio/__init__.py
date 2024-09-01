@@ -167,17 +167,6 @@ def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
     return docs
 
 
-def _commonprefix(m: _t.List[str]) -> str:
-    if not m:
-        return ""
-    s1 = min(m)
-    s2 = max(m)
-    for i, c in enumerate(s1):
-        if c != s2[i]:
-            return s1[:i]
-    return s1
-
-
 def _with_slots() -> _t.Dict[_t.Literal["slots"], bool]:
     return {} if _sys.version_info < (3, 11) else {"slots": True}
 
