@@ -896,27 +896,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     Widgets are displayed with their :meth:`~Widget.run` method.
     They always go through the same event loop:
 
-    .. graphviz::
+    .. raw:: html
+       :file: ../docs/source/_embeds/widget.html
 
-       digraph G {
-           node [ width=2; fixedsize=true; ];
-
-           start [ label=""; shape=doublecircle; width=0.3; ];
-           layout [ label="Widget.layout()"; shape=rect; ];
-           draw [ label="Widget.draw()"; shape=rect; ];
-           wait [ label="<wait for keyboard event>"; shape=plain; fixedsize=false; ];
-           event [ label="Widget.event()"; shape=rect; ];
-           stop [ label="Result(...)?"; shape=diamond; ];
-           end [ label=""; shape=doublecircle; width=0.3; ];
-
-           start -> layout;
-           layout -> draw;
-           draw -> wait [ arrowhead=none ];
-           wait -> event;
-           event -> stop;
-           stop:e -> layout:e [ weight=0; taillabel="no" ];
-           stop -> end [ taillabel="yes" ];
-       }
 
     Widgets run indefinitely until they stop themselves and return a value.
     For example, :class:`Input` will return when user presses `Enter`.

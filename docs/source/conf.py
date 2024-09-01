@@ -21,7 +21,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
-    "sphinx.ext.graphviz",
     "sphinxcontrib.jquery",
     "sphinx_vhs",
 ]
@@ -34,8 +33,6 @@ intersphinx_mapping = {
 autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"
 
-graphviz_output_format = "svg"
-
 pygments_style = "yuio_pygments.Style"
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
@@ -43,5 +40,5 @@ vhs_min_version = "0.7.2"
 
 # -- Options for HTML output -------------------------------------------------
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 html_extra_path = ["_extra/robots.txt"]
