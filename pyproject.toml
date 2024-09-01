@@ -61,7 +61,7 @@ write_to = "yuio/_version.py"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = ["--strict-markers", "-p no:doctest"]
+addopts = ["--strict-markers", "-p no:doctest", "-vv"]
 testpaths = ["examples", "test", "yuio", "docs"]
 
 [tool.pyright]
@@ -84,3 +84,11 @@ reportUnknownLambdaType = "none"
 reportUnnecessaryIsInstance = "none"
 reportConstantRedefinition = "none"
 reportRedeclaration = "none"
+
+[tool.black]
+extend-exclude = '^/docs'
+
+[tool.isort]
+profile = "black"
+skip_glob = ["docs/*"]
+skip_gitignore = true

@@ -51,7 +51,7 @@ jobs:
           python -m pip install '.[test]'
       - name: Check codestyle
         run: |
-          black --check .
+          black --check --diff .
           isort --check --diff .
           pyright
       - name: Test package
