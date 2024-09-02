@@ -1095,23 +1095,18 @@ def line_width(s: str, /) -> int:
     In all fairness, detecting how much space such an emoji will take
     is not so straight forward, as that will depend on unicode capabilities
     of a specific terminal. Since a lot of terminals will not handle such emojis
-    correctly, I've decided to go with this simplistic implementation for now.
+    correctly, I've decided to go with this simplistic implementation.
 
     """
 
-    return _line_width(s)
+    # Note: it may be better to bundle `wcwidth` and use it instead of the code below.
+    # However, there is an issue that `wcwidth`'s results are not additive.
+    # In the above example, `wcswidth('👩🏽‍💻')` will see that it is two-spaces wide,
+    # while `sum(wcwidth(c) for c in '👩🏽‍💻')` will report that it is four-spaces wide.
+    # To render it properly, the widget will have to be aware of extended grapheme
+    # clusters, and generally this will be a lot of headache. Since most terminals
+    # won't handle these edge cases correctly, I don't want to bother.
 
-
-# try:
-#     import wcwidth  # type: ignore
-
-#     def _line_width(s: str, /) -> int:
-#         return wcwidth.wcswidth(s)
-
-# except ImportError:
-
-
-def _line_width(s: str, /) -> int:
     if s.isascii():
         # Fast path. Note that our renderer replaces unprintable characters
         # with spaces, so ascii strings always have width equal to their length.
