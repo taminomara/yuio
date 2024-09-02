@@ -126,7 +126,7 @@ import yuio.complete
 import yuio.md
 import yuio.term
 import yuio.theme
-from yuio import _t
+from yuio import _typing as _t
 from yuio.term import Color as _Color
 from yuio.term import ColorizedString as _ColorizedString
 from yuio.term import Term as _Term

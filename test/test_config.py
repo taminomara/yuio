@@ -6,7 +6,7 @@ import pytest
 
 import yuio.config
 import yuio.parse
-from yuio import _t
+from yuio import _typing as _t
 
 
 class TestBasics:

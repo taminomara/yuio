@@ -7,7 +7,7 @@ import pytest
 
 import yuio.term
 import yuio.theme
-from yuio import _t
+from yuio import _typing as _t
 
 
 class TestColor:

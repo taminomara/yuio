@@ -251,7 +251,7 @@ import yuio
 import yuio.complete
 import yuio.term
 import yuio.widget
-from yuio import _t
+from yuio import _typing as _t
 
 T = _t.TypeVar("T")
 U = _t.TypeVar("U")

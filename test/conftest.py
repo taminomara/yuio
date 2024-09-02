@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from yuio import _t
+from yuio import _typing as _t
 
 
 @pytest.fixture

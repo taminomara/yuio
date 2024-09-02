@@ -34,7 +34,7 @@ import re as _re
 import sys as _sys
 import textwrap as _textwrap
 
-from yuio import _t
+from yuio import _typing as _t
 
 try:
     from yuio._version import __version__, __version_tuple__

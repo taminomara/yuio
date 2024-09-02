@@ -95,7 +95,7 @@ import unicodedata
 from dataclasses import dataclass
 
 import yuio
-from yuio import _t
+from yuio import _typing as _t
 
 T = _t.TypeVar("T")
 
@@ -1097,34 +1097,32 @@ def line_width(s: str, /) -> int:
     of a specific terminal. Since a lot of terminals will not handle such emojis
     correctly, I've decided to go with this simplistic implementation for now.
 
-    If able, this function uses the :mod:`wcwidth` module, as it provides more
-    accurate results.
-
     """
 
     return _line_width(s)
 
 
-try:
-    import wcwidth  # type: ignore
+# try:
+#     import wcwidth  # type: ignore
 
-    def _line_width(s: str, /) -> int:
-        return wcwidth.wcswidth(s)
+#     def _line_width(s: str, /) -> int:
+#         return wcwidth.wcswidth(s)
 
-except ImportError:
+# except ImportError:
 
-    def _line_width(s: str, /) -> int:
-        if s.isascii():
-            # Fast path. Note that our renderer replaces unprintable characters
-            # with spaces, so ascii strings always have width equal to their length.
-            return len(s)
-        else:
-            # Long path. It kinda works, but not always, but most of the times...
-            return sum(
-                (unicodedata.east_asian_width(c) in "WF") + 1
-                for c in s
-                if unicodedata.category(c)[0] not in "MC"
-            )
+
+def _line_width(s: str, /) -> int:
+    if s.isascii():
+        # Fast path. Note that our renderer replaces unprintable characters
+        # with spaces, so ascii strings always have width equal to their length.
+        return len(s)
+    else:
+        # Long path. It kinda works, but not always, but most of the times...
+        return sum(
+            (unicodedata.east_asian_width(c) in "WF") + 1
+            for c in s
+            if unicodedata.category(c)[0] not in "MC"
+        )
 
 
 #: Raw colorized string. This is the underlying type for :class:`ColorizedString`.

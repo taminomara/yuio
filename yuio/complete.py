@@ -84,7 +84,7 @@ import sys
 from dataclasses import dataclass
 
 import yuio
-from yuio import _t
+from yuio import _typing as _t
 
 
 @dataclass(frozen=True, **yuio._with_slots())

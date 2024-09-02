@@ -23,7 +23,7 @@ import subprocess
 import threading
 
 import yuio.io
-from yuio import _t
+from yuio import _typing as _t
 
 _LOGGER = logging.getLogger("yuio.exec")
 

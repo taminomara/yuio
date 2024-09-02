@@ -212,7 +212,7 @@ import yuio.parse
 import yuio.term
 import yuio.theme
 import yuio.widget
-from yuio import _t
+from yuio import _typing as _t
 from yuio.term import Color, Term
 from yuio.theme import Theme
 from yuio.widget import RenderContext

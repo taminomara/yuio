@@ -261,7 +261,7 @@ import yuio.md
 import yuio.parse
 import yuio.term
 import yuio.theme
-from yuio import _t
+from yuio import _typing as _t
 from yuio.config import field, inline, positional
 
 __all__ = [

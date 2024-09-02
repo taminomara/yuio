@@ -1,7 +1,7 @@
 import pytest
 
 import yuio.parse
-from yuio import _t
+from yuio import _typing as _t
 from yuio.app import *
 from yuio.config import *
 

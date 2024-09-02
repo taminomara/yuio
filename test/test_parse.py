@@ -8,7 +8,7 @@ import pytest
 import typing_extensions
 
 import yuio.parse
-from yuio import _t
+from yuio import _typing as _t
 
 
 class TestSimple:

@@ -169,7 +169,7 @@ from dataclasses import dataclass
 import yuio
 import yuio.complete
 import yuio.parse
-from yuio import _t
+from yuio import _typing as _t
 
 T = _t.TypeVar("T")
 
