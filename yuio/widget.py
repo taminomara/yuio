@@ -137,6 +137,10 @@ from yuio.theme import Theme as _Theme
 _SPACE_BETWEEN_COLUMNS = 2
 _MIN_COLUMN_WIDTH = 10
 
+_UNPRINTABLE_TRANS = str.maketrans(
+    "".join(chr(i) for i in range(32)) + "\x7f", " " * 33
+)
+
 
 T = _t.TypeVar("T")
 U = _t.TypeVar("U")
@@ -314,9 +318,8 @@ class RenderContext:
         # Helpers
         self._none_color: str = _Color.NONE.as_code(term)
 
-        # Used for tests mostly
+        # Used for tests and debug
         self._override_wh: _t.Optional[_t.Tuple[int, int]] = None
-
         self._renders: int = 0
         self._bytes_rendered: int = 0
         self._total_bytes_rendered: int = 0
@@ -580,7 +583,7 @@ class RenderContext:
             ... )
             >>> rc.new_line()
 
-            >>> rc.render()  # doctest: +NORMALIZE_WHITESPACE
+            >>> rc.render()
             Hello, world!
             Hello, world!
             Hello, 🌍!
@@ -611,7 +614,7 @@ class RenderContext:
 
         if isinstance(text, str) and text.isascii():
             # Fast track
-            ll = text[s_begin:s_end]
+            ll = text[s_begin:s_end].translate(_UNPRINTABLE_TRANS)
             ls = len(ll)
             self._lines[y][x : x + ls] = ll
             self._colors[y][x : x + ls] = [self._frame_cursor_color] * ls
@@ -635,8 +638,7 @@ class RenderContext:
             for c in s:  # TODO: iterate by graphemes?
                 if i >= s_end:
                     break
-                if c.isspace():
-                    c = " "
+                c = c.translate(_UNPRINTABLE_TRANS)
                 if _line_width(c) > 1:
                     if s_begin <= i and i + 1 < s_end:
                         ll.append(c)
@@ -775,7 +777,7 @@ class RenderContext:
         """Render current canvas onto the terminal."""
 
         if not self.term.can_move_cursor:
-            # For tests, mostly. Widgets can't work with dumb terminals
+            # For tests. Widgets can't work with dumb terminals
             self._render_dumb()
             return
 
@@ -871,7 +873,13 @@ class RenderContext:
                 self._out.append(ch)
             self._out.append("\n")
 
-        self._term.stream.write("".join(self._out))
+        self._term.stream.writelines(
+            [
+                # Trim trailing spaces for doctests.
+                re.sub(r" +$", "\n", line, flags=re.MULTILINE)
+                for line in "".join(self._out).splitlines()
+            ]
+        )
         self._term.stream.flush()
         self._out.clear()
 

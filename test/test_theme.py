@@ -1,3 +1,5 @@
+import dataclasses
+
 import pytest
 
 import yuio.term
@@ -291,3 +293,102 @@ class TestSetAttrs:
 
         with pytest.raises(RuntimeError):
             a._set_msg_decoration_if_not_overridden("x", "b")
+
+
+terminal_colors_dark = yuio.term.TerminalColors(
+    background=yuio.term.ColorValue.from_hex("#00240A"),
+    foreground=yuio.term.ColorValue.from_hex("#FFCFCF"),
+    black=yuio.term.ColorValue.from_hex("#000000"),
+    red=yuio.term.ColorValue.from_hex("#FF0000"),
+    green=yuio.term.ColorValue.from_hex("#00FF00"),
+    yellow=yuio.term.ColorValue.from_hex("#FFFF00"),
+    blue=yuio.term.ColorValue.from_hex("#0000FF"),
+    magenta=yuio.term.ColorValue.from_hex("#FF00FF"),
+    cyan=yuio.term.ColorValue.from_hex("#00FFFF"),
+    white=yuio.term.ColorValue.from_hex("#FFFFFF"),
+    lightness=yuio.term.Lightness.DARK,
+)
+
+terminal_colors_light = dataclasses.replace(
+    terminal_colors_dark,
+    background=yuio.term.ColorValue.from_hex("#FFCFCF"),
+    foreground=yuio.term.ColorValue.from_hex("#00240A"),
+    lightness=yuio.term.Lightness.LIGHT,
+)
+
+terminal_colors_unknown = dataclasses.replace(
+    terminal_colors_dark,
+    lightness=yuio.term.Lightness.UNKNOWN,
+)
+
+
+class TestDefaultTheme:
+    def test_no_color_overrides(self):
+        term = yuio.term.Term(None)  # type: ignore
+        theme = yuio.theme.DefaultTheme(term)
+        assert (
+            theme.get_color("low_priority_color_a") == yuio.term.Color.FORE_NORMAL_DIM
+        )
+        assert (
+            theme.get_color("low_priority_color_b") == yuio.term.Color.FORE_NORMAL_DIM
+        )
+
+    def test_no_color_overrides_unknown_lightness(self):
+        term = yuio.term.Term(
+            None,  # type: ignore
+            color_support=yuio.term.ColorSupport.ANSI_TRUE,
+            terminal_colors=terminal_colors_unknown,
+        )
+        theme = yuio.theme.DefaultTheme(term)
+        assert (
+            theme.get_color("low_priority_color_a") == yuio.term.Color.FORE_NORMAL_DIM
+        )
+        assert (
+            theme.get_color("low_priority_color_b") == yuio.term.Color.FORE_NORMAL_DIM
+        )
+        assert theme.get_color(
+            "task/progressbar/done/start"
+        ) == yuio.term.Color.fore_from_hex("#0000FF")
+        assert theme.get_color(
+            "task/progressbar/done/end"
+        ) == yuio.term.Color.fore_from_hex("#FF00FF")
+
+    def test_dark_theme(self):
+        term = yuio.term.Term(
+            None,  # type: ignore
+            color_support=yuio.term.ColorSupport.ANSI_TRUE,
+            terminal_colors=terminal_colors_dark,
+        )
+        theme = yuio.theme.DefaultTheme(term)
+        assert theme.get_color("low_priority_color_a") == yuio.term.Color.fore_from_hex(
+            "#655151"
+        )
+        assert theme.get_color("low_priority_color_b") == yuio.term.Color.fore_from_hex(
+            "#5A4949"
+        )
+        assert theme.get_color(
+            "task/progressbar/done/start"
+        ) == yuio.term.Color.fore_from_hex("#0000FF")
+        assert theme.get_color(
+            "task/progressbar/done/end"
+        ) == yuio.term.Color.fore_from_hex("#FF00FF")
+
+    def test_light_theme(self):
+        term = yuio.term.Term(
+            None,  # type: ignore
+            color_support=yuio.term.ColorSupport.ANSI_TRUE,
+            terminal_colors=terminal_colors_light,
+        )
+        theme = yuio.theme.DefaultTheme(term)
+        assert theme.get_color("low_priority_color_a") == yuio.term.Color.fore_from_hex(
+            "#00B231"
+        )
+        assert theme.get_color("low_priority_color_b") == yuio.term.Color.fore_from_hex(
+            "#00BF35"
+        )
+        assert theme.get_color(
+            "task/progressbar/done/start"
+        ) == yuio.term.Color.fore_from_hex("#0000FF")
+        assert theme.get_color(
+            "task/progressbar/done/end"
+        ) == yuio.term.Color.fore_from_hex("#FF00FF")

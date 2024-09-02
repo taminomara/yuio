@@ -1562,6 +1562,53 @@ class TestTerm:
                     "terminal_colors": term_colors,  # Got the response!
                 },
             ),
+            (
+                {
+                    "env": {"TERM": "xterm", "COLORTERM": "yes"},
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "should_query_osc": False,
+                    "args": ["--no-color"],
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "env": {"TERM": "xterm", "COLORTERM": "yes", "FORCE_NO_COLOR": "1"},
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "should_query_osc": False,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "args": ["--force-color"],
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {"env": {"FORCE_COLOR": "1"}},
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
         ],
     )
     def test_capabilities_estimation(self, kwargs, expected_term):
