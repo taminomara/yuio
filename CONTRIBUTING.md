@@ -16,6 +16,12 @@
    pip install -e .[test,doc]
    ```
 
+4. Install pre-commit hooks:
+
+   ```
+   pre-commit install
+   ```
+
 ## Run tests
 
 To run tests, simply invoke `pytest` in the project root:
@@ -29,6 +35,15 @@ To check typing, invoke `pyright`:
 ```shell
 pyright
 ```
+
+To fix the codestyle, run:
+
+```shell
+black . && isort .
+```
+
+Code formatting tools run automatically before every commit.
+
 
 ## Build docs
 
