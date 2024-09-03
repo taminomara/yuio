@@ -90,7 +90,7 @@ class RcCompare:
         return cls(*_render_screen(commands), commands)
 
 
-_SGR_RE = re.compile(r"\x1b\[((?:-?[0-9]+)?(?:;(?:-?[0-9]+)?)*(?:[mJHABCDG]))")
+_CSI_RE = re.compile(r"\x1b\[((?:-?[0-9]+)?(?:;(?:-?[0-9]+)?)*(?:[mJHABCDG]))")
 _COLOR_NAMES = "Brgybmcw"
 
 
@@ -152,7 +152,7 @@ def _render_screen(commands: str) -> _t.Tuple[_t.List[str], _t.List[str]]:
     colors = [[" "] * _WIDTH for _ in range(_HEIGHT)]
     color = " "
 
-    for i, part in enumerate(_SGR_RE.split(commands)):
+    for i, part in enumerate(_CSI_RE.split(commands)):
         if i % 2 == 0:
             # Render text.
             for c in part:
@@ -161,18 +161,18 @@ def _render_screen(commands: str) -> _t.Tuple[_t.List[str], _t.List[str]]:
                     x = 0
                     y += 1
                 else:
-                    ll = yuio.term.line_width(c)
-                    if ll == 0:  # Don't loose zero-length characters.
-                        text[y][x] += c
-                        colors[y][x] = color
-                    for _ in range(ll):
+                    assert (
+                        0 <= x < _WIDTH and 0 <= y < _HEIGHT
+                    ), "printing outside of the screen"
+                    cw = yuio.term.line_width(c)
+                    assert cw > 0, "this checker can't handle zero-width chars"
+                    for _ in range(cw):
                         text[y][x] = c
                         colors[y][x] = color
                         c = ""
                         x += 1
-                        assert x < _WIDTH, ""
         else:
-            # Render an SGR.
+            # Render an CSI.
             fn = part[-1]
             args = part[:-1].split(";")
 
@@ -222,8 +222,6 @@ def _render_screen(commands: str) -> _t.Tuple[_t.List[str], _t.List[str]]:
                 # Absolute horizontal cursor position.
                 assert len(args) <= 1, f"invalid OSC: {part!r}"
                 x = int(args[0] or "1") - 1 if args else 1
-
-        assert 0 <= x < _WIDTH and 0 <= y < _HEIGHT, "cursor outside of the screen"
 
     return (
         ["".join(line) for line in text],

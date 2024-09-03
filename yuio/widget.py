@@ -595,71 +595,97 @@ class RenderContext:
 
         """
 
-        y = self._frame_y + self._frame_cursor_y
-        if not 0 <= y < self._height:
-            return
-
-        s_begin = 0
-
-        x = self._frame_x + self._frame_cursor_x
-        if x < 0:
-            s_begin -= x
-            x = 0
-        elif x >= self._width:
-            return
-
-        s_end = s_begin + self._width - x
-        if max_width is not None:
-            s_end = min(max_width, s_end)
-
         if isinstance(text, str) and text.isascii():
             # Fast track
-            ll = text[s_begin:s_end].translate(_UNPRINTABLE_TRANS)
-            ls = len(ll)
-            self._lines[y][x : x + ls] = ll
-            self._colors[y][x : x + ls] = [self._frame_cursor_color] * ls
-            self._frame_cursor_x = x + ls
+            self._write_ascii(text, max_width=max_width)
             return
 
         if not isinstance(text, _ColorizedString):
             text = _ColorizedString(text)
 
-        ll = []
-        cc = []
+        x = self._frame_x + self._frame_cursor_x
+        y = self._frame_y + self._frame_cursor_y
+
+        ll = self._lines[y]
+        cc = self._colors[y]
+
         color = self._frame_cursor_color
-        i = 0
 
         for s in text:
-            if i >= s_end:
-                break
             if isinstance(s, _Color):
+                # Just changing a color.
                 color = s.as_code(self._term)
                 continue
-            for c in s:  # TODO: iterate by graphemes?
-                if i >= s_end:
-                    break
-                c = c.translate(_UNPRINTABLE_TRANS)
-                if _line_width(c) > 1:
-                    if s_begin <= i and i + 1 < s_end:
-                        ll.append(c)
-                        ll.append("")
-                        cc.append(color)
-                        cc.append(color)
-                    elif s_begin <= i + 1 or i < s_end:
-                        ll.append("")
-                        cc.append(color)
-                    i += 2
-                else:
-                    if s_begin <= i < s_end:
-                        ll.append(c)
-                        cc.append(color)
-                    i += 1
 
+            for c in s:
+                cw = _line_width(c)
+                if x + cw <= 0:
+                    # We're beyond the left terminal border.
+                    x += cw
+                    continue
+                elif x < 0:
+                    # This character was split in half by the terminal border.
+                    ll[: x + cw] = [" "] * (x + cw)
+                    cc[: x + cw] = [self._none_color] * (x + cw)
+                    x += cw
+                    continue
+                elif x >= self._width:
+                    # We're beyond the right terminal border.
+                    x += cw
+                    break
+                elif x + cw >= self._width:
+                    # This character was split in half by the terminal border.
+                    ll[x:] = " " * (self._width - x)
+                    cc[x:] = [color] * (self._width - x)
+                    x += cw
+                    break
+
+                c = c.translate(_UNPRINTABLE_TRANS)
+
+                if cw == 0:
+                    # This is a zero-width character.
+                    # We'll append it to the previous cell.
+                    if x > 0:
+                        ll[x - 1] += c
+                    continue
+
+                ll[x] = c
+                cc[x] = color
+
+                x += 1
+                cw -= 1
+                if cw:
+                    ll[x : x + cw] = [""] * cw
+                    cc[x : x + cw] = [color] * cw
+                    x += cw
+
+        self._frame_cursor_color = color
+        self._frame_cursor_x = x - self._frame_x
+
+    def _write_ascii(self, text: str, /, *, max_width: _t.Optional[int] = None):
+        x = self._frame_x + self._frame_cursor_x
+        y = self._frame_y + self._frame_cursor_y
+
+        self._frame_cursor_x += len(text)
+
+        if not 0 <= y < self._height:
+            return
+
+        slice_begin = 0
+        if x < 0:
+            slice_begin = -x
+            x = 0
+        elif x >= self._width:
+            return
+
+        slice_end = slice_begin + (self._width - x)
+        if max_width is not None:
+            slice_end = min(max_width, slice_end)
+
+        ll = text[slice_begin:slice_end].translate(_UNPRINTABLE_TRANS)
         ls = len(ll)
         self._lines[y][x : x + ls] = ll
-        self._colors[y][x : x + ls] = cc
-        self._frame_cursor_x = x + ls
-        self._frame_cursor_color = color
+        self._colors[y][x : x + ls] = [self._frame_cursor_color] * ls
 
     def write_text(
         self,
@@ -820,12 +846,15 @@ class RenderContext:
             self._bytes_rendered = len(rendered.encode())
             self._total_bytes_rendered += self._bytes_rendered
 
-            debug_msg = f"dbg:n={self._renders},r={self._bytes_rendered},t={self._total_bytes_rendered}"
+            debug_msg = f"n={self._renders:>04},r={self._bytes_rendered:>04},t={self._total_bytes_rendered:>04}"
             term_x, term_y = self._term_x, self._term_y
-            self._move_term_cursor(self._width - len(debug_msg), self._max_term_y)
-            self._out.append(self._none_color)
+            self._move_term_cursor(self._width - len(debug_msg), 0)
+            self._out.append(
+                (yuio.term.Color.FORE_BLACK | yuio.term.Color.BACK_CYAN).as_code(
+                    self.term
+                )
+            )
             self._out.append(debug_msg)
-            self._term_x += len(debug_msg)
             self._out.append(self._term_color)
             self._move_term_cursor(term_x, term_y)
 
@@ -848,7 +877,7 @@ class RenderContext:
 
     def _move_term_cursor(self, x: int, y: int):
         dy = y - self._term_y
-        if 0 < dy <= 4 or y > self._max_term_y:
+        if y > self._max_term_y:
             self._out.append("\n" * dy)
             self._term_x = 0
         elif dy > 0:
