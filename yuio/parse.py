@@ -1177,8 +1177,8 @@ if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:
         int,
         float,
         None,
-        _t.List["yuio.parse.JsonValue"],
-        _t.Dict[str, "yuio.parse.JsonValue"],
+        _t.List["yuio.parse.JsonValue"],  # type: ignore
+        _t.Dict[str, "yuio.parse.JsonValue"],  # type: ignore
     ]
 else:
 
