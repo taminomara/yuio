@@ -1,8 +1,10 @@
 import datetime
 import pathlib
 import sys
+import os
 
 sys.path.append(str(pathlib.Path(__file__).parent.joinpath("_ext")))
+os.environ["__YUIO_SPHINX_BUILD"] = '1'
 
 import yuio
 

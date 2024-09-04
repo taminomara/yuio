@@ -115,6 +115,10 @@ Value parsers
 
 .. autoclass:: Fraction
 
+.. autoclass:: Json
+
+.. autoclass:: JsonValue
+
 .. autoclass:: List
 
 .. autoclass:: Set
@@ -243,6 +247,8 @@ import datetime
 import decimal
 import enum
 import fractions
+import json
+import os
 import pathlib
 import re
 import threading
@@ -1163,6 +1169,69 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.__wrapped_parser__!r})"
+
+
+if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:
+    JsonValue: _t.TypeAlias = _t.Union[
+        str,
+        int,
+        float,
+        None,
+        _t.List["yuio.parse.JsonValue"],
+        _t.Dict[str, "yuio.parse.JsonValue"],
+    ]
+else:
+
+    def _JsonValue(arg: T) -> T:
+        """Json value marker, used to detect Json type hints at runtime."""
+        return arg
+
+    JsonValue: _t.TypeAlias = _JsonValue  # type: ignore
+
+
+class Json(ValueParser[T], _t.Generic[T]):
+    """A parser that tries to parse value as JSON.
+
+    This parser will load JSON strings into python objects.
+    If ``inner`` parser is given, :class:`Json` will validate parsing results
+    by calling :meth:`~Parser.parse_config` on the inner parser.
+
+    """
+
+    if _t.TYPE_CHECKING:
+
+        @_t.overload
+        def __new__(cls, inner: Parser[T], /) -> "Json[T]":
+            ...
+
+        @_t.overload
+        def __new__(cls, /) -> "Json[JsonValue]":
+            ...
+
+        def __new__(cls, inner: _t.Optional[Parser[T]] = None, /) -> "Json[_t.Any]":
+            ...
+
+    def __init__(self, inner: _t.Optional[Parser[T]] = None, /):
+        self.__inner = inner
+
+    def parse(self, value: str) -> T:
+        try:
+            config_value = json.loads(value)
+        except json.JSONDecodeError as e:
+            raise ParsingError(f"unable to decode JSON: {e}") from None
+        return self.parse_config(config_value)
+
+    def parse_config(self, value: object) -> T:
+        if self.__inner is not None:
+            return self.__inner.parse_config(value)
+        else:
+            return _t.cast(T, value)
+
+    def describe_value(self, value: object, /) -> _t.Optional[str]:
+        try:
+            return json.dumps(value, ensure_ascii=False)
+        except TypeError:
+            return str(value) or "<empty>"
 
 
 class CollectionParser(Parser[C], _t.Generic[C, T]):
@@ -2576,6 +2645,9 @@ register_type_hint_conversion(
     lambda ty, origin, args: Path()
     if _t.is_union(origin) and len(args) == 2 and str in args and pathlib.Path in args
     else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args: Json() if ty is JsonValue else None
 )
 register_type_hint_conversion(
     lambda ty, origin, args: DateTime() if ty is datetime.datetime else None
