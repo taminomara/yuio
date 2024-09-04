@@ -189,6 +189,30 @@ class TestRenderContext:
             ]
         )
 
+    def test_write_max_width_wide(
+        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+    ):
+        rc.write("boo👻", max_width=3)
+        rc.new_line()
+        rc.write("bo👻o", max_width=3)
+        rc.new_line()
+        rc.write("👻boo", max_width=3)
+        rc.set_pos(-2, 3)
+        rc.write("👻boo", max_width=4)
+        rc.new_line()
+        rc.write("👻boo", max_width=10)
+        rc.render()
+
+        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+            [
+                "boo                 ",
+                "bo                  ",
+                "👻b                 ",
+                "bo                  ",
+                "👻boo               ",
+            ]
+        )
+
     def test_set_color_path(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foo")
         rc.set_color_path("red")

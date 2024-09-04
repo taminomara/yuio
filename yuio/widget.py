@@ -606,10 +606,21 @@ class RenderContext:
         x = self._frame_x + self._frame_cursor_x
         y = self._frame_y + self._frame_cursor_y
 
+        if not 0 <= y < self._height:
+            for s in text:
+                if isinstance(s, _Color):
+                    self._frame_cursor_color = s.as_code(self.term)
+            self._frame_cursor_x += text.width
+            return
+
         ll = self._lines[y]
         cc = self._colors[y]
 
         color = self._frame_cursor_color
+
+        max_x = self.width
+        if max_width is not None:
+            max_x = min(max_x, x + max_width + 1)
 
         for s in text:
             if isinstance(s, _Color):
@@ -629,14 +640,14 @@ class RenderContext:
                     cc[: x + cw] = [self._none_color] * (x + cw)
                     x += cw
                     continue
-                elif x >= self._width:
+                elif x >= max_x:
                     # We're beyond the right terminal border.
                     x += cw
                     break
-                elif x + cw >= self._width:
+                elif x + cw >= max_x:
                     # This character was split in half by the terminal border.
-                    ll[x:] = " " * (self._width - x)
-                    cc[x:] = [color] * (self._width - x)
+                    ll[x:max_x] = " " * (max_x - x)
+                    cc[x:max_x] = [color] * (max_x - x)
                     x += cw
                     break
 

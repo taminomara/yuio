@@ -1242,7 +1242,7 @@ class ColorizedString:
 
             >>> ColorizedString("hello, world!\nit's a good day!").wrap(13)  # doctest: +NORMALIZE_WHITESPACE
             [<ColorizedString('hello, world!', explicit_newline='\n')>,
-             <ColorizedString("it's a good")>,
+             <ColorizedString("it's a good ")>,
              <ColorizedString('day!')>]
 
         """
@@ -1591,7 +1591,7 @@ class _TextWrapper:
                     continue
 
                 if word.isspace():
-                    if at_line_beginning or (len(word) > 1 and self.preserve_spaces):
+                    if at_line_beginning or self.preserve_spaces:
                         word = word.translate(_SPACE_TRANS)
                         self._append_word_with_breaks(word, len(word))
                     else:

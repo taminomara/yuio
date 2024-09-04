@@ -392,7 +392,7 @@ class TestColorizedString:
                 15,
                 {},
                 [
-                    [yuio.term.Color.NONE, "hello", " ", "world!"],
+                    [yuio.term.Color.NONE, "hello", " ", "world!", " "],
                     [yuio.term.Color.NONE, "👻👻"],
                 ],
             ),
@@ -401,7 +401,7 @@ class TestColorizedString:
                 15,
                 {},
                 [
-                    [yuio.term.Color.NONE, "hello", " ", "world!"],
+                    [yuio.term.Color.NONE, "hello", " ", "world!", " "],
                     [yuio.term.Color.NONE, "this", " ", "will", " ", "wrap"],
                 ],
             ),
@@ -503,7 +503,7 @@ class TestColorizedString:
             (
                 ["hello world!"],
                 15,
-                {"preserve_spaces": True},
+                {},
                 [
                     [yuio.term.Color.NONE, "hello", " ", "world!"],
                 ],
@@ -511,7 +511,7 @@ class TestColorizedString:
             (
                 ["hello   world!"],
                 15,
-                {"preserve_spaces": True},
+                {},
                 [
                     [yuio.term.Color.NONE, "hello", "   ", "world!"],
                 ],
@@ -519,7 +519,7 @@ class TestColorizedString:
             (
                 ["hello     world!"],
                 15,
-                {"preserve_spaces": True},
+                {},
                 [
                     [yuio.term.Color.NONE, "hello", "     "],
                     [yuio.term.Color.NONE, "world!"],
@@ -528,7 +528,7 @@ class TestColorizedString:
             (
                 ["hello                    world"],
                 15,
-                {"preserve_spaces": True},
+                {},
                 [
                     [yuio.term.Color.NONE, "hello", "          "],
                     [yuio.term.Color.NONE, "          ", "world"],
@@ -537,7 +537,7 @@ class TestColorizedString:
             (
                 ["hello                    longlongworld"],
                 15,
-                {"preserve_spaces": True},
+                {},
                 [
                     [yuio.term.Color.NONE, "hello", "          "],
                     [yuio.term.Color.NONE, "          "],
@@ -547,7 +547,7 @@ class TestColorizedString:
             (
                 ["hello ", yuio.term.Color.STYLE_BOLD, "world", yuio.term.Color.NONE],
                 15,
-                {"preserve_spaces": True},
+                {},
                 [
                     [
                         yuio.term.Color.NONE,
@@ -562,7 +562,7 @@ class TestColorizedString:
             (
                 [],
                 15,
-                {"preserve_spaces": True},
+                {},
                 [
                     [yuio.term.Color.NONE],
                 ],
@@ -570,9 +570,18 @@ class TestColorizedString:
             (
                 [""],
                 15,
-                {"preserve_spaces": True},
+                {},
                 [
                     [yuio.term.Color.NONE],
+                ],
+            ),
+            (
+                ["12345678901234 12345"],
+                15,
+                {},
+                [
+                    [yuio.term.Color.NONE, "12345678901234", " "],
+                    [yuio.term.Color.NONE, "12345"],
                 ],
             ),
             (
@@ -580,7 +589,7 @@ class TestColorizedString:
                 15,
                 {},
                 [
-                    [yuio.term.Color.NONE, "Hello", " ", "line"],
+                    [yuio.term.Color.NONE, "Hello", " ", "line", " "],
                     [yuio.term.Color.NONE, "break"],
                 ],
             ),
@@ -827,7 +836,7 @@ class TestColorizedString:
                 13,
                 {"first_line_indent": ">>", "continuation_indent": ".."},
                 [
-                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single"],
+                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single", " "],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "string"],
                 ],
             ),
@@ -836,7 +845,7 @@ class TestColorizedString:
                 8,
                 {"first_line_indent": ">>>", "continuation_indent": "|"},
                 [
-                    [yuio.term.Color.NONE, ">>>", yuio.term.Color.NONE, "foo"],
+                    [yuio.term.Color.NONE, ">>>", yuio.term.Color.NONE, "foo", " "],
                     [
                         yuio.term.Color.NONE,
                         "|",
@@ -852,7 +861,7 @@ class TestColorizedString:
                 8,
                 {"first_line_indent": ">>", "continuation_indent": ".."},
                 [
-                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "word"],
+                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "word", " "],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "werywe"],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "rylong"],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "unbrea"],
@@ -877,7 +886,7 @@ class TestColorizedString:
                 13,
                 {"first_line_indent": ">>", "continuation_indent": ".."},
                 [
-                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single"],
+                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single", " "],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "string"],
                     [
                         yuio.term.Color.NONE,
@@ -947,6 +956,7 @@ class TestColorizedString:
                         yuio.term.Color.NONE,
                         yuio.term.Color.FORE_BLUE,
                         "single",
+                        " ",
                     ],
                     [
                         yuio.term.Color.NONE,
