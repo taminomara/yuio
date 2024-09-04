@@ -116,6 +116,7 @@ import dataclasses
 import enum
 import functools
 import math
+import os
 import re
 import shutil
 import string
@@ -314,6 +315,9 @@ class RenderContext:
         self._max_term_y: int = 0
         self._out: _t.List[str] = []
         self._bell: bool = False
+        self._in_alternative_buffer: bool = False
+        self._normal_buffer_term_x: int = 0
+        self._normal_buffer_term_y: int = 0
 
         # Helpers
         self._none_color: str = _Color.NONE.as_code(term)
@@ -758,7 +762,7 @@ class RenderContext:
 
         self._bell = True
 
-    def prepare(self, *, full_redraw: bool = False):
+    def prepare(self, *, full_redraw: bool = False, alternative_buffer: bool = False):
         """Reset output canvas and prepare context for a new round of widget formatting."""
 
         if self._override_wh:
@@ -769,6 +773,20 @@ class RenderContext:
             height = size.lines
 
         full_redraw = full_redraw or self._width != width or self._height != height
+        if self._in_alternative_buffer != alternative_buffer:
+            full_redraw = True
+            self._in_alternative_buffer = alternative_buffer
+            if alternative_buffer:
+                self._out.append("\x1b[m\x1b[?1049h\x1b[2J\x1b[H")
+                self._normal_buffer_term_x = self._term_x
+                self._normal_buffer_term_y = self._term_y
+                self._term_x, self._term_y = 0, 0
+                self._term_color = self._none_color
+            else:
+                self._out.append("\x1b[m\x1b[?1049l")
+                self._term_x = self._normal_buffer_term_x
+                self._term_y = self._normal_buffer_term_y
+                self._term_color = self._none_color
 
         # Drawing frame and virtual cursor
         self._frame_x = 0
@@ -797,9 +815,9 @@ class RenderContext:
     def clear_screen(self):
         """Clear screen and prepare for a full redraw."""
 
-        self._out.append("\x1b[2J\x1b[1;1H")
+        self._out.append("\x1b[2J\x1b[1H")
         self._term_x, self._term_y = 0, 0
-        self.prepare(full_redraw=True)
+        self.prepare(full_redraw=True, alternative_buffer=self._in_alternative_buffer)
 
     def _make_empty_canvas(
         self,
@@ -967,6 +985,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     __callbacks: _t.ClassVar[_t.List[object]]
 
     __in_help_menu: bool = False
+    __bell: bool = False
 
     #: Current event that is being processed.
     #: Guaranteed to be not :data:`None` inside event handlers.
@@ -1047,7 +1066,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
             try:
                 while True:
-                    rc.prepare()
+                    rc.prepare(alternative_buffer=self.__in_help_menu)
 
                     height = rc.height
                     if self.__in_help_menu:
@@ -1068,6 +1087,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                             with rc.frame(0, max_h, height=rc.height - max_h):
                                 self.__help_menu_draw_inline(rc)
 
+                    if self.__bell:
+                        rc.bell()
+                        self.__bell = False
                     rc.render()
 
                     try:
@@ -1087,6 +1109,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                         return result.value
             finally:
                 rc.finalize()
+
+    def _bell(self):
+        self.__bell = True
 
     def with_title(self, title: yuio.term.AnyString, /) -> "Widget[T_co]":
         """Return this widget with a title added before it."""
@@ -1154,6 +1179,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     __height: int = 0
     __menu_content_height: int = 0
     __help_menu_line: int = 0
+    __help_menu_search: bool = False
+    __help_menu_search_widget: "Input"
+    __help_menu_search_layout: _t.Tuple[int, int] = 0, 0
     __key_width: int = 0
     __wrapped_groups: _t.List[
         _t.Tuple[
@@ -1169,27 +1197,51 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     ]
 
     def __help_menu_event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
-        if e in [
+        if not self.__help_menu_search and e in [
             KeyboardEvent(Key.ESCAPE),
             KeyboardEvent(Key.ENTER),
             KeyboardEvent("q"),
-            KeyboardEvent(" "),
+            KeyboardEvent("q", ctrl=True),
         ]:
             self.__in_help_menu = False
             self.__help_menu_line = 0
         elif e == KeyboardEvent(Key.ARROW_UP):
             self.__help_menu_line += 1
+        elif e == KeyboardEvent(Key.HOME):
+            self.__help_menu_line = 0
         elif e == KeyboardEvent(Key.PAGE_UP):
             self.__help_menu_line += self.__height
+        elif e == KeyboardEvent(Key.END):
+            self.__help_menu_line = -self.__menu_content_height
         elif e == KeyboardEvent(Key.ARROW_DOWN):
             self.__help_menu_line -= 1
         elif e == KeyboardEvent(Key.PAGE_DOWN):
             self.__help_menu_line -= self.__height
+        elif not self.__help_menu_search and e == KeyboardEvent(" "):
+            self.__help_menu_line -= self.__height
+        elif not self.__help_menu_search and e == KeyboardEvent("/"):
+            self.__help_menu_search = True
+            self.__help_menu_search_widget = Input(decoration="/")
+        elif self.__help_menu_search:
+            if e == KeyboardEvent(Key.ESCAPE) or (
+                e == KeyboardEvent(Key.BACKSPACE)
+                and not self.__help_menu_search_widget.text
+            ):
+                self.__help_menu_search = False
+                self.__last_help_columns = None
+                del self.__help_menu_search_widget
+                self.__help_menu_search_layout = 0, 0
+            else:
+                self.__help_menu_search_widget.event(e)
+                self.__last_help_columns = None
         self.__help_menu_line = min(
             max(-self.__menu_content_height + self.__height, self.__help_menu_line), 0
         )
 
     def __help_menu_layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+        if self.__help_menu_search:
+            self.__help_menu_search_layout = self.__help_menu_search_widget.layout(rc)
+
         if self.__width == rc.width and self.__last_help_columns == self.help_data:
             return rc.height, rc.height
 
@@ -1204,12 +1256,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         self.__height = rc.height
         self.__last_help_columns = self.help_data
 
-        max_key_width = max(
-            key_width
-            for actions in self.__prepared_groups.values()
-            for _, _, key_width in actions
-        )
-        self.__key_width = max(10, min(max_key_width, 20, rc.width // 3 - 1))
+        self.__key_width = 10
         msg_width = rc.width - self.__key_width - 2
 
         self.__wrapped_groups = []
@@ -1233,6 +1280,11 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     def __help_menu_draw(self, rc: RenderContext, /):
         y = self.__help_menu_line
+
+        if not self.__wrapped_groups:
+            rc.set_color_path("menu/decoration:help_menu")
+            rc.write("No actions to display")
+            y += 1
 
         for title, actions in self.__wrapped_groups:
             rc.set_pos(0, y)
@@ -1262,6 +1314,18 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             y += 2
 
         self.__menu_content_height = y - self.__help_menu_line
+
+        with rc.frame(0, rc.height - max(self.__help_menu_search_layout[0], 1)):
+            if self.__help_menu_search:
+                rc.write(" " * rc.width)
+                rc.set_pos(0, 0)
+                self.__help_menu_search_widget.draw(rc)
+            else:
+                rc.set_color_path("menu/decoration:help_menu")
+                rc.write(":")
+                rc.reset_color()
+                rc.write(" " * (rc.width - 1))
+                rc.set_final_pos(1, 0)
 
     def __help_menu_draw_inline(self, rc: RenderContext, /):
         if self.__last_help_columns != self.help_data:
@@ -1337,85 +1401,102 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     def __prepared_inline_help(
         self,
     ) -> _t.List[_t.Tuple[_t.List[str], _ColorizedString, int]]:
-        return [self.__prepare_action(action) for action in self.help_data.inline_help]
+        return [
+            prepared_action
+            for action in self.help_data.inline_help
+            if (prepared_action := self.__prepare_action(action)) and prepared_action[1]
+        ]
 
     @functools.cached_property
     def __prepared_groups(
         self,
     ) -> _t.Dict[str, _t.List[_t.Tuple[_t.List[str], _ColorizedString, int]]]:
+        help_data = (
+            self.help_data.with_action(
+                self._KEY_SYMBOLS[Key.F1],
+                group="Other Actions",
+                long_msg="toggle help menu",
+            )
+            .with_action(
+                self._CTRL + "l",
+                group="Other Actions",
+                long_msg="refresh screen",
+            )
+            .with_action(
+                "C-...",
+                group="Terminology",
+                long_msg="means `Ctrl+...`",
+            )
+            .with_action(
+                "M-...",
+                group="Terminology",
+                long_msg="means `Option+...`"
+                if sys.platform == "darwin"
+                else "means `Alt+...`",
+            )
+            .with_action(
+                "S-...",
+                group="Terminology",
+                long_msg="means `Shift+...`",
+            )
+            .with_action(
+                "ret",
+                group="Terminology",
+                long_msg="means `Return` / `Enter`",
+            )
+            .with_action(
+                "bsp",
+                group="Terminology",
+                long_msg="means `Backspace`",
+            )
+        )
+
         # Make sure unsorted actions go first.
         groups = {"Actions": []}
 
         groups.update(
-            (title, [self.__prepare_action(action) for action in actions])
-            for title, actions in self.help_data.groups.items()
-            if actions
+            {
+                title: prepared_actions
+                for title, actions in help_data.groups.items()
+                if (
+                    prepared_actions := [
+                        prepared_action
+                        for action in actions
+                        if (prepared_action := self.__prepare_action(action))
+                        and prepared_action[1]
+                    ]
+                )
+            }
         )
 
         if not groups["Actions"]:
             del groups["Actions"]
 
         # Make sure other actions go last.
-        other_actions = groups.pop("Other actions", [])
-        if other_actions:
-            other_actions.append(
-                ([], _ColorizedString(), 0),
-            )
-        other_actions.extend(
-            [
-                (
-                    [self._KEY_SYMBOLS[Key.F1]],
-                    _ColorizedString("help"),
-                    _line_width(self._KEY_SYMBOLS[Key.F1]),
-                ),
-                (
-                    [self._CTRL + "l"],
-                    _ColorizedString("refresh screen"),
-                    _line_width(self._CTRL + "l"),
-                ),
-                ([], _ColorizedString(), 0),
-                (
-                    ["C-..."],
-                    _ColorizedString("means `Ctrl+...`"),
-                    5,
-                ),
-                (
-                    ["M-..."],
-                    _ColorizedString("means `Option+...`")
-                    if sys.platform == "darwin"
-                    else _ColorizedString("means `Alt+...`"),
-                    5,
-                ),
-                (
-                    ["S-..."],
-                    _ColorizedString("means `Shift+...`"),
-                    5,
-                ),
-                (
-                    ["ret"],
-                    _ColorizedString("means `Return` / `Enter`"),
-                    3,
-                ),
-                (
-                    ["bsp"],
-                    _ColorizedString("means `Backspace`"),
-                    3,
-                ),
-            ]
-        )
-        groups["Other"] = other_actions
+        if "Other Actions" in groups:
+            groups["Other Actions"] = groups.pop("Other Actions")
+        if "Terminology" in groups:
+            groups["Terminology"] = groups.pop("Terminology")
+
         return groups
 
     def __prepare_action(
         self, action: "Action"
-    ) -> _t.Tuple[_t.List[str], _ColorizedString, int]:
+    ) -> _t.Optional[_t.Tuple[_t.List[str], _ColorizedString, int]]:
         if isinstance(action, tuple):
             action_keys, msg = action
             prepared_keys = self.__prepare_keys(action_keys)
-            prepared_msg = _ColorizedString(msg)
-            return prepared_keys, prepared_msg, _line_width("/".join(prepared_keys))
         else:
-            return [], _ColorizedString(action), 0
+            prepared_keys = []
+            msg = action
+
+        if self.__help_menu_search:
+            pattern = self.__help_menu_search_widget.text
+            if not any(pattern in key for key in prepared_keys) and pattern not in msg:
+                return None
+
+        prepared_msg = _ColorizedString(msg)
+        return prepared_keys, prepared_msg, _line_width("/".join(prepared_keys))
 
     def __prepare_keys(self, action_keys: "ActionKeys") -> _t.List[str]:
         if isinstance(action_keys, (str, Key, KeyboardEvent)):
@@ -1424,7 +1505,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             return [self.__prepare_key(action_key) for action_key in action_keys]
 
     def __prepare_key(self, action_key: "ActionKey") -> str:
-        if isinstance(action_key, KeyboardEvent):
+        if isinstance(action_key, str):
+            return action_key
+        elif isinstance(action_key, KeyboardEvent):
             ctrl, alt, key = action_key.ctrl, action_key.alt, action_key.key
         else:
             ctrl, alt, key = False, False, action_key
@@ -1683,11 +1766,10 @@ class WidgetHelp:
                 for binding in bindings
                 if not isinstance(binding, _Binding) or binding.show_in_inline_help
             ]
-            if inline_keys:
-                if prepend:
-                    self.inline_help.insert(0, (inline_keys, settings.inline_msg))
-                else:
-                    self.inline_help.append((inline_keys, settings.inline_msg))
+            if prepend:
+                self.inline_help.insert(0, (inline_keys, settings.inline_msg))
+            else:
+                self.inline_help.append((inline_keys, settings.inline_msg))
 
         if settings.long_msg:
             menu_keys: ActionKeys = [
@@ -1695,15 +1777,14 @@ class WidgetHelp:
                 for binding in bindings
                 if not isinstance(binding, _Binding) or binding.show_in_detailed_help
             ]
-            if menu_keys:
-                if prepend:
-                    self.groups[settings.group] = [
-                        (menu_keys, settings.long_msg)
-                    ] + self.groups.get(settings.group, [])
-                else:
-                    self.groups[settings.group] = self.groups.get(
-                        settings.group, []
-                    ) + [(menu_keys, settings.long_msg)]
+            if prepend:
+                self.groups[settings.group] = [
+                    (menu_keys, settings.long_msg)
+                ] + self.groups.get(settings.group, [])
+            else:
+                self.groups[settings.group] = self.groups.get(settings.group, []) + [
+                    (menu_keys, settings.long_msg)
+                ]
 
         return self
 
@@ -2028,6 +2109,8 @@ class Input(Widget[str]):
         self.__placeholder: str = placeholder
         self.__decoration: str = decoration
         self.__allow_multiline: bool = allow_multiline
+        # Ctrl+D works as both return and delete, so we show this help sometimes.
+        self.__needs_ctrld_help: bool = False
 
         self.__wrapped_text_width: int = 0
         self.__wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
@@ -2136,8 +2219,17 @@ class Input(Widget[str]):
         else:
             return self.alt_enter()
 
-    @bind(Key.ENTER, alt=True)
-    @bind("d", ctrl=True)
+    @bind(
+        Key.ENTER,
+        alt=True,
+        show_in_detailed_help=sys.platform != "nt" and "WSL_HOST_IP" not in os.environ,
+    )
+    @bind(
+        Key.ENTER,
+        ctrl=True,
+        alt=True,
+        show_in_detailed_help=sys.platform == "nt" or "WSL_HOST_IP" in os.environ,
+    )
     def alt_enter(self) -> _t.Optional[Result[str]]:
         """accept input"""
         return Result(self.text)
@@ -2276,6 +2368,8 @@ class Input(Widget[str]):
         if prev_pos != self.pos:
             self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self.text = self.text[: self.pos] + self.text[prev_pos:]
+        else:
+            self._bell()
 
     @bind(Key.DELETE)
     @bind("d", ctrl=True)
@@ -2288,6 +2382,10 @@ class Input(Widget[str]):
             self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self.text = self.text[:prev_pos] + self.text[self.pos :]
             self.pos = prev_pos
+        else:
+            if self.__allow_multiline:
+                self.__needs_ctrld_help = True
+            self._bell()
 
     @bind(Key.BACKSPACE, alt=True)
     @bind("w", ctrl=True)
@@ -2300,6 +2398,8 @@ class Input(Widget[str]):
             self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self.__yanked_text = self.text[self.pos : prev_pos]
             self.text = self.text[: self.pos] + self.text[prev_pos:]
+        else:
+            self._bell()
 
     @bind(Key.DELETE, alt=True)
     @bind("d", alt=True)
@@ -2313,6 +2413,8 @@ class Input(Widget[str]):
             self.__yanked_text = self.text[prev_pos : self.pos]
             self.text = self.text[:prev_pos] + self.text[self.pos :]
             self.pos = prev_pos
+        else:
+            self._bell()
 
     @bind("u", ctrl=True)
     @help(group=_MODIFY)
@@ -2324,6 +2426,8 @@ class Input(Widget[str]):
             self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self.__yanked_text = self.text[self.pos : prev_pos]
             self.text = self.text[: self.pos] + self.text[prev_pos:]
+        else:
+            self._bell()
 
     @bind("k", ctrl=True)
     @help(group=_MODIFY)
@@ -2336,6 +2440,8 @@ class Input(Widget[str]):
             self.__yanked_text = self.text[prev_pos : self.pos]
             self.text = self.text[:prev_pos] + self.text[self.pos :]
             self.pos = prev_pos
+        else:
+            self._bell()
 
     # M-y alternative because C-y sends
     @bind("y", ctrl=True)
@@ -2343,7 +2449,10 @@ class Input(Widget[str]):
     @help(group=_MODIFY)
     def yank(self):
         """yank (paste the last deleted text)"""
-        self.insert(self.__yanked_text)
+        if self.__yanked_text:
+            self.insert(self.__yanked_text)
+        else:
+            self._bell()
 
     # the actual shortcut is `C-7`, the rest produce the same code...
     @bind("7", ctrl=True, show_in_detailed_help=False)
@@ -2356,6 +2465,12 @@ class Input(Widget[str]):
         self.text, self.pos, _ = self.__history[-1]
         if len(self.__history) > 1:
             self.__history.pop()
+        else:
+            self._bell()
+
+    def event(self, e: KeyboardEvent) -> _t.Optional[Result[str]]:
+        self.__needs_ctrld_help = False
+        return super().event(e)
 
     def default_event_handler(self, e: KeyboardEvent):
         if isinstance(e.key, str) and not e.alt and not e.ctrl:
@@ -2395,12 +2510,12 @@ class Input(Widget[str]):
             if self.__text:
                 self.__wrapped_text = _ColorizedString(
                     [rc.theme.get_color("menu/text:input"), self.__text]
-                ).wrap(text_width, preserve_spaces=True)
+                ).wrap(text_width)
                 self.__pos_after_wrap = None
             else:
                 self.__wrapped_text = _ColorizedString(
                     [rc.theme.get_color("menu/placeholder:input"), self.__placeholder]
-                ).wrap(text_width)
+                ).wrap(text_width, preserve_spaces=False, preserve_newlines=False)
                 self.__pos_after_wrap = (decoration_width, 0)
 
         if self.__pos_after_wrap is None:
@@ -2431,6 +2546,15 @@ class Input(Widget[str]):
 
         if self.__pos_after_wrap is not None:
             rc.set_final_pos(*self.__pos_after_wrap)
+
+    @property
+    def help_data(self) -> WidgetHelp:
+        if not self.__needs_ctrld_help:
+            return super().help_data
+        else:
+            return super().help_data.with_action(
+                inline_msg="C-d to delete, M-ret to enter"
+            )
 
 
 @dataclass(**yuio._with_slots())
@@ -2474,7 +2598,6 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
     ):
         self.__options: _t.List[Option[T]]
         self.__index: _t.Optional[int]
-        self.__bell: bool = False
         self.__column_width: int
         self.__num_rows: int
         self.__num_columns: int
@@ -2487,11 +2610,6 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
     @property
     def _page_size(self) -> int:
         return self.__num_rows * self.__num_columns
-
-    def _bell(self):
-        """Ring a bell on the next redraw."""
-
-        self.__bell = True
 
     @property
     def index(self) -> _t.Optional[int]:
@@ -2654,10 +2772,6 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         return 1 + additional_space, self.__num_rows + additional_space
 
     def draw(self, rc: RenderContext, /):
-        if self.__bell:
-            rc.bell()
-            self.__bell = False
-
         if not self.__options:
             rc.set_color_path("menu/decoration:choice")
             rc.write("No options to display")
@@ -2882,7 +2996,7 @@ class Choice(Widget[T], _t.Generic[T]):
         if option is not None:
             return Result(option.value)
         else:
-            self.__grid._bell()
+            self._bell()
 
     @bind(Key.ESCAPE)
     def esc(self):
@@ -3166,7 +3280,6 @@ class InputWithCompletion(Widget[str]):
             [], decoration=completion_item_decoration
         )
         self.__grid_active = False
-        self.__bell: bool = False
 
         self.__layout: VerticalLayout[_t.Never]
         self.__rsuffix: _t.Optional[yuio.complete.Completion] = None
@@ -3214,7 +3327,7 @@ class InputWithCompletion(Widget[str]):
             )
             self._activate_completion()
         else:
-            self.__bell = True
+            self._bell()
 
     @bind(Key.ESCAPE)
     def escape(self):
@@ -3312,10 +3425,6 @@ class InputWithCompletion(Widget[str]):
         return self.__layout.layout(rc)
 
     def draw(self, rc: RenderContext, /):
-        if self.__bell:
-            rc.bell()
-            self.__bell = False
-
         self.__layout.draw(rc)
 
     @property
