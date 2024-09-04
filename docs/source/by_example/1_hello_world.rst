@@ -25,19 +25,6 @@ become flags, and their type hints are used to parse arguments. Let's run it:
    Enter
    Sleep 6s
 
-That was simple. What else is there in our app?
-
-.. vhs-inline::
-   :scale: 40%
-
-   Source "docs/source/_tapes/_config_by_example.tape"
-   Type "python 1_1_first_yuio_app.py -h | less -R"
-   Enter
-   Sleep 6s
-
-Well, that's a bunch of stuff you get out of the box! We will return to it later.
-
-
 Printing something colorful
 ---------------------------
 
@@ -103,10 +90,11 @@ Finally, let's add some help messages to document our CLI options:
 .. literalinclude:: code/1_5_help.py
    :language: python
    :linenos:
-   :lines: 5-16
+   :lines: 5-13
    :emphasize-lines: 3,5,8
 
-Yuio parses comments of your python files, so help messages can be just docstrings!
+Yuio parses comments of your python files, so help messages
+can be just markdown docstrings!
 
 .. vhs-inline::
    :scale: 40%
@@ -115,3 +103,6 @@ Yuio parses comments of your python files, so help messages can be just docstrin
    Type "python 1_5_help.py -h | less -R"
    Enter
    Sleep 6s
+
+You can read about which markdown features Yuio supports
+in the documentation for :mod:`yuio.md`.

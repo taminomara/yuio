@@ -81,7 +81,7 @@ Install ``yuio`` with pip:
 
 .. code-block:: console
 
-   $ pip3 install yuio
+   $ pip install yuio
 
 Or just copy-paste the ``yuio`` directory to somewhere in the ``PYTHONPATH`` of your project.
 
@@ -98,7 +98,7 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    by_example/index
    main_features/index

@@ -413,7 +413,8 @@ class App:
         #:
         #: By default, inferred from :data:`sys.argv` and subcommand names.
         #:
-        #: See `prog <https://docs.python.org/3/library/argparse.html#prog>`_.
+        #: See `prog <https://docs.python.org/3/library/argparse.html#prog>`_
+        #: in :mod:`argparse`.
         self.prog: _t.Optional[str] = prog
 
         #: Program or subcommand synapsis.
@@ -435,7 +436,8 @@ class App:
         #:
         #: By default, generated from CLI flags by argparse.
         #:
-        #: See `usage <https://docs.python.org/3/library/argparse.html#usage>`_.
+        #: See `usage <https://docs.python.org/3/library/argparse.html#usage>`_
+        #: in :mod:`argparse`.
         self.usage: _t.Optional[str] = usage
 
         if not description and command.__doc__:
@@ -444,33 +446,36 @@ class App:
         #: Text that is shown before CLI flags help, usually contains
         #: short description of the program or subcommand.
         #:
-        #: The text should be formatted using markdown. For example::
+        #: The text should be formatted using markdown. For example:
         #:
-        #:     @app
-        #:     def main(): ...
+        #: .. code-block:: python
         #:
-        #:     main.description = """
-        #:     this command does a thing.
+        #:    @app
+        #:    def main(): ...
         #:
-        #:     # different ways to do a thing
+        #:    main.description = """
+        #:    this command does a thing.
         #:
-        #      this command can apply multiple algorithms to achieve
-        #:     a necessary state in which a thing can be done. This includes:
+        #:    # different ways to do a thing
         #:
-        #:     - randomly turning the screen on and off;
+        #:    this command can apply multiple algorithms to achieve
+        #:    a necessary state in which a thing can be done. This includes:
         #:
-        #:     - banging a head on a table;
+        #:    - randomly turning the screen on and off;
         #:
-        #:     - fiddling with your PCs power levels.
+        #:    - banging a head on a table;
         #:
-        #:     By default, the best algorithm is determined automatically.
-        #:     However, you can hint a preferred algorithm via the `--hint-algo` flag.
+        #:    - fiddling with your PCs power levels.
         #:
-        #:     """
+        #:    By default, the best algorithm is determined automatically.
+        #:    However, you can hint a preferred algorithm via the `--hint-algo` flag.
         #:
-        #: By default, inferred from command's description.
+        #:    """
         #:
-        #: See `description <https://docs.python.org/3/library/argparse.html#description>`_.
+        #: By default, inferred from command's docstring.
+        #:
+        #: See `description <https://docs.python.org/3/library/argparse.html#description>`_
+        #: in :mod:`argparse`.
         self.description: _t.Optional[str] = description
 
         if not help and description:
@@ -479,21 +484,26 @@ class App:
 
         #: Short help message that is shown when listing subcommands.
         #:
-        #: See `help <https://docs.python.org/3/library/argparse.html#help>`_.
+        #: By default, inferred from command's docstring.
+        #:
+        #: See `help <https://docs.python.org/3/library/argparse.html#help>`_
+        #: in :mod:`argparse`.
         self.help: _t.Optional[str] = help
 
         #: Text that is shown after the main portion of the help message.
         #:
         #: Text format is identical to the one for :attr:`~App.description`.
         #:
-        #: See `epilog <https://docs.python.org/3/library/argparse.html#epilog>`_.
+        #: See `epilog <https://docs.python.org/3/library/argparse.html#epilog>`_
+        #: in :mod:`argparse`.
         self.epilog: _t.Optional[str] = epilog
 
         #: Allow abbreviating CLI flags if that doesn't create ambiguity.
         #:
         #: Disabled by default.
         #:
-        #: See `allow_abbrev <https://docs.python.org/3/library/argparse.html#allow-abbrev>`_.
+        #: See `allow_abbrev <https://docs.python.org/3/library/argparse.html#allow-abbrev>`_
+        #: in :mod:`argparse`.
         self.allow_abbrev: bool = False
 
         #: Require the user to provide a subcommand for this command.

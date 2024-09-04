@@ -8,3 +8,4 @@ A simple step-by-step guide that will
 
    1_hello_world
    2_interactive_things
+   3_advanced_apps

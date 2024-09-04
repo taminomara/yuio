@@ -90,5 +90,5 @@ extend-exclude = '^/docs'
 
 [tool.isort]
 profile = "black"
-skip_glob = ["docs/*"]
+extend_skip_glob = ["docs/*"]
 skip_gitignore = true

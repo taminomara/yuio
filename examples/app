@@ -28,6 +28,7 @@ class Config(yuio.config.Config):
 # We will load values into this variable once the program starts.
 CONFIG = Config()
 
+
 @yuio.app.app
 def main(
     config: Config = yuio.config.inline(),
@@ -48,7 +49,6 @@ def main(
 
     yuio.io.info("global config is loaded: `%r`", CONFIG)
 
-main.subcommand_required = False
 
 main.epilog = """
 # formatting:

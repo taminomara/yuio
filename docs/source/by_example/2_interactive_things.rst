@@ -29,7 +29,7 @@ of a simple string:
    Source "docs/source/_tapes/_config_by_example.tape"
    Type "python 2_1_querying.py"
    Enter
-   Sleep 500ms
+   Sleep 1s
    Type "Miku"
    Sleep 500ms
    Enter
@@ -68,7 +68,7 @@ updates progress as you iterate over a collection.
    Source "docs/source/_tapes/_config_by_example.tape"
    Type "python 2_3_progress.py"
    Enter
-   Sleep 10s
+   Sleep 12s
 
 
 Opening an external editor
