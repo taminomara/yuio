@@ -598,37 +598,61 @@ class RenderContext:
 
         """
 
-        if isinstance(text, str) and text.isascii():
-            # Fast track
-            self._write_ascii(text, max_width=max_width)
-            return
-
         if not isinstance(text, _ColorizedString):
             text = _ColorizedString(text)
 
         x = self._frame_x + self._frame_cursor_x
         y = self._frame_y + self._frame_cursor_y
 
+        self._frame_cursor_x += text.width
+
         if not 0 <= y < self._height:
             for s in text:
                 if isinstance(s, _Color):
                     self._frame_cursor_color = s.as_code(self.term)
-            self._frame_cursor_x += text.width
             return
 
         ll = self._lines[y]
         cc = self._colors[y]
 
-        color = self._frame_cursor_color
-
-        max_x = self.width
+        max_x = self._width
         if max_width is not None:
-            max_x = min(max_x, x + max_width + 1)
+            max_x = min(max_x, x + max_width)
 
         for s in text:
             if isinstance(s, _Color):
-                # Just changing a color.
-                color = s.as_code(self._term)
+                self._frame_cursor_color = s.as_code(self._term)
+                continue
+
+            s = s.translate(_UNPRINTABLE_TRANS)
+
+            if s.isascii():
+                # Fast track.
+                if x + len(s) <= 0:
+                    # We're beyond the left terminal border.
+                    x += len(s)
+                    continue
+
+                slice_begin = 0
+                if x < 0:
+                    # We're partially beyond the left terminal border.
+                    slice_begin = -x
+                    x = 0
+
+                if x >= max_x:
+                    # We're beyond the right terminal border.
+                    x += len(s) - slice_begin
+                    continue
+
+                slice_end = len(s)
+                if x + len(s) - slice_begin > max_x:
+                    # We're partially beyond the right terminal border.
+                    slice_end = slice_begin + max_x - x
+
+                l = slice_end - slice_begin
+                self._lines[y][x : x + l] = s[slice_begin:slice_end]
+                self._colors[y][x : x + l] = [self._frame_cursor_color] * l
+                x += l
                 continue
 
             for c in s:
@@ -643,18 +667,16 @@ class RenderContext:
                     cc[: x + cw] = [self._none_color] * (x + cw)
                     x += cw
                     continue
-                elif x >= max_x:
+                elif cw > 0 and x >= max_x:
                     # We're beyond the right terminal border.
                     x += cw
                     break
-                elif x + cw >= max_x:
+                elif x + cw > max_x:
                     # This character was split in half by the terminal border.
                     ll[x:max_x] = " " * (max_x - x)
-                    cc[x:max_x] = [color] * (max_x - x)
+                    cc[x:max_x] = [self._frame_cursor_color] * (max_x - x)
                     x += cw
                     break
-
-                c = c.translate(_UNPRINTABLE_TRANS)
 
                 if cw == 0:
                     # This is a zero-width character.
@@ -664,42 +686,14 @@ class RenderContext:
                     continue
 
                 ll[x] = c
-                cc[x] = color
+                cc[x] = self._frame_cursor_color
 
                 x += 1
                 cw -= 1
                 if cw:
                     ll[x : x + cw] = [""] * cw
-                    cc[x : x + cw] = [color] * cw
+                    cc[x : x + cw] = [self._frame_cursor_color] * cw
                     x += cw
-
-        self._frame_cursor_color = color
-        self._frame_cursor_x = x - self._frame_x
-
-    def _write_ascii(self, text: str, /, *, max_width: _t.Optional[int] = None):
-        x = self._frame_x + self._frame_cursor_x
-        y = self._frame_y + self._frame_cursor_y
-
-        self._frame_cursor_x += len(text)
-
-        if not 0 <= y < self._height:
-            return
-
-        slice_begin = 0
-        if x < 0:
-            slice_begin = -x
-            x = 0
-        elif x >= self._width:
-            return
-
-        slice_end = slice_begin + (self._width - x)
-        if max_width is not None:
-            slice_end = min(max_width, slice_end)
-
-        ll = text[slice_begin:slice_end].translate(_UNPRINTABLE_TRANS)
-        ls = len(ll)
-        self._lines[y][x : x + ls] = ll
-        self._colors[y][x : x + ls] = [self._frame_cursor_color] * ls
 
     def write_text(
         self,
