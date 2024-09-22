@@ -865,7 +865,6 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         theme: yuio.theme.Theme,
         *,
         width: _t.Optional[int] = None,
-        allow_headings: bool = True,
     ):
         self._heading_indent = contextlib.ExitStack()
         self._args_column_width = _MAX_ARGS_COLUMN_WIDTH
@@ -873,7 +872,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         super().__init__(
             theme,
             width=width,
-            allow_headings=allow_headings,
+            allow_headings=False,
         )
 
     def colorize(
