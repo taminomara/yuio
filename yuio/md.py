@@ -347,12 +347,12 @@ class MdFormatter:
 
         decoration = self.theme.msg_decorations.get("code", "")
         with self._indent("msg/decoration:code", decoration):
-            for line in s.wrap(
-                self.width,
-                first_line_indent=self._first_line_indent,
-                continuation_indent=self._continuation_indent,
-            ):
-                self._line(line)
+            self._line(
+                s.indent(
+                    first_line_indent=self._first_line_indent,
+                    continuation_indent=self._continuation_indent,
+                )
+            )
 
     def _format_List(self, node: "List", /):
         max_number = max(item.number or 0 for item in node.items)

@@ -909,12 +909,12 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
     def _format_Usage(self, node: "_Usage"):
         with self._indent(None, node.prefix):
             if node.usage_override:
-                for line in node.usage_override.wrap(
-                    self.width,
-                    first_line_indent=self._first_line_indent,
-                    continuation_indent=self._continuation_indent,
-                ):
-                    self._line(line)
+                self._line(
+                    node.usage_override.indent(
+                        first_line_indent=self._first_line_indent,
+                        continuation_indent=self._continuation_indent,
+                    )
+                )
                 return
 
             line = yuio.term.ColorizedString(self._first_line_indent)
