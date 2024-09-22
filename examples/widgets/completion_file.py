@@ -10,5 +10,6 @@ if __name__ == "__main__":
 
     widget = yuio.widget.InputWithCompletion(completer, placeholder="enter a file path")
 
-    result = widget.with_title("Which file should we nuke today?").run(term, theme)
+    yuio.io.heading("Which file should we nuke today?")
+    result = widget.run(term, theme)
     yuio.io.success(f"You've entered `%r`", result)

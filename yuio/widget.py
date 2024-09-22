@@ -1106,16 +1106,6 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     def _bell(self):
         self.__bell = True
 
-    def with_title(self, title: yuio.term.AnyString, /) -> "Widget[T_co]":
-        """Return this widget with a title added before it."""
-
-        return (
-            VerticalLayoutBuilder()
-            .add(Text(title, color="menu/text/heading"))
-            .add(self, receive_events=True)
-            .build()
-        )
-
     @property
     def help_data(self) -> "WidgetHelp":
         """Data for displaying help messages.
@@ -2014,12 +2004,8 @@ class Text(Widget[_t.Never]):
         self,
         text: yuio.term.AnyString,
         /,
-        *,
-        color: _t.Union[_Color, str, None] = None,
     ):
         self.__text = _ColorizedString(text)
-        self.__color = color
-
         self.__wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
         self.__wrapped_text_width: int = 0
 
@@ -2034,15 +2020,6 @@ class Text(Widget[_t.Never]):
         self.__wrapped_text = None
         self.__wrapped_text_width = 0
 
-    @property
-    def color(self) -> _t.Union[_Color, str, None]:
-        """Color of the currently displayed text."""
-        return self.__color
-
-    @color.setter
-    def color(self, color: _t.Union[_Color, str, None], /):
-        self.__color = color
-
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         if self.__wrapped_text is None or self.__wrapped_text_width != rc.width:
             self.__wrapped_text = self.__text.wrap(
@@ -2055,11 +2032,6 @@ class Text(Widget[_t.Never]):
 
     def draw(self, rc: RenderContext, /):
         assert self.__wrapped_text is not None
-        if self.__color is not None:
-            if isinstance(self.__color, str):
-                rc.set_color_path(self.__color)
-            else:
-                rc.set_color(self.__color)
         rc.write_text(self.__wrapped_text)
 
 
