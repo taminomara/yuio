@@ -282,9 +282,6 @@ class MdFormatter:
 
         for line in s.wrap(
             self.width,
-            break_on_hyphens=True,
-            preserve_spaces=False,
-            preserve_newlines=False,
             first_line_indent=self._first_line_indent,
             continuation_indent=self._continuation_indent,
         ):
@@ -1344,7 +1341,7 @@ def colorize(
                 raw.append(stack[-1] | theme.get_color("hl/flag:sh-usage"))
             else:
                 raw.append(stack[-1] | theme.get_color("code"))
-            raw.append(code)
+            raw.append(yuio.term.NoWrap(code))
             raw.append(stack[-1])
         elif len(stack) > 1:
             stack.pop()

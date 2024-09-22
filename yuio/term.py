@@ -75,6 +75,12 @@ these strings are parsed and transformed into :class:`ColorizedString`:
 .. autoclass:: ColorizedString
    :members:
 
+.. autodata:: RawString
+
+.. autodata:: AnyString
+
+.. autoclass:: NoWrap
+
 
 Utilities
 ---------
@@ -1128,6 +1134,14 @@ RawString: _t.TypeAlias = _t.Iterable[_t.Union[Color, str]]
 AnyString: _t.TypeAlias = _t.Union[str, Color, RawString, "ColorizedString"]
 
 
+class NoWrap(str):
+    """A string that will not be wrapped by the text wrapper.
+
+    See :meth:`ColorizedString.wrap` for more info.
+
+    """
+
+
 @_t.final
 class ColorizedString:
     """A string with colors.
@@ -1213,60 +1227,66 @@ class ColorizedString:
         width: int,
         /,
         *,
-        break_on_hyphens: bool = False,
-        preserve_spaces: bool = True,
+        preserve_spaces: bool = False,
         preserve_newlines: bool = True,
-        first_line_indent: _t.Union[str, "ColorizedString"] = "",
-        continuation_indent: _t.Union[str, "ColorizedString"] = "",
+        break_long_words: bool = True,
+        break_long_nowrap_words: bool = False,
+        first_line_indent: AnyString = "",
+        continuation_indent: AnyString = "",
     ) -> _t.List["ColorizedString"]:
         r"""Wrap a long line of text into multiple lines.
 
-        If `break_on_hyphens` is `True` (default),
-        lines can be broken after hyphens in hyphenated words.
+        :param: preserve_spaces
+            if set to :data:`True`, all spaces are preserved.
+            Otherwise, consecutive spaces are collapsed into a single space.
+            Note that tabs are always treated as a single space.
+        :param: preserve_newlines
+            if set to :data:`True` (default), text is additionally wrapped
+            on newline characters. When this happens, the newline sequence that wrapped
+            the line will be placed into :attr:`~ColorizedString.explicit_newline`.
 
-        If `preserve_spaces` is `True`, all spaces are preserved.
-        Otherwise, consecutive spaces are collapsed into a single space.
-        Note that tabs are always treated as a single space.
-
-        If `preserve_newlines` is `True` (default), text is additionally wrapped
-        on newline characters. When this happens, the newline sequence that wrapped
-        the line will be placed into :attr:`~ColorizedString.explicit_newline`.
-
-        If `preserve_newlines` is `False`, newlines are treated as whitespaces.
-
-        If `first_line_indent` and `continuation_indent` are given, they are placed
-        in the beginning of respective lines. Passing colorized strings as indents
-        does not break coloring of the wrapped text.
+            If set to :data:`False`, newlines are treated as whitespaces.
+        :param: break_long_words
+            if set to :data:`True` (default), words that don't fit into a single line
+            will be split into multiple lines.
+        :param: break_long_nowrap_words
+            if set to :data:`True`, :class:`NoWrap` words that don't fit
+            into a single line will be split into multiple lines.
+        :param: first_line_indent
+            a string that will be prepended before the first line.
+        :param: continuation_indent
+            a string that will be prepended before all subsequent lines.
 
         Example::
 
             >>> ColorizedString("hello, world!\nit's a good day!").wrap(13)  # doctest: +NORMALIZE_WHITESPACE
             [<ColorizedString('hello, world!', explicit_newline='\n')>,
-             <ColorizedString("it's a good ")>,
+             <ColorizedString("it's a good")>,
              <ColorizedString('day!')>]
 
         """
 
         return _TextWrapper(
             width,
-            break_on_hyphens=break_on_hyphens,
             preserve_spaces=preserve_spaces,
             preserve_newlines=preserve_newlines,
+            break_long_words=break_long_words,
+            break_long_nowrap_words=break_long_nowrap_words,
             first_line_indent=first_line_indent,
             continuation_indent=continuation_indent,
         ).wrap(self)
 
     def indent(
         self,
-        first_line_indent: _t.Union[str, "ColorizedString"] = "",
-        continuation_indent: _t.Union[str, "ColorizedString"] = "",
+        first_line_indent: AnyString = "",
+        continuation_indent: AnyString = "",
     ) -> "ColorizedString":
         r"""Indent this string by the given sequence.
 
         :param: first_line_indent
             this will be appended to the first line in the string.
         :param: continuation_indent
-            this will be appended to all of the rest lines in the string.
+            this will be appended to subsequent lines in the string.
 
         Example::
 
@@ -1291,7 +1311,7 @@ class ColorizedString:
                     if cur_color != Color.NONE:
                         res += Color.NONE
                     res += first_line_indent
-                    first_line_indent = continuation_indent
+                    first_line_indent = ColorizedString(continuation_indent)
 
                 if color and (needs_indent or color != cur_color):
                     res += color
@@ -1436,7 +1456,14 @@ def _percent_format(s: ColorizedString, args: _t.Any) -> _t.List[_t.Union[Color,
 
         return m.group(0) % fmt_args
 
-    raw = [_S_SYNTAX.sub(repl, part) if isinstance(part, str) else part for part in s]
+    raw = []
+    for part in s:
+        if isinstance(part, NoWrap):
+            raw.append(NoWrap(_S_SYNTAX.sub(repl, part)))
+        elif isinstance(part, str):
+            raw.append(_S_SYNTAX.sub(repl, part))
+        else:
+            raw.append(part)
 
     if isinstance(args, tuple) and i < len(args):
         raise TypeError("not all arguments converted during string formatting")
@@ -1473,8 +1500,7 @@ _WORDSEP_RE = re.compile(
     % {"wp": _WORD_PUNCT, "lt": _LETTER, "nws": _NOWHITESPACE},
     re.VERBOSE,
 )
-
-_WORDSEP_SIMPLE_RE = re.compile(r"(\v?(?:\r\n|\r|\n)|[ \t\b\f\v]+)")
+_WORDSEP_NL_RE = re.compile(r"(\v?(?:\r\n|\r|\n))")
 
 
 class _TextWrapper:
@@ -1483,16 +1509,18 @@ class _TextWrapper:
         width: int,
         /,
         *,
-        break_on_hyphens: bool,
         preserve_spaces: bool,
         preserve_newlines: bool,
-        first_line_indent: _t.Union[str, ColorizedString] = "",
-        continuation_indent: _t.Union[str, ColorizedString] = "",
+        break_long_words: bool,
+        break_long_nowrap_words: bool,
+        first_line_indent: AnyString = "",
+        continuation_indent: AnyString = "",
     ):
         self.width: int = width
-        self.break_on_hyphens: bool = break_on_hyphens
         self.preserve_spaces: bool = preserve_spaces
         self.preserve_newlines: bool = preserve_newlines
+        self.break_long_words: bool = break_long_words
+        self.break_long_nowrap_words: bool = break_long_nowrap_words
         self.first_line_indent: ColorizedString = ColorizedString(first_line_indent)
         self.continuation_indent: ColorizedString = ColorizedString(continuation_indent)
 
@@ -1573,10 +1601,12 @@ class _TextWrapper:
                 self._append_color(part)
                 continue
 
-            if self.break_on_hyphens is True:
-                words = _WORDSEP_RE.split(part)
+            nowrap = False
+            if isinstance(part, NoWrap):
+                words = _WORDSEP_NL_RE.split(part)
+                nowrap = True
             else:
-                words = _WORDSEP_SIMPLE_RE.split(part)
+                words = _WORDSEP_RE.split(part)
 
             for word in words:
                 if not word:
@@ -1591,7 +1621,10 @@ class _TextWrapper:
                     continue
 
                 if word.isspace():
-                    if at_line_beginning or self.preserve_spaces:
+                    if nowrap:
+                        word = word.translate(_SPACE_TRANS)
+                        self._append_word(word, len(word))
+                    elif at_line_beginning or self.preserve_spaces:
                         word = word.translate(_SPACE_TRANS)
                         self._append_word_with_breaks(word, len(word))
                     else:
@@ -1612,9 +1645,14 @@ class _TextWrapper:
                     # Word doesn't fit, so we start a new line.
                     if self.current_line_is_nonempty:
                         self._flush_line()
-                    # We will break the word in the middle if it doesn't fit
-                    # onto the whole line.
-                    self._append_word_with_breaks(word, word_width)
+                    if (nowrap and self.break_long_nowrap_words) or (
+                        not nowrap and self.break_long_words
+                    ):
+                        # We will break the word in the middle if it doesn't fit
+                        # onto the whole line.
+                        self._append_word_with_breaks(word, word_width)
+                    else:
+                        self._append_word(word, word_width)
 
                 need_space_before_word = False
                 at_line_beginning = False

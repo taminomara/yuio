@@ -2045,7 +2045,10 @@ class Text(Widget[_t.Never]):
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         if self.__wrapped_text is None or self.__wrapped_text_width != rc.width:
-            self.__wrapped_text = self.__text.wrap(rc.width)
+            self.__wrapped_text = self.__text.wrap(
+                rc.width,
+                break_long_nowrap_words=True,
+            )
             self.__wrapped_text_width = rc.width
         height = len(self.__wrapped_text)
         return height, height
@@ -2503,12 +2506,20 @@ class Input(Widget[str]):
             if self.__text:
                 self.__wrapped_text = _ColorizedString(
                     [rc.theme.get_color("menu/text:input"), self.__text]
-                ).wrap(text_width)
+                ).wrap(
+                    text_width,
+                    preserve_spaces=True,
+                    break_long_nowrap_words=True,
+                )
                 self.__pos_after_wrap = None
             else:
                 self.__wrapped_text = _ColorizedString(
                     [rc.theme.get_color("menu/placeholder:input"), self.__placeholder]
-                ).wrap(text_width, preserve_spaces=False, preserve_newlines=False)
+                ).wrap(
+                    text_width,
+                    preserve_newlines=False,
+                    break_long_nowrap_words=True,
+                )
                 self.__pos_after_wrap = (decoration_width, 0)
 
         if self.__pos_after_wrap is None:
