@@ -116,7 +116,6 @@ import dataclasses
 import enum
 import functools
 import math
-import os
 import re
 import shutil
 import string
@@ -2098,8 +2097,6 @@ class Input(Widget[str]):
         self.__placeholder: str = placeholder
         self.__decoration: str = decoration
         self.__allow_multiline: bool = allow_multiline
-        # Ctrl+D works as both return and delete, so we show this help sometimes.
-        self.__needs_ctrld_help: bool = False
 
         self.__wrapped_text_width: int = 0
         self.__wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
@@ -2202,25 +2199,14 @@ class Input(Widget[str]):
 
     @bind(Key.ENTER)
     def enter(self) -> _t.Optional[Result[str]]:
-        """accept input / new line"""
         if self.__allow_multiline:
             self.insert("\n")
         else:
             return self.alt_enter()
 
-    @bind(
-        Key.ENTER,
-        alt=True,
-        show_in_detailed_help=sys.platform != "nt" and "WSL_HOST_IP" not in os.environ,
-    )
-    @bind(
-        Key.ENTER,
-        ctrl=True,
-        alt=True,
-        show_in_detailed_help=sys.platform == "nt" or "WSL_HOST_IP" in os.environ,
-    )
+    @bind(Key.ENTER, alt=True)
+    @bind("d", ctrl=True)
     def alt_enter(self) -> _t.Optional[Result[str]]:
-        """accept input"""
         return Result(self.text)
 
     _NAVIGATE = "Navigate"
@@ -2298,9 +2284,10 @@ class Input(Widget[str]):
     @help(group=_NAVIGATE)
     def left_word(self, /, *, checkpoint: bool = True):
         """left one word"""
-        self.left()
         pos = self.pos
         text = self.text
+        if pos:
+            pos -= 1
         while pos and text[pos] in self._WORD_SEPARATORS and text[pos - 1] != "\n":
             pos -= 1
         while pos and text[pos - 1] not in self._WORD_SEPARATORS:
@@ -2313,9 +2300,10 @@ class Input(Widget[str]):
     @help(group=_NAVIGATE)
     def right_word(self, /, *, checkpoint: bool = True):
         """right one word"""
-        self.right()
         pos = self.pos
         text = self.text
+        if pos < len(text) and text[pos] == "\n":
+            pos += 1
         while (
             pos < len(text) and text[pos] in self._WORD_SEPARATORS and text[pos] != "\n"
         ):
@@ -2358,22 +2346,6 @@ class Input(Widget[str]):
             self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self.text = self.text[: self.pos] + self.text[prev_pos:]
         else:
-            self._bell()
-
-    @bind(Key.DELETE)
-    @bind("d", ctrl=True)
-    @help(group=_MODIFY)
-    def delete(self):
-        """delete"""
-        prev_pos = self.pos
-        self.right(checkpoint=False)
-        if prev_pos != self.pos:
-            self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
-            self.text = self.text[:prev_pos] + self.text[self.pos :]
-            self.pos = prev_pos
-        else:
-            if self.__allow_multiline:
-                self.__needs_ctrld_help = True
             self._bell()
 
     @bind(Key.BACKSPACE, alt=True)
@@ -2456,10 +2428,6 @@ class Input(Widget[str]):
             self.__history.pop()
         else:
             self._bell()
-
-    def event(self, e: KeyboardEvent) -> _t.Optional[Result[str]]:
-        self.__needs_ctrld_help = False
-        return super().event(e)
 
     def default_event_handler(self, e: KeyboardEvent):
         if isinstance(e.key, str) and not e.alt and not e.ctrl:
@@ -2546,12 +2514,15 @@ class Input(Widget[str]):
 
     @property
     def help_data(self) -> WidgetHelp:
-        if not self.__needs_ctrld_help:
-            return super().help_data
-        else:
+        if self.__allow_multiline:
             return super().help_data.with_action(
-                inline_msg="C-d to delete, M-ret to enter"
+                KeyboardEvent(Key.ENTER, alt=True),
+                KeyboardEvent("d", ctrl=True),
+                msg="accept",
+                prepend=True,
             )
+        else:
+            return super().help_data
 
 
 @dataclass(**yuio._with_slots())
