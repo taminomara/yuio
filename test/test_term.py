@@ -392,7 +392,7 @@ class TestColorizedString:
                 15,
                 {},
                 [
-                    [yuio.term.Color.NONE, "hello", " ", "world!", " "],
+                    [yuio.term.Color.NONE, "hello", " ", "world!"],
                     [yuio.term.Color.NONE, "👻👻"],
                 ],
             ),
@@ -401,7 +401,7 @@ class TestColorizedString:
                 15,
                 {},
                 [
-                    [yuio.term.Color.NONE, "hello", " ", "world!", " "],
+                    [yuio.term.Color.NONE, "hello", " ", "world!"],
                     [yuio.term.Color.NONE, "this", " ", "will", " ", "wrap"],
                 ],
             ),
@@ -426,7 +426,7 @@ class TestColorizedString:
             (
                 ["this-will-wrap-on-hyphen"],
                 15,
-                {"break_on_hyphens": True},
+                {},
                 [
                     [yuio.term.Color.NONE, "this-", "will-", "wrap-"],
                     [yuio.term.Color.NONE, "on-", "hyphen"],
@@ -435,21 +435,11 @@ class TestColorizedString:
             (
                 ["this.will.not.wrap.on.hyphen.this.is.too.long"],
                 15,
-                {"break_on_hyphens": True},
+                {},
                 [
                     [yuio.term.Color.NONE, "this.will.not.w"],
                     [yuio.term.Color.NONE, "rap.on.hyphen.t"],
                     [yuio.term.Color.NONE, "his.is.too.long"],
-                ],
-            ),
-            (
-                ["this-will-not-wrap-on-hyphen-this-is-too-long"],
-                15,
-                {},
-                [
-                    [yuio.term.Color.NONE, "this-will-not-w"],
-                    [yuio.term.Color.NONE, "rap-on-hyphen-t"],
-                    [yuio.term.Color.NONE, "his-is-too-long"],
                 ],
             ),
             (
@@ -503,7 +493,7 @@ class TestColorizedString:
             (
                 ["hello world!"],
                 15,
-                {},
+                {"preserve_spaces": True},
                 [
                     [yuio.term.Color.NONE, "hello", " ", "world!"],
                 ],
@@ -511,7 +501,7 @@ class TestColorizedString:
             (
                 ["hello   world!"],
                 15,
-                {},
+                {"preserve_spaces": True},
                 [
                     [yuio.term.Color.NONE, "hello", "   ", "world!"],
                 ],
@@ -519,7 +509,7 @@ class TestColorizedString:
             (
                 ["hello     world!"],
                 15,
-                {},
+                {"preserve_spaces": True},
                 [
                     [yuio.term.Color.NONE, "hello", "     "],
                     [yuio.term.Color.NONE, "world!"],
@@ -528,7 +518,7 @@ class TestColorizedString:
             (
                 ["hello                    world"],
                 15,
-                {},
+                {"preserve_spaces": True},
                 [
                     [yuio.term.Color.NONE, "hello", "          "],
                     [yuio.term.Color.NONE, "          ", "world"],
@@ -537,7 +527,7 @@ class TestColorizedString:
             (
                 ["hello                    longlongworld"],
                 15,
-                {},
+                {"preserve_spaces": True},
                 [
                     [yuio.term.Color.NONE, "hello", "          "],
                     [yuio.term.Color.NONE, "          "],
@@ -580,7 +570,7 @@ class TestColorizedString:
                 15,
                 {},
                 [
-                    [yuio.term.Color.NONE, "12345678901234", " "],
+                    [yuio.term.Color.NONE, "12345678901234"],
                     [yuio.term.Color.NONE, "12345"],
                 ],
             ),
@@ -589,7 +579,7 @@ class TestColorizedString:
                 15,
                 {},
                 [
-                    [yuio.term.Color.NONE, "Hello", " ", "line", " "],
+                    [yuio.term.Color.NONE, "Hello", " ", "line"],
                     [yuio.term.Color.NONE, "break"],
                 ],
             ),
@@ -654,11 +644,14 @@ class TestColorizedString:
                         " ",
                         "[-v]",
                         " ",
-                        "[--force-color",
+                        "[--force-",
+                        "color",
                         " ",
                         "|",
                         " ",
-                        "--force-no-color]",
+                        "--force-",
+                        "no-",
+                        "color]",
                         " ",
                         "[-o",
                         " ",
@@ -763,13 +756,16 @@ class TestColorizedString:
                         " ",
                         "[",
                         yuio.term.Color.FORE_BLUE,
-                        "--force-color",
+                        "--force-",
+                        "color",
                         yuio.term.Color.NONE,
                         " ",
                         "|",
                         " ",
                         yuio.term.Color.FORE_BLUE,
-                        "--force-no-color",
+                        "--force-",
+                        "no-",
+                        "color",
                         yuio.term.Color.NONE,
                         "]",
                         " ",
@@ -836,7 +832,7 @@ class TestColorizedString:
                 13,
                 {"first_line_indent": ">>", "continuation_indent": ".."},
                 [
-                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single", " "],
+                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single"],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "string"],
                 ],
             ),
@@ -845,7 +841,7 @@ class TestColorizedString:
                 8,
                 {"first_line_indent": ">>>", "continuation_indent": "|"},
                 [
-                    [yuio.term.Color.NONE, ">>>", yuio.term.Color.NONE, "foo", " "],
+                    [yuio.term.Color.NONE, ">>>", yuio.term.Color.NONE, "foo"],
                     [
                         yuio.term.Color.NONE,
                         "|",
@@ -861,7 +857,7 @@ class TestColorizedString:
                 8,
                 {"first_line_indent": ">>", "continuation_indent": ".."},
                 [
-                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "word", " "],
+                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "word"],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "werywe"],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "rylong"],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "unbrea"],
@@ -886,7 +882,7 @@ class TestColorizedString:
                 13,
                 {"first_line_indent": ">>", "continuation_indent": ".."},
                 [
-                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single", " "],
+                    [yuio.term.Color.NONE, ">>", yuio.term.Color.NONE, "single"],
                     [yuio.term.Color.NONE, "..", yuio.term.Color.NONE, "string"],
                     [
                         yuio.term.Color.NONE,
@@ -956,7 +952,6 @@ class TestColorizedString:
                         yuio.term.Color.NONE,
                         yuio.term.Color.FORE_BLUE,
                         "single",
-                        " ",
                     ],
                     [
                         yuio.term.Color.NONE,
@@ -1278,11 +1273,6 @@ class MockIStream(io.StringIO):
 
 
 @contextlib.contextmanager
-def _set_cbreak():
-    yield
-
-
-@contextlib.contextmanager
 def mock_term_io(
     i_tty: bool = False,
     o_tty: bool = False,
@@ -1313,7 +1303,10 @@ def mock_term_io(
         yuio.term._is_interactive_input,
         lambda _: i_tty,
     )
-    old_set_cbreak, yuio.term._set_cbreak = yuio.term._set_cbreak, _set_cbreak
+    old_set_cbreak, yuio.term._set_cbreak = (
+        yuio.term._set_cbreak,
+        lambda: contextlib.nullcontext(),
+    )
 
     try:
         yield ostream

@@ -1,10 +1,13 @@
 import io
 
+import pytest
+
 import yuio.term
 import yuio.theme
 import yuio.widget
+from yuio import _t
 
-from .conftest import RcCompare
+from .conftest import KeyboardEventStream, RcCompare
 
 
 class TestRenderContext:
@@ -15,20 +18,6 @@ class TestRenderContext:
         assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
             [
                 "foobar!             ",
-                "                    ",
-                "                    ",
-                "                    ",
-                "                    ",
-            ]
-        )
-
-    def test_write_newlines(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
-        rc.write("foobar!\nfoo\tbar!")
-        rc.render()
-
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
-            [
-                "foobar! foo bar!    ",
                 "                    ",
                 "                    ",
                 "                    ",
@@ -74,21 +63,95 @@ class TestRenderContext:
             ]
         )
 
+    def test_write_newlines(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+        rc.write("foobar!\nfoo\tbar!")
+        rc.render()
+
+        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+            [
+                "foobar! foo bar!    ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+
+    def test_write_newlines_wide(
+        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+    ):
+        rc.write("foobar!\n👻\tbar!")
+        rc.render()
+
+        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+            [
+                "foobar! 👻 bar!     ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+
     def test_write_zero_width(
         self, sstream: io.StringIO, rc: yuio.widget.RenderContext
     ):
-        rc.write("x\u0306y")
+        rc.write("x\u0306y\u0306")
         rc.set_pos(-1, 1)
-        rc.write("a\u0306b")
-        rc.set_pos(18, 1)
-        rc.write("c\u0306d")
+        rc.write("a\u0306b\u0306")
+        rc.set_pos(19, 1)
+        rc.write("c\u0306d\u0306")
         rc.render()
 
         assert sstream.getvalue() == (
-            "\x1b[J\x1b[mx\u0306y"  # first write
-            "\nb"  # second write
-            "\x1b[19Gc\u0306"  # third write
+            "\x1b[J\x1b[mx\u0306y\u0306"  # first write
+            "\nb\u0306"  # second write
+            "\x1b[20Gc\u0306"  # third write
             "\x1b[1A\x1b[1G"  # setting cursor final position
+        )
+
+    def test_write_beyond_borders(
+        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+    ):
+        rc.move_pos(-1, 0)
+        rc.write("123456678901234566789012345667890")
+        rc.new_line()
+        rc.write("123456678901234566789012345667890")
+        rc.new_line()
+        rc.move_pos(1, 0)
+        rc.write("123456678901234566789012345667890")
+        rc.render()
+
+        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+            [
+                "23456678901234566789",
+                "12345667890123456678",
+                " 1234566789012345667",
+                "                    ",
+                "                    ",
+            ]
+        )
+
+    def test_write_beyond_borders_wide(
+        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+    ):
+        rc.move_pos(-1, 0)
+        rc.write("12345667890👻1234566789012345667890")
+        rc.new_line()
+        rc.write("12345667890👻1234566789012345667890")
+        rc.new_line()
+        rc.move_pos(1, 0)
+        rc.write("12345667890👻1234566789012345667890")
+        rc.render()
+
+        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+            [
+                "2345667890👻12345667",
+                "12345667890👻1234566",
+                " 12345667890👻123456",
+                "                    ",
+                "                    ",
+            ]
         )
 
     def test_set_pos(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
@@ -484,3 +547,925 @@ class TestRenderContext:
                 "                    ",
             ],
         )
+
+
+class TestLine:
+    def test_simple(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "Text                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Line("Text"))
+
+    def test_long(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "Text 1 2 3 4 5 6 7 8",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Line("Text 1 2 3 4 5 6 7 8 9 0"))
+
+    def test_color_simple(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "Text                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+            [
+                "rrrr                ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Line("Text", color="red"))
+
+    def test_colorized_string(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "Text blue           ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+            [
+                "rrrrrbbbb           ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(
+            yuio.widget.Line(["Text ", yuio.term.Color.FORE_BLUE, "blue"], color="red")
+        )
+
+
+class TestText:
+    def test_simple(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "Text                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Text("Text"))
+
+    def test_multiline(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "Text 1              ",
+                "Text 2              ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Text("Text 1\nText 2"))
+
+    def test_long(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "Text 1 2 3 4 5 6 7 8",
+                "9 0                 ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Text("Text 1 2 3 4 5 6 7 8 9 0"))
+
+    def test_colorized_string(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "Text blue           ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+            [
+                "     bbbb           ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(
+            yuio.widget.Text(["Text ", yuio.term.Color.FORE_BLUE, "blue"])
+        )
+
+
+class TestInput:
+    def test_simple(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Input())
+
+    def test_placeholder(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "> type something    ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.text("foo bar")
+        keyboard_event_stream.expect_screen(
+            [
+                "> foo bar           ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Input(placeholder="type something"))
+
+    def test_decoration(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "//=                 ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.expect_widget_to_continue()
+
+        keyboard_event_stream.check(yuio.widget.Input(decoration="//="))
+
+    def test_single_line(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "> hello             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.text(", world")
+        keyboard_event_stream.expect_screen(
+            [
+                "> hello, world      ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.key(yuio.widget.Key.ENTER)
+
+        result = keyboard_event_stream.check(yuio.widget.Input(text="hello"))
+        assert result == "hello, world"
+
+    def test_multiple_lines(self, keyboard_event_stream: KeyboardEventStream):
+        keyboard_event_stream.expect_screen(
+            [
+                "> hello             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.text(",")
+        keyboard_event_stream.expect_screen(
+            [
+                "> hello,            ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.key(yuio.widget.Key.ENTER)
+        keyboard_event_stream.expect_screen(
+            [
+                "> hello,            ",
+                "                    ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.text("world")
+        keyboard_event_stream.expect_screen(
+            [
+                "> hello,            ",
+                "  world             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        keyboard_event_stream.key(yuio.widget.Key.ENTER, alt=True)
+
+        result = keyboard_event_stream.check(
+            yuio.widget.Input(text="hello", allow_multiline=True)
+        )
+        assert result == "hello,\nworld"
+
+    @pytest.mark.parametrize(
+        "text,pos,cursor_pos,events",
+        [
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent("b", ctrl=True),
+                        6,
+                        (6 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "f\nx",
+                3,
+                (1 + 2, 1),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        2,
+                        (0 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        1,
+                        (1 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent("f", ctrl=True),
+                        8,
+                        (8 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "f\nx",
+                0,
+                (0 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        1,
+                        (1 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        2,
+                        (0 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        3,
+                        (1 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        3,
+                        (1 + 2, 1),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent("b", alt=True),
+                        4,
+                        (4 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo   bar baz",
+                13,
+                (13 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        10,
+                        (10 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        6,
+                        (6 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo  \n  bar  \nbaz\n  qux\nduo",
+                27,
+                (3 + 2, 4),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        24,
+                        (0 + 2, 4),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        20,
+                        (2 + 2, 3),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        18,
+                        (0 + 2, 3),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        14,
+                        (0 + 2, 2),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        8,
+                        (2 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        6,
+                        (0 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar",
+                4,
+                (4 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar",
+                5,
+                (5 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        4,
+                        (4 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar",
+                6,
+                (6 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, alt=True),
+                        4,
+                        (4 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent("f", alt=True),
+                        11,
+                        (11 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo   bar baz",
+                0,
+                (0 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        3,
+                        (3 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        9,
+                        (9 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        13,
+                        (13 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        13,
+                        (13 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo  \n  bar  \nbaz\n  qux\nduo",
+                0,
+                (0 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        3,
+                        (3 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        5,
+                        (5 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        11,
+                        (5 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        13,
+                        (7 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        17,
+                        (3 + 2, 2),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        23,
+                        (5 + 2, 3),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        27,
+                        (3 + 2, 4),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        27,
+                        (3 + 2, 4),
+                    ),
+                ],
+            ),
+            (
+                "foo bar",
+                3,
+                (3 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        7,
+                        (7 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar",
+                2,
+                (2 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        3,
+                        (3 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar",
+                1,
+                (1 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(
+                            yuio.widget.Key.ARROW_RIGHT, alt=True
+                        ),
+                        3,
+                        (3 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent("a", ctrl=True),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar\nqux duo\nbrown fox",
+                11,
+                (3 + 2, 1),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                        8,
+                        (0 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                        8,
+                        (0 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        7,
+                        (7 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent("e", ctrl=True),
+                        15,
+                        (15 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                        15,
+                        (15 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar\nqux duo\nbrown fox",
+                11,
+                (3 + 2, 1),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                        15,
+                        (7 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                        15,
+                        (7 + 2, 1),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        16,
+                        (0 + 2, 2),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                        25,
+                        (9 + 2, 2),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                        25,
+                        (9 + 2, 2),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent("p", ctrl=True),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar\nqux duo\nbrown fox",
+                11,
+                (3 + 2, 1),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        3,
+                        (3 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "😊 bar\nqux 🙃\nbrown fox",
+                9,
+                (3 + 2, 1),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        2,
+                        (3 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        0,
+                        (0 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent("n", ctrl=True),
+                        15,
+                        (15 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar qux duo",
+                7,
+                (7 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        15,
+                        (15 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "foo bar\nqux duo\nbrown fox",
+                11,
+                (3 + 2, 1),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        19,
+                        (3 + 2, 2),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        25,
+                        (9 + 2, 2),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        25,
+                        (9 + 2, 2),
+                    ),
+                ],
+            ),
+            (
+                "foo bar\nqux 🙃\n😊own fox",
+                11,
+                (3 + 2, 1),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        16,
+                        (3 + 2, 2),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        22,
+                        (9 + 2, 2),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        22,
+                        (9 + 2, 2),
+                    ),
+                ],
+            ),
+        ],
+    )
+    def test_move(
+        self,
+        keyboard_event_stream: KeyboardEventStream,
+        text: str,
+        pos: int,
+        cursor_pos: _t.Tuple[int, int],
+        events: _t.List[_t.Tuple[yuio.widget.KeyboardEvent, int, _t.Tuple[int, int]]],
+    ):
+        widget = yuio.widget.Input(text=text)
+        widget.pos = pos
+
+        keyboard_event_stream.expect_screen(
+            cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
+        )
+        for event, end_pos, (end_x, end_y) in events:
+            keyboard_event_stream.keyboard_event(event)
+            keyboard_event_stream.expect_eq(lambda: widget.pos, end_pos)
+            keyboard_event_stream.expect_screen(cursor_x=end_x, cursor_y=end_y)
+        keyboard_event_stream.expect_widget_to_continue()
+        keyboard_event_stream.check(widget)
+
+    # def test_modify(
+    #     self,
+    #     keyboard_event_stream: KeyboardEventStream,
+    #     text: str,
+    #     pos: int,
+    #     cursor_pos: _t.Tuple[int, int],
+    #     event: yuio.widget.KeyboardEvent,
+    #     end_text: str,
+    #     end_pos: int,
+    #     end_cursor_pos: _t.Tuple[int, int],
+    # ):
+    #     widget = yuio.widget.Input(text=text)
+    #     widget.pos = pos
+
+    #     keyboard_event_stream.expect_screen(
+    #         cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
+    #     )
+    #     keyboard_event_stream.keyboard_event(event)
+    #     keyboard_event_stream.expect_screen(
+    #         cursor_x=end_cursor_pos[0], cursor_y=end_cursor_pos[1]
+    #     )
+    #     keyboard_event_stream.expect_widget_to_continue()
+    #     keyboard_event_stream.check(widget)
+
+    #     assert widget.pos == end_pos
+
+    def test_undo(self, keyboard_event_stream: KeyboardEventStream):
+        pass
