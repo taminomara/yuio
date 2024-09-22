@@ -131,7 +131,6 @@ from yuio import _typing as _t
 from yuio.term import Color as _Color
 from yuio.term import ColorizedString as _ColorizedString
 from yuio.term import Term as _Term
-from yuio.term import _getch, _kbhit, _set_cbreak
 from yuio.term import line_width as _line_width
 from yuio.theme import Theme as _Theme
 
@@ -1059,7 +1058,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         if not term.is_fully_interactive:
             raise RuntimeError("terminal doesn't support rendering widgets")
 
-        with _set_cbreak():
+        with yuio.term._set_cbreak():
             rc = RenderContext(term, theme)
 
             events = _event_stream()
@@ -3517,9 +3516,9 @@ class Apply(Map[T, T], _t.Generic[T]):
 
 def _event_stream() -> _t.Iterator[KeyboardEvent]:
     while True:
-        key = _getch()
-        while _kbhit():
-            key += _getch()
+        key = yuio.term._getch()
+        while yuio.term._kbhit():
+            key += yuio.term._getch()
         encoding = sys.__stdin__.encoding if sys.__stdin__ is not None else "utf-8"
         key = key.decode(encoding, "replace")
 
