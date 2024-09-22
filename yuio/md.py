@@ -163,7 +163,7 @@ class MdFormatter:
         self.allow_headings: bool = allow_headings
 
         self._is_first_line: bool
-        self._out: yuio.term.ColorizedString
+        self._out: _t.List[yuio.term.ColorizedString]
         self._first_line_indent: yuio.term.ColorizedString
         self._continuation_indent: yuio.term.ColorizedString
 
@@ -179,7 +179,7 @@ class MdFormatter:
             width = min(shutil.get_terminal_size().columns, 90)
         self.__width = max(width, 30)
 
-    def format(self, s: str, /) -> yuio.term.ColorizedString:
+    def format(self, s: str, /) -> _t.List[yuio.term.ColorizedString]:
         """Format a markdown document."""
 
         return self.format_node(self.parse(s))
@@ -195,7 +195,7 @@ class MdFormatter:
 
         return _MdParser(self.allow_headings).parse(self._dedent(s))
 
-    def format_node(self, node: "AstBase", /) -> yuio.term.ColorizedString:
+    def format_node(self, node: "AstBase", /) -> _t.List[yuio.term.ColorizedString]:
         """Format a parsed markdown document.
 
         .. warning::
@@ -205,12 +205,11 @@ class MdFormatter:
         """
 
         self._is_first_line = True
-        self._out = yuio.term.ColorizedString()
+        self._out = []
         self._first_line_indent = yuio.term.ColorizedString()
         self._continuation_indent = yuio.term.ColorizedString()
 
         self._format(node)
-        self._out += Color.NONE
 
         return self._out
 
@@ -264,9 +263,8 @@ class MdFormatter:
         first_line, *rest = s.split("\n", 1)
         return (first_line + ("\n" + textwrap.dedent(rest[0]) if rest else "")).strip()
 
-    def _line(self, line: yuio.term.AnyString, /):
-        self._out += line
-        self._out += "\n"
+    def _line(self, line: yuio.term.ColorizedString, /):
+        self._out.append(line)
 
         self._is_first_line = False
         self._first_line_indent = self._continuation_indent

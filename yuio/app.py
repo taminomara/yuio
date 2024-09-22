@@ -1166,11 +1166,11 @@ class _HelpFormatter(object):
 
     def format_help(self) -> str:
         self._formatter._args_column_width = self._args_column_width
-        return "".join(
-            self._formatter.format_node(yuio.md.Document(self._nodes)).process_colors(
-                self._term
-            )
-        )
+        res = yuio.term.ColorizedString()
+        for line in self._formatter.format_node(yuio.md.Document(self._nodes)):
+            res += line
+            res += "\n"
+        return "".join(res.process_colors(self._term))
 
     def _format_action_short(
         self,

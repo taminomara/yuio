@@ -1635,7 +1635,10 @@ class _IoManager(abc.ABC):
         return res
 
     def _format_md(self, md: str, args) -> yuio.term.ColorizedString:
-        res = self.formatter.format(md)
+        res = yuio.term.ColorizedString()
+        for line in self.formatter.format(md):
+            res += line
+            res += "\n"
         if args:
             res %= args
         return res

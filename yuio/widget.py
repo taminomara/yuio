@@ -246,6 +246,9 @@ class RenderContext:
 
     """
 
+    # For tests.
+    _override_wh: _t.Optional[_t.Tuple[int, int]] = None
+
     def __init__(self, term: _Term, theme: _Theme, /):
         self._term: _Term = term
         self._theme: _Theme = theme
@@ -322,7 +325,6 @@ class RenderContext:
         self._none_color: str = _Color.NONE.as_code(term)
 
         # Used for tests and debug
-        self._override_wh: _t.Optional[_t.Tuple[int, int]] = None
         self._renders: int = 0
         self._bytes_rendered: int = 0
         self._total_bytes_rendered: int = 0
@@ -1065,8 +1067,10 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                     if self.__in_help_menu:
                         min_h, max_h = self.__help_menu_layout(rc)
                     else:
-                        if height > 1:
-                            height -= 1
+                        with rc.frame(0, 0):
+                            inline_help_height = self.__help_menu_layout_inline(rc)[0]
+                        if height > inline_help_height:
+                            height -= inline_help_height
                         with rc.frame(0, 0, height=height):
                             min_h, max_h = self.layout(rc)
                         max_h = max(min_h, min(max_h, height - 1))
@@ -1092,10 +1096,10 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
                     if event == KeyboardEvent("l", ctrl=True):
                         rc.clear_screen()
-                    elif event == KeyboardEvent(Key.F1):
-                        self.__in_help_menu = not self.__in_help_menu
-                        if not self.__in_help_menu:
-                            self.__help_menu_line = 0
+                    elif event == KeyboardEvent(Key.F1) and not self.__in_help_menu:
+                        self.__in_help_menu = True
+                        self.__help_menu_line = 0
+                        self.__last_help_columns = None
                     elif self.__in_help_menu:
                         self.__help_menu_event(event)
                     elif result := self.event(event):
@@ -1178,9 +1182,17 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             ],
         ]  # FML this type hint -___-
     ]
+    __colorized_inline_help: _t.List[
+        _t.Tuple[  # Action
+            _t.List[str],  # Keys
+            _ColorizedString,  # Title
+            int,  # Keys width
+        ]
+    ]
 
     def __help_menu_event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
         if not self.__help_menu_search and e in [
+            KeyboardEvent(Key.F1),
             KeyboardEvent(Key.ESCAPE),
             KeyboardEvent(Key.ENTER),
             KeyboardEvent("q"),
@@ -1188,6 +1200,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         ]:
             self.__in_help_menu = False
             self.__help_menu_line = 0
+            self.__last_help_columns = None
         elif e == KeyboardEvent(Key.ARROW_UP):
             self.__help_menu_line += 1
         elif e == KeyboardEvent(Key.HOME):
@@ -1221,12 +1234,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             max(-self.__menu_content_height + self.__height, self.__help_menu_line), 0
         )
 
-    def __help_menu_layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
-        if self.__help_menu_search:
-            self.__help_menu_search_layout = self.__help_menu_search_widget.layout(rc)
-
+    def __clear_layout_cache(self, rc: RenderContext, /) -> bool:
         if self.__width == rc.width and self.__last_help_columns == self.help_data:
-            return rc.height, rc.height
+            return False
 
         if self.__width != rc.width:
             self.__help_menu_line = 0
@@ -1239,24 +1249,29 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         self.__height = rc.height
         self.__last_help_columns = self.help_data
 
+        return True
+
+    def __help_menu_layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+        if self.__help_menu_search:
+            self.__help_menu_search_layout = self.__help_menu_search_widget.layout(rc)
+
+        if not self.__clear_layout_cache(rc):
+            return rc.height, rc.height
+
         self.__key_width = 10
-        msg_width = rc.width - self.__key_width - 2
+        formatter = yuio.md.MdFormatter(
+            rc.theme,
+            width=min(rc.width, 90) - self.__key_width - 2,
+            allow_headings=False,
+        )
 
         self.__wrapped_groups = []
         for title, actions in self.__prepared_groups.items():
             wrapped_actions: _t.List[
                 _t.Tuple[_t.List[str], _t.List[_ColorizedString], int]
             ] = []
-            for keys, msg, key_width in actions:
-                lines = yuio.md.colorize(
-                    rc.theme, str(msg), default_color="menu/text/help_msg:help_menu"
-                ).wrap(
-                    msg_width,
-                    break_on_hyphens=True,
-                    preserve_spaces=False,
-                    preserve_newlines=False,
-                )
-                wrapped_actions.append((keys, lines, key_width))
+            for keys, _, msg, key_width in actions:
+                wrapped_actions.append((keys, formatter.format(msg), key_width))
             self.__wrapped_groups.append((title, wrapped_actions))
 
         return rc.height, rc.height
@@ -1310,19 +1325,29 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                 rc.write(" " * (rc.width - 1))
                 rc.set_final_pos(1, 0)
 
+    def __help_menu_layout_inline(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+        if not self.__clear_layout_cache(rc):
+            return 1, 1
+
+        self.__colorized_inline_help = []
+        for keys, title, _, key_width in self.__prepared_inline_help:
+            if keys:
+                title_color = "menu/text/help_msg:help"
+            else:
+                title_color = "menu/text/help_info:help"
+            colorized_title = yuio.md.colorize(
+                rc.theme, title, default_color=title_color
+            )
+            self.__colorized_inline_help.append((keys, colorized_title, key_width))
+
+        return 1, 1
+
     def __help_menu_draw_inline(self, rc: RenderContext, /):
-        if self.__last_help_columns != self.help_data:
-            # Clear the cache...
-            self.__dict__.pop("_Widget__prepared_inline_help", None)
-            self.__dict__.pop("_Widget__prepared_groups", None)
-
-        self.__last_help_columns = self.help_data
-
         used_width = _line_width(self._KEY_SYMBOLS[Key.F1]) + 5
         col_sep = ""
 
-        for keys, msg, keys_width in self.__prepared_inline_help:
-            action_width = keys_width + bool(keys_width) + msg.width + 3
+        for keys, title, keys_width in self.__colorized_inline_help:
+            action_width = keys_width + bool(keys_width) + title.width + 3
             if used_width + action_width > rc.width:
                 break
 
@@ -1339,11 +1364,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
             if keys_width:
                 rc.move_pos(1, 0)
-            if keys:
-                rc.set_color_path("menu/text/help_msg:help")
-            else:
-                rc.set_color_path("menu/text/help_info:help")
-            rc.write(msg)
+            rc.write(title)
 
             col_sep = " • "
 
@@ -1383,7 +1404,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     @functools.cached_property
     def __prepared_inline_help(
         self,
-    ) -> _t.List[_t.Tuple[_t.List[str], _ColorizedString, int]]:
+    ) -> _t.List[_t.Tuple[_t.List[str], str, str, int]]:
         return [
             prepared_action
             for action in self.help_data.inline_help
@@ -1393,7 +1414,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     @functools.cached_property
     def __prepared_groups(
         self,
-    ) -> _t.Dict[str, _t.List[_t.Tuple[_t.List[str], _ColorizedString, int]]]:
+    ) -> _t.Dict[str, _t.List[_t.Tuple[_t.List[str], str, str, int]]]:
         help_data = (
             self.help_data.with_action(
                 self._KEY_SYMBOLS[Key.F1],
@@ -1465,7 +1486,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     def __prepare_action(
         self, action: "Action"
-    ) -> _t.Optional[_t.Tuple[_t.List[str], _ColorizedString, int]]:
+    ) -> _t.Optional[_t.Tuple[_t.List[str], str, str, int]]:
         if isinstance(action, tuple):
             action_keys, msg = action
             prepared_keys = self.__prepare_keys(action_keys)
@@ -1478,8 +1499,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             if not any(pattern in key for key in prepared_keys) and pattern not in msg:
                 return None
 
-        prepared_msg = _ColorizedString(msg)
-        return prepared_keys, prepared_msg, _line_width("/".join(prepared_keys))
+        title = msg.split("\n\n", maxsplit=1)[0]
+        return prepared_keys, title, msg, _line_width("/".join(prepared_keys))
 
     def __prepare_keys(self, action_keys: "ActionKeys") -> _t.List[str]:
         if isinstance(action_keys, (str, Key, KeyboardEvent)):
