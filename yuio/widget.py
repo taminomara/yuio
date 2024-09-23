@@ -1445,7 +1445,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             .with_action(
                 "ret",
                 group="Terminology",
-                long_msg="means `Return` / `Enter`",
+                long_msg="means `Return` or `Enter`",
             )
             .with_action(
                 "bsp",
@@ -2515,11 +2515,20 @@ class Input(Widget[str]):
     @property
     def help_data(self) -> WidgetHelp:
         if self.__allow_multiline:
-            return super().help_data.with_action(
-                KeyboardEvent(Key.ENTER, alt=True),
-                KeyboardEvent("d", ctrl=True),
-                msg="accept",
-                prepend=True,
+            return (
+                super()
+                .help_data.with_action(
+                    KeyboardEvent(Key.ENTER, alt=True),
+                    KeyboardEvent("d", ctrl=True),
+                    msg="accept",
+                    prepend=True,
+                )
+                .with_action(
+                    KeyboardEvent(Key.ENTER),
+                    group=self._MODIFY,
+                    long_msg="new line",
+                    prepend=True,
+                )
             )
         else:
             return super().help_data
