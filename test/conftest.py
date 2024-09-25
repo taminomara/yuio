@@ -2,8 +2,10 @@ import contextlib
 import dataclasses
 import io
 import os
+import pathlib
 import re
 import sys
+import traceback
 from dataclasses import dataclass
 
 import pytest
@@ -15,6 +17,7 @@ import yuio.widget
 from yuio import _typing as _t
 
 T = _t.TypeVar("T")
+W = _t.TypeVar("W", bound=yuio.widget.Widget[object])
 
 
 @pytest.fixture
@@ -69,8 +72,8 @@ def rc(term, theme) -> yuio.widget.RenderContext:
 
 @pytest.fixture
 def keyboard_event_stream_factory(
-    sstream, term, theme
-) -> _t.Callable[[], "KeyboardEventStream"]:
+    sstream: io.StringIO, term: yuio.term.Term, theme: yuio.theme.Theme
+) -> _t.Callable[[], "KeyboardEventStream[yuio.widget.Widget[object]]"]:
     def factory():
         return KeyboardEventStream(sstream, term, theme)
 
@@ -80,52 +83,122 @@ def keyboard_event_stream_factory(
 @pytest.fixture
 def keyboard_event_stream(
     keyboard_event_stream_factory,
-) -> _t.Generator["KeyboardEventStream", None, None]:
+) -> _t.Generator["KeyboardEventStream[yuio.widget.Widget[object]]", None, None]:
     return keyboard_event_stream_factory()
 
 
 class _KeyboardEventStreamDone(BaseException):
-    pass
+    def __str__(self):
+        return "<finish event stream>"
 
 
 @dataclass
-class _WidgetAssert:
-    fn: _t.Callable[[], bool]
+class _WidgetAssert(_t.Generic[W]):
+    fn: _t.Callable[[W], bool]
+
+    def __str__(self):
+        return "<assert widget state>"
 
 
-class KeyboardEventStream:
+class _KeyboardEventStream(_t.Generic[W]):
     def __init__(
-        self, sstream: io.StringIO, term: yuio.term.Term, theme: yuio.theme.Theme
+        self,
+        widget: W,
+        sstream: io.StringIO,
+        term: yuio.term.Term,
+        theme: yuio.theme.Theme,
+        events: _t.List[
+            _t.Tuple[
+                traceback.StackSummary,
+                _t.Union[
+                    yuio.widget.KeyboardEvent,
+                    "RcCompare",
+                    _WidgetAssert[W],
+                    _KeyboardEventStreamDone,
+                ],
+            ]
+        ],
+    ):
+        self.widget = widget
+        self.sstream = sstream
+        self.term = term
+        self.theme = theme
+        self.events = events
+        self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while self.index < len(self.events):
+            (stack_summary, event) = self.events[self.index]
+            self.index += 1
+            try:
+                if isinstance(event, _KeyboardEventStreamDone):
+                    raise event
+                elif isinstance(event, RcCompare):
+                    self.sstream.seek(0)
+                    commands = self.sstream.read()
+                    self.sstream.seek(0, io.SEEK_END)
+                    assert RcCompare.from_commands(commands) == event
+                elif isinstance(event, _WidgetAssert):
+                    assert event.fn(self.widget)
+                else:
+                    return event
+            except Exception as e:
+                stack_summary_text = "".join(stack_summary.format())
+                e.args = (f"{e}\n\nAssertion origin:\n\n{stack_summary_text}",)
+                raise e
+        raise StopIteration
+
+
+class KeyboardEventStream(_t.Generic[W]):
+    def __init__(
+        self,
+        sstream: _t.Optional[io.StringIO] = None,
+        term: _t.Optional[yuio.term.Term] = None,
+        theme: _t.Optional[yuio.theme.Theme] = None,
+        widget: _t.Optional[W] = None,
     ):
         self._events: _t.List[
-            _t.Union[
-                yuio.widget.KeyboardEvent,
-                RcCompare,
-                _WidgetAssert,
-                _KeyboardEventStreamDone,
+            _t.Tuple[
+                traceback.StackSummary,
+                _t.Union[
+                    yuio.widget.KeyboardEvent,
+                    RcCompare,
+                    _WidgetAssert[W],
+                    _KeyboardEventStreamDone,
+                ],
             ]
         ] = []
-        self._index = 0
 
         self._sstream = sstream
-
         self._term = term
         self._theme = theme
+        self._widget = widget
+
+        self._closed = False
 
     def key(
         self, key: _t.Union[str, yuio.widget.Key], ctrl: bool = False, alt: bool = False
-    ) -> "KeyboardEventStream":
-        self._events.append(yuio.widget.KeyboardEvent(key, ctrl, alt))
+    ) -> "KeyboardEventStream[W]":
+        self._assert_not_closed()
+        self._events.append(
+            (self._get_stack_summary(), yuio.widget.KeyboardEvent(key, ctrl, alt))
+        )
         return self
 
     def keyboard_event(
         self, keyboard_event: yuio.widget.KeyboardEvent
-    ) -> "KeyboardEventStream":
-        self._events.append(keyboard_event)
+    ) -> "KeyboardEventStream[W]":
+        self._assert_not_closed()
+        self._events.append((self._get_stack_summary(), keyboard_event))
         return self
 
-    def text(self, text: str) -> "KeyboardEventStream":
-        self._events.extend(yuio.widget.KeyboardEvent(c) for c in text)
+    def text(self, text: str) -> "KeyboardEventStream[W]":
+        self._assert_not_closed()
+        stack_summary = self._get_stack_summary()
+        self._events.extend((stack_summary, yuio.widget.KeyboardEvent(c)) for c in text)
         return self
 
     def expect_screen(
@@ -134,57 +207,74 @@ class KeyboardEventStream:
         colors: _t.Optional[_t.List[str]] = None,
         cursor_x: _t.Optional[int] = None,
         cursor_y: _t.Optional[int] = None,
-    ) -> "KeyboardEventStream":
-        self._events.append(RcCompare(screen, colors, cursor_x, cursor_y))
+    ) -> "KeyboardEventStream[W]":
+        self._assert_not_closed()
+        self._events.append(
+            (self._get_stack_summary(), RcCompare(screen, colors, cursor_x, cursor_y))
+        )
         return self
 
-    def expect(self, fn: _t.Callable[[], bool]) -> "KeyboardEventStream":
-        self._events.append(_WidgetAssert(fn))
+    def expect(self, fn: _t.Callable[[W], bool]) -> "KeyboardEventStream[W]":
+        self._assert_not_closed()
+        self._events.append((self._get_stack_summary(), _WidgetAssert(fn)))
         return self
 
-    def expect_eq(self, fn: _t.Callable[[], T], expected: T) -> "KeyboardEventStream":
-        def eq():
-            assert fn() == expected
+    def expect_eq(
+        self, fn: _t.Callable[[W], T], expected: T
+    ) -> "KeyboardEventStream[W]":
+        self._assert_not_closed()
+
+        def eq(widget: W):
+            assert fn(widget) == expected
             return True
 
-        self._events.append(_WidgetAssert(eq))
+        self._events.append((self._get_stack_summary(), _WidgetAssert(eq)))
         return self
 
     def expect_widget_to_continue(self):
-        self._events.append(_KeyboardEventStreamDone())
+        self._assert_not_closed()
+        self._events.append((self._get_stack_summary(), _KeyboardEventStreamDone()))
+        self._closed = True
         return self
 
-    def __iter__(self):
-        return self
+    def _assert_not_closed(self):
+        if self._closed:
+            raise RuntimeError(
+                "can't add other events or asserts"
+                " after a call to expect_widget_to_continue"
+            )
 
-    def __next__(self):
-        while self._index < len(self._events):
-            event = self._events[self._index]
-            self._index += 1
-            if isinstance(event, _KeyboardEventStreamDone):
-                raise event
-            elif isinstance(event, RcCompare):
-                self._sstream.seek(0)
-                commands = self._sstream.read()
-                self._sstream.seek(0, io.SEEK_END)
-                assert RcCompare.from_commands(commands) == event
-            elif isinstance(event, _WidgetAssert):
-                assert event.fn()
-            else:
-                return event
-        raise StopIteration
+    @staticmethod
+    def _get_stack_summary() -> traceback.StackSummary:
+        base_path = str(pathlib.Path(__file__).parent.parent.absolute())
+        stack_summary = traceback.extract_stack()
+        stack_summary.pop()
+        stack_summary.pop()
+        while stack_summary and base_path not in stack_summary[0].filename:
+            stack_summary.pop(0)
+        return stack_summary
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_val is None:
-            assert self._index == len(
-                self._events
-            ), f"some events haven't been queried: {self._events[self._index:]}"
-        return exc_type is _KeyboardEventStreamDone
+    def check(
+        self,
+        widget: _t.Optional[W] = None,
+        sstream: _t.Optional[io.StringIO] = None,
+        term: _t.Optional[yuio.term.Term] = None,
+        theme: _t.Optional[yuio.theme.Theme] = None,
+    ):
+        widget = widget or self._widget
+        assert widget is not None, "widget is required"
+        sstream = sstream or self._sstream
+        assert sstream is not None, "sstream is required"
+        term = term or self._term
+        assert term is not None, "term is required"
+        theme = theme or self._theme
+        assert theme is not None, "theme is required"
 
-    def check(self, widget: yuio.widget.Widget[T]) -> _t.Optional[T]:
+        event_stream = _KeyboardEventStream(widget, sstream, term, theme, self._events)
+
         old_event_stream, yuio.widget._event_stream = (
             yuio.widget._event_stream,
-            lambda: self,
+            lambda: event_stream,
         )
         old_set_cbreak, yuio.term._set_cbreak = (
             yuio.term._set_cbreak,
@@ -193,13 +283,23 @@ class KeyboardEventStream:
         yuio.widget.RenderContext._override_wh = (_WIDTH, _HEIGHT)
 
         try:
-            return widget.run(self._term, self._theme)
+            result = widget.run(term, theme)
         except _KeyboardEventStreamDone:
-            return None
+            result = None
+        else:
+            if event_stream.index != len(self._events):
+                raise AssertionError(
+                    "some events haven't been queried:\n\n"
+                    + "\n".join(
+                        f"{event[1]}" for event in self._events[event_stream.index :]
+                    )
+                )
         finally:
             yuio.widget._event_stream = old_event_stream
             yuio.term._set_cbreak = old_set_cbreak
             yuio.widget.RenderContext._override_wh = None
+
+        return result
 
 
 def pytest_assertrepr_compare(op, left, right):
@@ -242,6 +342,9 @@ class RcCompare:
             return False
 
         return True
+
+    def __str__(self):
+        return "<assert rendered screen>"
 
 
 _CSI_RE = re.compile(r"\x1b\[((?:-?[0-9]+)?(?:;(?:-?[0-9]+)?)*(?:[mJHABCDG]))")

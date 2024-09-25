@@ -550,7 +550,7 @@ class TestRenderContext:
 
 
 class TestLine:
-    def test_simple(self, keyboard_event_stream: KeyboardEventStream):
+    def test_simple(self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Line]):
         keyboard_event_stream.expect_screen(
             [
                 "Text                ",
@@ -564,7 +564,7 @@ class TestLine:
 
         keyboard_event_stream.check(yuio.widget.Line("Text"))
 
-    def test_long(self, keyboard_event_stream: KeyboardEventStream):
+    def test_long(self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Line]):
         keyboard_event_stream.expect_screen(
             [
                 "Text 1 2 3 4 5 6 7 8",
@@ -578,7 +578,9 @@ class TestLine:
 
         keyboard_event_stream.check(yuio.widget.Line("Text 1 2 3 4 5 6 7 8 9 0"))
 
-    def test_color_simple(self, keyboard_event_stream: KeyboardEventStream):
+    def test_color_simple(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Line]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 "Text                ",
@@ -599,7 +601,9 @@ class TestLine:
 
         keyboard_event_stream.check(yuio.widget.Line("Text", color="red"))
 
-    def test_colorized_string(self, keyboard_event_stream: KeyboardEventStream):
+    def test_colorized_string(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Line]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 "Text blue           ",
@@ -624,7 +628,7 @@ class TestLine:
 
 
 class TestText:
-    def test_simple(self, keyboard_event_stream: KeyboardEventStream):
+    def test_simple(self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Text]):
         keyboard_event_stream.expect_screen(
             [
                 "Text                ",
@@ -638,7 +642,9 @@ class TestText:
 
         keyboard_event_stream.check(yuio.widget.Text("Text"))
 
-    def test_multiline(self, keyboard_event_stream: KeyboardEventStream):
+    def test_multiline(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Text]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 "Text 1              ",
@@ -652,7 +658,7 @@ class TestText:
 
         keyboard_event_stream.check(yuio.widget.Text("Text 1\nText 2"))
 
-    def test_long(self, keyboard_event_stream: KeyboardEventStream):
+    def test_long(self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Text]):
         keyboard_event_stream.expect_screen(
             [
                 "Text 1 2 3 4 5 6 7 8",
@@ -666,7 +672,9 @@ class TestText:
 
         keyboard_event_stream.check(yuio.widget.Text("Text 1 2 3 4 5 6 7 8 9 0"))
 
-    def test_colorized_string(self, keyboard_event_stream: KeyboardEventStream):
+    def test_colorized_string(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Text]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 "Text blue           ",
@@ -691,7 +699,9 @@ class TestText:
 
 
 class TestInput:
-    def test_simple(self, keyboard_event_stream: KeyboardEventStream):
+    def test_simple(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 ">                   ",
@@ -705,7 +715,9 @@ class TestInput:
 
         keyboard_event_stream.check(yuio.widget.Input())
 
-    def test_placeholder(self, keyboard_event_stream: KeyboardEventStream):
+    def test_placeholder(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 "> type something    ",
@@ -729,7 +741,9 @@ class TestInput:
 
         keyboard_event_stream.check(yuio.widget.Input(placeholder="type something"))
 
-    def test_decoration(self, keyboard_event_stream: KeyboardEventStream):
+    def test_decoration(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 "//=                 ",
@@ -743,7 +757,9 @@ class TestInput:
 
         keyboard_event_stream.check(yuio.widget.Input(decoration="//="))
 
-    def test_single_line(self, keyboard_event_stream: KeyboardEventStream):
+    def test_single_line(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 "> hello             ",
@@ -768,7 +784,9 @@ class TestInput:
         result = keyboard_event_stream.check(yuio.widget.Input(text="hello"))
         assert result == "hello, world"
 
-    def test_multiple_lines(self, keyboard_event_stream: KeyboardEventStream):
+    def test_multiple_lines(
+        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
+    ):
         keyboard_event_stream.expect_screen(
             [
                 "> hello             ",
@@ -1422,50 +1440,291 @@ class TestInput:
     )
     def test_move(
         self,
-        keyboard_event_stream: KeyboardEventStream,
+        keyboard_event_stream: KeyboardEventStream[yuio.widget.Input],
         text: str,
         pos: int,
         cursor_pos: _t.Tuple[int, int],
         events: _t.List[_t.Tuple[yuio.widget.KeyboardEvent, int, _t.Tuple[int, int]]],
     ):
-        widget = yuio.widget.Input(text=text)
-        widget.pos = pos
+        widget = yuio.widget.Input(text=text, pos=pos)
 
         keyboard_event_stream.expect_screen(
             cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
         )
         for event, end_pos, (end_x, end_y) in events:
             keyboard_event_stream.keyboard_event(event)
-            keyboard_event_stream.expect_eq(lambda: widget.pos, end_pos)
+            keyboard_event_stream.expect_eq(lambda widget: widget.pos, end_pos)
             keyboard_event_stream.expect_screen(cursor_x=end_x, cursor_y=end_y)
         keyboard_event_stream.expect_widget_to_continue()
         keyboard_event_stream.check(widget)
 
-    # def test_modify(
-    #     self,
-    #     keyboard_event_stream: KeyboardEventStream,
-    #     text: str,
-    #     pos: int,
-    #     cursor_pos: _t.Tuple[int, int],
-    #     event: yuio.widget.KeyboardEvent,
-    #     end_text: str,
-    #     end_pos: int,
-    #     end_cursor_pos: _t.Tuple[int, int],
-    # ):
-    #     widget = yuio.widget.Input(text=text)
-    #     widget.pos = pos
+    @pytest.mark.parametrize("undo_method", ["undo", "yank"])
+    @pytest.mark.parametrize(
+        "text,pos,cursor_pos,event,end_text,end_pos,end_cursor_pos",
+        [
+            (
+                "foobar",
+                3,
+                (3 + 2, 0),
+                yuio.widget.KeyboardEvent("h", ctrl=True),
+                "fobar",
+                2,
+                (2 + 2, 0),
+            ),
+            (
+                "foobar",
+                3,
+                (3 + 2, 0),
+                yuio.widget.KeyboardEvent(yuio.widget.Key.BACKSPACE),
+                "fobar",
+                2,
+                (2 + 2, 0),
+            ),
+            (
+                "foobar",
+                3,
+                (3 + 2, 0),
+                yuio.widget.KeyboardEvent(yuio.widget.Key.DELETE),
+                "fooar",
+                3,
+                (3 + 2, 0),
+            ),
+            (
+                "foobar",
+                3,
+                (3 + 2, 0),
+                yuio.widget.KeyboardEvent("w", ctrl=True),
+                "bar",
+                0,
+                (0 + 2, 0),
+            ),
+            (
+                "foobar",
+                3,
+                (3 + 2, 0),
+                yuio.widget.KeyboardEvent(yuio.widget.Key.BACKSPACE, alt=True),
+                "bar",
+                0,
+                (0 + 2, 0),
+            ),
+            (
+                "foobar",
+                3,
+                (3 + 2, 0),
+                yuio.widget.KeyboardEvent("d", alt=True),
+                "foo",
+                3,
+                (3 + 2, 0),
+            ),
+            (
+                "foobar",
+                3,
+                (3 + 2, 0),
+                yuio.widget.KeyboardEvent(yuio.widget.Key.DELETE, alt=True),
+                "foo",
+                3,
+                (3 + 2, 0),
+            ),
+            (
+                "foo\nbar qux\nduo",
+                7,
+                (3 + 2, 1),
+                yuio.widget.KeyboardEvent("u", ctrl=True),
+                "foo\n qux\nduo",
+                4,
+                (0 + 2, 1),
+            ),
+            (
+                "foo\nbar qux\nduo",
+                7,
+                (3 + 2, 1),
+                yuio.widget.KeyboardEvent("k", ctrl=True),
+                "foo\nbar\nduo",
+                7,
+                (3 + 2, 1),
+            ),
+        ],
+    )
+    def test_modify(
+        self,
+        keyboard_event_stream: KeyboardEventStream[yuio.widget.Input],
+        undo_method: _t.Literal["undo", "yank"],
+        text: str,
+        pos: int,
+        cursor_pos: _t.Tuple[int, int],
+        event: yuio.widget.KeyboardEvent,
+        end_text: str,
+        end_pos: int,
+        end_cursor_pos: _t.Tuple[int, int],
+    ):
+        no_yank = undo_method == "yank" and event in [
+            yuio.widget.KeyboardEvent("h", ctrl=True),
+            yuio.widget.KeyboardEvent(yuio.widget.Key.BACKSPACE),
+            yuio.widget.KeyboardEvent(yuio.widget.Key.DELETE),
+        ]
 
-    #     keyboard_event_stream.expect_screen(
-    #         cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
-    #     )
-    #     keyboard_event_stream.keyboard_event(event)
-    #     keyboard_event_stream.expect_screen(
-    #         cursor_x=end_cursor_pos[0], cursor_y=end_cursor_pos[1]
-    #     )
-    #     keyboard_event_stream.expect_widget_to_continue()
-    #     keyboard_event_stream.check(widget)
+        widget = yuio.widget.Input(text=text, pos=pos)
 
-    #     assert widget.pos == end_pos
+        keyboard_event_stream.expect_screen(
+            cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
+        )
+        keyboard_event_stream.keyboard_event(event)
+        keyboard_event_stream.expect_eq(lambda widget: widget.text, end_text)
+        keyboard_event_stream.expect_eq(lambda widget: widget.pos, end_pos)
+        keyboard_event_stream.expect_screen(
+            cursor_x=end_cursor_pos[0], cursor_y=end_cursor_pos[1]
+        )
+        if undo_method == "undo":
+            keyboard_event_stream.key("-", ctrl=True)
+            keyboard_event_stream.expect_eq(lambda widget: widget.text, text)
+            keyboard_event_stream.expect_eq(lambda widget: widget.pos, pos)
+            keyboard_event_stream.expect_screen(
+                cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
+            )
+        else:
+            keyboard_event_stream.key("y", ctrl=True)
+            if no_yank:
+                keyboard_event_stream.expect_eq(lambda widget: widget.text, end_text)
+            else:
+                keyboard_event_stream.expect_eq(lambda widget: widget.text, text)
+        keyboard_event_stream.expect_widget_to_continue()
+        keyboard_event_stream.check(widget)
 
-    def test_undo(self, keyboard_event_stream: KeyboardEventStream):
-        pass
+    @pytest.mark.parametrize(
+        "text,pos,keyboard_event_stream",
+        [
+            # Undo single char
+            (
+                "foobar",
+                3,
+                (
+                    KeyboardEventStream[yuio.widget.Input]()
+                    .text("X")
+                    .expect_eq(lambda widget: widget.text, "fooXbar")
+                    .expect_eq(lambda widget: widget.pos, 4)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "foobar")
+                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_to_continue()
+                ),
+            ),
+            # Undo multiple chars
+            (
+                "foobar",
+                3,
+                (
+                    KeyboardEventStream[yuio.widget.Input]()
+                    .text("XYZ")
+                    .expect_eq(lambda widget: widget.text, "fooXYZbar")
+                    .expect_eq(lambda widget: widget.pos, 6)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "foobar")
+                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_to_continue()
+                ),
+            ),
+            # Undo multiple chars with whitespaces
+            (
+                "foobar",
+                3,
+                (
+                    KeyboardEventStream[yuio.widget.Input]()
+                    .text("X Y Z")
+                    .expect_eq(lambda widget: widget.text, "fooX Y Zbar")
+                    .expect_eq(lambda widget: widget.pos, 8)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooX Ybar")
+                    .expect_eq(lambda widget: widget.pos, 6)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooXbar")
+                    .expect_eq(lambda widget: widget.pos, 4)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "foobar")
+                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_to_continue()
+                ),
+            ),
+            # Undo multiple chars with multiple whitespaces
+            (
+                "foobar",
+                3,
+                (
+                    KeyboardEventStream[yuio.widget.Input]()
+                    .text("X  Y Z")
+                    .expect_eq(lambda widget: widget.text, "fooX  Y Zbar")
+                    .expect_eq(lambda widget: widget.pos, 9)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooX  Ybar")
+                    .expect_eq(lambda widget: widget.pos, 7)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooX  bar")
+                    .expect_eq(lambda widget: widget.pos, 6)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooXbar")
+                    .expect_eq(lambda widget: widget.pos, 4)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "foobar")
+                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_to_continue()
+                ),
+            ),
+            # Undo multiple chars with position change
+            (
+                "foobar",
+                3,
+                (
+                    KeyboardEventStream[yuio.widget.Input]()
+                    .text("XY")
+                    .key(yuio.widget.Key.ARROW_LEFT)
+                    .text("AB")
+                    .expect_eq(lambda widget: widget.text, "fooXABYbar")
+                    .expect_eq(lambda widget: widget.pos, 6)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooXYbar")
+                    .expect_eq(lambda widget: widget.pos, 4)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "foobar")
+                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_to_continue()
+                ),
+            ),
+            # Undo multiple chars with deletions
+            (
+                "foobar",
+                3,
+                (
+                    KeyboardEventStream[yuio.widget.Input]()
+                    .text("XY")
+                    .key(yuio.widget.Key.DELETE)
+                    .text("AB")
+                    .key(yuio.widget.Key.BACKSPACE)
+                    .expect_eq(lambda widget: widget.text, "fooXYAar")
+                    .expect_eq(lambda widget: widget.pos, 6)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooXYABar")
+                    .expect_eq(lambda widget: widget.pos, 7)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooXYar")
+                    .expect_eq(lambda widget: widget.pos, 5)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "fooXYbar")
+                    .expect_eq(lambda widget: widget.pos, 5)
+                    .key("-", ctrl=True)
+                    .expect_eq(lambda widget: widget.text, "foobar")
+                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_to_continue()
+                ),
+            ),
+        ],
+    )
+    def test_undo(
+        self,
+        sstream: io.StringIO,
+        term: yuio.term.Term,
+        theme: yuio.theme.Theme,
+        text: str,
+        pos: int,
+        keyboard_event_stream: KeyboardEventStream[yuio.widget.Input],
+    ):
+        widget = yuio.widget.Input(text=text, pos=pos)
+        keyboard_event_stream.check(widget, sstream, term, theme)

@@ -2088,12 +2088,13 @@ class Input(Widget[str]):
         self,
         *,
         text: str = "",
+        pos: _t.Optional[int] = None,
         placeholder: str = "",
         decoration: str = ">",
         allow_multiline: bool = False,
     ):
         self.__text: str = text
-        self.__pos: int = len(text)
+        self.__pos: int = len(text) if pos is None else max(0, min(pos, len(text)))
         self.__placeholder: str = placeholder
         self.__decoration: str = decoration
         self.__allow_multiline: bool = allow_multiline
@@ -2185,7 +2186,7 @@ class Input(Widget[str]):
             self.__history[-1] = prev_text, prev_pos, action
             return
 
-        if self.text == prev_text:
+        if text == prev_text and pos == prev_pos:
             # This could happen when user presses backspace while the cursor
             # is at the text's beginning. We don't want to create
             # a checkpoint for this.
@@ -2345,6 +2346,19 @@ class Input(Widget[str]):
         if prev_pos != self.pos:
             self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
             self.text = self.text[: self.pos] + self.text[prev_pos:]
+        else:
+            self._bell()
+
+    @bind(Key.DELETE)
+    @help(group=_MODIFY)
+    def delete(self):
+        """delete"""
+        prev_pos = self.pos
+        self.right(checkpoint=False)
+        if prev_pos != self.pos:
+            self._internal_checkpoint(Input._CheckpointType.DEL, self.text, prev_pos)
+            self.text = self.text[:prev_pos] + self.text[self.pos :]
+            self.pos = prev_pos
         else:
             self._bell()
 
