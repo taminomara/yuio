@@ -24,18 +24,21 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-test = [
+dev = [
+    "pytest-cov~=6.0.0",
+    "yuio[test,lint,doc]",
+]
+lint = [
     "black~=23.7",
     "isort~=5.12",
     "pre-commit~=3.8.0",
+]
+test = [
     "pyright~=1.1",
-    "pytest-cov~=6.0.0",
     "pytest~=7.4",
     "PyYaml~=6.0",
-    "sphinx-vhs~=0.0.3",
     "sybil~=6.1",
     "toml~=0.10",
-    "tox~=4.23",
     "types-PyYAML~=5.3",
     "types-toml~=0.10",
     "typing_extensions~=4.12",
