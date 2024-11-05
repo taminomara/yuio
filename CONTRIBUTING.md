@@ -8,7 +8,7 @@
    git clone git@github.com:taminomara/yuio.git
    ```
 
-2. Create a virtual environment.
+2. Create a virtual environment with the latest stable python.
 
 3. Install Yuio in development mode, and install dev dependencies:
 
@@ -18,31 +18,31 @@
 
 4. Install pre-commit hooks:
 
-   ```
+   ```shell
    pre-commit install
    ```
 
 ## Run tests
 
-To run tests, simply invoke `pytest` in the project root:
+We use `tox` to run tests with different python versions:
 
 ```shell
-pytest
+tox p
 ```
 
-To check typing, invoke `pyright`:
+To fix code style:
 
 ```shell
-pyright
+tox r -e lint-fix
 ```
 
-To fix the codestyle, run:
+To generate HTML coverage report
+(will be available in the `htmlcov` directory):
 
 ```shell
-black . && isort .
+tox r -e cov
+open ./htmlcov/index.html  # Open the generated page.
 ```
-
-Code formatting tools run automatically before every commit.
 
 
 ## Build docs

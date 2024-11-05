@@ -24,26 +24,25 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-wcwidth = [
-    "wcwidth~=0.2.0"
-]
 test = [
-    "pytest~=7.4",
-    "pyright~=1.1",
     "black~=23.7",
     "isort~=5.12",
+    "pre-commit~=3.8.0",
+    "pyright~=1.1",
+    "pytest-cov~=6.0.0",
+    "pytest~=7.4",
     "PyYaml~=6.0",
-    "types-PyYAML~=5.3",
-    "toml~=0.10",
-    "types-toml~=0.10",
     "sphinx-vhs~=0.0.3",
-    "typing_extensions~=4.12",
     "sybil~=6.1",
+    "toml~=0.10",
+    "types-PyYAML~=5.3",
+    "types-toml~=0.10",
+    "typing_extensions~=4.12",
 ]
 doc = [
-    "sphinx~=6.1",
-    "sphinx-vhs~=0.0.3",
     "furo~=2024.8",
+    "sphinx-vhs~=0.0.3",
+    "sphinx~=6.1",
     "sybil~=6.1",
 ]
 
@@ -61,7 +60,7 @@ write_to = "yuio/_version.py"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = ["--strict-markers", "-p no:doctest", "-vv"]
+addopts = ["--strict-markers", "-p no:doctest"]
 testpaths = ["examples", "test", "yuio", "docs"]
 
 [tool.pyright]
