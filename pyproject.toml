@@ -35,6 +35,7 @@ test = [
     "sphinx-vhs~=0.0.3",
     "sybil~=6.1",
     "toml~=0.10",
+    "tox~=4.23",
     "types-PyYAML~=5.3",
     "types-toml~=0.10",
     "typing_extensions~=4.12",
