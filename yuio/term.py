@@ -196,7 +196,10 @@ class Term:
     """Overall info about a terminal."""
 
     #: Terminal's output stream.
-    stream: _t.TextIO
+    ostream: _t.TextIO
+
+    #: Terminal's input stream.
+    istream: _t.TextIO
 
     #: Terminal's capability for coloring output.
     color_support: ColorSupport = ColorSupport.NONE
@@ -263,7 +266,7 @@ _CI_ENV_VARS = [
 
 
 def get_term_from_stream(
-    stream: _t.TextIO, /, *, query_terminal_colors: bool = True
+    ostream: _t.TextIO, istream: _t.TextIO, /, *, query_terminal_colors: bool = True
 ) -> Term:
     """Query info about a terminal attached to the given stream.
 
@@ -275,10 +278,11 @@ def get_term_from_stream(
     if "__YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ:
         # For building docs in github
         return Term(
-            stream=stream,
+            ostream=ostream,
+            istream=istream,
             color_support=ColorSupport.ANSI_TRUE,
             interactive_support=InteractiveSupport.FULL,
-            terminal_colors=_get_standard_colors(stream),
+            terminal_colors=_get_standard_colors(ostream),
         )
 
     # Note: we don't rely on argparse to parse out flags and send them to us
@@ -291,14 +295,14 @@ def get_term_from_stream(
         or "FORCE_NO_COLOR" in os.environ
         or "FORCE_NO_COLORS" in os.environ
     ):
-        return Term(stream)
+        return Term(ostream, istream)
 
     term = os.environ.get("TERM", "").lower()
     colorterm = os.environ.get("COLORTERM", "").lower()
 
-    has_interactive_output = _is_interactive_output(stream)
-    has_interactive_input = _is_interactive_input(sys.__stdin__)
-    is_foreground = _is_foreground(stream) and _is_foreground(sys.__stdin__)
+    has_interactive_output = _is_interactive_output(ostream)
+    has_interactive_input = _is_interactive_input(istream)
+    is_foreground = _is_foreground(ostream) and _is_foreground(istream)
 
     color_support = ColorSupport.NONE
     in_ci = "CI" in os.environ
@@ -311,7 +315,7 @@ def get_term_from_stream(
         color_support = ColorSupport.ANSI
     if has_interactive_output:
         if os.name == "nt":
-            if _enable_vt_processing(stream):
+            if _enable_vt_processing(ostream):
                 color_support = ColorSupport.ANSI_TRUE
         elif "GITHUB_ACTIONS" in os.environ:
             color_support = ColorSupport.ANSI_TRUE
@@ -336,12 +340,13 @@ def get_term_from_stream(
                 and color_support >= ColorSupport.ANSI_256
                 and "YUIO_DISABLE_OSC_QUERIES" not in os.environ
             ):
-                theme = _get_standard_colors(stream)
+                theme = _get_standard_colors(ostream)
         else:
             interactive_support = InteractiveSupport.MOVE_CURSOR
 
     return Term(
-        stream=stream,
+        ostream=ostream,
+        istream=istream,
         color_support=color_support,
         interactive_support=interactive_support,
         terminal_colors=theme,

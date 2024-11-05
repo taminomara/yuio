@@ -7,15 +7,15 @@ import yuio.theme
 import yuio.widget
 from yuio import _t
 
-from .conftest import KeyboardEventStream, RcCompare
+from .conftest import RcCompare, WidgetChecker
 
 
 class TestRenderContext:
-    def test_write(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_write(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foobar!")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "foobar!             ",
                 "                    ",
@@ -25,7 +25,7 @@ class TestRenderContext:
             ]
         )
 
-    def test_write_wide(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_write_wide(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("a👻b")
         rc.write(".")
         rc.new_line()
@@ -33,7 +33,7 @@ class TestRenderContext:
         rc.write(".")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "a👻b.               ",
                 "👻👻.               ",
@@ -44,7 +44,7 @@ class TestRenderContext:
         )
 
     def test_write_wide_split_wide_char(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.set_pos(-1, 0)
         rc.write("👻x👻y")
@@ -53,7 +53,7 @@ class TestRenderContext:
         rc.write("👻z👻")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 " x👻y.              ",
                 "                👻z ",
@@ -63,11 +63,11 @@ class TestRenderContext:
             ]
         )
 
-    def test_write_newlines(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_write_newlines(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foobar!\nfoo\tbar!")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "foobar! foo bar!    ",
                 "                    ",
@@ -78,12 +78,12 @@ class TestRenderContext:
         )
 
     def test_write_newlines_wide(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.write("foobar!\n👻\tbar!")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "foobar! 👻 bar!     ",
                 "                    ",
@@ -94,7 +94,7 @@ class TestRenderContext:
         )
 
     def test_write_zero_width(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.write("x\u0306y\u0306")
         rc.set_pos(-1, 1)
@@ -103,7 +103,7 @@ class TestRenderContext:
         rc.write("c\u0306d\u0306")
         rc.render()
 
-        assert sstream.getvalue() == (
+        assert ostream.getvalue() == (
             "\x1b[J\x1b[mx\u0306y\u0306"  # first write
             "\nb\u0306"  # second write
             "\x1b[20Gc\u0306"  # third write
@@ -111,7 +111,7 @@ class TestRenderContext:
         )
 
     def test_write_beyond_borders(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.move_pos(-1, 0)
         rc.write("123456678901234566789012345667890")
@@ -122,7 +122,7 @@ class TestRenderContext:
         rc.write("123456678901234566789012345667890")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "23456678901234566789",
                 "12345667890123456678",
@@ -133,7 +133,7 @@ class TestRenderContext:
         )
 
     def test_write_beyond_borders_wide(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.move_pos(-1, 0)
         rc.write("12345667890👻1234566789012345667890")
@@ -144,7 +144,7 @@ class TestRenderContext:
         rc.write("12345667890👻1234566789012345667890")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "2345667890👻12345667",
                 "12345667890👻1234566",
@@ -154,12 +154,12 @@ class TestRenderContext:
             ]
         )
 
-    def test_set_pos(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_set_pos(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.set_pos(5, 2)
         rc.write("foobar!")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "                    ",
                 "                    ",
@@ -169,7 +169,7 @@ class TestRenderContext:
             ]
         )
 
-    def test_move_pos(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_move_pos(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foobar!")
         rc.move_pos(3, 1)
         rc.write("quxduo!")
@@ -181,7 +181,7 @@ class TestRenderContext:
         rc.write("qqq")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "foobar!      xyz   1",
                 "          quxduo!   ",
@@ -191,7 +191,7 @@ class TestRenderContext:
             ]
         )
 
-    def test_new_line(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_new_line(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foobar!")
         rc.new_line()
         rc.write("quxduo!")
@@ -203,7 +203,7 @@ class TestRenderContext:
         rc.write("yyy")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "foobar!             ",
                 "quxduo!             ",
@@ -214,7 +214,7 @@ class TestRenderContext:
         )
 
     def test_set_pos_and_write_out_of_bounds(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.set_pos(-2, 0)
         rc.write("foobar!")
@@ -226,7 +226,7 @@ class TestRenderContext:
         rc.write("789")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "obar!               ",
                 "                  45",
@@ -236,13 +236,13 @@ class TestRenderContext:
             ]
         )
 
-    def test_write_max_width(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_write_max_width(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foobar!", max_width=3)
         rc.set_pos(-3, 1)
         rc.write("123456", max_width=5)
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "foo                 ",
                 "45                  ",
@@ -253,7 +253,7 @@ class TestRenderContext:
         )
 
     def test_write_max_width_wide(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.write("boo👻", max_width=3)
         rc.new_line()
@@ -266,7 +266,7 @@ class TestRenderContext:
         rc.write("👻boo", max_width=10)
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "boo                 ",
                 "bo                  ",
@@ -276,7 +276,7 @@ class TestRenderContext:
             ]
         )
 
-    def test_set_color_path(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_set_color_path(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foo")
         rc.set_color_path("red")
         rc.write("bar")
@@ -288,7 +288,7 @@ class TestRenderContext:
         rc.write("qux")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "foobar              ",
                 "baz  qux            ",
@@ -305,7 +305,7 @@ class TestRenderContext:
             ],
         )
 
-    def test_set_color(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_set_color(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foo")
         rc.set_color(yuio.term.Color.FORE_RED)
         rc.write("bar")
@@ -317,7 +317,7 @@ class TestRenderContext:
         rc.write("qux")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "foobar              ",
                 "baz  qux            ",
@@ -335,14 +335,14 @@ class TestRenderContext:
         )
 
     def test_write_colorized_string(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.write(["a", yuio.term.Color.FORE_RED, "b"])
         rc.new_line()
         rc.write(["c", yuio.term.Color.FORE_GREEN, "d"])
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "ab                  ",
                 "cd                  ",
@@ -359,7 +359,7 @@ class TestRenderContext:
             ],
         )
 
-    def test_fill_no_frame(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_fill_no_frame(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         assert rc.width == 20
         assert rc.height == 5
 
@@ -369,7 +369,7 @@ class TestRenderContext:
                 rc.write(".")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "....................",
                 "....................",
@@ -379,7 +379,7 @@ class TestRenderContext:
             ]
         )
 
-    def test_fill_frame(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_fill_frame(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         with rc.frame(4, 1, width=5, height=2):
             assert rc.width == 5
             assert rc.height == 2
@@ -389,7 +389,7 @@ class TestRenderContext:
                     rc.write(".")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "                    ",
                 "    .....           ",
@@ -399,7 +399,7 @@ class TestRenderContext:
             ]
         )
 
-    def test_frame_write(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_frame_write(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.set_pos(1, 1)
         rc.set_color(yuio.term.Color.FORE_BLACK)
         with rc.frame(4, 1, width=5, height=2):
@@ -412,7 +412,7 @@ class TestRenderContext:
         rc.write("@")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "                    ",
                 " @  Hi!             ",
@@ -422,7 +422,7 @@ class TestRenderContext:
             ],
             [
                 "                    ",
-                " B                  ",
+                " k                  ",
                 "                    ",
                 "                    ",
                 "                    ",
@@ -430,7 +430,7 @@ class TestRenderContext:
         )
 
     def test_frame_write_out_of_bounds(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         with rc.frame(4, 1, width=5, height=2):
             rc.write("Hi there")
@@ -445,7 +445,7 @@ class TestRenderContext:
             rc.write("3")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "   @#     12        ",
                 "    Hi there!       ",
@@ -456,13 +456,13 @@ class TestRenderContext:
         )
 
     def test_vertical_cursor_movement(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.set_pos(0, 4)
         rc.write("11")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "                    ",
                 "                    ",
@@ -472,7 +472,7 @@ class TestRenderContext:
             ]
         )
 
-        s = sstream.getvalue()
+        s = ostream.getvalue()
         l = len(s)
 
         # We can move the cursor down by using a CSI code or by printing '\n's.
@@ -489,7 +489,7 @@ class TestRenderContext:
         rc.write("22")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "                    ",
                 "                    ",
@@ -499,20 +499,20 @@ class TestRenderContext:
             ]
         )
 
-        s = sstream.getvalue()[l:]
+        s = ostream.getvalue()[l:]
         l += len(s)
 
         # Now we know that the terminal won't scroll,
         # so we can use a CSI code to move down 5 lines at once.
         assert s == "\x1b[4B22\x1b[4A\x1b[1G"
 
-    def test_write_text(self, sstream: io.StringIO, rc: yuio.widget.RenderContext):
+    def test_write_text(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.set_pos(1, 1)
         rc.write_text(["Hello,", "world!"])
         rc.write("+")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "                    ",
                 " Hello,             ",
@@ -523,7 +523,7 @@ class TestRenderContext:
         )
 
     def test_write_text_colors(
-        self, sstream: io.StringIO, rc: yuio.widget.RenderContext
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
         rc.set_pos(1, 1)
         rc.set_color_path("green")
@@ -531,7 +531,7 @@ class TestRenderContext:
         rc.write("+")
         rc.render()
 
-        assert RcCompare.from_commands(sstream.getvalue()) == RcCompare(
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "                    ",
                 " Hello,             ",
@@ -550,41 +550,39 @@ class TestRenderContext:
 
 
 class TestLine:
-    def test_simple(self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Line]):
-        keyboard_event_stream.expect_screen(
+    def test_simple(self, widget_checker: WidgetChecker[yuio.widget.Line]):
+        widget_checker.expect_screen(
             [
                 "Text                ",
-                "f1 help             ",
+                "                    ",
                 "                    ",
                 "                    ",
                 "                    ",
             ],
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Line("Text"))
+        widget_checker.check(yuio.widget.Line("Text"))
 
-    def test_long(self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Line]):
-        keyboard_event_stream.expect_screen(
+    def test_long(self, widget_checker: WidgetChecker[yuio.widget.Line]):
+        widget_checker.expect_screen(
             [
                 "Text 1 2 3 4 5 6 7 8",
-                "f1 help             ",
+                "                    ",
                 "                    ",
                 "                    ",
                 "                    ",
             ],
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Line("Text 1 2 3 4 5 6 7 8 9 0"))
+        widget_checker.check(yuio.widget.Line("Text 1 2 3 4 5 6 7 8 9 0"))
 
-    def test_color_simple(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Line]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_color_simple(self, widget_checker: WidgetChecker[yuio.widget.Line]):
+        widget_checker.expect_screen(
             [
                 "Text                ",
-                "f1 help             ",
+                "                    ",
                 "                    ",
                 "                    ",
                 "                    ",
@@ -597,17 +595,15 @@ class TestLine:
                 "                    ",
             ],
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Line("Text", color="red"))
+        widget_checker.check(yuio.widget.Line("Text", color="red"))
 
-    def test_colorized_string(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Line]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_colorized_string(self, widget_checker: WidgetChecker[yuio.widget.Line]):
+        widget_checker.expect_screen(
             [
                 "Text blue           ",
-                "f1 help             ",
+                "                    ",
                 "                    ",
                 "                    ",
                 "                    ",
@@ -620,65 +616,61 @@ class TestLine:
                 "                    ",
             ],
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(
+        widget_checker.check(
             yuio.widget.Line(["Text ", yuio.term.Color.FORE_BLUE, "blue"], color="red")
         )
 
 
 class TestText:
-    def test_simple(self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Text]):
-        keyboard_event_stream.expect_screen(
+    def test_simple(self, widget_checker: WidgetChecker[yuio.widget.Text]):
+        widget_checker.expect_screen(
             [
                 "Text                ",
-                "f1 help             ",
+                "                    ",
                 "                    ",
                 "                    ",
                 "                    ",
             ],
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Text("Text"))
+        widget_checker.check(yuio.widget.Text("Text"))
 
-    def test_multiline(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Text]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_multiline(self, widget_checker: WidgetChecker[yuio.widget.Text]):
+        widget_checker.expect_screen(
             [
                 "Text 1              ",
                 "Text 2              ",
-                "f1 help             ",
+                "                    ",
                 "                    ",
                 "                    ",
             ],
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Text("Text 1\nText 2"))
+        widget_checker.check(yuio.widget.Text("Text 1\nText 2"))
 
-    def test_long(self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Text]):
-        keyboard_event_stream.expect_screen(
+    def test_long(self, widget_checker: WidgetChecker[yuio.widget.Text]):
+        widget_checker.expect_screen(
             [
                 "Text 1 2 3 4 5 6 7 8",
                 "9 0                 ",
-                "f1 help             ",
+                "                    ",
                 "                    ",
                 "                    ",
             ],
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Text("Text 1 2 3 4 5 6 7 8 9 0"))
+        widget_checker.check(yuio.widget.Text("Text 1 2 3 4 5 6 7 8 9 0"))
 
-    def test_colorized_string(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Text]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_colorized_string(self, widget_checker: WidgetChecker[yuio.widget.Text]):
+        widget_checker.expect_screen(
             [
                 "Text blue           ",
-                "f1 help             ",
+                "                    ",
                 "                    ",
                 "                    ",
                 "                    ",
@@ -691,18 +683,16 @@ class TestText:
                 "                    ",
             ],
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(
+        widget_checker.check(
             yuio.widget.Text(["Text ", yuio.term.Color.FORE_BLUE, "blue"])
         )
 
 
 class TestInput:
-    def test_simple(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_simple(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
             [
                 ">                   ",
                 "f1 help             ",
@@ -711,14 +701,12 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Input())
+        widget_checker.check(yuio.widget.Input())
 
-    def test_placeholder(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_placeholder(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
             [
                 "> type something    ",
                 "f1 help             ",
@@ -727,8 +715,8 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.text("foo bar")
-        keyboard_event_stream.expect_screen(
+        widget_checker.text("foo bar")
+        widget_checker.expect_screen(
             [
                 "> foo bar           ",
                 "f1 help             ",
@@ -737,14 +725,12 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Input(placeholder="type something"))
+        widget_checker.check(yuio.widget.Input(placeholder="type something"))
 
-    def test_decoration(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_decoration(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
             [
                 "//=                 ",
                 "f1 help             ",
@@ -753,14 +739,12 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.expect_widget_to_continue()
+        widget_checker.expect_widget_to_continue()
 
-        keyboard_event_stream.check(yuio.widget.Input(decoration="//="))
+        widget_checker.check(yuio.widget.Input(decoration="//="))
 
-    def test_single_line(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_single_line(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
             [
                 "> hello             ",
                 "f1 help             ",
@@ -769,8 +753,8 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.text(", world")
-        keyboard_event_stream.expect_screen(
+        widget_checker.text(", world")
+        widget_checker.expect_screen(
             [
                 "> hello, world      ",
                 "f1 help             ",
@@ -779,15 +763,13 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.key(yuio.widget.Key.ENTER)
+        widget_checker.key(yuio.widget.Key.ENTER)
 
-        result = keyboard_event_stream.check(yuio.widget.Input(text="hello"))
+        result = widget_checker.check(yuio.widget.Input(text="hello"))
         assert result == "hello, world"
 
-    def test_multiple_lines(
-        self, keyboard_event_stream: KeyboardEventStream[yuio.widget.Input]
-    ):
-        keyboard_event_stream.expect_screen(
+    def test_multiple_lines(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
             [
                 "> hello             ",
                 "f1 help             ",
@@ -796,8 +778,8 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.text(",")
-        keyboard_event_stream.expect_screen(
+        widget_checker.text(",")
+        widget_checker.expect_screen(
             [
                 "> hello,            ",
                 "f1 help             ",
@@ -806,8 +788,8 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.key(yuio.widget.Key.ENTER)
-        keyboard_event_stream.expect_screen(
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.expect_screen(
             [
                 "> hello,            ",
                 "                    ",
@@ -816,8 +798,8 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.text("world")
-        keyboard_event_stream.expect_screen(
+        widget_checker.text("world")
+        widget_checker.expect_screen(
             [
                 "> hello,            ",
                 "  world             ",
@@ -826,9 +808,9 @@ class TestInput:
                 "                    ",
             ]
         )
-        keyboard_event_stream.key(yuio.widget.Key.ENTER, alt=True)
+        widget_checker.key(yuio.widget.Key.ENTER, alt=True)
 
-        result = keyboard_event_stream.check(
+        result = widget_checker.check(
             yuio.widget.Input(text="hello", allow_multiline=True)
         )
         assert result == "hello,\nworld"
@@ -1440,7 +1422,7 @@ class TestInput:
     )
     def test_move(
         self,
-        keyboard_event_stream: KeyboardEventStream[yuio.widget.Input],
+        widget_checker: WidgetChecker[yuio.widget.Input],
         text: str,
         pos: int,
         cursor_pos: _t.Tuple[int, int],
@@ -1448,15 +1430,13 @@ class TestInput:
     ):
         widget = yuio.widget.Input(text=text, pos=pos)
 
-        keyboard_event_stream.expect_screen(
-            cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
-        )
+        widget_checker.expect_screen(cursor_x=cursor_pos[0], cursor_y=cursor_pos[1])
         for event, end_pos, (end_x, end_y) in events:
-            keyboard_event_stream.keyboard_event(event)
-            keyboard_event_stream.expect_eq(lambda widget: widget.pos, end_pos)
-            keyboard_event_stream.expect_screen(cursor_x=end_x, cursor_y=end_y)
-        keyboard_event_stream.expect_widget_to_continue()
-        keyboard_event_stream.check(widget)
+            widget_checker.keyboard_event(event)
+            widget_checker.expect_widget_eq(lambda widget: widget.pos, end_pos)
+            widget_checker.expect_screen(cursor_x=end_x, cursor_y=end_y)
+        widget_checker.expect_widget_to_continue()
+        widget_checker.check(widget)
 
     @pytest.mark.parametrize("undo_method", ["undo", "yank"])
     @pytest.mark.parametrize(
@@ -1547,7 +1527,7 @@ class TestInput:
     )
     def test_modify(
         self,
-        keyboard_event_stream: KeyboardEventStream[yuio.widget.Input],
+        widget_checker: WidgetChecker[yuio.widget.Input],
         undo_method: _t.Literal["undo", "yank"],
         text: str,
         pos: int,
@@ -1565,46 +1545,42 @@ class TestInput:
 
         widget = yuio.widget.Input(text=text, pos=pos)
 
-        keyboard_event_stream.expect_screen(
-            cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
-        )
-        keyboard_event_stream.keyboard_event(event)
-        keyboard_event_stream.expect_eq(lambda widget: widget.text, end_text)
-        keyboard_event_stream.expect_eq(lambda widget: widget.pos, end_pos)
-        keyboard_event_stream.expect_screen(
+        widget_checker.expect_screen(cursor_x=cursor_pos[0], cursor_y=cursor_pos[1])
+        widget_checker.keyboard_event(event)
+        widget_checker.expect_widget_eq(lambda widget: widget.text, end_text)
+        widget_checker.expect_widget_eq(lambda widget: widget.pos, end_pos)
+        widget_checker.expect_screen(
             cursor_x=end_cursor_pos[0], cursor_y=end_cursor_pos[1]
         )
         if undo_method == "undo":
-            keyboard_event_stream.key("-", ctrl=True)
-            keyboard_event_stream.expect_eq(lambda widget: widget.text, text)
-            keyboard_event_stream.expect_eq(lambda widget: widget.pos, pos)
-            keyboard_event_stream.expect_screen(
-                cursor_x=cursor_pos[0], cursor_y=cursor_pos[1]
-            )
+            widget_checker.key("-", ctrl=True)
+            widget_checker.expect_widget_eq(lambda widget: widget.text, text)
+            widget_checker.expect_widget_eq(lambda widget: widget.pos, pos)
+            widget_checker.expect_screen(cursor_x=cursor_pos[0], cursor_y=cursor_pos[1])
         else:
-            keyboard_event_stream.key("y", ctrl=True)
+            widget_checker.key("y", ctrl=True)
             if no_yank:
-                keyboard_event_stream.expect_eq(lambda widget: widget.text, end_text)
+                widget_checker.expect_widget_eq(lambda widget: widget.text, end_text)
             else:
-                keyboard_event_stream.expect_eq(lambda widget: widget.text, text)
-        keyboard_event_stream.expect_widget_to_continue()
-        keyboard_event_stream.check(widget)
+                widget_checker.expect_widget_eq(lambda widget: widget.text, text)
+        widget_checker.expect_widget_to_continue()
+        widget_checker.check(widget)
 
     @pytest.mark.parametrize(
-        "text,pos,keyboard_event_stream",
+        "text,pos,widget_checker",
         [
             # Undo single char
             (
                 "foobar",
                 3,
                 (
-                    KeyboardEventStream[yuio.widget.Input]()
+                    WidgetChecker[yuio.widget.Input]()
                     .text("X")
-                    .expect_eq(lambda widget: widget.text, "fooXbar")
-                    .expect_eq(lambda widget: widget.pos, 4)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 4)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "foobar")
-                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_eq(lambda widget: widget.text, "foobar")
+                    .expect_widget_eq(lambda widget: widget.pos, 3)
                     .expect_widget_to_continue()
                 ),
             ),
@@ -1613,13 +1589,13 @@ class TestInput:
                 "foobar",
                 3,
                 (
-                    KeyboardEventStream[yuio.widget.Input]()
+                    WidgetChecker[yuio.widget.Input]()
                     .text("XYZ")
-                    .expect_eq(lambda widget: widget.text, "fooXYZbar")
-                    .expect_eq(lambda widget: widget.pos, 6)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXYZbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 6)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "foobar")
-                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_eq(lambda widget: widget.text, "foobar")
+                    .expect_widget_eq(lambda widget: widget.pos, 3)
                     .expect_widget_to_continue()
                 ),
             ),
@@ -1628,19 +1604,19 @@ class TestInput:
                 "foobar",
                 3,
                 (
-                    KeyboardEventStream[yuio.widget.Input]()
+                    WidgetChecker[yuio.widget.Input]()
                     .text("X Y Z")
-                    .expect_eq(lambda widget: widget.text, "fooX Y Zbar")
-                    .expect_eq(lambda widget: widget.pos, 8)
+                    .expect_widget_eq(lambda widget: widget.text, "fooX Y Zbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 8)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooX Ybar")
-                    .expect_eq(lambda widget: widget.pos, 6)
+                    .expect_widget_eq(lambda widget: widget.text, "fooX Ybar")
+                    .expect_widget_eq(lambda widget: widget.pos, 6)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooXbar")
-                    .expect_eq(lambda widget: widget.pos, 4)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 4)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "foobar")
-                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_eq(lambda widget: widget.text, "foobar")
+                    .expect_widget_eq(lambda widget: widget.pos, 3)
                     .expect_widget_to_continue()
                 ),
             ),
@@ -1649,22 +1625,22 @@ class TestInput:
                 "foobar",
                 3,
                 (
-                    KeyboardEventStream[yuio.widget.Input]()
+                    WidgetChecker[yuio.widget.Input]()
                     .text("X  Y Z")
-                    .expect_eq(lambda widget: widget.text, "fooX  Y Zbar")
-                    .expect_eq(lambda widget: widget.pos, 9)
+                    .expect_widget_eq(lambda widget: widget.text, "fooX  Y Zbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 9)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooX  Ybar")
-                    .expect_eq(lambda widget: widget.pos, 7)
+                    .expect_widget_eq(lambda widget: widget.text, "fooX  Ybar")
+                    .expect_widget_eq(lambda widget: widget.pos, 7)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooX  bar")
-                    .expect_eq(lambda widget: widget.pos, 6)
+                    .expect_widget_eq(lambda widget: widget.text, "fooX  bar")
+                    .expect_widget_eq(lambda widget: widget.pos, 6)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooXbar")
-                    .expect_eq(lambda widget: widget.pos, 4)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 4)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "foobar")
-                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_eq(lambda widget: widget.text, "foobar")
+                    .expect_widget_eq(lambda widget: widget.pos, 3)
                     .expect_widget_to_continue()
                 ),
             ),
@@ -1673,18 +1649,18 @@ class TestInput:
                 "foobar",
                 3,
                 (
-                    KeyboardEventStream[yuio.widget.Input]()
+                    WidgetChecker[yuio.widget.Input]()
                     .text("XY")
                     .key(yuio.widget.Key.ARROW_LEFT)
                     .text("AB")
-                    .expect_eq(lambda widget: widget.text, "fooXABYbar")
-                    .expect_eq(lambda widget: widget.pos, 6)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXABYbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 6)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooXYbar")
-                    .expect_eq(lambda widget: widget.pos, 4)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXYbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 4)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "foobar")
-                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_eq(lambda widget: widget.text, "foobar")
+                    .expect_widget_eq(lambda widget: widget.pos, 3)
                     .expect_widget_to_continue()
                 ),
             ),
@@ -1693,25 +1669,25 @@ class TestInput:
                 "foobar",
                 3,
                 (
-                    KeyboardEventStream[yuio.widget.Input]()
+                    WidgetChecker[yuio.widget.Input]()
                     .text("XY")
                     .key(yuio.widget.Key.DELETE)
                     .text("AB")
                     .key(yuio.widget.Key.BACKSPACE)
-                    .expect_eq(lambda widget: widget.text, "fooXYAar")
-                    .expect_eq(lambda widget: widget.pos, 6)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXYAar")
+                    .expect_widget_eq(lambda widget: widget.pos, 6)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooXYABar")
-                    .expect_eq(lambda widget: widget.pos, 7)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXYABar")
+                    .expect_widget_eq(lambda widget: widget.pos, 7)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooXYar")
-                    .expect_eq(lambda widget: widget.pos, 5)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXYar")
+                    .expect_widget_eq(lambda widget: widget.pos, 5)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "fooXYbar")
-                    .expect_eq(lambda widget: widget.pos, 5)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXYbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 5)
                     .key("-", ctrl=True)
-                    .expect_eq(lambda widget: widget.text, "foobar")
-                    .expect_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_eq(lambda widget: widget.text, "foobar")
+                    .expect_widget_eq(lambda widget: widget.pos, 3)
                     .expect_widget_to_continue()
                 ),
             ),
@@ -1719,12 +1695,12 @@ class TestInput:
     )
     def test_undo(
         self,
-        sstream: io.StringIO,
+        ostream: io.StringIO,
         term: yuio.term.Term,
         theme: yuio.theme.Theme,
         text: str,
         pos: int,
-        keyboard_event_stream: KeyboardEventStream[yuio.widget.Input],
+        widget_checker: WidgetChecker[yuio.widget.Input],
     ):
         widget = yuio.widget.Input(text=text, pos=pos)
-        keyboard_event_stream.check(widget, sstream, term, theme)
+        widget_checker.check(widget, ostream, term, theme)

@@ -408,16 +408,21 @@ class Parser(_t.Generic[T_co], abc.ABC):
 
     @abc.abstractmethod
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[T_co, yuio.Missing]]:
         """Return a widget for reading values of this parser.
 
         This function is used when reading values from user via :func:`yuio.io.ask`.
 
         The returned widget must produce values of type `T`. If `default` is given,
-        and the user input is empty (or, in case of `choice` widgets, if the user
-        chooses the default), the widget must produce
+        and the user input is empty, the widget must produce
         the :data:`~yuio.MISSING` constant (*not* the default constant).
+        This is because we the default value might be of any type
+        (for example :data:`None`), and validating parsers should not check it.
 
         Validating parsers must wrap the widget they got from
         :func:`__wrapped_parser__` into :class:`~yuio.widget.Map`
@@ -690,23 +695,24 @@ class ValueParser(Parser[T], _t.Generic[T]):
         return None
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
         completer = self.completer()
-        return _map_widget_result(
+        return _WidgetResultMapper(
             self,
+            input_description,
             default,
             yuio.widget.InputWithCompletion(
                 completer,
-                placeholder=f" default: {default_description}"
-                if default_description
-                else "",
+                placeholder=default_description if default_description else "",
             )
             if completer is not None
             else yuio.widget.Input(
-                placeholder=f" default: {default_description}"
-                if default_description
-                else "",
+                placeholder=default_description if default_description else "",
             ),
         )
 
@@ -780,10 +786,16 @@ class ValidatingParser(Parser[T], _t.Generic[T]):
         return self.__wrapped_parser__.completer()
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
         return yuio.widget.Apply(
-            self.__wrapped_parser__.widget(default, default_description),
+            self.__wrapped_parser__.widget(
+                default, input_description, default_description
+            ),
             lambda v: self._validate(v) if v is not yuio.MISSING else None,
         )
 
@@ -885,7 +897,8 @@ class Int(ValueParser[int]):
 
     def parse_config(self, value: object, /) -> int:
         if isinstance(value, float):
-            if value != int(value):
+            if value != int(value):  # pyright: ignore
+                #                      I believe this is another bug in pyright.
                 raise ParsingError("expected an int, got a float instead")
             value = int(value)
         if not isinstance(value, int):
@@ -945,7 +958,11 @@ class Bool(ValueParser[bool]):
         )
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[bool, yuio.Missing]]:
         options: _t.List[yuio.widget.Option[_t.Union[bool, yuio.Missing]]] = [
             yuio.widget.Option(False, "no"),
@@ -957,7 +974,9 @@ class Bool(ValueParser[bool]):
         elif isinstance(default, bool):
             default_index = int(default)
         else:
-            options.append(yuio.widget.Option(yuio.MISSING, default_description))
+            options.append(
+                yuio.widget.Option(yuio.MISSING, default_description or str(default))
+            )
             default_index = 2
 
         return yuio.widget.Choice(options, default_index=default_index)
@@ -1038,7 +1057,11 @@ class Enum(ValueParser[E], _t.Generic[E]):
         )
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[E, yuio.Missing]]:
         options: _t.List[yuio.widget.Option[_t.Union[E, yuio.Missing]]] = [
             yuio.widget.Option(e, str(self.__getter(e))) for e in self.__enum_type
@@ -1049,7 +1072,9 @@ class Enum(ValueParser[E], _t.Generic[E]):
         elif isinstance(default, self.__enum_type):
             default_index = list(self.__enum_type).index(default)
         else:
-            options.insert(0, yuio.widget.Option(yuio.MISSING, default_description))
+            options.insert(
+                0, yuio.widget.Option(yuio.MISSING, default_description or str(default))
+            )
             default_index = 0
 
         return yuio.widget.Choice(options, default_index=default_index)
@@ -1163,9 +1188,15 @@ class Optional(Parser[_t.Optional[T]], _t.Generic[T]):
         return self.__wrapped_parser__.completer()
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
-        return self.__wrapped_parser__.widget(default, default_description)
+        return self.__wrapped_parser__.widget(
+            default, input_description, default_description
+        )
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.__wrapped_parser__!r})"
@@ -1211,7 +1242,14 @@ class Json(ValueParser[T], _t.Generic[T]):
         def __new__(cls, inner: _t.Optional[Parser[T]] = None, /) -> "Json[_t.Any]":
             ...
 
-    def __init__(self, inner: _t.Optional[Parser[T]] = None, /):
+    def __init__(  # pyright:ignore[reportInconsistentConstructor]
+        #            FIXME: This is a bug in pyright,
+        #            see https://github.com/microsoft/pyright/issues/8372.
+        #            We can remove as soon as pylance is updated.
+        self,
+        inner: _t.Optional[Parser[T]] = None,
+        /,
+    ):
         self.__inner = inner
 
     def parse(self, value: str) -> T:
@@ -1229,7 +1267,7 @@ class Json(ValueParser[T], _t.Generic[T]):
 
     def describe_value(self, value: object, /) -> _t.Optional[str]:
         try:
-            return json.dumps(value, ensure_ascii=False)
+            return json.dumps(value)
         except TypeError:
             return str(value) or "<empty>"
 
@@ -1378,23 +1416,24 @@ class CollectionParser(Parser[C], _t.Generic[C, T]):
         )
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[C, yuio.Missing]]:
         completer = self.completer()
-        return _map_widget_result(
+        return _WidgetResultMapper(
             self,
+            input_description,
             default,
             yuio.widget.InputWithCompletion(
                 completer,
-                placeholder=f" default: {default_description}"
-                if default_description
-                else "",
+                placeholder=default_description if default_description else "",
             )
             if completer is not None
             else yuio.widget.Input(
-                placeholder=f" default: {default_description}"
-                if default_description
-                else "",
+                placeholder=default_description if default_description else "",
             ),
         )
 
@@ -1438,13 +1477,17 @@ class Set(CollectionParser[_t.Set[T], T], _t.Generic[T]):
         super().__init__(inner, set, set, delimiter=delimiter)
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[_t.Set[T], yuio.Missing]]:
         options = self._inner.options()
         if options is not None and len(options) <= 25:
             return yuio.widget.Map(yuio.widget.Multiselect(list(options)), set)
         else:
-            return super().widget(default, default_description)
+            return super().widget(default, input_description, default_description)
 
 
 class FrozenSet(CollectionParser[_t.FrozenSet[T], T], _t.Generic[T]):
@@ -1776,24 +1819,25 @@ class Tuple(Parser[TU], _t.Generic[TU]):
         )
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[TU, yuio.Missing]]:
         completer = self.completer()
 
-        return _map_widget_result(
+        return _WidgetResultMapper(
             self,
+            input_description,
             default,
             yuio.widget.InputWithCompletion(
                 completer,
-                placeholder=f" default: {default_description}"
-                if default_description
-                else "",
+                placeholder=default_description if default_description else "",
             )
             if completer is not None
             else yuio.widget.Input(
-                placeholder=f" default: {default_description}"
-                if default_description
-                else "",
+                placeholder=default_description if default_description else "",
             ),
         )
 
@@ -2233,7 +2277,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
     def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
         return [
-            yuio.widget.Option(e, self.__wrapped_parser__.describe_value_or_def(e))
+            yuio.widget.Option(e, self.describe_value_or_def(e))
             for e in self.__allowed_values
         ]
 
@@ -2246,7 +2290,11 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
         )
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
         allowed_values = list(self.__allowed_values)
 
@@ -2259,7 +2307,9 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
         elif default in allowed_values:
             default_index = list(allowed_values).index(default)  # type: ignore
         else:
-            options.insert(0, yuio.widget.Option(yuio.MISSING, default_description))
+            options.insert(
+                0, yuio.widget.Option(yuio.MISSING, default_description or str(default))
+            )
             default_index = 0
 
         return yuio.widget.Choice(options, default_index=default_index)
@@ -2331,11 +2381,15 @@ class Map(Parser[T], _t.Generic[T, U]):
         return self.__inner.completer()
 
     def widget(
-        self, default: _t.Union[object, yuio.Missing], default_description: str, /
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
     ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
         mapper = lambda v: self.__fn(v) if v is not yuio.MISSING else yuio.MISSING
         return yuio.widget.Map(
-            self.__inner.widget(default, default_description),
+            self.__inner.widget(default, input_description, default_description),
             mapper,
         )
 
@@ -2365,20 +2419,35 @@ class Apply(Map[T, T], _t.Generic[T]):
         return self.__inner.options()
 
 
-def _map_widget_result(
-    parser: Parser[T],
-    default: _t.Union[object, yuio.Missing],
-    widget: yuio.widget.Widget[str],
-) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
-    def mapper(s: str) -> _t.Union[T, yuio.Missing]:
-        if not s and default is not yuio.MISSING:
+class _WidgetResultMapper(yuio.widget.Map[_t.Union[T, yuio.Missing], str]):
+    def __init__(
+        self,
+        parser: Parser[T],
+        input_description: _t.Optional[str],
+        default: _t.Union[object, yuio.Missing],
+        widget: yuio.widget.Widget[str],
+    ):
+        self._parser = parser
+        self._input_description = input_description
+        self._default = default
+        super().__init__(widget, self.mapper)
+
+    def mapper(self, s: str) -> _t.Union[T, yuio.Missing]:
+        if not s and self._default is not yuio.MISSING:
             return yuio.MISSING
         elif not s:
-            raise ParsingError("Input is required.")
+            raise ParsingError("input is required")
         else:
-            return parser.parse(s)
+            return self._parser.parse(s)
 
-    return yuio.widget.Map(widget, mapper)
+    @property
+    def help_data(self):
+        return super().help_data.with_action(
+            group="Input Format",
+            msg=self._input_description,
+            prepend=True,
+            prepend_group=True,
+        )
 
 
 _FromTypeHintCallback: _t.TypeAlias = _t.Callable[

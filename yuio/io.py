@@ -190,7 +190,6 @@ import abc
 import atexit
 import enum
 import functools
-import getpass
 import logging
 import math
 import os
@@ -233,7 +232,6 @@ _IO_MANAGER: _t.Optional["_IoManager"] = None
 _STREAMS_WRAPPED: bool = False
 _ORIG_STDERR: _t.Optional[_t.TextIO] = None
 _ORIG_STDOUT: _t.Optional[_t.TextIO] = None
-_IO_MANAGER: _t.Optional["_IoManager"] = None
 
 
 def _manager() -> "_IoManager":
@@ -408,7 +406,9 @@ def error(msg: str, /, *args, **kwargs):
     _manager().print_msg(msg, args, "error", **kwargs)
 
 
-def error_with_tb(msg: str, /, *args, **kwargs):
+def error_with_tb(
+    msg: str, /, *args, exc_info: _t.Union[_ExcInfo, bool, None] = True, **kwargs
+):
     """Print an error message and capture the current exception.
 
     Call this function in the `except` clause of a `try` block
@@ -422,8 +422,7 @@ def error_with_tb(msg: str, /, *args, **kwargs):
 
     """
 
-    kwargs.setdefault("exc_info", True)
-    _manager().print_msg(msg, args, "error", **kwargs)
+    _manager().print_msg(msg, args, "error", exc_info=exc_info, **kwargs)
 
 
 def heading(msg: str, /, *args, **kwargs):
@@ -537,7 +536,6 @@ class _Ask(_t.Generic[T]):
         default: _t.Union[T, yuio.Missing] = yuio.MISSING,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-        secure_input: bool = False,
     ) -> T:
         ...
 
@@ -550,7 +548,6 @@ class _Ask(_t.Generic[T]):
         default: None,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-        secure_input: bool = False,
     ) -> _t.Optional[T]:
         ...
 
@@ -564,7 +561,6 @@ class _Ask(_t.Generic[T]):
         default: None,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-        secure_input: bool = False,
     ) -> _t.Optional[U]:
         ...
 
@@ -578,7 +574,6 @@ class _Ask(_t.Generic[T]):
         default: _t.Union[U, yuio.Missing] = yuio.MISSING,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-        secure_input: bool = False,
     ) -> U:
         ...
 
@@ -591,13 +586,12 @@ class _Ask(_t.Generic[T]):
         default: _t.Any = yuio.MISSING,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-        secure_input: bool = False,
     ) -> _t.Any:
         manager = _manager()
 
         term, formatter, theme = manager.term, manager.formatter, manager.theme
 
-        if sys.stdin is None or not sys.stdin.readable():
+        if not term.istream.readable():
             if default is not yuio.MISSING:
                 return default
             else:
@@ -621,31 +615,32 @@ class _Ask(_t.Generic[T]):
         if args:
             prompt = prompt % args
 
-        if default is yuio.MISSING:
-            default_description = ""
-        elif not secure_input:
+        if not input_description:
+            input_description = parser.describe()
+
+        if default is not yuio.MISSING:
             if default_description is None:
                 default_description = parser.describe_value(default)
             if default_description is None:
                 default_description = str(default)
-        elif default_description is None:
-            default_description = ""
 
-        if not secure_input and get_term().is_fully_interactive:
+        if get_term().is_fully_interactive:
             # Use widget.
 
-            if input_description:
-                prompt += (
-                    formatter.colorize(" (%s)", default_color="msg/text:question")
-                    % input_description
-                )
+            if needs_colon:
+                prompt += formatter.colorize(":", default_color="msg/text:question")
 
-            widget = _AskWidget(prompt, parser.widget(default, default_description))
+            widget = _AskWidget(
+                prompt, parser.widget(default, input_description, default_description)
+            )
             with SuspendLogging() as s:
                 try:
                     result = widget.run(term, theme)
                 except (IOError, OSError, EOFError) as e:
                     raise UserIoError("unexpected end of input") from e
+
+                if result is yuio.MISSING:
+                    result = default
 
                 confirmation = prompt + (
                     formatter.colorize(" `%s`\n") % parser.describe_value_or_def(result)
@@ -654,10 +649,8 @@ class _Ask(_t.Generic[T]):
                 s.raw(confirmation)
                 return result
         else:
-            # Use `input()`.
+            # Use raw input.
 
-            if not input_description:
-                input_description = parser.describe()
             if input_description:
                 prompt += (
                     formatter.colorize(" (%s)", default_color="msg/text:question")
@@ -671,14 +664,11 @@ class _Ask(_t.Generic[T]):
             prompt += formatter.colorize(
                 ": " if needs_colon else " ", default_color="msg/text:question"
             )
-            prompt_s = "".join(prompt.process_colors(term))
             with SuspendLogging() as s:
                 while True:
                     try:
-                        if secure_input:
-                            answer = getpass.getpass(prompt_s)
-                        else:
-                            answer = input(prompt_s)
+                        s.raw(prompt)
+                        answer = term.istream.readline().strip()
                     except (IOError, OSError, EOFError) as e:
                         raise UserIoError("unexpected end of input") from None
                     if not answer and default is not yuio.MISSING:
@@ -689,10 +679,7 @@ class _Ask(_t.Generic[T]):
                         try:
                             return parser.parse(answer)
                         except yuio.parse.ParsingError as e:
-                            if secure_input:
-                                s.error("Error: invalid value.")
-                            else:
-                                s.error(f"Error: %s.", e)
+                            s.error(f"Error: %s.", e)
 
 
 ask: _Ask[str] = _Ask[str](yuio.parse.Str())
@@ -735,12 +722,26 @@ Example::
     inputs.
 :param default_description:
     description of the `default` value.
-:param secure_input:
-    if enabled, treats input as password, and uses secure input methods.
-    This option also hides errors from the parser, because they may contain
-    user input.
 
 """
+
+
+class _WaitForUserWidget(yuio.widget.Widget[None]):
+    def __init__(self, prompt: yuio.term.ColorizedString):
+        self._prompt = yuio.widget.Text(prompt)
+
+    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+        return self._prompt.layout(rc)
+
+    def draw(self, rc: RenderContext, /):
+        return self._prompt.draw(rc)
+
+    @yuio.widget.bind(yuio.widget.Key.ENTER)
+    @yuio.widget.bind(yuio.widget.Key.ESCAPE)
+    @yuio.widget.bind("d", ctrl=True)
+    @yuio.widget.bind(" ")
+    def exit(self):
+        return yuio.widget.Result(None)
 
 
 def wait_for_user(
@@ -754,7 +755,11 @@ def wait_for_user(
 
     """
 
-    if sys.stdin is None or not sys.stdin.readable():
+    manager = _manager()
+
+    term, formatter, theme = manager.term, manager.formatter, manager.theme
+
+    if not term.istream.readable():
         return
 
     if msg and not msg[-1].isspace():
@@ -765,12 +770,15 @@ def wait_for_user(
 
     prompt = formatter.colorize(msg, default_color="msg/text:question")
     if args:
-        msg %= args
-    prompt_s = "".join(prompt.process_colors(term))
+        prompt %= args
 
-    with SuspendLogging():
+    with SuspendLogging() as s:
         try:
-            input(prompt_s)
+            if term.is_fully_interactive:
+                _WaitForUserWidget(prompt).run(term, theme)
+            else:
+                s.raw(prompt)
+                term.istream.readline()
         except (IOError, OSError, EOFError):
             return
 
@@ -853,10 +861,13 @@ def edit(
 
     if comment_marker is not None:
         text = re.sub(
-            r"^\s*" + re.escape(comment_marker) + r".*$", "", text, flags=re.MULTILINE
+            r"^\s*" + re.escape(comment_marker) + r".*(\n|$)",
+            "",
+            text,
+            flags=re.MULTILINE,
         )
 
-    return text.strip()
+    return text
 
 
 class SuspendLogging:
@@ -1276,8 +1287,9 @@ class _IoManager(abc.ABC):
         self,
         term: _t.Optional[Term] = None,
         theme: _t.Union[Theme, _t.Callable[[Term], Theme], None] = None,
+        enable_bg_updates: bool = True,
     ):
-        self.term = term or yuio.term.get_term_from_stream(sys.stderr)
+        self.term = term or yuio.term.get_term_from_stream(orig_stderr(), sys.stdin)
         if theme is None:
             self.theme = yuio.theme.load(self.term)
         elif isinstance(theme, Theme):
@@ -1286,9 +1298,6 @@ class _IoManager(abc.ABC):
             self.theme = theme(self.term)
         self.formatter = yuio.md.MdFormatter(self.theme)
         self._rc = yuio.widget.RenderContext(self.term, self.theme)
-
-        self._indent = 0
-        self._needs_padding: bool = False
 
         self._suspended: int = 0
         self._suspended_lines: _t.List[_t.Tuple[_t.List[str], _t.TextIO]] = []
@@ -1302,11 +1311,17 @@ class _IoManager(abc.ABC):
 
         self._renders = 0
 
-        threading.Thread(
-            target=self._bg_update, name="yuio_io_thread", daemon=True
-        ).start()
+        self._stop = False
+        self._stop_condition = threading.Condition(_IO_LOCK)
+        self._thread: _t.Optional[threading.Thread] = None
 
-        atexit.register(self._atexit)
+        if enable_bg_updates:
+            self._thread = threading.Thread(
+                target=self._bg_update, name="yuio_io_task_refresh", daemon=True
+            )
+            self._thread.start()
+
+            atexit.register(self.stop)
 
     def setup(
         self,
@@ -1342,23 +1357,31 @@ class _IoManager(abc.ABC):
     def _bg_update(self):
         while True:
             try:
-                update_rate_us = self.update_rate_us
-
-                while True:
-                    now_us = time.monotonic_ns() // 1000
-                    sleep_us = update_rate_us - now_us % update_rate_us
-
-                    time.sleep(sleep_us / 1_000_000)
-
-                    with _IO_LOCK:
-                        self._show_tasks()
+                with _IO_LOCK:
+                    while True:
                         update_rate_us = self.update_rate_us
+                        now_us = time.monotonic_ns() // 1_000
+                        sleep_us = update_rate_us - now_us % update_rate_us
+
+                        if self._stop_condition.wait_for(
+                            lambda: self._stop, timeout=sleep_us / 1_000_000
+                        ):
+                            return
+
+                        self._show_tasks()
             except Exception:
                 yuio._logger.critical("exception in bg updater", exc_info=True)
 
-    def _atexit(self):
+    def stop(self):
         with _IO_LOCK:
+            atexit.unregister(self.stop)
+
+            self._stop = True
+            self._stop_condition.notify()
             self._show_tasks(immediate_render=True)
+
+        if self._thread:
+            self._thread.join()
 
     def print_msg(
         self,
@@ -1478,7 +1501,7 @@ class _IoManager(abc.ABC):
         stream: _t.Optional[_t.TextIO] = None,
         ignore_suspended: bool = False,
     ):
-        stream = stream or self.term.stream
+        stream = stream or self.term.ostream
         if self._suspended and not ignore_suspended:
             self._suspended_lines.append((list(lines), stream))
         else:
@@ -1846,11 +1869,35 @@ class _WrappedOutput(_t.TextIO):
     def writelines(self, lines: _t.Iterable[str], /):
         _manager().print_direct_lines(lines, self.__wrapped)
 
+    def readable(self) -> bool:
+        return self.__wrapped.readable()
+
+    def read(self, n: int = -1) -> str:
+        return self.__wrapped.read(n)
+
+    def readline(self, limit: int = -1) -> str:
+        return self.__wrapped.readline(limit)
+
+    def readlines(self, hint: int = -1) -> _t.List[str]:
+        return self.__wrapped.readlines(hint)
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        return self.__wrapped.seek(offset, whence)
+
+    def seekable(self) -> bool:
+        return self.__wrapped.seekable()
+
+    def tell(self) -> int:
+        return self.__wrapped.tell()
+
+    def truncate(self, size: _t.Optional[int] = None) -> int:
+        return self.__wrapped.truncate(size)
+
     def __enter__(self) -> _t.TextIO:
         return self.__wrapped.__enter__()
 
-    def __exit__(self, type, value, traceback):
-        self.__wrapped.__exit__(type, value, traceback)
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.__wrapped.__exit__(exc_type, exc_val, exc_tb)
 
     @property
     def buffer(self) -> _t.BinaryIO:

@@ -363,7 +363,7 @@ class RenderContext:
         Therefore, drawing widgets in a frame will not affect current drawing state.
 
         ..
-            >>> term = _Term(sys.stdout)
+            >>> term = _Term(sys.stdout, sys.stdin)
             >>> theme = _Theme()
             >>> rc = RenderContext(term, theme)
             >>> rc._override_wh = (20, 5)
@@ -563,7 +563,7 @@ class RenderContext:
         use :meth:`yuio.term.ColorizedString.wrap` and :meth:`~RenderContext.write_text`.
 
         ..
-            >>> term = _Term(sys.stdout)
+            >>> term = _Term(sys.stdout, sys.stdin)
             >>> theme = _Theme()
             >>> rc = RenderContext(term, theme)
             >>> rc._override_wh = (20, 5)
@@ -713,7 +713,7 @@ class RenderContext:
         and back to its original horizontal position.
 
         ..
-            >>> term = _Term(sys.stdout)
+            >>> term = _Term(sys.stdout, sys.stdin)
             >>> theme = _Theme()
             >>> rc = RenderContext(term, theme)
             >>> rc._override_wh = (20, 5)
@@ -771,7 +771,7 @@ class RenderContext:
             full_redraw = True
             self._in_alternative_buffer = alternative_buffer
             if alternative_buffer:
-                self._out.append("\x1b[m\x1b[?1049h\x1b[2J\x1b[H")
+                self._out.append("\x1b[m\x1b[?1049h\x1b[J\x1b[H")
                 self._normal_buffer_term_x = self._term_x
                 self._normal_buffer_term_y = self._term_y
                 self._term_x, self._term_y = 0, 0
@@ -809,7 +809,7 @@ class RenderContext:
     def clear_screen(self):
         """Clear screen and prepare for a full redraw."""
 
-        self._out.append("\x1b[2J\x1b[1H")
+        self._out.append("\x1b[J\x1b[1H")
         self._term_x, self._term_y = 0, 0
         self.prepare(full_redraw=True, alternative_buffer=self._in_alternative_buffer)
 
@@ -860,8 +860,8 @@ class RenderContext:
         self._move_term_cursor(final_x, final_y)
 
         rendered = "".join(self._out)
-        self._term.stream.write(rendered)
-        self._term.stream.flush()
+        self._term.ostream.write(rendered)
+        self._term.ostream.flush()
         self._out.clear()
 
         if yuio._debug:
@@ -881,8 +881,8 @@ class RenderContext:
             self._out.append(self._term_color)
             self._move_term_cursor(term_x, term_y)
 
-            self._term.stream.write("".join(self._out))
-            self._term.stream.flush()
+            self._term.ostream.write("".join(self._out))
+            self._term.ostream.flush()
             self._out.clear()
 
     def finalize(self):
@@ -893,8 +893,8 @@ class RenderContext:
         self._move_term_cursor(0, 0)
         self._out.append("\x1b[J")
         self._out.append(self._none_color)
-        self._term.stream.write("".join(self._out))
-        self._term.stream.flush()
+        self._term.ostream.write("".join(self._out))
+        self._term.ostream.flush()
         self._out.clear()
         self._term_color = self._none_color
 
@@ -925,14 +925,14 @@ class RenderContext:
                 self._out.append(ch)
             self._out.append("\n")
 
-        self._term.stream.writelines(
+        self._term.ostream.writelines(
             [
                 # Trim trailing spaces for doctests.
                 re.sub(r" +$", "\n", line, flags=re.MULTILINE)
                 for line in "".join(self._out).splitlines()
             ]
         )
-        self._term.stream.flush()
+        self._term.ostream.flush()
         self._out.clear()
 
 
@@ -1065,6 +1065,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                     height = rc.height
                     if self.__in_help_menu:
                         min_h, max_h = self.__help_menu_layout(rc)
+                        inline_help_height = 0
                     else:
                         with rc.frame(0, 0):
                             inline_help_height = self.__help_menu_layout_inline(rc)[0]
@@ -1072,8 +1073,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                             height -= inline_help_height
                         with rc.frame(0, 0, height=height):
                             min_h, max_h = self.layout(rc)
-                        max_h = max(min_h, min(max_h, height - 1))
-                    rc.set_final_pos(0, max_h + 1)
+                        max_h = max(min_h, min(max_h, height))
+                    rc.set_final_pos(0, max_h + inline_help_height)
                     if self.__in_help_menu:
                         self.__help_menu_draw(rc)
                     else:
@@ -1098,7 +1099,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                     elif event == KeyboardEvent(Key.F1) and not self.__in_help_menu:
                         self.__in_help_menu = True
                         self.__help_menu_line = 0
-                        self.__last_help_columns = None
+                        self.__last_help_data = None
                     elif self.__in_help_menu:
                         self.__help_menu_event(event)
                     elif result := self.event(event):
@@ -1160,7 +1161,10 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         return WidgetHelp(inline_help, groups)
 
-    __last_help_columns: object = None
+    __last_help_data: _t.Optional["WidgetHelp"] = None
+    __prepared_inline_help: _t.List[_t.Tuple[_t.List[str], str, str, int]]
+    __prepared_groups: _t.Dict[str, _t.List[_t.Tuple[_t.List[str], str, str, int]]]
+    __has_help: bool = True
     __width: int = 0
     __height: int = 0
     __menu_content_height: int = 0
@@ -1199,7 +1203,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         ]:
             self.__in_help_menu = False
             self.__help_menu_line = 0
-            self.__last_help_columns = None
+            self.__last_help_data = None
         elif e == KeyboardEvent(Key.ARROW_UP):
             self.__help_menu_line += 1
         elif e == KeyboardEvent(Key.HOME):
@@ -1223,30 +1227,35 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                 and not self.__help_menu_search_widget.text
             ):
                 self.__help_menu_search = False
-                self.__last_help_columns = None
+                self.__last_help_data = None
                 del self.__help_menu_search_widget
                 self.__help_menu_search_layout = 0, 0
             else:
                 self.__help_menu_search_widget.event(e)
-                self.__last_help_columns = None
+                self.__last_help_data = None
         self.__help_menu_line = min(
             max(-self.__menu_content_height + self.__height, self.__help_menu_line), 0
         )
 
     def __clear_layout_cache(self, rc: RenderContext, /) -> bool:
-        if self.__width == rc.width and self.__last_help_columns == self.help_data:
+        if self.__width == rc.width and self.__last_help_data == self.help_data:
             return False
 
         if self.__width != rc.width:
             self.__help_menu_line = 0
-        if self.__last_help_columns != self.help_data:
-            # Clear the cache...
-            self.__dict__.pop("_Widget__prepared_inline_help", None)
-            self.__dict__.pop("_Widget__prepared_groups", None)
 
         self.__width = rc.width
         self.__height = rc.height
-        self.__last_help_columns = self.help_data
+
+        if self.__last_help_data != self.help_data:
+            self.__last_help_data = self.help_data
+            self.__prepared_groups = self.__prepare_groups(self.__last_help_data)
+            self.__prepared_inline_help = self.__prepare_inline_help(
+                self.__last_help_data
+            )
+            self.__has_help = bool(
+                self.__last_help_data.inline_help or self.__last_help_data.groups
+            )
 
         return True
 
@@ -1326,7 +1335,10 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     def __help_menu_layout_inline(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         if not self.__clear_layout_cache(rc):
-            return 1, 1
+            return (1, 1) if self.__has_help else (0, 0)
+
+        if not self.__has_help:
+            return 0, 0
 
         self.__colorized_inline_help = []
         for keys, title, _, key_width in self.__prepared_inline_help:
@@ -1342,6 +1354,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         return 1, 1
 
     def __help_menu_draw_inline(self, rc: RenderContext, /):
+        if not self.__has_help:
+            return
+
         used_width = _line_width(self._KEY_SYMBOLS[Key.F1]) + 5
         col_sep = ""
 
@@ -1400,22 +1415,20 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         " ": "␣",
     }
 
-    @functools.cached_property
-    def __prepared_inline_help(
-        self,
+    def __prepare_inline_help(
+        self, data: "WidgetHelp"
     ) -> _t.List[_t.Tuple[_t.List[str], str, str, int]]:
         return [
             prepared_action
-            for action in self.help_data.inline_help
+            for action in data.inline_help
             if (prepared_action := self.__prepare_action(action)) and prepared_action[1]
         ]
 
-    @functools.cached_property
-    def __prepared_groups(
-        self,
+    def __prepare_groups(
+        self, data: "WidgetHelp"
     ) -> _t.Dict[str, _t.List[_t.Tuple[_t.List[str], str, str, int]]]:
         help_data = (
-            self.help_data.with_action(
+            data.with_action(
                 self._KEY_SYMBOLS[Key.F1],
                 group="Other Actions",
                 long_msg="toggle help menu",
@@ -1706,6 +1719,7 @@ class WidgetHelp:
         inline_msg: _t.Optional[str] = None,
         long_msg: _t.Optional[str] = None,
         prepend: bool = False,
+        prepend_group: bool = False,
     ) -> "WidgetHelp":
         """Return a new :class:`WidgetHelp` that has an extra action."""
         return WidgetHelp(self.inline_help.copy(), self.groups.copy()).__add_action(
@@ -1714,6 +1728,7 @@ class WidgetHelp:
             inline_msg=inline_msg,
             long_msg=long_msg,
             prepend=prepend,
+            prepend_group=prepend_group,
             msg=msg,
         )
 
@@ -1754,6 +1769,7 @@ class WidgetHelp:
         inline_msg: _t.Optional[str],
         long_msg: _t.Optional[str],
         prepend: bool,
+        prepend_group: bool,
         msg: _t.Optional[str],
     ) -> "WidgetHelp":
         settings = help(
@@ -1780,6 +1796,11 @@ class WidgetHelp:
                 for binding in bindings
                 if not isinstance(binding, _Binding) or binding.show_in_detailed_help
             ]
+            if prepend_group and settings.group not in self.groups:
+                # Re-create self.groups with a new group as a first element.
+                groups = {settings.group: [], **self.groups}
+                self.groups.clear()
+                self.groups.update(groups)
             if prepend:
                 self.groups[settings.group] = [
                     (menu_keys, settings.long_msg)

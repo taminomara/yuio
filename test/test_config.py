@@ -1,6 +1,5 @@
 import argparse
 import enum
-import os
 
 import pytest
 
@@ -269,11 +268,7 @@ class TestBasics:
 
 
 class TestEnv:
-    @pytest.fixture(autouse=True)
-    def auto_fixtures(self, save_env):
-        pass
-
-    def test_load(self):
+    def test_load(self, monkeypatch: pytest.MonkeyPatch):
         class MyConfig(yuio.config.Config):
             f1: str
             f2: str = "f2"
@@ -283,22 +278,22 @@ class TestEnv:
             _ = c.f1
         assert c.f2 == "f2"
 
-        os.environ["F1"] = "f1.2"
+        monkeypatch.setenv("F1", "f1.2")
         c = MyConfig.load_from_env()
         assert c.f1 == "f1.2"
         assert c.f2 == "f2"
 
-        os.environ["F2"] = "f2.2"
+        monkeypatch.setenv("F2", "f2.2")
         c = MyConfig.load_from_env()
         assert c.f1 == "f1.2"
         assert c.f2 == "f2.2"
 
-    def test_prefix(self):
+    def test_prefix(self, monkeypatch: pytest.MonkeyPatch):
         class MyConfig(yuio.config.Config):
             s: str
 
-        os.environ["S"] = "s.1"
-        os.environ["P_S"] = "s.2"
+        monkeypatch.setenv("S", "s.1")
+        monkeypatch.setenv("P_S", "s.2")
 
         c = MyConfig.load_from_env(prefix="")
         assert c.s == "s.1"
@@ -306,26 +301,26 @@ class TestEnv:
         c = MyConfig.load_from_env(prefix="P")
         assert c.s == "s.2"
 
-    def test_disabled(self):
+    def test_disabled(self, monkeypatch: pytest.MonkeyPatch):
         class MyConfig(yuio.config.Config):
             f_disabled: str = yuio.config.field("f_disabled", env=yuio.DISABLED)
             f_enabled: str = "f_enabled"
 
-        os.environ["F_DISABLED"] = "f_disabled.2"
-        os.environ["F_ENABLED"] = "f_enabled.2"
+        monkeypatch.setenv("F_DISABLED", "f_disabled.2")
+        monkeypatch.setenv("F_ENABLED", "f_enabled.2")
         c = MyConfig.load_from_env()
         assert c.f_disabled == "f_disabled"
         assert c.f_enabled == "f_enabled.2"
 
-    def test_configured_name(self):
+    def test_configured_name(self, monkeypatch: pytest.MonkeyPatch):
         class MyConfig(yuio.config.Config):
             f1: str = yuio.config.field("f1", env="FX")
 
-        os.environ["F1"] = "f1.2"
+        monkeypatch.setenv("F1", "f1.2")
         c = MyConfig.load_from_env()
         assert c.f1 == "f1"
 
-        os.environ["FX"] = "f1.3"
+        monkeypatch.setenv("FX", "f1.3")
         c = MyConfig.load_from_env()
         assert c.f1 == "f1.3"
 
@@ -336,20 +331,20 @@ class TestEnv:
 
             ErrConfig.load_from_env()
 
-    def test_simple_parsers(self):
+    def test_simple_parsers(self, monkeypatch: pytest.MonkeyPatch):
         class MyConfig1(yuio.config.Config):
             b: bool
             s: str = yuio.config.field(
                 parser=yuio.parse.OneOf(yuio.parse.Str(), ["x", "y"])
             )
 
-        os.environ["B"] = "y"
-        os.environ["S"] = "x"
+        monkeypatch.setenv("B", "y")
+        monkeypatch.setenv("S", "x")
         c = MyConfig1.load_from_env()
         assert c.b is True
         assert c.s == "x"
 
-        os.environ["S"] = "z"
+        monkeypatch.setenv("S", "z")
         with pytest.raises(ValueError, match="one of x, y"):
             _ = MyConfig1.load_from_env()
 
@@ -364,11 +359,11 @@ class TestEnv:
             i: int
             e: E
 
-        os.environ["B"] = "no"
-        os.environ["S"] = "str"
-        os.environ["F"] = "1.5"
-        os.environ["I"] = "-10"
-        os.environ["E"] = "B"
+        monkeypatch.setenv("B", "no")
+        monkeypatch.setenv("S", "str")
+        monkeypatch.setenv("F", "1.5")
+        monkeypatch.setenv("I", "-10")
+        monkeypatch.setenv("E", "B")
 
         c = MyConfig2.load_from_env()
         assert c.b is False
@@ -384,11 +379,11 @@ class TestEnv:
             i: _t.Optional[int]
             e: _t.Optional[E]
 
-        os.environ["B"] = "no"
-        os.environ["S"] = "str"
-        os.environ["F"] = "1.5"
-        os.environ["I"] = "-10"
-        os.environ["E"] = "B"
+        monkeypatch.setenv("B", "no")
+        monkeypatch.setenv("S", "str")
+        monkeypatch.setenv("F", "1.5")
+        monkeypatch.setenv("I", "-10")
+        monkeypatch.setenv("E", "B")
 
         c = MyConfig3.load_from_env()
         assert c.b is False
@@ -397,9 +392,9 @@ class TestEnv:
         assert c.i == -10
         assert c.e is E.B
 
-    def test_collection_parsers(self):
+    def test_collection_parsers(self, monkeypatch: pytest.MonkeyPatch):
         class MyConfig(yuio.config.Config):
-            b: list = yuio.config.field(
+            b: list = yuio.config.field(  # type: ignore
                 parser=yuio.parse.List(
                     yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Int(), delimiter=":")
                 )
@@ -408,28 +403,28 @@ class TestEnv:
             x: _t.Tuple[int, float]
             d: _t.Dict[str, int]
 
-        os.environ["B"] = "a:1 b:2"
-        os.environ["S"] = "1 2 3 5 3"
-        os.environ["X"] = "1 2"
-        os.environ["D"] = "a:10 b:20"
+        monkeypatch.setenv("B", "a:1 b:2")
+        monkeypatch.setenv("S", "1 2 3 5 3")
+        monkeypatch.setenv("X", "1 2")
+        monkeypatch.setenv("D", "a:10 b:20")
         c = MyConfig.load_from_env()
         assert c.b == [("a", 1), ("b", 2)]
         assert c.s == {1, 2, 3, 5}
         assert c.x == (1, 2.0)
         assert c.d == {"a": 10, "b": 20}
 
-    def test_subconfig(self):
+    def test_subconfig(self, monkeypatch: pytest.MonkeyPatch):
         class SubConfig(yuio.config.Config):
             a: str
 
         class MyConfig(yuio.config.Config):
             sub: SubConfig
 
-        os.environ["SUB_A"] = "xxx1"
+        monkeypatch.setenv("SUB_A", "xxx1")
         c = MyConfig.load_from_env()
         assert c.sub.a == "xxx1"
 
-    def test_subconfig_no_prefix(self):
+    def test_subconfig_no_prefix(self, monkeypatch: pytest.MonkeyPatch):
         class SubSubConfig(yuio.config.Config):
             b: str
 
@@ -440,17 +435,17 @@ class TestEnv:
         class MyConfig(yuio.config.Config):
             sub: SubConfig = yuio.config.field(env="")
 
-        os.environ["SUB_A"] = "xxx1"
-        os.environ["A"] = "xxx-a"
-        os.environ["B"] = "xxx-b"
+        monkeypatch.setenv("SUB_A", "xxx1")
+        monkeypatch.setenv("A", "xxx-a")
+        monkeypatch.setenv("B", "xxx-b")
 
         c = MyConfig.load_from_env()
         assert c.sub.a == "xxx-a"
         assert c.sub.sub.b == "xxx-b"
 
-        os.environ["P_SUB_A"] = "xxx2"
-        os.environ["P_A"] = "xxx-a2"
-        os.environ["P_B"] = "xxx-b2"
+        monkeypatch.setenv("P_SUB_A", "xxx2")
+        monkeypatch.setenv("P_A", "xxx-a2")
+        monkeypatch.setenv("P_B", "xxx-b2")
 
         c = MyConfig.load_from_env(prefix="P")
         assert c.sub.a == "xxx-a2"
@@ -535,7 +530,7 @@ class TestArgs:
 
     def test_collection_parsers(self):
         class MyConfig(yuio.config.Config):
-            b: list = yuio.config.field(
+            b: list = yuio.config.field(  # type: ignore
                 parser=yuio.parse.List(
                     yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Int(), delimiter=":")
                 )

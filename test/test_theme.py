@@ -324,7 +324,7 @@ terminal_colors_unknown = dataclasses.replace(
 
 class TestDefaultTheme:
     def test_no_color_overrides(self):
-        term = yuio.term.Term(None)  # type: ignore
+        term = yuio.term.Term(None, None)  # type: ignore
         theme = yuio.theme.DefaultTheme(term)
         assert (
             theme.get_color("low_priority_color_a") == yuio.term.Color.FORE_NORMAL_DIM
@@ -335,6 +335,7 @@ class TestDefaultTheme:
 
     def test_no_color_overrides_unknown_lightness(self):
         term = yuio.term.Term(
+            None,  # type: ignore
             None,  # type: ignore
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
             terminal_colors=terminal_colors_unknown,
@@ -356,6 +357,7 @@ class TestDefaultTheme:
     def test_dark_theme(self):
         term = yuio.term.Term(
             None,  # type: ignore
+            None,  # type: ignore
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
             terminal_colors=terminal_colors_dark,
         )
@@ -375,6 +377,7 @@ class TestDefaultTheme:
 
     def test_light_theme(self):
         term = yuio.term.Term(
+            None,  # type: ignore
             None,  # type: ignore
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
             terminal_colors=terminal_colors_light,

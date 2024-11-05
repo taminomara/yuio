@@ -134,7 +134,7 @@ class TestColor:
         ],
     )
     def test_as_code(self, color: yuio.term.Color, cap, expect):
-        term = yuio.term.Term(None, color_support=cap)  # type: ignore
+        term = yuio.term.Term(None, None, color_support=cap)  # type: ignore
         assert color.as_code(term) == expect
 
     @pytest.mark.parametrize(
@@ -1309,7 +1309,7 @@ def mock_term_io(
     )
 
     try:
-        yield ostream
+        yield ostream, istream
     finally:
         os.environ.clear()
         os.environ.update(old_env)
@@ -1348,7 +1348,7 @@ class TestTerm:
         ],
     )
     def test_color_support(self, level, ansi, ansi_256, ansi_true):
-        term = yuio.term.Term(None, color_support=level)  # type: ignore
+        term = yuio.term.Term(None, None, color_support=level)  # type: ignore
         assert term.has_colors == ansi
         assert term.has_colors_256 == ansi_256
         assert term.has_colors_true == ansi_true
@@ -1362,10 +1362,10 @@ class TestTerm:
         ],
     )
     def test_interactive_support(self, level, move, query):
-        term = yuio.term.Term(None, color_support=yuio.term.ColorSupport.ANSI, interactive_support=level)  # type: ignore
+        term = yuio.term.Term(None, None, color_support=yuio.term.ColorSupport.ANSI, interactive_support=level)  # type: ignore
         assert term.can_move_cursor == move
         assert term.can_query_terminal == term.is_fully_interactive == query
-        term = yuio.term.Term(None, color_support=yuio.term.ColorSupport.NONE, interactive_support=level)  # type: ignore
+        term = yuio.term.Term(None, None, color_support=yuio.term.ColorSupport.NONE, interactive_support=level)  # type: ignore
         assert (
             term.can_move_cursor
             == term.can_query_terminal
@@ -1615,7 +1615,8 @@ class TestTerm:
         ],
     )
     def test_capabilities_estimation(self, kwargs, expected_term):
-        with mock_term_io(**kwargs) as ostream:
-            term = yuio.term.get_term_from_stream(ostream)
-            expected = yuio.term.Term(ostream, **expected_term)
+        with mock_term_io(**kwargs) as streams:
+            ostream, istream = streams
+            term = yuio.term.get_term_from_stream(ostream, istream)
+            expected = yuio.term.Term(ostream, istream, **expected_term)
             assert term == expected

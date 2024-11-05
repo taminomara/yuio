@@ -177,7 +177,7 @@ class MdFormatter:
     def width(self, width: _t.Optional[int]):
         if width is None:
             width = min(shutil.get_terminal_size().columns, 90)
-        self.__width = max(width, 30)
+        self.__width = max(width, 20)
 
     def format(self, s: str, /) -> _t.List[yuio.term.ColorizedString]:
         """Format a markdown document."""

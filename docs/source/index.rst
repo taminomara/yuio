@@ -20,8 +20,9 @@ Yuio got you.
    import sys
    import yuio.app
    import yuio.term
+   import yuio.io
 
-   yuio.io.setup(term=yuio.term.Term(io.StringIO()))
+   yuio.io.setup(term=yuio.term.Term(io.StringIO(), io.StringIO()))
 
 
 Features
@@ -60,6 +61,13 @@ Features
              ...
 
 - User interactions, input parsing and simple widgets:
+
+  .. invisible-code-block: python
+
+     ostream = yuio.io.get_term().ostream
+     ostream.write("foobar\n")
+     ostream.seek(0)
+     del ostream
 
   .. code-block:: python
 
