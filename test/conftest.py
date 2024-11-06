@@ -475,8 +475,8 @@ class IOMocker:
             yuio.widget._event_stream,
             lambda: _CURRENT_IOSTREAM_MOCK,
         )
-        old_set_cbreak, yuio.term._set_cbreak = (
-            yuio.term._set_cbreak,
+        old_enter_raw_mode, yuio.term._enter_raw_mode = (
+            yuio.term._enter_raw_mode,
             lambda: contextlib.nullcontext(),
         )
 
@@ -491,7 +491,7 @@ class IOMocker:
                 _CURRENT_IOSTREAM_MOCK.finish()
         finally:
             yuio.widget._event_stream = old_event_stream
-            yuio.term._set_cbreak = old_set_cbreak
+            yuio.term._enter_raw_mode = old_enter_raw_mode
             yuio.widget.RenderContext._override_wh = None
             _CURRENT_IOSTREAM_MOCK = None
 
@@ -955,7 +955,6 @@ def _render_screen(
                         color = "B" if color == " " else color.upper()
             elif fn == "J":
                 # Clear screen.
-                assert args == [""], f"unexpected OSC args: {part!r}"
                 text = [[" "] * width for _ in range(height)]
                 colors = [[" "] * width for _ in range(height)]
             elif fn == "H":

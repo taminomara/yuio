@@ -1226,37 +1226,18 @@ class MockOStream(io.StringIO):
         self.__out.write(s)
         self.__out.seek(pos)
         self.__out.flush()
-        self.__out._load_ch()
 
 
 class MockIStream(io.StringIO):
     def __init__(
         self,
         tty: bool,
-        responds_to_kbhit: int,
     ):
         super().__init__()
         self.__tty = tty
-        self.__responds_to_kbhit = responds_to_kbhit
-
-        self.__last_ch = super().read(1)
 
     def isatty(self) -> bool:
         return self.__tty
-
-    def kbhit(self, timeout=0):
-        if self.__responds_to_kbhit:
-            self.__responds_to_kbhit -= 1
-            return bool(self.__last_ch)
-        else:
-            return False  # i.e. timeout
-
-    def getch(self):
-        last_ch = self.__last_ch
-        if not last_ch:
-            raise EOFError()
-        self.__last_ch = super().read(1)
-        return last_ch.encode()
 
     def read(self, size=None):
         raise RuntimeError("term not supposed to use stream.read")
@@ -1267,9 +1248,8 @@ class MockIStream(io.StringIO):
     def readlines(self, hint=-1):
         raise RuntimeError("term not supposed to use stream.readlines")
 
-    def _load_ch(self):
-        if not self.__last_ch:
-            self.__last_ch = super().read(1)
+    def read_keycode(self):
+        return super().read()
 
 
 @contextlib.contextmanager
@@ -1277,13 +1257,13 @@ def mock_term_io(
     i_tty: bool = False,
     o_tty: bool = False,
     should_query_osc: bool = False,
-    responds_to_kbhit: int = False,
     is_foreground: bool = False,
     env: _t.Dict[str, str] = {},
     args: _t.List[str] = [],
     osc_response: _t.Optional[str] = "",
+    enable_vt_processing: bool = False,
 ):
-    istream = MockIStream(i_tty, responds_to_kbhit)
+    istream = MockIStream(i_tty)
     ostream = MockOStream(istream, o_tty, should_query_osc, osc_response)
 
     old_env = os.environ.copy()
@@ -1293,8 +1273,10 @@ def mock_term_io(
     old_args = sys.argv[1:]
     sys.argv[1:] = args
 
-    old_getch, yuio.term._getch = yuio.term._getch, istream.getch
-    old_kbhit, yuio.term._kbhit = yuio.term._kbhit, istream.kbhit
+    old_read_keycode, yuio.term._read_keycode = (
+        yuio.term._read_keycode,
+        istream.read_keycode,
+    )
     old_is_foreground, yuio.term._is_foreground = (
         yuio.term._is_foreground,
         lambda _: is_foreground,
@@ -1303,9 +1285,13 @@ def mock_term_io(
         yuio.term._is_interactive_input,
         lambda _: i_tty,
     )
-    old_set_cbreak, yuio.term._set_cbreak = (
-        yuio.term._set_cbreak,
+    old_enter_raw_mode, yuio.term._enter_raw_mode = (
+        yuio.term._enter_raw_mode,
         lambda: contextlib.nullcontext(),
+    )
+    old_enable_vt_processing, yuio.term._enable_vt_processing = (
+        yuio.term._enable_vt_processing,
+        lambda: enable_vt_processing,
     )
 
     try:
@@ -1316,11 +1302,11 @@ def mock_term_io(
 
         sys.argv[1:] = old_args
 
-        yuio.term._getch = old_getch
-        yuio.term._kbhit = old_kbhit
+        yuio.term._read_keycode = old_read_keycode
         yuio.term._is_foreground = old_is_foreground
         yuio.term._is_interactive_input = old_is_interactive_input
-        yuio.term._set_cbreak = old_set_cbreak
+        yuio.term._enter_raw_mode = old_enter_raw_mode
+        yuio.term._enable_vt_processing = old_enable_vt_processing
 
 
 term_colors = yuio.term.TerminalColors(
@@ -1373,6 +1359,7 @@ class TestTerm:
             == False
         )
 
+    @pytest.mark.skipif(os.name == "nt", reason="this test is for unix only")
     @pytest.mark.parametrize(
         "kwargs,expected_term",
         [
@@ -1509,7 +1496,6 @@ class TestTerm:
                     "o_tty": True,
                     "is_foreground": True,
                     "should_query_osc": True,
-                    "responds_to_kbhit": -1,
                 },
                 {
                     "color_support": yuio.term.ColorSupport.ANSI_256,
@@ -1524,7 +1510,6 @@ class TestTerm:
                     "o_tty": True,
                     "is_foreground": True,
                     "should_query_osc": True,
-                    "responds_to_kbhit": -1,
                     "osc_response": "\x1b[?c",
                 },
                 {
@@ -1540,7 +1525,6 @@ class TestTerm:
                     "o_tty": True,
                     "is_foreground": True,
                     "should_query_osc": True,
-                    "responds_to_kbhit": -1,
                     "osc_response": None,  # default response
                 },
                 {
@@ -1555,23 +1539,6 @@ class TestTerm:
                     "i_tty": True,
                     "o_tty": True,
                     "is_foreground": True,
-                    "should_query_osc": True,
-                    "responds_to_kbhit": 2,  # kbhit only responds twice
-                    "osc_response": None,  # default response
-                },
-                {
-                    "color_support": yuio.term.ColorSupport.ANSI_256,
-                    "interactive_support": yuio.term.InteractiveSupport.FULL,
-                    "terminal_colors": term_colors,  # Got the response!
-                },
-            ),
-            (
-                {
-                    "env": {"TERM": "xterm", "COLORTERM": "yes"},
-                    "i_tty": True,
-                    "o_tty": True,
-                    "is_foreground": True,
-                    "should_query_osc": False,
                     "args": ["--no-color"],
                 },
                 {
@@ -1586,7 +1553,6 @@ class TestTerm:
                     "i_tty": True,
                     "o_tty": True,
                     "is_foreground": True,
-                    "should_query_osc": False,
                 },
                 {
                     "color_support": yuio.term.ColorSupport.NONE,
@@ -1615,6 +1581,248 @@ class TestTerm:
         ],
     )
     def test_capabilities_estimation(self, kwargs, expected_term):
+        with mock_term_io(**kwargs) as streams:
+            ostream, istream = streams
+            term = yuio.term.get_term_from_stream(ostream, istream)
+            expected = yuio.term.Term(ostream, istream, **expected_term)
+            assert term == expected
+
+    @pytest.mark.skipif(os.name != "nt", reason="this test is for windows only")
+    @pytest.mark.parametrize(
+        "kwargs,expected_term",
+        [
+            (
+                {},
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {"enable_vt_processing": True},
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "enable_vt_processing": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "o_tty": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "o_tty": True,
+                    "enable_vt_processing": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "o_tty": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "o_tty": True,
+                    "enable_vt_processing": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                    "interactive_support": yuio.term.InteractiveSupport.MOVE_CURSOR,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                    "should_query_osc": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                    "interactive_support": yuio.term.InteractiveSupport.FULL,
+                    "terminal_colors": None,  # OSC query got no response
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                    "should_query_osc": True,
+                    "responds_to_kbhit": -1,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                    "interactive_support": yuio.term.InteractiveSupport.FULL,
+                    "terminal_colors": None,  # kbhit responds, but no OSC result
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                    "should_query_osc": True,
+                    "responds_to_kbhit": -1,
+                    "osc_response": "\x1b[?c",
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI_256,
+                    "interactive_support": yuio.term.InteractiveSupport.FULL,
+                    "terminal_colors": None,  # kbhit responds, but OSC is not properly supported
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                    "should_query_osc": True,
+                    "responds_to_kbhit": -1,
+                    "osc_response": None,  # default response
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI_256,
+                    "interactive_support": yuio.term.InteractiveSupport.FULL,
+                    "terminal_colors": term_colors,  # Got the response!
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                    "should_query_osc": True,
+                    "responds_to_kbhit": 2,  # kbhit only responds twice
+                    "osc_response": None,  # default response
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI_256,
+                    "interactive_support": yuio.term.InteractiveSupport.FULL,
+                    "terminal_colors": term_colors,  # Got the response!
+                },
+            ),
+            (
+                {
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                    "args": ["--no-color"],
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "env": {"FORCE_NO_COLOR": "1"},
+                    "i_tty": True,
+                    "o_tty": True,
+                    "is_foreground": True,
+                    "enable_vt_processing": True,
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.NONE,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {
+                    "args": ["--force-color"],
+                },
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+            (
+                {"env": {"FORCE_COLOR": "1"}},
+                {
+                    "color_support": yuio.term.ColorSupport.ANSI,
+                    "interactive_support": yuio.term.InteractiveSupport.NONE,
+                    "terminal_colors": None,
+                },
+            ),
+        ],
+    )
+    def test_capabilities_estimation_windows(self, kwargs, expected_term):
         with mock_term_io(**kwargs) as streams:
             ostream, istream = streams
             term = yuio.term.get_term_from_stream(ostream, istream)

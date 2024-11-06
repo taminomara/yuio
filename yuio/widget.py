@@ -771,7 +771,7 @@ class RenderContext:
             full_redraw = True
             self._in_alternative_buffer = alternative_buffer
             if alternative_buffer:
-                self._out.append("\x1b[m\x1b[?1049h\x1b[J\x1b[H")
+                self._out.append("\x1b[m\x1b[?1049h\x1b[2J\x1b[H")
                 self._normal_buffer_term_x = self._term_x
                 self._normal_buffer_term_y = self._term_y
                 self._term_x, self._term_y = 0, 0
@@ -809,7 +809,7 @@ class RenderContext:
     def clear_screen(self):
         """Clear screen and prepare for a full redraw."""
 
-        self._out.append("\x1b[J\x1b[1H")
+        self._out.append("\x1b[2J\x1b[1H")
         self._term_x, self._term_y = 0, 0
         self.prepare(full_redraw=True, alternative_buffer=self._in_alternative_buffer)
 
@@ -1053,7 +1053,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         if not term.is_fully_interactive:
             raise RuntimeError("terminal doesn't support rendering widgets")
 
-        with yuio.term._set_cbreak():
+        with yuio.term._enter_raw_mode():
             rc = RenderContext(term, theme)
 
             events = _event_stream()
@@ -3529,11 +3529,7 @@ class Apply(Map[T, T], _t.Generic[T]):
 
 def _event_stream() -> _t.Iterator[KeyboardEvent]:
     while True:
-        key = yuio.term._getch()
-        while yuio.term._kbhit():
-            key += yuio.term._getch()
-        encoding = sys.__stdin__.encoding if sys.__stdin__ is not None else "utf-8"
-        key = key.decode(encoding, "replace")
+        key = yuio.term._read_keycode()
 
         # Esc key
         if key == "\x1b":
@@ -3628,7 +3624,7 @@ def _parse_char(
 ) -> _t.Iterable[KeyboardEvent]:
     if char == "\t":
         yield KeyboardEvent(Key.TAB, ctrl, alt)
-    elif char == "\n":
+    elif char in "\r\n":
         yield KeyboardEvent(Key.ENTER, ctrl, alt)
     elif char == "\x7f":
         yield KeyboardEvent(Key.BACKSPACE, ctrl, alt)

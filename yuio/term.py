@@ -353,9 +353,7 @@ def get_term_from_stream(
     )
 
 
-def _get_standard_colors(
-    stream: _t.TextIO,
-) -> _t.Optional[TerminalColors]:
+def _get_standard_colors(stream: _t.TextIO) -> _t.Optional[TerminalColors]:
     try:
         query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join(
             [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
@@ -367,7 +365,7 @@ def _get_standard_colors(
         # Deal with foreground color.
 
         match = re.match(
-            rb"^\x1b]10;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
+            r"^\x1b]10;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
             response,
             re.IGNORECASE,
         )
@@ -382,7 +380,7 @@ def _get_standard_colors(
         # Deal with background color.
 
         match = re.match(
-            rb"^\x1b]11;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
+            r"^\x1b]11;rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
             response,
             re.IGNORECASE,
         )
@@ -408,7 +406,7 @@ def _get_standard_colors(
 
         while response:
             match = re.match(
-                rb"^\x1b]4;(\d+);rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
+                r"^\x1b]4;(\d+);rgb:([0-9a-f]{2,4})/([0-9a-f]{2,4})/([0-9a-f]{2,4})(?:\x1b\\|\a)",
                 response,
                 re.IGNORECASE,
             )
@@ -443,53 +441,34 @@ def _get_standard_colors(
         return None
 
 
-def _query_term(
-    stream: _t.TextIO,
-    query: str,
-    timeout: float = 0.3,
-) -> _t.Optional[bytes]:
+def _query_term(stream: _t.TextIO, query: str) -> _t.Optional[str]:
     try:
-        with _set_cbreak():
+        with _enter_raw_mode():
             # Lock the keyboard.
             stream.write("\x1b[2h")
             stream.flush()
+            _flush_input_buffer()
 
             # It is important that we unlock keyboard before exiting `cbreak`,
             # hence the nested `try`.
             try:
-                # Read out all buffers.
-                while _kbhit():
-                    _getch()
-
                 # Append a DA1 query, as virtually all terminals support it.
                 stream.write(query + "\x1b[c")
                 stream.flush()
 
-                if not _kbhit(timeout):
-                    # Prevent deadlocks; hitting this condition means we've miscalculated
-                    # terminal capabilities.
-                    yuio._logger.debug("_query_term timeout")
-                    return None
-
-                if _getch() != b"\x1b":
-                    # Same as above.
+                buf = _read_keycode()
+                if not buf.startswith("\x1b"):
                     yuio._logger.debug("_query_term invalid response")
                     return None
 
-                buf = b"\x1b"
+                # Read till we find a DA1 response.
+                while not re.search(r"\x1b\[\?.*?c", buf):
+                    buf += _read_keycode()
 
-                # Read till we find a DA1 response start.
-                while not buf.endswith(b"\x1b[?"):
-                    buf += _getch()
-
-                buf = buf[:-3]  # Chop off the DA1 response start.
-
-                # Skip to the end of a DA1 response.
-                while _getch() != b"c":
-                    pass
-
-                return buf
+                return buf[: buf.index("\x1b[?")]
             finally:
+                _flush_input_buffer()
+
                 # Release the keyboard.
                 stream.write("\x1b[2i")
                 stream.flush()
@@ -505,10 +484,22 @@ def _is_tty(stream: _t.Optional[_t.TextIO]) -> bool:
         return False
 
 
-def _is_foreground(stream: _t.Optional[_t.TextIO]) -> bool:
-    try:
-        return stream is not None and os.getpgrp() == os.tcgetpgrp(stream.fileno())
-    except Exception:
+if os.name == "posix":
+
+    def _is_foreground(stream: _t.Optional[_t.TextIO]) -> bool:
+        try:
+            return stream is not None and os.getpgrp() == os.tcgetpgrp(stream.fileno())
+        except Exception:
+            return False
+
+elif os.name == "nt":
+
+    def _is_foreground(stream: _t.Optional[_t.TextIO]) -> bool:
+        return True
+
+else:
+
+    def _is_foreground(stream: _t.Optional[_t.TextIO]) -> bool:
         return False
 
 
@@ -533,7 +524,7 @@ if os.name == "posix":
     import tty
 
     @contextlib.contextmanager
-    def _set_cbreak():
+    def _enter_raw_mode():
         assert sys.__stdin__ is not None
 
         prev_mode = termios.tcgetattr(sys.__stdin__)
@@ -544,43 +535,140 @@ if os.name == "posix":
         finally:
             termios.tcsetattr(sys.__stdin__, termios.TCSAFLUSH, prev_mode)
 
-    def _getch() -> bytes:
+    def _read_keycode() -> str:
         assert sys.__stdin__ is not None
 
-        return os.read(sys.__stdin__.fileno(), 1)
+        key = os.read(sys.__stdin__.fileno(), 1)
+        while bool(select.select([sys.__stdin__], [], [], 0)[0]):
+            key += os.read(sys.__stdin__.fileno(), 1)
 
-    def _kbhit(timeout: float = 0) -> bool:
-        return bool(select.select([sys.__stdin__], [], [], timeout)[0])
+        return key.decode(sys.__stdin__.encoding, errors="replace")
 
-else:
+    def _flush_input_buffer():
+        pass
 
-    @contextlib.contextmanager
-    def _set_cbreak():
-        raise OSError("not supported")
-        yield
+    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
+        return False  # This is a windows functionality
 
-    def _getch() -> bytes:
-        raise OSError("not supported")
-
-    def _kbhit(timeout: float = 0) -> bool:
-        raise OSError("not supported")
-
-
-if os.name == "nt":
+elif os.name == "nt":
     import ctypes
+    import ctypes.wintypes
     import msvcrt
 
-    def _enable_vt_processing(stream: _t.TextIO) -> bool:
+    _FlushConsoleInputBuffer = ctypes.windll.kernel32.FlushConsoleInputBuffer
+    _FlushConsoleInputBuffer.argtypes = [ctypes.wintypes.HANDLE]
+    _FlushConsoleInputBuffer.restype = ctypes.wintypes.BOOL
+
+    _GetConsoleMode = ctypes.windll.kernel32.GetConsoleMode
+    _GetConsoleMode.argtypes = [ctypes.wintypes.HANDLE, ctypes.wintypes.LPDWORD]
+    _GetConsoleMode.restype = ctypes.wintypes.BOOL
+
+    _SetConsoleMode = ctypes.windll.kernel32.SetConsoleMode
+    _SetConsoleMode.argtypes = [ctypes.wintypes.HANDLE, ctypes.wintypes.DWORD]
+    _SetConsoleMode.restype = ctypes.wintypes.BOOL
+
+    _ReadConsoleW = ctypes.windll.kernel32.ReadConsoleW
+    _ReadConsoleW.argtypes = [
+        ctypes.wintypes.HANDLE,
+        ctypes.wintypes.LPVOID,
+        ctypes.wintypes.DWORD,
+        ctypes.wintypes.LPDWORD,
+        ctypes.wintypes.LPVOID,
+    ]
+    _ReadConsoleW.restype = ctypes.wintypes.BOOL
+
+    _ENABLE_PROCESSED_OUTPUT = 0x0001
+    _ENABLE_WRAP_AT_EOL_OUTPUT = 0x0002
+    _ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+    _ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200
+
+    if sys.__stdin__ is not None:  # TODO: don't rely on sys.__stdin__?
+        _ISTREAM_HANDLE = msvcrt.get_osfhandle(sys.__stdin__.fileno())
+    else:
+        _ISTREAM_HANDLE = None
+
+    @contextlib.contextmanager
+    def _enter_raw_mode():
+        assert _ISTREAM_HANDLE is not None
+
+        mode = ctypes.wintypes.DWORD()
+        success = _GetConsoleMode(_ISTREAM_HANDLE, ctypes.byref(mode))
+        if not success:
+            raise ctypes.WinError()
+        success = _SetConsoleMode(_ISTREAM_HANDLE, _ENABLE_VIRTUAL_TERMINAL_INPUT)
+        if not success:
+            raise ctypes.WinError()
+
+        try:
+            yield
+        finally:
+            success = _SetConsoleMode(_ISTREAM_HANDLE, mode)
+            if not success:
+                raise ctypes.WinError()
+
+    def _read_keycode() -> str:
+        assert _ISTREAM_HANDLE is not None
+
+        CHAR16 = ctypes.wintypes.WCHAR * 16
+
+        n_read = ctypes.wintypes.DWORD()
+        buffer = CHAR16()
+
+        success = _ReadConsoleW(
+            _ISTREAM_HANDLE,
+            ctypes.byref(buffer),
+            16,
+            ctypes.byref(n_read),
+            0,
+        )
+        if not success:
+            raise ctypes.WinError()
+
+        return buffer.value
+
+    def _flush_input_buffer():
+        assert _ISTREAM_HANDLE is not None
+
+        success = _FlushConsoleInputBuffer(_ISTREAM_HANDLE)
+        if not success:
+            raise ctypes.WinError()
+
+    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
         try:
             version = sys.getwindowsversion()
             if version.major < 10 or version.build < 14931:
                 return False
 
-            stderr_handle = msvcrt.get_osfhandle(stream.fileno())
-            return bool(ctypes.windll.kernel32.SetConsoleMode(stderr_handle, 7))
+            handle = msvcrt.get_osfhandle(ostream.fileno())
+            if not bool(
+                _SetConsoleMode(
+                    handle,
+                    _ENABLE_PROCESSED_OUTPUT
+                    | _ENABLE_WRAP_AT_EOL_OUTPUT
+                    | _ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+                )
+            ):
+                return False
 
+            return True
         except Exception:
             return False
+
+else:
+
+    @contextlib.contextmanager
+    def _enter_raw_mode():
+        raise OSError("not supported")
+        yield
+
+    def _read_keycode() -> str:
+        raise OSError("not supported")
+
+    def _flush_input_buffer():
+        raise OSError("not supported")
+
+    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
+        raise OSError("not supported")
 
 
 @dataclass(frozen=True, **yuio._with_slots())
