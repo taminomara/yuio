@@ -1,0 +1,223 @@
+#! /usr/bin/env python3
+
+import enum
+import pathlib
+
+import packaging
+import packaging.version
+
+import yuio.app
+import yuio.git
+import yuio.io
+import yuio.md
+import yuio.parse
+
+
+class Kind(enum.Enum):
+    PATCH = "patch"
+    MINOR = "minor"
+    MAJOR = "major"
+
+
+class Pre(enum.Enum):
+    ALPHA = "alpha"
+    BETA = "beta"
+    RC = "rc"
+
+
+class Action(enum.Enum):
+    SEE = "see changelog"
+    EDIT = "edit changelog"
+    CLEAR = "clear changelog"
+    ABORT = "abort"
+    PROCEED = "proceed"
+
+
+CHANGELOG_MARKER = "<!-- INSERT NEW ENTRIES HERE -->"
+CHANGELOG_EDIT_MSG = """! Please, edit the changelog below.
+! All lines starting with an exclamation mark will be ignored.
+
+"""
+
+
+@yuio.app.app()
+def main(
+    #: Which version to bump:
+    #:
+    #: - `patch` bumps the lower version of Yuio, it should be used for updates that
+    #:   don't add new functionality or break the API;
+    #: - `minor` bumps the middle version of Yuio, it should be used for updates that
+    #:   add functionality but don't break the API;
+    #: - `major` bumps the upper version of Yuio, it should be used for updates that
+    #:   break the API.
+    #:
+    #: If no `--kind` is given, then the main version is not updated. In this case,
+    #: the `--pre` must be given to create a next pre-release.
+    kind: Kind | None = yuio.app.field(None, flags=["-k", "--kind"]),
+    #: Mark this version as a pre-release:
+    #:
+    #: - `alpha` creates an alpha release;
+    #: - `beta` creates a beta release;
+    #: - `rc` creates a release candidate.
+    pre: Pre | None = None,
+):
+    changelog_file_path = pathlib.Path("CHANGELOG.md")
+    if not changelog_file_path.exists():
+        raise yuio.app.ArgumentError(
+            None,
+            "`CHANGELOG.md` not found in the current directory.",
+        )
+
+    if kind is None and pre is None:
+        raise yuio.app.ArgumentError(
+            None,
+            "either `--kind` or `--pre` should be given",
+        )
+
+    repo = yuio.git.Repo(".")
+
+    status = repo.status()
+    if status.branch != "main":
+        yuio.io.error("You need to be on branch `main` to create a release.")
+        exit(1)
+    if status.has_changes:
+        yuio.io.error(
+            "The repository has uncommitted changes. "
+            "Please, commit all changes before creating a release."
+        )
+        exit(1)
+
+    tags = repo.tags()
+    versions = [
+        packaging.version.Version(tag[1:]) for tag in tags if tag.startswith("v")
+    ]
+
+    if versions:
+        last_version = max(versions)
+    else:
+        last_version = packaging.version.Version("0.0.0")
+
+    patch, minor, major = last_version.micro, last_version.minor, last_version.major
+    if kind == Kind.PATCH:
+        patch += 1
+    elif kind == Kind.MINOR:
+        patch = 0
+        minor += 1
+    elif kind == Kind.MAJOR:
+        patch = minor = 0
+        major += 1
+
+    pre_kind = None
+    pre_number = 0
+    if pre is Pre.ALPHA:
+        pre_kind = "a"
+    elif pre is Pre.BETA:
+        pre_kind = "b"
+    elif pre is Pre.RC:
+        pre_kind = "rc"
+    if pre_kind is not None:
+        # Find the latest release that matches the current spec
+        # and bump its pre-version:
+        pre_versions = [
+            tag
+            for tag in versions
+            if tag.major == major
+            and tag.minor == minor
+            and tag.micro == patch
+            and tag.pre is not None
+            and tag.pre[0] == pre_kind
+        ]
+        if pre_versions:
+            last_pre_designator = max(pre_versions).pre
+            assert last_pre_designator is not None
+            pre_number = last_pre_designator[1] + 1
+
+    tag = f"v{major}.{minor}.{patch}"
+    if pre is not None:
+        tag += f"-{pre.value}.{pre_number}"
+
+    n_commits, changelog = generate_changelog(repo, tag, tags)
+
+    if n_commits == 0:
+        yuio.io.error("No commits to release.")
+        exit(1)
+
+    yuio.io.heading("Creating release `%s`", tag)
+    yuio.io.info("Release has `%s` commits.", n_commits)
+    yuio.io.br()
+
+    while True:
+        action = yuio.io.ask[Action]("What do you want to do?", default=Action.ABORT)
+        if action is Action.SEE:
+            yuio.io.br()
+            yuio.io.md(changelog)
+            yuio.io.br()
+        elif action is Action.EDIT:
+            changelog = edit_changelog(changelog)
+        elif action is Action.CLEAR:
+            changelog = ""
+        elif action is Action.ABORT:
+            yuio.io.warning("Aborting.")
+            exit()
+        elif action is Action.PROCEED:
+            write_release(repo, tag, changelog, changelog_file_path)
+            exit()
+
+
+def generate_changelog(repo: yuio.git.Repo, tag: str, tags: list[str]):
+    log_spec = f"{tags[-1]}..HEAD" if tags else "HEAD"
+    changelog_commits = repo.log(log_spec, max_entries=None)
+    return len(changelog_commits), "\n".join(
+        f"- {commit.title} (by *{commit.author}*)" for commit in changelog_commits
+    )
+
+
+def edit_changelog(changelog: str):
+    return yuio.io.edit(CHANGELOG_EDIT_MSG + changelog, comment_marker="!").strip()
+
+
+def write_release(
+    repo: yuio.git.Repo, tag: str, changelog: str, changelog_file_path: pathlib.Path
+):
+    changelog_contents = changelog_file_path.read_text()
+    if CHANGELOG_MARKER not in changelog_contents:
+        yuio.io.error(
+            "Changelog insertion marker was not found in `%s`", changelog_file_path
+        )
+
+    changelog_contents = (
+        changelog_contents.replace(
+            CHANGELOG_MARKER, f"{CHANGELOG_MARKER}\n\n### {tag}\n\n{changelog}\n\n"
+        ).strip()
+        + "\n"
+    )
+    changelog_file_path.write_text(changelog_contents)
+
+    repo.git("add", "CHANGELOG.md")
+    repo.git("commit", "-m", tag)
+    repo.git("tag", tag)
+
+    yuio.io.br()
+    yuio.io.success("Created commit and tag `%s`", tag)
+    yuio.io.br()
+    yuio.io.md(
+        """
+        Push commit and tag to deploy:
+
+        ```sh
+        git push && git push --tags
+        ```
+
+        Reset branch to undo the release creation:
+
+        ```sh
+        git tag -d %s && git reset --hard HEAD^
+        ```
+
+        """,
+        tag,
+    )
+
+
+if __name__ == "__main__":
+    main.run()
