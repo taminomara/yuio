@@ -331,7 +331,7 @@ class Repo:
         """
 
         return (
-            self.git("for-each-ref", "--format='%(refname:short)'", "refs/tags")
+            self.git("for-each-ref", "--format=%(refname:short)", "refs/tags")
             .decode()
             .splitlines()
         )
@@ -343,7 +343,7 @@ class Repo:
         """
 
         return (
-            self.git("for-each-ref", "--format='%(refname:short)'", "refs/heads")
+            self.git("for-each-ref", "--format=%(refname:short)", "refs/heads")
             .decode()
             .splitlines()
         )
@@ -355,7 +355,7 @@ class Repo:
         """
 
         return (
-            self.git("for-each-ref", "--format='%(refname:short)'", "refs/remotes")
+            self.git("for-each-ref", "--format=%(refname:short)", "refs/remotes")
             .decode()
             .splitlines()
         )
