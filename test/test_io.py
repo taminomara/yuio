@@ -909,12 +909,12 @@ class TestDetectEditor:
 
 class TestEdit:
     def test_simple(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "printf ' edited' >> ")
-        assert yuio.io.edit("foobar") == "foobar edited"
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: "echo edited>>")
+        assert yuio.io.edit("foobar") == "foobaredited\n"
 
     def test_editor(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda: None)
-        assert yuio.io.edit("foobar", editor="printf ' edited' >> ") == "foobar edited"
+        assert yuio.io.edit("foobar", editor="echo edited>>") == "foobaredited\n"
 
     def test_editor_error(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda: "exit 1; cat")
@@ -927,20 +927,20 @@ class TestEdit:
             assert yuio.io.edit("foobar")
 
     def test_comments(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "printf ' edited' >> ")
-        assert yuio.io.edit("# foo\n  # bar\nbaz #") == "baz # edited"
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: "echo edited>>")
+        assert yuio.io.edit("# foo\n  # bar\nbaz #") == "baz #edited\n"
         assert yuio.io.edit("foo\n#") == "foo\n"
 
     def test_comments_custom_marker(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "printf ' edited' >> ")
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: "echo edited>>")
         assert (
             yuio.io.edit("// foo\n  # bar\nbaz //", comment_marker="//")
-            == "  # bar\nbaz // edited"
+            == "  # bar\nbaz //edited\n"
         )
         assert yuio.io.edit("foo\n//", comment_marker="//") == "foo\n"
 
     def test_comments_custom_marker_special_symbols(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "printf ' edited' >> ")
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: "echo edited>>")
         assert yuio.io.edit("a\nb\n[ab]", comment_marker="[ab]") == "a\nb\n"

@@ -1291,7 +1291,11 @@ def mock_term_io(
     )
     old_enable_vt_processing, yuio.term._enable_vt_processing = (
         yuio.term._enable_vt_processing,
-        lambda: enable_vt_processing,
+        lambda ostream: enable_vt_processing,
+    )
+    old_flush_input_buffer, yuio.term._flush_input_buffer = (
+        yuio.term._flush_input_buffer,
+        lambda: None,
     )
 
     try:
@@ -1307,6 +1311,7 @@ def mock_term_io(
         yuio.term._is_interactive_input = old_is_interactive_input
         yuio.term._enter_raw_mode = old_enter_raw_mode
         yuio.term._enable_vt_processing = old_enable_vt_processing
+        yuio.term._flush_input_buffer = old_flush_input_buffer
 
 
 term_colors = yuio.term.TerminalColors(
@@ -1718,7 +1723,6 @@ class TestTerm:
                     "is_foreground": True,
                     "enable_vt_processing": True,
                     "should_query_osc": True,
-                    "responds_to_kbhit": -1,
                 },
                 {
                     "color_support": yuio.term.ColorSupport.ANSI_TRUE,
@@ -1733,11 +1737,10 @@ class TestTerm:
                     "is_foreground": True,
                     "enable_vt_processing": True,
                     "should_query_osc": True,
-                    "responds_to_kbhit": -1,
                     "osc_response": "\x1b[?c",
                 },
                 {
-                    "color_support": yuio.term.ColorSupport.ANSI_256,
+                    "color_support": yuio.term.ColorSupport.ANSI_TRUE,
                     "interactive_support": yuio.term.InteractiveSupport.FULL,
                     "terminal_colors": None,  # kbhit responds, but OSC is not properly supported
                 },
@@ -1749,27 +1752,10 @@ class TestTerm:
                     "is_foreground": True,
                     "enable_vt_processing": True,
                     "should_query_osc": True,
-                    "responds_to_kbhit": -1,
                     "osc_response": None,  # default response
                 },
                 {
-                    "color_support": yuio.term.ColorSupport.ANSI_256,
-                    "interactive_support": yuio.term.InteractiveSupport.FULL,
-                    "terminal_colors": term_colors,  # Got the response!
-                },
-            ),
-            (
-                {
-                    "i_tty": True,
-                    "o_tty": True,
-                    "is_foreground": True,
-                    "enable_vt_processing": True,
-                    "should_query_osc": True,
-                    "responds_to_kbhit": 2,  # kbhit only responds twice
-                    "osc_response": None,  # default response
-                },
-                {
-                    "color_support": yuio.term.ColorSupport.ANSI_256,
+                    "color_support": yuio.term.ColorSupport.ANSI_TRUE,
                     "interactive_support": yuio.term.InteractiveSupport.FULL,
                     "terminal_colors": term_colors,  # Got the response!
                 },
