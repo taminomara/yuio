@@ -276,6 +276,9 @@ __all__ = [
 Command: _t.TypeAlias = _t.Callable[..., None]
 
 
+ArgumentError = argparse.ArgumentError
+
+
 @_t.overload
 def app(
     *,
