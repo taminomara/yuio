@@ -1994,7 +1994,7 @@ class Path(ValueParser[pathlib.Path]):
         self.__extensions = [extensions] if isinstance(extensions, str) else extensions
 
     def parse(self, value: str, /) -> pathlib.Path:
-        path = pathlib.Path(value).expanduser().resolve()
+        path = pathlib.Path(value).expanduser().resolve().absolute()
         self._validate(path)
         return path
 

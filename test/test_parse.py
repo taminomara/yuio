@@ -466,18 +466,24 @@ class TestPath:
         self,
     ):
         parser = yuio.parse.Path()
-        assert parser.parse("/a/s/d") == pathlib.Path("/a/s/d").resolve()
-        assert parser.parse("/a/s/d/..") == pathlib.Path("/a/s").resolve()
-        assert parser.parse("a/s/d") == pathlib.Path(os.path.abspath("a/s/d")).resolve()
+        assert parser.parse("/a/s/d") == pathlib.Path("/a/s/d").resolve().absolute()
+        assert parser.parse("/a/s/d/..") == pathlib.Path("/a/s").resolve().absolute()
+        assert parser.parse("a/s/d") == pathlib.Path("a/s/d").resolve().absolute()
+        assert parser.parse("./a/s/./d") == pathlib.Path("a/s/d").resolve().absolute()
         assert (
-            parser.parse("./a/s/./d")
-            == pathlib.Path(os.path.abspath("a/s/d")).resolve()
+            parser.parse("~/a")
+            == pathlib.Path(os.path.expanduser("~/a")).resolve().absolute()
         )
-        assert parser.parse("~/a") == pathlib.Path(os.path.expanduser("~/a")).resolve()
 
         parser = yuio.parse.Path(extensions=[".cfg", ".txt"])
-        assert parser.parse("/a/s/d.cfg") == pathlib.Path("/a/s/d.cfg").resolve()
-        assert parser.parse("/a/s/d.txt") == pathlib.Path("/a/s/d.txt").resolve()
+        assert (
+            parser.parse("/a/s/d.cfg")
+            == pathlib.Path("/a/s/d.cfg").resolve().absolute()
+        )
+        assert (
+            parser.parse("/a/s/d.txt")
+            == pathlib.Path("/a/s/d.txt").resolve().absolute()
+        )
         with pytest.raises(ValueError, match="should have extension .cfg, .txt"):
             parser.parse("file.sql")
 
