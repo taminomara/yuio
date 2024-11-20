@@ -3,6 +3,7 @@ import dataclasses
 import io
 import pathlib
 import re
+import sys
 import traceback
 from dataclasses import dataclass
 
@@ -24,13 +25,27 @@ _HEIGHT = 5
 
 
 @pytest.fixture
+def width() -> int:
+    return _WIDTH
+
+
+@pytest.fixture
+def height() -> int:
+    return _HEIGHT
+
+
+@pytest.fixture
 def ostream() -> io.StringIO:
-    return io.StringIO()
+    ostream = io.StringIO()
+    ostream.isatty = lambda: True
+    return ostream
 
 
 @pytest.fixture
 def istream() -> _t.TextIO:
-    return _MockedIStream()
+    istream = _MockedIStream()
+    istream.isatty = lambda: True
+    return istream
 
 
 @pytest.fixture
@@ -49,9 +64,11 @@ def term(ostream: io.StringIO, istream: _t.TextIO) -> yuio.term.Term:
 
 
 @pytest.fixture
-def rc(term: yuio.term.Term, theme: yuio.theme.Theme) -> yuio.widget.RenderContext:
+def rc(
+    term: yuio.term.Term, theme: yuio.theme.Theme, width: int, height: int
+) -> yuio.widget.RenderContext:
     rc = yuio.widget.RenderContext(term, theme)
-    rc._override_wh = (_WIDTH, _HEIGHT)
+    rc._override_wh = (width, height)
     rc.prepare()
     return rc
 
@@ -61,9 +78,11 @@ def io_mocker_factory(
     ostream: io.StringIO,
     term: yuio.term.Term,
     theme: yuio.theme.Theme,
+    width: int,
+    height: int,
 ) -> _t.Callable[[], "IOMocker"]:
     def factory():
-        return IOMocker(ostream, term, theme)
+        return IOMocker(ostream, term, theme, width, height)
 
     return factory
 
@@ -78,9 +97,13 @@ def widget_checker_factory(
     ostream: io.StringIO,
     term: yuio.term.Term,
     theme: yuio.theme.Theme,
+    width: int,
+    height: int,
 ) -> _t.Callable[[], "WidgetChecker[yuio.widget.Widget[object]]"]:
     def factory():
-        return WidgetChecker[yuio.widget.Widget[object]](ostream, term, theme)
+        return WidgetChecker[yuio.widget.Widget[object]](
+            ostream, term, theme, width, height
+        )
 
     return factory
 
@@ -145,6 +168,17 @@ class _WidgetAssert:
 _WidgetAssert.__name__ = """<assert widget state>"""
 
 
+@dataclass
+class _ExpectMark:
+    mark: _t.Optional[str]
+
+    def __str__(self):
+        return f"<mark: {self.mark}>"
+
+
+_ExpectMark.__name__ = """<mark>"""
+
+
 class _KeyboardEventStream:
     def __init__(
         self,
@@ -162,29 +196,34 @@ class _KeyboardEventStream:
                     _ExpectStdinRead,
                     _ExpectStdinReadline,
                     _ExpectStdinReadlines,
+                    _ExpectMark,
                 ],
             ]
         ],
+        width: int,
     ):
         self.ostream = ostream
         self.term = term
         self.theme = theme
         self.events = events
         self.index = 0
+        self.width = width
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        return self._next()
+        return self._next()[1]
 
-    def _next(self, expected_event_kind: _t.Type[T] = yuio.widget.KeyboardEvent) -> T:
-        event = self._next_any()
+    def _next(
+        self, expected_event_kind: _t.Type[T] = yuio.widget.KeyboardEvent
+    ) -> _t.Tuple[traceback.StackSummary, T]:
+        stack_summary, event = self._next_any()
         if not isinstance(event, expected_event_kind):
             raise AssertionError(
                 f"expected {expected_event_kind.__name__}, got {event}"
             )
-        return event
+        return stack_summary, event
 
     def _next_any(self):
         while self.index < len(self.events):
@@ -197,11 +236,11 @@ class _KeyboardEventStream:
                     self.ostream.seek(0)
                     commands = self.ostream.read()
                     self.ostream.seek(0, io.SEEK_END)
-                    assert RcCompare.from_commands(commands) == event
+                    assert RcCompare.from_commands(commands, self.width) == event
                 elif isinstance(event, _WidgetAssert):
                     assert event.fn()
                 else:
-                    return event
+                    return stack_summary, event
         raise StopIteration
 
     def finish(self):
@@ -220,7 +259,7 @@ class _KeyboardEventStream:
 
     def read(self, n: int = -1) -> str:
         try:
-            event = self._next(expected_event_kind=_ExpectStdinRead)
+            _, event = self._next(expected_event_kind=_ExpectStdinRead)
         except StopIteration:
             raise AssertionError("unexpected call to istream.read()") from None
         self.ostream.write(event.result)
@@ -228,7 +267,7 @@ class _KeyboardEventStream:
 
     def readline(self, limit: int = -1) -> str:
         try:
-            event = self._next(expected_event_kind=_ExpectStdinReadline)
+            _, event = self._next(expected_event_kind=_ExpectStdinReadline)
         except StopIteration:
             raise AssertionError("unexpected call to istream.readline()") from None
         self.ostream.write(event.result)
@@ -236,11 +275,20 @@ class _KeyboardEventStream:
 
     def readlines(self, hint: int = -1) -> _t.List[str]:
         try:
-            event = self._next(expected_event_kind=_ExpectStdinReadlines)
+            _, event = self._next(expected_event_kind=_ExpectStdinReadlines)
         except StopIteration:
             raise AssertionError("unexpected call to istream.read()") from None
         self.ostream.writelines(event.result)
         return event.result
+
+    def mark(self, mark: _t.Optional[str]):
+        try:
+            stack_summary, event = self._next(expected_event_kind=_ExpectMark)
+        except StopIteration:
+            raise AssertionError("unexpected call to io_mocker.mark()") from None
+        if event.mark != mark:
+            with self._patch_stack_summary(stack_summary):
+                raise AssertionError(f"expected {event}, got {_ExpectMark(mark)}")
 
     @contextlib.contextmanager
     def _patch_stack_summary(self, stack_summary: traceback.StackSummary):
@@ -276,6 +324,9 @@ class IOMocker:
         ostream: _t.Optional[io.StringIO] = None,
         term: _t.Optional[yuio.term.Term] = None,
         theme: _t.Optional[yuio.theme.Theme] = None,
+        width: _t.Optional[int] = None,
+        height: _t.Optional[int] = None,
+        wrap_streams: bool = False,
     ):
         self._events: _t.List[
             _t.Tuple[
@@ -288,6 +339,7 @@ class IOMocker:
                     _ExpectStdinRead,
                     _ExpectStdinReadline,
                     _ExpectStdinReadlines,
+                    _ExpectMark,
                 ],
             ]
         ] = []
@@ -295,6 +347,9 @@ class IOMocker:
         self._ostream = ostream
         self._term = term
         self._theme = theme
+        self._width = width
+        self._height = height
+        self._wrap_streams = wrap_streams
 
     def key(
         self: "_Self",
@@ -420,6 +475,57 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinReadlines(result)))
         return self
 
+    def expect_mark(self: "_Self", mark: _t.Optional[str] = None) -> "_Self":
+        """
+        Expect a call to :meth:`IoMocker.mark`.
+
+        This method allows adding custom checkpoints to the test code.
+        This is useful when testing code that renders something but doesn't request
+        any input from a user. Without a mark, all asserts will be checked at the end
+        of the test, when :meth:`IoMocker.mock` exits. With a mark, you can manually
+        trigger assert checks between redraws.
+
+        Example:
+
+        .. code-block:: python
+
+           def test_something(io_mocker):
+              # First assert will be checked upon a call to `mark`.
+              io_mocker.expect_screen(...)
+              io_mocker.expect_mark()
+
+              # Second assert will be checked at the end of the test.
+              io_mocker.expect_screen(...)
+
+              with io_mocker.mock():
+                  # Render things
+                  ...
+
+                  # Emit a mark event; this will check what we've rendered so far.
+                  io_mocker.mark()
+
+                  # Render some more things
+                  ...
+
+        """
+        self._events.append((self._get_stack_summary(), _ExpectMark(mark)))
+        return self
+
+    def mark(self, mark: _t.Optional[str] = None):
+        """
+        Trigger a mark event.
+
+        See :meth:`IoMocker.expect_mark` for details.
+
+        """
+        if _CURRENT_IOSTREAM_MOCK is None:
+            raise RuntimeError(
+                "you need to mock io streams before using this function; "
+                "call KeyboardEventStream.mock or WidgetChecker.check to do so"
+            )
+
+        _CURRENT_IOSTREAM_MOCK.mark(mark)
+
     @staticmethod
     def _get_stack_summary() -> traceback.StackSummary:
         base_path = str(pathlib.Path(__file__).parent.parent.absolute())
@@ -436,6 +542,9 @@ class IOMocker:
         ostream: _t.Optional[io.StringIO] = None,
         term: _t.Optional[yuio.term.Term] = None,
         theme: _t.Optional[yuio.theme.Theme] = None,
+        width: _t.Optional[int] = None,
+        height: _t.Optional[int] = None,
+        wrap_streams: _t.Optional[bool] = None,
     ):
         """
         Bind :func:`yuio.widget._event_stream` and all mocked inout streams
@@ -464,11 +573,27 @@ class IOMocker:
                 "pass theme to its constructor or its `mock`/`check` method"
             )
 
+        width = width or self._width
+        if width is None:
+            raise RuntimeError(
+                "this mocker is not bound to any width; "
+                "pass width to its constructor or its `mock`/`check` method"
+            )
+
+        height = height or self._height
+        if height is None:
+            raise RuntimeError(
+                "this mocker is not bound to any height; "
+                "pass height to its constructor or its `mock`/`check` method"
+            )
+
+        wrap_streams = wrap_streams if wrap_streams is not None else self._wrap_streams
+
         global _CURRENT_IOSTREAM_MOCK
         if _CURRENT_IOSTREAM_MOCK is not None:
             raise RuntimeError("can't have more than one mock at a time")
         _CURRENT_IOSTREAM_MOCK = _KeyboardEventStream(
-            ostream, term, theme, self._events
+            ostream, term, theme, self._events, width
         )
 
         old_event_stream, yuio.widget._event_stream = (
@@ -479,8 +604,14 @@ class IOMocker:
             yuio.term._enter_raw_mode,
             lambda: contextlib.nullcontext(),
         )
+        old_stderr, sys.stderr = sys.stderr, term.ostream
+        old_stdout, sys.stdout = sys.stdout, term.ostream
+        old_stdin, sys.stdin = sys.stdin, term.istream
 
-        yuio.widget.RenderContext._override_wh = (_WIDTH, _HEIGHT)
+        yuio.widget.RenderContext._override_wh = (width, height)
+
+        if wrap_streams:
+            yuio.io.wrap_streams()
 
         try:
             try:
@@ -493,6 +624,11 @@ class IOMocker:
             yuio.widget._event_stream = old_event_stream
             yuio.term._enter_raw_mode = old_enter_raw_mode
             yuio.widget.RenderContext._override_wh = None
+            sys.stderr = old_stderr
+            sys.stdout = old_stdout
+            sys.stdin = old_stdin
+            if wrap_streams:
+                yuio.io.restore_streams()
             _CURRENT_IOSTREAM_MOCK = None
 
 
@@ -506,10 +642,10 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
     .. code-block:: python
 
-       def test_something(ostream, term, theme):
+       def test_something(ostream, term, theme, width, height):
           # We know that we're testing an `Input` widget...
           checker = (
-              WidgetChecker[yuio.widget.Input](ostream, term, theme)
+              WidgetChecker[yuio.widget.Input](ostream, term, theme, width, height)
                   # ...therefore we can write asserts that check specific properties
                   # of the `Input` widget.
                   .expect_widget_eq(lambda widget: widget.text, "foo bar!")
@@ -530,7 +666,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
            interactive_support=yuio.term.InteractiveSupport.FULL,
        )
        _theme = yuio.theme.Theme()
-       test_something(_ostream, _term, _theme)
+       test_something(_ostream, _term, _theme, 20, 5)
 
     """
 
@@ -587,6 +723,9 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
         ostream: _t.Optional[io.StringIO] = None,
         term: _t.Optional[yuio.term.Term] = None,
         theme: _t.Optional[yuio.theme.Theme] = None,
+        width: _t.Optional[int] = None,
+        height: _t.Optional[int] = None,
+        wrap_streams: _t.Optional[bool] = None,
     ):
         raise RuntimeError("use WidgetChecker.check() instead")
 
@@ -596,6 +735,9 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
         ostream: _t.Optional[io.StringIO] = None,
         term: _t.Optional[yuio.term.Term] = None,
         theme: _t.Optional[yuio.theme.Theme] = None,
+        width: _t.Optional[int] = None,
+        height: _t.Optional[int] = None,
+        wrap_streams: _t.Optional[bool] = None,
     ):
         """
         Run tests on the given widget, and return widget's result.
@@ -604,7 +746,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
         assert self._widget is None, "can't have more than one widget check at a time"
         self._widget = widget
-        with super().mock(ostream, term, theme):
+        with super().mock(ostream, term, theme, width, height, wrap_streams):
             if _CURRENT_IOSTREAM_MOCK is None:
                 raise RuntimeError(
                     "mock() should've set _CURRENT_IOSTREAM_MOCK, but it didn't?"
@@ -833,8 +975,12 @@ def _show_diff(
     if not a_height and not b_height:
         return []
 
-    a_width = len(a_screen[0])
-    b_width = len(b_screen[0])
+    a_width = len(a_screen[0]) if a_screen else 0
+    b_width = len(b_screen[0]) if b_screen else 0
+    if not a_screen:
+        a_width = b_width
+    elif not b_screen:
+        b_width = a_width
     if a_width != b_width:
         return [f"Screen widths differ: {a_width} != {b_width}"]
     width = max(a_width, b_width)
@@ -887,7 +1033,7 @@ def _show_diff(
 
 
 def _render_screen(
-    commands: str, width: int = _WIDTH
+    commands: str, width: int
 ) -> _t.Tuple[_t.List[str], _t.List[str], int, int]:
     height = 0
     x, y = 0, 0
@@ -952,11 +1098,20 @@ def _render_screen(
                                 False
                             ), "dont use non-standard colors with this assertion"
                     if bold:
-                        color = "B" if color == " " else color.upper()
+                        color = "#" if color == " " else color.upper()
             elif fn == "J":
                 # Clear screen.
-                text = [[" "] * width for _ in range(height)]
-                colors = [[" "] * width for _ in range(height)]
+                assert len(args) <= 1, f"invalid OSC: {part!r}"
+                if not args or args[0] in ("", "0"):
+                    del text[y:]
+                    del colors[y:]
+                    height = y
+                elif args[0] == "2":
+                    text = []
+                    colors = []
+                    height = 0
+                else:
+                    assert False, f"invalid OSC: {part!r}"
             elif fn == "H":
                 # Absolute cursor position.
                 if len(args) == 0:

@@ -151,9 +151,9 @@ Suspending the output
 ---------------------
 
 You can temporarily disable printing of tasks and messages
-using the :class:`SuspendLogging` context manager.
+using the :class:`SuspendOutput` context manager.
 
-.. autoclass:: SuspendLogging
+.. autoclass:: SuspendOutput
 
    .. automethod:: resume
 
@@ -633,7 +633,7 @@ class _Ask(_t.Generic[T]):
             widget = _AskWidget(
                 prompt, parser.widget(default, input_description, default_description)
             )
-            with SuspendLogging() as s:
+            with SuspendOutput() as s:
                 try:
                     result = widget.run(term, theme)
                 except (IOError, OSError, EOFError) as e:
@@ -664,7 +664,7 @@ class _Ask(_t.Generic[T]):
             prompt += formatter.colorize(
                 ": " if needs_colon else " ", default_color="msg/text:question"
             )
-            with SuspendLogging() as s:
+            with SuspendOutput() as s:
                 while True:
                     try:
                         s.raw(prompt)
@@ -772,7 +772,7 @@ def wait_for_user(
     if args:
         prompt %= args
 
-    with SuspendLogging() as s:
+    with SuspendOutput() as s:
         try:
             if term.is_fully_interactive:
                 _WaitForUserWidget(prompt).run(term, theme)
@@ -842,7 +842,7 @@ def edit(
                 file.write(text)
 
             try:
-                with SuspendLogging():
+                with SuspendOutput():
                     res = subprocess.run(f'{editor} "{filepath}"', shell=True)
             except FileNotFoundError:
                 raise UserIoError(
@@ -870,15 +870,15 @@ def edit(
     return text
 
 
-class SuspendLogging:
-    """A context manager for pausing log output.
+class SuspendOutput:
+    """A context manager for pausing output.
 
     This is handy for when you need to take control over the output stream.
     For example, the :func:`ask` function uses this class internally.
 
     This context manager also suspends all prints that go to :data:`sys.stdout`
     and :data:`sys.stderr` if they were wrapped (see :func:`setup`).
-    To print through them, use :data:`sys.__stdout__` and :data:`sys.__stderr__`.
+    To print through them, use :func:`orig_stderr` and :func:`orig_stdout`.
 
     """
 
@@ -964,15 +964,19 @@ class SuspendLogging:
 
 
 class _IterTask(_t.Generic[T]):
-    def __init__(self, collection: _t.Collection[T], task: "Task"):
+    def __init__(
+        self, collection: _t.Collection[T], task: "Task", unit: str, ndigits: int
+    ):
         self._iter = iter(collection)
         self._task = task
+        self._unit = unit
+        self._ndigits = ndigits
 
         self._i = 0
         self._len = len(collection)
 
     def __next__(self) -> T:
-        self._task.progress(self._i, self._len)
+        self._task.progress(self._i, self._len, unit=self._unit, ndigits=self._ndigits)
         if self._i < self._len:
             self._i += 1
         return self._iter.__next__()
@@ -1037,8 +1041,8 @@ class Task:
     @_t.overload
     def progress(
         self,
-        done: float,
-        total: _t.Optional[float],
+        done: _t.Union[float, int],
+        total: _t.Union[float, int],
         /,
         *,
         unit: str = "",
@@ -1048,7 +1052,7 @@ class Task:
 
     def progress(
         self,
-        *args: _t.Optional[float],
+        *args: _t.Optional[_t.Union[float, int]],
         unit: str = "",
         ndigits: _t.Optional[int] = None,
     ):
@@ -1069,6 +1073,8 @@ class Task:
 
            ■■■■■■■■■■■□□□□ Loading cargo - 110/150Kg
 
+        If given a single :data:`None`, reset task progress.
+
         """
 
         progress = None
@@ -1081,7 +1087,9 @@ class Task:
         elif len(args) == 2:
             done, total = args
             if ndigits is None:
-                ndigits = 0
+                ndigits = (
+                    2 if isinstance(done, float) or isinstance(total, float) else 0
+                )
         else:
             raise ValueError(
                 f"Task.progress() takes between one and two arguments "
@@ -1143,7 +1151,7 @@ class Task:
 
     @staticmethod
     def _size(n):
-        for unit in "BKMGTP":
+        for unit in "BKMGT":
             if n < 1024:
                 return n, unit
             n /= 1024
@@ -1198,11 +1206,18 @@ class Task:
         if magnitude < 0:
             return n * 10 ** -(3 * magnitude), "mµnpfazy"[-magnitude - 1]
         elif magnitude > 0:
-            return n / 10 ** (3 * magnitude), "kMGTPEZY"[magnitude - 1]
+            return n / 10 ** (3 * magnitude), "KMGTPEZY"[magnitude - 1]
         else:
             return n, ""
 
-    def iter(self, collection: _t.Collection[T]) -> _t.Iterable[T]:
+    def iter(
+        self,
+        collection: _t.Collection[T],
+        /,
+        *,
+        unit: str = "",
+        ndigits: int = 0,
+    ) -> _t.Iterable[T]:
         """Helper for updating progress automatically
         while iterating over a collection.
 
@@ -1220,7 +1235,7 @@ class Task:
 
         """
 
-        return _IterTask(collection, self)
+        return _IterTask(collection, self, unit, ndigits)
 
     def comment(self, comment: _t.Optional[str], /, *args):
         """Set a comment for a task.
@@ -1315,6 +1330,7 @@ class _IoManager(abc.ABC):
         self._stop_condition = threading.Condition(_IO_LOCK)
         self._thread: _t.Optional[threading.Thread] = None
 
+        self._enable_bg_updates = enable_bg_updates
         if enable_bg_updates:
             self._thread = threading.Thread(
                 target=self._bg_update, name="yuio_io_task_refresh", daemon=True
@@ -1524,6 +1540,8 @@ class _IoManager(abc.ABC):
         if self._suspended == 0:
             for lines, stream in self._suspended_lines:
                 stream.writelines(lines)
+            if self._suspended_lines:
+                self._printed_some_lines = True
             self._suspended_lines.clear()
 
             self._update_tasks()
@@ -1569,15 +1587,19 @@ class _IoManager(abc.ABC):
 
     def _update_tasks(self, immediate_render: bool = False):
         self._needs_update = True
-        if immediate_render:
+        if immediate_render or not self._enable_bg_updates:
             self._show_tasks(immediate_render)
 
     def _show_tasks(self, immediate_render: bool = False):
-        if self.term.can_move_cursor and (self._tasks or self._tasks_printed):
+        if (
+            self.term.can_move_cursor
+            and not self._suspended
+            and (self._tasks or self._tasks_printed)
+        ):
             now_us = time.monotonic_ns() // 1000
             now_us -= now_us % self.update_rate_us
 
-            if not immediate_render:
+            if not immediate_render and self._enable_bg_updates:
                 next_update_us = self._last_update_time_us + self.update_rate_us
                 if now_us < next_update_us:
                     # Hard-limit update rate by `update_rate_ms`.
@@ -1596,6 +1618,7 @@ class _IoManager(abc.ABC):
             self._needs_update = False
 
             self._rc.prepare()
+            self.formatter.width = self._rc.width
             for task in self._tasks:
                 self._draw_task(task, 0)
             self._renders += 1
@@ -1646,7 +1669,7 @@ class _IoManager(abc.ABC):
             exc_info = (type(exc_info), exc_info, exc_info.__traceback__)
         elif not isinstance(exc_info, tuple) or len(exc_info) != 3:
             raise ValueError(f"invalid exc_info {exc_info!r}")
-        if exc_info is not None:
+        if exc_info is not None and exc_info != (None, None, None):
             tb = "".join(traceback.format_exception(*exc_info))
             res += self._format_tb(tb, "  ")
 
@@ -1744,6 +1767,8 @@ class _IoManager(abc.ABC):
     def _format_task_comment(
         self, task: Task
     ) -> _t.Optional[yuio.term.ColorizedString]:
+        if task._status is not Task._Status.RUNNING:
+            return None
         if task._cached_comment is None and task._comment is not None:
             comment = self.formatter.colorize(
                 task._comment, default_color=f"task/comment:{task._status.value}"
@@ -1769,16 +1794,14 @@ class _IoManager(abc.ABC):
             self._draw_task(subtask, indent + 1)
 
     def _draw_task_progress(self, task: Task):
-        if task._progress_done is None:
-            return None
-
-        self._rc.set_color_path(f"task:{task._status.value}")
-        self._rc.write(" - ")
-
         if task._status in (Task._Status.DONE, Task._Status.ERROR):
+            self._rc.set_color_path(f"task:{task._status.value}")
+            self._rc.write(" - ")
             self._rc.set_color_path(f"task/progress:{task._status.value}")
             self._rc.write(task._status.name.lower())
-        else:
+        elif task._progress_done is not None:
+            self._rc.set_color_path(f"task:{task._status.value}")
+            self._rc.write(" - ")
             self._rc.set_color_path(f"task/progress:{task._status.value}")
             self._rc.write(task._progress_done)
             if task._progress_total is not None:

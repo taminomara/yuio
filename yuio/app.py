@@ -728,7 +728,10 @@ class App:
                 super().__init__(*args, **kwargs)
 
             def __call__(_self, parser, namespace, value, *args):
-                self._App__write_completions(_self.get_parser().parse(value or "all"))  # type: ignore
+                try:
+                    self._App__write_completions(_self.get_parser().parse(value or "all"))  # type: ignore
+                except argparse.ArgumentTypeError as e:
+                    raise argparse.ArgumentError(_self, str(e))
                 parser.exit()
 
         aux.add_argument(
@@ -875,7 +878,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         super().__init__(
             theme,
             width=width,
-            allow_headings=False,
+            allow_headings=True,
         )
 
     def colorize(

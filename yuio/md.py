@@ -176,7 +176,7 @@ class MdFormatter:
     @width.setter
     def width(self, width: _t.Optional[int]):
         if width is None:
-            width = min(shutil.get_terminal_size().columns, 90)
+            width = shutil.get_terminal_size().columns
         self.__width = max(width, 20)
 
     def format(self, s: str, /) -> _t.List[yuio.term.ColorizedString]:
@@ -282,6 +282,7 @@ class MdFormatter:
             self.width,
             first_line_indent=self._first_line_indent,
             continuation_indent=self._continuation_indent,
+            preserve_newlines=False,
         ):
             self._line(line)
 
@@ -1350,3 +1351,11 @@ def colorize(
     raw.append(Color.NONE)
 
     return yuio.term.ColorizedString(raw)
+
+
+def strip_color_tags(s: str) -> str:
+    """
+    Remove all color tags from a string.
+
+    """
+    return __TAG_RE.sub("", s)

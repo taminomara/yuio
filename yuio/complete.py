@@ -84,6 +84,7 @@ import sys
 from dataclasses import dataclass
 
 import yuio
+import yuio.md
 from yuio import _typing as _t
 
 
@@ -939,6 +940,8 @@ class _CompleterSerializer:
 
         if help is argparse.SUPPRESS:
             return
+
+        help = yuio.md.strip_color_tags(help)
 
         if all(not arg.startswith("-") for arg in args):
             args = (str(self._positional),)

@@ -1701,6 +1701,8 @@ class TestInput:
         text: str,
         pos: int,
         widget_checker: WidgetChecker[yuio.widget.Input],
+        width: int,
+        height: int,
     ):
         widget = yuio.widget.Input(text=text, pos=pos)
-        widget_checker.check(widget, ostream, term, theme)
+        widget_checker.check(widget, ostream, term, theme, width, height)

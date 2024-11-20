@@ -657,6 +657,7 @@ class DefaultTheme(Theme):
         "menu/text:choice/status_line/number": "low_priority_color_a",
         "menu/placeholder": "secondary_color",
         "menu/decoration": "accent_color",
+        "menu/decoration/quick-select": "secondary_color",
         "menu/decoration:choice/normal": "menu/text",
     }
 

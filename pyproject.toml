@@ -45,7 +45,7 @@ test = [
 ]
 doc = [
     "furo~=2024.8",
-    "sphinx-vhs~=0.0.3",
+    "sphinx-vhs~=0.0.5",
     "sphinx~=6.1",
     "sybil~=6.1",
 ]

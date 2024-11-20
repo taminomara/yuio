@@ -1094,7 +1094,10 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                     except StopIteration:
                         assert False, "_event_stream supposed to be infinite"
 
-                    if event == KeyboardEvent("l", ctrl=True):
+                    if event == KeyboardEvent("c", ctrl=True):
+                        # windows doesn't handle C-c for us.
+                        raise KeyboardInterrupt()
+                    elif event == KeyboardEvent("l", ctrl=True):
                         rc.clear_screen()
                     elif event == KeyboardEvent(Key.F1) and not self.__in_help_menu:
                         self.__in_help_menu = True
@@ -2607,9 +2610,13 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         *,
         decoration: str = ">",
         default_index: _t.Optional[int] = 0,
+        min_rows: _t.Optional[int] = 5,
+        enable_quick_select: bool = False,
     ):
         self.__options: _t.List[Option[T]]
         self.__index: _t.Optional[int]
+        self.__min_rows: _t.Optional[int] = min_rows
+        self.__enable_quick_select: bool = enable_quick_select
         self.__column_width: int
         self.__num_rows: int
         self.__num_columns: int
@@ -2657,11 +2664,17 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         return self.__options
 
     def set_options(
-        self, options: _t.List[Option[T]], /, default_index: _t.Optional[int] = 0
+        self,
+        options: _t.List[Option[T]],
+        /,
+        default_index: _t.Optional[int] = 0,
+        enable_quick_select: _t.Optional[bool] = None,
     ):
         """Set a new list of options."""
 
         self.__options = options
+        if enable_quick_select is not None:
+            self.__enable_quick_select = enable_quick_select
         self.__column_width = max(
             0, _MIN_COLUMN_WIDTH, *map(self._get_option_width, options)
         )
@@ -2771,10 +2784,30 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
         self.__index = len(self.__options) - 1
 
+    def default_event_handler(self, e: KeyboardEvent):
+        if self.__enable_quick_select and e.key in [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+        ]:
+            index = int(e.key) - 1
+            if index < len(self.__options):
+                self.__index = index
+
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
         self.__column_width = max(1, min(self.__column_width, rc.width))
         self.__num_columns = num_columns = max(1, rc.width // self.__column_width)
-        self.__num_rows = max(1, math.ceil(len(self.__options) / num_columns))
+        self.__num_rows = max(
+            1,
+            min(self.__min_rows or 1, len(self.__options)),
+            math.ceil(len(self.__options) / num_columns),
+        )
 
         additional_space = 0
         pages = math.ceil(len(self.__options) / self._page_size)
@@ -2810,9 +2843,10 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
             rc.set_pos(x * column_width, y)
 
-            is_current = i + page_start_index == self.__index
+            index = i + page_start_index
+            is_current = index == self.__index
             self._render_option(
-                rc, column_width - _SPACE_BETWEEN_COLUMNS, option, is_current
+                rc, column_width - _SPACE_BETWEEN_COLUMNS, option, is_current, index
             )
 
         pages = math.ceil(len(self.__options) / self._page_size)
@@ -2832,6 +2866,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         return (
             _SPACE_BETWEEN_COLUMNS
             + (_line_width(self.__decoration) + 1 if self.__decoration else 0)
+            + (3 if self.__enable_quick_select else 0)
             + (_line_width(option.display_text_prefix))
             + (_line_width(option.display_text))
             + (_line_width(option.display_text_suffix))
@@ -2840,7 +2875,12 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         )
 
     def _render_option(
-        self, rc: RenderContext, width: int, option: Option[object], is_active: bool
+        self,
+        rc: RenderContext,
+        width: int,
+        option: Option[object],
+        is_active: bool,
+        index: int,
     ):
         left_prefix_width = _line_width(option.display_text_prefix)
         left_main_width = _line_width(option.display_text)
@@ -2849,13 +2889,18 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         left_decoration_width = (
             _line_width(self.__decoration) + 1 if self.__decoration else 0
         )
+        quick_select_width = 3 if (self.__enable_quick_select) else 0
 
         right = option.comment or ""
         right_width = _line_width(right)
         right_decoration_width = 3 if right else 0
 
         total_width = (
-            left_decoration_width + left_width + right_decoration_width + right_width
+            left_decoration_width
+            + quick_select_width
+            + left_width
+            + right_decoration_width
+            + right_width
         )
 
         if total_width > width:
@@ -2865,6 +2910,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
                 right_decoration_width = 0
             total_width = (
                 left_decoration_width
+                + quick_select_width
                 + left_width
                 + right_decoration_width
                 + right_width
@@ -2873,7 +2919,11 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         if total_width > width:
             left_width = max(left_width - (total_width - width), 3)
             total_width = (
-                left_decoration_width + left_width + left_decoration_width + left_width
+                left_decoration_width
+                + quick_select_width
+                + left_width
+                + left_decoration_width
+                + left_width
             )
 
         if total_width > width or total_width == 0:
@@ -2883,6 +2933,17 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             status_tag = "active"
         else:
             status_tag = "normal"
+
+        if self.__enable_quick_select and index < 9:
+            rc.set_color_path(
+                f"menu/decoration/quick-select:choice/{status_tag}/{option.color_tag}"
+            )
+            rc.write(f"{index + 1}.")
+            rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
+            rc.write(" ")
+        elif self.__enable_quick_select:
+            rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
+            rc.write("   ")
 
         if self.__decoration and is_active:
             rc.set_color_path(f"menu/decoration:choice/{status_tag}/{option.color_tag}")
@@ -2908,6 +2969,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             * (
                 width
                 - left_decoration_width
+                - quick_select_width
                 - left_width
                 - right_decoration_width
                 - right_width
@@ -2927,6 +2989,17 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
                 f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}"
             )
             rc.write("]")
+
+    @property
+    def help_data(self) -> "WidgetHelp":
+        help_data = super().help_data
+        if self.__enable_quick_select:
+            return help_data.with_action(
+                "1..9",
+                long_msg="quick select",
+            )
+        else:
+            return help_data
 
 
 class Choice(Widget[T], _t.Generic[T]):
@@ -2982,7 +3055,7 @@ class Choice(Widget[T], _t.Generic[T]):
         self.__default_index = default_index
 
         self.__input = Input(placeholder="Filter options...", decoration="/")
-        self.__grid = Grid[T]([])
+        self.__grid = Grid[T]([], enable_quick_select=True)
 
         self.__enable_search = False
 
@@ -3052,7 +3125,7 @@ class Choice(Widget[T], _t.Generic[T]):
                     index = len(options)
                 options.append(option)
 
-        self.__grid.set_options(options)
+        self.__grid.set_options(options, enable_quick_select=not query)
         self.__grid.index = index
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
@@ -3142,7 +3215,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
         self.__filter = filter
 
         self.__input = Input(placeholder="Filter options...", decoration="/")
-        self.__grid = Grid[_t.Tuple[T, bool]]([])
+        self.__grid = Grid[_t.Tuple[T, bool]]([], enable_quick_select=True)
 
         self.__enable_search = False
 
@@ -3226,7 +3299,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
                     index = len(options)
                 options.append(option)
 
-        self.__grid.set_options(options)
+        self.__grid.set_options(options, enable_quick_select=not query)
         self.__grid.index = index
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
@@ -3289,7 +3362,7 @@ class InputWithCompletion(Widget[str]):
 
         self.__input = Input(placeholder=placeholder, decoration=decoration)
         self.__grid = Grid[yuio.complete.Completion](
-            [], decoration=completion_item_decoration
+            [], decoration=completion_item_decoration, min_rows=None
         )
         self.__grid_active = False
 

@@ -1,4 +1,5 @@
 import io
+import sys
 
 import pytest
 
@@ -12,10 +13,20 @@ from yuio import _t
 from .conftest import IOMocker, RcCompare
 
 
+@pytest.fixture()
+def enable_bg_updates() -> bool:
+    return False
+
+
 @pytest.fixture(autouse=True)
 def setup(
-    term: yuio.term.Term, theme: yuio.theme.Theme, monkeypatch: pytest.MonkeyPatch
+    term: yuio.term.Term,
+    theme: yuio.theme.Theme,
+    monkeypatch: pytest.MonkeyPatch,
+    enable_bg_updates: bool,
+    width: int,
 ):
+    theme.spinner_pattern = "⣿"
     theme.set_color("code", "magenta")
     theme.set_color("msg/decoration", "magenta")
     theme.set_color("msg/text:heading", "bold")
@@ -26,9 +37,9 @@ def setup(
     theme.set_color("msg/text:info", "cyan")
     theme.progress_bar_width = 5
 
-    io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=False)
+    io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=enable_bg_updates)
     monkeypatch.setattr("yuio.io._IO_MANAGER", io_manager)
-    io_manager.formatter.width = 20
+    io_manager.formatter.width = width
 
     yield
 
@@ -36,6 +47,10 @@ def setup(
 
 
 class TestSetup:
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("yuio.io._IO_MANAGER", None)
+
     @pytest.mark.xfail(reason="TODO")
     def test_simple(self):
         pass
@@ -58,6 +73,14 @@ class TestSetup:
 
     @pytest.mark.xfail(reason="TODO")
     def test_term_theme_callable(self):
+        pass
+
+    @pytest.mark.xfail(reason="TODO")
+    def test_wrap_streams(self):
+        pass
+
+    @pytest.mark.xfail(reason="TODO")
+    def test_wrap_streams_non_interactive(self):
         pass
 
 
@@ -196,7 +219,7 @@ class TestMessage:
                 "⣿ foo bar!          ",
             ],
             [
-                "mmBBBBBBBB          ",
+                "mm########          ",
             ],
         )
 
@@ -211,7 +234,7 @@ class TestMessage:
                 "•   baz             ",
             ],
             [
-                "mmBBBB              ",
+                "mm####              ",
                 "                    ",
                 "mmmm                ",
                 "                    ",
@@ -908,13 +931,17 @@ class TestDetectEditor:
 
 
 class TestEdit:
+    # no space after 'edited' because on windows,
+    # cmd.exe adds space to the output (wtf?)
+    _EDITOR = "echo edited>>"
+
     def test_simple(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "echo edited>>")
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
         assert yuio.io.edit("foobar") == "foobaredited\n"
 
     def test_editor(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda: None)
-        assert yuio.io.edit("foobar", editor="echo edited>>") == "foobaredited\n"
+        assert yuio.io.edit("foobar", editor=self._EDITOR) == "foobaredited\n"
 
     def test_editor_error(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda: "exit 1; cat")
@@ -927,12 +954,12 @@ class TestEdit:
             assert yuio.io.edit("foobar")
 
     def test_comments(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "echo edited>>")
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
         assert yuio.io.edit("# foo\n  # bar\nbaz #") == "baz #edited\n"
         assert yuio.io.edit("foo\n#") == "foo\n"
 
     def test_comments_custom_marker(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "echo edited>>")
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
         assert (
             yuio.io.edit("// foo\n  # bar\nbaz //", comment_marker="//")
             == "  # bar\nbaz //edited\n"
@@ -942,5 +969,1145 @@ class TestEdit:
     def test_comments_custom_marker_special_symbols(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "echo edited>>")
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
         assert yuio.io.edit("a\nb\n[ab]", comment_marker="[ab]") == "a\nb\n"
+
+
+class TestTask:
+    @pytest.fixture()
+    def width(self):
+        return 40
+
+    def test_simple(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - done                           ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with yuio.io.Task("task"):
+                io_mocker.mark()
+
+    def test_format(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task 1                                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task 1 - done                         ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with yuio.io.Task("task `%s`", 1):
+                io_mocker.mark()
+
+    def test_print_while_in_task(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task 1                                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "hello world!                            ",
+                "⣿ task 1                                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "hello world!                            ",
+                "> task 1 - done                         ",
+                "hello world 2!                          ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with yuio.io.Task("task `%s`", 1):
+                io_mocker.mark()
+                yuio.io.info("hello world!")
+                io_mocker.mark()
+            yuio.io.info("hello world 2!")
+
+    def test_error_in_task(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - error                          ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with pytest.raises(RuntimeError, match="eh..."):
+                with yuio.io.Task("task"):
+                    io_mocker.mark()
+                    raise RuntimeError("eh...")
+
+    def test_manual_error(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - error                          ",
+            ]
+        )
+
+        with io_mocker.mock():
+            task = yuio.io.Task("task")
+            io_mocker.mark()
+            task.error()
+
+    def test_manual_done(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - done                           ",
+            ]
+        )
+
+        with io_mocker.mock():
+            task = yuio.io.Task("task")
+            io_mocker.mark()
+            task.done()
+
+    def test_comment(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "⣿ task - yaaay!                         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - done                           ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.comment("yaaay!")
+                io_mocker.mark()
+
+    def test_comment_format(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "⣿ task - yaaay 1!                       ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - done                           ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.comment("yaaay `%s`!", 1)
+                io_mocker.mark()
+
+    def test_comment_format_chached(self, io_mocker: IOMocker):
+        class Fmt:
+            i = 0
+
+            def __str__(self):
+                self.i += 1
+                return str(self.i)
+
+        fmt = Fmt()
+
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "⣿ task - yaaay 1!                       ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "■■□□□ task - 50.00% - yaaay 1!          ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "■■□□□ task - 50.00% - yaaay 2!          ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - done                           ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.comment("yaaay `%s`!", fmt)
+                io_mocker.mark()
+                task.progress(0.5)
+                io_mocker.mark()
+                task.comment("yaaay `%s`!", fmt)
+                io_mocker.mark()
+
+    @pytest.mark.parametrize(
+        "args,kwargs,comment,expected",
+        [
+            (
+                (0.3,),
+                {},
+                None,
+                [
+                    "■■□□□ task - 30.00%                     ",
+                ],
+            ),
+            (
+                (0.3,),
+                {"unit": "whatever"},
+                None,
+                [
+                    "■■□□□ task - 30.00%                     ",
+                ],
+            ),
+            (
+                (0.3,),
+                {"ndigits": 0},
+                None,
+                [
+                    "■■□□□ task - 30%                        ",
+                ],
+            ),
+            (
+                (11, 15),
+                {},
+                None,
+                [
+                    "■■■■□ task - 11/15                      ",
+                ],
+            ),
+            (
+                (10.5, 15),
+                {},
+                None,
+                [
+                    "■■■■□ task - 10.50/15.00                ",
+                ],
+            ),
+            (
+                (11, 15.0),
+                {},
+                None,
+                [
+                    "■■■■□ task - 11.00/15.00                ",
+                ],
+            ),
+            (
+                (10.5, 15),
+                {"unit": "Kg"},
+                None,
+                [
+                    "■■■■□ task - 10.50/15.00Kg              ",
+                ],
+            ),
+            (
+                (10.5, 15),
+                {"ndigits": 3},
+                None,
+                [
+                    "■■■■□ task - 10.500/15.000              ",
+                ],
+            ),
+            (
+                (10.5, 15),
+                {"ndigits": 3, "unit": "Kg"},
+                None,
+                [
+                    "■■■■□ task - 10.500/15.000Kg            ",
+                ],
+            ),
+            (
+                (0.3,),
+                {},
+                "comment!",
+                [
+                    "■■□□□ task - 30.00% - comment!          ",
+                ],
+            ),
+            (
+                (0.3,),
+                {"unit": "whatever"},
+                "comment!",
+                [
+                    "■■□□□ task - 30.00% - comment!          ",
+                ],
+            ),
+            (
+                (0.3,),
+                {"ndigits": 0},
+                "comment!",
+                [
+                    "■■□□□ task - 30% - comment!             ",
+                ],
+            ),
+            (
+                (11, 15),
+                {},
+                "comment!",
+                [
+                    "■■■■□ task - 11/15 - comment!           ",
+                ],
+            ),
+            (
+                (10.5, 15),
+                {},
+                "comment!",
+                [
+                    "■■■■□ task - 10.50/15.00 - comment!     ",
+                ],
+            ),
+            (
+                (10.5, 15),
+                {"unit": "Kg"},
+                "comment!",
+                [
+                    "■■■■□ task - 10.50/15.00Kg - comment!   ",
+                ],
+            ),
+            (
+                (10.5, 15),
+                {"ndigits": 3},
+                "comment!",
+                [
+                    "■■■■□ task - 10.500/15.000 - comment!   ",
+                ],
+            ),
+            (
+                (10.5, 15),
+                {"ndigits": 3, "unit": "Kg"},
+                "comment!",
+                [
+                    "■■■■□ task - 10.500/15.000Kg - comment! ",
+                ],
+            ),
+        ],
+    )
+    def test_progress(self, io_mocker: IOMocker, args, kwargs, comment, expected):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(expected)
+        io_mocker.expect_mark()
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.progress(*args, **kwargs)
+                if comment:
+                    task.comment(comment)
+                io_mocker.mark()
+
+    @pytest.mark.parametrize(
+        "args,kwargs,expected",
+        [
+            (
+                (50, 100),
+                {},
+                [
+                    "■■□□□ task - 50.00/100.00B              ",
+                ],
+            ),
+            (
+                (0.50, 1),
+                {},
+                [
+                    "■■□□□ task - 0.50/1.00B                 ",
+                ],
+            ),
+            (
+                (50, 100 * 1024),
+                {},
+                [
+                    "□□□□□ task - 50.00B/100.00K             ",
+                ],
+            ),
+            (
+                (50, 100 * 1024 + 100),
+                {},
+                [
+                    "□□□□□ task - 50.00B/100.10K             ",
+                ],
+            ),
+            (
+                (50 * 1024, 100 * 1024),
+                {},
+                [
+                    "■■□□□ task - 50.00/100.00K              ",
+                ],
+            ),
+            (
+                (50 * 1024, 100.1 * 1024),
+                {},
+                [
+                    "■■□□□ task - 50.00/100.10K              ",
+                ],
+            ),
+            (
+                (50, 100.501 * 1024 * 1024),
+                {},
+                [
+                    "□□□□□ task - 50.00B/100.50M             ",
+                ],
+            ),
+            (
+                (50, 100.501 * 1024 * 1024),
+                {"ndigits": 4},
+                [
+                    "□□□□□ task - 50.0000B/100.5010M         ",
+                ],
+            ),
+            (
+                (1 * 1024 * 1024 * 1024, 100.5 * 1024 * 1024 * 1024),
+                {},
+                [
+                    "□□□□□ task - 1.00/100.50G               ",
+                ],
+            ),
+            (
+                (1 * 1024 * 1024 * 1024, 5000 * 1024 * 1024 * 1024 * 1024 * 1024),
+                {},
+                [
+                    "□□□□□ task - 1.00G/5000.00P             ",
+                ],
+            ),
+        ],
+    )
+    def test_progress_size(self, io_mocker: IOMocker, args, kwargs, expected):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(expected)
+        io_mocker.expect_mark()
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.progress_size(*args, **kwargs)
+                io_mocker.mark()
+
+    @pytest.mark.parametrize(
+        "args,kwargs,expected",
+        [
+            (
+                (50, 100),
+                {},
+                [
+                    "■■□□□ task - 50.00/100.00               ",
+                ],
+            ),
+            (
+                (50000, 100000),
+                {},
+                [
+                    "■■□□□ task - 50.00K/100.00K             ",
+                ],
+            ),
+            (
+                (0.01052, 0.1),
+                {},
+                [
+                    "■□□□□ task - 10.52m/100.00m             ",
+                ],
+            ),
+            (
+                (0.000000000000000000000001, 1000000000000000000000000),
+                {},
+                [
+                    "□□□□□ task - 1.00y/1.00Y                ",
+                ],
+            ),
+            (
+                (0.0000000000000000000000001, 1000200000000000000000000000),
+                {},
+                [
+                    "□□□□□ task - 0.10y/1000.20Y             ",
+                ],
+            ),
+            (
+                (50, 100),
+                {"unit": "V"},
+                [
+                    "■■□□□ task - 50.00V/100.00V             ",
+                ],
+            ),
+            (
+                (0.00050, 0.001001),
+                {"unit": "V"},
+                [
+                    "■■□□□ task - 500.00µV/1.00mV            ",
+                ],
+            ),
+            (
+                (0.00050, 0.001001),
+                {"ndigits": 4},
+                [
+                    "■■□□□ task - 500.0000µ/1.0010m          ",
+                ],
+            ),
+        ],
+    )
+    def test_progress_scale(self, io_mocker: IOMocker, args, kwargs, expected):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(expected)
+        io_mocker.expect_mark()
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.progress_scale(*args, **kwargs)
+                io_mocker.mark()
+
+    def test_reset_progress(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "■■□□□ task - 2/5                        ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.progress(2, 5)
+                io_mocker.mark()
+                task.progress(None)
+                io_mocker.mark()
+
+    @pytest.mark.parametrize(
+        "kwargs,expected_format",
+        [
+            ({}, "{}/{}"),
+            ({"ndigits": 2}, "{}.00/{}.00"),
+            ({"unit": "x"}, "{}/{}x"),
+            ({"unit": "y", "ndigits": 1}, "{}.0/{}.0y"),
+        ],
+    )
+    def test_iter(self, io_mocker: IOMocker, kwargs, expected_format: str):
+        io_mocker.expect_screen(
+            [
+                "⣿ task                                  ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                f"□□□□□ task - {expected_format.format(0, 5):<27}",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                f"■□□□□ task - {expected_format.format(1, 5):<27}",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                f"■■□□□ task - {expected_format.format(2, 5):<27}",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                f"■■■□□ task - {expected_format.format(3, 5):<27}",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                f"■■■■□ task - {expected_format.format(4, 5):<27}",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                f"■■■■■ task - {expected_format.format(5, 5):<27}",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                f"> task - done                           ",
+            ]
+        )
+
+        elems = [1, 2, "A", "B", object()]
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                for i, elem in enumerate(task.iter(elems, **kwargs)):
+                    assert elem is elems[i]
+                    io_mocker.mark()
+                io_mocker.mark()
+
+    def test_multiple_tasks(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ T1                                    ",
+                "⣿ T2                                    ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "■■□□□ T1 - 2/5                          ",
+                "■■■■□ T2 - 4/5                          ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "■■□□□ T1 - 2/5                          ",
+                "■■■■□ T2 - 4/5                          ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "> T2 - done                             ",
+                "■■□□□ T1 - 2/5                          ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "> T2 - done                             ",
+                "bar                                     ",
+                "■■□□□ T1 - 2/5                          ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "> T2 - done                             ",
+                "bar                                     ",
+                "> T1 - done                             ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "> T2 - done                             ",
+                "bar                                     ",
+                "> T1 - done                             ",
+                "baz                                     ",
+            ]
+        )
+
+        with io_mocker.mock():
+            t1 = yuio.io.Task("T1")
+            t2 = yuio.io.Task("T2")
+            io_mocker.mark()
+            t1.progress(2, 5)
+            t2.progress(4, 5)
+            io_mocker.mark()
+            yuio.io.info("foo")
+            io_mocker.mark()
+            t2.done()
+            io_mocker.mark()
+            yuio.io.info("bar")
+            io_mocker.mark()
+            t1.done()
+            io_mocker.mark()
+            yuio.io.info("baz")
+
+    def test_subtask(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ T1                                    ",
+                "  ⣿ T1.1                                ",
+                "  ⣿ T1.2                                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "⣿ T1                                    ",
+                "  ⣿ T1.1                                ",
+                "  ⣿ T1.2 - done                         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "⣿ T1                                    ",
+                "  ⣿ T1.1                                ",
+                "  ⣿ T1.2 - done                         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "⣿ T1                                    ",
+                "  ■■□□□ T1.1 - 2/5                      ",
+                "  ⣿ T1.2 - done                         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "> T1 - done                             ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "foo                                     ",
+                "> T1 - done                             ",
+                "bar                                     ",
+            ]
+        )
+
+        with io_mocker.mock():
+            t1 = yuio.io.Task("T1")
+            t11 = t1.subtask("T1.1")
+            t12 = t1.subtask("T1.2")
+            io_mocker.mark()
+            t12.done()
+            io_mocker.mark()
+            yuio.io.info("foo")
+            io_mocker.mark()
+            t11.progress(2, 5)
+            io_mocker.mark()
+            t1.done()
+            io_mocker.mark()
+            yuio.io.info("bar")
+
+    def test_progressbar_decoration(self, theme: yuio.theme.Theme, io_mocker: IOMocker):
+        theme.progress_bar_start_symbol = "["
+        theme.progress_bar_end_symbol = "]"
+        theme.progress_bar_done_symbol = ">"
+        theme.progress_bar_pending_symbol = "."
+
+        io_mocker.expect_screen(
+            [
+                "[>>...] Task - 2/5                      ",
+            ]
+        )
+        io_mocker.expect_mark()
+
+        with io_mocker.mock():
+            with yuio.io.Task("Task") as task:
+                task.progress(2, 5)
+                io_mocker.mark()
+
+
+class TestSuspendOutput:
+    @pytest.fixture()
+    def wrap_streams(self) -> bool:
+        return True
+
+    @pytest.mark.parametrize(
+        "meth,args,expected",
+        [
+            (
+                "warning",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "success",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "error",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "error_with_tb",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "heading",
+                ("Bar.",),
+                [
+                    "                    ",
+                    "                    ",
+                    "⣿ Bar.              ",
+                    "                    ",
+                ],
+            ),
+            (
+                "md",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "br",
+                (),
+                [
+                    "                    ",
+                ],
+            ),
+            (
+                "raw",
+                (yuio.term.ColorizedString("Bar."),),
+                [
+                    "Bar.                ",
+                ],
+            ),
+        ],
+    )
+    def test_simple(self, io_mocker: IOMocker, meth, args, expected):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                *expected,
+            ]
+        )
+
+        with io_mocker.mock():
+            yuio.io.info("Foo.")
+            with yuio.io.SuspendOutput():
+                io_mocker.mark()
+                getattr(yuio.io, meth)(*args)
+                io_mocker.mark()
+
+    @pytest.mark.parametrize(
+        "meth",
+        [
+            lambda s: sys.stderr.write(s + "\n"),
+            lambda s: sys.stdout.write(s + "\n"),
+            lambda s: print(s),
+        ],
+    )
+    def test_streams(self, io_mocker: IOMocker, meth):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                "Bar.                ",
+            ]
+        )
+
+        with io_mocker.mock(wrap_streams=True):
+            yuio.io.info("Foo.")
+            with yuio.io.SuspendOutput():
+                io_mocker.mark()
+                meth("Bar.")
+                io_mocker.mark()
+
+    @pytest.mark.parametrize(
+        "meth,args,expected",
+        [
+            (
+                "warning",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "success",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "error",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "error_with_tb",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "heading",
+                ("Bar.",),
+                [
+                    "                    ",
+                    "                    ",
+                    "⣿ Bar.              ",
+                    "                    ",
+                ],
+            ),
+            (
+                "md",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
+                "br",
+                (),
+                [
+                    "                    ",
+                ],
+            ),
+            (
+                "raw",
+                (yuio.term.ColorizedString("Bar.\n"),),
+                [
+                    "Bar.                ",
+                ],
+            ),
+        ],
+    )
+    def test_ignore(self, io_mocker: IOMocker, meth, args, expected):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                *expected,
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                *expected,
+                *expected,
+            ]
+        )
+
+        with io_mocker.mock():
+            yuio.io.info("Foo.")
+            with yuio.io.SuspendOutput() as o:
+                io_mocker.mark()
+                getattr(yuio.io, meth)(*args)
+                getattr(o, meth)(*args)
+                io_mocker.mark()
+
+    def test_task(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                "> Task - done       ",
+            ]
+        )
+
+        with io_mocker.mock():
+            yuio.io.info("Foo.")
+            io_mocker.mark()
+            with yuio.io.SuspendOutput():
+                task = yuio.io.Task("Task")
+                io_mocker.mark()
+                task.done()
+                io_mocker.mark()
+
+    def test_task_start_before_suspended(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                "⣿ Task              ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                "⣿ Task              ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                "> Task - done       ",
+            ]
+        )
+
+        with io_mocker.mock():
+            yuio.io.info("Foo.")
+            task = yuio.io.Task("Task")
+            io_mocker.mark()
+            with yuio.io.SuspendOutput():
+                io_mocker.mark()
+            io_mocker.mark()
+            task.done()
+
+    def test_task_finish_while_suspended(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                "⣿ Task              ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                "> Task - done       ",
+            ]
+        )
+
+        with io_mocker.mock():
+            yuio.io.info("Foo.")
+            task = yuio.io.Task("Task")
+            io_mocker.mark()
+            with yuio.io.SuspendOutput():
+                io_mocker.mark()
+                task.done()
+                io_mocker.mark()
