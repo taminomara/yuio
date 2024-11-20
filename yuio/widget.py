@@ -3063,7 +3063,7 @@ class Choice(Widget[T], _t.Generic[T]):
 
         self.__update_completion()
 
-    @bind("/", show_in_inline_help=True)
+    @bind("/")
     def search(self):
         """search"""
         if not self.__enable_search:
@@ -3072,9 +3072,9 @@ class Choice(Widget[T], _t.Generic[T]):
             self.__input.event(KeyboardEvent("/"))
             self.__update_completion()
 
-    @bind(Key.ENTER, show_in_inline_help=True)
+    @bind(Key.ENTER)
     @bind(Key.ENTER, alt=True, show_in_detailed_help=False)
-    @bind("d", ctrl=True, show_in_inline_help=True)
+    @bind("d", ctrl=True)
     def enter(self) -> _t.Optional[Result[T]]:
         """select"""
         option = self.__grid.get_option()
@@ -3142,27 +3142,7 @@ class Choice(Widget[T], _t.Generic[T]):
 
     @property
     def help_data(self) -> WidgetHelp:
-        if self.__enable_search:
-            help_columns = dataclasses.replace(
-                super().help_data,
-                inline_help=[
-                    (
-                        Key.ESCAPE,
-                        "exit search",
-                    )
-                ],
-            )
-        else:
-            help_columns = super().help_data.with_action(
-                Key.ARROW_UP,
-                Key.ARROW_DOWN,
-                Key.ARROW_LEFT,
-                Key.ARROW_RIGHT,
-                inline_msg="navigate",
-                prepend=True,
-            )
-
-        return help_columns.merge(self.__grid.help_data)
+        return super().help_data.merge(self.__grid.help_data)
 
 
 class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
@@ -3223,8 +3203,8 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
 
         self.__update_completion()
 
-    @bind(Key.ENTER, show_in_inline_help=True)
-    @bind(" ", show_in_inline_help=True)
+    @bind(Key.ENTER)
+    @bind(" ")
     def select(self):
         """select"""
         if self.__enable_search and self._cur_event == KeyboardEvent(" "):
@@ -3238,7 +3218,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
             option.color_tag = "selected" if option.value[1] else None
         self.__update_completion()
 
-    @bind(Key.ENTER, alt=True, show_in_inline_help=True)
+    @bind(Key.ENTER, alt=True)
     @bind("d", ctrl=True, show_in_inline_help=True)
     def enter(self) -> _t.Optional[Result[_t.List[T]]]:
         """accept"""
@@ -3246,7 +3226,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
             [option.value[0] for option in self.__grid.get_options() if option.value[1]]
         )
 
-    @bind("/", show_in_inline_help=True)
+    @bind("/")
     def search(self):
         """search"""
         if not self.__enable_search:
@@ -3316,27 +3296,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
 
     @property
     def help_data(self) -> WidgetHelp:
-        if self.__enable_search:
-            help_columns = dataclasses.replace(
-                super().help_data,
-                inline_help=[
-                    (
-                        Key.ESCAPE,
-                        "exit search",
-                    )
-                ],
-            )
-        else:
-            help_columns = super().help_data.with_action(
-                Key.ARROW_UP,
-                Key.ARROW_DOWN,
-                Key.ARROW_LEFT,
-                Key.ARROW_RIGHT,
-                inline_msg="navigate",
-                prepend=True,
-            )
-
-        return help_columns.merge(self.__grid.help_data)
+        return super().help_data.merge(self.__grid.help_data)
 
 
 class InputWithCompletion(Widget[str]):
@@ -3369,8 +3329,8 @@ class InputWithCompletion(Widget[str]):
         self.__layout: VerticalLayout[_t.Never]
         self.__rsuffix: _t.Optional[yuio.complete.Completion] = None
 
-    @bind(Key.ENTER, show_in_inline_help=True)
-    @bind("d", ctrl=True, show_in_inline_help=True)
+    @bind(Key.ENTER)
+    @bind("d", ctrl=True)
     @help(inline_msg="accept")
     def enter(self) -> _t.Optional[Result[str]]:
         """accept / select completion"""
@@ -3381,7 +3341,7 @@ class InputWithCompletion(Widget[str]):
             self._drop_rsuffix()
             return Result(self.__input.text)
 
-    @bind(Key.TAB, show_in_inline_help=True)
+    @bind(Key.TAB)
     def tab(self):
         """autocomplete"""
         if self.__grid_active:
