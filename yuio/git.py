@@ -77,6 +77,9 @@ Autocompleting git refs
 
 .. autoclass:: RefCompleter
 
+.. autoclass:: RefCompleterMode
+    :members:
+
 """
 
 import dataclasses
@@ -637,6 +640,25 @@ class Status:
         return self.has_tracked_changes or self.has_untracked_changes
 
 
+class RefCompleterMode(enum.Enum):
+    """
+    Specifies operation modes for :class:`RefCompleter`.
+
+    """
+
+    #: Completes branches.
+    Branch = "b"
+
+    #: Completes remote branches.
+    Remote = "r"
+
+    #: Completes tags.
+    Tag = "t"
+
+    #: Completes ``HEAD`` and ``ORIG_HEAD``.
+    Head = "h"
+
+
 class RefCompleter(yuio.complete.Completer):
     """
     Completes git refs.
@@ -646,53 +668,37 @@ class RefCompleter(yuio.complete.Completer):
     :param modes:
         which objects to complete.
 
-    .. autoclass:: RefCompleter.Mode
-        :members:
-
     """
 
-    class Mode(enum.Enum):
-        #: Completes branches.
-        Branch = "b"
-
-        #: Completes remote branches.
-        Remote = "r"
-
-        #: Completes tags.
-        Tag = "t"
-
-        #: Completes ``HEAD`` and ``ORIG_HEAD``.
-        Head = "h"
-
     def __init__(
-        self, repo: Repo, modes: _t.Optional[_t.Set["RefCompleter.Mode"]] = None
+        self, repo: Repo, modes: _t.Optional[_t.Set["RefCompleterMode"]] = None
     ):
         super().__init__()
 
         self._repo = repo
         self._modes = modes or {
-            self.Mode.Branch,
-            self.Mode.Tag,
-            self.Mode.Head,
+            RefCompleterMode.Branch,
+            RefCompleterMode.Tag,
+            RefCompleterMode.Head,
         }
 
     def _process(self, collector: yuio.complete.CompletionCollector, /):
         try:
-            if self.Mode.Head in self._modes:
+            if RefCompleterMode.Head in self._modes:
                 collector.add_group()
                 git_dir = self._repo.git_dir()
                 for head in ["HEAD", "ORIG_HEAD"]:
                     if (git_dir / head).exists():
                         collector.add(head)
-            if self.Mode.Branch in self._modes:
+            if RefCompleterMode.Branch in self._modes:
                 collector.add_group()
                 for branch in self._repo.branches():
                     collector.add(branch, comment="branch")
-            if self.Mode.Remote in self._modes:
+            if RefCompleterMode.Remote in self._modes:
                 collector.add_group()
                 for remote in self._repo.remotes():
                     collector.add(remote, comment="remote")
-            if self.Mode.Tag in self._modes:
+            if RefCompleterMode.Tag in self._modes:
                 collector.add_group()
                 for tag in self._repo.tags():
                     collector.add(tag, comment="tag")
@@ -815,7 +821,7 @@ class TagParser(_RefParserImpl[Tag]):
         super()._validate(value)
 
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(self._repo, {RefCompleter.Mode.Tag})
+        return RefCompleter(self._repo, {RefCompleterMode.Tag})
 
 
 class BranchParser(_RefParserImpl[Branch]):
@@ -835,7 +841,7 @@ class BranchParser(_RefParserImpl[Branch]):
         super()._validate(value)
 
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(self._repo, {RefCompleter.Mode.Branch})
+        return RefCompleter(self._repo, {RefCompleterMode.Branch})
 
 
 class RemoteParser(_RefParserImpl[Remote]):
@@ -855,7 +861,7 @@ class RemoteParser(_RefParserImpl[Remote]):
         super()._validate(value)
 
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(self._repo, {RefCompleter.Mode.Branch})
+        return RefCompleter(self._repo, {RefCompleterMode.Branch})
 
 
 yuio.parse.register_type_hint_conversion(
