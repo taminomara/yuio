@@ -50,7 +50,7 @@ lint = [
 ]
 
 [project.urls]
-Documentation = "https://taminomara.github.io/yuio/"
+Documentation = "https://yuio.readthedocs.io/"
 Issues = "https://github.com/taminomara/yuio/issues"
 Source = "https://github.com/taminomara/yuio/"
 Changelog = "https://github.com/taminomara/yuio/blob/main/CHANGELOG.md"

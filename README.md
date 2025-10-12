@@ -15,7 +15,7 @@ Yuio got you.
 
 ## Resources
 
-- [Documentation](https://taminomara.github.io/yuio/)
+- [Documentation](https://yuio.readthedocs.io/)
 - [Issues](https://github.com/taminomara/yuio/issues)
 - [Source](https://github.com/taminomara/yuio/)
 - [PyPi](https://pypi.org/project/yuio/)
@@ -23,7 +23,7 @@ Yuio got you.
 
 ## Requirements
 
-The only requirement is `python >= 3.8`.
+The only requirement is `python >= 3.10`.
 
 ## Installation
 
