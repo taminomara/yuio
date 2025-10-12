@@ -51,7 +51,7 @@ jobs:
         if: ${{ matrix.type == 'test' }}
         run: python -m pip install . --group test
       - name: Check types
-        if: ${{ matrix.type == 'test' }}
+        if: ${{ matrix.type == 'test' && matrix.python-version != '3.14' }}
         run: pyright
       - name: Test package
         if: ${{ matrix.type == 'test' }}
