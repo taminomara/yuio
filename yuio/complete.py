@@ -883,11 +883,11 @@ class File(Completer):
         if resolved.is_dir():
             if name.startswith("."):
                 collector.rsuffix = ""
-                collector.add("./", color_tag="dir")
-                collector.add("../", color_tag="dir")
+                collector.add(os.path.curdir + os.path.sep, color_tag="dir")
+                collector.add(os.path.pardir + os.path.sep, color_tag="dir")
             if name.startswith("~"):
                 collector.rsuffix = ""
-                collector.add("~/", color_tag="dir")
+                collector.add("~" + os.path.sep, color_tag="dir")
             try:
                 for path in resolved.iterdir():
                     if path.is_dir():
@@ -911,7 +911,7 @@ class File(Completer):
                             color_tag = "symlink"
                             dsuffix = "@"
                         elif path.is_file():
-                            if os.access(path, os.X_OK):
+                            if sys.platform != "win32" and os.access(path, os.X_OK):
                                 color_tag = "exec"
                                 dsuffix = "*"
                             else:

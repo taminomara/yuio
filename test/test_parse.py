@@ -936,7 +936,7 @@ class TestPath:
         assert parser.describe_many() == None
         assert parser.describe_many_or_def() == "<path>"
         assert parser.describe_value(pathlib.Path("/")) == None
-        assert parser.describe_value_or_def(pathlib.Path("/")) == "/"
+        assert parser.describe_value_or_def(pathlib.Path("/")) == os.path.sep
 
     def test_parse(
         self,

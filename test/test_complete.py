@@ -503,8 +503,8 @@ def test_file(tmpdir):
     assert _get_file_completions(base, completer.complete(base, len(base))) == [
         ("__base__", "bar.cfg", "", "", "", "", "", None),
         ("__base__", "baz.cfg", "", "", "", "", "@", None),
-        ("__base__", "dir1/", "", "", "", "", "", None),
-        ("__base__", "dir2/", "", "", "", "", "", None),
+        ("__base__", "dir1" + os.path.sep, "", "", "", "", "", None),
+        ("__base__", "dir2" + os.path.sep, "", "", "", "", "", None),
         ("__base__", "foo.toml", "", "", "", "", "", None),
     ]
 
@@ -517,18 +517,18 @@ def test_file(tmpdir):
 
     completer = yuio.complete.File(extensions=[".toml"])
     assert _get_file_completions(base, completer.complete(base, len(base))) == [
-        ("__base__", "dir1/", "", "", "", "", "", None),
-        ("__base__", "dir2/", "", "", "", "", "", None),
+        ("__base__", "dir1" + os.path.sep, "", "", "", "", "", None),
+        ("__base__", "dir2" + os.path.sep, "", "", "", "", "", None),
         ("__base__", "foo.toml", "", "", "", "", "", None),
     ]
 
-    completer = yuio.complete.List(yuio.complete.File(), delimiter=":")
+    completer = yuio.complete.List(yuio.complete.File(), delimiter=";")
     assert _get_file_completions(base, completer.complete(base, len(base))) == [
-        ("__base__", "bar.cfg", "", ":", ":", "", "", None),
-        ("__base__", "baz.cfg", "", ":", ":", "", "@", None),
-        ("__base__", "dir1/", "", "", ":", "", "", None),
-        ("__base__", "dir2/", "", "", ":", "", "", None),
-        ("__base__", "foo.toml", "", ":", ":", "", "", None),
+        ("__base__", "bar.cfg", "", ";", ";", "", "", None),
+        ("__base__", "baz.cfg", "", ";", ";", "", "@", None),
+        ("__base__", "dir1" + os.path.sep, "", "", ";", "", "", None),
+        ("__base__", "dir2" + os.path.sep, "", "", ";", "", "", None),
+        ("__base__", "foo.toml", "", ";", ";", "", "", None),
     ]
 
     assert _get_file_completions(
@@ -536,8 +536,8 @@ def test_file(tmpdir):
     ) == [
         ("__base__", "bar.cfg", ":xyz", "", "", "", "", None),
         ("__base__", "baz.cfg", ":xyz", "", "", "", "@", None),
-        ("__base__", "dir1/", ":xyz", "", "", "", "", None),
-        ("__base__", "dir2/", ":xyz", "", "", "", "", None),
+        ("__base__", "dir1" + os.path.sep, ":xyz", "", "", "", "", None),
+        ("__base__", "dir2" + os.path.sep, ":xyz", "", "", "", "", None),
         ("__base__", "foo.toml", ":xyz", "", "", "", "", None),
     ]
 
@@ -545,17 +545,17 @@ def test_file(tmpdir):
     assert _get_file_completions(
         base, completer.complete(base + "dir", len(base) + 3)
     ) == [
-        ("__base__", "dir1/", "", "", "", "", "", None),
-        ("__base__", "dir2/", "", "", "", "", "", None),
+        ("__base__", "dir1" + os.path.sep, "", "", "", "", "", None),
+        ("__base__", "dir2" + os.path.sep, "", "", "", "", "", None),
     ]
 
     assert _get_file_completions(
         base, completer.complete(base + ".", len(base) + 1)
     ) == [
-        ("__base__", "../", "", "", "", "", "", None),
-        ("__base__", "./", "", "", "", "", "", None),
+        ("__base__", ".." + os.path.sep, "", "", "", "", "", None),
+        ("__base__", "." + os.path.sep, "", "", "", "", "", None),
     ]
 
-    assert ("", "~/", "", "", "", "", "", None) in _get_file_completions(
+    assert ("", "~" + os.path.sep, "", "", "", "", "", None) in _get_file_completions(
         base, completer.complete("~", 1)
     )
