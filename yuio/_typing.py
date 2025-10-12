@@ -17,6 +17,9 @@ def is_union(origin):
 if TYPE_CHECKING:
     StrRePattern: TypeAlias = _re.Pattern[str]
     StrReMatch: TypeAlias = _re.Match[str]
+
+    def type_repr(ty: Any) -> str: ...
+
 else:
     try:
         StrRePattern = _re.Pattern[str]
@@ -24,3 +27,16 @@ else:
     except TypeError:
         StrRePattern = _re.Pattern
         StrReMatch = _re.Match
+
+    if "type_repr" not in globals():
+
+        def type_repr(ty: Any) -> str:
+            if isinstance(
+                value, (type, _types.FunctionType, _types.BuiltinFunctionType)
+            ):
+                if value.__module__ == "builtins":
+                    return value.__qualname__
+                return f"{value.__module__}.{value.__qualname__}"
+            if value is ...:
+                return "..."
+            return repr(value)
