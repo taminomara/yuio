@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [2.0.0-beta.2] - 2025-10-12
+
+Incomplete beta release.
+
 ## [2.0.0-beta.1] - 2024-11-20
 
 Incomplete beta release.
@@ -36,4 +40,5 @@ Outdated release.
 [1.1.0]: https://github.com/taminomara/yuio/compare/v1.0.1...v1.1.0
 [2.0.0-beta.0]: https://github.com/taminomara/yuio/compare/v1.1.0...v2.0.0-beta.0
 [2.0.0-beta.1]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.0...v2.0.0-beta.1
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.1...HEAD
+[2.0.0-beta.2]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.1...v2.0.0-beta.2
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.2...HEAD
