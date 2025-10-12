@@ -39,7 +39,7 @@ test = [
 ]
 doc = [
     "sybil==9.2.0",
-    "sphinx-immaterial==0.13.7",
+    "furo==2025.9.25",
     "sphinx_design==0.6.1",
     "sphinx-vhs==1.0.0",
 ]
