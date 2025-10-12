@@ -532,13 +532,13 @@ def test_file(tmpdir):
     ]
 
     assert _get_file_completions(
-        base, completer.complete(base + ":xyz", len(base))
+        base, completer.complete(base + ";xyz", len(base))
     ) == [
-        ("__base__", "bar.cfg", ":xyz", "", "", "", "", None),
-        ("__base__", "baz.cfg", ":xyz", "", "", "", "@", None),
-        ("__base__", "dir1" + os.path.sep, ":xyz", "", "", "", "", None),
-        ("__base__", "dir2" + os.path.sep, ":xyz", "", "", "", "", None),
-        ("__base__", "foo.toml", ":xyz", "", "", "", "", None),
+        ("__base__", "bar.cfg", ";xyz", "", "", "", "", None),
+        ("__base__", "baz.cfg", ";xyz", "", "", "", "@", None),
+        ("__base__", "dir1" + os.path.sep, ";xyz", "", "", "", "", None),
+        ("__base__", "dir2" + os.path.sep, ";xyz", "", "", "", "", None),
+        ("__base__", "foo.toml", ";xyz", "", "", "", "", None),
     ]
 
     completer = yuio.complete.Dir()
