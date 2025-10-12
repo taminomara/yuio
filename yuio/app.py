@@ -1377,3 +1377,6 @@ class _HelpFormatter(object):
         # argparse calls this method sometimes
         # to check if given metavar is valid or not (TODO!)
         pass
+
+    def _set_color(self, *_):
+        pass

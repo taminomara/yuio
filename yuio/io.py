@@ -1302,7 +1302,7 @@ class Handler(logging.Handler):
     """A handler that redirects all log messages to yuio."""
 
     def createLock(self) -> None:
-        self.lock = None
+        self.lock = threading.Lock()
 
     def emit(self, record: LogRecord) -> None:
         _manager().print_rec(record)

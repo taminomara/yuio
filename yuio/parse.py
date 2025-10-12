@@ -2571,7 +2571,7 @@ class Tuple(
     def parse_many(self, value: _t.Sequence[str], /) -> TU:
         if len(value) != len(self._inner):
             raise ParsingError(
-                f"expected {len(self._inner)} element{"" if len(self._inner) == 1 else "s"}"
+                f"expected {len(self._inner)} element{'' if len(self._inner) == 1 else 's'}"
             )
 
         return _t.cast(
@@ -2586,7 +2586,7 @@ class Tuple(
             )
         elif len(value) != len(self._inner):
             raise ParsingError(
-                f"expected {len(self._inner)} element{"" if len(self._inner) == 1 else "s"}"
+                f"expected {len(self._inner)} element{'' if len(self._inner) == 1 else 's'}"
             )
 
         return _t.cast(
