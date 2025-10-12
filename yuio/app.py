@@ -626,7 +626,9 @@ class App:
 
         if "--yuio-custom-completer--" in args:
             index = args.index("--yuio-custom-completer--")
-            yuio.complete._run_custom_completer(args[index + 1], args[index + 2])
+            yuio.complete._run_custom_completer(
+                self.__get_completions(), args[index + 1], args[index + 2]
+            )
             exit(0)
 
         yuio.io.setup(theme=self.theme, wrap_stdio=True)
@@ -833,7 +835,7 @@ class App:
         return serializer
 
     def __write_completions(self, shell: str):
-        self.__get_completions().write_completions(self.prog, shell)
+        yuio.complete.write_completions(self.__get_completions(), self.prog, shell)
 
 
 class _NoReprConfig(yuio.config.Config):
@@ -1379,4 +1381,7 @@ class _HelpFormatter(object):
         pass
 
     def _set_color(self, *_):
+        pass
+
+    def _expand_help(self, *_):
         pass

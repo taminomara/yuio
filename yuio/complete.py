@@ -54,8 +54,8 @@ its :meth:`~Completer._process` method.
 .. note::
 
    When using a custom completer for CLI flags in :mod:`yuio.app`,
-   yuio will :mod:`pickle` it, and integrate it into a shell script
-   that provides command line completions.
+   completion script will invoke your program with special arguments
+   to run the completer and get its result.
 
 .. class:: Completer
    :noindex:
@@ -71,15 +71,14 @@ This is the class that is responsible for generating a final list of completions
 
 import abc
 import argparse
-import base64
 import contextlib
 import dataclasses
 import enum
 import functools
+import json
 import math
 import os
 import pathlib
-import pickle
 import re
 import string
 import subprocess
@@ -956,7 +955,15 @@ class Dir(File):
 
 
 class _CompleterSerializer:
-    def __init__(self, add_help: bool, add_version: bool):
+    def __init__(
+        self,
+        add_help: bool,
+        add_version: bool,
+        path: str = "",
+        custom_completers: dict[tuple[str, str], list[Completer]] = {},
+    ):
+        self._path = path
+        self._custom_completers = custom_completers
         self._subcommands: _t.Dict[str, _t.Tuple["_CompleterSerializer", bool, str]] = (
             {}
         )
@@ -1044,6 +1051,9 @@ class _CompleterSerializer:
         else:
             completion_model = self.Model()
 
+        self._args = ";".join(args)
+        completion_model.collect(self)
+
         self._flags.append((list(args), help, metavar, nargs, completion_model))
 
     def add_mutually_exclusive_group(self, *args, **kwargs):
@@ -1063,259 +1073,34 @@ class _CompleterSerializer:
         help: str,
         **kwargs,
     ):
-        serializer = _CompleterSerializer(self._add_help, self._add_version)
+        serializer = _CompleterSerializer(
+            self._add_help,
+            self._add_version,
+            f"{self._path}/{name}",
+            self._custom_completers,
+        )
         self._subcommands[name] = (serializer, False, str(help or ""))
         for alias in aliases:
             self._subcommands[alias] = (serializer, True, str(help))
         return serializer
 
+    def register_custom_completer(self, completer: Completer) -> str:
+        completers = self._custom_completers.setdefault((self._path, self._args), [])
+        data = json.dumps([self._path, self._args, len(completers)])
+        completers.append(completer)
+        return data
+
+    def get_custom_completer(self, data: str) -> Completer | None:
+        try:
+            path, args, index = json.loads(data)
+            return self._custom_completers[(path, args)][index]
+        except (json.JSONDecodeError, IndexError, TypeError, ValueError):
+            pass
+        return None
+
     def as_parser(self) -> argparse.ArgumentParser:
         # We've implemented all methods that `Config._setup_arg_parser` could call.
         return _t.cast(argparse.ArgumentParser, self)
-
-    def write_completions(self, prog: _t.Optional[str] = None, shell: str = "all"):
-        import yuio.app
-        import yuio.io
-
-        if sys.platform == "win32":
-            raise yuio.app.AppError("For now, completions aren't supported on Windows.")
-
-        prog = prog or pathlib.Path(sys.argv[0]).name
-
-        if shell == "uninstall":
-            shell = "all"
-            yuio.io.heading("Uninstalling completions for `%s`", prog)
-            install = False
-        else:
-            yuio.io.heading("Generating completions for `%s`", prog)
-            install = True
-
-        data_home = pathlib.Path(
-            os.environ.get("XDG_DATA_HOME") or (pathlib.Path.home() / ".local/share")
-        )
-        cache_home = pathlib.Path(
-            os.environ.get("XDG_CACHE_HOME") or (pathlib.Path.home() / ".cache")
-        )
-        config_home = pathlib.Path(
-            os.environ.get("XDG_CONFIG_HOME") or (pathlib.Path.home() / ".config")
-        )
-
-        compdata_path = data_home / f"yuio/{prog}.compdata.tsv"
-
-        if install:
-            result = []
-            self._dump("", result)
-            compdata = "\n".join(result)
-
-            os.makedirs(data_home / "yuio", exist_ok=True)
-            compdata_path.write_text(compdata)
-            yuio.io.info("Wrote completion data to <c path>%s</c>", compdata_path)
-        elif compdata_path.exists():
-            os.remove(compdata_path)
-            yuio.io.info("Removed <c path>%s</c>", compdata_path)
-
-        if shell in ["all", "bash"]:
-            self._write_bash_script(
-                prog, install, compdata_path, data_home, cache_home, config_home
-            )
-        if shell in ["all", "zsh"]:
-            self._write_zsh_script(
-                prog, install, compdata_path, data_home, cache_home, config_home
-            )
-        if shell in ["all", "fish"]:
-            self._write_fish_script(
-                prog, install, compdata_path, data_home, cache_home, config_home
-            )
-
-        if shell == "uninstall":
-            pass
-
-        yuio.io.success(
-            "All done! Please restart your shell for changes to take effect."
-        )
-        if install:
-            yuio.io.info("Run `%s --completions uninstall` to undo all changes.", prog)
-
-    def _write_bash_script(
-        self,
-        prog: str,
-        install: bool,
-        compdata_path: pathlib.Path,
-        data_home: pathlib.Path,
-        cache_home: pathlib.Path,
-        config_home: pathlib.Path,
-    ):
-        import yuio.exec
-        import yuio.io
-
-        try:
-            bash_completions_home = yuio.exec.exec(
-                "bash",
-                "-lic",
-                'echo -n "${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions/"',
-            ).splitlines()[-1]
-        except subprocess.CalledProcessError:
-            bash_completions_home = data_home / "bash-completion/completions/"
-        bash_completions_home = pathlib.Path(bash_completions_home)
-        script_dest = bash_completions_home / prog
-
-        if install:
-            os.makedirs(bash_completions_home, exist_ok=True)
-
-            script_template = (
-                pathlib.Path(__file__).parent / "complete.bash"
-            ).read_text()
-            script = script_template.replace("@prog@", prog).replace(
-                "@data@", str(compdata_path)
-            )
-            script_dest.write_text(script)
-
-            yuio.io.info("Wrote bash script to <c path>%s</c>", script_dest)
-        elif script_dest.exists():
-            os.remove(script_dest)
-            yuio.io.info("Removed <c path>%s</c>", script_dest)
-
-    def _write_zsh_script(
-        self,
-        prog: str,
-        install: bool,
-        compdata_path: pathlib.Path,
-        data_home: pathlib.Path,
-        cache_home: pathlib.Path,
-        config_home: pathlib.Path,
-    ):
-        import yuio.exec
-        import yuio.io
-
-        needs_cache_cleanup = False
-
-        zsh_completions_home = data_home / "zsh/completions"
-        script_dest = zsh_completions_home / ("_" + prog)
-
-        if install:
-            needs_cache_cleanup = True
-
-            os.makedirs(zsh_completions_home, exist_ok=True)
-
-            script_template = (
-                pathlib.Path(__file__).parent / "complete.zsh"
-            ).read_text()
-            script = script_template.replace("@prog@", prog).replace(
-                "@data@", str(compdata_path)
-            )
-            script_dest.write_text(script)
-
-            yuio.io.info("Wrote zsh script to <c path>%s</c>", script_dest)
-        elif script_dest.exists():
-            needs_cache_cleanup = True
-
-            os.remove(script_dest)
-            yuio.io.info("Removed <c path>%s</c>", script_dest)
-
-        try:
-            fpath = (
-                yuio.exec.exec(
-                    "zsh",
-                    "-lic",
-                    "echo -n $FPATH",
-                )
-                .splitlines()[-1]
-                .split(":")
-            )
-        except subprocess.CalledProcessError:
-            fpath = []
-
-        try:
-            zhome = yuio.exec.exec(
-                "zsh",
-                "-lic",
-                "echo -n ${ZDOTDIR:-$HOME}",
-            ).splitlines()[-1]
-        except subprocess.CalledProcessError:
-            zhome = pathlib.Path.home()
-
-        zhome = pathlib.Path(zhome)
-        zprofile_path = zhome / ".zprofile"
-        zprofile_append_text = (
-            f"\n# Generated by Yuio, a python CLI library."
-            f"\nfpath=({zsh_completions_home} $fpath)"
-            f"\n# End automatically generated patch"
-            f"\n"
-        )
-
-        if install:
-            if str(zsh_completions_home) not in fpath:
-                with open(zprofile_path, "a") as f:
-                    f.write(zprofile_append_text)
-                yuio.io.info(
-                    "Modified <c path>%s</c> to add <c path>%s</c> to `fpath`",
-                    zprofile_path,
-                    zsh_completions_home,
-                )
-        elif zprofile_path.exists():
-            zprofile_text = zprofile_path.read_text()
-            if zprofile_append_text in zprofile_text:
-                yuio.io.info(
-                    "Note: modifications to <c path>%s</c> are not removed"
-                    " because other completions might rely on them.",
-                    zprofile_path,
-                )
-
-        if not needs_cache_cleanup:
-            return
-
-        # Try to remove completions cache from the most common places.
-        for zcomp_basedir in [zhome, cache_home / "prezto"]:
-            if not zcomp_basedir.exists() or not zcomp_basedir.is_dir():
-                continue
-            for file in zcomp_basedir.iterdir():
-                if file.is_file() and re.match(r"^\.?zcompdump", file.name):
-                    os.remove(file)
-                    yuio.io.info(
-                        "Deleted zsh completions cache at <c path>%s</c>", file
-                    )
-
-        try:
-            # Run zsh with the right flags in case zshrc runs compinit.
-            # If after generating completions user runs `zsh` without the `-l` flag,
-            # our changes to fpath will not be visible, and compinit will dump
-            # an invalid version of cache. To avoid this, we call zsh ourselves
-            # before the user has a chance to do it. Notice, though, that we don't
-            # run `compdump`. This is because we can't be sure that the user uses
-            # the default cache path (~/.zcompdump).
-            yuio.exec.exec("zsh", "-lic", "true")
-        except subprocess.CalledProcessError:
-            pass
-
-    def _write_fish_script(
-        self,
-        prog: str,
-        install: bool,
-        compdata_path: pathlib.Path,
-        data_home: pathlib.Path,
-        cache_home: pathlib.Path,
-        config_home: pathlib.Path,
-    ):
-        import yuio.io
-
-        fish_completions_home = data_home / "fish/vendor_completions.d"
-        script_dest = fish_completions_home / (prog + ".fish")
-
-        if install:
-            os.makedirs(fish_completions_home, exist_ok=True)
-
-            script_template = (
-                pathlib.Path(__file__).parent / "complete.fish"
-            ).read_text()
-            script = script_template.replace("@prog@", prog).replace(
-                "@data@", str(compdata_path)
-            )
-            script_dest.write_text(script)
-
-            yuio.io.info("Wrote fish script to <c path>%s</c>", script_dest)
-        elif script_dest.exists():
-            os.remove(script_dest)
-            yuio.io.info("Removed <c path>%s</c>", script_dest)
 
     _SPECIAL_SYMBOLS = str.maketrans("\r\n\a\b\t", "     ")
 
@@ -1364,6 +1149,20 @@ class _CompleterSerializer:
         for subcommand, (serializer, *_) in self._subcommands.items():
             serializer._dump(f"{path}/{subcommand}", result)
 
+    def _collect_nested(self, compspec: _t.List[object]):
+        for item in compspec:
+            self._collect_nested_item(item)
+
+    def _collect_nested_item(self, item: object):
+        if isinstance(item, _CompleterSerializer.Model):
+            item.collect(self)
+        elif isinstance(item, list):
+            for sub_item in item:
+                self._collect_nested_item(sub_item)
+        elif isinstance(item, tuple):
+            for sub_item in item:
+                self._collect_nested_item(sub_item)
+
     @staticmethod
     def _dump_nested(compspec: _t.List[object]) -> _t.List[str]:
         contents = []
@@ -1400,6 +1199,10 @@ class _CompleterSerializer:
 
     @dataclass()
     class Model(ModelBase):
+        def collect(self, s: "_CompleterSerializer"):
+            compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
+            s._collect_nested(compspec)
+
         def dump(self) -> _t.List[str]:
             compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
             contents = _CompleterSerializer._dump_nested(compspec)
@@ -1477,19 +1280,261 @@ class _CompleterSerializer:
     class CustomCompleter(Model, tag="cc"):
         completer: Completer
 
+        def collect(self, s: "_CompleterSerializer"):
+            self._data = s.register_custom_completer(self.completer)
+
         def dump(self) -> _t.List[str]:
             return [
                 self.tag,
                 "1",
-                base64.b64encode(pickle.dumps(self.completer)).decode(),
+                self._data,
             ]
 
 
-def _run_custom_completer(data: str, word: str):
-    completer: Completer = pickle.loads(base64.b64decode(data))
+def _run_custom_completer(s: _CompleterSerializer, data: str, word: str):
+    completer = s.get_custom_completer(data)
+    if completer is None:
+        return
     completions = completer.complete(word, len(word), do_corrections=False)
     for completion in completions:
         print(
             f"{completion.iprefix}{completion.completion}{completion.isuffix}\t{completion.comment or ''}",
             file=sys.__stdout__,
         )
+
+
+def write_completions(
+    s: _CompleterSerializer, prog: _t.Optional[str] = None, shell: str = "all"
+):
+    import yuio.app
+    import yuio.io
+
+    if sys.platform == "win32":
+        raise yuio.app.AppError("For now, completions aren't supported on Windows.")
+
+    prog = prog or pathlib.Path(sys.argv[0]).name
+
+    if shell == "uninstall":
+        shell = "all"
+        yuio.io.heading("Uninstalling completions for `%s`", prog)
+        install = False
+    else:
+        yuio.io.heading("Generating completions for `%s`", prog)
+        install = True
+
+    data_home = pathlib.Path(
+        os.environ.get("XDG_DATA_HOME") or (pathlib.Path.home() / ".local/share")
+    )
+    cache_home = pathlib.Path(
+        os.environ.get("XDG_CACHE_HOME") or (pathlib.Path.home() / ".cache")
+    )
+    config_home = pathlib.Path(
+        os.environ.get("XDG_CONFIG_HOME") or (pathlib.Path.home() / ".config")
+    )
+
+    compdata_path = data_home / f"yuio/{prog}.compdata.tsv"
+
+    if install:
+        result = []
+        s._dump("", result)
+        compdata = "\n".join(result)
+
+        os.makedirs(data_home / "yuio", exist_ok=True)
+        compdata_path.write_text(compdata)
+        yuio.io.info("Wrote completion data to <c path>%s</c>", compdata_path)
+    elif compdata_path.exists():
+        os.remove(compdata_path)
+        yuio.io.info("Removed <c path>%s</c>", compdata_path)
+
+    if shell in ["all", "bash"]:
+        _write_bash_script(
+            prog, install, compdata_path, data_home, cache_home, config_home
+        )
+    if shell in ["all", "zsh"]:
+        _write_zsh_script(
+            prog, install, compdata_path, data_home, cache_home, config_home
+        )
+    if shell in ["all", "fish"]:
+        _write_fish_script(
+            prog, install, compdata_path, data_home, cache_home, config_home
+        )
+
+    if shell == "uninstall":
+        pass
+
+    yuio.io.success("All done! Please restart your shell for changes to take effect.")
+    if install:
+        yuio.io.info("Run `%s --completions uninstall` to undo all changes.", prog)
+
+
+def _write_bash_script(
+    prog: str,
+    install: bool,
+    compdata_path: pathlib.Path,
+    data_home: pathlib.Path,
+    cache_home: pathlib.Path,
+    config_home: pathlib.Path,
+):
+    import yuio.exec
+    import yuio.io
+
+    try:
+        bash_completions_home = yuio.exec.exec(
+            "bash",
+            "-lic",
+            'echo -n "${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions/"',
+        ).splitlines()[-1]
+    except subprocess.CalledProcessError:
+        bash_completions_home = data_home / "bash-completion/completions/"
+    bash_completions_home = pathlib.Path(bash_completions_home)
+    script_dest = bash_completions_home / prog
+
+    if install:
+        os.makedirs(bash_completions_home, exist_ok=True)
+
+        script_template = (pathlib.Path(__file__).parent / "complete.bash").read_text()
+        script = script_template.replace("@prog@", prog).replace(
+            "@data@", str(compdata_path)
+        )
+        script_dest.write_text(script)
+
+        yuio.io.info("Wrote bash script to <c path>%s</c>", script_dest)
+    elif script_dest.exists():
+        os.remove(script_dest)
+        yuio.io.info("Removed <c path>%s</c>", script_dest)
+
+
+def _write_zsh_script(
+    prog: str,
+    install: bool,
+    compdata_path: pathlib.Path,
+    data_home: pathlib.Path,
+    cache_home: pathlib.Path,
+    config_home: pathlib.Path,
+):
+    import yuio.exec
+    import yuio.io
+
+    needs_cache_cleanup = False
+
+    zsh_completions_home = data_home / "zsh/completions"
+    script_dest = zsh_completions_home / ("_" + prog)
+
+    if install:
+        needs_cache_cleanup = True
+
+        os.makedirs(zsh_completions_home, exist_ok=True)
+
+        script_template = (pathlib.Path(__file__).parent / "complete.zsh").read_text()
+        script = script_template.replace("@prog@", prog).replace(
+            "@data@", str(compdata_path)
+        )
+        script_dest.write_text(script)
+
+        yuio.io.info("Wrote zsh script to <c path>%s</c>", script_dest)
+    elif script_dest.exists():
+        needs_cache_cleanup = True
+
+        os.remove(script_dest)
+        yuio.io.info("Removed <c path>%s</c>", script_dest)
+
+    try:
+        fpath = (
+            yuio.exec.exec(
+                "zsh",
+                "-lic",
+                "echo -n $FPATH",
+            )
+            .splitlines()[-1]
+            .split(":")
+        )
+    except subprocess.CalledProcessError:
+        fpath = []
+
+    try:
+        zhome = yuio.exec.exec(
+            "zsh",
+            "-lic",
+            "echo -n ${ZDOTDIR:-$HOME}",
+        ).splitlines()[-1]
+    except subprocess.CalledProcessError:
+        zhome = pathlib.Path.home()
+
+    zhome = pathlib.Path(zhome)
+    zprofile_path = zhome / ".zprofile"
+    zprofile_append_text = (
+        f"\n# Generated by Yuio, a python CLI library."
+        f"\nfpath=({zsh_completions_home} $fpath)"
+        f"\n# End automatically generated patch"
+        f"\n"
+    )
+
+    if install:
+        if str(zsh_completions_home) not in fpath:
+            with open(zprofile_path, "a") as f:
+                f.write(zprofile_append_text)
+            yuio.io.info(
+                "Modified <c path>%s</c> to add <c path>%s</c> to `fpath`",
+                zprofile_path,
+                zsh_completions_home,
+            )
+    elif zprofile_path.exists():
+        zprofile_text = zprofile_path.read_text()
+        if zprofile_append_text in zprofile_text:
+            yuio.io.info(
+                "Note: modifications to <c path>%s</c> are not removed"
+                " because other completions might rely on them.",
+                zprofile_path,
+            )
+
+    if not needs_cache_cleanup:
+        return
+
+    # Try to remove completions cache from the most common places.
+    for zcomp_basedir in [zhome, cache_home / "prezto"]:
+        if not zcomp_basedir.exists() or not zcomp_basedir.is_dir():
+            continue
+        for file in zcomp_basedir.iterdir():
+            if file.is_file() and re.match(r"^\.?zcompdump", file.name):
+                os.remove(file)
+                yuio.io.info("Deleted zsh completions cache at <c path>%s</c>", file)
+
+    try:
+        # Run zsh with the right flags in case zshrc runs compinit.
+        # If after generating completions user runs `zsh` without the `-l` flag,
+        # our changes to fpath will not be visible, and compinit will dump
+        # an invalid version of cache. To avoid this, we call zsh ourselves
+        # before the user has a chance to do it. Notice, though, that we don't
+        # run `compdump`. This is because we can't be sure that the user uses
+        # the default cache path (~/.zcompdump).
+        yuio.exec.exec("zsh", "-lic", "true")
+    except subprocess.CalledProcessError:
+        pass
+
+
+def _write_fish_script(
+    prog: str,
+    install: bool,
+    compdata_path: pathlib.Path,
+    data_home: pathlib.Path,
+    cache_home: pathlib.Path,
+    config_home: pathlib.Path,
+):
+    import yuio.io
+
+    fish_completions_home = data_home / "fish/vendor_completions.d"
+    script_dest = fish_completions_home / (prog + ".fish")
+
+    if install:
+        os.makedirs(fish_completions_home, exist_ok=True)
+
+        script_template = (pathlib.Path(__file__).parent / "complete.fish").read_text()
+        script = script_template.replace("@prog@", prog).replace(
+            "@data@", str(compdata_path)
+        )
+        script_dest.write_text(script)
+
+        yuio.io.info("Wrote fish script to <c path>%s</c>", script_dest)
+    elif script_dest.exists():
+        os.remove(script_dest)
+        yuio.io.info("Removed <c path>%s</c>", script_dest)
