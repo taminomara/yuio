@@ -11,8 +11,6 @@ build:
     install:
       - pip install -U pip
       - pip install . --group doc
-      - zsh -lic 'git clone --recursive https://github.com/sorin-ionescu/prezto.git "${ZDOTDIR:-$HOME}/.zprezto"'
-      - zsh -lic 'setopt EXTENDED_GLOB; for rcfile in "${ZDOTDIR:-$HOME}"/.zprezto/runcoms/^README.md(.N); do ln -sf "$rcfile" "${ZDOTDIR:-$HOME}/.${rcfile:t}"; done'
     build:
       html:
         - python -m sphinx -n -j auto -T -b html -d _build/doctrees -D language=$READTHEDOCS_LANGUAGE . $READTHEDOCS_OUTPUT/html
