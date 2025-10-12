@@ -1,17 +1,16 @@
 #! /usr/bin/env python3
 
 import pathlib
+from typing import Annotated
 
 import yuio.app
-import yuio.complete
 import yuio.config
-import yuio.git
 import yuio.io
 import yuio.parse
 
 
 class Config(yuio.config.Config):
-    """global configuration
+    """global options
 
     global options are loaded from `./app_config.json`,
     from environment variables, and from CLI arguments.
@@ -19,7 +18,7 @@ class Config(yuio.config.Config):
     """
 
     #: number of threads to use for executing model
-    threads: int = yuio.config.field(4, parser=yuio.parse.Int().ge(1))
+    threads: Annotated[int, yuio.parse.Ge(1)] = 4
 
     #: enable or disable gpu
     gpu: bool = True

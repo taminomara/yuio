@@ -2,78 +2,253 @@ import datetime
 import enum
 import os.path
 import pathlib
+import re
 import sys
+from decimal import Decimal
+from fractions import Fraction
 
 import pytest
-import typing_extensions
 
 import yuio.parse
 from yuio import _typing as _t
 
 
-class TestSimple:
-    def test_str(self):
+class TestStr:
+    def test_basics(self):
+        parser = yuio.parse.Str()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<str>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<str>"
+        assert parser.describe_value("foo") == None
+        assert parser.describe_value_or_def("foo") == "foo"
+
+    def test_parse(self):
         parser = yuio.parse.Str()
         assert parser.parse("Test") == "Test"
         assert parser.parse("Test") == "Test"
         assert parser.parse_config("Test") == "Test"
-        with pytest.raises(ValueError, match="expected a string"):
+        with pytest.raises(ValueError, match="expected string"):
             parser.parse_config(10)
+
+    def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(str), yuio.parse.Str)
 
-    def test_str_lower(self):
-        parser = yuio.parse.Str().lower()
+    def test_lower(self):
+        parser = yuio.parse.Lower(yuio.parse.Str())
         assert parser.parse("Test") == "test"
         assert parser.parse("Test") == "test"
+        assert parser.parse("ῼ") == "ῳ"
         assert parser.parse_config("Test") == "test"
-        with pytest.raises(ValueError, match="expected a string"):
+        with pytest.raises(ValueError, match="expected string"):
             parser.parse_config(10)
 
-    def test_str_upper(self):
-        parser = yuio.parse.Str().upper()
+    def test_casefold(self):
+        parser = yuio.parse.CaseFold(yuio.parse.Str())
+        assert parser.parse("Test") == "test"
+        assert parser.parse("Test") == "test"
+        assert parser.parse("ῼ") == "ωι"
+        assert parser.parse_config("Test") == "test"
+        with pytest.raises(ValueError, match="expected string"):
+            parser.parse_config(10)
+
+    def test_upper(self):
+        parser = yuio.parse.Upper(yuio.parse.Str())
         assert parser.parse("Test") == "TEST"
         assert parser.parse("Test") == "TEST"
         assert parser.parse_config("Test") == "TEST"
-        with pytest.raises(ValueError, match="expected a string"):
+        with pytest.raises(ValueError, match="expected string"):
+            parser.parse_config(10)
+
+    def test_strip(self):
+        parser = yuio.parse.Strip(yuio.parse.Str())
+        assert parser.parse("Test  ") == "Test"
+        assert parser.parse("  Test") == "Test"
+        assert parser.parse_config("  Test  ") == "Test"
+        with pytest.raises(ValueError, match="expected string"):
             parser.parse_config(10)
 
     def test_regex(self):
-        parser = yuio.parse.Str().regex(r"^a|b$")
+        parser = yuio.parse.Regex(yuio.parse.Str(), r"^a|b$")
         assert parser.parse("a") == "a"
         assert parser.parse("b") == "b"
         with pytest.raises(ValueError, match=r"should match regex '\^a\|b\$'"):
             parser.parse("foo")
 
-    def test_int(self):
+    def test_regex_compiled(self):
+        parser = yuio.parse.Regex(yuio.parse.Str(), re.compile(r"^a|b$"))
+        assert parser.parse("a") == "a"
+        assert parser.parse("b") == "b"
+        with pytest.raises(ValueError, match=r"should match regex '\^a\|b\$'"):
+            parser.parse("foo")
+
+    def test_many(self):
+        parser = yuio.parse.Str()
+        with pytest.raises(RuntimeError, match=r"unable to parse multiple values"):
+            parser.parse_many([])
+
+    def test_from_type_hint(self):
+        parser = yuio.parse.from_type_hint(str)
+        assert parser.parse("Test") == "Test"
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[str, yuio.parse.Str()])
+        assert parser.parse("  Test  ") == "  Test  "
+
+    def test_from_type_hint_annotated_strip(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[str, yuio.parse.Str(), yuio.parse.Strip()]
+        )
+        assert parser.parse("  Test  ") == "Test"
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Str conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Str()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Str will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[str, yuio.parse.Str(), yuio.parse.Str()]
+            )
+
+
+class TestInt:
+    def test_basics(self):
+        parser = yuio.parse.Int()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<int>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value(10) == None
+        assert parser.describe_value_or_def(10) == "10"
+
+    def test_parse(self):
         parser = yuio.parse.Int()
         assert parser.parse("1") == 1
         assert parser.parse("1") == 1
         assert parser.parse_config(1) == 1
         assert parser.parse_config(1.0) == 1
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("x")
-        with pytest.raises(ValueError, match="expected an int"):
+        with pytest.raises(ValueError, match="expected int"):
             parser.parse_config(1.5)
-        with pytest.raises(ValueError, match="expected an int"):
+        with pytest.raises(ValueError, match="expected int"):
             parser.parse_config("x")
+
+    def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(int), yuio.parse.Int)
 
-    def test_float(self):
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Int()])
+        assert parser.parse("1") == 1
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating str with Int conflicts with default "
+                "parser for this type, which is Str."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[str, yuio.parse.Int()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Int will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Int(), yuio.parse.Int()]
+            )
+
+
+class TestFloat:
+    def test_basics(self):
+        parser = yuio.parse.Float()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<float>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<float>"
+        assert parser.describe_value(10.5) == None
+        assert parser.describe_value_or_def(10.5) == "10.5"
+
+    def test_parse(self):
         parser = yuio.parse.Float()
         assert parser.parse("1.5") == 1.5
         assert parser.parse("-10") == -10.0
         assert parser.parse("2e9") == 2e9
         assert parser.parse_config(1.0) == 1.0
         assert parser.parse_config(1.5) == 1.5
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("x")
-        with pytest.raises(ValueError, match="expected a float"):
+        with pytest.raises(ValueError, match="expected float"):
             parser.parse_config("x")
+
+    def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(float), yuio.parse.Float)
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[float, yuio.parse.Float()])
+        assert parser.parse("1.5") == 1.5
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Float conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Float()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Float will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[float, yuio.parse.Float(), yuio.parse.Float()]
+            )
 
 
 class TestBool:
     def test_basics(self):
+        parser = yuio.parse.Bool()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == "yes|no"
+        assert parser.describe_or_def() == "yes|no"
+        assert parser.describe_many() == "yes|no"
+        assert parser.describe_many_or_def() == "yes|no"
+        assert parser.describe_value(True) == "yes"
+        assert parser.describe_value(False) == "no"
+        assert parser.describe_value_or_def(True) == "yes"
+        assert parser.describe_value_or_def(False) == "no"
+
+    def test_parse(self):
         parser = yuio.parse.Bool()
         assert parser.parse("y") is True
         assert parser.parse("yes") is True
@@ -85,55 +260,99 @@ class TestBool:
             parser.parse("Meh")
         assert parser.parse_config(True) is True
         assert parser.parse_config(False) is False
-        with pytest.raises(ValueError, match="expected a bool"):
+        with pytest.raises(ValueError, match="expected bool"):
             parser.parse_config("x")
 
-        assert parser.describe() == "yes|no"
-        assert parser.describe_value(True) == "yes"
-        assert parser.describe_value(False) == "no"
+    def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(bool), yuio.parse.Bool)
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[bool, yuio.parse.Bool()])
+        assert parser.parse("yes") is True
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Bool conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Bool()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Bool will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[bool, yuio.parse.Bool(), yuio.parse.Bool()]
+            )
 
 
 class TestEnum:
-    def test_by_value(self):
-        class Cuteness(enum.Enum):
-            CATS = "Cats"
-            DOGS = "Dogs"
-            BLAHAJ = ":3"
+    class Cuteness(enum.Enum):
+        CATS = "Cats"
+        DOGS = "Dogs"
+        BLAHAJ = ":3"
 
-        parser = yuio.parse.Enum(Cuteness)
-        assert parser.parse("CATS") is Cuteness.CATS
-        assert parser.parse("CATS") is Cuteness.CATS
-        assert parser.parse_config("CATS") is Cuteness.CATS
-        assert parser.parse("dogs") is Cuteness.DOGS
-        assert parser.parse(":3") is Cuteness.BLAHAJ
+    class Colors(enum.IntEnum):
+        RED = 31
+        GREEN = 32
+        BLUE = 34
+
+    def test_basics_by_value(self):
+        parser = yuio.parse.Enum(self.Cuteness)
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == "Cats|Dogs|:3"
+        assert parser.describe_or_def() == "Cats|Dogs|:3"
+        assert parser.describe_many() == "Cats|Dogs|:3"
+        assert parser.describe_many_or_def() == "Cats|Dogs|:3"
+        assert parser.describe_value(self.Cuteness.BLAHAJ) == ":3"
+        assert parser.describe_value_or_def(self.Cuteness.BLAHAJ) == ":3"
+
+    def test_basics_by_name(self):
+        parser = yuio.parse.Enum(self.Cuteness, by_name=True)
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == "CATS|DOGS|BLAHAJ"
+        assert parser.describe_or_def() == "CATS|DOGS|BLAHAJ"
+        assert parser.describe_many() == "CATS|DOGS|BLAHAJ"
+        assert parser.describe_many_or_def() == "CATS|DOGS|BLAHAJ"
+        assert parser.describe_value(self.Cuteness.BLAHAJ) == "BLAHAJ"
+        assert parser.describe_value_or_def(self.Cuteness.BLAHAJ) == "BLAHAJ"
+
+    def test_by_value(self):
+        parser = yuio.parse.Enum(self.Cuteness)
+        assert parser.parse("CATS") is self.Cuteness.CATS
+        assert parser.parse("CATS") is self.Cuteness.CATS
+        assert parser.parse_config("CATS") is self.Cuteness.CATS
+        assert parser.parse("dogs") is self.Cuteness.DOGS
+        assert parser.parse(":3") is self.Cuteness.BLAHAJ
         with pytest.raises(ValueError):
             parser.parse("Unchi")
-        with pytest.raises(ValueError, match="expected a string"):
+        with pytest.raises(ValueError, match="expected string"):
             parser.parse_config(10)
 
-        assert parser.describe() == "Cats|Dogs|:3"
-        assert parser.describe_value(Cuteness.BLAHAJ) == ":3"
-
     def test_by_name(self):
-        class Colors(enum.IntEnum):
-            RED = 31
-            GREEN = 32
-            BLUE = 34
-
-        parser = yuio.parse.Enum(Colors, by_name=True)
-        assert parser.parse("RED") is Colors.RED
-        assert parser.parse("RED") is Colors.RED
-        assert parser.parse_config("RED") is Colors.RED
-        assert parser.parse("green") is Colors.GREEN
-        assert parser.parse("Blue") is Colors.BLUE
+        parser = yuio.parse.Enum(self.Colors, by_name=True)
+        assert parser.parse("RED") is self.Colors.RED
+        assert parser.parse("RED") is self.Colors.RED
+        assert parser.parse_config("RED") is self.Colors.RED
+        assert parser.parse("green") is self.Colors.GREEN
+        assert parser.parse("Blue") is self.Colors.BLUE
         with pytest.raises(ValueError):
             parser.parse("Color of a beautiful sunset")
-        with pytest.raises(ValueError, match="expected a string"):
+        with pytest.raises(ValueError, match="expected string"):
             parser.parse_config(10)
 
         assert parser.describe() == "RED|GREEN|BLUE"
-        assert parser.describe_value(Colors.RED) == "RED"
+        assert parser.describe_value(self.Colors.RED) == "RED"
 
     def test_short(self):
         class Colors(enum.Enum):
@@ -145,7 +364,7 @@ class TestEnum:
         assert parser.parse("R") is Colors.RED
         assert parser.parse("r") is Colors.RED
         with pytest.raises(
-            ValueError, match="possible candidates are GREEN_FORE, GREEN_BACK"
+            ValueError, match="possible candidates are 'GREEN_FORE', 'GREEN_BACK'"
         ):
             parser.parse("G")
         assert parser.parse("GREEN_F") is Colors.GREEN_FORE
@@ -154,188 +373,263 @@ class TestEnum:
             parser.parse_config("r")
 
     def test_from_type_hint(self):
-        class Cuteness(enum.Enum):
-            CATS = "Cats"
-            DOGS = "Dogs"
-            BLAHAJ = ":3"
-
-        parser = yuio.parse.from_type_hint(Cuteness)
+        parser = yuio.parse.from_type_hint(self.Cuteness)
         assert isinstance(parser, yuio.parse.Enum)
-        assert parser.parse(":3") is Cuteness.BLAHAJ
+        assert parser.parse(":3") is self.Cuteness.BLAHAJ
 
+    def test_partial(self):
+        parser = yuio.parse.Enum()
+        with pytest.raises(TypeError, match="Enum requires an inner parser"):
+            parser.parse("asd")  # type: ignore
 
-class TestContainers:
-    @pytest.mark.parametrize(
-        "ctor",
-        [
-            lambda: yuio.parse.Optional(yuio.parse.Int()),
-            lambda: yuio.parse.from_type_hint(_t.Optional[int]),
-        ],
-    )
-    def test_optional(self, ctor):
-        parser = ctor()
-        assert parser.parse("1") == 1
-        with pytest.raises(ValueError):
-            parser.parse("")
-        with pytest.raises(ValueError):
-            parser.parse("asd")
-        assert parser.parse_config(None) is None
-        assert parser.parse_config(1) == 1
-        with pytest.raises(ValueError, match="expected an int"):
-            parser.parse_config("3")
+        parser = yuio.parse.Enum(by_name=True)
+        with pytest.raises(TypeError, match="Enum requires an inner parser"):
+            parser.parse("asd")  # type: ignore
 
-        assert parser.describe() is None
-        assert parser.describe_or_def() == "int"
-        assert parser.describe_value(None) == "<none>"
-        assert parser.describe_value_or_def(10) == "10"
-
-    @pytest.mark.parametrize(
-        "ctor",
-        [
-            lambda: yuio.parse.List(yuio.parse.Int()),
-            lambda: yuio.parse.from_type_hint(_t.List[int]),
-        ],
-    )
-    def test_list(self, ctor):
-        parser = ctor()
-        assert parser.parse("") == []
-        assert parser.parse("1 2 3") == [1, 2, 3]
-        assert parser.parse("1\n2") == [1, 2]
-        with pytest.raises(ValueError):
-            parser.parse("1:2")
-        assert parser.parse_many(["1", "2"]) == [1, 2]
-        assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
-        with pytest.raises(ValueError, match="expected an int"):
-            parser.parse_config([2, "3"])
-        with pytest.raises(ValueError, match="expected a list"):
-            parser.parse_config(10)
-
-        assert parser.describe() == "int[ int[ ...]]"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "int"
-        assert parser.describe_value([1, 2, 3]) == "1 2 3"
-
-        with pytest.raises(ValueError, match="empty delimiter"):
-            yuio.parse.List(yuio.parse.Int(), delimiter="")
-
-    @pytest.mark.parametrize(
-        "ctor",
-        [
-            lambda: yuio.parse.Set(yuio.parse.Int()),
-            lambda: yuio.parse.from_type_hint(_t.Set[int]),
-        ],
-    )
-    def test_set(self, ctor):
-        parser = ctor()
-        assert parser.parse("") == set()
-        assert parser.parse("1 2 3") == {1, 2, 3}
-        assert parser.parse("1 2 1") == {1, 2}
-        with pytest.raises(ValueError):
-            parser.parse("1:2")
-        assert parser.parse_many(["1", "2"]) == {1, 2}
-        assert parser.parse_config([1, 2, 1]) == {1, 2}
-        with pytest.raises(ValueError, match="expected an int"):
-            parser.parse_config([2, "3"])
-        with pytest.raises(ValueError, match="expected a list"):
-            parser.parse_config(10)
-
-        assert parser.describe() == "int[ int[ ...]]"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "int"
-
-        with pytest.raises(ValueError, match="empty delimiter"):
-            yuio.parse.Set(yuio.parse.Int(), delimiter="")
-
-    @pytest.mark.parametrize(
-        "ctor",
-        [
-            lambda: yuio.parse.FrozenSet(yuio.parse.Int()),
-            lambda: yuio.parse.from_type_hint(_t.FrozenSet[int]),
-        ],
-    )
-    def test_frozenset(self, ctor):
-        parser = ctor()
-        assert parser.parse("") == frozenset()
-        assert parser.parse("1 2 3") == frozenset({1, 2, 3})
-        assert parser.parse("1 2 1") == frozenset({1, 2})
-        with pytest.raises(ValueError):
-            parser.parse("1:2")
-        assert parser.parse_many(["1", "2"]) == frozenset({1, 2})
-        assert parser.parse_config([1, 2, 1]) == frozenset({1, 2})
-        with pytest.raises(ValueError, match="expected an int"):
-            parser.parse_config([2, "3"])
-        with pytest.raises(ValueError, match="expected a list"):
-            parser.parse_config(10)
-
-        assert parser.describe() == "int[ int[ ...]]"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "int"
-
-        with pytest.raises(ValueError, match="empty delimiter"):
-            yuio.parse.FrozenSet(yuio.parse.Int(), delimiter="")
-
-    @pytest.mark.parametrize(
-        "ctor",
-        [
-            lambda: yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Str()),
-            lambda: yuio.parse.from_type_hint(_t.Dict[int, str]),
-        ],
-    )
-    def test_frozenset(self, ctor):
-        parser = ctor()
-        assert parser.parse("10:abc") == {10: "abc"}
-        assert parser.parse("10:abc 11:xyz") == {10: "abc", 11: "xyz"}
-        with pytest.raises(ValueError, match="expected 2 element"):
-            parser.parse("10")
-        assert parser.describe() == "int:str[ int:str[ ...]]"
-        assert parser.describe_many() == "int:str"
-        assert parser.describe_value({1: "z", 2: "y"}) == "1:z 2:y"
-
-    def test_dict_with_pair_value(self):
-        parser = yuio.parse.Dict(
-            yuio.parse.Int(),
-            yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Str(), delimiter=":"),
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[self.Cuteness, yuio.parse.Enum()]
         )
-        assert parser.parse("10:abc:xyz 11:abc::") == {
-            10: ("abc", "xyz"),
-            11: ("abc", ":"),
-        }
-        assert parser.describe() == "int:str:str[ int:str:str[ ...]]"
-        assert (
-            parser.describe_value({-5: ("xyz", "abc"), 10: ("a", "b")})
-            == "-5:xyz:abc 10:a:b"
-        )
-        with pytest.raises(ValueError, match="empty delimiter"):
-            yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Int(), delimiter="")
+        assert parser.parse(":3") is self.Cuteness.BLAHAJ
 
-    @pytest.mark.parametrize(
-        "ctor",
-        [
-            lambda: yuio.parse.Tuple(
-                yuio.parse.Int(), yuio.parse.Int(), yuio.parse.Str()
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Enum conflicts with default "
+                "parser for this type, which is Int."
             ),
-            lambda: yuio.parse.from_type_hint(_t.Tuple[int, int, str]),
-        ],
-    )
-    def test_tuple(self, ctor):
-        parser = ctor()
-        assert parser.parse("1 2 asd") == (1, 2, "asd")
-        assert parser.parse("1 2 asd dsa") == (1, 2, "asd dsa")
-        with pytest.raises(ValueError, match="expected 3 element"):
-            parser.parse("1 2")
-        with pytest.raises(ValueError, match="as an int"):
-            parser.parse("1 dsa asd")
-        with pytest.raises(ValueError, match="empty tuple"):
-            yuio.parse.Tuple()
-        with pytest.raises(ValueError, match="empty delimiter"):
-            yuio.parse.Tuple(yuio.parse.Int(), delimiter="")
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Enum()])
 
-        assert parser.describe() == "int int str"
-        assert parser.describe_many() == ("value", "value", "value")
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Enum will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[self.Cuteness, yuio.parse.Enum(), yuio.parse.Enum()]
+            )
+
+    def test_from_type_hint_annotated_non_partial(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using Enum with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[self.Colors, yuio.parse.Enum(self.Colors)]
+            )
 
 
-class TestTime:
-    def test_datetime(self):
+class TestDecimal:
+    def test_basics(self):
+        parser = yuio.parse.Decimal()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<decimal>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<decimal>"
+        assert parser.describe_value(Decimal(10)) == None
+        assert parser.describe_value_or_def(Decimal(10)) == "10"
+
+    def test_parse(self):
+        parser = yuio.parse.Decimal()
+        assert parser.parse("1.5") == Decimal("1.5")
+        assert parser.parse("-10") == Decimal("-10")
+        assert parser.parse_config(1.0) == Decimal("1.0")
+        assert parser.parse_config("1.5") == Decimal("1.5")
+        with pytest.raises(ValueError, match="can't parse"):
+            parser.parse("x")
+        with pytest.raises(ValueError, match="can't parse"):
+            parser.parse_config("x")
+        with pytest.raises(ValueError, match="expected int or float or string"):
+            parser.parse_config([])
+
+    def test_from_type_hint(self):
+        assert isinstance(yuio.parse.from_type_hint(Decimal), yuio.parse.Decimal)
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[Decimal, yuio.parse.Decimal()])
+        assert parser.parse("1.5") == 1.5
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Decimal conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Decimal()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Decimal will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[Decimal, yuio.parse.Decimal(), yuio.parse.Decimal()]
+            )
+
+
+class TestFraction:
+    def test_basics(self):
+        parser = yuio.parse.Fraction()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<fraction>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<fraction>"
+        assert parser.describe_value(Fraction(10)) == None
+        assert parser.describe_value_or_def(Fraction(10)) == "10"
+
+    def test_parse(self):
+        parser = yuio.parse.Fraction()
+        assert parser.parse("1/3") == Fraction("1/3")
+        assert parser.parse("-10") == Fraction("-10")
+        assert parser.parse_config(1.0) == Fraction("1.0")
+        assert parser.parse_config("1/3") == Fraction("1/3")
+        assert parser.parse_config([2, 5]) == Fraction("2/5")
+        with pytest.raises(ValueError, match="can't parse"):
+            parser.parse("x")
+        with pytest.raises(ValueError, match="can't parse"):
+            parser.parse_config("x")
+        with pytest.raises(
+            ValueError,
+            match="expected int or float or fraction string or a tuple of two ints",
+        ):
+            parser.parse_config([])
+        with pytest.raises(ValueError, match="can't parse value 1/0 as a fraction"):
+            parser.parse_config([1, 0])
+
+    def test_from_type_hint(self):
+        assert isinstance(yuio.parse.from_type_hint(Fraction), yuio.parse.Fraction)
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[Fraction, yuio.parse.Fraction()]
+        )
+        assert parser.parse("1.5") == 1.5
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Fraction conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Fraction()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Fraction will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[Fraction, yuio.parse.Fraction(), yuio.parse.Fraction()]
+            )
+
+
+class TestJson:
+    def test_basics(self):
+        parser = yuio.parse.Json()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<json>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<json>"
+        assert parser.describe_value(dict(a=0)) == None
+        assert parser.describe_value_or_def(dict(a=0)) == "{'a': 0}"
+
+    def test_unstructured(self):
+        parser = yuio.parse.Json()
+        assert parser.parse("[1, 2, 3]") == [1, 2, 3]
+        assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
+        assert parser.parse_config("[1, 2, 3]") == "[1, 2, 3]"
+        with pytest.raises(ValueError, match="unable to decode JSON"):
+            parser.parse("x")
+        assert isinstance(
+            yuio.parse.from_type_hint(yuio.parse.JsonValue), yuio.parse.Json
+        )
+
+    def test_structured(self):
+        parser = yuio.parse.Json(yuio.parse.List(yuio.parse.Int()))
+        assert parser.parse("[1, 2, 3]") == [1, 2, 3]
+        assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
+        with pytest.raises(ValueError, match="unable to decode JSON"):
+            parser.parse("x")
+        with pytest.raises(ValueError, match="expected list, got str"):
+            parser.parse_config("[1, 2, 3]")
+
+    def test_from_type_hint_annotated_unstructured(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[yuio.parse.JsonValue, yuio.parse.Json()]
+        )
+        assert parser.parse("1.5") == 1.5
+
+    def test_from_type_hint_annotated_structured(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[list[int], yuio.parse.Json()])
+        assert parser.parse("[1, 2, 3]") == [1, 2, 3]
+        assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
+        with pytest.raises(ValueError, match="unable to decode JSON"):
+            parser.parse("x")
+        with pytest.raises(ValueError, match="expected list, got str"):
+            parser.parse_config("[1, 2, 3]")
+
+    def test_from_type_hint_annotated_shadowing(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[yuio.parse.JsonValue, yuio.parse.Json(), yuio.parse.Json()]
+        )
+        assert parser.parse("[1, 2, 3]") == [1, 2, 3]
+        assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
+
+    def test_from_type_hint_annotated_unstructured(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using Json with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[yuio.parse.JsonValue, yuio.parse.Json(yuio.parse.Int())]
+            )
+
+    def test_from_type_hint_annotated_structured(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using Json with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Json(yuio.parse.Int())]
+            )
+
+
+class TestDateTime:
+    def test_basics(self):
+        parser = yuio.parse.DateTime()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<date-time>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<date-time>"
+        assert parser.describe_value(datetime.datetime(2025, 1, 1)) == None
+        assert (
+            parser.describe_value_or_def(datetime.datetime(2025, 1, 1))
+            == "2025-01-01 00:00:00"
+        )
+
+    def test_parse(self):
         parser = yuio.parse.DateTime()
 
         assert parser.parse("2007-01-02T10:00:05.001") == datetime.datetime(
@@ -350,15 +644,61 @@ class TestTime:
         assert parser.parse_config(
             datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
         ) == datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("2007 01 02")
-        with pytest.raises(ValueError, match="expected a datetime"):
+        with pytest.raises(ValueError, match="expected str"):
             parser.parse_config(10)
+
+    def test_from_type_hint(self):
         assert isinstance(
             yuio.parse.from_type_hint(datetime.datetime), yuio.parse.DateTime
         )
 
-    def test_date(self):
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[datetime.datetime, yuio.parse.DateTime()]
+        )
+        assert parser.parse("2007-01-02 10:00:05.001") == datetime.datetime(
+            2007, 1, 2, 10, 0, 5, 1000
+        )
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with DateTime conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.DateTime()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with DateTime will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[
+                    datetime.datetime, yuio.parse.DateTime(), yuio.parse.DateTime()
+                ]
+            )
+
+
+class TestDate:
+    def test_basics(self):
+        parser = yuio.parse.Date()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<date>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<date>"
+        assert parser.describe_value(datetime.date(2025, 1, 1)) == None
+        assert parser.describe_value_or_def(datetime.date(2025, 1, 1)) == "2025-01-01"
+
+    def test_parse(self):
         parser = yuio.parse.Date()
 
         assert parser.parse("2007-01-02") == datetime.date(2007, 1, 2)
@@ -369,15 +709,57 @@ class TestTime:
         assert parser.parse_config(datetime.datetime(2007, 1, 2)) == datetime.date(
             2007, 1, 2
         )
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("2007 01 02")
-        with pytest.raises(ValueError, match="expected a date"):
+        with pytest.raises(ValueError, match="expected str"):
             parser.parse_config(10)
-        with pytest.raises(ValueError, match="expected a date"):
+        with pytest.raises(ValueError, match="expected str"):
             parser.parse_config(datetime.time(10, 1))
+
+    def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(datetime.date), yuio.parse.Date)
 
-    def test_time(self):
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[datetime.date, yuio.parse.Date()]
+        )
+        assert parser.parse("2007-01-02") == datetime.date(2007, 1, 2)
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Date conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Date()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Date will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[datetime.date, yuio.parse.Date(), yuio.parse.Date()]
+            )
+
+
+class TestTime:
+    def test_basics(self):
+        parser = yuio.parse.Time()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<time>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<time>"
+        assert parser.describe_value(datetime.time()) == None
+        assert parser.describe_value_or_def(datetime.time()) == "00:00:00"
+
+    def test_parse(self):
         parser = yuio.parse.Time()
 
         assert parser.parse("10:05") == datetime.time(10, 5)
@@ -386,15 +768,57 @@ class TestTime:
         assert parser.parse_config(
             datetime.datetime(2007, 1, 2, 12, 30, 5)
         ) == datetime.time(12, 30, 5)
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("10?05")
-        with pytest.raises(ValueError, match="expected a time"):
+        with pytest.raises(ValueError, match="expected str"):
             parser.parse_config(10)
-        with pytest.raises(ValueError, match="expected a time"):
+        with pytest.raises(ValueError, match="expected str"):
             parser.parse_config(datetime.date(1996, 1, 1))
+
+    def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(datetime.time), yuio.parse.Time)
 
-    def test_timedelta(self):
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[datetime.time, yuio.parse.Time()]
+        )
+        assert parser.parse("10:00:05.001") == datetime.time(10, 0, 5, 1000)
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Time conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Time()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Time will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[datetime.time, yuio.parse.Time(), yuio.parse.Time()]
+            )
+
+
+class TestTimeDelta:
+    def test_basics(self):
+        parser = yuio.parse.TimeDelta()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<time-delta>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<time-delta>"
+        assert parser.describe_value(datetime.timedelta(hours=10)) == None
+        assert parser.describe_value_or_def(datetime.timedelta(hours=10)) == "10:00:00"
+
+    def test_parse(self):
         parser = yuio.parse.TimeDelta()
 
         assert parser.parse("1w") == datetime.timedelta(weeks=1)
@@ -447,22 +871,74 @@ class TestTime:
         assert parser.parse("-1d -05:00") == datetime.timedelta(days=-1, hours=-5)
         assert parser.parse("-1d2h +05:00") == datetime.timedelta(days=-1, hours=-2 + 5)
 
+        assert parser.parse("1d, +5:00") == datetime.timedelta(days=1, hours=5)
+
         with pytest.raises(ValueError, match="empty timedelta"):
             parser.parse("")
 
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("-")
 
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
+            parser.parse("00:00,")
+
+        with pytest.raises(ValueError, match="can't parse"):
+            parser.parse(",00:00")
+
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("00")
 
+        with pytest.raises(ValueError, match="can't parse"):
+            parser.parse("1 megasecond")
+
+    def test_from_type_hint(self):
         assert isinstance(
             yuio.parse.from_type_hint(datetime.timedelta), yuio.parse.TimeDelta
         )
 
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[datetime.timedelta, yuio.parse.TimeDelta()]
+        )
+        assert parser.parse("01:00") == datetime.timedelta(hours=1)
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with TimeDelta conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.TimeDelta()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with TimeDelta will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[
+                    datetime.timedelta, yuio.parse.TimeDelta(), yuio.parse.TimeDelta()
+                ]
+            )
+
 
 class TestPath:
-    def test_path(
+    def test_basics(self):
+        parser = yuio.parse.Path()
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<path>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<path>"
+        assert parser.describe_value(pathlib.Path("/")) == None
+        assert parser.describe_value_or_def(pathlib.Path("/")) == "/"
+
+    def test_parse(
         self,
     ):
         parser = yuio.parse.Path()
@@ -474,7 +950,28 @@ class TestPath:
             parser.parse("~/a")
             == pathlib.Path(os.path.expanduser("~/a")).resolve().absolute()
         )
+        assert (
+            parser.parse_config("/a/s/d") == pathlib.Path("/a/s/d").resolve().absolute()
+        )
+        assert (
+            parser.parse_config("/a/s/d/..")
+            == pathlib.Path("/a/s").resolve().absolute()
+        )
+        assert (
+            parser.parse_config("a/s/d") == pathlib.Path("a/s/d").resolve().absolute()
+        )
+        assert (
+            parser.parse_config("./a/s/./d")
+            == pathlib.Path("a/s/d").resolve().absolute()
+        )
+        assert (
+            parser.parse_config("~/a")
+            == pathlib.Path(os.path.expanduser("~/a")).resolve().absolute()
+        )
+        with pytest.raises(ValueError, match="expected string"):
+            parser.parse_config(10)
 
+    def test_extensions(self):
         parser = yuio.parse.Path(extensions=[".cfg", ".txt"])
         assert (
             parser.parse("/a/s/d.cfg")
@@ -487,12 +984,89 @@ class TestPath:
         with pytest.raises(ValueError, match="should have extension .cfg, .txt"):
             parser.parse("file.sql")
 
+    def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(pathlib.Path), yuio.parse.Path)
         assert isinstance(
             yuio.parse.from_type_hint(_t.Union[pathlib.Path, str]), yuio.parse.Path
         )
+        assert isinstance(
+            yuio.parse.from_type_hint(_t.Union[str, pathlib.Path]), yuio.parse.Path
+        )
 
-    def test_file(self, tmpdir):
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[pathlib.Path, yuio.parse.Path()]
+        )
+        assert parser.parse("/a/s/d") == pathlib.Path("/a/s/d").resolve().absolute()
+
+    def test_from_type_hint_annotated_extensions(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[pathlib.Path, yuio.parse.Path(extensions=[".x"])]
+        )
+        assert parser.parse("/a/s/d.x") == pathlib.Path("/a/s/d.x").resolve().absolute()
+        with pytest.raises(ValueError, match="should have extension .x"):
+            parser.parse("file.y")
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Path conflicts with default "
+                "parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Path()])
+
+    def test_from_type_hint_annotated_shadowing(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Path will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[pathlib.Path, yuio.parse.Path(), yuio.parse.Path()]
+            )
+
+
+class TestExistingPath:
+    def test_parse(self, tmpdir):
+        tmpdir.join("file.cfg").write("hi!")
+
+        parser = yuio.parse.ExistingPath()
+        with pytest.raises(ValueError, match="doesn't exist"):
+            parser.parse(tmpdir.join("file2.cfg").strpath)
+        assert (
+            str(parser.parse(tmpdir.join("file.cfg").strpath))
+            == tmpdir.join("file.cfg").strpath
+        )
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[pathlib.Path, yuio.parse.ExistingPath()]
+        )
+        assert isinstance(parser, yuio.parse.ExistingPath)
+
+
+class TestNonExistentPath:
+    def test_parse(self, tmpdir):
+        tmpdir.join("file.cfg").write("hi!")
+
+        parser = yuio.parse.NonExistentPath()
+        with pytest.raises(ValueError, match="already exists"):
+            parser.parse(tmpdir.join("file.cfg").strpath)
+        assert (
+            str(parser.parse(tmpdir.join("file2.cfg").strpath))
+            == tmpdir.join("file2.cfg").strpath
+        )
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[pathlib.Path, yuio.parse.NonExistentPath()]
+        )
+        assert isinstance(parser, yuio.parse.NonExistentPath)
+
+
+class TestFile:
+    def test_parse(self, tmpdir):
         tmpdir.join("file.cfg").write("hi!")
 
         parser = yuio.parse.File()
@@ -515,7 +1089,15 @@ class TestPath:
         with pytest.raises(ValueError, match="should have extension .cfg, .txt"):
             parser.parse(tmpdir.join("file.sql").strpath)
 
-    def test_dir(self, tmpdir):
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[pathlib.Path, yuio.parse.File()]
+        )
+        assert isinstance(parser, yuio.parse.File)
+
+
+class TestDir:
+    def test_parse(self, tmpdir):
         tmpdir.join("file.cfg").write("hi!")
 
         parser = yuio.parse.Dir()
@@ -526,7 +1108,13 @@ class TestPath:
         with pytest.raises(ValueError, match="is not a directory"):
             parser.parse(tmpdir.join("file.cfg").strpath)
 
-    def test_git_repo(self, tmpdir):
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[pathlib.Path, yuio.parse.Dir()])
+        assert isinstance(parser, yuio.parse.Dir)
+
+
+class TestGitRepo:
+    def test_parse(self, tmpdir):
         tmpdir.join("file.cfg").write("hi!")
 
         parser = yuio.parse.GitRepo()
@@ -541,45 +1129,57 @@ class TestPath:
 
         assert str(parser.parse(tmpdir.strpath)) == tmpdir.strpath
 
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[pathlib.Path, yuio.parse.GitRepo()]
+        )
+        assert isinstance(parser, yuio.parse.GitRepo)
 
-class TestConstraints:
-    def test_bound(self):
+
+class TestBound:
+    def test_api(self):
         with pytest.raises(TypeError, match="lower and lower_inclusive"):
             yuio.parse.Bound(yuio.parse.Int(), lower=0, lower_inclusive=1)
         with pytest.raises(TypeError, match="upper and upper_inclusive"):
             yuio.parse.Bound(yuio.parse.Int(), upper=0, upper_inclusive=1)
 
-        parser = yuio.parse.Int().bound()
+    def test_empty_bounds(self):
+        parser = yuio.parse.Bound(yuio.parse.Int())
         assert parser.parse("0") == 0
         assert parser.parse("-10") == -10
         assert parser.parse("10") == 10
 
-        parser = yuio.parse.Int().gt(0)
+    def test_gt(self):
+        parser = yuio.parse.Gt(yuio.parse.Int(), 0)
         assert parser.parse("10") == 10
         with pytest.raises(ValueError, match="should be greater than 0"):
             parser.parse("-1")
         with pytest.raises(ValueError, match="should be greater than 0"):
             parser.parse("0")
 
-        parser = yuio.parse.Int().ge(0)
+    def test_ge(self):
+        parser = yuio.parse.Ge(yuio.parse.Int(), 0)
         assert parser.parse("10") == 10
         assert parser.parse("0") == 0
         with pytest.raises(ValueError, match="should be greater or equal to 0"):
             parser.parse("-1")
 
-        parser = yuio.parse.Int().lt(10)
+    def test_lt(self):
+        parser = yuio.parse.Lt(yuio.parse.Int(), 10)
         assert parser.parse("5") == 5
         with pytest.raises(ValueError, match="should be lesser than 10"):
             parser.parse("10")
         with pytest.raises(ValueError, match="should be lesser than 10"):
             parser.parse("11")
 
-        parser = yuio.parse.Int().le(10)
+    def test_le(self):
+        parser = yuio.parse.Le(yuio.parse.Int(), 10)
         assert parser.parse("5") == 5
         assert parser.parse("10") == 10
         with pytest.raises(ValueError, match="should be lesser or equal to 10"):
             parser.parse("11")
 
+    def test_range_inclusive(self):
         parser = yuio.parse.Bound(
             yuio.parse.Int(), lower_inclusive=0, upper_inclusive=5
         )
@@ -591,6 +1191,7 @@ class TestConstraints:
         with pytest.raises(ValueError, match="should be lesser or equal to 5"):
             parser.parse("6")
 
+    def test_range_non_inclusive(self):
         parser = yuio.parse.Bound(yuio.parse.Int(), lower=0, upper=5)
         assert parser.parse("2") == 2
         with pytest.raises(ValueError, match="should be greater than 0"):
@@ -598,32 +1199,218 @@ class TestConstraints:
         with pytest.raises(ValueError, match="should be lesser than 5"):
             parser.parse("5")
 
-    def test_one_of(self):
+    def test_partial(self):
+        parser = yuio.parse.Bound()
+        with pytest.raises(TypeError, match="Bound requires an inner parser"):
+            parser.parse("asd")  # type: ignore
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[int, yuio.parse.Bound(lower_inclusive=0, upper=10)]
+        )
+        assert parser.parse("0") == 0
+        assert parser.parse("9") == 9
+        with pytest.raises(ValueError, match="should be lesser than 10"):
+            parser.parse("10")
+
+    def test_from_type_hint_annotated_combine(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[
+                int, yuio.parse.Bound(lower_inclusive=0), yuio.parse.Bound(upper=10)
+            ]
+        )
+        assert parser.parse("0") == 0
+        assert parser.parse("9") == 9
+        with pytest.raises(ValueError, match="should be lesser than 10"):
+            parser.parse("10")
+
+    def test_from_type_hint_annotated_non_partial(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using Bound with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Bound(yuio.parse.Int())]
+            )
+
+    def test_gt_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Gt(0)])
+        assert parser.parse("10") == 10
+        with pytest.raises(ValueError, match="should be greater than 0"):
+            parser.parse("-1")
+        with pytest.raises(ValueError, match="should be greater than 0"):
+            parser.parse("0")
+        with pytest.raises(TypeError):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Gt(yuio.parse.Int(), 0, 0)])  # type: ignore
+
+    def test_ge_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Ge(0)])
+        assert parser.parse("10") == 10
+        assert parser.parse("0") == 0
+        with pytest.raises(ValueError, match="should be greater or equal to 0"):
+            parser.parse("-1")
+        with pytest.raises(TypeError):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Ge(yuio.parse.Int(), 0, 0)])  # type: ignore
+
+    def test_lt_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Lt(10)])
+        assert parser.parse("5") == 5
+        with pytest.raises(ValueError, match="should be lesser than 10"):
+            parser.parse("10")
+        with pytest.raises(ValueError, match="should be lesser than 10"):
+            parser.parse("11")
+        with pytest.raises(TypeError):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Lt(yuio.parse.Int(), 10, 0)])  # type: ignore
+
+    def test_le_annotated(self):
+        parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Le(10)])
+        assert parser.parse("5") == 5
+        assert parser.parse("10") == 10
+        with pytest.raises(ValueError, match="should be lesser or equal to 10"):
+            parser.parse("11")
+        with pytest.raises(TypeError):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Le(yuio.parse.Int(), 10, 0)])  # type: ignore
+
+
+class TestOneOf:
+    def test_parse(self):
         parser = yuio.parse.OneOf(yuio.parse.Str(), ["qux", "duo"])
         assert parser.parse("qux") == "qux"
         assert parser.parse("duo") == "duo"
-        with pytest.raises(ValueError, match="qux, duo"):
+        with pytest.raises(ValueError, match="'qux', 'duo'"):
             parser.parse("foo")
-        with pytest.raises(ValueError, match="qux, duo"):
+        with pytest.raises(ValueError, match="'qux', 'duo'"):
             parser.parse("Qux")
-        with pytest.raises(ValueError, match="qux, duo"):
+        with pytest.raises(ValueError, match="'qux', 'duo'"):
             parser.parse("Duo")
 
-        assert parser.describe() == "qux|duo"
+    def test_partial(self):
+        parser = yuio.parse.OneOf([])
+        with pytest.raises(TypeError, match="OneOf requires an inner parser"):
+            parser.parse("asd")  # type: ignore
 
-        parser = yuio.parse.OneOf(yuio.parse.Str().lower(), ["qux", "duo"])
+    def test_one_of_combined_with_lower(self):
+        parser = yuio.parse.OneOf(yuio.parse.Lower(yuio.parse.Str()), ["qux", "duo"])
         assert parser.parse("Qux") == "qux"
         assert parser.parse("Duo") == "duo"
 
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[str, yuio.parse.OneOf(["qux", "duo"])]
+        )
+        assert parser.parse("qux") == "qux"
+        assert parser.parse("duo") == "duo"
+        with pytest.raises(ValueError, match="'qux', 'duo'"):
+            parser.parse("foo")
+        with pytest.raises(ValueError, match="'qux', 'duo'"):
+            parser.parse("Qux")
+        with pytest.raises(ValueError, match="'qux', 'duo'"):
+            parser.parse("Duo")
 
-class TestFunctional:
-    def test_map(self):
+    def test_from_type_hint_annotated_combined_with_lower(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[
+                str,
+                yuio.parse.Str(),
+                yuio.parse.Lower(),
+                yuio.parse.OneOf(["qux", "duo"]),
+            ]
+        )
+        assert parser.parse("Qux") == "qux"
+        assert parser.parse("Duo") == "duo"
+
+    def test_from_type_hint_annotated_non_partial(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using OneOf with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.OneOf(yuio.parse.Int(), [1, 2, 3])]
+            )
+
+
+class TestMap:
+    def test_basics(self):
+        parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x)
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<int>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value(10) == None
+        assert parser.describe_value_or_def(10) == "10"
+
+    def test_basics_collection(self):
+        parser = yuio.parse.Map(yuio.parse.List(yuio.parse.Int()), lambda x: x)
+        assert parser.supports_parse_many()
+        assert parser.get_nargs() == "*"
+        assert parser.parse_many(["1", "2", "3"]) == [1, 2, 3]
+        assert parser.describe() == "<int>[ <int>[ ...]]"
+        assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value([]) == ""
+        assert parser.describe_value_or_def([]) == ""
+
+    def test_parse(self):
         parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2)
         assert parser.parse("2") == 4
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("foo")
 
-    def test_apply(self):
+    def test_partial(self):
+        parser = yuio.parse.Map(lambda x: x)
+        with pytest.raises(TypeError, match="Map requires an inner parser"):
+            parser.parse("asd")  # type: ignore
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[int, yuio.parse.Map[int, int](lambda x: x * 2)]
+        )
+        assert parser.parse("2") == 4
+        with pytest.raises(ValueError, match="can't parse"):
+            parser.parse("foo")
+
+    def test_from_type_hint_annotated_non_partial(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using Map with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Map(yuio.parse.Int(), lambda x: x)]
+            )
+
+
+class TestApply:
+    def test_basics(self):
+        parser = yuio.parse.Apply(yuio.parse.Int(), lambda x: None)
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<int>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value(10) == None
+        assert parser.describe_value_or_def(10) == "10"
+
+    def test_basics_collection(self):
+        parser = yuio.parse.Apply(yuio.parse.List(yuio.parse.Int()), lambda x: None)
+        assert parser.supports_parse_many()
+        assert parser.get_nargs() == "*"
+        assert parser.parse_many(["1", "2", "3"]) == [1, 2, 3]
+        assert parser.describe() == "<int>[ <int>[ ...]]"
+        assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value([]) == ""
+        assert parser.describe_value_or_def([]) == ""
+
+    def test_parse(self):
         value = None
 
         def fn(x):
@@ -637,45 +1424,343 @@ class TestFunctional:
 
         value = None
 
-        with pytest.raises(ValueError, match="could not parse"):
+        with pytest.raises(ValueError, match="can't parse"):
             parser.parse("foo")
         assert value is None
 
+    def test_partial(self):
+        parser = yuio.parse.Apply(print)
+        with pytest.raises(TypeError, match="Apply requires an inner parser"):
+            parser.parse("asd")  # type: ignore
 
-class TestFromTypeHint:
-    @pytest.mark.parametrize(
-        "typehint_ctor",
-        [
-            lambda: _t.Optional[int],
-            lambda: _t.Union[int, None],
-            lambda: typing_extensions.Optional[int],
-            lambda: typing_extensions.Union[int, None],
-            pytest.param(
-                lambda: int | None,  # type: ignore
-                marks=pytest.mark.skipif(
-                    sys.version_info < (3, 10), reason="New union syntax"
-                ),
-            ),
-        ],
+    def test_from_type_hint_annotated(self):
+        value = None
+
+        def fn(x):
+            nonlocal value
+            value = x
+            return x * 2
+
+        parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Apply(fn)])
+        assert parser.parse("2") == 2
+        assert value == 2
+
+    def test_from_type_hint_annotated_non_partial(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using Apply with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Apply(yuio.parse.Int(), lambda x: None)]
+            )
+
+
+class TestSimpleCollections:
+    @pytest.fixture(
+        params=[
+            (yuio.parse.List, list),
+            (yuio.parse.Set, set),
+            (yuio.parse.FrozenSet, frozenset),
+        ]
     )
-    def test_optionals(self, typehint_ctor):
-        parser = yuio.parse.from_type_hint(typehint_ctor())
-        assert isinstance(parser, yuio.parse.Optional)
+    def test_params(self, request):
+        return request.param
+
+    def test_parse(self, test_params):
+        parser_cls, ctor = test_params
+
+        parser = parser_cls(yuio.parse.Int())
+        assert parser.supports_parse_many()
+        assert parser.get_nargs() == "*"
+        assert parser.parse("1 2 3") == ctor([1, 2, 3])
+        assert parser.parse_config([1, 2, 3]) == ctor([1, 2, 3])
+        assert parser.parse_many(["1", "2", "3"]) == ctor([1, 2, 3])
+        assert parser.describe() == "<int>[ <int>[ ...]]"
+        assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value(ctor([1, 2, 3])) == "1 2 3"
+        assert parser.describe_value_or_def(ctor([1, 2, 3])) == "1 2 3"
+
+        with pytest.raises(yuio.parse.ParsingError, match="expected .*?, got int"):
+            parser.parse_config(123)
+
+    def test_delim(self, test_params):
+        parser_cls, ctor = test_params
+
+        parser = parser_cls(yuio.parse.Int(), delimiter=",")
+        assert parser.supports_parse_many()
+        assert parser.get_nargs() == "*"
+        assert parser.parse("1, 2, 3") == ctor([1, 2, 3])
+        assert parser.parse_config([1, 2, 3]) == ctor([1, 2, 3])
+        assert parser.parse_many(["1", "2", "3"]) == ctor([1, 2, 3])
+        assert parser.describe() == "<int>[,<int>[,...]]"
+        assert parser.describe_or_def() == "<int>[,<int>[,...]]"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value(ctor([1, 2, 3])) == "1,2,3"
+        assert parser.describe_value_or_def(ctor([1, 2, 3])) == "1,2,3"
+
+    def test_partial(self, test_params):
+        parser_cls, _ = test_params
+
+        parser = parser_cls()
+        with pytest.raises(TypeError, match="requires an inner parser"):
+            parser.parse("asd")
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="new typing syntax")
+    def test_from_type_hint_annotated(self, test_params):
+        parser_cls, ctor = test_params
+        parser = yuio.parse.from_type_hint(_t.Annotated[ctor[int], parser_cls()])
+        assert parser.parse("1 2 3") == ctor([1, 2, 3])
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[ctor[int], parser_cls(delimiter=",")]
+        )
+        assert parser.parse("1, 2, 3") == ctor([1, 2, 3])
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="new typing syntax")
+    def test_from_type_hint_annotated_shadows(self, test_params):
+        parser_cls, ctor = test_params
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with .*? will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[ctor[int], parser_cls(), parser_cls()]
+            )
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="new typing syntax")
+    def test_from_type_hint_annotated_wrong_type(self, test_params):
+        parser_cls, _ = test_params
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with .*? conflicts with "
+                "default parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, parser_cls()])
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="new typing syntax")
+    def test_from_type_hint_annotated_non_partial(self, test_params):
+        parser_cls, ctor = test_params
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using .*? with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[ctor[int], parser_cls(yuio.parse.Int())]
+            )
+
+
+class TestDict:
+    def test_parse(self):
+        parser = yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Str())
+        assert parser.supports_parse_many()
+        assert parser.get_nargs() == "*"
+        assert parser.parse("1:a 2:b") == {1: "a", 2: "b"}
+        assert parser.parse_config({1: "a", 2: "b"}) == {1: "a", 2: "b"}
+        assert parser.parse_config([(1, "a"), (2, "b")]) == {1: "a", 2: "b"}
+        assert parser.parse_many(["1:a", "2:b"]) == {1: "a", 2: "b"}
+        assert parser.describe() == "<int>:<str>[ <int>:<str>[ ...]]"
+        assert parser.describe_or_def() == "<int>:<str>[ <int>:<str>[ ...]]"
+        assert parser.describe_many() == "<int>:<str>"
+        assert parser.describe_many_or_def() == "<int>:<str>"
+        assert parser.describe_value({1: "a", 2: "b"}) == "1:a 2:b"
+        assert parser.describe_value_or_def({1: "a", 2: "b"}) == "1:a 2:b"
+
+        with pytest.raises(
+            yuio.parse.ParsingError, match="expected dict or list, got int"
+        ):
+            parser.parse_config(123)
+        with pytest.raises(yuio.parse.ParsingError, match="expected int, got str"):
+            parser.parse_config({"x": "y"})
+
+    def test_delim(self):
+        parser = yuio.parse.Dict(
+            yuio.parse.Int(), yuio.parse.Str(), delimiter=",", pair_delimiter="-"
+        )
+        assert parser.supports_parse_many()
+        assert parser.get_nargs() == "*"
+        assert parser.parse("1-a, 2-b") == {1: "a", 2: "b"}
+        assert parser.parse_many(["1-a", "2-b"]) == {1: "a", 2: "b"}
+        assert parser.describe() == "<int>-<str>[,<int>-<str>[,...]]"
+        assert parser.describe_or_def() == "<int>-<str>[,<int>-<str>[,...]]"
+        assert parser.describe_many() == "<int>-<str>"
+        assert parser.describe_many_or_def() == "<int>-<str>"
+        assert parser.describe_value({1: "a", 2: "b"}) == "1-a,2-b"
+        assert parser.describe_value_or_def({1: "a", 2: "b"}) == "1-a,2-b"
+
+    def test_partial(self):
+        parser = yuio.parse.Dict()
+        with pytest.raises(TypeError, match="requires an inner parser"):
+            parser.parse("asd")  # type: ignore
+        parser = yuio.parse.Dict(yuio.parse.Int())  # type: ignore
+        with pytest.raises(TypeError, match="requires an inner parser"):
+            parser.parse("asd")
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[_t.Dict[int, str], yuio.parse.Dict()]
+        )
+        assert parser.parse("1:a 2:b") == {1: "a", 2: "b"}
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[
+                _t.Dict[int, str], yuio.parse.Dict(delimiter=",", pair_delimiter="-")
+            ]
+        )
+        assert parser.parse("1-a,2-b") == {1: "a", 2: "b"}
+
+    def test_from_type_hint_annotated_shadows(self):
+        with pytest.raises(
+            TypeError,
+            match="annotating a type with Dict will override all previous annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[_t.Dict[int, str], yuio.parse.Dict(), yuio.parse.Dict()]
+            )
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Dict conflicts with "
+                "default parser for this type, which is Int."
+            ),
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Dict()])
+
+    def test_from_type_hint_annotated_non_partial(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using Dict with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[
+                    _t.Dict[str, int],
+                    yuio.parse.Dict(yuio.parse.Str(), yuio.parse.Int()),
+                ]
+            )
+
+
+class TestOptional:
+    def test_basics(self):
+        parser = yuio.parse.Optional(yuio.parse.Int())
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "<int>"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value(10) == None
+        assert parser.describe_value_or_def(10) == "10"
+        assert parser.describe_value(None) == "<none>"
+        assert parser.describe_value_or_def(None) == "<none>"
+
+    def test_basics_collection(self):
+        parser = yuio.parse.Optional(yuio.parse.List(yuio.parse.Int()))
+        assert parser.supports_parse_many()
+        assert parser.get_nargs() == "*"
+        assert parser.parse_many(["1", "2", "3"]) == [1, 2, 3]
+        assert parser.describe() == "<int>[ <int>[ ...]]"
+        assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
+        assert parser.describe_many() == None
+        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_value([]) == ""
+        assert parser.describe_value_or_def([]) == ""
+        assert parser.describe_value(None) == "<none>"
+        assert parser.describe_value_or_def(None) == "<none>"
+
+    def test_parse(self):
+        parser = yuio.parse.Optional(yuio.parse.Int())
+        assert parser.parse("1") == 1
+        assert parser.parse_config(1) == 1
+        assert parser.parse_config(None) == None
+        assert parser.supports_parse_many() is False
+
+    def test_partial(self):
+        parser = yuio.parse.Optional()
+        with pytest.raises(TypeError, match="requires an inner parser"):
+            parser.parse("asd")  # type: ignore
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[_t.List[int], yuio.parse.Optional()]
+        )
+        assert parser.parse_config(None) == None
+        assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
+
+    def test_from_type_hint_annotated_non_partial(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using .*? with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Optional(yuio.parse.Int())]
+            )
+
+
+class TestUnion:
+    def test_basics(self):
+        parser = yuio.parse.Union(yuio.parse.Int(), yuio.parse.Str())
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == "<int>|<str>"
+        assert parser.describe_or_def() == "<int>|<str>"
+        assert parser.describe_many() == "<int>|<str>"
+        assert parser.describe_many_or_def() == "<int>|<str>"
+        assert parser.describe_value(10) == None
+        assert parser.describe_value_or_def(10) == "10"
+
+    def test_parse(self):
+        parser = yuio.parse.Union(
+            yuio.parse.Int(), yuio.parse.OneOf(yuio.parse.Str(), ["foo", "bar"])
+        )
+
         assert parser.parse("10") == 10
+        assert parser.parse("foo") == "foo"
+        with pytest.raises(ValueError, match="can't parse 'baz'"):
+            parser.parse("baz")
 
-    @pytest.mark.parametrize(
-        "typehint_ctor",
-        [
-            lambda: _t.Union[int, str],
-            lambda: typing_extensions.Union[int, str],
-            pytest.param(
-                lambda: int | str,  # type: ignore
-                marks=pytest.mark.skipif(
-                    sys.version_info < (3, 10), reason="New union syntax"
-                ),
+        assert parser.parse_config(10) == 10
+        assert parser.parse_config("foo") == "foo"
+        with pytest.raises(ValueError, match="can't parse 'baz'"):
+            parser.parse_config("baz")
+
+    def test_partial(self):
+        parser = yuio.parse.Union()
+        with pytest.raises(TypeError, match="requires an inner parser"):
+            parser.parse("asd")  # type: ignore
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[_t.Union[int, str], yuio.parse.Union()]
+        )
+        assert parser.parse("10") == 10
+        assert parser.parse("foo") == "foo"
+
+    def test_from_type_hint_annotated_wrong_type(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "annotating int with Union conflicts with default "
+                "parser for this type, which is Int."
             ),
-        ],
-    )
-    def test_union(self, typehint_ctor):
-        with pytest.raises(TypeError, match="unions are not supported"):
-            yuio.parse.from_type_hint(typehint_ctor())
+        ):
+            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Union()])
+
+    def test_from_type_hint_annotated_non_partial(self):
+        with pytest.raises(
+            TypeError,
+            match="don't provide inner parser when using .*? with type annotations",
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[
+                    _t.Union[int, str],
+                    yuio.parse.Union(yuio.parse.Int(), yuio.parse.Str()),
+                ]
+            )

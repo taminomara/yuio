@@ -6,7 +6,6 @@ import sys
 import pytest
 
 import yuio.term
-import yuio.theme
 from yuio import _typing as _t
 
 
@@ -1287,7 +1286,7 @@ def mock_term_io(
     )
     old_enter_raw_mode, yuio.term._enter_raw_mode = (
         yuio.term._enter_raw_mode,
-        lambda: contextlib.nullcontext(),
+        lambda *_, **__: contextlib.nullcontext(),
     )
     old_enable_vt_processing, yuio.term._enable_vt_processing = (
         yuio.term._enable_vt_processing,

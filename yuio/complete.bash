@@ -334,7 +334,7 @@ function __yuio_compl_v1__complete {
             # complete choices with descriptions
             local half_size; (( half_size = $size / 2 ))
             local choices=(); __yuio_compl_v1__complete__pop_n $half_size choices || return
-            printf -v choices "%q\n" "${choices[@]}" '$$$'
+            printf -v choices "%q\n" "${choices[@]}"
             COMPREPLY+=( $(compgen -W "$choices" -- "$cur"))
         ;;
         g)

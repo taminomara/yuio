@@ -30,5 +30,5 @@ Type " you"
 Sleep 250ms
 Type " down!"
 Sleep 3s
-Enter
+Ctrl+D
 Sleep 4s

@@ -2,7 +2,6 @@ import enum
 from typing import Set
 
 import yuio.io
-import yuio.parse
 
 
 class Console(enum.Enum):

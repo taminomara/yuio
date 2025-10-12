@@ -96,16 +96,19 @@ function __yuio_compl_v1__handle_subcommand {
 
     unset a b
 
+    local opt
     for opt in $opts; do
       case $opt in
         -*|\*-*)
           if [[ $nargs == - ]]; then
             opt="(: * -)$opt"
           elif [[ $opt == -* ]]; then
-            local xopt=( ${(j: :)opts//$opt} )
+            local xopt=${(j: :)opts:#"$opt"}
             opt=${xopt:+"($xopt)"}$opt
           fi
-          if [[ $opt == --* ]]; then
+          if [[ $nargs == [-0] ]]; then
+            : # no argspec needed
+          elif [[ $opt == --* ]]; then
             opt=$opt=
           else
             opt=$opt+
@@ -238,9 +241,6 @@ function __yuio_compl_v1__complete {
       local half_size; (( half_size = $size / 2 ))
       __yuio_compl_v1__complete__pop_n $half_size && local choices=( "${reply[@]}" ) || return
       __yuio_compl_v1__complete__pop_n $half_size && local descriptions=( "${reply[@]}" ) || return
-
-      _message "${#choices[@]}"
-      _message "${#descriptions[@]}"
 
       for i in $(seq $half_size); do
         descriptions[i]="${choices[i]/:/\\:}:${descriptions[i]}"

@@ -490,9 +490,9 @@ class TestAsk:
         io_mocker.expect_screen(
             [
                 "Are you there?      ",
-                "> no        yes     ",
+                "> no                ",
+                "  yes               ",
                 "f1 help             ",
-                "                    ",
                 "                    ",
             ],
         )
@@ -506,9 +506,9 @@ class TestAsk:
         io_mocker.expect_screen(
             [
                 "Are you there?      ",
-                "> no        yes     ",
+                "> no                ",
+                "  yes               ",
                 "f1 help             ",
-                "                    ",
                 "                    ",
             ],
         )
@@ -702,10 +702,10 @@ class TestAskNonInteractive:
             [
                 "Are you there? (yes|",
                 "no) what?           ",
-                "Error: could not    ",
-                "parse value 'what?',",
-                "enter either 'yes'  ",
-                "or 'no'.            ",
+                "Error: can't parse  ",
+                "'what?', enter      ",
+                "either 'yes' or     ",
+                "'no'.               ",
                 "Are you there? (yes|",
                 "no)                 ",
             ],
@@ -715,7 +715,7 @@ class TestAskNonInteractive:
         with io_mocker.mock():
             assert yuio.io.ask("Are you there?", parser=yuio.parse.Bool())
 
-    def test_parser(self, io_mocker: IOMocker):
+    def test_parser_hint(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
                 "Are you there? (yes|",
@@ -727,10 +727,10 @@ class TestAskNonInteractive:
             [
                 "Are you there? (yes|",
                 "no) what?           ",
-                "Error: could not    ",
-                "parse value 'what?',",
-                "enter either 'yes'  ",
-                "or 'no'.            ",
+                "Error: can't parse  ",
+                "'what?', enter      ",
+                "either 'yes' or     ",
+                "'no'.               ",
                 "Are you there? (yes|",
                 "no)                 ",
             ],
@@ -744,7 +744,8 @@ class TestAskNonInteractive:
         io_mocker.expect_screen(
             [
                 "Enter some numbers (",
-                "int[ int[ ...]]):   ",
+                "<int>[ <int>[ ...]])",
+                ":                   ",
             ],
         )
         io_mocker.expect_istream_readline("123 456\n")
@@ -971,6 +972,10 @@ class TestEdit:
     ):
         monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
         assert yuio.io.edit("a\nb\n[ab]", comment_marker="[ab]") == "a\nb\n"
+
+    def test_file_removed(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("yuio.io.detect_editor", lambda: "rm")
+        assert yuio.io.edit("foo") == ""
 
 
 class TestTask:
@@ -1788,6 +1793,13 @@ class TestSuspendOutput:
         "meth,args,expected",
         [
             (
+                "info",
+                ("Bar.",),
+                [
+                    "Bar.                ",
+                ],
+            ),
+            (
                 "warning",
                 ("Bar.",),
                 [
@@ -1819,7 +1831,6 @@ class TestSuspendOutput:
                 "heading",
                 ("Bar.",),
                 [
-                    "                    ",
                     "                    ",
                     "⣿ Bar.              ",
                     "                    ",
@@ -1945,7 +1956,6 @@ class TestSuspendOutput:
                 "heading",
                 ("Bar.",),
                 [
-                    "                    ",
                     "                    ",
                     "⣿ Bar.              ",
                     "                    ",
@@ -2111,3 +2121,50 @@ class TestSuspendOutput:
                 io_mocker.mark()
                 task.done()
                 io_mocker.mark()
+
+
+class TestLog:
+    @pytest.fixture(autouse=True)
+    def setup_logger(self):
+        import logging
+
+        self.logger = logging.getLogger("yuio.test.test_log")
+        self.logger.setLevel(logging.DEBUG)
+        handler = yuio.io.Handler()
+        self.logger.addHandler(handler)
+
+        yield
+
+        self.logger.removeHandler(handler)
+
+    def test_log(self, ostream: io.StringIO):
+        self.logger.debug("debug")
+        self.logger.info("info")
+        self.logger.warning("warning")
+        self.logger.error("error")
+        self.logger.critical("critical")
+
+        value = ostream.getvalue()
+        assert "yuio.test.test_log DEBU debug" in value
+        assert "yuio.test.test_log INFO info" in value
+        assert "yuio.test.test_log WARN warning" in value
+        assert "yuio.test.test_log ERRO error" in value
+        assert "yuio.test.test_log CRIT critical" in value
+
+    def test_log_tb(self, ostream: io.StringIO):
+        self.logger.debug("debug")
+        try:
+            raise RuntimeError("oh no!")
+        except RuntimeError:
+            self.logger.exception("something went wrong")
+
+        value = ostream.getvalue()
+        assert "something went wrong" in value
+        assert "oh no!" in value
+
+    def test_log_stack(self, ostream: io.StringIO):
+        self.logger.info("hi there!", stack_info=True)
+
+        value = ostream.getvalue()
+        assert "hi there!" in value
+        assert 'self.logger.info("hi there!", stack_info=True)' in value

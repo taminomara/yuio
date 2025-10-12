@@ -1,3 +1,5 @@
+# pyright: reportCallIssue=false, reportGeneralTypeIssues=false, reportArgumentType=false
+
 import argparse
 import enum
 
@@ -28,8 +30,8 @@ class TestBasics:
 
     def test_default_field(self):
         class MyConfig(yuio.config.Config):
-            f1: str = yuio.config.field("1")
-            f2: str = yuio.config.field("2")
+            f1: str = yuio.config.field(default="1")
+            f2: str = yuio.config.field(default="2")
 
         c = MyConfig()
         assert c.f1 == "1"
@@ -243,7 +245,7 @@ class TestBasics:
         class MyConfig1(yuio.config.Config):
             x: int
 
-        with pytest.raises(yuio.parse.ParsingError, match="expected an int"):
+        with pytest.raises(yuio.parse.ParsingError, match="expected int"):
             assert MyConfig1.load_from_parsed_file(dict(x=None))
 
         class MyConfig2(yuio.config.Config):
@@ -303,7 +305,7 @@ class TestEnv:
 
     def test_disabled(self, monkeypatch: pytest.MonkeyPatch):
         class MyConfig(yuio.config.Config):
-            f_disabled: str = yuio.config.field("f_disabled", env=yuio.DISABLED)
+            f_disabled: str = yuio.config.field(default="f_disabled", env=yuio.DISABLED)
             f_enabled: str = "f_enabled"
 
         monkeypatch.setenv("F_DISABLED", "f_disabled.2")
@@ -314,7 +316,7 @@ class TestEnv:
 
     def test_configured_name(self, monkeypatch: pytest.MonkeyPatch):
         class MyConfig(yuio.config.Config):
-            f1: str = yuio.config.field("f1", env="FX")
+            f1: str = yuio.config.field(default="f1", env="FX")
 
         monkeypatch.setenv("F1", "f1.2")
         c = MyConfig.load_from_env()
@@ -345,7 +347,7 @@ class TestEnv:
         assert c.s == "x"
 
         monkeypatch.setenv("S", "z")
-        with pytest.raises(ValueError, match="one of x, y"):
+        with pytest.raises(ValueError, match="one of 'x', 'y'"):
             _ = MyConfig1.load_from_env()
 
         class E(enum.Enum):
@@ -526,7 +528,7 @@ class TestArgs:
 
         with pytest.raises(SystemExit):
             self.load_from_args(MyConfig, "--s z")
-        assert "one of x, y" in capsys.readouterr().err
+        assert "one of 'x', 'y'" in capsys.readouterr().err
 
     def test_collection_parsers(self):
         class MyConfig(yuio.config.Config):
@@ -632,10 +634,10 @@ class TestArgs:
         TestArgs.DocConfig._setup_arg_parser(parser)
         help = parser.format_help()
         assert "help for `sub`:\n" in help
-        assert "  --sub-a {str}  help for `a`.\n" in help
+        assert "  --sub-a <str>  help for `a`.\n" in help
         assert "  --sub-b        help for `b`.\n" in help
         assert "  --sub-no-b     disable <c hl/flag:sh-usage>--sub-b</c>\n" in help
-        assert "  --sub-c {int}\n" in help
+        assert "  --sub-c <int>\n" in help
 
     def test_help_disabled(self):
         class SubConfig(yuio.config.Config):
@@ -655,9 +657,9 @@ class TestArgs:
         MyConfig._setup_arg_parser(parser)
         help = parser.format_help()
         print(help)
-        assert "  --c {str}\n" in help
+        assert "  --c <str>\n" in help
         assert "sub:\n" in help
-        assert "  --sub-a {str}  help for a\n" in help
+        assert "  --sub-a <str>  help for a\n" in help
         assert "help for b" not in help
         assert "-b" not in help
         assert "sub_no_help" not in help
@@ -707,7 +709,7 @@ class TestLoadFromFile:
         class MyConfig(yuio.config.Config):
             a: str
 
-        with pytest.raises(yuio.parse.ParsingError, match="expected a string"):
+        with pytest.raises(yuio.parse.ParsingError, match="expected string"):
             MyConfig.load_from_parsed_file(dict(a=10))
 
     def test_load_from_parsed_file_subconfig(self):
@@ -838,3 +840,81 @@ class TestLoadFromFile:
         with pytest.raises(AttributeError, match="is not configured"):
             _ = c.b
         assert c.c == 5
+
+
+class TestMerge:
+    class MyConfig(yuio.config.Config):
+        x: int = yuio.config.field(default=1, merge=lambda l, r: l + r)
+
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("yuio.io._IO_MANAGER", None)
+
+    def test_merge_ctor(self):
+        c = self.MyConfig()
+        assert c.x == 1
+
+        c = self.MyConfig(x=2)
+        assert c.x == 2
+
+        c = self.MyConfig(self.MyConfig(), self.MyConfig(x=2))
+        assert c.x == 2
+
+        c = self.MyConfig(self.MyConfig(x=1), self.MyConfig(x=2))
+        assert c.x == 3
+
+    def test_merge_update(self):
+        c = self.MyConfig()
+        assert c.x == 1
+
+        c.update(dict(x=2))
+        assert c.x == 2
+
+        c.update(dict(x=1))
+        assert c.x == 3
+
+    # TODO: move to test_app
+    def test_merge_app_flags(self):
+        import yuio.app
+
+        seen_x = None
+
+        @yuio.app.app
+        def main(x: int = yuio.app.field(default=1, merge=lambda l, r: l + r)):
+            nonlocal seen_x
+            seen_x = x
+
+        with pytest.raises(SystemExit):
+            main.run(["--x=5"])
+        assert seen_x == 5
+
+        with pytest.raises(SystemExit):
+            main.run(["--x=5", "--x=1"])
+        assert seen_x == 6
+
+    # TODO: move to test_app
+    def test_merge_app_flags_subcommand(self):
+        import yuio.app
+
+        seen_x = None
+
+        @yuio.app.app
+        def main(x: int = yuio.app.field(default=1, merge=lambda l, r: l + r)):
+            nonlocal seen_x
+            seen_x = x
+
+        @main.subcommand
+        def foo():
+            pass
+
+        with pytest.raises(SystemExit):
+            main.run(["--x=5", "foo"])
+        assert seen_x == 5
+
+        with pytest.raises(SystemExit):
+            main.run(["foo", "--x=6"])
+        assert seen_x == 6
+
+        with pytest.raises(SystemExit):
+            main.run(["--x=1", "foo", "--x=2"])
+        assert seen_x == 3

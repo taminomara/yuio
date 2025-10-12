@@ -13,7 +13,6 @@ of what you can do:
 
 .. literalinclude:: code/3_1_config.py
    :language: python
-   :linenos:
    :lines: 1-19
    :emphasize-lines: 6,15
 
@@ -29,7 +28,6 @@ by using :meth:`yuio.app.App.subcommand`:
 
 .. literalinclude:: code/3_2_subcommands.py
    :language: python
-   :linenos:
    :lines: 5-18
    :emphasize-lines: 5,10
 
@@ -45,7 +43,6 @@ and also an epilog section to our app's help:
 
 .. literalinclude:: code/3_3_settings.py
    :language: python
-   :linenos:
    :lines: 5-35
    :emphasize-lines: 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,22,27
 
@@ -73,7 +70,6 @@ from ``WARNING`` to ``DEBUG``:
 
 .. literalinclude:: code/3_4_logging.py
    :language: python
-   :linenos:
 
 This is how verbose output will look like:
 
@@ -90,7 +86,6 @@ to :data:`False`, and use :class:`yuio.io.Handler` to send logs to :data:`~sys.s
 
 .. literalinclude:: code/3_5_logging_manual.py
    :language: python
-   :linenos:
    :emphasize-lines: 9,10,11,12,17
 
 
@@ -106,7 +101,6 @@ structure:
 
 .. literalinclude:: code/3_6_parsers.py
    :language: python
-   :linenos:
    :lines: 1-11
    :emphasize-lines: 2,8
 

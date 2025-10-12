@@ -9,7 +9,7 @@
 Everything to do with terminal output: detecting terminal capabilities,
 working with colors and themes, formatting text.
 
-This is a low-level API module, upon which :mod:``yuio.io`` builds
+This is a low-level API module, upon which :mod:`yuio.io` builds
 its higher-level abstraction.
 
 
@@ -19,7 +19,7 @@ Detecting terminal capabilities
 Terminal capabilities are stored in a :class:`Term` object.
 
 Usually, you don't need to query terminal capabilities yourself,
-as you gan use yuio global configuration from :mod:`yuio.io`
+as you can use Yuio's global configuration from :mod:`yuio.io`
 (see :func:`yuio.io.get_term`).
 
 However, you can get a :class:`Term` object by using :func:`get_term_from_stream`:
@@ -80,6 +80,8 @@ these strings are parsed and transformed into :class:`ColorizedString`:
 .. autodata:: AnyString
 
 .. autoclass:: NoWrap
+
+.. autoclass:: Esc
 
 
 Utilities
@@ -443,7 +445,7 @@ def _get_standard_colors(stream: _t.TextIO) -> _t.Optional[TerminalColors]:
 
 def _query_term(stream: _t.TextIO, query: str) -> _t.Optional[str]:
     try:
-        with _enter_raw_mode():
+        with _enter_raw_mode(stream):
             # Lock the keyboard.
             stream.write("\x1b[2h")
             stream.flush()
@@ -524,15 +526,22 @@ if os.name == "posix":
     import tty
 
     @contextlib.contextmanager
-    def _enter_raw_mode():
+    def _enter_raw_mode(stream: _t.TextIO, bracketed_paste: bool = False):
         assert sys.__stdin__ is not None
 
         prev_mode = termios.tcgetattr(sys.__stdin__)
         tty.setcbreak(sys.__stdin__, termios.TCSANOW)
 
+        if bracketed_paste:
+            stream.write("\x1b[?2004h")
+            stream.flush()
+
         try:
             yield
         finally:
+            if bracketed_paste:
+                stream.write("\x1b[?2004l")
+                stream.flush()
             termios.tcsetattr(sys.__stdin__, termios.TCSAFLUSH, prev_mode)
 
     def _read_keycode() -> str:
@@ -588,7 +597,7 @@ elif os.name == "nt":
         _ISTREAM_HANDLE = None
 
     @contextlib.contextmanager
-    def _enter_raw_mode():
+    def _enter_raw_mode(stream: _t.TextIO, bracketed_paste: bool = False):
         assert _ISTREAM_HANDLE is not None
 
         mode = ctypes.wintypes.DWORD()
@@ -657,7 +666,7 @@ elif os.name == "nt":
 else:
 
     @contextlib.contextmanager
-    def _enter_raw_mode():
+    def _enter_raw_mode(stream: _t.TextIO, bracketed_paste: bool = False):
         raise OSError("not supported")
         yield
 
@@ -680,7 +689,7 @@ class ColorValue:
     Single ANSI escape code represents a standard terminal color code.
     The actual color value for it is controlled by the terminal's user.
     Therefore, it doesn't permit operations on colors,
-    such as :meth:`Color.darken` or :meth:`Color.interpolate`.
+    such as :meth:`ColorValue.darken` or :meth:`ColorValue.lerp`.
 
     An RGB-tuple represents a true color. When displaying on a terminal that
     doesn't support true colors, it will be converted to a corresponding
@@ -1084,8 +1093,10 @@ class Color:
     FORE_NORMAL_DIM: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue("2"))  # type: ignore
     #: Black foreground color.
     #:
-    #: Avoid using it, in most terminals it is same as background color.
-    #: Instead, use :attr:`~Color.FORE_NORMAL_DIM`.
+    #: .. warning::
+    #:
+    #:    Avoid using this color, in most terminals it is the same as background color.
+    #:    Instead, use :attr:`~Color.FORE_NORMAL_DIM`.
     FORE_BLACK: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(0))  # type: ignore
     #: Red foreground color.
     FORE_RED: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(1))  # type: ignore
@@ -1235,6 +1246,15 @@ class NoWrap(str):
     """
 
 
+class Esc(NoWrap):
+    """
+    A string that signifies an escaped special symbol.
+
+    This string is not wrapped even if ``break_long_nowrap_words`` is :data:`True`.
+
+    """
+
+
 @_t.final
 class ColorizedString:
     """A string with colors.
@@ -1246,11 +1266,11 @@ class ColorizedString:
     Most notable, it supports wide-character-aware wrapping (see :func:`line_width`),
     and ``%``-formatting.
 
-    Unlike `str` instances, :class:`ColorizedString` is mutable through
+    Unlike :class:`str` instances, :class:`ColorizedString` is mutable through
     the ``+=`` operator.
 
     You can build a colorized string from raw parts,
-    or you can use :meth:`Theme.colorize`.
+    or you can use :meth:`yuio.md.colorize`.
 
     """
 
@@ -1329,25 +1349,25 @@ class ColorizedString:
     ) -> _t.List["ColorizedString"]:
         r"""Wrap a long line of text into multiple lines.
 
-        :param: preserve_spaces
+        :param preserve_spaces:
             if set to :data:`True`, all spaces are preserved.
             Otherwise, consecutive spaces are collapsed into a single space.
             Note that tabs are always treated as a single space.
-        :param: preserve_newlines
+        :param preserve_newlines:
             if set to :data:`True` (default), text is additionally wrapped
             on newline characters. When this happens, the newline sequence that wrapped
             the line will be placed into :attr:`~ColorizedString.explicit_newline`.
 
             If set to :data:`False`, newlines are treated as whitespaces.
-        :param: break_long_words
+        :param break_long_words:
             if set to :data:`True` (default), words that don't fit into a single line
             will be split into multiple lines.
-        :param: break_long_nowrap_words
+        :param break_long_nowrap_words:
             if set to :data:`True`, :class:`NoWrap` words that don't fit
             into a single line will be split into multiple lines.
-        :param: first_line_indent
+        :param first_line_indent:
             a string that will be prepended before the first line.
-        :param: continuation_indent
+        :param continuation_indent:
             a string that will be prepended before all subsequent lines.
 
         Example::
@@ -1376,9 +1396,9 @@ class ColorizedString:
     ) -> "ColorizedString":
         r"""Indent this string by the given sequence.
 
-        :param: first_line_indent
+        :param first_line_indent:
             this will be appended to the first line in the string.
-        :param: continuation_indent
+        :param continuation_indent:
             this will be appended to subsequent lines in the string.
 
         Example::
@@ -1695,7 +1715,9 @@ class _TextWrapper:
                 continue
 
             nowrap = False
-            if isinstance(part, NoWrap):
+            if isinstance(part, Esc):
+                words = [part]
+            elif isinstance(part, NoWrap):
                 words = _WORDSEP_NL_RE.split(part)
                 nowrap = True
             else:
@@ -1738,8 +1760,10 @@ class _TextWrapper:
                     # Word doesn't fit, so we start a new line.
                     if self.current_line_is_nonempty:
                         self._flush_line()
-                    if (nowrap and self.break_long_nowrap_words) or (
-                        not nowrap and self.break_long_words
+                    if (
+                        (nowrap and self.break_long_nowrap_words)
+                        or (not nowrap and self.break_long_words)
+                        and not isinstance(word, Esc)
                     ):
                         # We will break the word in the middle if it doesn't fit
                         # onto the whole line.

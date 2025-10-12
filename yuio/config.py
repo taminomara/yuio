@@ -10,7 +10,9 @@ This module provides a base class for configs that can be loaded from
 files, environment variables or command line arguments (via :mod:`yuio.app`).
 
 Derive your config from the :class:`Config` base class. Inside of its body,
-define config fields using type annotations, just like :mod:`dataclasses`::
+define config fields using type annotations, just like :mod:`dataclasses`:
+
+.. code-block:: python
 
     class AppConfig(Config):
         #: trained model to execute
@@ -26,7 +28,7 @@ Then use config's constructors and the :meth:`~Config.update` method
 to load it from various sources::
 
     # Load config from a file.
-    config = config.load_from_json_file('~/.my_app_cfg.json')
+    config = AppConfig.load_from_json_file("~/.my_app_cfg.json")
 
     # Update config with values from env.
     config.update(AppConfig.load_from_env())
@@ -44,25 +46,25 @@ Advanced field configuration
 By default, :class:`Config` infers names for env variables and flags,
 appropriate parsers, and other things from field's name, type hint, and comments.
 
-If you need to override them, theres the :func:`field` function:
+If you need to override them, you can use :func:`yuio.app.field`
+and :func:`yuio.app.inline` functions (also available from ``yuio.config.field``
+and ``yuio.config.inline``):
 
-.. autofunction:: field
+.. code-block:: python
 
-.. autodata:: yuio.DISABLED
-
-.. autodata:: yuio.MISSING
-
-.. autodata:: yuio.POSITIONAL
-
-There is also a helper for inlining nested configs:
-
-.. autofunction:: inline
+    class AppConfig(Config):
+        model: pathlib.Path | None = field(
+            default=None,
+            help="trained model to execute",
+        )
 
 
 Nesting configs
 ---------------
 
-You can nest configs to achieve modularity::
+You can nest configs to achieve modularity:
+
+.. code-block:: python
 
     class ExecutorConfig(Config):
         #: number of threads to use
@@ -79,11 +81,14 @@ You can nest configs to achieve modularity::
         model: pathlib.Path
 
 To initialise a nested config, pass either an instance of if
-or a dict with its variables to the config's constructor::
+or a dict with its variables to the config's constructor:
+
+.. code-block:: python
 
     # The following lines are equivalent:
-    config = AppConfig(executor={'threads': 16})
     config = AppConfig(executor=ExecutorConfig(threads=16))
+    config = AppConfig(executor={'threads': 16})
+    # ...although type checkers will complain about dict =(
 
 
 Parsing environment variables
@@ -92,7 +97,9 @@ Parsing environment variables
 You can load config from environment through :meth:`~Config.load_from_env`.
 
 Names of environment variables are just capitalized field names.
-Use the :func:`field` function to override them::
+Use the :func:`yuio.app.field` function to override them:
+
+.. code-block:: python
 
     class KillCmdConfig(Config):
         # Will be loaded from `SIGNAL`.
@@ -102,26 +109,32 @@ Use the :func:`field` function to override them::
         pid: int = field(env='PROCESS_ID')
 
 In nested configs, environment variable names are prefixed with name
-of a field that contains the nested config::
+of a field that contains the nested config:
+
+.. code-block:: python
 
     class BigConfig(Config):
         # `kill_cmd.signal` will be loaded from `KILL_CMD_SIGNAL`.
         kill_cmd: KillCmdConfig
 
-        # `copy_cmd_2.signal` will be loaded from `KILL_SIGNAL`.
+        # `kill_cmd_2.signal` will be loaded from `KILL_SIGNAL`.
         kill_cmd_2: KillCmdConfig = field(env='KILL')
 
         # `kill_cmd_3.signal` will be loaded from `SIGNAL`.
         kill_cmd_3: KillCmdConfig = field(env='')
 
-You can also disable loading a field from an environment altogether::
+You can also disable loading a field from an environment altogether:
 
-    class Config(Config):
+.. code-block:: python
+
+    class KillCmdConfig(Config):
         # Will not be loaded from env.
         pid: int = field(env=yuio.DISABLED)
 
 To prefix all variable names with some string, pass the `prefix` parameter
-to the :meth:`~Config.load_from_env` function::
+to the :meth:`~Config.load_from_env` function:
+
+.. code-block:: python
 
     # config.kill_cmd.field will be loaded
     # from `MY_APP_KILL_CMD_SIGNAL`
@@ -132,7 +145,11 @@ Parsing config files
 --------------------
 
 You can load config from structured config files,
-such as `json`, `yaml` or `toml`::
+such as `json`, `yaml` or `toml`:
+
+.. skip: next
+
+.. code-block:: python
 
     class ExecutorConfig(Config):
         threads: int
@@ -159,11 +176,81 @@ In this example, contents of the above config would be:
 Note that, unlike with environment variables,
 there is no way to inline nested configs.
 
+
+Additional config validation
+----------------------------
+
+If you have invariants that can't be captured with type system,
+you can override :meth:`~Config.validate_config`. This method will be called
+every time you load a config from file, arguments or environment:
+
+.. code-block:: python
+
+    class DocGenConfig(Config):
+        categories: list[str] = ["quickstart", "api_reference"]
+        category_names: dict[str, str] = {"deep_dive": "Deep Dive"}
+
+        def validate_config(self):
+            for category in self.category_names:
+                if category not in self.categories:
+                    raise yuio.parse.ParsingError(f"unknown category {category}")
+
+
+Merging configs
+---------------
+
+Configs are specially designed to be merge-able. The basic pattern is to create
+an empty config instance, then :meth:`~Config.update` it with every config source:
+
+.. skip: next
+
+.. code-block:: python
+
+    config = AppConfig()
+    config.update(AppConfig.load_from_json_file("~/.my_app_cfg.json"))
+    config.update(AppConfig.load_from_env())
+    # ...and so on.
+
+The :meth:`~Config.update` function ignores default values, and only overrides
+keys that were actually configured.
+
+If you need a more complex update behavior, you can add a merge function for a field:
+
+.. code-block:: python
+
+    class AppConfig(Config):
+        plugins: list[str] = field(
+            default=[],
+            merge=lambda left, right: [*left, *right],
+        )
+
+Here, whenever we :meth:`~Config.update` ``AppConfig``, ``plugins`` from both instances
+will be concatenated.
+
+.. warning::
+
+    Merge function shouldn't mutate its arguments.
+    It should produce a new value instead.
+
+.. warning::
+
+    Merge function will not be called for default value. It's advisable to keep the
+    default value empty, and add the actual default to the initial empty config:
+
+    .. skip: next
+
+    .. code-block:: python
+
+        config = AppConfig(plugins=["markdown", "rst"])
+        config.update(...)
+
 """
 
 import argparse
+import json
 import os
 import pathlib
+import textwrap
 from dataclasses import dataclass
 
 import yuio
@@ -172,6 +259,7 @@ import yuio.parse
 from yuio import _typing as _t
 
 T = _t.TypeVar("T")
+Cfg = _t.TypeVar("Cfg", bound="Config")
 
 
 @dataclass(frozen=True)
@@ -183,6 +271,7 @@ class _FieldSettings:
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None
     completer: _t.Optional[yuio.complete.Completer] = None
     required: bool = False
+    merge: _t.Optional[_t.Callable[[_t.Any, _t.Any], _t.Any]] = None
 
     def _update_defaults(
         self,
@@ -247,23 +336,36 @@ class _FieldSettings:
 
         if is_subconfig:
             if default is not yuio.MISSING:
-                raise TypeError(f"{qualname} cannot have defaults")
+                raise TypeError(
+                    f"error in {qualname}: nested configs can't have defaults"
+                )
 
             if parser is not None:
-                raise TypeError(f"{qualname} cannot have parsers")
+                raise TypeError(
+                    f"error in {qualname}: nested configs can't have parsers"
+                )
 
             if flags is not yuio.DISABLED:
                 if flags is yuio.POSITIONAL:
-                    raise TypeError(f"{qualname} cannot be positional")
+                    raise TypeError(
+                        f"error in {qualname}: nested configs can't be positional"
+                    )
                 if len(flags) > 1:
-                    raise TypeError(f"{qualname} cannot have multiple flags")
+                    raise TypeError(
+                        f"error in {qualname}: nested configs can't have multiple flags"
+                    )
                 if flags[0] and not flags[0].startswith("--"):
-                    raise TypeError(f"{qualname} cannot have a short flag")
+                    raise TypeError(
+                        f"error in {qualname}: nested configs can't have a short flag"
+                    )
         elif parser is None:
             try:
                 parser = yuio.parse.from_type_hint(ty_with_extras)
             except TypeError as e:
-                raise TypeError(f"can't derive parser for {qualname}: {e}") from None
+                raise TypeError(
+                    f"can't derive parser for {qualname}:\n"
+                    + textwrap.indent(str(e), "  ")
+                ) from None
 
         if parser is not None:
             origin = _t.get_origin(ty)
@@ -271,7 +373,7 @@ class _FieldSettings:
 
             is_optional = (
                 default is None
-                or origin is _t.Union
+                or _t.is_union(origin)
                 and len(args) == 2
                 and type(None) in args
             )
@@ -290,6 +392,12 @@ class _FieldSettings:
 
         completer = self.completer
 
+        merge = self.merge
+
+        if is_subconfig and merge is not yuio.MISSING:
+            if default is not yuio.MISSING:
+                raise TypeError(f"error in {qualname}: nested configs can't have merge")
+
         return _Field(
             default,
             parser,
@@ -300,6 +408,7 @@ class _FieldSettings:
             is_subconfig,
             ty,
             required,
+            merge,
         )
 
 
@@ -314,6 +423,7 @@ class _Field:
     is_subconfig: bool
     ty: type
     required: bool
+    merge: _t.Optional[_t.Callable[[_t.Any, _t.Any], _t.Any]]
 
 
 @_t.overload
@@ -323,51 +433,71 @@ def field(
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
-) -> _t.Any:
-    ...
+) -> _t.Any: ...
 
 
 @_t.overload
 def field(
+    *,
     default: None,
-    *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
     completer: _t.Optional[yuio.complete.Completer] = None,
-) -> _t.Optional[T]:
-    ...
+    merge: _t.Optional[_t.Callable[[T, T], T]] = None,
+) -> _t.Optional[T]: ...
 
 
 @_t.overload
 def field(
-    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
     *,
+    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
     completer: _t.Optional[yuio.complete.Completer] = None,
-) -> T:
-    ...
+    merge: _t.Optional[_t.Callable[[T, T], T]] = None,
+) -> T: ...
 
 
 def field(
-    default: _t.Any = yuio.MISSING,
     *,
+    default: _t.Any = yuio.MISSING,
     parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
     completer: _t.Optional[yuio.complete.Completer] = None,
+    merge: _t.Optional[_t.Callable[[T, T], T]] = None,
 ) -> _t.Any:
-    """Field descriptor, used for additional configuration of fields.
+    """Field descriptor, used for additional configuration of flags and config fields.
+
+    In apps::
+
+        @app
+        def main(
+            # Will be loaded from `--input`.
+            input: pathlib.Path | None = None,
+
+            # Will be loaded from `-o` or `--output`.
+            output: pathlib.Path | None = field(default=None, flags=['-p', '--pid'])
+        ):
+            ...
+
+    In configs::
+
+        class AppConfig(Config):
+            model: pathlib.Path | None = field(
+                default=None,
+                help="trained model to execute",
+            )
 
     :param default:
-        default value for config field, used if field is missing from config.
+        default value for the field or CLI argument.
     :param parser:
-        parser that will be used to parse env vars, configs and CLI arguments.
+        parser that will be used to parse and CLI arguments.
     :param help:
         Help message that will be used in CLI argument description.
 
@@ -378,7 +508,8 @@ def field(
 
         Help messages are formatted using Markdown (see :mod:`yuio.md`).
     :param env:
-        Name of environment variable that will be used for this field.
+        In configs, specifies name of environment variable that will be used
+        if loading config from environment variable.
 
         Pass :data:`~yuio.DISABLED` to disable loading this field form environment variable.
 
@@ -386,18 +517,15 @@ def field(
     :param flags:
         List of names (or a single name) of CLI flags that will be used for this field.
 
-        This setting is used with :mod:`yuio.app` to configure CLI arguments parsers.
+        In configs, pass :data:`~yuio.DISABLED` to disable loading this field form CLI arguments.
 
-        Pass :data:`~yuio.DISABLED` to disable loading this field form CLI arguments.
-
-        Pass :data:`~yuio.POSITIONAL` to make this argument positional
-        (only in apps, see :mod:`yuio.app`).
+        In apps, pass :data:`~yuio.POSITIONAL` to make this argument positional.
 
         Pass an empty string to disable prefixing nested config flags.
     :param completer:
         completer that will be used for autocompletion in CLI.
-
-        This setting is used with :mod:`yuio.app` to configure CLI arguments parsers.
+    :param merge:
+        defines how values of this field are merged when configs are updated.
 
     """
 
@@ -408,6 +536,7 @@ def field(
         help=help,
         env=env,
         flags=flags,
+        merge=merge,
     )
 
 
@@ -416,7 +545,8 @@ def inline(
 ) -> _t.Any:
     """A shortcut for inlining nested configs.
 
-    Equivalent to calling :func:`field` with ``env`` and ``flags`` set to an empty string.
+    Equivalent to calling :func:`~yuio.app.field` with ``env`` and ``flags``
+    set to an empty string.
 
     """
 
@@ -429,37 +559,34 @@ def positional(
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     completer: _t.Optional[yuio.complete.Completer] = None,
-) -> _t.Any:
-    ...
+) -> _t.Any: ...
 
 
 @_t.overload
 def positional(
+    *,
     default: None,
-    *,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     completer: _t.Optional[yuio.complete.Completer] = None,
-) -> _t.Optional[T]:
-    ...
+) -> _t.Optional[T]: ...
 
 
 @_t.overload
 def positional(
-    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
     *,
+    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
     parser: _t.Optional[yuio.parse.Parser[T]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
     completer: _t.Optional[yuio.complete.Completer] = None,
-) -> T:
-    ...
+) -> T: ...
 
 
 def positional(
-    default: _t.Any = yuio.MISSING,
     *,
+    default: _t.Any = yuio.MISSING,
     parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
     help: _t.Union[str, yuio.Disabled, None] = None,
     env: _t.Union[str, yuio.Disabled, None] = None,
@@ -482,18 +609,21 @@ def positional(
 
 
 def _action(
-    parser: yuio.parse.Parser[_t.Any],
-    completer: _t.Optional[yuio.complete.Completer],
+    field: _Field,
     parse_many: bool,
 ):
     class Action(argparse.Action):
         @staticmethod
         def get_parser():
-            return parser
+            return field.parser
 
         @staticmethod
         def get_completer():
-            return completer
+            return field.completer
+
+        @staticmethod
+        def get_merge():
+            return field.merge
 
         def __call__(self, _, namespace, values, option_string=None):
             try:
@@ -501,19 +631,30 @@ def _action(
                     if values is yuio.MISSING:
                         values = []
                     assert values is not None and not isinstance(values, str)
-                    parsed = parser.parse_many(values)
+                    assert field.parser
+                    parsed = field.parser.parse_many(values)
                 else:
                     if values is yuio.MISSING:
                         return
                     assert isinstance(values, str)
-                    parsed = parser.parse(values)
+                    assert field.parser
+                    parsed = field.parser.parse(values)
             except argparse.ArgumentTypeError as e:
                 raise argparse.ArgumentError(self, str(e))
+            # Note: merge will be executed in `namespace.__setattr__`,
+            # see `yuio.app._Namespace`.
             setattr(namespace, self.dest, parsed)
 
     return Action
 
 
+@_t.dataclass_transform(
+    eq_default=False,
+    order_default=False,
+    kw_only_default=True,
+    frozen_default=False,
+    field_specifiers=(field, inline, positional),
+)
 class Config:
     """Base class for configs.
 
@@ -536,6 +677,8 @@ class Config:
     .. automethod:: load_from_toml_file
 
     .. automethod:: load_from_parsed_file
+
+    .. automethod:: validate_config
 
     """
 
@@ -567,7 +710,7 @@ class Config:
                 fields.update(getattr(base, "_Config__get_fields")())
 
         try:
-            types = _t.get_type_hints(cls)
+            types = _t.get_type_hints(cls, include_extras=True)
         except NameError as e:
             if "<locals>" in cls.__qualname__:
                 raise NameError(
@@ -612,7 +755,7 @@ class Config:
             cls.__allow_positionals = _allow_positionals
         cls.__fields = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self: _Self, *args: _Self, **kwargs):
         for name, field in self.__get_fields().items():
             if field.is_subconfig:
                 setattr(self, name, field.ty())
@@ -628,6 +771,9 @@ class Config:
         This function is similar to :meth:`dict.update`.
 
         Nested configs are updated recursively.
+
+        :param other:
+            data for update.
 
         """
 
@@ -654,11 +800,34 @@ class Config:
                 if field.is_subconfig:
                     getattr(self, name).update(ns[name])
                 elif ns[name] is not yuio.MISSING:
-                    setattr(self, name, ns[name])
+                    if field.merge is not None and name in self.__dict__:
+                        setattr(self, name, field.merge(getattr(self, name), ns[name]))
+                    else:
+                        setattr(self, name, ns[name])
 
     @classmethod
     def load_from_env(cls: _t.Type[_Self], prefix: str = "") -> _Self:
-        """Load config from environment variables."""
+        """
+        Load config from environment variables.
+
+        :param prefix:
+            if given, names of all environment variables will be prefixed with
+            this string and an underscore.
+
+        """
+
+        try:
+            result = cls.__load_from_env(prefix)
+            result.validate_config()
+            return result
+        except yuio.parse.ParsingError as e:
+            raise yuio.parse.ParsingError(
+                f"failed to load config from environment variables:\n"
+                + textwrap.indent(str(e), "  ")
+            ) from None
+
+    @classmethod
+    def __load_from_env(cls: _t.Type[_Self], prefix: str = "") -> _Self:
 
         fields = {}
 
@@ -687,7 +856,9 @@ class Config:
         *,
         ns_prefix: str = "",
     ) -> _Self:
-        return cls.__load_from_namespace(namespace, ns_prefix + ":")
+        result = cls.__load_from_namespace(namespace, ns_prefix + ":")
+        result.validate_config()
+        return result
 
     @classmethod
     def __load_from_namespace(
@@ -714,9 +885,11 @@ class Config:
         parser: argparse.ArgumentParser,
         /,
         *,
+        group: _t.Optional[argparse.ArgumentParser] = None,
         ns_prefix: str = "",
     ):
-        cls.__setup_arg_parser(parser, parser, "", ns_prefix + ":", False)
+        group = group or parser
+        cls.__setup_arg_parser(group, parser, "", ns_prefix + ":", False)
 
     @classmethod
     def __setup_arg_parser(
@@ -756,7 +929,7 @@ class Config:
                 else:
                     lines = help.split("\n\n", 1)
                     title = lines[0].replace("\n", " ").rstrip(".") or name
-                    desc = lines[1] if len(lines) > 1 else None
+                    desc = textwrap.dedent(lines[1]) if len(lines) > 1 else None
                     subgroup = parser.add_argument_group(title, desc)
                 field.ty.__setup_arg_parser(
                     subgroup, parser, flags[0], dest + ".", current_suppress_help
@@ -767,18 +940,14 @@ class Config:
 
             parse_many = field.parser.supports_parse_many()
 
-            action = _action(field.parser, field.completer, parse_many)
+            action = _action(field, parse_many)
 
             if flags is yuio.POSITIONAL:
                 metavar = f"<{name.replace('_', '-')}>"
             elif parse_many:
                 metavar = field.parser.describe_many_or_def()
-                if isinstance(metavar, tuple):
-                    metavar = tuple(f"{{{v}}}" for v in metavar)
-                else:
-                    metavar = f"{{{metavar}}}"
             else:
-                metavar = f"{{{field.parser.describe_or_def()}}}"
+                metavar = field.parser.describe_or_def()
 
             nargs = field.parser.get_nargs()
             if (
@@ -848,9 +1017,19 @@ class Config:
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
     ) -> _Self:
-        """Load config from a ``.json`` file."""
+        """
+        Load config from a ``.json`` file.
 
-        import json
+        :param path:
+            path of the config file.
+        :param ignore_unknown_fields:
+            if :data:`True`, this method will ignore fields that aren't listed
+            in config class.
+        :param ignore_missing_file:
+            if :data:`True`, silently ignore a file missing error. This is useful
+            when loading a config from a home directory.
+
+        """
 
         return cls.__load_from_file(
             path, json.loads, ignore_unknown_fields, ignore_missing_file
@@ -869,6 +1048,15 @@ class Config:
 
         This requires `PyYaml <https://pypi.org/project/PyYAML/>`_ package
         to be installed.
+
+        :param path:
+            path of the config file.
+        :param ignore_unknown_fields:
+            if :data:`True`, this method will ignore fields that aren't listed
+            in config class.
+        :param ignore_missing_file:
+            if :data:`True`, silently ignore a file missing error. This is useful
+            when loading a config from a home directory.
 
         """
 
@@ -897,13 +1085,22 @@ class Config:
         `toml <https://pypi.org/project/toml/>`_ package
         to be installed.
 
+        :param path:
+            path of the config file.
+        :param ignore_unknown_fields:
+            if :data:`True`, this method will ignore fields that aren't listed
+            in config class.
+        :param ignore_missing_file:
+            if :data:`True`, silently ignore a file missing error. This is useful
+            when loading a config from a home directory.
+
         """
 
         try:
             import toml
         except ImportError:
             try:
-                import tomllib as toml  # type: ignore
+                import tomllib as toml
             except ImportError:
                 raise ImportError("toml is not available")
 
@@ -926,14 +1123,13 @@ class Config:
             with open(path, "r") as file:
                 loaded = file_parser(file.read())
         except Exception as e:
-            raise yuio.parse.ParsingError(f"invalid config {path}: {e}") from None
+            raise yuio.parse.ParsingError(
+                f"invalid config {path}:\n" + textwrap.indent(str(e), "  ")
+            ) from None
 
-        try:
-            return cls.load_from_parsed_file(
-                loaded, ignore_unknown_fields=ignore_unknown_fields
-            )
-        except yuio.parse.ParsingError as e:
-            raise yuio.parse.ParsingError(f"invalid config {path}: {e}") from None
+        return cls.load_from_parsed_file(
+            loaded, ignore_unknown_fields=ignore_unknown_fields, path=path
+        )
 
     @classmethod
     def load_from_parsed_file(
@@ -942,20 +1138,39 @@ class Config:
         /,
         *,
         ignore_unknown_fields: bool = False,
+        path: _t.Union[str, pathlib.Path, None] = None,
     ) -> _Self:
         """Load config from parsed config file.
 
         This method takes a dict with arbitrary values that you'd get from
-        parsing type-rich configs such as `yaml` or `json`.
+        parsing type-rich configs such as ``yaml`` or ``json``.
 
         For example::
 
             with open('conf.yaml') as file:
                 config = Config.load_from_parsed_file(yaml.load(file))
 
+        :param parsed:
+            data from parsed file.
+        :param ignore_unknown_fields:
+            if :data:`True`, this method will ignore fields that aren't listed
+            in config class.
+        :param path:
+            path of the original file, used for error reporting.
+
         """
 
-        return cls.__load_from_parsed_file(parsed, ignore_unknown_fields, "")
+        try:
+            result = cls.__load_from_parsed_file(parsed, ignore_unknown_fields, "")
+            result.validate_config()
+            return result
+        except yuio.parse.ParsingError as e:
+            if path is None:
+                raise
+            else:
+                raise yuio.parse.ParsingError(
+                    f"invalid config {path}:\n" + textwrap.indent(str(e), "  ")
+                ) from None
 
     @classmethod
     def __load_from_parsed_file(
@@ -986,18 +1201,22 @@ class Config:
                         value = field.parser.parse_config(parsed[name])
                     except yuio.parse.ParsingError as e:
                         raise yuio.parse.ParsingError(
-                            f"can't parse {field_prefix}{name}: {e}"
+                            f"can't parse {field_prefix}{name}:\n"
+                            + textwrap.indent(str(e), "  ")
                         ) from None
                     fields[name] = value
 
         return cls(**fields)
 
-    def __getattribute__(self, item):
+    def __getattribute(self, item):
         value = super().__getattribute__(item)
         if value is yuio.MISSING:
             raise AttributeError(f"{item} is not configured")
         else:
             return value
+
+    # A dirty hack to hide __getattribute__ from type checkers.
+    locals()["__getattribute__"] = __getattribute
 
     def __repr__(self):
         return self.__repr(0)
@@ -1018,5 +1237,49 @@ class Config:
         else:
             return f"{self.__class__.__name__}()"
 
+    def validate_config(self):
+        """
+        Perform config validation.
+
+        This function is called every time a config is loaded from CLI arguments,
+        file, or environment variables. It should check that config is correct,
+        and raise :class:`yuio.parse.ParsingError` if it's not.
+
+        """
+
 
 Config.__init_subclass__()
+
+
+class ConfigParser(yuio.parse.ValueParser[Cfg], _t.Generic[Cfg]):
+    if _t.TYPE_CHECKING:
+
+        def __new__(cls, config: _t.Type[Cfg]) -> "ConfigParser[Cfg]": ...
+
+    def __init__(self, config: _t.Type[Cfg]):
+        self.__config = config
+        super().__init__()
+
+    def parse(self, value: str) -> Cfg:
+        try:
+            config_value = json.loads(value)
+        except json.JSONDecodeError as e:
+            raise yuio.parse.ParsingError(
+                f"unable to decode JSON:\n" + textwrap.indent(str(e), "  ")
+            ) from None
+        return self.parse_config(config_value)
+
+    def parse_config(self, value: object) -> Cfg:
+        if isinstance(value, dict):
+            return self.__config.load_from_parsed_file(value)
+        else:
+            raise yuio.parse.ParsingError(
+                f"expected a dict, got {type(value).__name__} instead"
+            )
+
+
+yuio.parse.register_type_hint_conversion(
+    lambda ty, origin, args: (
+        ConfigParser(ty) if isinstance(ty, type) and issubclass(ty, Config) else None
+    )
+)

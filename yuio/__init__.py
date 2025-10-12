@@ -37,7 +37,7 @@ import textwrap as _textwrap
 from yuio import _typing as _t
 
 try:
-    from yuio._version import __version__, __version_tuple__
+    from yuio._version import *
 except ImportError:
     raise ImportError(
         "yuio._version not found. if you are developing locally, "
@@ -79,8 +79,7 @@ class SupportsLt(_t.Protocol[_T_contra]):
     """Protocol for objects that can be compared to each other."""
 
     @_abc.abstractmethod
-    def __lt__(self, other: _T_contra, /) -> bool:
-        ...
+    def __lt__(self, other: _T_contra, /) -> bool: ...
 
 
 _TO_DASH_CASE_RE = _re.compile(
@@ -192,5 +191,5 @@ MISSING: Missing = _Placeholders.MISSING
 
 #: Type of the :data:`POSITIONAL` placeholder.
 Positional: _t.TypeAlias = _t.Literal[_Placeholders.POSITIONAL]
-#: Used with :func:`field` to enable positional arguments.
+#: Used with :func:`yuio.app.field` to enable positional arguments.
 POSITIONAL: Positional = _Placeholders.POSITIONAL

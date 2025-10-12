@@ -9,6 +9,7 @@ if __name__ == "__main__":
         placeholder="Enter something nice?",
         decoration=">",
         allow_multiline=True,
+        allow_special_characters=True,
     )
 
     result = widget.run(term, theme)

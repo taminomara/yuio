@@ -152,11 +152,11 @@ class Theme:
     progress_bar_width: int = 15
     #: A symbol rendered on a left side of a progressbar.
     #:
-    #: Set to ``'['`` to enclose progressbar in square brackets, for example.
+    #: Set to ``"["`` to enclose progressbar in square brackets, for example.
     progress_bar_start_symbol: str = ""
     #: A symbol rendered on a right side of a progressbar.
     #:
-    #: Set to ``']'`` to enclose progressbar in square brackets, for example.
+    #: Set to ``"]"`` to enclose progressbar in square brackets, for example.
     progress_bar_end_symbol: str = ""
     #: Symbol rendered in the filled portion of a progressbar.
     progress_bar_done_symbol: str = "■"
@@ -187,18 +187,18 @@ class Theme:
     #: of an object that we're coloring.
     #:
     #: For example, a color for the filled part of the task's progress bar
-    #: has path ``'task/progressbar/done'``, a color for a text of an error
-    #: log record has path ``'log/message:error'``, and a color for a string escape
-    #: sequence in a highlighted python code has path ``'hl/str/esc:python'``.
+    #: has path ``"task/progressbar/done"``, a color for a text of an error
+    #: log record has path ``"log/message:error"``, and a color for a string escape
+    #: sequence in a highlighted python code has path ``"hl/str/esc:python"``.
     #:
     #: A color at a certain path is propagated to all sub-paths. For example,
-    #: if ``'task/progressbar'`` is bold, and ``'task/progressbar/done'`` is green,
+    #: if ``"task/progressbar"`` is bold, and ``"task/progressbar/done"`` is green,
     #: the final color will be bold green.
     #:
-    #: Each color path can be associated with either an instance of :class:`Color`,
-    #: another path, or a list of colors and paths.
+    #: Each color path can be associated with either an instance
+    #: of :class:`~yuio.term.Color`, another path, or a list of colors and paths.
     #:
-    #: If path is mapped to a :class:`Color`, then the path is associated
+    #: If path is mapped to a :class:`~yuio.term.Color`, then the path is associated
     #: with that particular color.
     #:
     #: If path is mapped to another path, then the path is associated with
@@ -215,7 +215,7 @@ class Theme:
     #:         'tb/heading': ['heading_color', 'error_color'],
     #:     }
     #:
-    #: Here, color of traceback's heading ``'tb/heading'`` will be bold and red.
+    #: Here, color of traceback's heading ``"tb/heading"`` will be bold and red.
     #:
     #: The base theme class provides colors for basic tags, such as `bold`, `red`,
     #: `code`, `note`, etc. :class:`DefaultTheme` expands on it, providing main
@@ -518,15 +518,15 @@ class DefaultTheme(Theme):
 
     This theme defines *main colors*, which you can override by subclassing.
 
-    - ``'heading_color'``: for headings,
-    - ``'primary_color'``: for main text,
-    - ``'accent_color'``: for visually highlighted elements,
-    - ``'secondary_color'``: for visually dimmed elements,
-    - ``'error_color'``: for everything that indicates an error,
-    - ``'warning_color'``: for everything that indicates a warning,
-    - ``'success_color'``: for everything that indicates a success,
-    - ``'low_priority_color_a'``: for auxiliary elements such as help widget,
-    - ``'low_priority_color_b'``: for auxiliary elements such as help widget,
+    - ``"heading_color"``: for headings,
+    - ``"primary_color"``: for main text,
+    - ``"accent_color"``: for visually highlighted elements,
+    - ``"secondary_color"``: for visually dimmed elements,
+    - ``"error_color"``: for everything that indicates an error,
+    - ``"warning_color"``: for everything that indicates a warning,
+    - ``"success_color"``: for everything that indicates a success,
+    - ``"low_priority_color_a"``: for auxiliary elements such as help widget,
+    - ``"low_priority_color_b"``: for auxiliary elements such as help widget,
       even lower priority.
 
     """
@@ -554,8 +554,9 @@ class DefaultTheme(Theme):
         #
         # Common tags
         # -----------
-        "code": "accent_color",
-        "note": "accent_color_2",
+        "code": "bold",
+        "note": "bold",
+        "path": "accent_color",
         #
         # IO messages and text
         # --------------------
@@ -606,6 +607,9 @@ class DefaultTheme(Theme):
         "hl/comment": "secondary_color",
         "hl/prog": "bold",
         "hl/flag": "accent_color_2",
+        "hl/meta:diff": ["bold", "accent_color"],
+        "hl/added:diff": "green",
+        "hl/removed:diff": "red",
         "hl/metavar": "bold",
         "tb/heading": ["bold", "red"],
         "tb/message": "tb/heading",
@@ -631,7 +635,8 @@ class DefaultTheme(Theme):
         "menu/text/help_sep:help": "low_priority_color_b",
         "menu/text/help_key:help_menu": "accent_color_2",
         "menu/text/help_sep:help_menu": "secondary_color",
-        "menu/text/comment": "note",
+        "menu/text/esc": "accent_color",
+        "menu/text/comment": "accent_color_2",
         "menu/text/comment/decoration": "secondary_color",
         "menu/text:choice/active": "accent_color",
         "menu/text:choice/active/selected": ["bold"],

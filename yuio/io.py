@@ -63,6 +63,8 @@ To print messages for the user, use these functions:
 .. autofunction:: raw
 
 
+.. _color-tags:
+
 Coloring the output
 -------------------
 
@@ -87,7 +89,7 @@ For highlighting inline code, Yuio supports parsing CommonMark's backticks::
 
 List of all tags that are available by default:
 
-- ``code``, ``note``: highlights,
+- ``code``, ``note``, ``path``: highlights,
 - ``bold``, ``b``, ``dim``, ``d``: font style,
 - ``normal``, ``black``, ``red``, ``green``, ``yellow``, ``blue``,
   ``magenta``, ``cyan``, ``white``: colors.
@@ -205,7 +207,6 @@ import traceback
 import types
 from logging import LogRecord
 
-import yuio.complete
 import yuio.md
 import yuio.parse
 import yuio.term
@@ -255,14 +256,14 @@ def setup(
     :param term:
         terminal that will be used for output.
 
-        If not passed, the global terminal is not set up;
+        If not passed, the global terminal is not re-configured;
         the default is to use a term attached to :data:`sys.stderr`.
     :param theme:
         either a theme that will be used for output, or a theme constructor that takes
         a :class:`~yuio.term.Term` and returns a theme.
 
-        If not passed, the global theme is not set up; the default is to use
-        :class:`yuio.term.DefaultTheme` then.
+        If not passed, the global theme is not re-configured; the default is to use
+        :class:`yuio.theme.DefaultTheme` then.
     :param wrap_stdio:
         if set to :data:`True`, wraps :data:`sys.stdout` and :data:`sys.stderr`
         in a special wrapper that ensures better interaction
@@ -271,7 +272,9 @@ def setup(
         .. note::
 
            If you're working with some other library that wraps :data:`sys.stdout`
-           and :data:`sys.stderr`, such as :mod:`colorama`, initialize it before Yuio.
+           and :data:`sys.stderr`, such as colorama_, initialize it before Yuio.
+
+    .. _colorama: https://github.com/tartley/colorama
 
     """
 
@@ -300,7 +303,7 @@ def get_term() -> Term:
 
 
 def get_theme() -> Theme:
-    """Get the global instance of :class:`~yuio.term.Theme`
+    """Get the global instance of :class:`~yuio.theme.Theme`
     that is used with :mod:`yuio.io`.
 
     If global setup wasn't performed, this function implicitly performs it.
@@ -317,24 +320,27 @@ def wrap_streams():
     .. note::
 
         If you're working with some other library that wraps :data:`sys.stdout`
-        and :data:`sys.stderr`, such as :mod:`colorama`, initialize it before Yuio.
+        and :data:`sys.stderr`, such as colorama_, initialize it before Yuio.
 
     See :func:`setup`.
+
+    .. _colorama: https://github.com/tartley/colorama
 
     """
 
     global _STREAMS_WRAPPED, _ORIG_STDOUT, _ORIG_STDERR
 
-    if _STREAMS_WRAPPED:
-        return
+    with _IO_LOCK:
+        if _STREAMS_WRAPPED:
+            return
 
-    if yuio.term._is_interactive_output(sys.stdout):
-        _ORIG_STDOUT, sys.stdout = sys.stdout, _WrappedOutput(sys.stdout)
-    if yuio.term._is_interactive_output(sys.stderr):
-        _ORIG_STDERR, sys.stderr = sys.stderr, _WrappedOutput(sys.stderr)
-    _STREAMS_WRAPPED = True
+        if yuio.term._is_interactive_output(sys.stdout):
+            _ORIG_STDOUT, sys.stdout = sys.stdout, _WrappedOutput(sys.stdout)
+        if yuio.term._is_interactive_output(sys.stderr):
+            _ORIG_STDERR, sys.stderr = sys.stderr, _WrappedOutput(sys.stderr)
+        _STREAMS_WRAPPED = True
 
-    atexit.register(restore_streams)
+        atexit.register(restore_streams)
 
 
 def restore_streams():
@@ -346,10 +352,10 @@ def restore_streams():
 
     global _STREAMS_WRAPPED
 
-    if not _STREAMS_WRAPPED:
-        return
-
     with _IO_LOCK:
+        if not _STREAMS_WRAPPED:
+            return
+
         if _ORIG_STDOUT is not None:
             sys.stdout = _ORIG_STDOUT
         if _ORIG_STDERR is not None:
@@ -411,11 +417,11 @@ def error_with_tb(
 ):
     """Print an error message and capture the current exception.
 
-    Call this function in the `except` clause of a `try` block
-    or in an `__exit__` function of a context manager to attach
+    Call this function in the ``except`` clause of a ``try`` block
+    or in an ``__exit__`` function of a context manager to attach
     current exception details to the log message.
 
-    :param: exc_info
+    :param exc_info:
         either a boolean indicating that the current exception
         should be captured (default is :data:`True`), or a tuple
         of three elements, as returned by :func:`sys.exc_info`.
@@ -435,7 +441,7 @@ def heading(msg: str, /, *args, **kwargs):
 def md(msg: str, /, *args, **kwargs):
     """Print a markdown-formatted text.
 
-    Yuio supports all CommonMark block markup. Inline markup is limited
+    Yuio supports all CommonMark block markup except tables. Inline markup is limited
     to backticks and color tags.
 
     See :mod:`yuio.md` for more info.
@@ -524,7 +530,7 @@ class _Ask(_t.Generic[T]):
     def __getitem__(self, ty: _t.Type[U]) -> "_Ask[U]":
         # eval type
         container = type("_container", (), {"__annotations__": {"ty": ty}})
-        annotations = _t.get_type_hints(container)
+        annotations = _t.get_type_hints(container, include_extras=True)
         return _Ask(yuio.parse.from_type_hint(annotations["ty"]))
 
     @_t.overload
@@ -536,8 +542,7 @@ class _Ask(_t.Generic[T]):
         default: _t.Union[T, yuio.Missing] = yuio.MISSING,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-    ) -> T:
-        ...
+    ) -> T: ...
 
     @_t.overload
     def __call__(
@@ -548,8 +553,7 @@ class _Ask(_t.Generic[T]):
         default: None,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-    ) -> _t.Optional[T]:
-        ...
+    ) -> _t.Optional[T]: ...
 
     @_t.overload
     def __call__(
@@ -561,8 +565,7 @@ class _Ask(_t.Generic[T]):
         default: None,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-    ) -> _t.Optional[U]:
-        ...
+    ) -> _t.Optional[U]: ...
 
     @_t.overload
     def __call__(
@@ -574,8 +577,7 @@ class _Ask(_t.Generic[T]):
         default: _t.Union[U, yuio.Missing] = yuio.MISSING,
         input_description: _t.Optional[str] = None,
         default_description: _t.Optional[str] = None,
-    ) -> U:
-        ...
+    ) -> U: ...
 
     def __call__(
         self,
@@ -688,7 +690,7 @@ ask: _Ask[str] = _Ask[str](yuio.parse.Str())
 If `stdin` is not readable, return default if one is present,
 or raise a :class:`UserIoError`.
 
-.. vhs:: _tapes/questions.tape
+.. vhs:: /_tapes/questions.tape
    :alt: Demonstration of the `ask` function.
    :scale: 40%
 
@@ -718,7 +720,7 @@ Example::
 :param default:
     default value to return if user input is empty.
 :param input_description:
-    description of the expected input, like ``'yes/no'`` for boolean
+    description of the expected input, like ``"yes/no"`` for boolean
     inputs.
 :param default_description:
     description of the `default` value.
@@ -810,6 +812,7 @@ def edit(
     *,
     comment_marker: _t.Optional[str] = "#",
     editor: _t.Optional[str] = None,
+    file_ext: _t.Optional[str] = None,
 ) -> str:
     """Ask user to edit some text.
 
@@ -836,9 +839,9 @@ def edit(
                 "a correct path to an editor executable"
             )
 
-        filepath = tempfile.mktemp()
+        fd, filepath = tempfile.mkstemp(text=True, suffix=file_ext)
         try:
-            with open(filepath, "w") as file:
+            with open(fd, "w") as file:
                 file.write(text)
 
             try:
@@ -854,10 +857,16 @@ def edit(
             if res.returncode != 0:
                 raise UserIoError("editing failed")
 
-            with open(filepath, "r") as file:
-                text = file.read()
+            if not os.path.exists(filepath):
+                text = ""
+            else:
+                with open(filepath, "r") as file:
+                    text = file.read()
         finally:
-            os.remove(filepath)
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
 
     if comment_marker is not None:
         text = re.sub(
@@ -992,7 +1001,7 @@ class Task:
     create subtasks, set task's progress or add a comment about
     what's currently being done within a task.
 
-    .. vhs:: _tapes/tasks_multithreaded.tape
+    .. vhs:: /_tapes/tasks_multithreaded.tape
        :alt: Demonstration of the `Task` class.
        :scale: 40%
 
@@ -1010,7 +1019,14 @@ class Task:
         DONE = "done"
         ERROR = "error"
 
-    def __init__(self, msg: str, /, *args, _parent: "_t.Optional[Task]" = None):
+    def __init__(
+        self,
+        msg: str,
+        /,
+        *args,
+        _parent: "_t.Optional[Task]" = None,
+        comment: _t.Optional[str] = None,
+    ):
         # Task properties should not be written to directly.
         # Instead, task should be sent to a handler for modification.
         # This ensures thread safety, because handler has a lock.
@@ -1018,7 +1034,7 @@ class Task:
 
         self._msg: str = msg
         self._args: _t.Tuple[object, ...] = args
-        self._comment: _t.Optional[str] = None
+        self._comment: _t.Optional[str] = comment
         self._comment_args: _t.Optional[_t.Tuple[object, ...]] = None
         self._status: Task._Status = Task._Status.RUNNING
         self._progress: _t.Optional[float] = None
@@ -1035,8 +1051,7 @@ class Task:
             _manager().start_subtask(_parent, self)
 
     @_t.overload
-    def progress(self, progress: _t.Optional[float], /, *, ndigits: int = 2):
-        ...
+    def progress(self, progress: _t.Optional[float], /, *, ndigits: int = 2): ...
 
     @_t.overload
     def progress(
@@ -1047,8 +1062,7 @@ class Task:
         *,
         unit: str = "",
         ndigits: int = 0,
-    ):
-        ...
+    ): ...
 
     def progress(
         self,
@@ -1406,13 +1420,14 @@ class _IoManager(abc.ABC):
         tag: str,
         /,
         *,
+        color: _t.Optional[str] = None,
         exc_info: _t.Union[_ExcInfo, bool, None] = None,
         ignore_suspended: bool = False,
         heading: bool = False,
     ):
         with _IO_LOCK:
             col_msg = self._format_msg(
-                msg, args, tag, exc_info=exc_info, heading=heading
+                msg, args, color or tag, exc_info=exc_info, heading=heading
             )
             self._emit_lines(col_msg.process_colors(self.term), None, ignore_suspended)
 
@@ -1648,7 +1663,7 @@ class _IoManager(abc.ABC):
         res = yuio.term.ColorizedString()
 
         if heading and self._printed_some_lines:
-            res += "\n\n"
+            res += "\n"
 
         col_msg = self.formatter.colorize(msg, default_color=f"msg/text:{tag}")
         if args:

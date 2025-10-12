@@ -4,8 +4,8 @@ import yuio.io
 
 @yuio.app.app
 def main(
-    greeting: str = yuio.app.field("world", flags=["-g", "--greeting"]),
-    output: pathlib.Path | None = yuio.app.positional(None),
+    greeting: str = yuio.app.field(default="world", flags=["-g", "--greeting"]),
+    output: pathlib.Path | None = yuio.app.positional(default=None),
 ):
     if output:
         output.write_text(f"Hello, {greeting}!\n")

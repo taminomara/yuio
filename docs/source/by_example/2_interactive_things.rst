@@ -15,7 +15,6 @@ a formal or an informal greeting:
 
 .. literalinclude:: code/2_1_querying.py
    :language: python
-   :linenos:
    :emphasize-lines: 5,11,12,13,14,15
 
 We've used :func:`yuio.io.ask` to get data from the user. It's like :func:`input`,
@@ -48,14 +47,12 @@ Suppose you have some long-running job, and you want to indicate that it is runn
 
 .. literalinclude:: code/2_2_task.py
    :language: python
-   :linenos:
    :emphasize-lines: 7
 
 And if the job can report its progress, we can even show a progressbar:
 
 .. literalinclude:: code/2_3_progress.py
    :language: python
-   :linenos:
    :emphasize-lines: 9,11,12
 
 :class:`~yuio.io.Task` has lots of helper methods on it. For example, the above code
@@ -79,6 +76,5 @@ a commit message? Yuio can do the same:
 
 .. literalinclude:: code/2_4_edit.py
    :language: python
-   :linenos:
    :lines: 4-12
    :emphasize-lines: 3,4,5,6,7

@@ -5,9 +5,9 @@ import yuio.io
 @yuio.app.app
 def main(
     #: who do we want to greet?
-    greeting: str = yuio.app.field("world", flags=["-g", "--greeting"]),
+    greeting: str = yuio.app.field(default="world", flags=["-g", "--greeting"]),
     #: output file, defaults to printing to `stdout`.
-    output: pathlib.Path | None = yuio.app.positional(None),
+    output: pathlib.Path | None = yuio.app.positional(default=None),
 ):
     """this is a program for greeting guests."""
     ...

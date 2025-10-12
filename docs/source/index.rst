@@ -8,7 +8,7 @@ figuring out how to keep loading configs DRY,
 or having headaches because autocompletion was just an afterthought.
 Yuio got you.
 
-.. vhs:: _tapes/demo.tape
+.. vhs:: /_tapes/demo.tape
    :alt: Demonstration of yuio capabilities.
    :scale: 50%
 

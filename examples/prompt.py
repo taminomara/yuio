@@ -1,7 +1,6 @@
 import enum
 
 import yuio.io
-import yuio.parse
 
 
 class Dish(enum.Enum):

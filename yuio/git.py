@@ -30,6 +30,9 @@ Some of :class:`Repo` commands return parsed descriptions of git objects:
 .. autoclass:: Commit
    :members:
 
+.. autoclass:: CommitTrailers
+   :members:
+
 .. autoclass:: Status
    :members:
 
@@ -43,8 +46,8 @@ Some of :class:`Repo` commands return parsed descriptions of git objects:
 Parsing git refs
 ----------------
 
-When you need to query a git ref from a user, :class:`RefParser` will ensure
-that the ref points to a valid git object. Use :class:`Ref` in your type hints
+When you need to query a git ref from a user, :class:`RefParser` will check
+that the given ref is formatted correctly. Use :class:`Ref` in your type hints
 to help Yuio detect that you want to parse it as a git reference:
 
 .. autoclass:: Ref
@@ -68,20 +71,30 @@ supplies a valid ref that points to an existing git object, use :class:`CommitPa
 
 .. autoclass:: CommitParser
 
+
+Autocompleting git refs
+-----------------------
+
+.. autoclass:: RefCompleter
+
 """
 
 import dataclasses
 import enum
 import functools
+import logging
 import pathlib
 import re
 import subprocess
+import textwrap
 from dataclasses import dataclass
 from datetime import datetime
 
 import yuio.complete
 import yuio.parse
 from yuio import _typing as _t
+
+_logger = logging.getLogger(__name__)
 
 
 class GitException(subprocess.SubprocessError):
@@ -113,11 +126,14 @@ Branch = _t.NewType("Branch", str)
 Remote = _t.NewType("Remote", str)
 
 
-_LOG_FMT = "%H%n%aN%n%aE%n%aI%n%cN%n%cE%n%cI%n%w(0,0,1)%B%w(0,0)%n-"
+_LOG_FMT = "%H%n%aN%n%aE%n%aI%n%cN%n%cE%n%cI%n%(decorate:prefix=,suffix=,tag=,separator= )%n%w(0,0,1)%B%w(0,0)%n-"
+_LOG_TRAILERS_FMT = "%H%n%w(0,1,1)%(trailers:only=true)%w(0,0)%n-"
+_LOG_TRAILER_KEY_RE = re.compile(r"^(?P<key>\S+):\s")
 
 
 class Repo:
-    """A class that allows interactions with a git repository.
+    """
+    A class that allows interactions with a git repository.
 
     :param path:
         path to the repo root dir.
@@ -144,12 +160,21 @@ class Repo:
 
     @property
     def path(self) -> pathlib.Path:
-        """Path to the repo, as was passed to the constructor."""
+        """
+        Path to the repo, as was passed to the constructor.
+
+        """
 
         return self.__path
 
     def git(self, *args: str) -> bytes:
-        """Call git and return its stdout."""
+        """
+        Call git and return its stdout.
+
+        """
+
+        if _logger.isEnabledFor(logging.DEBUG):
+            _logger.debug("git %s", " ".join(args))
 
         res = subprocess.run(
             ["git"] + list(args),
@@ -157,6 +182,9 @@ class Repo:
             stdout=subprocess.PIPE,
             cwd=self.__path,
         )
+
+        if res.stderr:
+            _logger.debug("%s", res.stderr.decode())
 
         if res.returncode != 0:
             raise GitException(
@@ -167,17 +195,26 @@ class Repo:
         return res.stdout
 
     def root(self) -> pathlib.Path:
-        """Get the root directory of the repo."""
+        """
+        Get the root directory of the repo.
+
+        """
 
         return pathlib.Path(self.git("rev-parse", "--show-toplevel").decode())
 
     def git_dir(self) -> pathlib.Path:
-        """Get path to the ``.git`` directory of the repo."""
+        """
+        Get path to the ``.git`` directory of the repo.
+
+        """
 
         return pathlib.Path(self.git("rev-parse", "--git-dir").decode())
 
     def status(self) -> "Status":
-        """Query the current repository status."""
+        """
+        Query the current repository status.
+
+        """
 
         text = self.git("status", "--porcelain=v2", "--branch", "-z")
         lines = iter(text.split(b"\0"))
@@ -232,14 +269,19 @@ class Repo:
 
         return status
 
-    def log(self, *refs: str, max_entries: _t.Optional[int] = 10) -> _t.List["Commit"]:
-        """Query the log for given git objects.
-
-        Note that by default log output is limited by ten entries.
+    def log(
+        self, *refs: str, max_entries: _t.Optional[int] = None
+    ) -> _t.List["Commit"]:
+        """
+        Query the log for given git objects.
 
         """
 
-        args = [f"--pretty=format:{_LOG_FMT}"]
+        args = [
+            f"--pretty=format:{_LOG_FMT}",
+            "--decorate-refs=refs/tags",
+            "--decorate=short",
+        ]
 
         if max_entries is not None:
             args += ["-n", str(max_entries)]
@@ -256,8 +298,39 @@ class Repo:
 
         return commits
 
+    def trailers(
+        self, *refs: str, max_entries: _t.Optional[int] = None
+    ) -> "_t.List[CommitTrailers]":
+        """
+        Query trailer lines for given git objects.
+
+        Trailers are lines at the end of a commit message formatted as ``key: value``
+        pairs. See `git-interpret-trailers`__ for further description.
+
+        __ https://git-scm.com/docs/git-interpret-trailers
+
+        """
+
+        args = [f"--pretty=format:{_LOG_TRAILERS_FMT}"]
+
+        if max_entries is not None:
+            args += ["-n", str(max_entries)]
+
+        args += list(refs)
+
+        text = self.git("log", *args)
+        lines = iter(text.decode().split("\n"))
+
+        trailers = []
+
+        while commit := self.__parse_single_trailer_entry(lines):
+            trailers.append(commit)
+
+        return trailers
+
     def show(self, ref: str, /) -> "_t.Optional[Commit]":
-        """Query information for the given git object.
+        """
+        Query information for the given git object.
 
         Return `None` if object is not found.
 
@@ -269,9 +342,9 @@ class Repo:
             return None
 
         text = self.git(
-            "show",
+            "log",
             f"--pretty=format:{_LOG_FMT}",
-            "-s",
+            "-n1",
             ref,
         )
 
@@ -292,10 +365,11 @@ class Repo:
             commit = next(lines)
             author = next(lines)
             author_email = next(lines)
-            author_date = datetime.fromisoformat(next(lines))
+            author_datetime = datetime.fromisoformat(next(lines))
             committer = next(lines)
             committer_email = next(lines)
-            committer_date = datetime.fromisoformat(next(lines))
+            committer_datetime = datetime.fromisoformat(next(lines))
+            tags = next(lines).split()
             title = next(lines)
             body = ""
 
@@ -312,15 +386,60 @@ class Repo:
 
             return Commit(
                 commit,
+                tags,
                 author,
                 author_email,
-                author_date,
+                author_datetime,
                 committer,
                 committer_email,
-                committer_date,
+                committer_datetime,
                 title,
                 body,
             )
+        except StopIteration:
+            return None
+
+    @staticmethod
+    def __parse_single_trailer_entry(
+        lines,
+    ) -> "_t.Optional[CommitTrailers]":
+        try:
+            commit = next(lines)
+            trailers = []
+            current_key = None
+            current_value = ""
+
+            while True:
+                line = next(lines)
+                if not line or line.startswith(" "):
+                    line = line[1:] + "\n"
+                    if match := _LOG_TRAILER_KEY_RE.match(line):
+                        if current_key:
+                            first, *rest = current_value.splitlines(keepends=True)
+                            current_value = (
+                                first.strip()
+                                + "\n"
+                                + textwrap.dedent("".join(rest)).rstrip()
+                                + "\n"
+                            )
+                            trailers.append((current_key, current_value))
+                        current_key = match.group("key")
+                        current_value = line[match.end() :]
+                    else:
+                        current_value += line
+                else:
+                    break
+            if current_key:
+                first, *rest = current_value.splitlines(keepends=True)
+                current_value = (
+                    first.strip()
+                    + "\n"
+                    + textwrap.dedent("".join(rest)).rstrip()
+                    + "\n"
+                )
+                trailers.append((current_key, current_value))
+
+            return CommitTrailers(commit, trailers)
         except StopIteration:
             return None
 
@@ -363,10 +482,16 @@ class Repo:
 
 @dataclass
 class Commit:
-    """Commit description."""
+    """
+    Commit description.
+
+    """
 
     #: Commit hash.
     hash: str
+
+    #: Tags attached to this commit.
+    tags: list[str]
 
     #: Author name.
     author: str
@@ -375,7 +500,7 @@ class Commit:
     author_email: str
 
     #: Author time.
-    author_date: datetime
+    author_datetime: datetime
 
     #: Committer name.
     committer: str
@@ -384,7 +509,7 @@ class Commit:
     committer_email: str
 
     #: Committer time.
-    committer_date: datetime
+    committer_datetime: datetime
 
     #: Commit title, i.e. first line of the message.
     title: str
@@ -394,13 +519,18 @@ class Commit:
 
     #: If commit was parsed from a user input, this field will contain
     #: original input. I.e. if a user enters ``HEAD`` and it gets resolved
-    #: into a commit, `orig_ref` will contain string ``'HEAD'``.
+    #: into a commit, `orig_ref` will contain string ``"HEAD"``.
     #:
     #: See also :class:`CommitParser`.
     orig_ref: _t.Optional[str] = None
 
     @property
     def short_hash(self):
+        """
+        First seven characters of the commit hash.
+
+        """
+
         return self.hash[:7]
 
     def __str__(self):
@@ -408,6 +538,20 @@ class Commit:
             return self.orig_ref
         else:
             return self.short_hash
+
+
+@dataclass
+class CommitTrailers:
+    """
+    Commit trailers.
+
+    """
+
+    #: Commit hash.
+    hash: str
+
+    #: Key-value pairs for commit trailers.
+    trailers: _t.List[_t.Tuple[str, str]]
 
 
 class Modification(enum.Enum):
@@ -432,7 +576,7 @@ class Modification(enum.Enum):
     COPIED = "C"
 
     #: File with conflicts is unmerged.
-    UPDATED = "U"
+    UNMERGED = "U"
 
     #: File is in ``.gitignore``.
     IGNORED = "?"
@@ -494,10 +638,30 @@ class Status:
 
 
 class RefCompleter(yuio.complete.Completer):
+    """
+    Completes git refs.
+
+    :param repo:
+        source of completions.
+    :param modes:
+        which objects to complete.
+
+    .. autoclass:: RefCompleter.Mode
+        :members:
+
+    """
+
     class Mode(enum.Enum):
+        #: Completes branches.
         Branch = "b"
+
+        #: Completes remote branches.
         Remote = "r"
+
+        #: Completes tags.
         Tag = "t"
+
+        #: Completes ``HEAD`` and ``ORIG_HEAD``.
         Head = "h"
 
     def __init__(
@@ -523,15 +687,15 @@ class RefCompleter(yuio.complete.Completer):
             if self.Mode.Branch in self._modes:
                 collector.add_group()
                 for branch in self._repo.branches():
-                    collector.add(branch)
+                    collector.add(branch, comment="branch")
             if self.Mode.Remote in self._modes:
                 collector.add_group()
                 for remote in self._repo.remotes():
-                    collector.add(remote)
+                    collector.add(remote, comment="remote")
             if self.Mode.Tag in self._modes:
                 collector.add_group()
                 for tag in self._repo.tags():
-                    collector.add(tag)
+                    collector.add(tag, comment="tag")
         except GitException:
             pass
 
@@ -558,7 +722,7 @@ class CommitParser(yuio.parse.ValueParser[Commit]):
 
     """
 
-    def __init__(self, repo: Repo):
+    def __init__(self, *, repo: Repo):
         super().__init__()
 
         self._repo = repo
@@ -578,18 +742,28 @@ class CommitParser(yuio.parse.ValueParser[Commit]):
         return RefCompleter(self._repo)
 
 
-_Str = _t.TypeVar("_Str", bound=str)
+T = _t.TypeVar("T")
 
 
-class _RefParserImpl(yuio.parse.ValidatingParser[_Str], _t.Generic[_Str]):
+class _RefParserImpl(yuio.parse.ValidatingParser[T], _t.Generic[T]):
+    if _t.TYPE_CHECKING:
+
+        def __new__(
+            cls,
+            /,
+            *,
+            repo_path: _t.Union[Repo, str, pathlib.Path, None] = None,
+            should_exist: bool = False,
+        ) -> "_RefParserImpl[T]": ...
+
     def __init__(
         self,
-        repo_path: _t.Union[Repo, str, pathlib.Path, None] = None,
         /,
         *,
+        repo_path: _t.Union[Repo, str, pathlib.Path, None] = None,
         should_exist: bool = False,
     ):
-        super().__init__(_t.cast(yuio.parse.Parser[_Str], yuio.parse.Str()))
+        super().__init__(_t.cast(yuio.parse.Parser[T], yuio.parse.Str()))
 
         if repo_path is None:
             repo_path = pathlib.Path.cwd()
@@ -608,8 +782,8 @@ class _RefParserImpl(yuio.parse.ValidatingParser[_Str], _t.Generic[_Str]):
         except GitException as e:
             raise yuio.parse.ParsingError(str(e)) from None
 
-    def _validate(self, value: str, /):
-        if self._should_exist and self._repo.show(value) is None:
+    def _validate(self, value: T, /):
+        if self._should_exist and self._repo.show(str(value)) is None:
             raise yuio.parse.ParsingError(
                 f"{value} does not exist in {self._repo_path}"
             )
@@ -632,7 +806,7 @@ class TagParser(_RefParserImpl[Tag]):
 
     """
 
-    def _validate(self, value: str, /):
+    def _validate(self, value: Tag, /):
         try:
             self._repo.git("check-ref-format", f"refs/tags/{value}")
         except GitException:
@@ -650,7 +824,7 @@ class BranchParser(_RefParserImpl[Branch]):
 
     """
 
-    def _validate(self, value: str, /):
+    def _validate(self, value: Branch, /):
         try:
             self._repo.git("check-ref-format", f"refs/heads/{value}")
         except GitException:
@@ -670,7 +844,7 @@ class RemoteParser(_RefParserImpl[Remote]):
 
     """
 
-    def _validate(self, value: str, /):
+    def _validate(self, value: Remote, /):
         try:
             self._repo.git("check-ref-format", f"refs/remotes/{value}")
         except GitException:
@@ -685,5 +859,28 @@ class RemoteParser(_RefParserImpl[Remote]):
 
 
 yuio.parse.register_type_hint_conversion(
-    lambda ty, origin, args: RefParser() if ty is Ref else None
+    lambda ty, origin, args: yuio.parse._str_ty_union_parser(
+        ty, origin, args, Ref, RefParser
+    )
 )
+
+yuio.parse.register_type_hint_conversion(
+    lambda ty, origin, args: yuio.parse._str_ty_union_parser(
+        ty, origin, args, Tag, TagParser
+    )
+)
+
+yuio.parse.register_type_hint_conversion(
+    lambda ty, origin, args: yuio.parse._str_ty_union_parser(
+        ty, origin, args, Branch, BranchParser
+    )
+)
+
+yuio.parse.register_type_hint_conversion(
+    lambda ty, origin, args: yuio.parse._str_ty_union_parser(
+        ty, origin, args, Remote, RemoteParser
+    )
+)
+
+
+a: yuio.parse.Parser[str] = RemoteParser()

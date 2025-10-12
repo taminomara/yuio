@@ -97,9 +97,14 @@ Pre-defined widgets
 
 .. autoclass:: Input
 
-.. autoclass:: Choice
+.. autoclass:: Grid
 
 .. autoclass:: Option
+   :members:
+
+.. autoclass:: Choice
+
+.. autoclass:: Multiselect
 
 .. autoclass:: InputWithCompletion
 
@@ -125,10 +130,10 @@ from dataclasses import dataclass
 import yuio.complete
 import yuio.md
 import yuio.term
-import yuio.theme
 from yuio import _typing as _t
 from yuio.term import Color as _Color
 from yuio.term import ColorizedString as _ColorizedString
+from yuio.term import Esc as _Esc
 from yuio.term import Term as _Term
 from yuio.term import line_width as _line_width
 from yuio.theme import Theme as _Theme
@@ -139,6 +144,8 @@ _MIN_COLUMN_WIDTH = 10
 _UNPRINTABLE_TRANS = str.maketrans(
     "".join(chr(i) for i in range(32)) + "\x7f", " " * 33
 )
+_UNPRINTABLE_TRANS_NL = _UNPRINTABLE_TRANS.copy()
+del _UNPRINTABLE_TRANS_NL[ord("\n")]
 
 
 T = _t.TypeVar("T")
@@ -203,6 +210,9 @@ class Key(enum.Enum):
     #: `F4` key.
     F4 = enum.auto()
 
+    #: Triggered when a text is pasted into a terminal.
+    PASTE = enum.auto()
+
     def __str__(self) -> str:
         return self.name.replace("_", " ").title()
 
@@ -211,8 +221,8 @@ class Key(enum.Enum):
 class KeyboardEvent:
     """A single keyboard event.
 
-    Note that we don't have separate flag for when `Shift` was pressed with keystroke
-    because that results in :attr:`~KeyboardEvent.key` being a capital letter.
+    Note that we don't have separate flag for when :kbd:`Shift` was pressed with
+    keystroke because that results in :attr:`~KeyboardEvent.key` being a capital letter.
 
     """
 
@@ -220,11 +230,14 @@ class KeyboardEvent:
     #: or a :class:`Key` for non-character keys.
     key: _t.Union[Key, str]
 
-    #: Whether a `Ctrl` modifier was pressed with keystroke.
+    #: Whether a :kbd:`Ctrl` modifier was pressed with keystroke.
     ctrl: bool = False
 
-    #: Whether an `Alt` (`Option` on macs) modifier was pressed with keystroke.
+    #: Whether an :kbd:`Alt` (:kbd:`Option` on macs) modifier was pressed with keystroke.
     alt: bool = False
+
+    #: If ``key`` is :attr:`Key.PASTE`, this attribute will contain pasted string.
+    paste_str: _t.Optional[str] = dataclasses.field(default=None, compare=False)
 
 
 @_t.final
@@ -549,7 +562,8 @@ class RenderContext:
     def write(
         self, text: yuio.term.AnyString, /, *, max_width: _t.Optional[int] = None
     ):
-        r"""Write string at the current position using the current color.
+        r"""
+        Write string at the current position using the current color.
         Move cursor while printing.
 
         While the displayed text will not be clipped at frame's borders,
@@ -594,7 +608,7 @@ class RenderContext:
             Hello, 🌍!<
             <BLANKLINE>
 
-        Notice that ``'\n'`` on the second line was replaced with a space.
+        Notice that ``"\n"`` on the second line was replaced with a space.
         Notice also that the last line wasn't properly clipped.
 
         """
@@ -605,7 +619,12 @@ class RenderContext:
         x = self._frame_x + self._frame_cursor_x
         y = self._frame_y + self._frame_cursor_y
 
-        self._frame_cursor_x += text.width
+        max_x = self._width
+        if max_width is not None:
+            max_x = min(max_x, x + max_width)
+            self._frame_cursor_x = min(self._frame_cursor_x + text.width, x + max_width)
+        else:
+            self._frame_cursor_x = self._frame_cursor_x + text.width
 
         if not 0 <= y < self._height:
             for s in text:
@@ -615,10 +634,6 @@ class RenderContext:
 
         ll = self._lines[y]
         cc = self._colors[y]
-
-        max_x = self._width
-        if max_width is not None:
-            max_x = min(max_x, x + max_width)
 
         for s in text:
             if isinstance(s, _Color):
@@ -957,16 +972,26 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     They always go through the same event loop:
 
     .. raw:: html
-       :file: ../docs/source/_embeds/widget.html
 
+        <p>
+        <pre class="mermaid">
+        flowchart TD
+        Start([Start]) --> Layout["`layout()`"]
+        Layout --> Draw["`draw()`"]
+        Draw -->|Wait for keyboard event| Event["`Event()`"]
+        Event --> Result{{Returned result?}}
+        Result -->|no| Layout
+        Result -->|yes| Finish([Finish])
+        </pre>
+        </p>
 
     Widgets run indefinitely until they stop themselves and return a value.
-    For example, :class:`Input` will return when user presses `Enter`.
+    For example, :class:`Input` will return when user presses :kbd:`Enter`.
     When widget needs to stop, it can return the :meth:`Result` class
     from its event handler.
 
     For typing purposes, :class:`Widget` is generic. That is, ``Widget[T]``
-    returns `T` from its :meth:`~Widget.run` method. So, :class:`Input`,
+    returns ``T`` from its :meth:`~Widget.run` method. So, :class:`Input`,
     for example, is ``Widget[str]``.
 
     Some widgets are ``Widget[Never]`` (see :class:`typing.Never`), indicating that
@@ -1053,7 +1078,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         if not term.is_fully_interactive:
             raise RuntimeError("terminal doesn't support rendering widgets")
 
-        with yuio.term._enter_raw_mode():
+        with yuio.term._enter_raw_mode(term.ostream, bracketed_paste=True):
             rc = RenderContext(term, theme)
 
             events = _event_stream()
@@ -1449,9 +1474,11 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             .with_action(
                 "M-...",
                 group="Terminology",
-                long_msg="means `Option+...`"
-                if sys.platform == "darwin"
-                else "means `Alt+...`",
+                long_msg=(
+                    "means `Option+...`"
+                    if sys.platform == "darwin"
+                    else "means `Alt+...`"
+                ),
             )
             .with_action(
                 "S-...",
@@ -1583,10 +1610,10 @@ def bind(
 
     .. note::
 
-       ``Ctrl+L`` and ``F1`` are always reserved by the widget itself.
+       :kbd:`Ctrl+L` and :kbd:`F1` are always reserved by the widget itself.
 
-    If `show_in_help` is :data:`True`, this binding will be shown in the widget's
-    inline help. If `show_in_detailed_help` is :data:`True`,
+    If ``show_in_help`` is :data:`True`, this binding will be shown in the widget's
+    inline help. If ``show_in_detailed_help`` is :data:`True`,
     this binding will be shown in the widget's help menu.
 
     Example::
@@ -1616,12 +1643,16 @@ class _Help:
     def __call__(self, fn: T, /) -> T:
         h = dataclasses.replace(
             self,
-            inline_msg=self.inline_msg
-            if self.inline_msg is not None
-            else getattr(fn, "__doc__", None),
-            long_msg=self.long_msg
-            if self.long_msg is not None
-            else getattr(fn, "__doc__", None),
+            inline_msg=(
+                self.inline_msg
+                if self.inline_msg is not None
+                else getattr(fn, "__doc__", None)
+            ),
+            long_msg=(
+                self.long_msg
+                if self.long_msg is not None
+                else getattr(fn, "__doc__", None)
+            ),
         )
         setattr(fn, "__yuio_help__", h)
 
@@ -1645,10 +1676,10 @@ def help(
     :param inline_msg:
         this parameter overrides a message in the inline help. By default,
         it will be taken from a docstring.
-    :param inline_msg:
+    :param long_msg:
         this parameter overrides a message in the help menu. By default,
         it will be taken from a docstring.
-    :param long_msg:
+    :param msg:
         a shortcut parameter for setting both ``inline_msg`` and ``long_msg``
         at the same time.
 
@@ -1724,7 +1755,30 @@ class WidgetHelp:
         prepend: bool = False,
         prepend_group: bool = False,
     ) -> "WidgetHelp":
-        """Return a new :class:`WidgetHelp` that has an extra action."""
+        """
+        Return a new :class:`WidgetHelp` that has an extra action.
+
+        :param bindings:
+            keys that trigger an action.
+        :param group:
+            title of a group that this action will appear in when the user opens
+            a help menu. Groups appear in order of declaration of their first element.
+        :param inline_msg:
+            this parameter overrides a message in the inline help. By default,
+            it will be taken from a docstring.
+        :param long_msg:
+            this parameter overrides a message in the help menu. By default,
+            it will be taken from a docstring.
+        :param msg:
+            a shortcut parameter for setting both ``inline_msg`` and ``long_msg``
+            at the same time.
+        :param prepend:
+            if :data:`True`, action will be added to the beginning of its group.
+        :param prepend_group:
+            if :data:`True`, group will be added to the beginning of the help menu.
+
+        """
+
         return WidgetHelp(self.inline_help.copy(), self.groups.copy()).__add_action(
             *bindings,
             group=group,
@@ -1736,10 +1790,15 @@ class WidgetHelp:
         )
 
     def merge(self, other: "WidgetHelp", /) -> "WidgetHelp":
-        """Merge this help data with another one
-        and return a new instance of :class:`WidgetHelp`.
+        """
+        Merge this help data with another one and return
+        a new instance of :class:`WidgetHelp`.
+
+        :param other:
+            other :class:`WidgetHelp` for merging.
 
         """
+
         result = WidgetHelp(self.inline_help.copy(), self.groups.copy())
         result.inline_help.extend(other.inline_help)
         for title, actions in other.groups.items():
@@ -1747,19 +1806,29 @@ class WidgetHelp:
         return result
 
     def without_group(self, title: str, /) -> "WidgetHelp":
-        """Return a new :class:`WidgetHelp` that has
-        a group with the given title removed.
+        """
+        Return a new :class:`WidgetHelp` that has a group with the given title removed.
+
+        :param title:
+            title to remove.
 
         """
+
         result = WidgetHelp(self.inline_help.copy(), self.groups.copy())
         result.groups.pop(title, None)
         return result
 
     def rename_group(self, title: str, new_title: str, /) -> "WidgetHelp":
-        """Return a new :class:`WidgetHelp` that has
-        a group with the given title renamed.
+        """
+        Return a new :class:`WidgetHelp` that has a group with the given title renamed.
+
+        :param title:
+            title to replace.
+        :param new_title:
+            new title.
 
         """
+
         result = WidgetHelp(self.inline_help.copy(), self.groups.copy())
         if group := result.groups.pop(title, None):
             result.groups[new_title] = result.groups.get(new_title, []) + group
@@ -1836,8 +1905,7 @@ class VerticalLayoutBuilder(_t.Generic[T]):
 
     if _t.TYPE_CHECKING:
 
-        def __new__(cls) -> "VerticalLayoutBuilder[_t.Never]":
-            ...
+        def __new__(cls) -> "VerticalLayoutBuilder[_t.Never]": ...
 
     def __init__(self):
         self._widgets: _t.List[Widget[_t.Any]] = []
@@ -1846,14 +1914,12 @@ class VerticalLayoutBuilder(_t.Generic[T]):
     @_t.overload
     def add(
         self, widget: Widget[_t.Any], /, *, receive_events: _t.Literal[False] = False
-    ) -> "VerticalLayoutBuilder[T]":
-        ...
+    ) -> "VerticalLayoutBuilder[T]": ...
 
     @_t.overload
     def add(
         self, widget: Widget[U], /, *, receive_events: _t.Literal[True]
-    ) -> "VerticalLayoutBuilder[U]":
-        ...
+    ) -> "VerticalLayoutBuilder[U]": ...
 
     def add(self, widget: Widget[_t.Any], /, *, receive_events=False) -> _t.Any:
         """Add a new widget to the bottom of the layout.
@@ -1916,8 +1982,7 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
     if _t.TYPE_CHECKING:
 
-        def __new__(cls, *widgets: Widget[object]) -> "VerticalLayout[_t.Never]":
-            ...
+        def __new__(cls, *widgets: Widget[object]) -> "VerticalLayout[_t.Never]": ...
 
     def __init__(self, *widgets: Widget[object]):
         self._widgets: _t.List[Widget[object]] = list(widgets)
@@ -2079,13 +2144,156 @@ class Text(Widget[_t.Never]):
         rc.write_text(self.__wrapped_text)
 
 
+_CHAR_NAMES = {
+    "\u0000": "<NUL>",
+    "\u0001": "<SOH>",
+    "\u0002": "<STX>",
+    "\u0003": "<ETX>",
+    "\u0004": "<EOT>",
+    "\u0005": "<ENQ>",
+    "\u0006": "<ACK>",
+    "\u0007": "\\a",
+    "\u0008": "\\b",
+    "\u0009": "\\t",
+    "\u000b": "\\v",
+    "\u000c": "\\f",
+    "\u000d": "\\r",
+    "\u000e": "<SO>",
+    "\u000f": "<SI>",
+    "\u0010": "<DLE>",
+    "\u0011": "<DC1>",
+    "\u0012": "<DC2>",
+    "\u0013": "<DC3>",
+    "\u0014": "<DC4>",
+    "\u0015": "<NAK>",
+    "\u0016": "<SYN>",
+    "\u0017": "<ETB>",
+    "\u0018": "<CAN>",
+    "\u0019": "<EM>",
+    "\u001a": "<SUB>",
+    "\u001b": "<ESC>",
+    "\u001c": "<FS>",
+    "\u001d": "<GS>",
+    "\u001e": "<RS>",
+    "\u001f": "<US>",
+    "\u007f": "<DEL>",
+    "\u0080": "<PAD>",
+    "\u0081": "<HOP>",
+    "\u0082": "<BPH>",
+    "\u0083": "<NBH>",
+    "\u0084": "<IND>",
+    "\u0085": "<NEL>",
+    "\u0086": "<SSA>",
+    "\u0087": "<ESA>",
+    "\u0088": "<HTS>",
+    "\u0089": "<HTJ>",
+    "\u008a": "<VTS>",
+    "\u008b": "<PLD>",
+    "\u008c": "<PLU>",
+    "\u008d": "<RI>",
+    "\u008e": "<SS2>",
+    "\u008f": "<SS3>",
+    "\u0090": "<DCS>",
+    "\u0091": "<PU1>",
+    "\u0092": "<PU2>",
+    "\u0093": "<STS>",
+    "\u0094": "<CCH>",
+    "\u0095": "<MW>",
+    "\u0096": "<SPA>",
+    "\u0097": "<EPA>",
+    "\u0098": "<SOS>",
+    "\u0099": "<SGCI>",
+    "\u009a": "<SCI>",
+    "\u009b": "<CSI>",
+    "\u009c": "<ST>",
+    "\u009d": "<OSC>",
+    "\u009e": "<PM>",
+    "\u009f": "<APC>",
+    "\u00a0": "<NBSP>",
+    "\u00ad": "<SHY>",
+}
+
+_ESC_RE = re.compile(r"([" + re.escape("".join(map(str, _CHAR_NAMES))) + "])")
+
+
+def _replace_special_symbols(text: str, esc_color: _Color, n_color: _Color):
+    res: _t.List[_t.Union[_Color, str]] = [n_color]
+    i = 0
+    for match in _ESC_RE.finditer(text):
+        if s := text[i : match.start()]:
+            res.append(s)
+        res.append(esc_color)
+        res.append(_Esc(_CHAR_NAMES[match.group(1)]))
+        res.append(n_color)
+        i = match.end()
+    if i < len(text):
+        res.append(text[i:])
+    return res
+
+
+def _find_cursor_pos(text: _t.List[_ColorizedString], text_width: int, offset: int):
+    total_len = 0
+    if not offset:
+        return (0, 0)
+    for y, line in enumerate(text):
+        x = 0
+        for part in line:
+            if isinstance(part, _Esc):
+                l = 1
+                dx = len(part)
+            elif isinstance(part, str):
+                l = len(part)
+                dx = _line_width(part)
+            else:
+                continue
+            if total_len + l >= offset:
+                if isinstance(part, _Esc):
+                    x += dx
+                else:
+                    x += _line_width(part[: offset - total_len])
+                if x >= text_width:
+                    return (0, y + 1)
+                else:
+                    return (0 + x, y)
+                break
+            x += dx
+            total_len += l
+        total_len += len(line.explicit_newline)
+        if total_len >= offset:
+            return (0, y + 1)
+    assert False  # pragma: no cover
+
+
 class Input(Widget[str]):
     """
     An input box.
 
-    .. vhs:: _tapes/widget_input.tape
+    .. vhs:: /_tapes/widget_input.tape
        :alt: Demonstration of `Input` widget.
        :scale: 40%
+
+    .. note::
+
+        :class:`Input` is not optimized to handle long texts or long editing sessions.
+        It's best used to get relatively short answers from users
+        with :func:`yuio.io.ask`. If you need to edit large text, especially multiline,
+        consider using :func:`yuio.io.edit` instead.
+
+    :param text:
+        initial text.
+    :param pos:
+        initial cursor position, calculated as an offset from beginning of the text.
+        Should be ``0 <= pos <= len(text)``.
+    :param placeholder:
+        placeholder text, shown when input is empty.
+    :param decoration:
+        decoration printed before the input box.
+    :param allow_multiline:
+        if `True`, :kbd:`Enter` key makes a new line, otherwise it accepts input.
+        In this mode, newlines in pasted text are also preserved.
+    :param allow_special_characters:
+        If `True`, special characters like tabs or escape symbols are preserved
+        and not replaced with whitespaces. Implies ``allow_multiline``.
 
     """
 
@@ -2116,12 +2324,14 @@ class Input(Widget[str]):
         placeholder: str = "",
         decoration: str = ">",
         allow_multiline: bool = False,
+        allow_special_characters: bool = False,
     ):
         self.__text: str = text
         self.__pos: int = len(text) if pos is None else max(0, min(pos, len(text)))
         self.__placeholder: str = placeholder
         self.__decoration: str = decoration
-        self.__allow_multiline: bool = allow_multiline
+        self.__allow_multiline: bool = allow_multiline or allow_special_characters
+        self.__allow_special_characters: bool = allow_special_characters
 
         self.__wrapped_text_width: int = 0
         self.__wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
@@ -2449,6 +2659,7 @@ class Input(Widget[str]):
     def yank(self):
         """yank (paste the last deleted text)"""
         if self.__yanked_text:
+            self.__require_checkpoint = True
             self.insert(self.__yanked_text)
         else:
             self._bell()
@@ -2468,14 +2679,31 @@ class Input(Widget[str]):
             self._bell()
 
     def default_event_handler(self, e: KeyboardEvent):
-        if isinstance(e.key, str) and not e.alt and not e.ctrl:
+        if e.key is Key.PASTE:
+            self.__require_checkpoint = True
+            s = e.paste_str or ""
+            if self.__allow_special_characters:
+                pass
+            elif self.__allow_multiline:
+                s = s.translate(_UNPRINTABLE_TRANS_NL)
+            else:
+                s = s.translate(_UNPRINTABLE_TRANS)
+            self.insert(s)
+        elif e.key is Key.TAB:
+            if self.__allow_special_characters:
+                self.insert("\t")
+            else:
+                self.insert(" ")
+        elif isinstance(e.key, str) and not e.alt and not e.ctrl:
             self.insert(e.key)
 
     def insert(self, s: str):
         self._internal_checkpoint(
-            Input._CheckpointType.SEP
-            if s in self._WORD_SEPARATORS
-            else Input._CheckpointType.SYM,
+            (
+                Input._CheckpointType.SEP
+                if s in self._WORD_SEPARATORS
+                else Input._CheckpointType.SYM
+            ),
             self.text,
             self.pos,
         )
@@ -2504,7 +2732,11 @@ class Input(Widget[str]):
 
             if self.__text:
                 self.__wrapped_text = _ColorizedString(
-                    [rc.theme.get_color("menu/text:input"), self.__text]
+                    _replace_special_symbols(
+                        self.__text,
+                        rc.theme.get_color("menu/text/esc:input"),
+                        rc.theme.get_color("menu/text:input"),
+                    )
                 ).wrap(
                     text_width,
                     preserve_spaces=True,
@@ -2522,20 +2754,10 @@ class Input(Widget[str]):
                 self.__pos_after_wrap = (decoration_width, 0)
 
         if self.__pos_after_wrap is None:
-            total_len = 0
-            for y, line in enumerate(self.__wrapped_text):
-                if total_len + len(line) >= self.__pos:
-                    x = _line_width(str(line)[: self.__pos - total_len])
-                    if x >= text_width:
-                        self.__pos_after_wrap = (decoration_width, y + 1)
-                    else:
-                        self.__pos_after_wrap = (decoration_width + x, y)
-                    break
-                total_len += len(line) + len(line.explicit_newline)
-            else:
-                self.__pos_after_wrap = (decoration_width, len(self.__wrapped_text))
+            x, y = _find_cursor_pos(self.__wrapped_text, text_width, self.__pos)
+            self.__pos_after_wrap = (decoration_width + x, y)
 
-        height = max(len(self.__wrapped_text), self.__pos_after_wrap[1])
+        height = max(len(self.__wrapped_text), self.__pos_after_wrap[1] + 1)
         return height, height
 
     def draw(self, rc: RenderContext, /):
@@ -2598,11 +2820,32 @@ class Option(_t.Generic[T_co]):
     #:
     #: This color tag will be used to display option.
     #: Specifically, color for the option will be looked up py path
-    #: ``'menu/choice/{status}/{element}/{color_tag}'``.
+    #: ``"menu/choice/{status}/{element}/{color_tag}"``.
     color_tag: _t.Optional[str] = None
 
 
 class Grid(Widget[_t.Never], _t.Generic[T]):
+    """
+    A helper widget that shows up in :class:`Choice` and :class:`InputWithCompletion`.
+
+    .. note::
+
+        On its own, :class:`Grid` doesn't return when you press :kbd:`Enter`
+        or :kbd:`Ctrl+D`. It's meant to be used as part of another widget.
+
+    :param options:
+        list of options displayed in the grid.
+    :param decoration:
+        decoration printed before the selected option.
+    :param default_index:
+        index of the initially selected option.
+    :param min_rows:
+        minimum number of rows that the grid should occupy before it starts
+        splitting options into columns. This option is ignored if there isn't enough
+        space on the screen.
+
+    """
+
     def __init__(
         self,
         options: _t.List[Option[T]],
@@ -2611,12 +2854,11 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         decoration: str = ">",
         default_index: _t.Optional[int] = 0,
         min_rows: _t.Optional[int] = 5,
-        enable_quick_select: bool = False,
     ):
         self.__options: _t.List[Option[T]]
         self.__index: _t.Optional[int]
         self.__min_rows: _t.Optional[int] = min_rows
-        self.__enable_quick_select: bool = enable_quick_select
+        self.__max_column_width: int
         self.__column_width: int
         self.__num_rows: int
         self.__num_columns: int
@@ -2668,14 +2910,11 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         options: _t.List[Option[T]],
         /,
         default_index: _t.Optional[int] = 0,
-        enable_quick_select: _t.Optional[bool] = None,
     ):
         """Set a new list of options."""
 
         self.__options = options
-        if enable_quick_select is not None:
-            self.__enable_quick_select = enable_quick_select
-        self.__column_width = max(
+        self.__max_column_width = max(
             0, _MIN_COLUMN_WIDTH, *map(self._get_option_width, options)
         )
         self.index = default_index
@@ -2683,7 +2922,6 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
     _NAVIGATE = "Navigate"
 
     @bind(Key.ARROW_UP)
-    @bind("k")
     @bind(Key.SHIFT_TAB)
     @help(group=_NAVIGATE)
     def prev_item(self):
@@ -2692,12 +2930,11 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             return
 
         if self.__index is None:
-            self.__index = len(self.__options) - 1
+            self.__index = 0
         else:
             self.__index = (self.__index - 1) % len(self.__options)
 
     @bind(Key.ARROW_DOWN)
-    @bind("j")
     @bind(Key.TAB)
     @help(group=_NAVIGATE)
     def next_item(self):
@@ -2711,102 +2948,119 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             self.__index = (self.__index + 1) % len(self.__options)
 
     @bind(Key.ARROW_LEFT)
-    @bind("h")
     @help(group=_NAVIGATE)
     def prev_column(self):
         """previous column"""
-        if not self.__options or self.__index is None:
+        if not self.__options:
             return
 
-        total_data_size_with_tail = self.__num_rows * math.ceil(
-            len(self.__options) / self.__num_rows
-        )
+        if self.__index is None:
+            self.__index = 0
+        else:
+            total_grid_capacity = self.__num_rows * math.ceil(
+                len(self.__options) / self.__num_rows
+            )
 
-        self.__index = (self.__index - self.__num_rows) % total_data_size_with_tail
-        if self.__index >= len(self.__options):
-            self.__index = len(self.__options) - 1
+            self.__index = (self.__index - self.__num_rows) % total_grid_capacity
+            if self.__index >= len(self.__options):
+                self.__index = len(self.__options) - 1
 
     @bind(Key.ARROW_RIGHT)
-    @bind("l")
     @help(group=_NAVIGATE)
     def next_column(self):
         """next column"""
-        if not self.__options or self.__index is None:
+        if not self.__options:
             return
 
-        total_data_size_with_tail = self.__num_rows * math.ceil(
-            len(self.__options) / self.__num_rows
-        )
+        if self.__index is None:
+            self.__index = 0
+        else:
+            total_grid_capacity = self.__num_rows * math.ceil(
+                len(self.__options) / self.__num_rows
+            )
 
-        self.__index = (self.__index + self.__num_rows) % total_data_size_with_tail
-        if self.__index >= len(self.__options):
-            self.__index = len(self.__options) - 1
+            self.__index = (self.__index + self.__num_rows) % total_grid_capacity
+            if self.__index >= len(self.__options):
+                self.__index = len(self.__options) - 1
 
     @bind(Key.PAGE_UP)
     @help(group=_NAVIGATE)
     def prev_page(self):
         """previous page"""
-        if not self.__options or self.__index is None:
+        if not self.__options:
             return
 
-        self.__index -= self.__index % self._page_size
-        self.__index -= 1
-        if self.__index < 0:
-            self.__index = len(self.__options) - 1
+        if self.__index is None:
+            self.__index = 0
+        else:
+            self.__index -= self.__index % self._page_size
+            self.__index -= 1
+            if self.__index < 0:
+                self.__index = len(self.__options) - 1
 
     @bind(Key.PAGE_DOWN)
     @help(group=_NAVIGATE)
     def next_page(self):
         """next page"""
-        if not self.__options or self.__index is None:
+        if not self.__options:
             return
 
-        self.__index -= self.__index % self._page_size
-        self.__index += self._page_size
-        if self.__index > len(self.__options):
+        if self.__index is None:
             self.__index = 0
+        else:
+            self.__index -= self.__index % self._page_size
+            self.__index += self._page_size
+            if self.__index > len(self.__options):
+                self.__index = 0
 
     @bind(Key.HOME)
     @help(group=_NAVIGATE)
     def home(self):
         """first page"""
-        if not self.__options or self.__index is None:
+        if not self.__options:
             return
 
-        self.__index = 0
+        if self.__index is None:
+            self.__index = 0
+        else:
+            self.__index = 0
 
     @bind(Key.END)
     @help(group=_NAVIGATE)
     def end(self):
         """last page"""
-        if not self.__options or self.__index is None:
+        if not self.__options:
             return
 
-        self.__index = len(self.__options) - 1
+        if self.__index is None:
+            self.__index = 0
+        else:
+            self.__index = len(self.__options) - 1
 
     def default_event_handler(self, e: KeyboardEvent):
-        if self.__enable_quick_select and e.key in [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-        ]:
-            index = int(e.key) - 1
-            if index < len(self.__options):
-                self.__index = index
+        if isinstance(e.key, str):
+            key = e.key.casefold()
+            if (
+                self.__options
+                and self.__index is not None
+                and self.__options[self.__index].display_text.casefold().startswith(key)
+            ):
+                start = self.__index + 1
+            else:
+                start = 0
+            for i in range(start, start + len(self.__options)):
+                index = i % len(self.__options)
+                if self.__options[index].display_text.casefold().startswith(key):
+                    self.__index = index
+                    break
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
-        self.__column_width = max(1, min(self.__column_width, rc.width))
+        self.__column_width = max(1, min(self.__max_column_width, rc.width))
         self.__num_columns = num_columns = max(1, rc.width // self.__column_width)
         self.__num_rows = max(
             1,
             min(self.__min_rows or 1, len(self.__options)),
-            math.ceil(len(self.__options) / num_columns),
+            min(math.ceil(len(self.__options) / num_columns), rc.height),
         )
 
         additional_space = 0
@@ -2837,6 +3091,11 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             page_start_index = self.__index - self.__index % page_size
         page = self.__options[page_start_index : page_start_index + page_size]
 
+        if self.__num_columns > 1:
+            available_column_width = column_width - _SPACE_BETWEEN_COLUMNS
+        else:
+            available_column_width = column_width
+
         for i, option in enumerate(page):
             x = i // num_rows
             y = i % num_rows
@@ -2845,9 +3104,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
             index = i + page_start_index
             is_current = index == self.__index
-            self._render_option(
-                rc, column_width - _SPACE_BETWEEN_COLUMNS, option, is_current, index
-            )
+            self._render_option(rc, available_column_width, option, is_current)
 
         pages = math.ceil(len(self.__options) / self._page_size)
         if pages > 1:
@@ -2866,7 +3123,6 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         return (
             _SPACE_BETWEEN_COLUMNS
             + (_line_width(self.__decoration) + 1 if self.__decoration else 0)
-            + (3 if self.__enable_quick_select else 0)
             + (_line_width(option.display_text_prefix))
             + (_line_width(option.display_text))
             + (_line_width(option.display_text_suffix))
@@ -2880,7 +3136,6 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         width: int,
         option: Option[object],
         is_active: bool,
-        index: int,
     ):
         left_prefix_width = _line_width(option.display_text_prefix)
         left_main_width = _line_width(option.display_text)
@@ -2889,18 +3144,13 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         left_decoration_width = (
             _line_width(self.__decoration) + 1 if self.__decoration else 0
         )
-        quick_select_width = 3 if (self.__enable_quick_select) else 0
 
         right = option.comment or ""
         right_width = _line_width(right)
         right_decoration_width = 3 if right else 0
 
         total_width = (
-            left_decoration_width
-            + quick_select_width
-            + left_width
-            + right_decoration_width
-            + right_width
+            left_decoration_width + left_width + right_decoration_width + right_width
         )
 
         if total_width > width:
@@ -2910,7 +3160,6 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
                 right_decoration_width = 0
             total_width = (
                 left_decoration_width
-                + quick_select_width
                 + left_width
                 + right_decoration_width
                 + right_width
@@ -2918,32 +3167,12 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
         if total_width > width:
             left_width = max(left_width - (total_width - width), 3)
-            total_width = (
-                left_decoration_width
-                + quick_select_width
-                + left_width
-                + left_decoration_width
-                + left_width
-            )
-
-        if total_width > width or total_width == 0:
-            return
+            total_width = left_decoration_width + left_width
 
         if is_active:
             status_tag = "active"
         else:
             status_tag = "normal"
-
-        if self.__enable_quick_select and index < 9:
-            rc.set_color_path(
-                f"menu/decoration/quick-select:choice/{status_tag}/{option.color_tag}"
-            )
-            rc.write(f"{index + 1}.")
-            rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
-            rc.write(" ")
-        elif self.__enable_quick_select:
-            rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
-            rc.write("   ")
 
         if self.__decoration and is_active:
             rc.set_color_path(f"menu/decoration:choice/{status_tag}/{option.color_tag}")
@@ -2969,7 +3198,6 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             * (
                 width
                 - left_decoration_width
-                - quick_select_width
                 - left_width
                 - right_decoration_width
                 - right_width
@@ -2992,23 +3220,33 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
     @property
     def help_data(self) -> "WidgetHelp":
-        help_data = super().help_data
-        if self.__enable_quick_select:
-            return help_data.with_action(
-                "1..9",
-                long_msg="quick select",
-            )
-        else:
-            return help_data
+        return super().help_data.with_action(
+            "1..9",
+            "a..z",
+            long_msg="quick select",
+        )
 
 
 class Choice(Widget[T], _t.Generic[T]):
     """
     Allows choosing from pre-defined options.
 
-    .. vhs:: _tapes/widget_choice.tape
+    .. vhs:: /_tapes/widget_choice.tape
        :alt: Demonstration of `Choice` widget.
        :scale: 40%
+
+    :param options:
+        list of choice options.
+    :param mapper:
+        maps option to a text that will be used for filtering. By default,
+        uses :attr:`Option.display_text`. This argument is ignored
+        if a custom ``filter`` is given.
+    :param filter:
+        customizes behavior of list filtering. The default filter extracts text
+        from an option using the ``mapper``, and checks if it starts with the search
+        query.
+    :param default_index:
+        index of the initially selected option.
 
     """
 
@@ -3018,11 +3256,11 @@ class Choice(Widget[T], _t.Generic[T]):
         options: _t.List[Option[T]],
         /,
         *,
-        mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
-        or str(x.value),
+        mapper: _t.Callable[[Option[T]], str] = lambda x: (
+            x.display_text or str(x.value)
+        ),
         default_index: int = 0,
-    ):
-        ...
+    ): ...
 
     @_t.overload
     def __init__(
@@ -3032,8 +3270,7 @@ class Choice(Widget[T], _t.Generic[T]):
         *,
         filter: _t.Callable[[Option[T], str], bool],
         default_index: int = 0,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -3055,7 +3292,7 @@ class Choice(Widget[T], _t.Generic[T]):
         self.__default_index = default_index
 
         self.__input = Input(placeholder="Filter options...", decoration="/")
-        self.__grid = Grid[T]([], enable_quick_select=True)
+        self.__grid = Grid[T]([])
 
         self.__enable_search = False
 
@@ -3125,7 +3362,7 @@ class Choice(Widget[T], _t.Generic[T]):
                     index = len(options)
                 options.append(option)
 
-        self.__grid.set_options(options, enable_quick_select=not query)
+        self.__grid.set_options(options)
         self.__grid.index = index
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
@@ -3146,6 +3383,28 @@ class Choice(Widget[T], _t.Generic[T]):
 
 
 class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
+    """
+    Like :class:`Choice`, but allows selecting multiple items.
+
+    .. vhs:: /_tapes/widget_multiselect.tape
+       :alt: Demonstration of `Multiselect` widget.
+       :scale: 40%
+
+    :param options:
+        list of choice options.
+    :param mapper:
+        maps option to a text that will be used for filtering. By default,
+        uses :attr:`Option.display_text`. This argument is ignored
+        if a custom ``filter`` is given.
+    :param filter:
+        customizes behavior of list filtering. The default filter extracts text
+        from an option using the ``mapper``, and checks if it starts with the search
+        query.
+    :param default_index:
+        index of the initially selected option.
+
+    """
+
     @_t.overload
     def __init__(
         self,
@@ -3154,8 +3413,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
         *,
         mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
         or str(x.value),
-    ):
-        ...
+    ): ...
 
     @_t.overload
     def __init__(
@@ -3164,8 +3422,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
         /,
         *,
         filter: _t.Callable[[Option[T], str], bool],
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -3195,7 +3452,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
         self.__filter = filter
 
         self.__input = Input(placeholder="Filter options...", decoration="/")
-        self.__grid = Grid[_t.Tuple[T, bool]]([], enable_quick_select=True)
+        self.__grid = Grid[_t.Tuple[T, bool]]([])
 
         self.__enable_search = False
 
@@ -3279,7 +3536,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
                     index = len(options)
                 options.append(option)
 
-        self.__grid.set_options(options, enable_quick_select=not query)
+        self.__grid.set_options(options)
         self.__grid.index = index
 
     def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
@@ -3303,7 +3560,7 @@ class InputWithCompletion(Widget[str]):
     """
     An input box with tab completion.
 
-    .. vhs:: _tapes/widget_completion.tape
+    .. vhs:: /_tapes/widget_completion.tape
        :alt: Demonstration of `InputWithCompletion` widget.
        :scale: 40%
 
@@ -3564,8 +3821,11 @@ def _event_stream() -> _t.Iterator[KeyboardEvent]:
     while True:
         key = yuio.term._read_keycode()
 
+        if key.startswith("\x1b[200~"):
+            yield _parse_paste(key[6:])
+
         # Esc key
-        if key == "\x1b":
+        elif key == "\x1b":
             yield KeyboardEvent(Key.ESCAPE)
         elif key == "\x1b\x1b":
             yield KeyboardEvent(Key.ESCAPE, alt=True)
@@ -3661,11 +3921,23 @@ def _parse_char(
         yield KeyboardEvent(Key.ENTER, ctrl, alt)
     elif char == "\x7f":
         yield KeyboardEvent(Key.BACKSPACE, ctrl, alt)
-    elif len(char) == 1 and "\x01" <= char <= "\x1A":
+    elif len(char) == 1 and "\x01" <= char <= "\x1a":
         yield KeyboardEvent(chr(ord(char) - 0x1 + ord("a")), True, alt)
-    elif len(char) == 1 and "\x0C" <= char <= "\x1F":
+    elif len(char) == 1 and "\x0c" <= char <= "\x1f":
         yield KeyboardEvent(chr(ord(char) - 0x1C + ord("4")), True, alt)
     elif (len(char) == 1 and (char in string.printable or ord(char) >= 160)) or len(
         char
     ) > 1:
         yield KeyboardEvent(char, ctrl, alt)
+
+
+def _parse_paste(key: str) -> KeyboardEvent:
+    buf = ""
+    while True:
+        index = key.find("\x1b[201~")
+        if index == -1:
+            buf += key
+        else:
+            buf += key[:index]
+            return KeyboardEvent(Key.PASTE, paste_str=buf)
+        key = yuio.term._read_keycode()

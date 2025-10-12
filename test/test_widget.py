@@ -1,4 +1,5 @@
 import io
+import string
 
 import pytest
 
@@ -743,6 +744,30 @@ class TestInput:
 
         widget_checker.check(yuio.widget.Input(decoration="//="))
 
+    def test_no_decoration(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
+            [
+                "                    ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("foo bar")
+        widget_checker.expect_screen(
+            [
+                "foo bar             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(yuio.widget.Input(decoration=""))
+
     def test_single_line(self, widget_checker: WidgetChecker[yuio.widget.Input]):
         widget_checker.expect_screen(
             [
@@ -763,10 +788,21 @@ class TestInput:
                 "                    ",
             ]
         )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.paste("\t\n:P")
+        widget_checker.expect_screen(
+            [
+                "> hello, world   :P ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
         widget_checker.key(yuio.widget.Key.ENTER)
 
         result = widget_checker.check(yuio.widget.Input(text="hello"))
-        assert result == "hello, world"
+        assert result == "hello, world   :P"
 
     def test_multiple_lines(self, widget_checker: WidgetChecker[yuio.widget.Input]):
         widget_checker.expect_screen(
@@ -808,12 +844,125 @@ class TestInput:
                 "                    ",
             ]
         )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.paste("\t:D\n:P")
+        widget_checker.expect_screen(
+            [
+                "> hello,            ",
+                "  world  :D         ",
+                "  :P                ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
         widget_checker.key(yuio.widget.Key.ENTER, alt=True)
 
         result = widget_checker.check(
             yuio.widget.Input(text="hello", allow_multiline=True)
         )
-        assert result == "hello,\nworld"
+        assert result == "hello,\nworld  :D\n:P"
+
+    def test_special_characters(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
+            [
+                "> hello             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text(",")
+        widget_checker.expect_screen(
+            [
+                "> hello,            ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.expect_screen(
+            [
+                "> hello,            ",
+                "                    ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("world")
+        widget_checker.expect_screen(
+            [
+                "> hello,            ",
+                "  world             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.paste("\t\a:D\n:P")
+        widget_checker.expect_screen(
+            [
+                "> hello,            ",
+                "  world\\t\\t\\a:D     ",
+                "  :P                ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER, alt=True)
+
+        result = widget_checker.check(
+            yuio.widget.Input(text="hello", allow_special_characters=True)
+        )
+        assert result == "hello,\nworld\t\t\a:D\n:P"
+
+    def test_long_word_break(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
+            [
+                "> xxxxxxxxxxxxxxxxxx",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(yuio.widget.Input(text="xxxxxxxxxxxxxxxxxx", pos=0))
+
+    def test_long_word_break_cursor_at_the_end(
+        self, widget_checker: WidgetChecker[yuio.widget.Input]
+    ):
+        widget_checker.expect_screen(
+            [
+                "> xxxxxxxxxxxxxxxxxx",
+                "                    ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(yuio.widget.Input(text="xxxxxxxxxxxxxxxxxx", pos=18))
+
+    def test_longer_word_break(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+        widget_checker.expect_screen(
+            [
+                "> xxxxxxxxxxxxxxxxxx",
+                "  xx                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(yuio.widget.Input(text="xxxxxxxxxxxxxxxxxxxx"))
 
     @pytest.mark.parametrize(
         "text,pos,cursor_pos,events",
@@ -1418,6 +1567,55 @@ class TestInput:
                     ),
                 ],
             ),
+            (
+                "xx\ayy",
+                0,
+                (0 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        1,
+                        (1 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        2,
+                        (2 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        3,
+                        (4 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        4,
+                        (5 + 2, 0),
+                    ),
+                ],
+            ),
+            (
+                "\ayy",
+                0,
+                (0 + 2, 0),
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        1,
+                        (2 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        2,
+                        (3 + 2, 0),
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        3,
+                        (4 + 2, 0),
+                    ),
+                ],
+            ),
         ],
     )
     def test_move(
@@ -1691,6 +1889,25 @@ class TestInput:
                     .expect_widget_to_continue()
                 ),
             ),
+            # Undo paste
+            (
+                "foobar",
+                3,
+                (
+                    WidgetChecker[yuio.widget.Input]()
+                    .text("XY")
+                    .paste("AB")
+                    .expect_widget_eq(lambda widget: widget.text, "fooXYABbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 7)
+                    .key("-", ctrl=True)
+                    .expect_widget_eq(lambda widget: widget.text, "fooXYbar")
+                    .expect_widget_eq(lambda widget: widget.pos, 5)
+                    .key("-", ctrl=True)
+                    .expect_widget_eq(lambda widget: widget.text, "foobar")
+                    .expect_widget_eq(lambda widget: widget.pos, 3)
+                    .expect_widget_to_continue()
+                ),
+            ),
         ],
     )
     def test_undo(
@@ -1706,3 +1923,921 @@ class TestInput:
     ):
         widget = yuio.widget.Input(text=text, pos=pos)
         widget_checker.check(widget, ostream, term, theme, width, height)
+
+
+class TestGrid:
+    def test_empty(self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]):
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_eq(
+            yuio.widget.Grid.get_options,
+            [],
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(yuio.widget.Grid([]))
+
+    def test_simple(self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]):
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_eq(
+            yuio.widget.Grid.get_options,
+            [
+                yuio.widget.Option("a", "a"),
+                yuio.widget.Option("b", "b"),
+                yuio.widget.Option("c", "c"),
+            ],
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option("a", "a"),
+                    yuio.widget.Option("b", "b"),
+                    yuio.widget.Option("c", "c"),
+                ]
+            )
+        )
+
+    def test_row(self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]):
+        widget_checker.expect_screen(
+            [
+                "> a         c       ",
+                "  b                 ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option("a", "a"),
+                    yuio.widget.Option("b", "b"),
+                    yuio.widget.Option("c", "c"),
+                ],
+                min_rows=0,
+            )
+        )
+
+    def test_long_option(self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]):
+        widget_checker.expect_screen(
+            [
+                "> xxxxxxxxxxxxxxxxxx",
+                "  b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option("a", "xxxxxxxxxxxxxxxxxxxx"),
+                    yuio.widget.Option("b", "b"),
+                    yuio.widget.Option("c", "c"),
+                ]
+            )
+        )
+
+    def test_decoration(self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]):
+        widget_checker.expect_screen(
+            [
+                "=/ a                ",
+                "   b                ",
+                "   c                ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option("a", "a"),
+                    yuio.widget.Option("b", "b"),
+                    yuio.widget.Option("c", "c"),
+                ],
+                decoration="=/",
+            )
+        )
+
+    def test_long_decoration(
+        self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]
+    ):
+        widget_checker.expect_screen(
+            [
+                "~~~~~~~~~~~~~~~~~~~~",
+                "                    ",
+                "                    ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option("a", "a"),
+                    yuio.widget.Option("b", "b"),
+                    yuio.widget.Option("c", "c"),
+                ],
+                decoration="~" * 20,
+            )
+        )
+
+    def test_default_index(self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]):
+        widget_checker.expect_screen(
+            [
+                "  a                 ",
+                "> b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option("a", "a"),
+                    yuio.widget.Option("b", "b"),
+                    yuio.widget.Option("c", "c"),
+                ],
+                default_index=1,
+            )
+        )
+
+    def test_default_index_wrap(
+        self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]
+    ):
+        widget_checker.expect_screen(
+            [
+                "  a                 ",
+                "> b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option("a", "a"),
+                    yuio.widget.Option("b", "b"),
+                    yuio.widget.Option("c", "c"),
+                ],
+                default_index=4,
+            )
+        )
+
+    def test_screens(self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]):
+        def set_index(i: int):
+            def inner(w: yuio.widget.Grid[str]):
+                print(i)
+                w.index = i
+
+            return inner
+
+        widget_checker.expect_screen(
+            [
+                "> 1         4       ",
+                "  2         5       ",
+                "  3         6       ",
+                "Page 1 of 3         ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.call(set_index(6))
+        widget_checker.refresh()
+        widget_checker.expect_screen(
+            [
+                "> 7         10      ",
+                "  8         11      ",
+                "  9         12      ",
+                "Page 2 of 3         ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.call(set_index(9))
+        widget_checker.refresh()
+        widget_checker.expect_screen(
+            [
+                "  7       > 10      ",
+                "  8         11      ",
+                "  9         12      ",
+                "Page 2 of 3         ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.call(set_index(12))
+        widget_checker.refresh()
+        widget_checker.expect_screen(
+            [
+                "> 13                ",
+                "  14                ",
+                "                    ",
+                "Page 3 of 3         ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option("1", "1"),
+                    yuio.widget.Option("2", "2"),
+                    yuio.widget.Option("3", "3"),
+                    yuio.widget.Option("4", "4"),
+                    yuio.widget.Option("5", "5"),
+                    yuio.widget.Option("6", "6"),
+                    yuio.widget.Option("7", "7"),
+                    yuio.widget.Option("8", "8"),
+                    yuio.widget.Option("9", "9"),
+                    yuio.widget.Option("10", "10"),
+                    yuio.widget.Option("11", "11"),
+                    yuio.widget.Option("12", "12"),
+                    yuio.widget.Option("13", "13"),
+                    yuio.widget.Option("14", "14"),
+                ],
+            )
+        )
+
+    def test_comment(self, widget_checker: WidgetChecker[yuio.widget.Grid[int]]):
+        widget_checker.expect_screen(
+            [
+                "> 0        [comment]",
+                "  1 [loooooonggggg1]",
+                "  loooooonggggg12345",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(
+            yuio.widget.Grid(
+                [
+                    yuio.widget.Option(value=0, display_text="0", comment="comment"),
+                    yuio.widget.Option(
+                        value=1, display_text="1", comment="loooooonggggg123456789"
+                    ),
+                    yuio.widget.Option(
+                        value=2, display_text="loooooonggggg123456789", comment="hi"
+                    ),
+                ]
+            )
+        )
+
+    def test_access_empty(self):
+        grid = yuio.widget.Grid([])
+
+        assert not grid.has_options()
+        assert grid.index is None
+        assert grid.get_option() is None
+
+    def test_access(self):
+        a = yuio.widget.Option("a", "a")
+        b = yuio.widget.Option("b", "b")
+        c = yuio.widget.Option("c", "c")
+
+        grid = yuio.widget.Grid([a, b, c])
+
+        assert grid.has_options()
+
+        assert grid.index == 0
+        assert grid.get_option() is a
+
+        grid.next_item()
+
+        assert grid.index == 1
+        assert grid.get_option() is b
+
+        grid.index = 2
+        assert grid.index == 2
+        assert grid.get_option() is c
+
+        grid.index = 3
+        assert grid.index == 0
+        assert grid.get_option() is a
+
+        grid.set_options([])
+        assert not grid.has_options()
+        assert grid.index is None
+        assert grid.get_option() is None
+
+        grid.set_options([a, b])
+
+        assert grid.has_options()
+
+        assert grid.index == 0
+        assert grid.get_option() is a
+
+        grid.index = 3
+        assert grid.index == 1
+        assert grid.get_option() is b
+
+    @pytest.mark.parametrize(
+        "index,events",
+        [
+            (
+                0,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        1,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        2,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        3,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        4,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        3,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        2,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        1,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        0,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB),
+                        1,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB),
+                        2,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB),
+                        3,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB),
+                        4,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.SHIFT_TAB),
+                        3,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.SHIFT_TAB),
+                        2,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.SHIFT_TAB),
+                        1,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.SHIFT_TAB),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                5,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        6,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        7,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        8,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        7,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        6,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        5,
+                    ),
+                ],
+            ),
+            (
+                9,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        10,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        0,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        1,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        0,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        10,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        9,
+                    ),
+                ],
+            ),
+            (
+                0,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        3,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        6,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        9,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        0,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        9,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        6,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        3,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                2,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        5,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        8,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        10,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        1,
+                    ),
+                ],
+            ),
+            (
+                2,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        10,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        7,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        4,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        1,
+                    ),
+                ],
+            ),
+            (
+                0,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_DOWN),
+                        6,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_DOWN),
+                        0,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        10,
+                    ),
+                ],
+            ),
+            (
+                0,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        10,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        5,
+                    ),
+                ],
+            ),
+            (
+                2,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_DOWN),
+                        6,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_DOWN),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                2,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        10,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        5,
+                    ),
+                ],
+            ),
+            (
+                2,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        10,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        5,
+                    ),
+                ],
+            ),
+            (
+                10,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        5,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        10,
+                    ),
+                ],
+            ),
+            (
+                5,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                        0,
+                    ),
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                        10,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_DOWN),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                        0,
+                    ),
+                ],
+            ),
+            (
+                None,
+                [
+                    (
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                        0,
+                    ),
+                ],
+            ),
+        ],
+    )
+    def test_move(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.Grid[int]],
+        index: _t.Optional[int],
+        events: _t.List[_t.Tuple[yuio.widget.KeyboardEvent, _t.Optional[int]]],
+    ):
+        widget = yuio.widget.Grid(
+            [
+                yuio.widget.Option(0, "0"),
+                yuio.widget.Option(1, "1"),
+                yuio.widget.Option(2, "2"),
+                yuio.widget.Option(3, "3"),
+                yuio.widget.Option(4, "4"),
+                yuio.widget.Option(5, "5"),
+                yuio.widget.Option(6, "6"),
+                yuio.widget.Option(7, "7"),
+                yuio.widget.Option(8, "8"),
+                yuio.widget.Option(9, "9"),
+                yuio.widget.Option(10, "10"),
+            ],
+            default_index=index,
+        )
+
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            index,
+        )
+        if index is not None:
+            widget_checker.expect_widget_eq(
+                lambda widget: widget.get_option().value,  # pyright:ignore[reportOptionalMemberAccess]
+                index,
+            )
+        else:
+            widget_checker.expect_widget_eq(
+                lambda widget: widget.get_option(),
+                None,
+            )
+        for event, index in events:
+            widget_checker.keyboard_event(event)
+            widget_checker.expect_widget_eq(
+                lambda widget: widget.index,
+                index,
+            )
+            if index is not None:
+                widget_checker.expect_widget_eq(
+                    lambda widget: widget.get_option().value,  # pyright:ignore[reportOptionalMemberAccess]
+                    index,
+                )
+            else:
+                widget_checker.expect_widget_eq(
+                    lambda widget: widget.get_option(),
+                    None,
+                )
+        widget_checker.expect_widget_to_continue()
+        widget_checker.check(widget)
+
+    @pytest.mark.parametrize(
+        "index,events",
+        [
+            (
+                0,
+                [
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.TAB),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_DOWN),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                ],
+            ),
+            (
+                None,
+                [
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.TAB),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_DOWN),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.HOME),
+                    yuio.widget.KeyboardEvent(yuio.widget.Key.END),
+                ],
+            ),
+        ],
+    )
+    def test_move_empty(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.Grid[int]],
+        index: _t.Optional[int],
+        events: _t.List[yuio.widget.KeyboardEvent],
+    ):
+        widget = yuio.widget.Grid([], default_index=index)
+
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            None,
+        )
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.get_option(),
+            None,
+        )
+        for event in events:
+            widget_checker.keyboard_event(event)
+            widget_checker.expect_widget_eq(
+                lambda widget: widget.index,
+                None,
+            )
+            widget_checker.expect_widget_eq(
+                lambda widget: widget.get_option(),
+                None,
+            )
+        widget_checker.expect_widget_to_continue()
+        widget_checker.check(widget)
+
+    @pytest.mark.parametrize(
+        "key,index",
+        [
+            *((k, i) for i, k in enumerate(string.digits)),
+            *((k, i + 10) for i, k in enumerate(string.ascii_lowercase)),
+            *((k, i + 10) for i, k in enumerate(string.ascii_uppercase)),
+        ],
+    )
+    def test_quick_select(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.Grid[None]],
+        key: str,
+        index: int,
+    ):
+        widget = yuio.widget.Grid(
+            [
+                *(yuio.widget.Option(None, k) for k in string.digits),
+                *(yuio.widget.Option(None, k) for k in string.ascii_letters),
+            ],
+            default_index=None,
+        )
+
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            None,
+        )
+        widget_checker.key(key)
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            index,
+        )
+        widget_checker.expect_widget_to_continue()
+        widget_checker.check(widget)
+
+    def test_quick_select_repeat(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.Grid[None]],
+    ):
+        widget = yuio.widget.Grid(
+            [
+                yuio.widget.Option(None, "q"),
+                yuio.widget.Option(None, "a"),
+                yuio.widget.Option(None, "b"),
+                yuio.widget.Option(None, "a"),
+            ],
+            default_index=None,
+        )
+
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            None,
+        )
+        widget_checker.key("a")
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            1,
+        )
+        widget_checker.key("a")
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            3,
+        )
+        widget_checker.key("a")
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            1,
+        )
+        widget_checker.key("q")
+        widget_checker.expect_widget_eq(
+            lambda widget: widget.index,
+            0,
+        )
+        widget_checker.expect_widget_to_continue()
+        widget_checker.check(widget)

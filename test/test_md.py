@@ -3,7 +3,6 @@ import re
 import pytest
 
 import yuio.md
-import yuio.term
 
 
 class TestParser:

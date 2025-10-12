@@ -4,17 +4,16 @@ authors = [{name = "Tamika Nomara", email = "taminomara@gmail.com"}]
 description = "Lite and user-friendly CLI library"
 dynamic = ["version"]
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "MIT"
 requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: User Interfaces",
     "Topic :: System :: Logging",
@@ -22,32 +21,32 @@ classifiers = [
     "Environment :: Console",
     "Typing :: Typed",
 ]
+dependencies = ["typing-extensions>=4.13,<5"]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest-cov~=6.0.0",
-    "yuio[test,lint,doc]",
-]
-lint = [
-    "black~=23.7",
-    "isort~=5.12",
-    "pre-commit~=3.8.0",
+    "pytest-cov==7.0.0",
+    {include-group = "test"},
+    {include-group = "lint"},
+    {include-group = "doc"},
 ]
 test = [
-    "pyright~=1.1",
-    "pytest~=7.4",
+    "pyright==1.1.405",
+    "pytest==8.4.2",
+    "sybil==9.2.0",
     "PyYaml~=6.0",
-    "sybil~=6.1",
     "toml~=0.10",
-    "types-PyYAML~=5.3",
-    "types-toml~=0.10",
-    "typing_extensions~=4.12",
 ]
 doc = [
-    "furo~=2024.8",
-    "sphinx-vhs~=0.0.5",
-    "sphinx~=6.1",
-    "sybil~=6.1",
+    "sybil==9.2.0",
+    "sphinx-immaterial==0.13.7",
+    "sphinx_design==0.6.1",
+    "sphinx-vhs==1.0.0",
+]
+lint = [
+    "black==25.1.0",
+    "isort==6.0.1",
+    "pre-commit==4.3.0",
 ]
 
 [project.urls]
@@ -71,13 +70,9 @@ testpaths = ["examples", "test", "yuio", "docs"]
 include = ["yuio", "examples"]
 exclude = ["**/__pycache__"]
 typeCheckingMode = "strict"
-pythonVersion = "3.8"
+pythonVersion = "3.12"
 pythonPlatform = "All"
 
-# deprecateTypingAliases = true
-reportUnnecessaryTypeIgnoreComment = "warning"
-reportUnusedFunction = "none"
-reportPrivateUsage = "none"
 reportMissingParameterType = "none"
 reportUnknownParameterType = "none"
 reportUnknownVariableType = "none"
@@ -85,13 +80,16 @@ reportUnknownMemberType = "none"
 reportUnknownArgumentType = "none"
 reportUnknownLambdaType = "none"
 reportUnnecessaryIsInstance = "none"
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportPrivateUsage = "none"
+reportUnusedFunction = "none"
 reportConstantRedefinition = "none"
 reportRedeclaration = "none"
 
 [tool.black]
-extend-exclude = '^/docs'
+force-exclude = '^/docs/source/by_example/code/.*'
 
 [tool.isort]
 profile = "black"
-extend_skip_glob = ["docs/*"]
+extend_skip_glob = ["docs/source/by_example/code/*"]
 skip_gitignore = true

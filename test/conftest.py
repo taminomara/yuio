@@ -159,7 +159,7 @@ _ExpectStdinReadlines.__name__ = """<call to stdin.readlines>"""
 
 @dataclass
 class _WidgetAssert:
-    fn: _t.Callable[[], bool]
+    fn: _t.Callable[[], None]
 
     def __str__(self):
         return self.__class__.__name__
@@ -238,7 +238,7 @@ class _KeyboardEventStream:
                     self.ostream.seek(0, io.SEEK_END)
                     assert RcCompare.from_commands(commands, self.width) == event
                 elif isinstance(event, _WidgetAssert):
-                    assert event.fn()
+                    event.fn()
                 else:
                     return stack_summary, event
         raise StopIteration
@@ -351,6 +351,13 @@ class IOMocker:
         self._height = height
         self._wrap_streams = wrap_streams
 
+    def refresh(self: "_Self") -> "_Self":
+        """
+        Refresh screen.
+
+        """
+        return self.key("l", ctrl=True)
+
     def key(
         self: "_Self",
         key: _t.Union[str, yuio.widget.Key],
@@ -385,6 +392,20 @@ class IOMocker:
         self._events.extend((stack_summary, yuio.widget.KeyboardEvent(c)) for c in text)
         return self
 
+    def paste(self: "_Self", text: str) -> "_Self":
+        """
+        Yield a text as a single paste event, from the mocked keyboard event stream.
+
+        """
+        stack_summary = self._get_stack_summary()
+        self._events.append(
+            (
+                stack_summary,
+                yuio.widget.KeyboardEvent(yuio.widget.Key.PASTE, paste_str=text),
+            )
+        )
+        return self
+
     def expect_screen(
         self: "_Self",
         screen: _t.Optional[_t.List[str]] = None,
@@ -408,7 +429,10 @@ class IOMocker:
 
         """
 
-        self._events.append((self._get_stack_summary(), _WidgetAssert(fn)))
+        def cb():
+            assert fn()
+
+        self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
     def expect_eq(self: "_Self", fn: _t.Callable[[], T], expected: T) -> "_Self":
@@ -418,11 +442,10 @@ class IOMocker:
 
         """
 
-        def eq():
+        def cb():
             assert fn() == expected
-            return True
 
-        self._events.append((self._get_stack_summary(), _WidgetAssert(eq)))
+        self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
     def expect_ne(self: "_Self", fn: _t.Callable[[], T], expected: T) -> "_Self":
@@ -432,11 +455,10 @@ class IOMocker:
 
         """
 
-        def eq():
+        def cb():
             assert fn() != expected
-            return True
 
-        self._events.append((self._get_stack_summary(), _WidgetAssert(eq)))
+        self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
     def expect_widget_to_continue(self: "_Self") -> "_Self":
@@ -602,7 +624,7 @@ class IOMocker:
         )
         old_enter_raw_mode, yuio.term._enter_raw_mode = (
             yuio.term._enter_raw_mode,
-            lambda: contextlib.nullcontext(),
+            lambda *_, **__: contextlib.nullcontext(),
         )
         old_stderr, sys.stderr = sys.stderr, term.ostream
         old_stdout, sys.stdout = sys.stdout, term.ostream
@@ -611,6 +633,7 @@ class IOMocker:
         yuio.widget.RenderContext._override_wh = (width, height)
 
         if wrap_streams:
+            assert not yuio.io.streams_wrapped(), "previous test didn't clean up?"
             yuio.io.wrap_streams()
 
         try:
@@ -621,14 +644,14 @@ class IOMocker:
             else:
                 _CURRENT_IOSTREAM_MOCK.finish()
         finally:
-            yuio.widget._event_stream = old_event_stream
-            yuio.term._enter_raw_mode = old_enter_raw_mode
-            yuio.widget.RenderContext._override_wh = None
-            sys.stderr = old_stderr
-            sys.stdout = old_stdout
-            sys.stdin = old_stdin
             if wrap_streams:
                 yuio.io.restore_streams()
+            yuio.widget.RenderContext._override_wh = None
+            sys.stdin = old_stdin
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            yuio.term._enter_raw_mode = old_enter_raw_mode
+            yuio.widget._event_stream = old_event_stream
             _CURRENT_IOSTREAM_MOCK = None
 
 
@@ -674,6 +697,19 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
     _widget: _t.Optional[W] = None
 
+    def call(self: "_Self", fn: _t.Callable[[W], None]) -> "_Self":
+        """
+        Run a function with widget as an input.
+
+        """
+
+        def widget_fn():
+            assert self._widget is not None, "widget is required"
+            fn(self._widget)
+
+        self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
+        return self
+
     def expect_widget(self: "_Self", fn: _t.Callable[[W], bool]) -> "_Self":
         """
         Assert some property of a widget.
@@ -682,7 +718,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
         def widget_fn():
             assert self._widget is not None, "widget is required"
-            return fn(self._widget)
+            assert fn(self._widget)
 
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self
@@ -697,7 +733,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
         def widget_fn():
             assert self._widget is not None, "widget is required"
-            return fn(self._widget) == expected
+            assert fn(self._widget) == expected
 
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self
@@ -712,7 +748,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
         def widget_fn():
             assert self._widget is not None, "widget is required"
-            return fn(self._widget) != expected
+            assert fn(self._widget) != expected
 
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self

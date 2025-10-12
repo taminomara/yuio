@@ -29,9 +29,12 @@ Yuio provides basic completers that cover most of the cases:
 
 .. autoclass:: Empty
 
+.. autoclass:: Alternative
+
 .. autoclass:: Choice
 
 .. autoclass:: Option
+   :members:
 
 .. autoclass:: List
 
@@ -177,7 +180,7 @@ class CompletionCollector:
         iprefix       prefix │ suffix isuffix
                              └ cursor
 
-    Now, if the completer adds a completion ``'list_elements'``,
+    Now, if the completer adds a completion ``"list_elements"``,
     this text will replace the `prefix` and `suffix`, but not `iprefix`
     and `isuffix`. So, after the completion is applied, the string will
     look like so:
@@ -246,7 +249,7 @@ class CompletionCollector:
     rsuffix: str
 
     #: If user types one of the symbols from this string,
-    # :attr:`~.CompletionCollector.rsuffix` will be removed.
+    #: :attr:`~.CompletionCollector.rsuffix` will be removed.
     rsymbols: str
 
     #: Similar to :attr:`CompletionCollector.iprefix`, but for suffixes.
@@ -416,7 +419,7 @@ class CompletionCollector:
 
     @property
     def num_completions(self) -> int:
-        """Return number of completions that were added so far."""
+        """Number of completions that were added so far."""
 
         return len(self._completions)
 
@@ -614,9 +617,11 @@ def _corrections(a: str, b: str) -> float:
                 # Replace:
                 d[i - 1][j - 1] + (a[i - 1] != b[j - 1]),
                 # Transpose:
-                d[i - 2][j - 2] + (a[i - 1] != b[j - 1])
-                if i > 2 and j > 2 and a[i - 2 : i] == b[j - 1 : j - 3 : -1]
-                else math.inf,
+                (
+                    d[i - 2][j - 2] + (a[i - 1] != b[j - 1])
+                    if i > 2 and j > 2 and a[i - 2 : i] == b[j - 1 : j - 3 : -1]
+                    else math.inf
+                ),
             )
 
     return d[-1][-1]
@@ -668,11 +673,14 @@ class Completer(abc.ABC):
 
     @abc.abstractmethod
     def _process(self, collector: CompletionCollector, /):
-        """Generate completions and add them to the given collector.
+        """
+        Generate completions and add them to the given collector.
 
         Implementing this class is straight forward, just feed all possible
         completions to the collector. For example, let's implement a completer
-        for environment variables::
+        for environment variables:
+
+        .. code-block:: python
 
             class EnvVarCompleter(Completer):
                 def _process(self, collector: CompletionCollector):
@@ -727,6 +735,29 @@ class Choice(Completer):
     ) -> "_CompleterSerializer.Model":
         return _CompleterSerializer.Choice(
             [option.completion for option in self._choices]
+        )
+
+
+class Alternative(Completer):
+    """Joins outputs from multiple completers."""
+
+    def __init__(self, completers: _t.List[_t.Tuple[str, Completer]]):
+        self._completers = completers
+
+    def _process(self, collector: CompletionCollector, /):
+        for _, completer in self._completers:
+            with collector.save_state():
+                collector.add_group()
+                completer._process(collector)
+
+    def _get_completion_model(
+        self, *, is_many: bool = False
+    ) -> "_CompleterSerializer.Model":
+        return _CompleterSerializer.Alternative(
+            [
+                (name, completer._get_completion_model(is_many=is_many))
+                for name, completer in self._completers
+            ]
         )
 
 
@@ -800,7 +831,7 @@ class Tuple(Completer):
             # Make sure we count those towards the current position in the tuple.
             pos += 1
         if pos > len(self._inners):
-            pos = len(self._inners)
+            return
         if pos > 0:
             pos -= 1
 
@@ -827,6 +858,11 @@ class Tuple(Completer):
 
 
 class File(Completer):
+    """
+    Completes file paths.
+
+    """
+
     def __init__(self, extensions: _t.Union[str, _t.Collection[str], None] = None):
         if isinstance(extensions, str):
             self._extensions = [extensions]
@@ -842,13 +878,16 @@ class File(Completer):
         collector.iprefix += base
         collector.prefix = name
         collector.suffix = collector.suffix.split(os.sep, maxsplit=1)[0]
-        resolved = pathlib.Path(base).resolve()
+        resolved = pathlib.Path(base).expanduser().resolve()
         rsuffix = collector.rsuffix
         if resolved.is_dir():
             if name.startswith("."):
                 collector.rsuffix = ""
                 collector.add("./", color_tag="dir")
                 collector.add("../", color_tag="dir")
+            if name.startswith("~"):
+                collector.rsuffix = ""
+                collector.add("~/", color_tag="dir")
             try:
                 for path in resolved.iterdir():
                     if path.is_dir():
@@ -868,15 +907,15 @@ class File(Completer):
                         collector.rsuffix = rsuffix
                         color_tag = None
                         dsuffix = ""
-                        if path.is_file():
+                        if path.is_symlink():
+                            color_tag = "symlink"
+                            dsuffix = "@"
+                        elif path.is_file():
                             if os.access(path, os.X_OK):
                                 color_tag = "exec"
                                 dsuffix = "*"
                             else:
                                 color_tag = "file"
-                        elif path.is_symlink():
-                            color_tag = "symlink"
-                            dsuffix = "@"
                         elif path.is_socket():
                             color_tag = "socket"
                             dsuffix = "="
@@ -902,6 +941,11 @@ class File(Completer):
 
 
 class Dir(File):
+    """
+    Completes directories.
+
+    """
+
     def __init__(self):
         super().__init__([])
 
@@ -912,10 +956,10 @@ class Dir(File):
 
 
 class _CompleterSerializer:
-    def __init__(self):
-        self._subcommands: _t.Dict[
-            str, _t.Tuple["_CompleterSerializer", bool, str]
-        ] = {}
+    def __init__(self, add_help: bool, add_version: bool):
+        self._subcommands: _t.Dict[str, _t.Tuple["_CompleterSerializer", bool, str]] = (
+            {}
+        )
         self._positional = 0
         self._flags: _t.List[
             _t.Tuple[
@@ -925,17 +969,36 @@ class _CompleterSerializer:
                 _t.Union[int, _t.Literal["-", "+", "*", "?"]],
                 "_CompleterSerializer.Model",
             ]
-        ] = [
-            (
-                ["-h", "--help"],
-                "show help and exit",
-                None,
-                "-",
-                _CompleterSerializer.Model(),
+        ] = []
+        self._add_help = add_help
+        if add_help:
+            self._flags.append(
+                (
+                    ["-h", "--help"],
+                    "show help message and exit",
+                    None,
+                    "-",
+                    _CompleterSerializer.Model(),
+                )
             )
-        ]
+        self._add_version = add_version
+        if add_version:
+            self._flags.append(
+                (
+                    ["-V", "--version"],
+                    "show program version and exit",
+                    None,
+                    "-",
+                    _CompleterSerializer.Model(),
+                )
+            )
 
     def add_argument(self, *args: str, **kwargs):
+        if self._add_help and "--help" in args:
+            return
+        if self._add_version and "--version" in args:
+            return
+
         help = kwargs.get("help") or ""
 
         if help is argparse.SUPPRESS:
@@ -951,18 +1014,20 @@ class _CompleterSerializer:
         metavar = kwargs.get("metavar") or ""
         nargs = kwargs.get(
             "nargs",
-            0
-            if action
-            in [
-                "store_const",
-                "store_true",
-                "store_false",
-                "append_const",
-                "count",
-                "help",
-                "version",
-            ]
-            else 1,
+            (
+                0
+                if action
+                in [
+                    "store_const",
+                    "store_true",
+                    "store_false",
+                    "append_const",
+                    "count",
+                    "help",
+                    "version",
+                ]
+                else 1
+            ),
         )
         if get_parser := getattr(action, "get_parser", None):
             parser = get_parser()
@@ -998,7 +1063,7 @@ class _CompleterSerializer:
         help: str,
         **kwargs,
     ):
-        serializer = _CompleterSerializer()
+        serializer = _CompleterSerializer(self._add_help, self._add_version)
         self._subcommands[name] = (serializer, False, str(help or ""))
         for alias in aliases:
             self._subcommands[alias] = (serializer, True, str(help))
@@ -1009,15 +1074,21 @@ class _CompleterSerializer:
         return _t.cast(argparse.ArgumentParser, self)
 
     def write_completions(self, prog: _t.Optional[str] = None, shell: str = "all"):
+        import yuio.app
         import yuio.io
+
+        if sys.platform == "win32":
+            raise yuio.app.AppError("For now, completions aren't supported on Windows.")
 
         prog = prog or pathlib.Path(sys.argv[0]).name
 
-        yuio.io.heading("Generating completions for `%s`", prog)
-
-        result = []
-        self._dump("", result)
-        compdata = "\n".join(result)
+        if shell == "uninstall":
+            shell = "all"
+            yuio.io.heading("Uninstalling completions for `%s`", prog)
+            install = False
+        else:
+            yuio.io.heading("Generating completions for `%s`", prog)
+            install = True
 
         data_home = pathlib.Path(
             os.environ.get("XDG_DATA_HOME") or (pathlib.Path.home() / ".local/share")
@@ -1029,31 +1100,46 @@ class _CompleterSerializer:
             os.environ.get("XDG_CONFIG_HOME") or (pathlib.Path.home() / ".config")
         )
 
-        os.makedirs(data_home / "yuio", exist_ok=True)
         compdata_path = data_home / f"yuio/{prog}.compdata.tsv"
-        compdata_path.write_text(compdata)
-        yuio.io.info("Wrote completion data to `%s`", compdata_path)
+
+        if install:
+            result = []
+            self._dump("", result)
+            compdata = "\n".join(result)
+
+            os.makedirs(data_home / "yuio", exist_ok=True)
+            compdata_path.write_text(compdata)
+            yuio.io.info("Wrote completion data to <c path>%s</c>", compdata_path)
+        elif compdata_path.exists():
+            os.remove(compdata_path)
+            yuio.io.info("Removed <c path>%s</c>", compdata_path)
 
         if shell in ["all", "bash"]:
             self._write_bash_script(
-                prog, compdata_path, data_home, cache_home, config_home
+                prog, install, compdata_path, data_home, cache_home, config_home
             )
         if shell in ["all", "zsh"]:
             self._write_zsh_script(
-                prog, compdata_path, data_home, cache_home, config_home
+                prog, install, compdata_path, data_home, cache_home, config_home
             )
         if shell in ["all", "fish"]:
             self._write_fish_script(
-                prog, compdata_path, data_home, cache_home, config_home
+                prog, install, compdata_path, data_home, cache_home, config_home
             )
+
+        if shell == "uninstall":
+            pass
 
         yuio.io.success(
             "All done! Please restart your shell for changes to take effect."
         )
+        if install:
+            yuio.io.info("Run `%s --completions uninstall` to undo all changes.", prog)
 
     def _write_bash_script(
         self,
         prog: str,
+        install: bool,
         compdata_path: pathlib.Path,
         data_home: pathlib.Path,
         cache_home: pathlib.Path,
@@ -1071,20 +1157,28 @@ class _CompleterSerializer:
         except subprocess.CalledProcessError:
             bash_completions_home = data_home / "bash-completion/completions/"
         bash_completions_home = pathlib.Path(bash_completions_home)
-        os.makedirs(bash_completions_home, exist_ok=True)
-
         script_dest = bash_completions_home / prog
-        script_template = (pathlib.Path(__file__).parent / "complete.bash").read_text()
-        script = script_template.replace("@prog@", prog).replace(
-            "@data@", str(compdata_path)
-        )
-        script_dest.write_text(script)
 
-        yuio.io.info("Wrote bash script to `%s`", script_dest)
+        if install:
+            os.makedirs(bash_completions_home, exist_ok=True)
+
+            script_template = (
+                pathlib.Path(__file__).parent / "complete.bash"
+            ).read_text()
+            script = script_template.replace("@prog@", prog).replace(
+                "@data@", str(compdata_path)
+            )
+            script_dest.write_text(script)
+
+            yuio.io.info("Wrote bash script to <c path>%s</c>", script_dest)
+        elif script_dest.exists():
+            os.remove(script_dest)
+            yuio.io.info("Removed <c path>%s</c>", script_dest)
 
     def _write_zsh_script(
         self,
         prog: str,
+        install: bool,
         compdata_path: pathlib.Path,
         data_home: pathlib.Path,
         cache_home: pathlib.Path,
@@ -1093,17 +1187,30 @@ class _CompleterSerializer:
         import yuio.exec
         import yuio.io
 
+        needs_cache_cleanup = False
+
         zsh_completions_home = data_home / "zsh/completions"
-        os.makedirs(zsh_completions_home, exist_ok=True)
-
         script_dest = zsh_completions_home / ("_" + prog)
-        script_template = (pathlib.Path(__file__).parent / "complete.zsh").read_text()
-        script = script_template.replace("@prog@", prog).replace(
-            "@data@", str(compdata_path)
-        )
-        script_dest.write_text(script)
 
-        yuio.io.info("Wrote zsh script to `%s`", script_dest)
+        if install:
+            needs_cache_cleanup = True
+
+            os.makedirs(zsh_completions_home, exist_ok=True)
+
+            script_template = (
+                pathlib.Path(__file__).parent / "complete.zsh"
+            ).read_text()
+            script = script_template.replace("@prog@", prog).replace(
+                "@data@", str(compdata_path)
+            )
+            script_dest.write_text(script)
+
+            yuio.io.info("Wrote zsh script to <c path>%s</c>", script_dest)
+        elif script_dest.exists():
+            needs_cache_cleanup = True
+
+            os.remove(script_dest)
+            yuio.io.info("Removed <c path>%s</c>", script_dest)
 
         try:
             fpath = (
@@ -1128,19 +1235,34 @@ class _CompleterSerializer:
             zhome = pathlib.Path.home()
 
         zhome = pathlib.Path(zhome)
+        zprofile_path = zhome / ".zprofile"
+        zprofile_append_text = (
+            f"\n# Generated by Yuio, a python CLI library."
+            f"\nfpath=({zsh_completions_home} $fpath)"
+            f"\n# End automatically generated patch"
+            f"\n"
+        )
 
-        if str(zsh_completions_home) not in fpath:
-            zprofile_path = zhome / ".zprofile"
-            with open(zprofile_path, "a") as f:
-                f.write(
-                    f"\n# Generated by Yuio, a python CLI library.\n"
-                    f"fpath=({zsh_completions_home} $fpath)\n"
+        if install:
+            if str(zsh_completions_home) not in fpath:
+                with open(zprofile_path, "a") as f:
+                    f.write(zprofile_append_text)
+                yuio.io.info(
+                    "Modified <c path>%s</c> to add <c path>%s</c> to `fpath`",
+                    zprofile_path,
+                    zsh_completions_home,
                 )
-            yuio.io.info(
-                "Modified `%s` to add `%s` to `fpath`",
-                zprofile_path,
-                zsh_completions_home,
-            )
+        elif zprofile_path.exists():
+            zprofile_text = zprofile_path.read_text()
+            if zprofile_append_text in zprofile_text:
+                yuio.io.info(
+                    "Note: modifications to <c path>%s</c> are not removed"
+                    " because other completions might rely on them.",
+                    zprofile_path,
+                )
+
+        if not needs_cache_cleanup:
+            return
 
         # Try to remove completions cache from the most common places.
         for zcomp_basedir in [zhome, cache_home / "prezto"]:
@@ -1149,7 +1271,9 @@ class _CompleterSerializer:
             for file in zcomp_basedir.iterdir():
                 if file.is_file() and re.match(r"^\.?zcompdump", file.name):
                     os.remove(file)
-                    yuio.io.info("Deleted zsh completions cache at `%s`", file)
+                    yuio.io.info(
+                        "Deleted zsh completions cache at <c path>%s</c>", file
+                    )
 
         try:
             # Run zsh with the right flags in case zshrc runs compinit.
@@ -1166,6 +1290,7 @@ class _CompleterSerializer:
     def _write_fish_script(
         self,
         prog: str,
+        install: bool,
         compdata_path: pathlib.Path,
         data_home: pathlib.Path,
         cache_home: pathlib.Path,
@@ -1174,16 +1299,23 @@ class _CompleterSerializer:
         import yuio.io
 
         fish_completions_home = data_home / "fish/vendor_completions.d"
-        os.makedirs(fish_completions_home, exist_ok=True)
-
         script_dest = fish_completions_home / (prog + ".fish")
-        script_template = (pathlib.Path(__file__).parent / "complete.fish").read_text()
-        script = script_template.replace("@prog@", prog).replace(
-            "@data@", str(compdata_path)
-        )
-        script_dest.write_text(script)
 
-        yuio.io.info("Wrote fish script to `%s`", script_dest)
+        if install:
+            os.makedirs(fish_completions_home, exist_ok=True)
+
+            script_template = (
+                pathlib.Path(__file__).parent / "complete.fish"
+            ).read_text()
+            script = script_template.replace("@prog@", prog).replace(
+                "@data@", str(compdata_path)
+            )
+            script_dest.write_text(script)
+
+            yuio.io.info("Wrote fish script to <c path>%s</c>", script_dest)
+        elif script_dest.exists():
+            os.remove(script_dest)
+            yuio.io.info("Removed <c path>%s</c>", script_dest)
 
     _SPECIAL_SYMBOLS = str.maketrans("\r\n\a\b\t", "     ")
 

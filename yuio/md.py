@@ -16,6 +16,8 @@ Formatting markdown
 .. autoclass:: MdFormatter
    :members:
 
+.. autofunction:: colorize
+
 
 Highlighting code
 -----------------
@@ -82,7 +84,6 @@ import textwrap
 from dataclasses import dataclass
 
 import yuio.term
-import yuio.theme
 from yuio import _typing as _t
 from yuio.term import Color
 from yuio.theme import Theme
@@ -95,7 +96,7 @@ TAst = _t.TypeVar("TAst", bound="AstBase")
 class MdFormatter:
     """A simple markdown formatter suitable for displaying reach text in the terminal.
 
-    All CommonMark block markup is supported:
+    All CommonMark block markup except tables is supported:
 
     - headings:
 
@@ -134,7 +135,7 @@ class MdFormatter:
             )
          ```
 
-      Yuio supports ``python``, ``traceback``, and ``bash`` syntaxes.
+      Yuio supports ``python``, ``traceback``, ``bash``, and ``diff`` syntaxes.
 
     Inline markdown only handles inline code blocks:
 
@@ -261,7 +262,7 @@ class MdFormatter:
     @staticmethod
     def _dedent(s: str, /) -> str:
         first_line, *rest = s.split("\n", 1)
-        return (first_line + ("\n" + textwrap.dedent(rest[0]) if rest else "")).strip()
+        return first_line + ("\n" + textwrap.dedent(rest[0]) if rest else "")
 
     def _line(self, line: yuio.term.ColorizedString, /):
         self._out.append(line)
@@ -367,9 +368,15 @@ class AstBase(abc.ABC):
 
     """
 
+    #: Start line, 0-based.
+    start: int
+
+    #: End line, 0-based.
+    end: int
+
     def _dump_params(self) -> str:
         s = self.__class__.__name__.lstrip("_")
-        for field in dataclasses.fields(self):
+        for field in dataclasses.fields(self)[2:]:
             if field.repr:
                 s += f" {getattr(self, field.name)!r}"
         return s
@@ -631,6 +638,8 @@ class _MdParser:
 
     @dataclass(**yuio._with_slots())
     class List:
+        item_start: int
+        item_end: int
         type: str
         marker_len: int
         list: List
@@ -639,14 +648,20 @@ class _MdParser:
 
     @dataclass(**yuio._with_slots())
     class Quote:
+        start: int
+        end: int
         parser: "_MdParser"
 
     @dataclass(**yuio._with_slots())
     class Code:
+        start: int
+        end: int
         lines: _t.List[str]
 
     @dataclass(**yuio._with_slots())
     class FencedCode:
+        start: int
+        end: int
         indent: int
         fence_symbol: str
         fence_length: int
@@ -655,6 +670,8 @@ class _MdParser:
 
     @dataclass(**yuio._with_slots())
     class Paragraph:
+        start: int
+        end: int
         lines: _t.List[str]
 
     State: _t.TypeAlias = _t.Union[Default, List, Quote, Code, FencedCode, Paragraph]
@@ -663,6 +680,7 @@ class _MdParser:
         self._allow_headings = allow_headings
         self._nodes: _t.List[AstBase] = []
         self._state: _MdParser.State = self.Default()
+        self._cur: int = 0
 
     def _parser(self) -> "_MdParser":
         return _MdParser(self._allow_headings)
@@ -673,11 +691,13 @@ class _MdParser:
 
     def parse(self, s: str) -> AstBase:
         s = s.expandtabs(tabsize=4)
-        for line in _LINE_FEED_RE.split(s):
-            self._handle_line(line)
-        return Document(self._finalize())
+        i = 0
+        for i, line in enumerate(_LINE_FEED_RE.split(s)):
+            self._handle_line(i, line)
+        return Document(items=self._finalize(), start=0, end=i)
 
-    def _handle_line(self, line: str):
+    def _handle_line(self, i: int, line: str):
+        self._cur = i
         getattr(self, f"_handle_line_{self._state.__class__.__name__}")(line)
 
     def _handle_lazy_line(self, line: str) -> bool:
@@ -691,14 +711,22 @@ class _MdParser:
     def _handle_line_List(self, line: str):
         assert type(self._state) is self.List
         if not line or line[: self._state.marker_len].isspace():
-            self._state.parser._handle_line(line[self._state.marker_len :])
+            self._state.item_end = self._cur
+            self._state.parser._handle_line(self._cur, line[self._state.marker_len :])
         elif (
             (match := _LIST_RE.match(line)) or (match := _NUMBERED_LIST_RE.match(line))
         ) and match.group("type") == self._state.type:
-            item = ListItem(self._state.parser._finalize(), self._state.number)
+            item = ListItem(
+                items=self._state.parser._finalize(),
+                number=self._state.number,
+                start=self._state.item_start,
+                end=self._state.item_end,
+            )
             self._state.list.items.append(item)
+            self._state.list.end = item.end
+            self._state.item_start = self._state.item_end = self._cur
             self._state.marker_len = len(match.group("marker"))
-            self._state.parser._handle_line(match.group("text"))
+            self._state.parser._handle_line(self._cur, match.group("text"))
             if self._state.number is not None:
                 self._state.number += 1
         elif not self._state.parser._handle_lazy_line(line):
@@ -707,36 +735,56 @@ class _MdParser:
 
     def _handle_lazy_line_List(self, line: str) -> bool:
         assert type(self._state) is self.List
-        return self._state.parser._handle_lazy_line(line)
+        if self._state.parser._handle_lazy_line(line):
+            self._state.item_end = self._cur
+            return True
+        return False
 
     def _flush_List(self):
         assert type(self._state) is self.List
-        item = ListItem(self._state.parser._finalize(), self._state.number)
+        item = ListItem(
+            items=self._state.parser._finalize(),
+            number=self._state.number,
+            start=self._state.item_start,
+            end=self._state.item_end,
+        )
         self._state.list.items.append(item)
+        self._state.list.end = item.end
         self._nodes.append(self._state.list)
         self._state = self.Default()
 
     def _handle_line_Quote(self, line: str):
         assert type(self._state) is self.Quote
         if match := _QUOTE_RE.match(line):
-            self._state.parser._handle_line(match.group("text"))
+            self._state.end = self._cur
+            self._state.parser._handle_line(self._cur, match.group("text"))
         elif self._is_blank(line) or not self._state.parser._handle_lazy_line(line):
             self._flush_Quote()
             self._handle_line_Default(line)
 
     def _handle_lazy_line_Quote(self, line: str) -> bool:
         assert type(self._state) is self.Quote
-        return self._state.parser._handle_lazy_line(line)
+        if self._state.parser._handle_lazy_line(line):
+            self._state.end = self._cur
+            return True
+        else:
+            return False
 
     def _flush_Quote(self):
         assert type(self._state) is self.Quote
-        items = self._state.parser._finalize()
-        self._nodes.append(Quote(items))
+        self._nodes.append(
+            Quote(
+                items=self._state.parser._finalize(),
+                start=self._state.start,
+                end=self._state.end,
+            )
+        )
         self._state = self.Default()
 
     def _handle_line_Code(self, line: str):
         assert type(self._state) == self.Code
         if self._is_blank(line) or line.startswith("    "):
+            self._state.end = self._cur
             self._state.lines.append(line[4:])
         else:
             self._flush_Code()
@@ -750,7 +798,14 @@ class _MdParser:
         assert type(self._state) == self.Code
         while self._state.lines and self._is_blank(self._state.lines[-1]):
             self._state.lines.pop()
-        self._nodes.append(Code(self._state.lines, ""))
+        self._nodes.append(
+            Code(
+                lines=self._state.lines,
+                syntax="",
+                start=self._state.start,
+                end=self._state.end,
+            )
+        )
         self._state = self.Default()
 
     def _handle_line_FencedCode(self, line: str):
@@ -758,7 +813,7 @@ class _MdParser:
         if (
             (match := _CODE_FENCE_END_RE.match(line))
             and match.group("fence")[0] == self._state.fence_symbol
-            and len(match.group("fence")) >= self._state.fence_length
+            and len(match.group("fence")) == self._state.fence_length
         ):
             self._flush_FencedCode()
         else:
@@ -768,6 +823,7 @@ class _MdParser:
                 line = line[self._state.indent :]
             else:
                 line = line.lstrip()
+            self._state.end = self._cur
             self._state.lines.append(line)
 
     def _handle_lazy_line_FencedCode(self, line: str) -> bool:
@@ -776,14 +832,28 @@ class _MdParser:
 
     def _flush_FencedCode(self):
         assert type(self._state) == self.FencedCode
-        self._nodes.append(Code(self._state.lines, self._state.syntax))
+        self._nodes.append(
+            Code(
+                lines=self._state.lines,
+                syntax=self._state.syntax,
+                start=self._state.start,
+                end=self._state.end,
+            )
+        )
         self._state = self.Default()
 
     def _handle_line_Paragraph(self, line: str):
         assert type(self._state) == self.Paragraph
         if match := _SETEXT_HEADING_RE.match(line):
             level = 1 if match.group("level") == "=" else 2
-            self._nodes.append(Heading(self._state.lines, level))
+            self._nodes.append(
+                Heading(
+                    lines=self._state.lines,
+                    level=level,
+                    start=self._state.start,
+                    end=self._cur,
+                )
+            )
             self._state = self.Default()
         elif (
             self._is_blank(line)
@@ -798,6 +868,7 @@ class _MdParser:
             self._flush_Paragraph()
             self._handle_line_Default(line)
         else:
+            self._state.end = self._cur
             self._state.lines.append(line)
 
     def _handle_lazy_line_Paragraph(self, line: str) -> bool:
@@ -815,12 +886,17 @@ class _MdParser:
             self._flush_Paragraph()
             return False
         else:
+            self._state.end = self._cur
             self._state.lines.append(line)
             return True
 
     def _flush_Paragraph(self):
         assert type(self._state) == self.Paragraph
-        self._nodes.append(Paragraph(self._state.lines))
+        self._nodes.append(
+            Paragraph(
+                lines=self._state.lines, start=self._state.start, end=self._state.end
+            )
+        )
         self._state = self.Default()
 
     def _handle_line_Default(self, line: str):
@@ -828,10 +904,17 @@ class _MdParser:
         if self._is_blank(line):
             pass  # do nothing
         elif _THEMATIC_BREAK_RE.match(line):
-            self._nodes.append(ThematicBreak())
+            self._nodes.append(ThematicBreak(start=self._cur, end=self._cur))
         elif self._allow_headings and (match := _HEADING_RE.match(line)):
             level = len(match.group("marker"))
-            self._nodes.append(Heading([match.group("text").strip()], level))
+            self._nodes.append(
+                Heading(
+                    lines=[match.group("text").strip()],
+                    level=level,
+                    start=self._cur,
+                    end=self._cur,
+                )
+            )
         elif (match := _CODE_BACKTICK_RE.match(line)) or (
             match := _CODE_TILDE_RE.match(line)
         ):
@@ -840,10 +923,10 @@ class _MdParser:
             fence_symbol = match.group("fence")[0]
             fence_length = len(match.group("fence"))
             self._state = self.FencedCode(
-                indent, fence_symbol, fence_length, syntax, []
+                self._cur, self._cur, indent, fence_symbol, fence_length, syntax, []
             )
         elif match := _CODE_RE.match(line):
-            self._state = self.Code([match.group("text")])
+            self._state = self.Code(self._cur, self._cur, [match.group("text")])
         elif (match := _LIST_RE.match(line)) or (
             match := _NUMBERED_LIST_RE.match(line)
         ):
@@ -851,13 +934,21 @@ class _MdParser:
             list_type = match.group("type")
             number_str = match.groupdict().get("number", None)
             number = int(number_str) if number_str else None
-            self._state = self.List(list_type, indent, List([]), self._parser(), number)
-            self._state.parser._handle_line(match.group("text"))
+            self._state = self.List(
+                self._cur,
+                self._cur,
+                list_type,
+                indent,
+                List(items=[], start=self._cur, end=self._cur),
+                self._parser(),
+                number,
+            )
+            self._state.parser._handle_line(self._cur, match.group("text"))
         elif match := _QUOTE_RE.match(line):
-            self._state = self.Quote(self._parser())
-            self._state.parser._handle_line(match.group("text"))
+            self._state = self.Quote(self._cur, self._cur, self._parser())
+            self._state.parser._handle_line(self._cur, match.group("text"))
         else:
-            self._state = self.Paragraph([line])
+            self._state = self.Paragraph(self._cur, self._cur, [line])
 
     def _handle_lazy_line_Default(self, line: str) -> bool:
         assert type(self._state) == self.Default
@@ -870,6 +961,7 @@ class _MdParser:
         self._flush()
         result = self._nodes
         self._nodes = []
+        self._cur = 0
         return result
 
 
@@ -1039,26 +1131,26 @@ SyntaxHighlighter.register_highlighter(
         ["py", "py3", "py-3", "python", "python3", "python-3"],
         re.compile(
             r"""
-          (?P<kwd>
-            \b(?:                                   # keyword
-              and|as|assert|async|await|break|class|continue|def|del|elif|else|
-              except|False|finally|for|from|global|if|import|in|is|lambda|None|
-              nonlocal|not|or|pass|raise|return|True|try|while|with|yield
-            )\b)
-        | (?P<str>
-            [rfu]*(                                 # string prefix
-                '(?:\\.|[^\\'])*(?:'|\n)            # singly-quoted string
-              | "(?:\\.|[^\\"])*(?:"|\n)            # doubly-quoted string
-              | \"""(\\.|[^\\]|\n)*?\"""            # long singly-quoted string
-              | \'''(\\.|[^\\]|\n)*?\'''))          # long doubly-quoted string
-        | (?P<lit>
-              \d+(?:\.\d*(?:e[+-]?\d+)?)?           # int or float
-            | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
-            | 0x[0-9a-fA-F]+                        # hex
-            | 0b[01]+)                              # bin
-        | (?P<punct>[{}()[\]\\;|!&])                # punctuation
-        | (?P<comment>\#.*$)                        # comment
-        """,
+                (?P<kwd>
+                    \b(?:                                   # keyword
+                      and|as|assert|async|await|break|class|continue|def|del|elif|else|
+                      except|False|finally|for|from|global|if|import|in|is|lambda|None|
+                      nonlocal|not|or|pass|raise|return|True|try|while|with|yield
+                    )\b)
+                | (?P<str>
+                    [rfu]*(                                 # string prefix
+                        '(?:\\.|[^\\'])*(?:'|\n)            # singly-quoted string
+                      | "(?:\\.|[^\\"])*(?:"|\n)            # doubly-quoted string
+                      | \"""(\\.|[^\\]|\n)*?\"""            # long singly-quoted string
+                      | \'''(\\.|[^\\]|\n)*?\'''))          # long doubly-quoted string
+                | (?P<lit>
+                      \d+(?:\.\d*(?:e[+-]?\d+)?)?           # int or float
+                    | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
+                    | 0x[0-9a-fA-F]+                        # hex
+                    | 0b[01]+)                              # bin
+                | (?P<punct>[{}()[\]\\;|!&])                # punctuation
+                | (?P<comment>\#.*$)                        # comment
+            """,
             re.MULTILINE | re.VERBOSE,
         ),
     )
@@ -1068,26 +1160,26 @@ SyntaxHighlighter.register_highlighter(
         ["sh", "bash"],
         re.compile(
             r"""
-        (?P<kwd>
-            \b(?:                                   # keyword
-              if|then|elif|else|fi|time|for|in|until|while|do|done|case|
-              esac|coproc|select|function
-            )\b
-          | \[\[                                    # `test` syntax: if [[ ... ]]
-          | \]\])
-        | (?P<a0__punct>(?:^|\|\|?|&&|\$\())        # chaining operator: pipe or logic
-          (?P<a1__>\s*)
-          (?P<a2__prog>\S+)                         # prog
-        | (?P<str>
-            '(?:[.\n]*?)*'                          # singly-quoted string
-          | "(?:\\.|[^\\"])*")                      # doubly-quoted string
-        | (?P<punct>
-              [{}()[\]\\;!&|&]                      # punctuation
-            | <{1,3}                                # input redirect
-            | [12]?>{1,2}(?:&[12])?)                # output redirect
-        | (?P<comment>\#.*$)                        # comment
-        | (?P<flag>(?<![\w-])-[a-zA-Z0-9_-]+\b)     # flag
-        """,
+                (?P<kwd>
+                    \b(?:                                   # keyword
+                      if|then|elif|else|fi|time|for|in|until|while|do|done|case|
+                      esac|coproc|select|function
+                    )\b
+                  | \[\[                                    # `test` syntax: if [[ ... ]]
+                  | \]\])
+                | (?P<a0__punct>(?:^|\|\|?|&&|\$\())        # chaining operator: pipe or logic
+                  (?P<a1__>\s*)
+                  (?P<a2__prog>\S+)                         # prog
+                | (?P<str>
+                    '(?:[.\n]*?)*'                          # singly-quoted string
+                  | "(?:\\.|[^\\"])*")                      # doubly-quoted string
+                | (?P<punct>
+                      [{}()[\]\\;!&|&]                      # punctuation
+                    | <{1,3}                                # input redirect
+                    | [12]?>{1,2}(?:&[12])?)                # output redirect
+                | (?P<comment>\#.*$)                        # comment
+                | (?P<flag>(?<![\w-])-[a-zA-Z0-9_-]+\b)     # flag
+            """,
             re.MULTILINE | re.VERBOSE,
         ),
     ),
@@ -1097,22 +1189,35 @@ SyntaxHighlighter.register_highlighter(
         ["sh-usage", "bash-usage"],
         re.compile(
             r"""
-        (?P<kwd>
-          \b(?:                                     # keyword
-            if|then|elif|else|fi|time|for|in|until|while|do|done|case|
-            esac|coproc|select|function
-          )\b)
-        | (?P<prog>%%\(prog\)s)                     # prog
-        | (?P<metavar>(?<=<)[^>]+(?=>))             # metavar
-        | (?P<str>
-              '(?:[.\n]*?)*'                        # singly-quoted string
-            | "(?:\\.|[^\\"])*")                    # doubly-quoted string
-        | (?P<comment>\#.*$)                        # comment
-        | (?P<flag>(?<![\w-])-[-a-zA-Z0-9_]+\b)     # flag
-    """,
+                (?P<kwd>
+                  \b(?:                                     # keyword
+                    if|then|elif|else|fi|time|for|in|until|while|do|done|case|
+                    esac|coproc|select|function
+                  )\b)
+                | (?P<prog>%%\(prog\)s)                     # prog
+                | (?P<metavar>(?<=<)[^>]+(?=>))             # metavar
+                | (?P<str>
+                      '(?:[.\n]*?)*'                        # singly-quoted string
+                    | "(?:\\.|[^\\"])*")                    # doubly-quoted string
+                | (?P<comment>\#.*$)                        # comment
+                | (?P<flag>(?<![\w-])-[-a-zA-Z0-9_]+\b)     # flag
+            """,
             re.MULTILINE | re.VERBOSE,
         ),
     )
+)
+SyntaxHighlighter.register_highlighter(
+    _ReSyntaxHighlighter(
+        ["diff"],
+        re.compile(
+            r"""
+                (?P<meta>^(\-\-\-|\+\+\+|\@\@)[^\r\n]*$)
+                | (?P<added>^\+[^\r\n]*$)
+                | (?P<removed>^\-[^\r\n]*$)
+            """,
+            re.MULTILINE | re.VERBOSE,
+        ),
+    ),
 )
 
 

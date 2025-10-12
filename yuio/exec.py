@@ -1,4 +1,4 @@
-# Yuio project, MIT licence.
+# Yuio project, MIT license.
 #
 # https://github.com/taminomara/yuio/
 #
@@ -22,7 +22,7 @@ import pathlib
 import subprocess
 import threading
 
-import yuio.io
+import yuio
 from yuio import _typing as _t
 
 _LOGGER = logging.getLogger("yuio.exec")
@@ -36,8 +36,7 @@ def exec(
     input: _t.Optional[str] = None,
     level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
-) -> str:
-    ...
+) -> str: ...
 
 
 @_t.overload
@@ -48,8 +47,7 @@ def exec(
     input: _t.Optional[bytes] = None,
     level: int = logging.DEBUG,
     text: _t.Literal[False],
-) -> bytes:
-    ...
+) -> bytes: ...
 
 
 def exec(
@@ -165,8 +163,7 @@ def sh(
     input: _t.Optional[str] = None,
     level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
-) -> str:
-    ...
+) -> str: ...
 
 
 @_t.overload
@@ -180,8 +177,7 @@ def sh(
     input: _t.Optional[bytes] = None,
     level: int = logging.DEBUG,
     text: _t.Literal[False],
-) -> bytes:
-    ...
+) -> bytes: ...
 
 
 def sh(

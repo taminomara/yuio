@@ -11,7 +11,6 @@ Let's begin by setting up a very simple CLI app:
 
 .. literalinclude:: code/1_1_first_yuio_app.py
    :language: python
-   :linenos:
 
 
 This is it! You now have a CLI app that greets you. Main function's parameters
@@ -32,7 +31,6 @@ We want colors, so it's time to switch from bare :func:`print` to :mod:`yuio.io`
 
 .. literalinclude:: code/1_2_something_colorful.py
    :language: python
-   :linenos:
    :lines: 1-6
    :emphasize-lines: 2,6
 
@@ -51,12 +49,12 @@ If you want more control over formatting, though, you can use color tags:
 
 .. literalinclude:: code/1_3_something_colorful.py
    :language: python
-   :linenos:
    :lines: 4-6
    :emphasize-lines: 3
 
-Now our message is bold, and green. By the way, Yuio has other color tags,
-for example ``<c note>`` can be used for emphasis.
+Now our message is bold, and green. By the way, Yuio has
+:ref:`other color tags <color-tags>`, for example ``<c note>``
+can be used for emphasis.
 
 
 Flags and positional arguments
@@ -69,7 +67,6 @@ Well, :func:`yuio.app.field` and :func:`yuio.app.positional` got you there:
 
 .. literalinclude:: code/1_4_flags.py
    :language: python
-   :linenos:
    :lines: 1-13
    :emphasize-lines: 1,7,8
 
@@ -89,7 +86,6 @@ Finally, let's add some help messages to document our CLI options:
 
 .. literalinclude:: code/1_5_help.py
    :language: python
-   :linenos:
    :lines: 5-13
    :emphasize-lines: 3,5,8
 

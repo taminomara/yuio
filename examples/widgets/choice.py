@@ -18,7 +18,7 @@ if __name__ == "__main__":
         ),
         yuio.widget.Option(
             display_text="gender euphoria 👉👈",
-            value="Aww :3 you're loved and valid, remember that 💖"
+            value="Aww :3 you're loved and valid, remember that 💖",
             #     " (and I really hope you survive this shitty world!)"
         ),
     ]
