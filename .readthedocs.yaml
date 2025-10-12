@@ -9,5 +9,9 @@ build:
     install:
       - pip install -U pip
       - pip install . --group doc
+      - sudo apt-get install fish
+    build:
+      html:
+        - python -m sphinx -n -j auto -T -b html -d _build/doctrees -D language=$READTHEDOCS_LANGUAGE . $READTHEDOCS_OUTPUT/html
 sphinx:
    configuration: docs/source/conf.py
