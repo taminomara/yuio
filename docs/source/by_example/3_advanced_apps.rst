@@ -126,9 +126,11 @@ Just run your app with ``--completions`` flag:
    Show
    Type "./app --completions"
    Enter
-   Sleep 4s
+   Sleep 5s
    Hide
-   Type ". ./.vhs_tmp/.local/share/fish/vendor_completions.d/app.fish && clear"
+   Type "zsh -li"
+   Enter
+   Type "clear"
    Enter
    Show
    Type "./app --"

@@ -1,6 +1,6 @@
 Require python
 
-Set Shell "fish"
+Set Shell "zsh"
 Set Theme "Dark Pastel"
 
 Hide
