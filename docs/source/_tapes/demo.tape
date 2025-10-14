@@ -36,15 +36,14 @@ Sleep 1s
 Type "try:"
 Enter
 Sleep 350ms
-Space 4
 Type "raise RuntimeError('fail')"
 Enter
 Sleep 300ms
+Backspace
 Type "except "
 Sleep 250ms
 Type "RuntimeError:"
 Enter
-Space 4
 Type "yuio.io.error_with_tb("
 Sleep 250ms
 Type "'Something went wrong!')"

@@ -85,6 +85,7 @@ reportPrivateUsage = "none"
 reportUnusedFunction = "none"
 reportConstantRedefinition = "none"
 reportRedeclaration = "none"
+deprecateTypingAliases = true
 
 [tool.black]
 force-exclude = '^/docs/source/by_example/code/.*'

@@ -1174,7 +1174,7 @@ SyntaxHighlighter.register_highlighter(
                     '(?:[.\n]*?)*'                          # singly-quoted string
                   | "(?:\\.|[^\\"])*")                      # doubly-quoted string
                 | (?P<punct>
-                      [{}()[\]\\;!&|&]                      # punctuation
+                      [{}()[\]\\;!&|]                       # punctuation
                     | <{1,3}                                # input redirect
                     | [12]?>{1,2}(?:&[12])?)                # output redirect
                 | (?P<comment>\#.*$)                        # comment
@@ -1194,13 +1194,17 @@ SyntaxHighlighter.register_highlighter(
                     if|then|elif|else|fi|time|for|in|until|while|do|done|case|
                     esac|coproc|select|function
                   )\b)
-                | (?P<prog>%%\(prog\)s)                     # prog
+                | (?P<prog>%\(prog\)s)                      # prog
                 | (?P<metavar>(?<=<)[^>]+(?=>))             # metavar
                 | (?P<str>
                       '(?:[.\n]*?)*'                        # singly-quoted string
                     | "(?:\\.|[^\\"])*")                    # doubly-quoted string
                 | (?P<comment>\#.*$)                        # comment
-                | (?P<flag>(?<![\w-])-[-a-zA-Z0-9_]+\b)     # flag
+                | (?P<flag>(?<![\w-])
+                      -[-a-zA-Z0-9_]+\b                     # flag
+                    | <options>                             # options
+                  )
+                | (?P<punct>[{}()[\]\\;!&|])                # punctuation
             """,
             re.MULTILINE | re.VERBOSE,
         ),
@@ -1444,7 +1448,7 @@ def colorize(
             ):
                 raw.append(stack[-1] | theme.get_color("hl/flag:sh-usage"))
             else:
-                raw.append(stack[-1] | theme.get_color("code"))
+                raw.append(stack[-1] | theme.get_color("fenced_code"))
             raw.append(yuio.term.NoWrap(code))
             raw.append(stack[-1])
         elif len(stack) > 1:

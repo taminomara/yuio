@@ -262,6 +262,10 @@ T = _t.TypeVar("T")
 Cfg = _t.TypeVar("Cfg", bound="Config")
 
 
+class MutuallyExclusiveGroup:
+    pass
+
+
 @dataclass(frozen=True)
 class _FieldSettings:
     default: _t.Any
@@ -272,6 +276,7 @@ class _FieldSettings:
     completer: _t.Optional[yuio.complete.Completer] = None
     required: bool = False
     merge: _t.Optional[_t.Callable[[_t.Any, _t.Any], _t.Any]] = None
+    group: MutuallyExclusiveGroup | None = None
 
     def _update_defaults(
         self,
@@ -424,6 +429,7 @@ class _Field:
     ty: type
     required: bool
     merge: _t.Optional[_t.Callable[[_t.Any, _t.Any], _t.Any]]
+    group: MutuallyExclusiveGroup | None
 
 
 @_t.overload
@@ -471,6 +477,7 @@ def field(
     flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
     completer: _t.Optional[yuio.complete.Completer] = None,
     merge: _t.Optional[_t.Callable[[T, T], T]] = None,
+    group: MutuallyExclusiveGroup | None = None,
 ) -> _t.Any:
     """Field descriptor, used for additional configuration of flags and config fields.
 
@@ -608,10 +615,7 @@ def positional(
     )
 
 
-def _action(
-    field: _Field,
-    parse_many: bool,
-):
+def _action(field: _Field, parse_many: bool = False, const: _t.Any = yuio.MISSING):
     class Action(argparse.Action):
         @staticmethod
         def get_parser():
@@ -627,7 +631,11 @@ def _action(
 
         def __call__(self, _, namespace, values, option_string=None):
             try:
-                if parse_many:
+                if const is not yuio.MISSING:
+                    assert field.parser
+                    assert values == []
+                    parsed = field.parser.parse_config(const)
+                elif parse_many:
                     if values is yuio.MISSING:
                         values = []
                     assert values is not None and not isinstance(values, str)
@@ -889,7 +897,7 @@ class Config:
         ns_prefix: str = "",
     ):
         group = group or parser
-        cls.__setup_arg_parser(group, parser, "", ns_prefix + ":", False)
+        cls.__setup_arg_parser(group, parser, "", ns_prefix + ":", False, 0)
 
     @classmethod
     def __setup_arg_parser(
@@ -899,6 +907,7 @@ class Config:
         prefix: str,
         dest_prefix: str,
         suppress_help: bool,
+        depth: int,
     ):
         if prefix:
             prefix += "-"
@@ -932,15 +941,18 @@ class Config:
                     desc = textwrap.dedent(lines[1]) if len(lines) > 1 else None
                     subgroup = parser.add_argument_group(title, desc)
                 field.ty.__setup_arg_parser(
-                    subgroup, parser, flags[0], dest + ".", current_suppress_help
+                    subgroup,
+                    parser,
+                    flags[0],
+                    dest + ".",
+                    current_suppress_help,
+                    depth + 1,
                 )
                 continue
             else:
                 assert field.parser is not None
 
             parse_many = field.parser.supports_parse_many()
-
-            action = _action(field, parse_many)
 
             if flags is yuio.POSITIONAL:
                 metavar = f"<{name.replace('_', '-')}>"
@@ -964,28 +976,41 @@ class Config:
                     default=yuio.MISSING,
                     help=help,
                     metavar=metavar,
-                    action=action,
+                    action=_action(field, parse_many),
                     **nargs_kw,
                 )
-            elif isinstance(field.parser, yuio.parse.Bool):
+            elif yuio.parse._is_bool_parser(field.parser):
                 mutex_group = group.add_mutually_exclusive_group(
                     required=field.required
                 )
 
+                if depth > 0 or not isinstance(field.default, bool):
+                    pos_help = help
+                    neg_help = None
+                elif field.default:
+                    pos_help = argparse.SUPPRESS
+                    neg_help = help
+                else:
+                    pos_help = help
+                    neg_help = argparse.SUPPRESS
+
                 mutex_group.add_argument(
                     *flags,
                     default=yuio.MISSING,
-                    help=help,
+                    help=pos_help,
                     dest=dest,
-                    action="store_true",
+                    action=_action(field, const=True),
+                    nargs=0,
                 )
 
                 assert field.flags is not yuio.POSITIONAL
                 for flag in field.flags:
                     if flag.startswith("--"):
                         flag_neg = (prefix or "--") + "no-" + flag[2:]
-                        if current_suppress_help:
+                        if current_suppress_help or neg_help == argparse.SUPPRESS:
                             help = argparse.SUPPRESS
+                        elif neg_help:
+                            help = neg_help
                         else:
                             help = f'disable <c hl/flag:sh-usage>{(prefix or "--") + flag[2:]}</c>'
                         mutex_group.add_argument(
@@ -993,7 +1018,8 @@ class Config:
                             default=yuio.MISSING,
                             help=help,
                             dest=dest,
-                            action="store_false",
+                            action=_action(field, const=False),
+                            nargs=0,
                         )
                         break
             else:
@@ -1004,7 +1030,7 @@ class Config:
                     metavar=metavar,
                     required=field.required,
                     dest=dest,
-                    action=action,
+                    action=_action(field, parse_many),
                     **nargs_kw,
                 )
 

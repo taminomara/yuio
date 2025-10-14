@@ -8,7 +8,7 @@
    git clone git@github.com:taminomara/yuio.git
    ```
 
-2. Create a virtual environment with python `3.12` or newer
+2. Create a virtual environment with python `3.13` or newer
    (some of dev tools don't work with older pythons).
 
 3. Install Yuio in development mode, and install dev dependencies:

@@ -133,8 +133,8 @@ Validators
 .. autoclass:: OneOf(inner: Parser[T], values: typing.Collection[T], /)
 
 
-Functional parsers
-------------------
+Auxiliary parsers
+-----------------
 
 .. autoclass:: Map(inner: Parser[U], fn: typing.Callable[[U], T], /)
 
@@ -147,6 +147,8 @@ Functional parsers
 .. autoclass:: CaseFold(inner: Parser[T], /)
 
 .. autoclass:: Strip(inner: Parser[T], /)
+
+.. autoclass:: WithDesc(inner: Parser[T], desc: str /)
 
 
 Deriving parsers from type hints
@@ -992,6 +994,10 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
     def __repr__(self):
         return f"{self.__class__.__name__}({self._inner_raw!r})"
 
+    @property
+    def __wrapped_parser__(self):  # pyright: ignore[reportIncompatibleVariableOverride]
+        return self._inner_raw
+
 
 class Map(MappingParser[T, U], _t.Generic[T, U]):
     """
@@ -1321,10 +1327,6 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
 
         """
 
-    @property
-    def __wrapped_parser__(self):  # pyright: ignore[reportIncompatibleVariableOverride]
-        return self._inner_raw
-
 
 class Str(ValueParser[str]):
     """
@@ -1522,8 +1524,10 @@ class Enum(WrappingParser[E, _t.Type[E]], ValueParser[E], _t.Generic[E]):
 
         return result
 
-    def describe(self) -> _t.Optional[str]:
+    def describe_or_def(self) -> str:
         desc = "|".join(str(self.__getter(e)) for e in self._inner)
+        if len(self._inner) > 1:
+            desc = f"{{{desc}}}"
         return desc
 
     def describe_value(self, value: object, /) -> _t.Optional[str]:
@@ -1893,7 +1897,10 @@ class Path(ValueParser[pathlib.Path]):
 
     def describe(self) -> _t.Optional[str]:
         if self.__extensions is not None:
-            return "|".join(f"<*{e}>" for e in self.__extensions)
+            desc = "|".join(f"<*{e}>" for e in self.__extensions)
+            if len(self.__extensions) > 1:
+                desc = f"{{{desc}}}"
+            return desc
         else:
             return None
 
@@ -2951,7 +2958,10 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
         return self.describe_or_def()
 
     def describe_or_def(self) -> str:
-        return f"|".join(parser.describe_or_def() for parser in self._inner)
+        desc = f"|".join(parser.describe_or_def() for parser in self._inner)
+        if len(self._inner) > 1:
+            desc = f"{{{desc}}}"
+        return desc
 
     def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
         result = []
@@ -3475,6 +3485,8 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
     def describe(self) -> _t.Optional[str]:
         desc = "|".join(self.describe_value_or_def(e) for e in self.__allowed_values)
         if len(desc) < 80:
+            if len(self.__allowed_values) > 1:
+                desc = f"{{{desc}}}"
             return desc
         else:
             return super().describe()
@@ -3520,6 +3532,76 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
             default_index = 0
 
         return yuio.widget.Choice(options, default_index=default_index)
+
+
+class WithDesc(MappingParser[T, T], _t.Generic[T]):
+    """
+    Overrides inline help messages of a wrapped parser.
+
+    Inline help messages will show up as hints in autocompletion and widgets.
+
+    :param inner:
+        inner parser.
+    :param desc:
+        description override.
+
+    """
+
+    if _t.TYPE_CHECKING:
+
+        @_t.overload
+        def __new__(cls, inner: Parser[T], desc: str, /) -> "MappingParser[T, T]": ...
+
+        @_t.overload
+        def __new__(cls, desc: str, /) -> PartialParser: ...
+
+        def __new__(cls, *args, **kwargs) -> _t.Any: ...
+
+    def __init__(self, *args):
+        inner: _t.Optional[Parser[T]]
+        desc: str
+        if len(args) == 1:
+            inner, desc = None, args[0]
+        elif len(args) == 2:
+            inner, desc = args
+        else:
+            raise TypeError(f"expected 1 or 2 positional arguments, got {len(args)}")
+
+        self.__desc = desc
+        super().__init__(inner)
+
+    def describe(self) -> str | None:
+        return self.__desc or self._inner.describe()
+
+    def describe_or_def(self) -> str:
+        return self.__desc or self._inner.describe_or_def()
+
+    def describe_many(self) -> str | tuple[str, ...] | None:
+        return self.__desc or self._inner.describe_many()
+
+    def describe_many_or_def(self) -> str | tuple[str, ...]:
+        return self.__desc or self._inner.describe_many_or_def()
+
+    def parse(self, value: str, /) -> T:
+        return self._inner.parse(value)
+
+    def parse_many(self, value: _t.Sequence[str], /) -> T:
+        return self._inner.parse_many(value)
+
+    def parse_config(self, value: object, /) -> T:
+        return self._inner.parse_config(value)
+
+    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+        return self._inner.options()
+
+    def widget(
+        self,
+        default: _t.Union[object, yuio.Missing],
+        input_description: _t.Optional[str],
+        default_description: _t.Optional[str],
+        /,
+    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+        return self._inner.widget(default, input_description, default_description)
 
 
 class _WidgetResultMapper(yuio.widget.Map[_t.Union[T, yuio.Missing], str]):
@@ -3895,6 +3977,14 @@ register_type_hint_conversion(
 def _is_optional_parser(parser: _t.Optional[Parser[object]], /) -> bool:
     while parser is not None:
         if isinstance(parser, Optional):
+            return True
+        parser = parser.__wrapped_parser__
+    return False
+
+
+def _is_bool_parser(parser: _t.Optional[Parser[object]], /) -> bool:
+    while parser is not None:
+        if isinstance(parser, Bool):
             return True
         parser = parser.__wrapped_parser__
     return False

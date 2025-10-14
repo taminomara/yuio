@@ -554,8 +554,9 @@ class DefaultTheme(Theme):
         #
         # Common tags
         # -----------
-        "code": "bold",
-        "note": "bold",
+        "code": "accent_color",
+        "fenced_code": "code",
+        "note": "accent_color_2",
         "path": "accent_color",
         #
         # IO messages and text
@@ -604,6 +605,7 @@ class DefaultTheme(Theme):
         "hl/str/esc": "bold",
         "hl/lit": Color.NONE,
         "hl/punct": "blue",
+        "hl/punct:sh-usage": "secondary_color",
         "hl/comment": "secondary_color",
         "hl/prog": "bold",
         "hl/flag": "accent_color_2",

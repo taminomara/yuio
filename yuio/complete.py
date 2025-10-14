@@ -1008,7 +1008,7 @@ class _CompleterSerializer:
 
         help = kwargs.get("help") or ""
 
-        if help is argparse.SUPPRESS:
+        if help == argparse.SUPPRESS:
             return
 
         help = yuio.md.strip_color_tags(help)
@@ -1116,7 +1116,7 @@ class _CompleterSerializer:
                         [
                             (name, help)
                             for name, (_, is_alias, help) in self._subcommands.items()
-                            if not is_alias
+                            if not is_alias and help != argparse.SUPPRESS
                         ]
                     ),
                 )
