@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import dataclasses
 import io
@@ -80,7 +82,7 @@ def io_mocker_factory(
     theme: yuio.theme.Theme,
     width: int,
     height: int,
-) -> _t.Callable[[], "IOMocker"]:
+) -> _t.Callable[[], IOMocker]:
     def factory():
         return IOMocker(ostream, term, theme, width, height)
 
@@ -88,7 +90,7 @@ def io_mocker_factory(
 
 
 @pytest.fixture
-def io_mocker(io_mocker_factory) -> "IOMocker":
+def io_mocker(io_mocker_factory) -> IOMocker:
     return io_mocker_factory()
 
 
@@ -99,7 +101,7 @@ def widget_checker_factory(
     theme: yuio.theme.Theme,
     width: int,
     height: int,
-) -> _t.Callable[[], "WidgetChecker[yuio.widget.Widget[object]]"]:
+) -> _t.Callable[[], WidgetChecker[yuio.widget.Widget[object]]]:
     def factory():
         return WidgetChecker[yuio.widget.Widget[object]](
             ostream, term, theme, width, height
@@ -111,7 +113,7 @@ def widget_checker_factory(
 @pytest.fixture
 def widget_checker(
     widget_checker_factory,
-) -> "WidgetChecker[yuio.widget.Widget[object]]":
+) -> WidgetChecker[yuio.widget.Widget[object]]:
     return widget_checker_factory()
 
 
@@ -148,7 +150,7 @@ _ExpectStdinReadline.__name__ = """<call to stdin.readline>"""
 
 @dataclass
 class _ExpectStdinReadlines:
-    result: _t.List[str]
+    result: list[str]
 
     def __str__(self):
         return self.__class__.__name__
@@ -170,7 +172,7 @@ _WidgetAssert.__name__ = """<assert widget state>"""
 
 @dataclass
 class _ExpectMark:
-    mark: _t.Optional[str]
+    mark: str | None
 
     def __str__(self):
         return f"<mark: {self.mark}>"
@@ -185,19 +187,17 @@ class _KeyboardEventStream:
         ostream: io.StringIO,
         term: yuio.term.Term,
         theme: yuio.theme.Theme,
-        events: _t.List[
-            _t.Tuple[
+        events: list[
+            tuple[
                 traceback.StackSummary,
-                _t.Union[
-                    yuio.widget.KeyboardEvent,
-                    "RcCompare",
-                    _WidgetAssert,
-                    _KeyboardEventStreamDone,
-                    _ExpectStdinRead,
-                    _ExpectStdinReadline,
-                    _ExpectStdinReadlines,
-                    _ExpectMark,
-                ],
+                yuio.widget.KeyboardEvent
+                | RcCompare
+                | _WidgetAssert
+                | _KeyboardEventStreamDone
+                | _ExpectStdinRead
+                | _ExpectStdinReadline
+                | _ExpectStdinReadlines
+                | _ExpectMark,
             ]
         ],
         width: int,
@@ -216,8 +216,8 @@ class _KeyboardEventStream:
         return self._next()[1]
 
     def _next(
-        self, expected_event_kind: _t.Type[T] = yuio.widget.KeyboardEvent
-    ) -> _t.Tuple[traceback.StackSummary, T]:
+        self, expected_event_kind: type[T] = yuio.widget.KeyboardEvent
+    ) -> tuple[traceback.StackSummary, T]:
         stack_summary, event = self._next_any()
         if not isinstance(event, expected_event_kind):
             raise AssertionError(
@@ -273,7 +273,7 @@ class _KeyboardEventStream:
         self.ostream.write(event.result)
         return event.result
 
-    def readlines(self, hint: int = -1) -> _t.List[str]:
+    def readlines(self, hint: int = -1) -> list[str]:
         try:
             _, event = self._next(expected_event_kind=_ExpectStdinReadlines)
         except StopIteration:
@@ -281,7 +281,7 @@ class _KeyboardEventStream:
         self.ostream.writelines(event.result)
         return event.result
 
-    def mark(self, mark: _t.Optional[str]):
+    def mark(self, mark: str | None):
         try:
             stack_summary, event = self._next(expected_event_kind=_ExpectMark)
         except StopIteration:
@@ -300,7 +300,7 @@ class _KeyboardEventStream:
             raise e
 
 
-_CURRENT_IOSTREAM_MOCK: _t.Optional["_KeyboardEventStream"] = None
+_CURRENT_IOSTREAM_MOCK: _KeyboardEventStream | None = None
 
 
 class IOMocker:
@@ -321,26 +321,24 @@ class IOMocker:
 
     def __init__(
         self,
-        ostream: _t.Optional[io.StringIO] = None,
-        term: _t.Optional[yuio.term.Term] = None,
-        theme: _t.Optional[yuio.theme.Theme] = None,
-        width: _t.Optional[int] = None,
-        height: _t.Optional[int] = None,
+        ostream: io.StringIO | None = None,
+        term: yuio.term.Term | None = None,
+        theme: yuio.theme.Theme | None = None,
+        width: int | None = None,
+        height: int | None = None,
         wrap_streams: bool = False,
     ):
-        self._events: _t.List[
-            _t.Tuple[
+        self._events: list[
+            tuple[
                 traceback.StackSummary,
-                _t.Union[
-                    yuio.widget.KeyboardEvent,
-                    RcCompare,
-                    _WidgetAssert,
-                    _KeyboardEventStreamDone,
-                    _ExpectStdinRead,
-                    _ExpectStdinReadline,
-                    _ExpectStdinReadlines,
-                    _ExpectMark,
-                ],
+                yuio.widget.KeyboardEvent
+                | RcCompare
+                | _WidgetAssert
+                | _KeyboardEventStreamDone
+                | _ExpectStdinRead
+                | _ExpectStdinReadline
+                | _ExpectStdinReadlines
+                | _ExpectMark,
             ]
         ] = []
 
@@ -351,7 +349,7 @@ class IOMocker:
         self._height = height
         self._wrap_streams = wrap_streams
 
-    def refresh(self: "_Self") -> "_Self":
+    def refresh(self: _Self) -> _Self:
         """
         Refresh screen.
 
@@ -359,11 +357,11 @@ class IOMocker:
         return self.key("l", ctrl=True)
 
     def key(
-        self: "_Self",
-        key: _t.Union[str, yuio.widget.Key],
+        self: _Self,
+        key: str | yuio.widget.Key,
         ctrl: bool = False,
         alt: bool = False,
-    ) -> "_Self":
+    ) -> _Self:
         """
         Yield a key from the mocked keyboard event stream.
 
@@ -373,9 +371,7 @@ class IOMocker:
         )
         return self
 
-    def keyboard_event(
-        self: "_Self", keyboard_event: yuio.widget.KeyboardEvent
-    ) -> "_Self":
+    def keyboard_event(self: _Self, keyboard_event: yuio.widget.KeyboardEvent) -> _Self:
         """
         Yield a keyboard event from the mocked keyboard event stream.
 
@@ -383,7 +379,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), keyboard_event))
         return self
 
-    def text(self: "_Self", text: str) -> "_Self":
+    def text(self: _Self, text: str) -> _Self:
         """
         Yield a text, one letter at a time, from the mocked keyboard event stream.
 
@@ -392,7 +388,7 @@ class IOMocker:
         self._events.extend((stack_summary, yuio.widget.KeyboardEvent(c)) for c in text)
         return self
 
-    def paste(self: "_Self", text: str) -> "_Self":
+    def paste(self: _Self, text: str) -> _Self:
         """
         Yield a text as a single paste event, from the mocked keyboard event stream.
 
@@ -407,12 +403,12 @@ class IOMocker:
         return self
 
     def expect_screen(
-        self: "_Self",
-        screen: _t.Optional[_t.List[str]] = None,
-        colors: _t.Optional[_t.List[str]] = None,
-        cursor_x: _t.Optional[int] = None,
-        cursor_y: _t.Optional[int] = None,
-    ) -> "_Self":
+        self: _Self,
+        screen: list[str] | None = None,
+        colors: list[str] | None = None,
+        cursor_x: int | None = None,
+        cursor_y: int | None = None,
+    ) -> _Self:
         """
         Check that the current contents of the output stream,
         when rendered onto a terminal, produce the given screen contents.
@@ -423,7 +419,7 @@ class IOMocker:
         )
         return self
 
-    def expect(self: "_Self", fn: _t.Callable[[], bool]) -> "_Self":
+    def expect(self: _Self, fn: _t.Callable[[], bool]) -> _Self:
         """
         Run a lambda function and assert that it returns :data:`True`.
 
@@ -435,7 +431,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
-    def expect_eq(self: "_Self", fn: _t.Callable[[], T], expected: T) -> "_Self":
+    def expect_eq(self: _Self, fn: _t.Callable[[], T], expected: T) -> _Self:
         """
         Run a lambda function and assert that it returns a value
         equal to the `expected`.
@@ -448,7 +444,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
-    def expect_ne(self: "_Self", fn: _t.Callable[[], T], expected: T) -> "_Self":
+    def expect_ne(self: _Self, fn: _t.Callable[[], T], expected: T) -> _Self:
         """
         Run a lambda function and assert that it returns a value
         not equal to the `expected`.
@@ -461,7 +457,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
-    def expect_widget_to_continue(self: "_Self") -> "_Self":
+    def expect_widget_to_continue(self: _Self) -> _Self:
         """
         Expect that a widget requests another event from
         the mocked keyboard event stream.
@@ -473,7 +469,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _KeyboardEventStreamDone()))
         return self
 
-    def expect_istream_read(self: "_Self", result: str) -> "_Self":
+    def expect_istream_read(self: _Self, result: str) -> _Self:
         """
         Expect a call to `istream.read()` and return the given result from it.
 
@@ -481,7 +477,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinRead(result)))
         return self
 
-    def expect_istream_readline(self: "_Self", result: str) -> "_Self":
+    def expect_istream_readline(self: _Self, result: str) -> _Self:
         """
         Expect a call to `istream.readline()` and return the given result from it.
 
@@ -489,7 +485,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinReadline(result)))
         return self
 
-    def expect_istream_read(self: "_Self", result: _t.List[str]) -> "_Self":
+    def expect_istream_read(self: _Self, result: list[str]) -> _Self:
         """
         Expect a call to `istream.readlines()` and return the given result from it.
 
@@ -497,7 +493,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinReadlines(result)))
         return self
 
-    def expect_mark(self: "_Self", mark: _t.Optional[str] = None) -> "_Self":
+    def expect_mark(self: _Self, mark: str | None = None) -> _Self:
         """
         Expect a call to :meth:`IoMocker.mark`.
 
@@ -533,7 +529,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectMark(mark)))
         return self
 
-    def mark(self, mark: _t.Optional[str] = None):
+    def mark(self, mark: str | None = None):
         """
         Trigger a mark event.
 
@@ -561,12 +557,12 @@ class IOMocker:
     @contextlib.contextmanager
     def mock(
         self,
-        ostream: _t.Optional[io.StringIO] = None,
-        term: _t.Optional[yuio.term.Term] = None,
-        theme: _t.Optional[yuio.theme.Theme] = None,
-        width: _t.Optional[int] = None,
-        height: _t.Optional[int] = None,
-        wrap_streams: _t.Optional[bool] = None,
+        ostream: io.StringIO | None = None,
+        term: yuio.term.Term | None = None,
+        theme: yuio.theme.Theme | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        wrap_streams: bool | None = None,
     ):
         """
         Bind :func:`yuio.widget._event_stream` and all mocked inout streams
@@ -695,9 +691,9 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
     _Self = _t.TypeVar("_Self", bound="WidgetChecker[_t.Any]")
 
-    _widget: _t.Optional[W] = None
+    _widget: W | None = None
 
-    def call(self: "_Self", fn: _t.Callable[[W], None]) -> "_Self":
+    def call(self: _Self, fn: _t.Callable[[W], None]) -> _Self:
         """
         Run a function with widget as an input.
 
@@ -710,7 +706,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self
 
-    def expect_widget(self: "_Self", fn: _t.Callable[[W], bool]) -> "_Self":
+    def expect_widget(self: _Self, fn: _t.Callable[[W], bool]) -> _Self:
         """
         Assert some property of a widget.
 
@@ -723,9 +719,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self
 
-    def expect_widget_eq(
-        self: "_Self", fn: _t.Callable[[W], T], expected: T
-    ) -> "_Self":
+    def expect_widget_eq(self: _Self, fn: _t.Callable[[W], T], expected: T) -> _Self:
         """
         Assert that some property of a widget equals to the given value.
 
@@ -738,9 +732,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self
 
-    def expect_widget_ne(
-        self: "_Self", fn: _t.Callable[[W], T], expected: T
-    ) -> "_Self":
+    def expect_widget_ne(self: _Self, fn: _t.Callable[[W], T], expected: T) -> _Self:
         """
         Assert that some property of a widget is not equal to the given value.
 
@@ -756,24 +748,24 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
     @contextlib.contextmanager
     def mock(
         self,
-        ostream: _t.Optional[io.StringIO] = None,
-        term: _t.Optional[yuio.term.Term] = None,
-        theme: _t.Optional[yuio.theme.Theme] = None,
-        width: _t.Optional[int] = None,
-        height: _t.Optional[int] = None,
-        wrap_streams: _t.Optional[bool] = None,
+        ostream: io.StringIO | None = None,
+        term: yuio.term.Term | None = None,
+        theme: yuio.theme.Theme | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        wrap_streams: bool | None = None,
     ):
         raise RuntimeError("use WidgetChecker.check() instead")
 
     def check(
         self,
         widget: W,
-        ostream: _t.Optional[io.StringIO] = None,
-        term: _t.Optional[yuio.term.Term] = None,
-        theme: _t.Optional[yuio.theme.Theme] = None,
-        width: _t.Optional[int] = None,
-        height: _t.Optional[int] = None,
-        wrap_streams: _t.Optional[bool] = None,
+        ostream: io.StringIO | None = None,
+        term: yuio.term.Term | None = None,
+        theme: yuio.theme.Theme | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        wrap_streams: bool | None = None,
     ):
         """
         Run tests on the given widget, and return widget's result.
@@ -849,7 +841,7 @@ class _MockedIStream(_t.TextIO):
             )
         return _CURRENT_IOSTREAM_MOCK.readline(limit)
 
-    def readlines(self, hint: int = -1) -> _t.List[str]:
+    def readlines(self, hint: int = -1) -> list[str]:
         self._assert_not_closed()
         if _CURRENT_IOSTREAM_MOCK is None:
             raise RuntimeError(
@@ -867,7 +859,7 @@ class _MockedIStream(_t.TextIO):
     def tell(self) -> int:
         raise io.UnsupportedOperation("underlying stream is not seekable")
 
-    def truncate(self, size: _t.Optional[int] = None) -> int:
+    def truncate(self, size: int | None = None) -> int:
         raise io.UnsupportedOperation("truncate")
 
     def __enter__(self) -> _t.TextIO:
@@ -882,7 +874,7 @@ class _MockedIStream(_t.TextIO):
         return None  # type: ignore
 
     @property
-    def errors(self) -> _t.Optional[str]:
+    def errors(self) -> str | None:
         return None
 
 
@@ -901,10 +893,10 @@ def pytest_assertrepr_compare(op, left, right):
 
 @dataclass
 class RcCompare:
-    screen: _t.Optional[_t.List[str]] = None
-    colors: _t.Optional[_t.List[str]] = None
-    cursor_x: _t.Optional[int] = None
-    cursor_y: _t.Optional[int] = None
+    screen: list[str] | None = None
+    colors: list[str] | None = None
+    cursor_x: int | None = None
+    cursor_y: int | None = None
 
     commands: str = dataclasses.field(default="", compare=False, hash=False)
 
@@ -999,9 +991,7 @@ def _rc_diff(a: RcCompare, b: RcCompare):
     return out
 
 
-def _show_diff(
-    a_screen: _t.List[str], b_screen: _t.List[str], what: str
-) -> _t.List[str]:
+def _show_diff(a_screen: list[str], b_screen: list[str], what: str) -> list[str]:
     if a_screen == b_screen:
         return []
 
@@ -1068,9 +1058,7 @@ def _show_diff(
     ]
 
 
-def _render_screen(
-    commands: str, width: int
-) -> _t.Tuple[_t.List[str], _t.List[str], int, int]:
+def _render_screen(commands: str, width: int) -> tuple[list[str], list[str], int, int]:
     height = 0
     x, y = 0, 0
     text = []

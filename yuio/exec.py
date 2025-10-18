@@ -17,6 +17,8 @@ loggers from :mod:`yuio.io`.
 
 """
 
+from __future__ import annotations
+
 import logging
 import pathlib
 import subprocess
@@ -31,9 +33,9 @@ _LOGGER = logging.getLogger("yuio.exec")
 @_t.overload
 def exec(
     *args: str,
-    cwd: _t.Union[str, pathlib.Path, None] = None,
-    env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Optional[str] = None,
+    cwd: str | pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
+    input: str | None = None,
     level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
 ) -> str: ...
@@ -42,9 +44,9 @@ def exec(
 @_t.overload
 def exec(
     *args: str,
-    cwd: _t.Union[str, pathlib.Path, None] = None,
-    env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Optional[bytes] = None,
+    cwd: str | pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
+    input: bytes | None = None,
     level: int = logging.DEBUG,
     text: _t.Literal[False],
 ) -> bytes: ...
@@ -52,9 +54,9 @@ def exec(
 
 def exec(
     *args: str,
-    cwd: _t.Union[None, str, pathlib.Path] = None,
-    env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Union[None, str, bytes] = None,
+    cwd: None | str | pathlib.Path = None,
+    env: dict[str, str] | None = None,
+    input: None | str | bytes = None,
     level: int = logging.DEBUG,
     text: bool = True,
 ):
@@ -158,9 +160,9 @@ def sh(
     /,
     *,
     shell: str = "/bin/sh",
-    cwd: _t.Union[str, pathlib.Path, None] = None,
-    env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Optional[str] = None,
+    cwd: str | pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
+    input: str | None = None,
     level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
 ) -> str: ...
@@ -172,9 +174,9 @@ def sh(
     /,
     *,
     shell: str = "/bin/sh",
-    cwd: _t.Union[str, pathlib.Path, None] = None,
-    env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Optional[bytes] = None,
+    cwd: str | pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
+    input: bytes | None = None,
     level: int = logging.DEBUG,
     text: _t.Literal[False],
 ) -> bytes: ...
@@ -185,9 +187,9 @@ def sh(
     /,
     *,
     shell: str = "/bin/sh",
-    cwd: _t.Union[str, pathlib.Path, None] = None,
-    env: _t.Optional[_t.Dict[str, str]] = None,
-    input: _t.Union[str, bytes, None] = None,
+    cwd: str | pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
+    input: str | bytes | None = None,
     level: int = logging.DEBUG,
     text: bool = True,
 ):

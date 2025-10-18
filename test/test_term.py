@@ -6,7 +6,6 @@ import sys
 import pytest
 
 import yuio.term
-from yuio import _typing as _t
 
 
 class TestColor:
@@ -1167,7 +1166,7 @@ class MockOStream(io.StringIO):
         out: "MockIStream",
         tty: bool,
         should_query_osc: bool,
-        osc_response: _t.Optional[str],
+        osc_response: str | None,
     ):
         super().__init__()
         self.__out = out
@@ -1257,9 +1256,9 @@ def mock_term_io(
     o_tty: bool = False,
     should_query_osc: bool = False,
     is_foreground: bool = False,
-    env: _t.Dict[str, str] = {},
-    args: _t.List[str] = [],
-    osc_response: _t.Optional[str] = "",
+    env: dict[str, str] = {},
+    args: list[str] = [],
+    osc_response: str | None = "",
     enable_vt_processing: bool = False,
 ):
     istream = MockIStream(i_tty)

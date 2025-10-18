@@ -262,7 +262,7 @@ class TestBasics:
         assert MyConfig3.load_from_parsed_file(dict(x=None)).x is None
 
         class MyConfig4(yuio.config.Config):
-            x: _t.Optional[int] = yuio.config.field(
+            x: int | None = yuio.config.field(
                 parser=yuio.parse.Int(),
             )
 
@@ -375,11 +375,11 @@ class TestEnv:
         assert c.e is E.B
 
         class MyConfig3(yuio.config.Config):
-            b: _t.Optional[bool]
-            s: _t.Optional[str]
-            f: _t.Optional[float]
-            i: _t.Optional[int]
-            e: _t.Optional[E]
+            b: bool | None
+            s: str | None
+            f: float | None
+            i: int | None
+            e: E | None
 
         monkeypatch.setenv("B", "no")
         monkeypatch.setenv("S", "str")
@@ -401,9 +401,9 @@ class TestEnv:
                     yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Int(), delimiter=":")
                 )
             )
-            s: _t.Set[int]
-            x: _t.Tuple[int, float]
-            d: _t.Dict[str, int]
+            s: set[int]
+            x: tuple[int, float]
+            d: dict[str, int]
 
         monkeypatch.setenv("B", "a:1 b:2")
         monkeypatch.setenv("S", "1 2 3 5 3")
@@ -458,7 +458,7 @@ class TestArgs:
     C = _t.TypeVar("C", bound=yuio.config.Config)
 
     @staticmethod
-    def load_from_args(confg: _t.Type[C], args: str) -> C:
+    def load_from_args(confg: type[C], args: str) -> C:
         parser = argparse.ArgumentParser()
         confg._setup_arg_parser(parser)
         return confg._load_from_namespace(parser.parse_args(args.split()))
@@ -537,9 +537,9 @@ class TestArgs:
                     yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Int(), delimiter=":")
                 )
             )
-            s: _t.Set[int]
-            x: _t.Tuple[int, float]
-            d: _t.Dict[str, int]
+            s: set[int]
+            x: tuple[int, float]
+            d: dict[str, int]
 
         c = self.load_from_args(
             MyConfig, "--b a:1 b:2 --s 1 2 3 5 3 --x 1 2 --d a:10 b:20"
@@ -616,6 +616,24 @@ class TestArgs:
         assert c.a == "abc"
         assert c.b == "def"
 
+    def test_mutually_exclusive_groups(self):
+        class MyConfig(yuio.config.Config):
+            group = yuio.config.MutuallyExclusiveGroup()
+            a: str = yuio.config.field(group=group)
+            b: str = yuio.config.field(group=group)
+            c: bool = yuio.config.field(group=group)
+
+        assert self.load_from_args(MyConfig, "--a 1").a == "1"
+        assert self.load_from_args(MyConfig, "--b 2").b == "2"
+        assert self.load_from_args(MyConfig, "--c").c is True
+        assert self.load_from_args(MyConfig, "--no-c").c is False
+        with pytest.raises(SystemExit):
+            self.load_from_args(MyConfig, "--a 1 --b 2")
+        with pytest.raises(SystemExit):
+            self.load_from_args(MyConfig, "--c --no-c")
+        with pytest.raises(SystemExit):
+            self.load_from_args(MyConfig, "--a 1 --c")
+
     class DocSubConfig(yuio.config.Config):
         #: help for `a`.
         a: str
@@ -628,6 +646,12 @@ class TestArgs:
     class DocConfig(yuio.config.Config):
         #: help for `sub`.
         sub: "TestArgs.DocSubConfig"
+        #: doc x
+        x: bool | None = None
+        #: doc y
+        y: bool = True
+        #: doc n
+        n: bool = False
 
     def test_help(self):
         parser = argparse.ArgumentParser()
@@ -638,6 +662,12 @@ class TestArgs:
         assert "  --sub-b        help for `b`.\n" in help
         assert "  --sub-no-b     disable <c hl/flag:sh-usage>--sub-b</c>\n" in help
         assert "  --sub-c <int>\n" in help
+        assert "  --x            doc x\n" in help
+        assert "  --no-x         disable <c hl/flag:sh-usage>--x</c>\n" in help
+        assert "  --no-y         doc y\n" in help
+        assert "  --y" not in help
+        assert "  --n            doc n\n" in help
+        assert "  --no-n" not in help
 
     def test_help_disabled(self):
         class SubConfig(yuio.config.Config):
@@ -664,6 +694,24 @@ class TestArgs:
         assert "-b" not in help
         assert "sub_no_help" not in help
         assert "sub_no_help_2" not in help
+
+    # def test_usage_disabled(self):
+    #     class SubConfig(yuio.config.Config):
+    #         a: str = yuio.config.field(help="help for a")
+
+    #     class SubConfigNoHelp(yuio.config.Config):
+    #         b: str = yuio.config.field(help="help for b")
+
+    #     class MyConfig(yuio.config.Config):
+    #         c: str
+    #         d: str = yuio.config.field(usage=False)
+    #         sub: SubConfig
+    #         sub_no_help: SubConfigNoHelp = yuio.config.field(usage=False)
+
+    #     parser = argparse.ArgumentParser()
+    #     MyConfig._setup_arg_parser(parser)
+    #     usage = parser.format_usage()
+    #     print(usage)
 
 
 class TestLoadFromFile:

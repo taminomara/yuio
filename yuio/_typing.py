@@ -1,3 +1,5 @@
+# pyright: reportDeprecated=false
+
 import re as _re
 import types as _types
 import typing as _typing

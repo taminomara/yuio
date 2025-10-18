@@ -188,6 +188,8 @@ you can add a :class:`Handler`:
 
 """
 
+from __future__ import annotations
+
 import abc
 import atexit
 import enum
@@ -221,21 +223,21 @@ T = _t.TypeVar("T")
 U = _t.TypeVar("U")
 Cb = _t.TypeVar("Cb", bound=_t.Callable[..., None])
 
-_ExcInfo: _t.TypeAlias = _t.Tuple[
-    _t.Optional[_t.Type[BaseException]],
-    _t.Optional[BaseException],
-    _t.Optional[types.TracebackType],
+_ExcInfo: _t.TypeAlias = tuple[
+    type[BaseException] | None,
+    BaseException | None,
+    types.TracebackType | None,
 ]
 
 
 _IO_LOCK = threading.Lock()
-_IO_MANAGER: _t.Optional["_IoManager"] = None
+_IO_MANAGER: _IoManager | None = None
 _STREAMS_WRAPPED: bool = False
-_ORIG_STDERR: _t.Optional[_t.TextIO] = None
-_ORIG_STDOUT: _t.Optional[_t.TextIO] = None
+_ORIG_STDERR: _t.TextIO | None = None
+_ORIG_STDOUT: _t.TextIO | None = None
 
 
-def _manager() -> "_IoManager":
+def _manager() -> _IoManager:
     global _IO_MANAGER
 
     if _IO_MANAGER is None:
@@ -247,8 +249,8 @@ def _manager() -> "_IoManager":
 
 def setup(
     *,
-    term: _t.Optional[Term] = None,
-    theme: _t.Union[Theme, _t.Callable[[Term], Theme], None] = None,
+    term: Term | None = None,
+    theme: Theme | _t.Callable[[Term], Theme] | None = None,
     wrap_stdio: bool = True,
 ):
     """Initial setup of the logging facilities.
@@ -413,7 +415,7 @@ def error(msg: str, /, *args, **kwargs):
 
 
 def error_with_tb(
-    msg: str, /, *args, exc_info: _t.Union[_ExcInfo, bool, None] = True, **kwargs
+    msg: str, /, *args, exc_info: _ExcInfo | bool | None = True, **kwargs
 ):
     """Print an error message and capture the current exception.
 
@@ -429,6 +431,31 @@ def error_with_tb(
     """
 
     _manager().print_msg(msg, args, "error", exc_info=exc_info, **kwargs)
+
+
+def failure(msg: str, /, *args, **kwargs):
+    """Print a failure message."""
+
+    _manager().print_msg(msg, args, "failure", **kwargs)
+
+
+def failure_with_tb(
+    msg: str, /, *args, exc_info: _ExcInfo | bool | None = True, **kwargs
+):
+    """Print a failure message and capture the current exception.
+
+    Call this function in the ``except`` clause of a ``try`` block
+    or in an ``__exit__`` function of a context manager to attach
+    current exception details to the log message.
+
+    :param exc_info:
+        either a boolean indicating that the current exception
+        should be captured (default is :data:`True`), or a tuple
+        of three elements, as returned by :func:`sys.exc_info`.
+
+    """
+
+    _manager().print_msg(msg, args, "failure", exc_info=exc_info, **kwargs)
 
 
 def heading(msg: str, /, *args, **kwargs):
@@ -479,12 +506,10 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
         self, prompt: yuio.term.ColorizedString, widget: yuio.widget.Widget[T]
     ):
         self._prompt = yuio.widget.Text(prompt)
-        self._error_msg: _t.Optional[str] = None
+        self._error_msg: str | None = None
         self._inner = widget
 
-    def event(
-        self, e: yuio.widget.KeyboardEvent, /
-    ) -> _t.Optional[yuio.widget.Result[T]]:
+    def event(self, e: yuio.widget.KeyboardEvent, /) -> yuio.widget.Result[T] | None:
         try:
             result = self._inner.event(e)
         except yuio.parse.ParsingError as err:
@@ -493,7 +518,7 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
             self._error_msg = None
             return result
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         builder = (
             yuio.widget.VerticalLayoutBuilder()
             .add(self._prompt)
@@ -527,7 +552,7 @@ class _Ask(_t.Generic[T]):
     def __init__(self, parser: yuio.parse.Parser[T]):
         self._parser: yuio.parse.Parser[T] = parser
 
-    def __getitem__(self, ty: _t.Type[U]) -> "_Ask[U]":
+    def __getitem__(self, ty: type[U]) -> _Ask[U]:
         # eval type
         container = type("_container", (), {"__annotations__": {"ty": ty}})
         annotations = _t.get_type_hints(container, include_extras=True)
@@ -539,9 +564,9 @@ class _Ask(_t.Generic[T]):
         msg: str,
         /,
         *args,
-        default: _t.Union[T, yuio.Missing] = yuio.MISSING,
-        input_description: _t.Optional[str] = None,
-        default_description: _t.Optional[str] = None,
+        default: T | yuio.Missing = yuio.MISSING,
+        input_description: str | None = None,
+        default_description: str | None = None,
     ) -> T: ...
 
     @_t.overload
@@ -551,9 +576,9 @@ class _Ask(_t.Generic[T]):
         /,
         *args,
         default: None,
-        input_description: _t.Optional[str] = None,
-        default_description: _t.Optional[str] = None,
-    ) -> _t.Optional[T]: ...
+        input_description: str | None = None,
+        default_description: str | None = None,
+    ) -> T | None: ...
 
     @_t.overload
     def __call__(
@@ -563,9 +588,9 @@ class _Ask(_t.Generic[T]):
         *args,
         parser: yuio.parse.Parser[U],
         default: None,
-        input_description: _t.Optional[str] = None,
-        default_description: _t.Optional[str] = None,
-    ) -> _t.Optional[U]: ...
+        input_description: str | None = None,
+        default_description: str | None = None,
+    ) -> U | None: ...
 
     @_t.overload
     def __call__(
@@ -574,9 +599,9 @@ class _Ask(_t.Generic[T]):
         /,
         *args,
         parser: yuio.parse.Parser[U],
-        default: _t.Union[U, yuio.Missing] = yuio.MISSING,
-        input_description: _t.Optional[str] = None,
-        default_description: _t.Optional[str] = None,
+        default: U | yuio.Missing = yuio.MISSING,
+        input_description: str | None = None,
+        default_description: str | None = None,
     ) -> U: ...
 
     def __call__(
@@ -584,10 +609,10 @@ class _Ask(_t.Generic[T]):
         msg: str,
         /,
         *args,
-        parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
+        parser: yuio.parse.Parser[_t.Any] | None = None,
         default: _t.Any = yuio.MISSING,
-        input_description: _t.Optional[str] = None,
-        default_description: _t.Optional[str] = None,
+        input_description: str | None = None,
+        default_description: str | None = None,
     ) -> _t.Any:
         manager = _manager()
 
@@ -638,7 +663,7 @@ class _Ask(_t.Generic[T]):
             with SuspendOutput() as s:
                 try:
                     result = widget.run(term, theme)
-                except (IOError, OSError, EOFError) as e:
+                except (OSError, EOFError) as e:
                     raise UserIoError("unexpected end of input") from e
 
                 if result is yuio.MISSING:
@@ -671,7 +696,7 @@ class _Ask(_t.Generic[T]):
                     try:
                         s.raw(prompt)
                         answer = term.istream.readline().strip()
-                    except (IOError, OSError, EOFError) as e:
+                    except (OSError, EOFError) as e:
                         raise UserIoError("unexpected end of input") from None
                     if not answer and default is not yuio.MISSING:
                         return default
@@ -732,7 +757,7 @@ class _WaitForUserWidget(yuio.widget.Widget[None]):
     def __init__(self, prompt: yuio.term.ColorizedString):
         self._prompt = yuio.widget.Text(prompt)
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         return self._prompt.layout(rc)
 
     def draw(self, rc: RenderContext, /):
@@ -781,11 +806,11 @@ def wait_for_user(
             else:
                 s.raw(prompt)
                 term.istream.readline()
-        except (IOError, OSError, EOFError):
+        except (OSError, EOFError):
             return
 
 
-def detect_editor() -> _t.Optional[str]:
+def detect_editor() -> str | None:
     """Detect the user's preferred editor.
 
     This function checks the ``EDITOR`` environment variable.
@@ -810,9 +835,9 @@ def edit(
     text: str,
     /,
     *,
-    comment_marker: _t.Optional[str] = "#",
-    editor: _t.Optional[str] = None,
-    file_ext: _t.Optional[str] = None,
+    comment_marker: str | None = "#",
+    editor: str | None = None,
+    file_ext: str | None = None,
 ) -> str:
     """Ask user to edit some text.
 
@@ -860,7 +885,7 @@ def edit(
             if not os.path.exists(filepath):
                 text = ""
             else:
-                with open(filepath, "r") as file:
+                with open(filepath) as file:
                     text = file.read()
         finally:
             try:
@@ -938,6 +963,20 @@ class SuspendOutput:
         error_with_tb(msg, *args, **kwargs)
 
     @staticmethod
+    def failure(msg: str, /, *args, **kwargs):
+        """Log an :func:`failure` message, ignore suspended status."""
+
+        kwargs.setdefault("ignore_suspended", True)
+        failure(msg, *args, **kwargs)
+
+    @staticmethod
+    def failure_with_tb(msg: str, /, *args, **kwargs):
+        """Log an :func:`failure_with_tb` message, ignore suspended status."""
+
+        kwargs.setdefault("ignore_suspended", True)
+        failure_with_tb(msg, *args, **kwargs)
+
+    @staticmethod
     def heading(msg: str, /, *args, **kwargs):
         """Log a :func:`heading` message, ignore suspended status."""
 
@@ -974,7 +1013,7 @@ class SuspendOutput:
 
 class _IterTask(_t.Generic[T]):
     def __init__(
-        self, collection: _t.Collection[T], task: "Task", unit: str, ndigits: int
+        self, collection: _t.Collection[T], task: Task, unit: str, ndigits: int
     ):
         self._iter = iter(collection)
         self._task = task
@@ -990,7 +1029,7 @@ class _IterTask(_t.Generic[T]):
             self._i += 1
         return self._iter.__next__()
 
-    def __iter__(self) -> "_IterTask[T]":
+    def __iter__(self) -> _IterTask[T]:
         return self
 
 
@@ -1024,8 +1063,8 @@ class Task:
         msg: str,
         /,
         *args,
-        _parent: "_t.Optional[Task]" = None,
-        comment: _t.Optional[str] = None,
+        _parent: Task | None = None,
+        comment: str | None = None,
     ):
         # Task properties should not be written to directly.
         # Instead, task should be sent to a handler for modification.
@@ -1033,17 +1072,17 @@ class Task:
         # See handler's implementation details.
 
         self._msg: str = msg
-        self._args: _t.Tuple[object, ...] = args
-        self._comment: _t.Optional[str] = comment
-        self._comment_args: _t.Optional[_t.Tuple[object, ...]] = None
+        self._args: tuple[object, ...] = args
+        self._comment: str | None = comment
+        self._comment_args: tuple[object, ...] | None = None
         self._status: Task._Status = Task._Status.RUNNING
-        self._progress: _t.Optional[float] = None
-        self._progress_done: _t.Optional[str] = None
-        self._progress_total: _t.Optional[str] = None
-        self._subtasks: _t.List[Task] = []
+        self._progress: float | None = None
+        self._progress_done: str | None = None
+        self._progress_total: str | None = None
+        self._subtasks: list[Task] = []
 
-        self._cached_msg: _t.Optional[yuio.term.ColorizedString] = None
-        self._cached_comment: _t.Optional[yuio.term.ColorizedString] = None
+        self._cached_msg: yuio.term.ColorizedString | None = None
+        self._cached_comment: yuio.term.ColorizedString | None = None
 
         if _parent is None:
             _manager().start_task(self)
@@ -1051,13 +1090,13 @@ class Task:
             _manager().start_subtask(_parent, self)
 
     @_t.overload
-    def progress(self, progress: _t.Optional[float], /, *, ndigits: int = 2): ...
+    def progress(self, progress: float | None, /, *, ndigits: int = 2): ...
 
     @_t.overload
     def progress(
         self,
-        done: _t.Union[float, int],
-        total: _t.Union[float, int],
+        done: float | int,
+        total: float | int,
         /,
         *,
         unit: str = "",
@@ -1066,9 +1105,9 @@ class Task:
 
     def progress(
         self,
-        *args: _t.Optional[_t.Union[float, int]],
+        *args: float | int | None,
         unit: str = "",
-        ndigits: _t.Optional[int] = None,
+        ndigits: int | None = None,
     ):
         """Indicate progress of this task.
 
@@ -1128,8 +1167,8 @@ class Task:
 
     def progress_size(
         self,
-        done: _t.Union[float, int],
-        total: _t.Union[float, int],
+        done: float | int,
+        total: float | int,
         /,
         *,
         ndigits: int = 2,
@@ -1173,8 +1212,8 @@ class Task:
 
     def progress_scale(
         self,
-        done: _t.Union[float, int],
-        total: _t.Union[float, int],
+        done: float | int,
+        total: float | int,
         /,
         *,
         unit: str = "",
@@ -1213,7 +1252,7 @@ class Task:
         )
 
     @staticmethod
-    def _unit(n: float) -> _t.Tuple[float, str]:
+    def _unit(n: float) -> tuple[float, str]:
         if math.fabs(n) < 1e-33:
             return 0, ""
         magnitude = max(-8, min(8, int(math.log10(math.fabs(n)) // 3)))
@@ -1251,7 +1290,7 @@ class Task:
 
         return _IterTask(collection, self, unit, ndigits)
 
-    def comment(self, comment: _t.Optional[str], /, *args):
+    def comment(self, comment: str | None, /, *args):
         """Set a comment for a task.
 
         Comment is displayed after the progress.
@@ -1283,7 +1322,7 @@ class Task:
 
         _manager().finish_task(self, Task._Status.ERROR)
 
-    def subtask(self, msg: str, /, *args) -> "Task":
+    def subtask(self, msg: str, /, *args) -> Task:
         """Create a subtask within this task."""
 
         return Task(msg, *args, _parent=self)
@@ -1314,8 +1353,8 @@ class _IoManager(abc.ABC):
 
     def __init__(
         self,
-        term: _t.Optional[Term] = None,
-        theme: _t.Union[Theme, _t.Callable[[Term], Theme], None] = None,
+        term: Term | None = None,
+        theme: Theme | _t.Callable[[Term], Theme] | None = None,
         enable_bg_updates: bool = True,
     ):
         self.term = term or yuio.term.get_term_from_stream(orig_stderr(), sys.stdin)
@@ -1329,9 +1368,9 @@ class _IoManager(abc.ABC):
         self._rc = yuio.widget.RenderContext(self.term, self.theme)
 
         self._suspended: int = 0
-        self._suspended_lines: _t.List[_t.Tuple[_t.List[str], _t.TextIO]] = []
+        self._suspended_lines: list[tuple[list[str], _t.TextIO]] = []
 
-        self._tasks: _t.List[Task] = []
+        self._tasks: list[Task] = []
         self._tasks_printed = 0
         self._spinner_state = 0
         self._needs_update = False
@@ -1342,7 +1381,7 @@ class _IoManager(abc.ABC):
 
         self._stop = False
         self._stop_condition = threading.Condition(_IO_LOCK)
-        self._thread: _t.Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
         self._enable_bg_updates = enable_bg_updates
         if enable_bg_updates:
@@ -1355,8 +1394,8 @@ class _IoManager(abc.ABC):
 
     def setup(
         self,
-        term: _t.Optional[Term] = None,
-        theme: _t.Union[Theme, _t.Callable[[Term], Theme], None] = None,
+        term: Term | None = None,
+        theme: Theme | _t.Callable[[Term], Theme] | None = None,
     ):
         self._clear_tasks()
 
@@ -1416,12 +1455,12 @@ class _IoManager(abc.ABC):
     def print_msg(
         self,
         msg: str,
-        args: _t.Optional[_t.Tuple[object, ...]],
+        args: tuple[object, ...] | None,
         tag: str,
         /,
         *,
-        color: _t.Optional[str] = None,
-        exc_info: _t.Union[_ExcInfo, bool, None] = None,
+        color: str | None = None,
+        exc_info: _ExcInfo | bool | None = None,
         ignore_suspended: bool = False,
         heading: bool = False,
     ):
@@ -1434,7 +1473,7 @@ class _IoManager(abc.ABC):
     def print_md(
         self,
         msg: str,
-        args: _t.Optional[_t.Tuple[object, ...]],
+        args: tuple[object, ...] | None,
         /,
         *,
         ignore_suspended: bool = False,
@@ -1464,7 +1503,7 @@ class _IoManager(abc.ABC):
     def print_direct(
         self,
         msg: str,
-        stream: _t.Optional[_t.TextIO] = None,
+        stream: _t.TextIO | None = None,
         /,
         *,
         ignore_suspended: bool = False,
@@ -1475,7 +1514,7 @@ class _IoManager(abc.ABC):
     def print_direct_lines(
         self,
         lines: _t.Iterable[str],
-        stream: _t.Optional[_t.TextIO] = None,
+        stream: _t.TextIO | None = None,
         /,
         *,
         ignore_suspended: bool = False,
@@ -1498,9 +1537,9 @@ class _IoManager(abc.ABC):
     def set_task_progress(
         self,
         task: Task,
-        progress: _t.Optional[float],
-        done: _t.Optional[str],
-        total: _t.Optional[str],
+        progress: float | None,
+        done: str | None,
+        total: str | None,
     ):
         with _IO_LOCK:
             task._progress = progress
@@ -1508,7 +1547,7 @@ class _IoManager(abc.ABC):
             task._progress_total = total
             self._update_tasks()
 
-    def set_task_comment(self, task: Task, comment: _t.Optional[str], args):
+    def set_task_comment(self, task: Task, comment: str | None, args):
         with _IO_LOCK:
             task._comment = comment
             task._comment_args = args
@@ -1529,7 +1568,7 @@ class _IoManager(abc.ABC):
     def _emit_lines(
         self,
         lines: _t.Iterable[str],
-        stream: _t.Optional[_t.TextIO] = None,
+        stream: _t.TextIO | None = None,
         ignore_suspended: bool = False,
     ):
         stream = stream or self.term.ostream
@@ -1643,11 +1682,11 @@ class _IoManager(abc.ABC):
     def _format_msg(
         self,
         msg: str,
-        args: _t.Optional[_t.Tuple[object, ...]],
+        args: tuple[object, ...] | None,
         tag: str,
         /,
         *,
-        exc_info: _t.Union[_ExcInfo, bool, None] = None,
+        exc_info: _ExcInfo | bool | None = None,
         heading: bool = False,
     ) -> yuio.term.ColorizedString:
         decoration = self.theme.msg_decorations.get(tag, "")
@@ -1779,9 +1818,7 @@ class _IoManager(abc.ABC):
             task._cached_msg = msg
         return task._cached_msg
 
-    def _format_task_comment(
-        self, task: Task
-    ) -> _t.Optional[yuio.term.ColorizedString]:
+    def _format_task_comment(self, task: Task) -> yuio.term.ColorizedString | None:
         if task._status is not Task._Status.RUNNING:
             return None
         if task._cached_comment is None and task._comment is not None:
@@ -1916,7 +1953,7 @@ class _WrappedOutput(_t.TextIO):
     def readline(self, limit: int = -1) -> str:
         return self.__wrapped.readline(limit)
 
-    def readlines(self, hint: int = -1) -> _t.List[str]:
+    def readlines(self, hint: int = -1) -> list[str]:
         return self.__wrapped.readlines(hint)
 
     def seek(self, offset: int, whence: int = 0) -> int:
@@ -1928,7 +1965,7 @@ class _WrappedOutput(_t.TextIO):
     def tell(self) -> int:
         return self.__wrapped.tell()
 
-    def truncate(self, size: _t.Optional[int] = None) -> int:
+    def truncate(self, size: int | None = None) -> int:
         return self.__wrapped.truncate(size)
 
     def __enter__(self) -> _t.TextIO:
@@ -1946,7 +1983,7 @@ class _WrappedOutput(_t.TextIO):
         return self.__wrapped.encoding
 
     @property
-    def errors(self) -> _t.Optional[str]:
+    def errors(self) -> str | None:
         return self.__wrapped.errors
 
     @property

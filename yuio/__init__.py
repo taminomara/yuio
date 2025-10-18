@@ -26,6 +26,8 @@ These values are used in places where :data:`None` is ambiguous.
 
 """
 
+from __future__ import annotations
+
 import abc as _abc
 import enum as _enum
 import logging as _logging
@@ -114,7 +116,7 @@ def to_dash_case(s: str, /) -> str:
 _COMMENT_RE = _re.compile(r"^\s*#: ?(.*)\r?\n?$")
 
 
-def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
+def _find_docs(obj: _t.Any) -> dict[str, str]:
     # based on code from Sphinx
 
     import ast
@@ -127,7 +129,7 @@ def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
 
     sourcelines, _ = inspect.getsourcelines(obj)
 
-    docs: _t.Dict[str, str] = {}
+    docs: dict[str, str] = {}
 
     node = ast.parse(_textwrap.dedent("".join(sourcelines)))
     assert isinstance(node, ast.Module)
@@ -153,7 +155,7 @@ def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
         return {}
 
     for pos, name in fields:
-        comment_lines: _t.List[str] = []
+        comment_lines: list[str] = []
         for before_line in sourcelines[pos - 2 :: -1]:
             if match := _COMMENT_RE.match(before_line):
                 comment_lines.append(_textwrap.dedent(match.group(1)))
@@ -166,7 +168,7 @@ def _find_docs(obj: _t.Any) -> _t.Dict[str, str]:
     return docs
 
 
-def _with_slots() -> _t.Dict[_t.Literal["slots"], bool]:
+def _with_slots() -> dict[_t.Literal["slots"], bool]:
     return {} if _sys.version_info < (3, 11) else {"slots": True}
 
 
@@ -174,6 +176,7 @@ class _Placeholders(_enum.Enum):
     DISABLED = "<disabled>"
     MISSING = "<missing>"
     POSITIONAL = "<positional>"
+    OMIT = "<omit>"
 
     def __repr__(self):
         return self.value
@@ -193,3 +196,8 @@ MISSING: Missing = _Placeholders.MISSING
 Positional: _t.TypeAlias = _t.Literal[_Placeholders.POSITIONAL]
 #: Used with :func:`yuio.app.field` to enable positional arguments.
 POSITIONAL: Positional = _Placeholders.POSITIONAL
+
+#: Type of the :data:`OMIT` placeholder.
+Omit: _t.TypeAlias = _t.Literal[_Placeholders.OMIT]
+#: Used with :func:`yuio.app.field` to enable positional arguments.
+OMIT: Omit = _Placeholders.OMIT

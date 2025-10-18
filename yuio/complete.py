@@ -69,6 +69,8 @@ This is the class that is responsible for generating a final list of completions
 
 """
 
+from __future__ import annotations
+
 import abc
 import argparse
 import contextlib
@@ -111,7 +113,7 @@ class Completion:
     isuffix: str
 
     #: Short comment displayed alongside the completion.
-    comment: _t.Optional[str]
+    comment: str | None
 
     #: Prefix that will be displayed before :attr:`~Completion.completion`
     #: when listing completions, but will not be inserted once completion
@@ -129,9 +131,9 @@ class Completion:
     #: Color tag that's used when displaying this completion.
     #:
     #: See :meth:`CompletionCollector.add_group` for details.
-    group_color_tag: _t.Optional[str]
+    group_color_tag: str | None
 
-    def __lt__(self, other: "Completion") -> bool:
+    def __lt__(self, other: Completion) -> bool:
         """Completions are ordered by their groups and then alphabetically."""
 
         return self.group_id < other.group_id or (
@@ -256,12 +258,12 @@ class CompletionCollector:
 
     #: Completions from this set will not be added. This is useful
     #: when completing lists of unique values.
-    dedup_words: _t.FrozenSet[str]
+    dedup_words: frozenset[str]
 
     # Internal fields.
     _group_id: int
     _group_sorted: bool
-    _group_color_tag: _t.Optional[str]
+    _group_color_tag: str | None
 
     def __init__(self, text: str, pos: int, /):
         self.iprefix = ""
@@ -276,7 +278,7 @@ class CompletionCollector:
         self._group_sorted = True
         self._group_color_tag = None
 
-        self._completions: _t.List[Completion] = []
+        self._completions: list[Completion] = []
 
     @property
     def full_prefix(self) -> str:
@@ -322,10 +324,10 @@ class CompletionCollector:
         completion: str,
         /,
         *,
-        comment: _t.Optional[str] = None,
+        comment: str | None = None,
         dprefix: str = "",
         dsuffix: str = "",
-        color_tag: _t.Optional[str] = None,
+        color_tag: str | None = None,
     ):
         """Add a new completion.
 
@@ -358,10 +360,10 @@ class CompletionCollector:
         completion: str,
         /,
         *,
-        comment: _t.Optional[str] = None,
+        comment: str | None = None,
         dprefix: str = "",
         dsuffix: str = "",
-        color_tag: _t.Optional[str] = None,
+        color_tag: str | None = None,
     ):
         if not self.isuffix or self.isuffix[0] in string.whitespace:
             # Only add `rsuffix` if we're at the end of an array element.
@@ -396,7 +398,7 @@ class CompletionCollector:
             )
         )
 
-    def add_group(self, /, *, sorted: bool = True, color_tag: _t.Optional[str] = None):
+    def add_group(self, /, *, sorted: bool = True, color_tag: str | None = None):
         """Add a new completions group.
 
         All completions added after call to this method will be placed to the new group.
@@ -422,7 +424,7 @@ class CompletionCollector:
 
         return len(self._completions)
 
-    def split_off_prefix(self, delim: _t.Optional[str] = None, /):
+    def split_off_prefix(self, delim: str | None = None, /):
         """Move everything up to the last occurrence of `delim`
         from :attr:`~CompletionCollector.prefix`
         to :attr:`~CompletionCollector.iprefix`.
@@ -435,7 +437,7 @@ class CompletionCollector:
             self.iprefix += parts[0] + delim
             self.prefix = parts[1]
 
-    def split_off_suffix(self, delim: _t.Optional[str] = None, /):
+    def split_off_suffix(self, delim: str | None = None, /):
         """Move everything past the first occurrence of `delim`
         from :attr:`~CompletionCollector.suffix`
         to :attr:`~CompletionCollector.isuffix`.
@@ -448,7 +450,7 @@ class CompletionCollector:
             self.suffix = parts[0]
             self.isuffix = delim + parts[1] + self.isuffix
 
-    def finalize(self) -> _t.List[Completion]:
+    def finalize(self) -> list[Completion]:
         """Finish collecting completions and return everything that was collected.
 
         Do not reuse a collector after it was finalized.
@@ -522,10 +524,10 @@ class _CorrectingCollector(CompletionCollector):
         completion: str,
         /,
         *,
-        comment: _t.Optional[str] = None,
+        comment: str | None = None,
         dprefix: str = "",
         dsuffix: str = "",
-        color_tag: _t.Optional[str] = None,
+        color_tag: str | None = None,
     ):
         if not completion or completion in self.dedup_words:
             return
@@ -565,7 +567,7 @@ class _CorrectingCollector(CompletionCollector):
                 )
                 self._has_corrections = True
 
-    def finalize(self) -> _t.List[Completion]:
+    def finalize(self) -> list[Completion]:
         if self._has_corrections:
             c0 = self._completions[0]
 
@@ -626,7 +628,7 @@ def _corrections(a: str, b: str) -> float:
     return d[-1][-1]
 
 
-def _commonprefix(m: _t.List[str]) -> str:
+def _commonprefix(m: list[str]) -> str:
     if not m:
         return ""
     s1 = min(m)
@@ -642,7 +644,7 @@ class Completer(abc.ABC):
 
     def complete(
         self, text: str, pos: int, /, *, do_corrections: bool = True
-    ) -> _t.List[Completion]:
+    ) -> list[Completion]:
         """
         Complete the given text at the given cursor position.
 
@@ -690,7 +692,7 @@ class Completer(abc.ABC):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "_CompleterSerializer.Model":
+    ) -> _CompleterSerializer.Model:
         """Internal, do not use."""
 
         return _CompleterSerializer.CustomCompleter(self)
@@ -704,7 +706,7 @@ class Empty(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "_CompleterSerializer.Model":
+    ) -> _CompleterSerializer.Model:
         return _CompleterSerializer.Model()
 
 
@@ -716,7 +718,7 @@ class Option:
     completion: str
 
     #: Short comment displayed alongside the completion.
-    comment: _t.Optional[str] = None
+    comment: str | None = None
 
 
 class Choice(Completer):
@@ -731,7 +733,7 @@ class Choice(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "_CompleterSerializer.Model":
+    ) -> _CompleterSerializer.Model:
         return _CompleterSerializer.Choice(
             [option.completion for option in self._choices]
         )
@@ -740,7 +742,7 @@ class Choice(Completer):
 class Alternative(Completer):
     """Joins outputs from multiple completers."""
 
-    def __init__(self, completers: _t.List[_t.Tuple[str, Completer]]):
+    def __init__(self, completers: list[tuple[str, Completer]]):
         self._completers = completers
 
     def _process(self, collector: CompletionCollector, /):
@@ -751,7 +753,7 @@ class Alternative(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "_CompleterSerializer.Model":
+    ) -> _CompleterSerializer.Model:
         return _CompleterSerializer.Alternative(
             [
                 (name, completer._get_completion_model(is_many=is_many))
@@ -768,7 +770,7 @@ class List(Completer):
         inner: Completer,
         /,
         *,
-        delimiter: _t.Optional[str] = None,
+        delimiter: str | None = None,
         allow_duplicates: bool = False,
     ):
         self._inner = inner
@@ -798,7 +800,7 @@ class List(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "_CompleterSerializer.Model":
+    ) -> _CompleterSerializer.Model:
         if is_many:
             return _CompleterSerializer.ListMany(
                 self._delimiter or " ", self._inner._get_completion_model()
@@ -812,7 +814,7 @@ class List(Completer):
 class Tuple(Completer):
     """Completes a value-separated tuple of elements."""
 
-    def __init__(self, *inners: Completer, delimiter: _t.Optional[str] = None):
+    def __init__(self, *inners: Completer, delimiter: str | None = None):
         self._inners = inners
         if delimiter == "":
             raise ValueError("empty delimiter")
@@ -843,7 +845,7 @@ class Tuple(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "_CompleterSerializer.Model":
+    ) -> _CompleterSerializer.Model:
         if is_many:
             return _CompleterSerializer.TupleMany(
                 self._delimiter or " ",
@@ -862,7 +864,7 @@ class File(Completer):
 
     """
 
-    def __init__(self, extensions: _t.Union[str, _t.Collection[str], None] = None):
+    def __init__(self, extensions: str | _t.Collection[str] | None = None):
         if isinstance(extensions, str):
             self._extensions = [extensions]
         elif extensions is not None:
@@ -933,7 +935,7 @@ class File(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "_CompleterSerializer.Model":
+    ) -> _CompleterSerializer.Model:
         return _CompleterSerializer.File(
             "|".join(extension.lstrip(".") for extension in self._extensions or [])
         )
@@ -950,7 +952,7 @@ class Dir(File):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "_CompleterSerializer.Model":
+    ) -> _CompleterSerializer.Model:
         return _CompleterSerializer.Dir()
 
 
@@ -964,17 +966,15 @@ class _CompleterSerializer:
     ):
         self._path = path
         self._custom_completers = custom_completers
-        self._subcommands: _t.Dict[str, _t.Tuple["_CompleterSerializer", bool, str]] = (
-            {}
-        )
+        self._subcommands: dict[str, tuple[_CompleterSerializer, bool, str]] = {}
         self._positional = 0
-        self._flags: _t.List[
-            _t.Tuple[
-                _t.List[str],
-                _t.Optional[str],
-                _t.Union[str, _t.Tuple[str, ...], None],
-                _t.Union[int, _t.Literal["-", "+", "*", "?"]],
-                "_CompleterSerializer.Model",
+        self._flags: list[
+            tuple[
+                list[str],
+                str | None,
+                str | tuple[str, ...] | None,
+                int | _t.Literal["-", "+", "*", "?"],
+                _CompleterSerializer.Model,
             ]
         ] = []
         self._add_help = add_help
@@ -1104,7 +1104,7 @@ class _CompleterSerializer:
 
     _SPECIAL_SYMBOLS = str.maketrans("\r\n\a\b\t", "     ")
 
-    def _dump(self, path: str, result: _t.List[str]):
+    def _dump(self, path: str, result: list[str]):
         if self._subcommands:
             self._flags.append(
                 (
@@ -1125,7 +1125,7 @@ class _CompleterSerializer:
         for opts, desc, meta, nargs, completer in self._flags:
             if not isinstance(meta, tuple):
                 meta = (meta,)
-            compspec: _t.List[str] = [
+            compspec: list[str] = [
                 path,
                 " ".join(opts),
                 desc or "",
@@ -1149,7 +1149,7 @@ class _CompleterSerializer:
         for subcommand, (serializer, *_) in self._subcommands.items():
             serializer._dump(f"{path}/{subcommand}", result)
 
-    def _collect_nested(self, compspec: _t.List[object]):
+    def _collect_nested(self, compspec: list[object]):
         for item in compspec:
             self._collect_nested_item(item)
 
@@ -1164,7 +1164,7 @@ class _CompleterSerializer:
                 self._collect_nested_item(sub_item)
 
     @staticmethod
-    def _dump_nested(compspec: _t.List[object]) -> _t.List[str]:
+    def _dump_nested(compspec: list[object]) -> list[str]:
         contents = []
 
         for item in compspec:
@@ -1173,7 +1173,7 @@ class _CompleterSerializer:
         return contents
 
     @staticmethod
-    def _dump_nested_item(item: object) -> _t.List[str]:
+    def _dump_nested_item(item: object) -> list[str]:
         contents = []
 
         if isinstance(item, _CompleterSerializer.Model):
@@ -1199,11 +1199,11 @@ class _CompleterSerializer:
 
     @dataclass()
     class Model(ModelBase):
-        def collect(self, s: "_CompleterSerializer"):
+        def collect(self, s: _CompleterSerializer):
             compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
             s._collect_nested(compspec)
 
-        def dump(self) -> _t.List[str]:
+        def dump(self) -> list[str]:
             compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
             contents = _CompleterSerializer._dump_nested(compspec)
             return [self.tag, str(len(contents)), *contents]
@@ -1218,16 +1218,16 @@ class _CompleterSerializer:
 
     @dataclass()
     class Choice(Model, tag="c"):
-        choices: _t.List[str]
+        choices: list[str]
 
-        def dump(self) -> _t.List[str]:
+        def dump(self) -> list[str]:
             return [self.tag, str(len(self.choices)), *self.choices]
 
     @dataclass()
     class ChoiceWithDescriptions(Model, tag="cd"):
-        choices: _t.List[_t.Tuple[str, str]]
+        choices: list[tuple[str, str]]
 
-        def dump(self) -> _t.List[str]:
+        def dump(self) -> list[str]:
             return [
                 self.tag,
                 str(len(self.choices) * 2),
@@ -1243,7 +1243,7 @@ class _CompleterSerializer:
             Tag = "t"
             Head = "h"
 
-        modes: _t.Set[Mode] = dataclasses.field(
+        modes: set[Mode] = dataclasses.field(
             default_factory=lambda: {
                 _CompleterSerializer.Git.Mode.Branch,
                 _CompleterSerializer.Git.Mode.Tag,
@@ -1251,13 +1251,13 @@ class _CompleterSerializer:
             }
         )
 
-        def dump(self) -> _t.List[str]:
+        def dump(self) -> list[str]:
             return [self.tag, "1", "".join(mode.value for mode in self.modes)]
 
     @dataclass()
     class List(Model, tag="l"):
         delim: str
-        inner: "_CompleterSerializer.Model"
+        inner: _CompleterSerializer.Model
 
     @dataclass()
     class ListMany(List, tag="lm"):
@@ -1266,7 +1266,7 @@ class _CompleterSerializer:
     @dataclass()
     class Tuple(Model, tag="t"):
         delim: str
-        inner: _t.List["_CompleterSerializer.Model"]
+        inner: list[_CompleterSerializer.Model]
 
     @dataclass()
     class TupleMany(Tuple, tag="tm"):
@@ -1274,16 +1274,16 @@ class _CompleterSerializer:
 
     @dataclass()
     class Alternative(Model, tag="a"):
-        alternatives: _t.List[_t.Tuple[str, "_CompleterSerializer.Model"]]
+        alternatives: list[tuple[str, _CompleterSerializer.Model]]
 
     @dataclass()
     class CustomCompleter(Model, tag="cc"):
         completer: Completer
 
-        def collect(self, s: "_CompleterSerializer"):
+        def collect(self, s: _CompleterSerializer):
             self._data = s.register_custom_completer(self.completer)
 
-        def dump(self) -> _t.List[str]:
+        def dump(self) -> list[str]:
             return [
                 self.tag,
                 "1",
@@ -1304,7 +1304,7 @@ def _run_custom_completer(s: _CompleterSerializer, data: str, word: str):
 
 
 def write_completions(
-    s: _CompleterSerializer, prog: _t.Optional[str] = None, shell: str = "all"
+    s: _CompleterSerializer, prog: str | None = None, shell: str = "all"
 ):
     import yuio.app
     import yuio.io

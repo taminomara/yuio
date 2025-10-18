@@ -246,6 +246,8 @@ will be concatenated.
 
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -255,6 +257,7 @@ from dataclasses import dataclass
 
 import yuio
 import yuio.complete
+import yuio.json_schema
 import yuio.parse
 from yuio import _typing as _t
 
@@ -269,29 +272,30 @@ class MutuallyExclusiveGroup:
 @dataclass(frozen=True)
 class _FieldSettings:
     default: _t.Any
-    parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None
-    help: _t.Union[str, yuio.Disabled, None] = None
-    env: _t.Union[str, yuio.Disabled, None] = None
-    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None
-    completer: _t.Optional[yuio.complete.Completer] = None
+    parser: yuio.parse.Parser[_t.Any] | None = None
+    help: str | yuio.Disabled | None = None
+    env: str | yuio.Disabled | None = None
+    flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None
+    completer: yuio.complete.Completer | None = None
     required: bool = False
-    merge: _t.Optional[_t.Callable[[_t.Any, _t.Any], _t.Any]] = None
+    merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None
     group: MutuallyExclusiveGroup | None = None
+    usage: yuio.Omit | bool | None = None
 
     def _update_defaults(
         self,
         qualname: str,
         name: str,
         ty_with_extras: _t.Any,
-        parsed_help: _t.Optional[str],
+        parsed_help: str | None,
         allow_positionals: bool,
-    ) -> "_Field":
+    ) -> _Field:
         ty = ty_with_extras
         while _t.get_origin(ty) is _t.Annotated:
             ty = _t.get_args(ty)[0]
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
 
-        help: _t.Union[str, yuio.Disabled]
+        help: str | yuio.Disabled
         if self.help is not None:
             help = self.help
         elif parsed_help is not None:
@@ -303,7 +307,7 @@ class _FieldSettings:
         if help == argparse.SUPPRESS:
             help = yuio.DISABLED
 
-        env: _t.Union[str, yuio.Disabled]
+        env: str | yuio.Disabled
         if self.env is not None:
             env = self.env
         else:
@@ -311,7 +315,7 @@ class _FieldSettings:
         if env == "" and not is_subconfig:
             raise TypeError(f"{qualname} got an empty env variable name")
 
-        flags: _t.Union[_t.List[str], yuio.Positional, yuio.Disabled]
+        flags: list[str] | yuio.Positional | yuio.Disabled
         if self.flags is yuio.DISABLED or self.flags is yuio.POSITIONAL:
             flags = self.flags
             if not allow_positionals and flags is yuio.POSITIONAL:
@@ -399,9 +403,18 @@ class _FieldSettings:
 
         merge = self.merge
 
-        if is_subconfig and merge is not yuio.MISSING:
-            if default is not yuio.MISSING:
-                raise TypeError(f"error in {qualname}: nested configs can't have merge")
+        if is_subconfig and merge is not None:
+            raise TypeError(f"error in {qualname}: nested configs can't have merge")
+
+        group = self.group
+
+        if is_subconfig and group is not None:
+            raise TypeError(
+                f"error in {qualname}: nested configs can't be a part "
+                "of a mutually exclusive group"
+            )
+
+        usage = self.usage
 
         return _Field(
             default,
@@ -414,31 +427,36 @@ class _FieldSettings:
             ty,
             required,
             merge,
+            group,
+            usage,
         )
 
 
 @dataclass(frozen=True)
 class _Field:
     default: _t.Any
-    parser: _t.Optional[yuio.parse.Parser[_t.Any]]
-    help: _t.Union[str, yuio.Disabled]
-    env: _t.Union[str, yuio.Disabled]
-    flags: _t.Union[_t.List[str], yuio.Positional, yuio.Disabled]
-    completer: _t.Optional[yuio.complete.Completer]
+    parser: yuio.parse.Parser[_t.Any] | None
+    help: str | yuio.Disabled
+    env: str | yuio.Disabled
+    flags: list[str] | yuio.Positional | yuio.Disabled
+    completer: yuio.complete.Completer | None
     is_subconfig: bool
     ty: type
     required: bool
-    merge: _t.Optional[_t.Callable[[_t.Any, _t.Any], _t.Any]]
+    merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
     group: MutuallyExclusiveGroup | None
+    usage: yuio.Omit | bool | None = None
 
 
 @_t.overload
 def field(
     *,
-    completer: _t.Optional[yuio.complete.Completer] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
+    completer: yuio.complete.Completer | None = None,
+    help: str | yuio.Disabled | None = None,
+    env: str | yuio.Disabled | None = None,
+    flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    group: MutuallyExclusiveGroup | None = None,
+    usage: yuio.Omit | bool | None = None,
 ) -> _t.Any: ...
 
 
@@ -446,38 +464,43 @@ def field(
 def field(
     *,
     default: None,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
-    completer: _t.Optional[yuio.complete.Completer] = None,
-    merge: _t.Optional[_t.Callable[[T, T], T]] = None,
-) -> _t.Optional[T]: ...
+    parser: yuio.parse.Parser[T] | None = None,
+    help: str | yuio.Disabled | None = None,
+    env: str | yuio.Disabled | None = None,
+    flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    completer: yuio.complete.Completer | None = None,
+    merge: _t.Callable[[T, T], T] | None = None,
+    group: MutuallyExclusiveGroup | None = None,
+    usage: yuio.Omit | bool | None = None,
+) -> T | None: ...
 
 
 @_t.overload
 def field(
     *,
-    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
-    completer: _t.Optional[yuio.complete.Completer] = None,
-    merge: _t.Optional[_t.Callable[[T, T], T]] = None,
+    default: T | yuio.Missing = yuio.MISSING,
+    parser: yuio.parse.Parser[T] | None = None,
+    help: str | yuio.Disabled | None = None,
+    env: str | yuio.Disabled | None = None,
+    flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    completer: yuio.complete.Completer | None = None,
+    merge: _t.Callable[[T, T], T] | None = None,
+    group: MutuallyExclusiveGroup | None = None,
+    usage: yuio.Omit | bool | None = None,
 ) -> T: ...
 
 
 def field(
     *,
     default: _t.Any = yuio.MISSING,
-    parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    flags: _t.Union[str, _t.List[str], yuio.Positional, yuio.Disabled, None] = None,
-    completer: _t.Optional[yuio.complete.Completer] = None,
-    merge: _t.Optional[_t.Callable[[T, T], T]] = None,
+    parser: yuio.parse.Parser[_t.Any] | None = None,
+    help: str | yuio.Disabled | None = None,
+    env: str | yuio.Disabled | None = None,
+    flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    completer: yuio.complete.Completer | None = None,
+    merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None,
     group: MutuallyExclusiveGroup | None = None,
+    usage: yuio.Omit | bool | None = None,
 ) -> _t.Any:
     """Field descriptor, used for additional configuration of flags and config fields.
 
@@ -544,11 +567,14 @@ def field(
         env=env,
         flags=flags,
         merge=merge,
+        group=group,
+        usage=usage,
     )
 
 
 def inline(
-    help: _t.Union[str, yuio.Disabled, None] = None,
+    help: str | yuio.Disabled | None = None,
+    usage: yuio.Omit | bool | None = None,
 ) -> _t.Any:
     """A shortcut for inlining nested configs.
 
@@ -557,15 +583,16 @@ def inline(
 
     """
 
-    return field(help=help, env="", flags="")
+    return field(help=help, env="", flags="", usage=usage)
 
 
 @_t.overload
 def positional(
     *,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    completer: _t.Optional[yuio.complete.Completer] = None,
+    help: str | yuio.Disabled | None = None,
+    env: str | yuio.Disabled | None = None,
+    completer: yuio.complete.Completer | None = None,
+    usage: yuio.Omit | bool | None = None,
 ) -> _t.Any: ...
 
 
@@ -573,31 +600,34 @@ def positional(
 def positional(
     *,
     default: None,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    completer: _t.Optional[yuio.complete.Completer] = None,
-) -> _t.Optional[T]: ...
+    parser: yuio.parse.Parser[T] | None = None,
+    help: str | yuio.Disabled | None = None,
+    env: str | yuio.Disabled | None = None,
+    completer: yuio.complete.Completer | None = None,
+    usage: yuio.Omit | bool | None = None,
+) -> T | None: ...
 
 
 @_t.overload
 def positional(
     *,
-    default: _t.Union[T, yuio.Missing] = yuio.MISSING,
-    parser: _t.Optional[yuio.parse.Parser[T]] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    completer: _t.Optional[yuio.complete.Completer] = None,
+    default: T | yuio.Missing = yuio.MISSING,
+    parser: yuio.parse.Parser[T] | None = None,
+    help: str | yuio.Disabled | None = None,
+    env: str | yuio.Disabled | None = None,
+    completer: yuio.complete.Completer | None = None,
+    usage: yuio.Omit | bool | None = None,
 ) -> T: ...
 
 
 def positional(
     *,
     default: _t.Any = yuio.MISSING,
-    parser: _t.Optional[yuio.parse.Parser[_t.Any]] = None,
-    help: _t.Union[str, yuio.Disabled, None] = None,
-    env: _t.Union[str, yuio.Disabled, None] = None,
-    completer: _t.Optional[yuio.complete.Completer] = None,
+    parser: yuio.parse.Parser[_t.Any] | None = None,
+    help: str | yuio.Disabled | None = None,
+    env: str | yuio.Disabled | None = None,
+    completer: yuio.complete.Completer | None = None,
+    usage: yuio.Omit | bool | None = None,
 ) -> _t.Any:
     """A shortcut for adding a positional argument.
 
@@ -612,10 +642,16 @@ def positional(
         env=env,
         flags=yuio.POSITIONAL,
         completer=completer,
+        usage=usage,
     )
 
 
-def _action(field: _Field, parse_many: bool = False, const: _t.Any = yuio.MISSING):
+def _action(
+    field: _Field,
+    usage: yuio.Omit | bool,
+    parse_many: bool = False,
+    const: _t.Any = yuio.MISSING,
+):
     class Action(argparse.Action):
         @staticmethod
         def get_parser():
@@ -628,6 +664,10 @@ def _action(field: _Field, parse_many: bool = False, const: _t.Any = yuio.MISSIN
         @staticmethod
         def get_merge():
             return field.merge
+
+        @staticmethod
+        def get_usage():
+            return usage
 
         def __call__(self, _, namespace, values, option_string=None):
             try:
@@ -686,6 +726,8 @@ class Config:
 
     .. automethod:: load_from_parsed_file
 
+    .. automethod:: to_json_schema
+
     .. automethod:: validate_config
 
     """
@@ -694,10 +736,10 @@ class Config:
 
     # Value is generated lazily by `__get_fields`.
     __allow_positionals: _t.ClassVar[bool] = False
-    __fields: _t.ClassVar[_t.Optional[_t.Dict[str, _Field]]]
+    __fields: _t.ClassVar[dict[str, _Field] | None]
 
     @classmethod
-    def __get_fields(cls) -> _t.Dict[str, _Field]:
+    def __get_fields(cls) -> dict[str, _Field]:
         if cls.__fields is not None:
             return cls.__fields
 
@@ -738,14 +780,17 @@ class Config:
             else:
                 field = _FieldSettings(default=value)
 
-            defaults[name] = field.default
-            fields[name] = field._update_defaults(
+            fields[name] = full_field = field._update_defaults(
                 f"{cls.__qualname__}.{name}",
                 name,
                 types[name],
                 docs.get(name),
                 cls.__allow_positionals,
             )
+            if full_field.is_subconfig:
+                defaults[name] = full_field.ty
+            else:
+                defaults[name] = full_field.default
 
         # We don't want to set any attributes on cls if any `_update_defaults` has
         # raised an exception. For this reason, we defer setting defaults
@@ -773,7 +818,7 @@ class Config:
 
         self.update(kwargs)
 
-    def update(self: _Self, other: _t.Union[_Self, _t.Dict[str, _t.Any]], /):
+    def update(self: _Self, other: _Self | dict[str, _t.Any], /):
         """Update fields in this config with fields from another config.
 
         This function is similar to :meth:`dict.update`.
@@ -814,7 +859,7 @@ class Config:
                         setattr(self, name, ns[name])
 
     @classmethod
-    def load_from_env(cls: _t.Type[_Self], prefix: str = "") -> _Self:
+    def load_from_env(cls: type[_Self], prefix: str = "") -> _Self:
         """
         Load config from environment variables.
 
@@ -835,7 +880,7 @@ class Config:
             ) from None
 
     @classmethod
-    def __load_from_env(cls: _t.Type[_Self], prefix: str = "") -> _Self:
+    def __load_from_env(cls: type[_Self], prefix: str = "") -> _Self:
 
         fields = {}
 
@@ -858,7 +903,7 @@ class Config:
 
     @classmethod
     def _load_from_namespace(
-        cls: _t.Type[_Self],
+        cls: type[_Self],
         namespace: argparse.Namespace,
         /,
         *,
@@ -870,7 +915,7 @@ class Config:
 
     @classmethod
     def __load_from_namespace(
-        cls: _t.Type[_Self], namespace: argparse.Namespace, prefix: str
+        cls: type[_Self], namespace: argparse.Namespace, prefix: str
     ) -> _Self:
         fields = {}
 
@@ -893,11 +938,11 @@ class Config:
         parser: argparse.ArgumentParser,
         /,
         *,
-        group: _t.Optional[argparse.ArgumentParser] = None,
+        group: argparse.ArgumentParser | None = None,
         ns_prefix: str = "",
     ):
         group = group or parser
-        cls.__setup_arg_parser(group, parser, "", ns_prefix + ":", False, 0)
+        cls.__setup_arg_parser(group, parser, "", ns_prefix + ":", False, 0, True)
 
     @classmethod
     def __setup_arg_parser(
@@ -908,9 +953,12 @@ class Config:
         dest_prefix: str,
         suppress_help: bool,
         depth: int,
+        usage: yuio.Omit | bool,
     ):
         if prefix:
             prefix += "-"
+
+        mutex_groups = {}
 
         for name, field in cls.__get_fields().items():
             if field.flags is yuio.DISABLED:
@@ -921,11 +969,13 @@ class Config:
             if suppress_help or field.help is yuio.DISABLED:
                 help = argparse.SUPPRESS
                 current_suppress_help = True
+                current_usage = field.usage if field.usage is not None else False
             else:
                 help = field.help
                 current_suppress_help = False
+                current_usage = field.usage if field.usage is not None else usage
 
-            flags: _t.Union[_t.List[str], yuio.Positional]
+            flags: list[str] | yuio.Positional
             if prefix and field.flags is not yuio.POSITIONAL:
                 flags = [prefix + flag.lstrip("-") for flag in field.flags]
             else:
@@ -947,6 +997,7 @@ class Config:
                     dest + ".",
                     current_suppress_help,
                     depth + 1,
+                    current_usage,
                 )
                 continue
             else:
@@ -970,17 +1021,24 @@ class Config:
                 nargs = "?"
             nargs_kw: _t.Any = {"nargs": nargs} if nargs is not None else {}
 
+            if field.group is not None:
+                if field.group not in mutex_groups:
+                    mutex_groups[field.group] = group.add_mutually_exclusive_group()
+                field_group = mutex_groups[field.group]
+            else:
+                field_group = group
+
             if flags is yuio.POSITIONAL:
-                group.add_argument(
+                field_group.add_argument(
                     dest,
                     default=yuio.MISSING,
                     help=help,
                     metavar=metavar,
-                    action=_action(field, parse_many),
+                    action=_action(field, current_usage, parse_many),
                     **nargs_kw,
                 )
             elif yuio.parse._is_bool_parser(field.parser):
-                mutex_group = group.add_mutually_exclusive_group(
+                mutex_group = field_group.add_mutually_exclusive_group(
                     required=field.required
                 )
 
@@ -999,7 +1057,7 @@ class Config:
                     default=yuio.MISSING,
                     help=pos_help,
                     dest=dest,
-                    action=_action(field, const=True),
+                    action=_action(field, current_usage, const=True),
                     nargs=0,
                 )
 
@@ -1018,26 +1076,26 @@ class Config:
                             default=yuio.MISSING,
                             help=help,
                             dest=dest,
-                            action=_action(field, const=False),
+                            action=_action(field, current_usage, const=False),
                             nargs=0,
                         )
                         break
             else:
-                group.add_argument(
+                field_group.add_argument(
                     *flags,
                     default=yuio.MISSING,
                     help=help,
                     metavar=metavar,
                     required=field.required,
                     dest=dest,
-                    action=_action(field, parse_many),
+                    action=_action(field, current_usage, parse_many),
                     **nargs_kw,
                 )
 
     @classmethod
     def load_from_json_file(
-        cls: _t.Type[_Self],
-        path: _t.Union[str, pathlib.Path],
+        cls: type[_Self],
+        path: str | pathlib.Path,
         /,
         *,
         ignore_unknown_fields: bool = False,
@@ -1063,8 +1121,8 @@ class Config:
 
     @classmethod
     def load_from_yaml_file(
-        cls: _t.Type[_Self],
-        path: _t.Union[str, pathlib.Path],
+        cls: type[_Self],
+        path: str | pathlib.Path,
         /,
         *,
         ignore_unknown_fields: bool = False,
@@ -1097,8 +1155,8 @@ class Config:
 
     @classmethod
     def load_from_toml_file(
-        cls: _t.Type[_Self],
-        path: _t.Union[str, pathlib.Path],
+        cls: type[_Self],
+        path: str | pathlib.Path,
         /,
         *,
         ignore_unknown_fields: bool = False,
@@ -1136,8 +1194,8 @@ class Config:
 
     @classmethod
     def __load_from_file(
-        cls: _t.Type[_Self],
-        path: _t.Union[str, pathlib.Path],
+        cls: type[_Self],
+        path: str | pathlib.Path,
         file_parser: _t.Callable[[str], _t.Any],
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
@@ -1146,7 +1204,7 @@ class Config:
             return cls()
 
         try:
-            with open(path, "r") as file:
+            with open(path) as file:
                 loaded = file_parser(file.read())
         except Exception as e:
             raise yuio.parse.ParsingError(
@@ -1159,12 +1217,12 @@ class Config:
 
     @classmethod
     def load_from_parsed_file(
-        cls: _t.Type[_Self],
-        parsed: _t.Dict[str, object],
+        cls: type[_Self],
+        parsed: dict[str, object],
         /,
         *,
         ignore_unknown_fields: bool = False,
-        path: _t.Union[str, pathlib.Path, None] = None,
+        path: str | pathlib.Path | None = None,
     ) -> _Self:
         """Load config from parsed config file.
 
@@ -1200,8 +1258,8 @@ class Config:
 
     @classmethod
     def __load_from_parsed_file(
-        cls: _t.Type[_Self],
-        parsed: _t.Dict[str, object],
+        cls: type[_Self],
+        parsed: dict[str, object],
         ignore_unknown_fields: bool = False,
         field_prefix: str = "",
     ) -> _Self:
@@ -1212,7 +1270,7 @@ class Config:
 
         if not ignore_unknown_fields:
             for name in parsed:
-                if name not in cls.__get_fields():
+                if name not in cls.__get_fields() and name != "$schema":
                     raise yuio.parse.ParsingError(f"unknown field {field_prefix}{name}")
 
         for name, field in cls.__get_fields().items():
@@ -1273,39 +1331,56 @@ class Config:
 
         """
 
+    @classmethod
+    def to_json_schema(
+        cls, ctx: yuio.json_schema.JsonSchemaContext
+    ) -> yuio.json_schema.JsonSchemaType:
+        """
+        Create a Json schema object based on this config.
+
+        The purpose of this method is to make schemas for use in IDEs, i.e. to provide
+        autocompletion or simple error checking. The returned schema is not guaranteed
+        to reflect all constraints added to the parser.
+
+        :param ctx:
+            context for building a schema.
+
+        """
+
+        return ctx.add_type(cls, _t.type_repr(cls), lambda: cls.__to_json_schema(ctx))
+
+    @classmethod
+    def __to_json_schema(
+        cls, ctx: yuio.json_schema.JsonSchemaContext
+    ) -> yuio.json_schema.JsonSchemaType:
+        properties: dict[str, yuio.json_schema.JsonSchemaType] = {}
+        defaults = {}
+
+        properties["$schema"] = yuio.json_schema.String()
+
+        for name, field in cls.__get_fields().items():
+            if field.is_subconfig:
+                properties[name] = field.ty.to_json_schema(ctx)
+            else:
+                assert field.parser
+                field_schema = field.parser.to_json_schema(ctx)
+                if field.help and field.help is not yuio.DISABLED:
+                    field_schema = yuio.json_schema.Meta(
+                        field_schema, description=field.help
+                    )
+                properties[name] = field_schema
+                if field.default is not yuio.MISSING:
+                    try:
+                        defaults[name] = field.parser.to_json_value(field.default)
+                    except TypeError:
+                        pass
+
+        return yuio.json_schema.Meta(
+            yuio.json_schema.Object(properties),
+            title=cls.__name__,
+            description=cls.__doc__,
+            default=defaults,
+        )
+
 
 Config.__init_subclass__()
-
-
-class ConfigParser(yuio.parse.ValueParser[Cfg], _t.Generic[Cfg]):
-    if _t.TYPE_CHECKING:
-
-        def __new__(cls, config: _t.Type[Cfg]) -> "ConfigParser[Cfg]": ...
-
-    def __init__(self, config: _t.Type[Cfg]):
-        self.__config = config
-        super().__init__()
-
-    def parse(self, value: str) -> Cfg:
-        try:
-            config_value = json.loads(value)
-        except json.JSONDecodeError as e:
-            raise yuio.parse.ParsingError(
-                f"unable to decode JSON:\n" + textwrap.indent(str(e), "  ")
-            ) from None
-        return self.parse_config(config_value)
-
-    def parse_config(self, value: object) -> Cfg:
-        if isinstance(value, dict):
-            return self.__config.load_from_parsed_file(value)
-        else:
-            raise yuio.parse.ParsingError(
-                f"expected a dict, got {type(value).__name__} instead"
-            )
-
-
-yuio.parse.register_type_hint_conversion(
-    lambda ty, origin, args: (
-        ConfigParser(ty) if isinstance(ty, type) and issubclass(ty, Config) else None
-    )
-)

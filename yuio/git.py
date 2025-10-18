@@ -82,6 +82,8 @@ Autocompleting git refs
 
 """
 
+from __future__ import annotations
+
 import dataclasses
 import enum
 import functools
@@ -145,7 +147,7 @@ class Repo:
 
     """
 
-    def __init__(self, path: _t.Union[pathlib.Path, str], /, skip_checks: bool = False):
+    def __init__(self, path: pathlib.Path | str, /, skip_checks: bool = False):
         self.__path = pathlib.Path(path)
 
         try:
@@ -181,8 +183,7 @@ class Repo:
 
         res = subprocess.run(
             ["git"] + list(args),
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
+            capture_output=True,
             cwd=self.__path,
         )
 
@@ -213,7 +214,7 @@ class Repo:
 
         return pathlib.Path(self.git("rev-parse", "--git-dir").decode())
 
-    def status(self) -> "Status":
+    def status(self) -> Status:
         """
         Query the current repository status.
 
@@ -272,9 +273,7 @@ class Repo:
 
         return status
 
-    def log(
-        self, *refs: str, max_entries: _t.Optional[int] = None
-    ) -> _t.List["Commit"]:
+    def log(self, *refs: str, max_entries: int | None = None) -> list[Commit]:
         """
         Query the log for given git objects.
 
@@ -302,8 +301,8 @@ class Repo:
         return commits
 
     def trailers(
-        self, *refs: str, max_entries: _t.Optional[int] = None
-    ) -> "_t.List[CommitTrailers]":
+        self, *refs: str, max_entries: int | None = None
+    ) -> list[CommitTrailers]:
         """
         Query trailer lines for given git objects.
 
@@ -331,7 +330,7 @@ class Repo:
 
         return trailers
 
-    def show(self, ref: str, /) -> "_t.Optional[Commit]":
+    def show(self, ref: str, /) -> Commit | None:
         """
         Query information for the given git object.
 
@@ -363,7 +362,7 @@ class Repo:
         return commit
 
     @staticmethod
-    def __parse_single_log_entry(lines) -> "_t.Optional[Commit]":
+    def __parse_single_log_entry(lines) -> Commit | None:
         try:
             commit = next(lines)
             author = next(lines)
@@ -405,7 +404,7 @@ class Repo:
     @staticmethod
     def __parse_single_trailer_entry(
         lines,
-    ) -> "_t.Optional[CommitTrailers]":
+    ) -> CommitTrailers | None:
         try:
             commit = next(lines)
             trailers = []
@@ -420,11 +419,8 @@ class Repo:
                         if current_key:
                             first, *rest = current_value.splitlines(keepends=True)
                             current_value = (
-                                first.strip()
-                                + "\n"
-                                + textwrap.dedent("".join(rest)).rstrip()
-                                + "\n"
-                            )
+                                first.strip() + "\n" + textwrap.dedent("".join(rest))
+                            ).rstrip() + "\n"
                             trailers.append((current_key, current_value))
                         current_key = match.group("key")
                         current_value = line[match.end() :]
@@ -435,18 +431,15 @@ class Repo:
             if current_key:
                 first, *rest = current_value.splitlines(keepends=True)
                 current_value = (
-                    first.strip()
-                    + "\n"
-                    + textwrap.dedent("".join(rest)).rstrip()
-                    + "\n"
-                )
+                    first.strip() + "\n" + textwrap.dedent("".join(rest))
+                ).rstrip() + "\n"
                 trailers.append((current_key, current_value))
 
             return CommitTrailers(commit, trailers)
         except StopIteration:
             return None
 
-    def tags(self) -> _t.List[str]:
+    def tags(self) -> list[str]:
         """
         List all tags in this repository.
 
@@ -458,7 +451,7 @@ class Repo:
             .splitlines()
         )
 
-    def branches(self) -> _t.List[str]:
+    def branches(self) -> list[str]:
         """
         List all branches in this repository.
 
@@ -470,7 +463,7 @@ class Repo:
             .splitlines()
         )
 
-    def remotes(self) -> _t.List[str]:
+    def remotes(self) -> list[str]:
         """
         List all remote branches in this repository.
 
@@ -525,7 +518,7 @@ class Commit:
     #: into a commit, `orig_ref` will contain string ``"HEAD"``.
     #:
     #: See also :class:`CommitParser`.
-    orig_ref: _t.Optional[str] = None
+    orig_ref: str | None = None
 
     @property
     def short_hash(self):
@@ -554,7 +547,7 @@ class CommitTrailers:
     hash: str
 
     #: Key-value pairs for commit trailers.
-    trailers: _t.List[_t.Tuple[str, str]]
+    trailers: list[tuple[str, str]]
 
 
 class Modification(enum.Enum):
@@ -596,7 +589,7 @@ class FileStatus:
     path: pathlib.Path
 
     #: If file was moved, contains path where it was moved from.
-    path_from: _t.Optional[pathlib.Path] = None
+    path_from: pathlib.Path | None = None
 
     #: File modification in the index (staged).
     staged: Modification = Modification.UNMODIFIED
@@ -613,16 +606,16 @@ class Status:
     commit: str
 
     #: Name of the current branch.
-    branch: _t.Optional[str] = None
+    branch: str | None = None
 
     #: Name of the upstream branch.
-    upstream: _t.Optional[str] = None
+    upstream: str | None = None
 
     #: Number of commits the branch is ahead of upstream.
-    ahead: _t.Optional[int] = None
+    ahead: int | None = None
 
     #: Number of commits the branch is behind of upstream.
-    behind: _t.Optional[int] = None
+    behind: int | None = None
 
     #: True if any tracked file was changed.
     has_tracked_changes: bool = False
@@ -631,7 +624,7 @@ class Status:
     has_untracked_changes: bool = False
 
     #: List of changed files, both tracked and untracked.
-    changes: _t.List[FileStatus] = dataclasses.field(default_factory=list)
+    changes: list[FileStatus] = dataclasses.field(default_factory=list)
 
     @property
     def has_changes(self) -> bool:
@@ -670,9 +663,7 @@ class RefCompleter(yuio.complete.Completer):
 
     """
 
-    def __init__(
-        self, repo: Repo, modes: _t.Optional[_t.Set["RefCompleterMode"]] = None
-    ):
+    def __init__(self, repo: Repo, modes: set[RefCompleterMode] | None = None):
         super().__init__()
 
         self._repo = repo
@@ -707,16 +698,16 @@ class RefCompleter(yuio.complete.Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> "yuio.complete._CompleterSerializer.Model":
+    ) -> yuio.complete._CompleterSerializer.Model:
         return yuio.complete._CompleterSerializer.Git(
-            set(
+            {
                 yuio.complete._CompleterSerializer.Git.Mode(mode.value)
                 for mode in self._modes
-            )
+            }
         )
 
 
-class CommitParser(yuio.parse.ValueParser[Commit]):
+def CommitParser(*, repo: Repo) -> yuio.parse.Parser[Commit]:
     """
     A parser for git refs (commits, tags, branches, and so on).
 
@@ -728,24 +719,24 @@ class CommitParser(yuio.parse.ValueParser[Commit]):
 
     """
 
-    def __init__(self, *, repo: Repo):
-        super().__init__()
-
-        self._repo = repo
-
-    def parse(self, value: str, /) -> Commit:
-        commit = self._repo.show(value)
+    def map(value: str, /) -> Commit:
+        commit = repo.show(value)
         if commit is None:
             raise yuio.parse.ParsingError("invalid git ref")
         return commit
 
-    def parse_config(self, value: _t.Any, /) -> Commit:
-        if not isinstance(value, str):
-            raise yuio.parse.ParsingError("expected a string")
-        return self.parse(value)
+    def rev(value: Commit | object) -> str:
+        if isinstance(value, Commit):
+            return str(value)
+        elif isinstance(value, str):
+            return value
+        else:
+            raise TypeError(
+                f"parser Commit can't handle value "
+                f"of type {_t.type_repr(type(value))}"
+            )
 
-    def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(self._repo)
+    return yuio.parse.Map(yuio.parse.Str(), map, rev)
 
 
 T = _t.TypeVar("T")
@@ -758,15 +749,15 @@ class _RefParserImpl(yuio.parse.ValidatingParser[T], _t.Generic[T]):
             cls,
             /,
             *,
-            repo_path: _t.Union[Repo, str, pathlib.Path, None] = None,
+            repo_path: Repo | str | pathlib.Path | None = None,
             should_exist: bool = False,
-        ) -> "_RefParserImpl[T]": ...
+        ) -> _RefParserImpl[T]: ...
 
     def __init__(
         self,
         /,
         *,
-        repo_path: _t.Union[Repo, str, pathlib.Path, None] = None,
+        repo_path: Repo | str | pathlib.Path | None = None,
         should_exist: bool = False,
     ):
         super().__init__(_t.cast(yuio.parse.Parser[T], yuio.parse.Str()))
@@ -887,6 +878,3 @@ yuio.parse.register_type_hint_conversion(
         ty, origin, args, Remote, RemoteParser
     )
 )
-
-
-a: yuio.parse.Parser[str] = RemoteParser()

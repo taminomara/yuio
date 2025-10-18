@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import yuio.io
 import yuio.widget
 from yuio.widget import Key, RenderContext
@@ -54,7 +52,7 @@ class ExampleWidget(yuio.widget.Widget[None]):
         """close"""
         return yuio.widget.Result(None)
 
-    def layout(self, rc: RenderContext) -> Tuple[int, int]:
+    def layout(self, rc: RenderContext) -> tuple[int, int]:
         return 1, 1
 
     def draw(self, rc: yuio.widget.RenderContext):

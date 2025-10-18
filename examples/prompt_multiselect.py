@@ -1,5 +1,4 @@
 import enum
-from typing import Set
 
 import yuio.io
 
@@ -15,5 +14,5 @@ class Console(enum.Enum):
 
 
 if __name__ == "__main__":
-    consoles = yuio.io.ask[Set[Console]]("Which consoles do you own?")
+    consoles = yuio.io.ask[set[Console]]("Which consoles do you own?")
     yuio.io.info("You own `%s`", ", ".join(map(str, consoles)) or "...nothing?")

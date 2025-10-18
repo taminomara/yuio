@@ -69,11 +69,6 @@ Value parsers
 
 .. autoclass:: Json(inner: Parser[T] | None = None, /)
 
-.. class:: JsonValue
-
-    A type alias for the result of the :class:`Json` parser. This alias can be used
-    in type hints to signal Yuio to parse a value as Json.
-
 .. autoclass:: List(inner: Parser[T], /, *, delimiter: str | None = None)
 
 .. autoclass:: Set(inner: Parser[T], /, *, delimiter: str | None = None)
@@ -136,7 +131,7 @@ Validators
 Auxiliary parsers
 -----------------
 
-.. autoclass:: Map(inner: Parser[U], fn: typing.Callable[[U], T], /)
+.. autoclass:: Map(inner: Parser[U], fn: typing.Callable[[U], T], rev: typing.Callable[[T | object], U] | None = None, /)
 
 .. autoclass:: Apply(inner: Parser[T], fn: typing.Callable[[T], None], /)
 
@@ -233,6 +228,10 @@ However, you can still use them in case you need to.
 
     .. automethod:: get_nargs
 
+    .. automethod:: check_type
+
+    .. automethod:: assert_type
+
     .. automethod:: describe
 
     .. automethod:: describe_or_def
@@ -250,6 +249,10 @@ However, you can still use them in case you need to.
     .. automethod:: completer
 
     .. automethod:: widget
+
+    .. automethod:: to_json_schema
+
+    .. automethod:: to_json_value
 
 
 Building your own parser
@@ -398,6 +401,7 @@ for a collection parser. Use :func:`suggest_delim_for_type_hint_conversion`:
 .. autofunction:: suggest_delim_for_type_hint_conversion
 
 """
+from __future__ import annotations
 
 import abc
 import argparse
@@ -407,8 +411,8 @@ import datetime
 import decimal
 import enum
 import fractions
+import functools
 import json
-import os
 import pathlib
 import re
 import textwrap
@@ -418,12 +422,13 @@ import types
 
 import yuio
 import yuio.complete
+import yuio.json_schema
 import yuio.widget
 from yuio import _typing as _t
 
+T_co = _t.TypeVar("T_co", covariant=True)
 T = _t.TypeVar("T")
 U = _t.TypeVar("U")
-T_co = _t.TypeVar("T_co", covariant=True)
 K = _t.TypeVar("K")
 V = _t.TypeVar("V")
 C = _t.TypeVar("C", bound=_t.Collection[object])
@@ -431,7 +436,7 @@ C2 = _t.TypeVar("C2", bound=_t.Collection[object])
 Sz = _t.TypeVar("Sz", bound=_t.Sized)
 Cmp = _t.TypeVar("Cmp", bound=yuio.SupportsLt[_t.Any])
 E = _t.TypeVar("E", bound=enum.Enum)
-TU = _t.TypeVar("TU", bound=_t.Tuple[object, ...])
+TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
 
 
@@ -489,7 +494,7 @@ class PartialParser(abc.ABC):
             raise e
 
     @abc.abstractmethod
-    def wrap(self, parser: "Parser[_t.Any]") -> "Parser[object]":
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         """
         Apply this partial parser.
 
@@ -530,7 +535,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
     #: An attribute for unwrapping parsers that validate or map results
     #: of other parsers.
-    __wrapped_parser__: "_t.Optional[Parser[object]]" = None
+    __wrapped_parser__: Parser[object] | None = None
 
     @abc.abstractmethod
     def parse(self, value: str, /) -> T_co:
@@ -600,14 +605,47 @@ class Parser(PartialParser, _t.Generic[T_co]):
         """
 
     @abc.abstractmethod
-    def get_nargs(self) -> _t.Union[_t.Literal["-", "+", "*", "?"], int, None]:
+    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
         """
         Generate `nargs` for argparse.
 
         """
 
     @abc.abstractmethod
-    def describe(self) -> _t.Optional[str]:
+    def check_type(self, value: object, /) -> _t.TypeGuard[T_co]:
+        """
+        Check whether the parser can handle a particular value in its
+        :meth:`~Parser.describe_value` and other methods.
+
+        This function is used in :class:`Union` to dispatch values to correct parsers.
+
+        :param value:
+            value that needs a type check.
+
+        """
+
+    def assert_type(self, value: object, /) -> _t.TypeGuard[T_co]:
+        """
+        Call :meth:`~Parser.check_type` and raise a :class:`TypeError`
+        if it returns :data:`False`.
+
+        This method always returns :data:`True` or throws an error, but type checkers
+        don't know this. Use ``assert parser.assert_type(value)`` so that they
+        understand that type of the ``value`` has narrowed.
+
+        :param value:
+            value that needs a type check.
+
+        """
+
+        if not self.check_type(value):
+            raise TypeError(
+                f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
+            )
+        return True
+
+    @abc.abstractmethod
+    def describe(self) -> str | None:
         """
         Return a human-readable description of an expected input.
 
@@ -621,7 +659,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
         """
 
     @abc.abstractmethod
-    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
+    def describe_many(self) -> str | tuple[str, ...] | None:
         """
         Return a human-readable description of a container element.
 
@@ -630,20 +668,20 @@ class Parser(PartialParser, _t.Generic[T_co]):
         """
 
     @abc.abstractmethod
-    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
+    def describe_many_or_def(self) -> str | tuple[str, ...]:
         """
         Like :py:meth:`~Parser.describe_many`, but guaranteed to return something.
 
         """
 
     @abc.abstractmethod
-    def describe_value(self, value: object, /) -> _t.Optional[str]:
+    def describe_value(self, value: object, /) -> str | None:
         """
         Return a human-readable description of the given value.
 
         Note that, since parser's type parameter is covariant, this function is not
         guaranteed to receive a value of the same type that this parser produces.
-        In this case, you can return :data:`None`.
+        Call :meth:`~Parser.assert_type` to check for this case.
 
         :param value:
             value that needs a description.
@@ -657,7 +695,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         Note that, since parser's type parameter is covariant, this function is not
         guaranteed to receive a value of the same type that this parser produces.
-        In this case, you can return ``str(value) or "<empty>"``.
+        Call :meth:`~Parser.assert_type` to check for this case.
 
         :param value:
             value that needs a description.
@@ -665,7 +703,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
         """
 
     @abc.abstractmethod
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T_co]]]:
+    def options(self) -> _t.Collection[yuio.widget.Option[T_co]] | None:
         """
         Return options for a :class:`~yuio.widget.Multiselect` widget.
 
@@ -678,7 +716,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
         """
 
     @abc.abstractmethod
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         """
         Return a completer for values of this parser.
 
@@ -690,11 +728,11 @@ class Parser(PartialParser, _t.Generic[T_co]):
     @abc.abstractmethod
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[T_co, yuio.Missing]]:
+    ) -> yuio.widget.Widget[T_co | yuio.Missing]:
         """
         Return a widget for reading values of this parser.
 
@@ -719,6 +757,34 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+    @abc.abstractmethod
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        """
+        Create a Json schema object based on this parser.
+
+        The purpose of this method is to make schemas for use in IDEs, i.e. to provide
+        autocompletion or simple error checking. The returned schema is not guaranteed
+        to reflect all constraints added to the parser. For example, :class:`OneOf`
+        and :class:`Regex` parsers will not affect the generated schema.
+
+        :param ctx:
+            context for building a schema.
+
+        """
+
+    @abc.abstractmethod
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        """
+        Convert given value to a representation suitable for JSON serialization.
+
+        Note that, since parser's type parameter is covariant, this function is not
+        guaranteed to receive a value of the same type that this parser produces.
+        Call :meth:`~Parser.assert_type` to check for this case.
+
+        """
+
     def __repr__(self):
         return self.__class__.__name__
 
@@ -727,21 +793,28 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
     """
     Base implementation for a parser that returns a single value.
 
-    Implements all method, except for :meth:`~Parser.parse` and
-    :meth:`~Parser.parse_config`.
+    Implements all method, except for :meth:`~Parser.parse`,
+    :meth:`~Parser.parse_config`, :meth:`~Parser.to_json_schema`,
+    and :meth:`~Parser.to_json_value`.
+
+    :param ty:
+        type of the produced value, used in :meth:`~Parser.check_type`.
 
     .. invisible-code-block: python
 
         from dataclasses import dataclass
         @dataclass
         class MyType:
-            value: str
+            data: str
 
     Example:
 
     .. code-block:: python
 
         class MyTypeParser(ValueParser[MyType]):
+            def __init__(self):
+                super().__init__(MyType)
+
             def parse(self, value: str, /) -> MyType:
                 return self.parse_config(value)
 
@@ -750,21 +823,41 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
                     raise ParsingError(f'expected a string, got {value!r}')
                 return MyType(value)
 
+            def to_json_schema(
+                self, ctx: yuio.json_schema.JsonSchemaContext, /
+            ) -> yuio.json_schema.JsonSchemaType:
+                return yuio.json_schema.String()
+
+            def to_json_value(
+                self, value: object, /
+            ) -> yuio.json_schema.JsonValue:
+                assert self.assert_type(value)
+                return value.data
+
     ::
 
-        >>> MyTypeParser().parse('data')
-        MyType(value='data')
+        >>> MyTypeParser().parse('pancake')
+        MyType(data='pancake')
 
     """
+
+    def __init__(self, ty: type[T], /, *args, **kwargs) -> types.NoneType:
+        super().__init__(*args, **kwargs)
+
+        self._value_type = ty
+        """
+        Type of the produced value, used in :meth:`~Parser.check_type`.
+
+        """
 
     def wrap(self: P, parser: Parser[_t.Any]) -> P:
         typehint = getattr(parser, "_Parser__typehint", None)
         if typehint is None:
             with self._patch_stack_summary():
                 raise TypeError(
-                    f"annotating a type with {self.__class__.__name__} will override"
+                    f"annotating a type with {self} will override"
                     " all previous annotations. Make sure that"
-                    f" {self.__class__.__name__} is the first annotation in"
+                    f" {self} is the first annotation in"
                     " your type hint.\n\n"
                     "Example:\n"
                     "  Incorrect: Str() overrides effects of Map()\n"
@@ -796,40 +889,45 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
     def supports_parse_many(self) -> bool:
         return False
 
-    def get_nargs(self) -> _t.Union[_t.Literal["-", "+", "*", "?"], int, None]:
+    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
         return None
 
-    def describe(self) -> _t.Optional[str]:
+    def check_type(self, value: object) -> _t.TypeGuard[T]:
+        return isinstance(value, self._value_type)
+
+    def describe(self) -> str | None:
         return None
 
     def describe_or_def(self) -> str:
         return self.describe() or f"<{yuio.to_dash_case(self.__class__.__name__)}>"
 
-    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
+    def describe_many(self) -> str | tuple[str, ...] | None:
         return self.describe()
 
-    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
+    def describe_many_or_def(self) -> str | tuple[str, ...]:
         return self.describe_many() or f"<{yuio.to_dash_case(self.__class__.__name__)}>"
 
-    def describe_value(self, value: object, /) -> _t.Optional[str]:
+    def describe_value(self, value: object, /) -> str | None:
+        assert self.assert_type(value)
         return None
 
     def describe_value_or_def(self, value: object, /) -> str:
+        assert self.assert_type(value)
         return self.describe_value(value) or str(value) or "<empty>"
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+    def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return None
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         return None
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+    ) -> yuio.widget.Widget[T | yuio.Missing]:
         completer = self.completer()
         return _WidgetResultMapper(
             self,
@@ -877,16 +975,16 @@ class WrappingParser(Parser[T], _t.Generic[T, U]):
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(cls, inner: U, /) -> "WrappingParser[T, U]": ...
+        def __new__(cls, inner: U, /) -> WrappingParser[T, U]: ...
 
         @_t.overload
         def __new__(cls, /) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
-    def __init__(self, inner: _t.Optional[U], /):
+    def __init__(self, inner: U | None, /, *args, **kwargs):
         self.__inner = inner
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     @property
     def _inner(self) -> U:
@@ -926,7 +1024,7 @@ class WrappingParser(Parser[T], _t.Generic[T, U]):
         self.__inner = inner
 
     @property
-    def _inner_raw(self) -> _t.Optional[U]:
+    def _inner_raw(self) -> U | None:
         """
         Unchecked access to the wrapped resource.
 
@@ -940,7 +1038,9 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
     This is a base abstraction for :class:`Map` and :class:`Optional`.
     Forwards all calls to the inner parser, except for :meth:`~Parser.parse`,
     :meth:`~Parser.parse_many`, :meth:`~Parser.parse_config`,
-    :meth:`~Parser.options`, and :meth:`~Parser.widget`.
+    :meth:`~Parser.options`, :meth:`~Parser.check_type`,
+    :meth:`~Parser.describe_value`, :meth:`~Parser.describe_value_or_def`,
+    :meth:`~Parser.widget`, and :meth:`~Parser.to_json_value`.
 
     :param inner:
         mapped parser or :data:`None`.
@@ -950,46 +1050,45 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(cls, inner: Parser[U], /) -> "MappingParser[T, U]": ...
+        def __new__(cls, inner: Parser[U], /) -> MappingParser[T, U]: ...
 
         @_t.overload
         def __new__(cls, /) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
-    def __init__(self, inner: _t.Optional[Parser[U]], /):
+    def __init__(self, inner: Parser[U] | None, /):
         super().__init__(inner)
 
-    def wrap(self, parser: Parser[_t.Any]) -> Parser[object]:
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         self._inner = parser
         return self
 
     def supports_parse_many(self) -> bool:
         return self._inner.supports_parse_many()
 
-    def get_nargs(self) -> _t.Union[_t.Literal["-", "+", "*", "?"], int, None]:
+    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
         return self._inner.get_nargs()
 
-    def describe(self) -> _t.Optional[str]:
+    def describe(self) -> str | None:
         return self._inner.describe()
 
     def describe_or_def(self) -> str:
         return self._inner.describe_or_def()
 
-    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
+    def describe_many(self) -> str | tuple[str, ...] | None:
         return self._inner.describe_many()
 
-    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
+    def describe_many_or_def(self) -> str | tuple[str, ...]:
         return self._inner.describe_many_or_def()
 
-    def describe_value(self, value: object, /) -> _t.Optional[str]:
-        return self._inner.describe_value(value)
-
-    def describe_value_or_def(self, value: object, /) -> str:
-        return self._inner.describe_value_or_def(value)
-
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         return self._inner.completer()
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return self._inner.to_json_schema(ctx)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._inner_raw!r})"
@@ -1014,32 +1113,63 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
         a parser whose result will be mapped.
     :param fn:
         a function to convert a result.
+    :param rev:
+        a function used to un-map a value.
+
+        This function should be present if mapping operation changes value's type
+        or not idempotent. It is used in :meth:`Parser.describe_value`
+        and :meth:`Parser.to_json_value` to convert parsed value back
+        to its original state.
+
+        Note that, since parser's type parameter is covariant, this function is not
+        guaranteed to receive a value of the same type that this parser produces.
+        In this case, you can raise a :class:`TypeError`.
 
     """
 
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(
-            cls, inner: Parser[U], fn: _t.Callable[[U], T], /
-        ) -> "Map[U, T]": ...
+        def __new__(cls, inner: Parser[T], fn: _t.Callable[[T], T], /) -> Map[T, T]: ...
 
         @_t.overload
-        def __new__(cls, fn: _t.Callable[[U], T], /) -> PartialParser: ...
+        def __new__(cls, fn: _t.Callable[[T], T], /) -> PartialParser: ...
+
+        @_t.overload
+        def __new__(
+            cls,
+            inner: Parser[U],
+            fn: _t.Callable[[U], T],
+            rev: _t.Callable[[T | object], U],
+            /,
+        ) -> Map[T, T]: ...
+
+        @_t.overload
+        def __new__(
+            cls, fn: _t.Callable[[U], T], rev: _t.Callable[[T | object], U], /
+        ) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
     def __init__(self, *args):
-        inner: _t.Optional[Parser[U]]
+        inner: Parser[U] | None = None
         fn: _t.Callable[[U], T]
+        rev: _t.Callable[[T | object], U] | None = None
         if len(args) == 1:
-            inner, fn = None, args[0]
-        elif len(args) == 2:
+            (fn,) = args
+        elif len(args) == 2 and isinstance(args[0], Parser):
             inner, fn = args
+        elif len(args) == 2:
+            fn, rev = args
+        elif len(args) == 3:
+            inner, fn, rev = args
         else:
-            raise TypeError(f"expected 1 or 2 positional arguments, got {len(args)}")
+            raise TypeError(
+                f"expected between 1 and 2 positional arguments, got {len(args)}"
+            )
 
         self.__fn = fn
+        self.__rev = rev
         super().__init__(inner)
 
     def parse(self, value: str, /) -> T:
@@ -1051,7 +1181,22 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
     def parse_config(self, value: object, /) -> T:
         return self.__fn(self._inner.parse_config(value))
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+    def check_type(self, value: object) -> _t.TypeGuard[T]:
+        if self.__rev:
+            value = self.__rev(value)
+        return self._inner.check_type(value)
+
+    def describe_value(self, value: object, /) -> str | None:
+        if self.__rev:
+            value = self.__rev(value)
+        return self._inner.describe_value(value)
+
+    def describe_value_or_def(self, value: object, /) -> str:
+        if self.__rev:
+            value = self.__rev(value)
+        return self._inner.describe_value_or_def(value)
+
+    def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         options = self._inner.options()
         if options is not None:
             return [
@@ -1066,15 +1211,20 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+    ) -> yuio.widget.Widget[T | yuio.Missing]:
         return yuio.widget.Map(
             self._inner.widget(default, input_description, default_description),
             lambda v: self.__fn(v) if v is not yuio.MISSING else yuio.MISSING,
         )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        if self.__rev:
+            value = self.__rev(value)
+        return self._inner.to_json_value(value)
 
 
 @_t.overload
@@ -1152,18 +1302,18 @@ def Strip(*args) -> _t.Any:
 @_t.overload
 def Regex(
     inner: Parser[str],
-    regex: _t.Union[str, _t.StrRePattern],
+    regex: str | _t.StrRePattern,
     /,
     *,
-    group: _t.Union[int, str] = 0,
+    group: int | str = 0,
 ) -> Parser[str]: ...
 @_t.overload
 def Regex(
-    regex: _t.Union[str, _t.StrRePattern], /, *, group: _t.Union[int, str] = 0
+    regex: str | _t.StrRePattern, /, *, group: int | str = 0
 ) -> PartialParser: ...
 
 
-def Regex(*args, group: _t.Union[int, str] = 0) -> _t.Any:
+def Regex(*args, group: int | str = 0) -> _t.Any:
     """
     Matches the parsed string with the given regular expression.
 
@@ -1177,8 +1327,8 @@ def Regex(*args, group: _t.Union[int, str] = 0) -> _t.Any:
 
     """
 
-    inner: _t.Optional[Parser[str]]
-    regex: _t.Union[str, _t.StrRePattern]
+    inner: Parser[str] | None
+    regex: str | _t.StrRePattern
     if len(args) == 1:
         inner, regex = None, args[0]
     elif len(args) == 2:
@@ -1196,7 +1346,7 @@ def Regex(*args, group: _t.Union[int, str] = 0) -> _t.Any:
             raise ParsingError(f"value should match regex '{compiled.pattern}'")
         return match.group(group)
 
-    return Map(inner, mapper)  # pyright: ignore[reportArgumentType]
+    return Map(inner, mapper)  # type: ignore
 
 
 class Apply(MappingParser[T, T], _t.Generic[T]):
@@ -1223,7 +1373,7 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
         @_t.overload
         def __new__(
             cls, inner: Parser[T], fn: _t.Callable[[T], None], /
-        ) -> "Apply[T]": ...
+        ) -> Apply[T]: ...
 
         @_t.overload
         def __new__(cls, fn: _t.Callable[[T], None], /) -> PartialParser: ...
@@ -1231,7 +1381,7 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
     def __init__(self, *args):
-        inner: _t.Optional[Parser[T]]
+        inner: Parser[T] | None
         fn: _t.Callable[[T], None]
         if len(args) == 1:
             inner, fn = None, args[0]
@@ -1258,20 +1408,40 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
         self.__fn(result)
         return result
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+    def check_type(self, value: object) -> _t.TypeGuard[T]:
+        return self._inner.check_type(value)
+
+    def describe_value(self, value: object, /) -> str | None:
+        return self._inner.describe_value(value)
+
+    def describe_value_or_def(self, value: object, /) -> str:
+        return self._inner.describe_value_or_def(value)
+
+    def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return self._inner.options()
+
+    def completer(self) -> yuio.complete.Completer | None:
+        return self._inner.completer()
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+    ) -> yuio.widget.Widget[T | yuio.Missing]:
         return yuio.widget.Apply(
             self._inner.widget(default, input_description, default_description),
             lambda v: self.__fn(v) if v is not yuio.MISSING else None,
         )
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return self._inner.to_json_schema(ctx)
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        return self._inner.to_json_value(value)
 
 
 class ValidatingParser(Apply[T], _t.Generic[T]):
@@ -1305,14 +1475,14 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(cls, inner: Parser[T], /) -> "ValidatingParser[T]": ...
+        def __new__(cls, inner: Parser[T], /) -> ValidatingParser[T]: ...
 
         @_t.overload
         def __new__(cls, /) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
-    def __init__(self, inner: _t.Optional[Parser[T]] = None, /):
+    def __init__(self, inner: Parser[T] | None = None, /):
         super().__init__(inner, self._validate)
 
     @abc.abstractmethod
@@ -1334,6 +1504,9 @@ class Str(ValueParser[str]):
 
     """
 
+    def __init__(self):
+        super().__init__(str)
+
     def parse(self, value: str, /) -> str:
         return value
 
@@ -1342,12 +1515,24 @@ class Str(ValueParser[str]):
             raise ParsingError(f"expected string, got {_t.type_repr(type(value))}")
         return value
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.String()
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return value
+
 
 class Int(ValueParser[int]):
     """
     Parser for int values.
 
     """
+
+    def __init__(self):
+        super().__init__(int)
 
     def parse(self, value: str, /) -> int:
         try:
@@ -1364,12 +1549,24 @@ class Int(ValueParser[int]):
             raise ParsingError(f"expected int, got {_t.type_repr(type(value))}")
         return value
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.Integer()
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return value
+
 
 class Float(ValueParser[float]):
     """
     Parser for float values.
 
     """
+
+    def __init__(self):
+        super().__init__(float)
 
     def parse(self, value: str, /) -> float:
         try:
@@ -1382,12 +1579,24 @@ class Float(ValueParser[float]):
             raise ParsingError(f"expected float, got {_t.type_repr(type(value))}")
         return value
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.Number()
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return value
+
 
 class Bool(ValueParser[bool]):
     """
     Parser for bool values, such as ``"yes"`` or ``"no"``.
 
     """
+
+    def __init__(self):
+        super().__init__(bool)
 
     def parse(self, value: str, /) -> bool:
         value = value.strip().lower()
@@ -1397,22 +1606,20 @@ class Bool(ValueParser[bool]):
         elif value in ("n", "no", "false", "0"):
             return False
         else:
-            raise ParsingError(f"can't parse {value!r}," f" enter either 'yes' or 'no'")
+            raise ParsingError(f"can't parse {value!r}, enter either 'yes' or 'no'")
 
     def parse_config(self, value: object, /) -> bool:
         if not isinstance(value, bool):
             raise ParsingError(f"expected bool, got {_t.type_repr(type(value))}")
         return value
 
-    def describe(self) -> _t.Optional[str]:
+    def describe(self) -> str | None:
         return "yes|no"
 
-    def describe_value(self, value: object, /) -> _t.Optional[str]:
-        if not isinstance(value, bool):
-            return None
+    def describe_value(self, value: object, /) -> str | None:
         return "yes" if value else "no"
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Choice(
             [
                 yuio.complete.Option("no"),
@@ -1422,12 +1629,12 @@ class Bool(ValueParser[bool]):
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[bool, yuio.Missing]]:
-        options: _t.List[yuio.widget.Option[_t.Union[bool, yuio.Missing]]] = [
+    ) -> yuio.widget.Widget[bool | yuio.Missing]:
+        options: list[yuio.widget.Option[bool | yuio.Missing]] = [
             yuio.widget.Option(False, "no"),
             yuio.widget.Option(True, "yes"),
         ]
@@ -1444,8 +1651,17 @@ class Bool(ValueParser[bool]):
 
         return yuio.widget.Choice(options, default_index=default_index)
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.Boolean()
 
-class Enum(WrappingParser[E, _t.Type[E]], ValueParser[E], _t.Generic[E]):
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return value
+
+
+class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
     """
     Parser for enums, as defined in the standard :mod:`enum` module.
 
@@ -1454,6 +1670,8 @@ class Enum(WrappingParser[E, _t.Type[E]], ValueParser[E], _t.Generic[E]):
     :param by_name:
         if :data:`True`, the parser will use enumerator names, instead of
         their values, to match the input.
+    :param doc_inline:
+        inline this enum in json schema and in documentation.
 
     """
 
@@ -1461,48 +1679,81 @@ class Enum(WrappingParser[E, _t.Type[E]], ValueParser[E], _t.Generic[E]):
 
         @_t.overload
         def __new__(
-            cls, inner: _t.Type[E], /, *, by_name: bool = False
-        ) -> "Enum[E]": ...
+            cls,
+            inner: type[E],
+            /,
+            *,
+            by_name: bool = False,
+            to_dash_case: bool = False,
+            doc_inline: bool = False,
+        ) -> Enum[E]: ...
 
         @_t.overload
-        def __new__(cls, /, *, by_name: bool = False) -> PartialParser: ...
+        def __new__(
+            cls,
+            /,
+            *,
+            by_name: bool = False,
+            to_dash_case: bool = False,
+            doc_inline: bool = False,
+        ) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
     def __init__(
-        self, enum_type: _t.Optional[_t.Type[E]] = None, /, *, by_name: bool = False
+        self,
+        enum_type: type[E] | None = None,
+        /,
+        *,
+        by_name: bool = False,
+        to_dash_case: bool = False,
+        doc_inline: bool = False,
     ):
-        self.__getter: _t.Callable[[E], object] = (
-            (lambda e: e.name) if by_name else (lambda e: e.value)
-        )
-        super().__init__(enum_type)
+        self.__by_name = by_name
+        self.__to_dash_case = to_dash_case
+        self.__doc_inline = doc_inline
+        super().__init__(enum_type, enum_type)
 
-    def wrap(self, parser: Parser[_t.Any]) -> Parser[object]:
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         result = super().wrap(parser)
         result._inner = parser._inner  # type: ignore
+        result._value_type = parser._inner  # type: ignore
         return result
+
+    @functools.cached_property
+    def __getter(self) -> _t.Callable[[E], str]:
+        items = {}
+        for e in self._inner:
+            if self.__by_name:
+                name = e.name
+            else:
+                name = str(e.value)
+            if self.__to_dash_case:
+                name = yuio.to_dash_case(name)
+            items[e] = name
+        return lambda e: items[e]
 
     def parse(self, value: str, /) -> E:
         cf_value = value.strip().casefold()
 
-        candidates: _t.List[E] = []
+        candidates: list[E] = []
         for item in self._inner:
             if self.__getter(item) == value:
                 return item
-            elif str(self.__getter(item)).casefold().startswith(cf_value):
+            elif (self.__getter(item)).casefold().startswith(cf_value):
                 candidates.append(item)
 
         if len(candidates) == 1:
             return candidates[0]
         elif len(candidates) > 1:
-            enum_values = ", ".join(repr(self.__getter(e)) for e in candidates)
+            enum_values = ", ".join(self.__getter(e) for e in candidates)
             raise ParsingError(
                 f"can't parse {value!r}"
                 f" as {self._inner.__name__},"
                 f" possible candidates are {enum_values}"
             )
         else:
-            enum_values = ", ".join(repr(self.__getter(e)) for e in self._inner)
+            enum_values = ", ".join(self.__getter(e) for e in self._inner)
             raise ParsingError(
                 f"can't parse {value!r}"
                 f" as {self._inner.__name__},"
@@ -1515,7 +1766,7 @@ class Enum(WrappingParser[E, _t.Type[E]], ValueParser[E], _t.Generic[E]):
 
         result = self.parse(value)
 
-        if str(self.__getter(result)).casefold() != value.casefold():
+        if self.__getter(result) != value:
             raise ParsingError(
                 f"can't parse {value!r}"
                 f" as {self._inner.__name__},"
@@ -1525,36 +1776,41 @@ class Enum(WrappingParser[E, _t.Type[E]], ValueParser[E], _t.Generic[E]):
         return result
 
     def describe_or_def(self) -> str:
-        desc = "|".join(str(self.__getter(e)) for e in self._inner)
+        desc = "|".join(self.__getter(e) for e in self._inner)
         if len(self._inner) > 1:
             desc = f"{{{desc}}}"
         return desc
 
-    def describe_value(self, value: object, /) -> _t.Optional[str]:
-        if not isinstance(value, self._inner):
-            return None
+    def describe_many_or_def(self) -> str | tuple[str, ...]:
+        return self.describe_or_def()
+
+    def describe_value(self, value: object) -> str | None:
+        assert self.assert_type(value)
+        return super().describe_value(value)
+
+    def describe_value_or_def(self, value: object, /) -> str:
+        assert self.assert_type(value)
         return str(self.__getter(value))
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[E]]]:
+    def options(self) -> _t.Collection[yuio.widget.Option[E]] | None:
         return [
-            yuio.widget.Option(e, display_text=str(self.__getter(e)))
-            for e in self._inner
+            yuio.widget.Option(e, display_text=self.__getter(e)) for e in self._inner
         ]
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Choice(
-            [yuio.complete.Option(str(self.__getter(e))) for e in self._inner]
+            [yuio.complete.Option(self.__getter(e)) for e in self._inner]
         )
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[E, yuio.Missing]]:
-        options: _t.List[yuio.widget.Option[_t.Union[E, yuio.Missing]]] = [
-            yuio.widget.Option(e, str(self.__getter(e))) for e in self._inner
+    ) -> yuio.widget.Widget[E | yuio.Missing]:
+        options: list[yuio.widget.Option[E | yuio.Missing]] = [
+            yuio.widget.Option(e, self.__getter(e)) for e in self._inner
         ]
 
         if default is yuio.MISSING:
@@ -1569,8 +1825,37 @@ class Enum(WrappingParser[E, _t.Type[E]], ValueParser[E], _t.Generic[E]):
 
         return yuio.widget.Choice(options, default_index=default_index)
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        if self.__doc_inline:
+            return yuio.json_schema.Enum([self.__getter(e) for e in self._inner])
+        else:
+            return ctx.add_type(
+                Enum._TyWrapper(self._inner, self.__by_name, self.__to_dash_case),
+                _t.type_repr(self._inner),
+                lambda: yuio.json_schema.Meta(
+                    yuio.json_schema.Enum([self.__getter(e) for e in self._inner]),
+                    title=self._inner.__name__,
+                    description=self._inner.__doc__,
+                ),
+            )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return self.__getter(value)
+
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._inner_raw!r})"
+        if self._inner_raw is not None:
+            return f"{self.__class__.__name__}({self._inner_raw!r})"
+        else:
+            return self.__class__.__name__
+
+    @dataclasses.dataclass(**yuio._with_slots(), unsafe_hash=True)
+    class _TyWrapper:
+        inner: type
+        by_name: bool
+        to_dash_case: bool
 
 
 class Decimal(ValueParser[decimal.Decimal]):
@@ -1578,6 +1863,9 @@ class Decimal(ValueParser[decimal.Decimal]):
     Parser for :class:`decimal.Decimal`.
 
     """
+
+    def __init__(self):
+        super().__init__(decimal.Decimal)
 
     def parse(self, value: str, /) -> decimal.Decimal:
         return self.parse_config(value)
@@ -1592,12 +1880,39 @@ class Decimal(ValueParser[decimal.Decimal]):
         except (ArithmeticError, ValueError, TypeError):
             raise ParsingError(f"can't parse {value!r} as a decimal number") from None
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return ctx.add_type(
+            decimal.Decimal,
+            "Decimal",
+            lambda: yuio.json_schema.Meta(
+                yuio.json_schema.OneOf(
+                    [
+                        yuio.json_schema.Number(),
+                        yuio.json_schema.String(
+                            pattern=r"(?i)^[+-]?((\d+\.\d*|\.?\d+)(e[+-]?\d+)?|inf(inity)?|(nan|snan)\d*)$"
+                        ),
+                    ]
+                ),
+                title="Decimal",
+                description="Decimal fixed-point and floating-point number.",
+            ),
+        )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return str(value)
+
 
 class Fraction(ValueParser[fractions.Fraction]):
     """
     Parser for :class:`fractions.Fraction`.
 
     """
+
+    def __init__(self):
+        super().__init__(fractions.Fraction)
 
     def parse(self, value: str, /) -> fractions.Fraction:
         return self.parse_config(value)
@@ -1624,27 +1939,32 @@ class Fraction(ValueParser[fractions.Fraction]):
             f"or a tuple of two ints, got {_t.type_repr(type(value))} instead"
         )
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return ctx.add_type(
+            fractions.Fraction,
+            "Fraction",
+            lambda: yuio.json_schema.Meta(
+                yuio.json_schema.OneOf(
+                    [
+                        yuio.json_schema.Number(),
+                        yuio.json_schema.String(
+                            pattern=r"(?i)^[+-]?(\d+(\/\d+)?|(\d+\.\d*|\.?\d+)(e[+-]?\d+)?|inf(inity)?|nan)$"
+                        ),
+                        yuio.json_schema.Tuple(
+                            [yuio.json_schema.Number(), yuio.json_schema.Number()]
+                        ),
+                    ]
+                ),
+                title="Fraction",
+                description="A rational number.",
+            ),
+        )
 
-if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:
-    JsonValue: _t.TypeAlias = _t.Union[
-        str,
-        int,
-        float,
-        None,
-        _t.List["JsonValue"],
-        _t.Dict[str, "JsonValue"],
-    ]
-else:
-
-    def _JsonValue(arg: T) -> T:
-        """
-        Json value marker, used to detect Json type hints at runtime.
-
-        """
-
-        return arg
-
-    JsonValue: _t.TypeAlias = _JsonValue  # type: ignore
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return str(value)
 
 
 class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
@@ -1663,21 +1983,21 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(cls, inner: Parser[T], /) -> "Json[T]": ...
+        def __new__(cls, inner: Parser[T], /) -> Json[T]: ...
 
         @_t.overload
-        def __new__(cls, /) -> "Json[JsonValue]": ...
+        def __new__(cls, /) -> Json[yuio.json_schema.JsonValue]: ...
 
-        def __new__(cls, inner: _t.Optional[Parser[T]] = None, /) -> "Json[_t.Any]": ...
+        def __new__(cls, inner: Parser[T] | None = None, /) -> Json[_t.Any]: ...
 
     def __init__(
         self,
-        inner: _t.Optional[Parser[T]] = None,
+        inner: Parser[T] | None = None,
         /,
     ):
-        super().__init__(inner)
+        super().__init__(inner, object)
 
-    def wrap(self, parser: Parser[_t.Any]) -> Parser[object]:
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         self._inner = parser
         return self
 
@@ -1696,6 +2016,26 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
         else:
             return _t.cast(T, value)
 
+    def check_type(self, value: object) -> _t.TypeGuard[T]:
+        if self._inner_raw is not None:
+            return self._inner_raw.check_type(value)
+        else:
+            return True  # xxx: make a better check
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        if self._inner_raw is not None:
+            return self._inner_raw.to_json_schema(ctx)
+        else:
+            return yuio.json_schema.Any()
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        if self._inner_raw is not None:
+            return self._inner_raw.to_json_value(value)
+        return value
+
     def __repr__(self):
         if self._inner_raw is not None:
             return f"{self.__class__.__name__}({self._inner_raw!r})"
@@ -1708,6 +2048,9 @@ class DateTime(ValueParser[datetime.datetime]):
     Parse a datetime in ISO ('YYYY-MM-DD HH:MM:SS') format.
 
     """
+
+    def __init__(self):
+        super().__init__(datetime.datetime)
 
     def parse(self, value: str, /) -> datetime.datetime:
         try:
@@ -1723,12 +2066,48 @@ class DateTime(ValueParser[datetime.datetime]):
         else:
             raise ParsingError(f"expected str, got {_t.type_repr(type(value))}")
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return ctx.add_type(
+            datetime.datetime,
+            "DateTime",
+            lambda: yuio.json_schema.Meta(
+                yuio.json_schema.String(
+                    pattern=(
+                        r"^"
+                        r"("
+                        r"\d{4}-W\d{2}(-\d)?"
+                        r"|\d{4}-\d{2}-\d{2}"
+                        r"|\d{4}W\d{2}\d?"
+                        r"|\d{4}\d{2}\d{2}"
+                        r")"
+                        r"("
+                        r"[T ]"
+                        r"\d{2}(:\d{2}(:\d{2}(.\d{3}(\d{3})?)?)?)?"
+                        r"([+-]\d{2}(:\d{2}(:\d{2}(.\d{3}(\d{3})?)?)?)?|Z)?"
+                        r")?"
+                        r"$"
+                    )
+                ),
+                title="DateTime",
+                description="ISO 8601 datetime.",
+            ),
+        )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return str(value)
+
 
 class Date(ValueParser[datetime.date]):
     """
     Parse a date in ISO ('YYYY-MM-DD') format.
 
     """
+
+    def __init__(self):
+        super().__init__(datetime.date)
 
     def parse(self, value: str, /) -> datetime.date:
         try:
@@ -1746,12 +2125,43 @@ class Date(ValueParser[datetime.date]):
         else:
             raise ParsingError(f"expected str, got {_t.type_repr(type(value))}")
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return ctx.add_type(
+            datetime.date,
+            "Date",
+            lambda: yuio.json_schema.Meta(
+                yuio.json_schema.String(
+                    pattern=(
+                        r"^"
+                        r"("
+                        r"\d{4}-W\d{2}(-\d)?"
+                        r"|\d{4}-\d{2}-\d{2}"
+                        r"|\d{4}W\d{2}\d?"
+                        r"|\d{4}\d{2}\d{2}"
+                        r")"
+                        r"$"
+                    )
+                ),
+                title="Date",
+                description="ISO 8601 date.",
+            ),
+        )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return str(value)
+
 
 class Time(ValueParser[datetime.time]):
     """
     Parse a time in ISO ('HH:MM:SS') format.
 
     """
+
+    def __init__(self):
+        super().__init__(datetime.time)
 
     def parse(self, value: str, /) -> datetime.time:
         try:
@@ -1768,6 +2178,30 @@ class Time(ValueParser[datetime.time]):
             return self.parse(value)
         else:
             raise ParsingError(f"expected str, got {_t.type_repr(type(value))}")
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return ctx.add_type(
+            datetime.time,
+            "Time",
+            lambda: yuio.json_schema.Meta(
+                yuio.json_schema.String(
+                    pattern=(
+                        r"^"
+                        r"\d{2}(:\d{2}(:\d{2}(.\d{3}(\d{3})?)?)?)?"
+                        r"([+-]\d{2}(:\d{2}(:\d{2}(.\d{3}(\d{3})?)?)?)?|Z)?"
+                        r"$"
+                    )
+                ),
+                title="Time",
+                description="ISO 8601 time.",
+            ),
+        )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return str(value)
 
 
 _UNITS_MAP = (
@@ -1802,6 +2236,9 @@ class TimeDelta(ValueParser[datetime.timedelta]):
     Parse a time delta.
 
     """
+
+    def __init__(self):
+        super().__init__(datetime.timedelta)
 
     def parse(self, value: str, /) -> datetime.timedelta:
         value = value.strip()
@@ -1866,6 +2303,37 @@ class TimeDelta(ValueParser[datetime.timedelta]):
         else:
             raise ParsingError(f"expected str, got {_t.type_repr(type(value))}")
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return ctx.add_type(
+            datetime.date,
+            "TimeDelta",
+            lambda: yuio.json_schema.Meta(
+                yuio.json_schema.String(
+                    # save yourself some trouble, paste this into https://regexper.com/
+                    pattern=(
+                        r"^(([+-]?\s*(\d+\s*(d|day|days|s|sec|secs|second|seconds"
+                        r"|us|u|micro|micros|microsecond|microseconds|ms|l|milli|"
+                        r"millis|millisecond|milliseconds|m|min|mins|minute|minutes"
+                        r"|h|hr|hrs|hour|hours|w|week|weeks)\s*)+)(,\s*)?"
+                        r"([+-]?\s*\d?\d:\d?\d(:\d?\d(\.\d\d\d(\d\d\d)?)?)?)"
+                        r"|([+-]?\s*\d?\d:\d?\d(:\d?\d(\.\d\d\d(\d\d\d)?)?)?)"
+                        r"|([+-]?\s*(\d+\s*(d|day|days|s|sec|secs|second|seconds"
+                        r"|us|u|micro|micros|microsecond|microseconds|ms|l|milli"
+                        r"|millis|millisecond|milliseconds|m|min|mins|minute|minutes"
+                        r"|h|hr|hrs|hour|hours|w|week|weeks)\s*)+))$"
+                    )
+                ),
+                title="Time delta. General format: '[+-] [M weeks] [N days] [+-]HH:MM:SS'",
+                description=".",
+            ),
+        )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return str(value)
+
 
 class Path(ValueParser[pathlib.Path]):
     """
@@ -1880,10 +2348,10 @@ class Path(ValueParser[pathlib.Path]):
         self,
         /,
         *,
-        extensions: _t.Union[str, _t.Collection[str], None] = None,
+        extensions: str | _t.Collection[str] | None = None,
     ):
         self.__extensions = [extensions] if isinstance(extensions, str) else extensions
-        super().__init__()
+        super().__init__(pathlib.Path)
 
     def parse(self, value: str, /) -> pathlib.Path:
         path = pathlib.Path(value).expanduser().resolve().absolute()
@@ -1895,7 +2363,7 @@ class Path(ValueParser[pathlib.Path]):
             raise ParsingError(f"expected string, got {_t.type_repr(type(value))}")
         return self.parse(value)
 
-    def describe(self) -> _t.Optional[str]:
+    def describe(self) -> str | None:
         if self.__extensions is not None:
             desc = "|".join(f"<*{e}>" for e in self.__extensions)
             if len(self.__extensions) > 1:
@@ -1910,8 +2378,17 @@ class Path(ValueParser[pathlib.Path]):
                 exts = ", ".join(self.__extensions)
                 raise ParsingError(f"{value} should have extension {exts}")
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.File(extensions=self.__extensions)
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.String()
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return str(value)
 
 
 class NonExistentPath(Path):
@@ -1969,7 +2446,7 @@ class Dir(ExistingPath):
         if not value.is_dir():
             raise ParsingError(f"{value} is not a directory")
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Dir()
 
 
@@ -2035,6 +2512,9 @@ class CollectionParser(
             def _ctor(values: Iterable[T]) -> list[T]:
                 return [x for value in values for x in [value, value]]
 
+            def to_json_schema(self, ctx: yuio.json_schema.JsonSchemaContext, /) -> yuio.json_schema.JsonSchemaType:
+                return {"type": "array", "items": self._inner.to_json_schema(ctx)}
+
     """
 
     #: If set to :data:`False`, autocompletion will not suggest item duplicates.
@@ -2042,15 +2522,15 @@ class CollectionParser(
 
     def __init__(
         self,
-        inner: _t.Optional[Parser[T]],
+        inner: Parser[T] | None,
         /,
         *,
-        ty: _t.Type[C],
+        ty: type[C],
         ctor: _t.Callable[[_t.Iterable[T]], C],
         iter: _t.Callable[[C], _t.Iterable[T]] = iter,
-        config_type: _t.Union[_t.Type[C2], _t.Tuple[_t.Type[C2], ...]] = list,
+        config_type: type[C2] | tuple[type[C2], ...] = list,
         config_type_iter: _t.Callable[[C2], _t.Iterable[T]] = iter,
-        delimiter: _t.Optional[str] = None,
+        delimiter: str | None = None,
     ):
         if delimiter == "":
             raise ValueError("empty delimiter")
@@ -2068,7 +2548,7 @@ class CollectionParser(
         #: See class parameters for more details.
         self._delimiter = delimiter
 
-        super().__init__(inner)
+        super().__init__(inner, ty)
 
     def wrap(self: P, parser: Parser[_t.Any]) -> P:
         result = super().wrap(parser)
@@ -2096,10 +2576,10 @@ class CollectionParser(
             self._inner.parse_config(item) for item in self._config_type_iter(value)
         )
 
-    def get_nargs(self) -> _t.Union[_t.Literal["-", "+", "*", "?"], int, None]:
+    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
         return "*"
 
-    def describe(self) -> _t.Optional[str]:
+    def describe(self) -> str | None:
         return self.describe_or_def()
 
     def describe_or_def(self) -> str:
@@ -2108,26 +2588,26 @@ class CollectionParser(
 
         return f"{value}[{delimiter}{value}[{delimiter}...]]"
 
-    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
+    def describe_many(self) -> str | tuple[str, ...] | None:
         return self._inner.describe()
 
-    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
+    def describe_many_or_def(self) -> str | tuple[str, ...]:
         return self._inner.describe_or_def()
 
-    def describe_value(self, value: object, /) -> _t.Optional[str]:
+    def describe_value(self, value: object, /) -> str | None:
         return self.describe_value_or_def(value)
 
     def describe_value_or_def(self, value: object, /) -> str:
-        if not isinstance(value, self._ty):
-            return str(value) or "<empty>"
+        assert self.assert_type(value)
+
         return (self._delimiter or " ").join(
             self._inner.describe_value_or_def(item) for item in self._iter(value)
         )
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[C]]]:
+    def options(self) -> _t.Collection[yuio.widget.Option[C]] | None:
         return None
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         completer = self._inner.completer()
         return (
             yuio.complete.List(
@@ -2141,11 +2621,11 @@ class CollectionParser(
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[C, yuio.Missing]]:
+    ) -> yuio.widget.Widget[C | yuio.Missing]:
         completer = self.completer()
         return _WidgetResultMapper(
             self,
@@ -2164,10 +2644,13 @@ class CollectionParser(
         )
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._inner_raw!r})"
+        if self._inner_raw is not None:
+            return f"{self.__class__.__name__}({self._inner_raw!r})"
+        else:
+            return self.__class__.__name__
 
 
-class List(CollectionParser[_t.List[T], T], _t.Generic[T]):
+class List(CollectionParser[list[T], T], _t.Generic[T]):
     """Parser for lists.
 
     Will split a string by the given delimiter, and parse each item
@@ -2184,25 +2667,34 @@ class List(CollectionParser[_t.List[T], T], _t.Generic[T]):
 
         @_t.overload
         def __new__(
-            cls, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None
-        ) -> "List[T]": ...
+            cls, inner: Parser[T], /, *, delimiter: str | None = None
+        ) -> List[T]: ...
 
         @_t.overload
-        def __new__(cls, /, *, delimiter: _t.Optional[str] = None) -> PartialParser: ...
+        def __new__(cls, /, *, delimiter: str | None = None) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
     def __init__(
         self,
-        inner: _t.Optional[Parser[T]] = None,
+        inner: Parser[T] | None = None,
         /,
         *,
-        delimiter: _t.Optional[str] = None,
+        delimiter: str | None = None,
     ):
         super().__init__(inner, ty=list, ctor=list, delimiter=delimiter)
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.Array(self._inner.to_json_schema(ctx))
 
-class Set(CollectionParser[_t.Set[T], T], _t.Generic[T]):
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return [self._inner.to_json_value(item) for item in value]
+
+
+class Set(CollectionParser[set[T], T], _t.Generic[T]):
     """Parser for sets.
 
     Will split a string by the given delimiter, and parse each item
@@ -2219,11 +2711,11 @@ class Set(CollectionParser[_t.Set[T], T], _t.Generic[T]):
 
         @_t.overload
         def __new__(
-            cls, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None
-        ) -> "Set[T]": ...
+            cls, inner: Parser[T], /, *, delimiter: str | None = None
+        ) -> Set[T]: ...
 
         @_t.overload
-        def __new__(cls, /, *, delimiter: _t.Optional[str] = None) -> PartialParser: ...
+        def __new__(cls, /, *, delimiter: str | None = None) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
@@ -2231,28 +2723,39 @@ class Set(CollectionParser[_t.Set[T], T], _t.Generic[T]):
 
     def __init__(
         self,
-        inner: _t.Optional[Parser[T]] = None,
+        inner: Parser[T] | None = None,
         /,
         *,
-        delimiter: _t.Optional[str] = None,
+        delimiter: str | None = None,
     ):
         super().__init__(inner, ty=set, ctor=set, delimiter=delimiter)
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[_t.Set[T], yuio.Missing]]:
+    ) -> yuio.widget.Widget[set[T] | yuio.Missing]:
         options = self._inner.options()
         if options is not None and len(options) <= 25:
             return yuio.widget.Map(yuio.widget.Multiselect(list(options)), set)
         else:
             return super().widget(default, input_description, default_description)
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.Array(
+            self._inner.to_json_schema(ctx), unique_items=True
+        )
 
-class FrozenSet(CollectionParser[_t.FrozenSet[T], T], _t.Generic[T]):
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return [self._inner.to_json_value(item) for item in value]
+
+
+class FrozenSet(CollectionParser[frozenset[T], T], _t.Generic[T]):
     """Parser for frozen sets.
 
     Will split a string by the given delimiter, and parse each item
@@ -2269,11 +2772,11 @@ class FrozenSet(CollectionParser[_t.FrozenSet[T], T], _t.Generic[T]):
 
         @_t.overload
         def __new__(
-            cls, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None
-        ) -> "FrozenSet[T]": ...
+            cls, inner: Parser[T], /, *, delimiter: str | None = None
+        ) -> FrozenSet[T]: ...
 
         @_t.overload
-        def __new__(cls, /, *, delimiter: _t.Optional[str] = None) -> PartialParser: ...
+        def __new__(cls, /, *, delimiter: str | None = None) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
@@ -2281,15 +2784,26 @@ class FrozenSet(CollectionParser[_t.FrozenSet[T], T], _t.Generic[T]):
 
     def __init__(
         self,
-        inner: _t.Optional[Parser[T]] = None,
+        inner: Parser[T] | None = None,
         /,
         *,
-        delimiter: _t.Optional[str] = None,
+        delimiter: str | None = None,
     ):
         super().__init__(inner, ty=frozenset, ctor=frozenset, delimiter=delimiter)
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.Array(
+            self._inner.to_json_schema(ctx), unique_items=True
+        )
 
-class Dict(CollectionParser[_t.Dict[K, V], _t.Tuple[K, V]], _t.Generic[K, V]):
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return [self._inner.to_json_value(item) for item in value]
+
+
+class Dict(CollectionParser[dict[K, V], tuple[K, V]], _t.Generic[K, V]):
     """Parser for dicts.
 
     Will split a string by the given delimiter, and parse each item
@@ -2315,16 +2829,16 @@ class Dict(CollectionParser[_t.Dict[K, V], _t.Tuple[K, V]], _t.Generic[K, V]):
             value: Parser[V],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
+            delimiter: str | None = None,
             pair_delimiter: str = ":",
-        ) -> "Dict[K, V]": ...
+        ) -> Dict[K, V]: ...
 
         @_t.overload
         def __new__(
             cls,
             /,
             *,
-            delimiter: _t.Optional[str] = None,
+            delimiter: str | None = None,
             pair_delimiter: str = ":",
         ) -> PartialParser: ...
 
@@ -2334,11 +2848,11 @@ class Dict(CollectionParser[_t.Dict[K, V], _t.Tuple[K, V]], _t.Generic[K, V]):
 
     def __init__(
         self,
-        key: _t.Optional[Parser[K]] = None,
-        value: _t.Optional[Parser[V]] = None,
+        key: Parser[K] | None = None,
+        value: Parser[V] | None = None,
         /,
         *,
-        delimiter: _t.Optional[str] = None,
+        delimiter: str | None = None,
         pair_delimiter: str = ":",
     ):
         self.__pair_delimiter = pair_delimiter
@@ -2352,21 +2866,40 @@ class Dict(CollectionParser[_t.Dict[K, V], _t.Tuple[K, V]], _t.Generic[K, V]):
             delimiter=delimiter,
         )
 
-    def wrap(self, parser: Parser[_t.Any]) -> Parser[object]:
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         result = super().wrap(parser)
         setattr(result._inner, "_Tuple__delimiter", self.__pair_delimiter)
         return result
 
     @staticmethod
-    def __config_type_iter(x) -> _t.Iterator[_t.Tuple[K, V]]:
+    def __config_type_iter(x) -> _t.Iterator[tuple[K, V]]:
         if isinstance(x, dict):
             return iter(x.items())
         else:
             return iter(x)
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        key_schema = self._inner._inner[0].to_json_schema(ctx)  # type: ignore
+        value_schema = self._inner._inner[1].to_json_schema(ctx)  # type: ignore
+        return yuio.json_schema.Dict(key_schema, value_schema)
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        items = _t.cast(
+            list[tuple[yuio.json_schema.JsonValue, yuio.json_schema.JsonValue]],
+            [self._inner.to_json_value(item) for item in value.items()],
+        )
+
+        if all(isinstance(k, str) for k, _ in items):
+            return dict(_t.cast(list[tuple[str, yuio.json_schema.JsonValue]], items))
+        else:
+            return items
+
 
 class Tuple(
-    WrappingParser[TU, _t.Tuple[Parser[object], ...]],
+    WrappingParser[TU, tuple[Parser[object], ...]],
     ValueParser[TU],
     PartialParser,
     _t.Generic[TU],
@@ -2398,7 +2931,7 @@ class Tuple(
             cls,
             /,
             *,
-            delimiter: _t.Optional[str] = None,
+            delimiter: str | None = None,
         ) -> PartialParser: ...
 
         @_t.overload
@@ -2407,8 +2940,8 @@ class Tuple(
             p1: Parser[T1],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1]]: ...
 
         @_t.overload
         def __new__(
@@ -2417,8 +2950,8 @@ class Tuple(
             p2: Parser[T2],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2]]: ...
 
         @_t.overload
         def __new__(
@@ -2428,8 +2961,8 @@ class Tuple(
             p3: Parser[T3],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2, T3]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2, T3]]: ...
 
         @_t.overload
         def __new__(
@@ -2440,8 +2973,8 @@ class Tuple(
             p4: Parser[T4],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2, T3, T4]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2, T3, T4]]: ...
 
         @_t.overload
         def __new__(
@@ -2453,8 +2986,8 @@ class Tuple(
             p5: Parser[T5],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2, T3, T4, T5]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2, T3, T4, T5]]: ...
 
         @_t.overload
         def __new__(
@@ -2467,8 +3000,8 @@ class Tuple(
             p6: Parser[T6],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2, T3, T4, T5, T6]]: ...
 
         @_t.overload
         def __new__(
@@ -2482,8 +3015,8 @@ class Tuple(
             p7: Parser[T7],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2, T3, T4, T5, T6, T7]]: ...
 
         @_t.overload
         def __new__(
@@ -2498,8 +3031,8 @@ class Tuple(
             p8: Parser[T8],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2, T3, T4, T5, T6, T7, T8]]: ...
 
         @_t.overload
         def __new__(
@@ -2515,8 +3048,8 @@ class Tuple(
             p9: Parser[T9],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9]]: ...
 
         @_t.overload
         def __new__(
@@ -2533,8 +3066,8 @@ class Tuple(
             p10: Parser[T10],
             /,
             *,
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]: ...
 
         @_t.overload
         def __new__(
@@ -2551,22 +3084,22 @@ class Tuple(
             p10: Parser[T10],
             p11: Parser[object],
             *tail: Parser[object],
-            delimiter: _t.Optional[str] = None,
-        ) -> "Tuple[_t.Tuple[_t.Any, ...]]": ...
+            delimiter: str | None = None,
+        ) -> Tuple[tuple[_t.Any, ...]]: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
     def __init__(
         self,
-        *parsers: Parser[object],
-        delimiter: _t.Optional[str] = None,
+        *parsers: Parser[_t.Any],
+        delimiter: str | None = None,
     ):
         if delimiter == "":
             raise ValueError("empty delimiter")
         self.__delimiter = delimiter
-        super().__init__(parsers or None)
+        super().__init__(parsers or None, tuple)
 
-    def wrap(self, parser: Parser[_t.Any]) -> Parser[object]:
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         result = super().wrap(parser)
         result._inner = parser._inner  # type: ignore
         return result
@@ -2606,10 +3139,10 @@ class Tuple(
     def supports_parse_many(self) -> bool:
         return True
 
-    def get_nargs(self) -> _t.Union[_t.Literal["-", "+", "*", "?"], int, None]:
+    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
         return len(self._inner)
 
-    def describe(self) -> _t.Optional[str]:
+    def describe(self) -> str | None:
         return self.describe_or_def()
 
     def describe_or_def(self) -> str:
@@ -2617,20 +3150,17 @@ class Tuple(
         desc = [parser.describe_or_def() for parser in self._inner]
         return delimiter.join(desc)
 
-    def describe_many(self) -> _t.Union[str, _t.Tuple[str, ...], None]:
+    def describe_many(self) -> str | tuple[str, ...] | None:
         return self.describe_many_or_def()
 
-    def describe_many_or_def(self) -> _t.Union[str, _t.Tuple[str, ...]]:
+    def describe_many_or_def(self) -> str | tuple[str, ...]:
         return tuple(parser.describe_or_def() for parser in self._inner)
 
-    def describe_value(self, value: object, /) -> _t.Optional[str]:
-        if not isinstance(value, tuple):
-            return None
+    def describe_value(self, value: object, /) -> str | None:
         return self.describe_value_or_def(value)
 
     def describe_value_or_def(self, value: object, /) -> str:
-        if not isinstance(value, tuple):
-            return str(value) or "<empty>"
+        assert self.assert_type(value)
 
         delimiter = self.__delimiter or " "
         desc = [
@@ -2640,10 +3170,10 @@ class Tuple(
 
         return delimiter.join(desc)
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[TU]]]:
+    def options(self) -> _t.Collection[yuio.widget.Option[TU]] | None:
         return None
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Tuple(
             *[parser.completer() or yuio.complete.Empty() for parser in self._inner],
             delimiter=self.__delimiter,
@@ -2651,11 +3181,11 @@ class Tuple(
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[TU, yuio.Missing]]:
+    ) -> yuio.widget.Widget[TU | yuio.Missing]:
         completer = self.completer()
 
         return _WidgetResultMapper(
@@ -2674,11 +3204,22 @@ class Tuple(
             ),
         )
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.Tuple(
+            [parser.to_json_schema(ctx) for parser in self._inner]
+        )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return [parser.to_json_value(item) for parser, item in zip(self._inner, value)]
+
     def __repr__(self):
         return f"{self.__class__.__name__}{self._inner_raw!r}"
 
 
-class Optional(MappingParser[_t.Optional[T], T], _t.Generic[T]):
+class Optional(MappingParser[T | None, T], _t.Generic[T]):
     """
     Parser for optional values.
 
@@ -2693,28 +3234,33 @@ class Optional(MappingParser[_t.Optional[T], T], _t.Generic[T]):
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(cls, inner: Parser[T], /) -> "Optional[T]": ...
+        def __new__(cls, inner: Parser[T], /) -> Optional[T]: ...
 
         @_t.overload
         def __new__(cls, /) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
-    def __init__(self, inner: _t.Optional[Parser[T]] = None, /):
+    def __init__(self, inner: Parser[T] | None = None, /):
         super().__init__(inner)
 
-    def parse(self, value: str, /) -> _t.Optional[T]:
+    def parse(self, value: str, /) -> T | None:
         return self._inner.parse(value)
 
-    def parse_many(self, value: _t.Sequence[str], /) -> _t.Optional[T]:
+    def parse_many(self, value: _t.Sequence[str], /) -> T | None:
         return self._inner.parse_many(value)
 
-    def parse_config(self, value: object, /) -> _t.Optional[T]:
+    def parse_config(self, value: object, /) -> T | None:
         if value is None:
             return None
         return self._inner.parse_config(value)
 
-    def describe_value(self, value: object, /) -> _t.Optional[str]:
+    def check_type(self, value: object) -> _t.TypeGuard[T | None]:
+        if value is None:
+            return True
+        return self._inner.check_type(value)
+
+    def describe_value(self, value: object, /) -> str | None:
         if value is None:
             return "<none>"
         return self._inner.describe_value(value)
@@ -2724,20 +3270,33 @@ class Optional(MappingParser[_t.Optional[T], T], _t.Generic[T]):
             return "<none>"
         return self._inner.describe_value_or_def(value)
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[_t.Optional[T]]]]:
+    def options(self) -> _t.Collection[yuio.widget.Option[T | None]] | None:
         return self._inner.options()
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+    ) -> yuio.widget.Widget[T | yuio.Missing]:
         return self._inner.widget(default, input_description, default_description)
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.OneOf(
+            [self._inner.to_json_schema(ctx), yuio.json_schema.Null()]
+        )
 
-class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Generic[T]):
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        if value is None:
+            return None
+        else:
+            return self._inner.to_json_value(value)
+
+
+class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic[T]):
     """
     Tries several parsers and returns the first successful result.
 
@@ -2787,7 +3346,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             cls,
             p1: Parser[T1],
             /,
-        ) -> "Union[T1]": ...
+        ) -> Union[T1]: ...
 
         @_t.overload
         def __new__(
@@ -2795,7 +3354,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p1: Parser[T1],
             p2: Parser[T2],
             /,
-        ) -> "Union[_t.Union[T1, T2]]": ...
+        ) -> Union[T1 | T2]: ...
 
         @_t.overload
         def __new__(
@@ -2804,7 +3363,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p2: Parser[T2],
             p3: Parser[T3],
             /,
-        ) -> "Union[_t.Union[T1, T2, T3]]": ...
+        ) -> Union[T1 | T2 | T3]: ...
 
         @_t.overload
         def __new__(
@@ -2814,7 +3373,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p3: Parser[T3],
             p4: Parser[T4],
             /,
-        ) -> "Union[_t.Union[T1, T2, T3, T4]]": ...
+        ) -> Union[T1 | T2 | T3 | T4]: ...
 
         @_t.overload
         def __new__(
@@ -2825,7 +3384,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p4: Parser[T4],
             p5: Parser[T5],
             /,
-        ) -> "Union[_t.Union[T1, T2, T3, T4, T5]]": ...
+        ) -> Union[T1 | T2 | T3 | T4 | T5]: ...
 
         @_t.overload
         def __new__(
@@ -2837,7 +3396,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p5: Parser[T5],
             p6: Parser[T6],
             /,
-        ) -> "Union[_t.Union[T1, T2, T3, T4, T5, T6]]": ...
+        ) -> Union[T1 | T2 | T3 | T4 | T5 | T6]: ...
 
         @_t.overload
         def __new__(
@@ -2850,7 +3409,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p6: Parser[T6],
             p7: Parser[T7],
             /,
-        ) -> "Union[_t.Union[T1, T2, T3, T4, T5, T6, T7]]": ...
+        ) -> Union[T1 | T2 | T3 | T4 | T5 | T6 | T7]: ...
 
         @_t.overload
         def __new__(
@@ -2864,7 +3423,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p7: Parser[T7],
             p8: Parser[T8],
             /,
-        ) -> "Union[_t.Union[T1, T2, T3, T4, T5, T6, T7, T8]]": ...
+        ) -> Union[T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8]: ...
 
         @_t.overload
         def __new__(
@@ -2879,7 +3438,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p8: Parser[T8],
             p9: Parser[T9],
             /,
-        ) -> "Union[_t.Union[T1, T2, T3, T4, T5, T6, T7, T8, T9]]": ...
+        ) -> Union[T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9]: ...
 
         @_t.overload
         def __new__(
@@ -2895,7 +3454,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p9: Parser[T9],
             p10: Parser[T10],
             /,
-        ) -> "Union[_t.Union[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]": ...
+        ) -> Union[T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9 | T10]: ...
 
         @_t.overload
         def __new__(
@@ -2912,14 +3471,14 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             p10: Parser[T10],
             p11: Parser[object],
             *parsers: Parser[object],
-        ) -> "Union[_t.Any]": ...
+        ) -> Union[object]: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
-    def __init__(self, *parsers: Parser[T]):
-        super().__init__(parsers or None)
+    def __init__(self, *parsers: Parser[_t.Any]):
+        super().__init__(parsers or None, object)
 
-    def wrap(self, parser: Parser[_t.Any]) -> Parser[object]:
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         result = super().wrap(parser)
         result._inner = parser._inner  # type: ignore
         return result
@@ -2954,7 +3513,10 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             )
         )
 
-    def describe(self) -> _t.Optional[str]:
+    def check_type(self, value: object) -> _t.TypeGuard[T]:
+        return any(parser.check_type(value) for parser in self._inner)
+
+    def describe(self) -> str | None:
         return self.describe_or_def()
 
     def describe_or_def(self) -> str:
@@ -2963,7 +3525,29 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
             desc = f"{{{desc}}}"
         return desc
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+    def describe_value(self, value: object) -> str | None:
+        for parser in self._inner:
+            try:
+                return parser.describe_value(value)
+            except TypeError:
+                pass
+
+        raise TypeError(
+            f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
+        )
+
+    def describe_value_or_def(self, value: object) -> str:
+        for parser in self._inner:
+            try:
+                return parser.describe_value_or_def(value)
+            except TypeError:
+                pass
+
+        raise TypeError(
+            f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
+        )
+
+    def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         result = []
         got_options = False
         for parser in self._inner:
@@ -2975,7 +3559,7 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
         else:
             return None
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         completers = []
         for parser in self._inner:
             if completer := parser.completer():
@@ -2987,6 +3571,24 @@ class Union(WrappingParser[T, _t.Tuple[Parser[T], ...]], ValueParser[T], _t.Gene
         else:
             return yuio.complete.Alternative(completers)
 
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.OneOf(
+            [parser.to_json_schema(ctx) for parser in self._inner]
+        )
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        for parser in self._inner:
+            try:
+                return parser.to_json_value(value)
+            except TypeError:
+                pass
+
+        raise TypeError(
+            f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
+        )
+
     def __repr__(self):
         return f"{self.__class__.__name__}{self._inner_raw!r}"
 
@@ -2996,21 +3598,21 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
 
     def __init__(
         self,
-        inner: _t.Optional[Parser[T]],
+        inner: Parser[T] | None,
         /,
         *,
-        lower: _t.Optional[Cmp] = None,
-        lower_inclusive: _t.Optional[Cmp] = None,
-        upper: _t.Optional[Cmp] = None,
-        upper_inclusive: _t.Optional[Cmp] = None,
+        lower: Cmp | None = None,
+        lower_inclusive: Cmp | None = None,
+        upper: Cmp | None = None,
+        upper_inclusive: Cmp | None = None,
         mapper: _t.Callable[[T], Cmp],
         desc: str,
     ):
         super().__init__(inner)
 
-        self._lower_bound: _t.Optional[Cmp] = None
+        self._lower_bound: Cmp | None = None
         self._lower_bound_is_inclusive: bool = True
-        self._upper_bound: _t.Optional[Cmp] = None
+        self._upper_bound: Cmp | None = None
         self._upper_bound_is_inclusive: bool = True
 
         if lower is not None and lower_inclusive is not None:
@@ -3116,33 +3718,33 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
             inner: Parser[Cmp],
             /,
             *,
-            lower: _t.Optional[Cmp] = None,
-            lower_inclusive: _t.Optional[Cmp] = None,
-            upper: _t.Optional[Cmp] = None,
-            upper_inclusive: _t.Optional[Cmp] = None,
-        ) -> "Bound[Cmp]": ...
+            lower: Cmp | None = None,
+            lower_inclusive: Cmp | None = None,
+            upper: Cmp | None = None,
+            upper_inclusive: Cmp | None = None,
+        ) -> Bound[Cmp]: ...
 
         @_t.overload
         def __new__(
             cls,
             *,
-            lower: _t.Optional[Cmp] = None,
-            lower_inclusive: _t.Optional[Cmp] = None,
-            upper: _t.Optional[Cmp] = None,
-            upper_inclusive: _t.Optional[Cmp] = None,
+            lower: Cmp | None = None,
+            lower_inclusive: Cmp | None = None,
+            upper: Cmp | None = None,
+            upper_inclusive: Cmp | None = None,
         ) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
     def __init__(
         self,
-        inner: _t.Optional[Parser[Cmp]] = None,
+        inner: Parser[Cmp] | None = None,
         /,
         *,
-        lower: _t.Optional[Cmp] = None,
-        lower_inclusive: _t.Optional[Cmp] = None,
-        upper: _t.Optional[Cmp] = None,
-        upper_inclusive: _t.Optional[Cmp] = None,
+        lower: Cmp | None = None,
+        lower_inclusive: Cmp | None = None,
+        upper: Cmp | None = None,
+        upper_inclusive: Cmp | None = None,
     ):
         super().__init__(
             inner,
@@ -3153,6 +3755,25 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
             mapper=lambda x: x,
             desc="value",
         )
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        bound = {}
+        if isinstance(self._lower_bound, (int, float)):
+            bound[
+                "minimum" if self._lower_bound_is_inclusive else "exclusiveMinimum"
+            ] = self._lower_bound
+        if isinstance(self._upper_bound, (int, float)):
+            bound[
+                "maximum" if self._upper_bound_is_inclusive else "exclusiveMaximum"
+            ] = self._upper_bound
+        if bound:
+            return yuio.json_schema.AllOf(
+                [super().to_json_schema(ctx), yuio.json_schema.Opaque(bound)]
+            )
+        else:
+            return super().to_json_schema(ctx)
 
 
 @_t.overload
@@ -3283,34 +3904,34 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             inner: Parser[Sz],
             /,
             *,
-            lower: _t.Optional[int] = None,
-            lower_inclusive: _t.Optional[int] = None,
-            upper: _t.Optional[int] = None,
-            upper_inclusive: _t.Optional[int] = None,
-        ) -> "LenBound[Sz]": ...
+            lower: int | None = None,
+            lower_inclusive: int | None = None,
+            upper: int | None = None,
+            upper_inclusive: int | None = None,
+        ) -> LenBound[Sz]: ...
 
         @_t.overload
         def __new__(
             cls,
             /,
             *,
-            lower: _t.Optional[int] = None,
-            lower_inclusive: _t.Optional[int] = None,
-            upper: _t.Optional[int] = None,
-            upper_inclusive: _t.Optional[int] = None,
+            lower: int | None = None,
+            lower_inclusive: int | None = None,
+            upper: int | None = None,
+            upper_inclusive: int | None = None,
         ) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
     def __init__(
         self,
-        inner: _t.Optional[Parser[Sz]] = None,
+        inner: Parser[Sz] | None = None,
         /,
         *,
-        lower: _t.Optional[int] = None,
-        lower_inclusive: _t.Optional[int] = None,
-        upper: _t.Optional[int] = None,
-        upper_inclusive: _t.Optional[int] = None,
+        lower: int | None = None,
+        lower_inclusive: int | None = None,
+        upper: int | None = None,
+        upper_inclusive: int | None = None,
     ):
         super().__init__(
             inner,
@@ -3322,7 +3943,7 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             desc="length of a value",
         )
 
-    def get_nargs(self) -> _t.Union[_t.Literal["-", "+", "*", "?"], int, None]:
+    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
         if not self._inner.supports_parse_many():
             # somebody bound len of a string?
             return self._inner.get_nargs()
@@ -3340,6 +3961,27 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             return "+"
         else:
             return "*"
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        bound = {}
+        min_bound = self._lower_bound
+        if not self._lower_bound_is_inclusive and min_bound is not None:
+            min_bound -= 1
+        if min_bound is not None:
+            bound["minLength"] = bound["minItems"] = bound["minProperties"] = min_bound
+        max_bound = self._upper_bound
+        if not self._upper_bound_is_inclusive and max_bound is not None:
+            max_bound += 1
+        if max_bound is not None:
+            bound["maxLength"] = bound["maxItems"] = bound["maxProperties"] = max_bound
+        if bound:
+            return yuio.json_schema.AllOf(
+                [super().to_json_schema(ctx), yuio.json_schema.Opaque(bound)]
+            )
+        else:
+            return super().to_json_schema(ctx)
 
 
 @_t.overload
@@ -3454,9 +4096,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(
-            cls, inner: Parser[T], values: _t.Collection[T], /
-        ) -> "OneOf[T]": ...
+        def __new__(cls, inner: Parser[T], values: _t.Collection[T], /) -> OneOf[T]: ...
 
         @_t.overload
         def __new__(cls, values: _t.Collection[T], /) -> PartialParser: ...
@@ -3464,7 +4104,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
         def __new__(cls, *args) -> _t.Any: ...
 
     def __init__(self, *args):
-        inner: _t.Optional[Parser[T]]
+        inner: Parser[T] | None
         values: _t.Collection[T]
         if len(args) == 1:
             inner, values = None, args[0]
@@ -3480,9 +4120,9 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
     def _validate(self, value: T, /):
         if value not in self.__allowed_values:
             values = ", ".join(map(repr, self.__allowed_values))
-            raise ParsingError(f"can't parse {value!r}," f" should be one of {values}")
+            raise ParsingError(f"can't parse {value!r}, should be one of {values}")
 
-    def describe(self) -> _t.Optional[str]:
+    def describe(self) -> str | None:
         desc = "|".join(self.describe_value_or_def(e) for e in self.__allowed_values)
         if len(desc) < 80:
             if len(self.__allowed_values) > 1:
@@ -3494,13 +4134,13 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
     def describe_or_def(self) -> str:
         return self.describe() or super().describe_or_def()
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+    def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return [
             yuio.widget.Option(e, self.describe_value_or_def(e))
             for e in self.__allowed_values
         ]
 
-    def completer(self) -> _t.Optional[yuio.complete.Completer]:
+    def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Choice(
             [
                 yuio.complete.Option(self.describe_value_or_def(e))
@@ -3510,16 +4150,14 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+    ) -> yuio.widget.Widget[T | yuio.Missing]:
         allowed_values = list(self.__allowed_values)
 
-        options = _t.cast(
-            _t.List[yuio.widget.Option[_t.Union[T, yuio.Missing]]], self.options()
-        )
+        options = _t.cast(list[yuio.widget.Option[T | yuio.Missing]], self.options())
 
         if default is yuio.MISSING:
             default_index = 0
@@ -3550,7 +4188,7 @@ class WithDesc(MappingParser[T, T], _t.Generic[T]):
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(cls, inner: Parser[T], desc: str, /) -> "MappingParser[T, T]": ...
+        def __new__(cls, inner: Parser[T], desc: str, /) -> MappingParser[T, T]: ...
 
         @_t.overload
         def __new__(cls, desc: str, /) -> PartialParser: ...
@@ -3558,7 +4196,7 @@ class WithDesc(MappingParser[T, T], _t.Generic[T]):
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
     def __init__(self, *args):
-        inner: _t.Optional[Parser[T]]
+        inner: Parser[T] | None
         desc: str
         if len(args) == 1:
             inner, desc = None, args[0]
@@ -3591,25 +4229,25 @@ class WithDesc(MappingParser[T, T], _t.Generic[T]):
     def parse_config(self, value: object, /) -> T:
         return self._inner.parse_config(value)
 
-    def options(self) -> _t.Optional[_t.Collection[yuio.widget.Option[T]]]:
+    def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return self._inner.options()
 
     def widget(
         self,
-        default: _t.Union[object, yuio.Missing],
-        input_description: _t.Optional[str],
-        default_description: _t.Optional[str],
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
         /,
-    ) -> yuio.widget.Widget[_t.Union[T, yuio.Missing]]:
+    ) -> yuio.widget.Widget[T | yuio.Missing]:
         return self._inner.widget(default, input_description, default_description)
 
 
-class _WidgetResultMapper(yuio.widget.Map[_t.Union[T, yuio.Missing], str]):
+class _WidgetResultMapper(yuio.widget.Map[T | yuio.Missing, str]):
     def __init__(
         self,
         parser: Parser[T],
-        input_description: _t.Optional[str],
-        default: _t.Union[object, yuio.Missing],
+        input_description: str | None,
+        default: object | yuio.Missing,
         widget: yuio.widget.Widget[str],
     ):
         self._parser = parser
@@ -3617,7 +4255,7 @@ class _WidgetResultMapper(yuio.widget.Map[_t.Union[T, yuio.Missing], str]):
         self._default = default
         super().__init__(widget, self.mapper)
 
-    def mapper(self, s: str) -> _t.Union[T, yuio.Missing]:
+    def mapper(self, s: str) -> T | yuio.Missing:
         if not s and self._default is not yuio.MISSING:
             return yuio.MISSING
         elif not s:
@@ -3636,12 +4274,12 @@ class _WidgetResultMapper(yuio.widget.Map[_t.Union[T, yuio.Missing], str]):
 
 
 _FromTypeHintCallback: _t.TypeAlias = _t.Callable[
-    [type, _t.Optional[type], _t.Tuple[object, ...]], _t.Optional[Parser[object]]
+    [type, type | None, tuple[object, ...]], Parser[object] | None
 ]
 
 
-_FROM_TYPE_HINT_CALLBACKS: _t.List[_t.Tuple["_FromTypeHintCallback", bool]] = []
-_FROM_TYPE_HINT_DELIM_SUGGESTIONS: _t.List[_t.Optional[str]] = [
+_FROM_TYPE_HINT_CALLBACKS: list[tuple[_FromTypeHintCallback, bool]] = []
+_FROM_TYPE_HINT_DELIM_SUGGESTIONS: list[str | None] = [
     None,
     ",",
     "@",
@@ -3660,14 +4298,14 @@ _FROM_TYPE_HINT_DEPTH: _FromTypeHintDepth = _FromTypeHintDepth()
 
 
 @_t.overload
-def from_type_hint(ty: _t.Type[T], /) -> "Parser[T]": ...
+def from_type_hint(ty: type[T], /) -> Parser[T]: ...
 
 
 @_t.overload
-def from_type_hint(ty: object, /) -> "Parser[object]": ...
+def from_type_hint(ty: object, /) -> Parser[object]: ...
 
 
-def from_type_hint(ty: _t.Any, /) -> "Parser[object]":
+def from_type_hint(ty: _t.Any, /) -> Parser[object]:
     """
     Create parser from a type hint.
 
@@ -3689,7 +4327,7 @@ def from_type_hint(ty: _t.Any, /) -> "Parser[object]":
     return result
 
 
-def _from_type_hint(ty: _t.Any, /) -> "Parser[object]":
+def _from_type_hint(ty: _t.Any, /) -> Parser[object]:
     if isinstance(ty, str) or isinstance(ty, _t.ForwardRef):
         raise TypeError(f"forward references are not supported here: {ty}")
 
@@ -3732,28 +4370,28 @@ def _from_type_hint(ty: _t.Any, /) -> "Parser[object]":
 
 @_t.overload
 def register_type_hint_conversion(
-    cb: "_FromTypeHintCallback",
+    cb: _FromTypeHintCallback,
     /,
     *,
     uses_delim: bool = False,
-) -> "_FromTypeHintCallback": ...
+) -> _FromTypeHintCallback: ...
 
 
 @_t.overload
 def register_type_hint_conversion(
     *,
     uses_delim: bool = False,
-) -> "_t.Callable[[_FromTypeHintCallback], _FromTypeHintCallback]": ...
+) -> _t.Callable[[_FromTypeHintCallback], _FromTypeHintCallback]: ...
 
 
 def register_type_hint_conversion(
-    cb: "_t.Optional[_FromTypeHintCallback]" = None,
+    cb: _FromTypeHintCallback | None = None,
     /,
     *,
     uses_delim: bool = False,
-) -> _t.Union[
-    _FromTypeHintCallback, _t.Callable[[_FromTypeHintCallback], _FromTypeHintCallback]
-]:
+) -> (
+    _FromTypeHintCallback | _t.Callable[[_FromTypeHintCallback], _FromTypeHintCallback]
+):
     """
     Register a new converter from a type hint to a parser.
 
@@ -3777,8 +4415,11 @@ def register_type_hint_conversion(
 
         class MyType: ...
         class MyTypeParser(ValueParser[MyType]):
+            def __init__(self): super().__init__(MyType)
             def parse(self, value: str, /): ...
             def parse_config(self, value, /): ...
+            def to_json_schema(self, ctx, /): ...
+            def to_json_value(self, value, /): ...
 
     Example:
 
@@ -3815,7 +4456,7 @@ def register_type_hint_conversion(
     return registrar(cb) if cb is not None else registrar
 
 
-def suggest_delim_for_type_hint_conversion() -> _t.Optional[str]:
+def suggest_delim_for_type_hint_conversion() -> str | None:
     """
     Suggests a delimiter for use in type hint converters.
 
@@ -3829,6 +4470,8 @@ def suggest_delim_for_type_hint_conversion() -> _t.Optional[str]:
         class MyCollectionParser(CollectionParser[MyCollection[T], T], _t.Generic[T]):
             def __init__(self, inner: Parser[T], /, *, delimiter: _t.Optional[str] = None):
                 super().__init__(inner, ty=MyCollection, ctor=MyCollection, delimiter=delimiter)
+            def to_json_schema(self, ctx, /): ...
+            def to_json_value(self, value, /): ...
 
     Example:
 
@@ -3954,11 +4597,7 @@ register_type_hint_conversion(
     lambda ty, origin, args: _str_ty_union_parser(ty, origin, args, pathlib.Path, Path)
 )
 register_type_hint_conversion(
-    lambda ty, origin, args: (
-        Json()
-        if ty is JsonValue  # pyright: ignore[reportUnnecessaryComparison]
-        else None
-    )
+    lambda ty, origin, args: (Json() if ty is yuio.json_schema.JsonValue else None)
 )
 register_type_hint_conversion(
     lambda ty, origin, args: DateTime() if ty is datetime.datetime else None
@@ -3974,7 +4613,7 @@ register_type_hint_conversion(
 )
 
 
-def _is_optional_parser(parser: _t.Optional[Parser[object]], /) -> bool:
+def _is_optional_parser(parser: Parser[_t.Any] | None, /) -> bool:
     while parser is not None:
         if isinstance(parser, Optional):
             return True
@@ -3982,7 +4621,7 @@ def _is_optional_parser(parser: _t.Optional[Parser[object]], /) -> bool:
     return False
 
 
-def _is_bool_parser(parser: _t.Optional[Parser[object]], /) -> bool:
+def _is_bool_parser(parser: Parser[_t.Any] | None, /) -> bool:
     while parser is not None:
         if isinstance(parser, Bool):
             return True

@@ -114,6 +114,7 @@ Pre-defined widgets
 
 
 """
+from __future__ import annotations
 
 import abc
 import contextlib
@@ -228,7 +229,7 @@ class KeyboardEvent:
 
     #: Which key was pressed? Can be a single character,
     #: or a :class:`Key` for non-character keys.
-    key: _t.Union[Key, str]
+    key: Key | str
 
     #: Whether a :kbd:`Ctrl` modifier was pressed with keystroke.
     ctrl: bool = False
@@ -237,7 +238,7 @@ class KeyboardEvent:
     alt: bool = False
 
     #: If ``key`` is :attr:`Key.PASTE`, this attribute will contain pasted string.
-    paste_str: _t.Optional[str] = dataclasses.field(default=None, compare=False)
+    paste_str: str | None = dataclasses.field(default=None, compare=False)
 
 
 @_t.final
@@ -259,7 +260,7 @@ class RenderContext:
     """
 
     # For tests.
-    _override_wh: _t.Optional[_t.Tuple[int, int]] = None
+    _override_wh: tuple[int, int] | None = None
 
     def __init__(self, term: _Term, theme: _Theme, /):
         self._term: _Term = term
@@ -316,10 +317,10 @@ class RenderContext:
         self._height: int = 0
         self._final_x: int = 0
         self._final_y: int = 0
-        self._lines: _t.List[_t.List[str]] = []
-        self._colors: _t.List[_t.List[str]] = []
-        self._prev_lines: _t.List[_t.List[str]] = []
-        self._prev_colors: _t.List[_t.List[str]] = []
+        self._lines: list[list[str]] = []
+        self._colors: list[list[str]] = []
+        self._prev_lines: list[list[str]] = []
+        self._prev_colors: list[list[str]] = []
 
         # Rendering status
         self._full_redraw: bool = False
@@ -327,7 +328,7 @@ class RenderContext:
         self._term_y: int = 0
         self._term_color: str = ""
         self._max_term_y: int = 0
-        self._out: _t.List[str] = []
+        self._out: list[str] = []
         self._bell: bool = False
         self._in_alternative_buffer: bool = False
         self._normal_buffer_term_x: int = 0
@@ -360,8 +361,8 @@ class RenderContext:
         y: int,
         /,
         *,
-        width: _t.Optional[int] = None,
-        height: _t.Optional[int] = None,
+        width: int | None = None,
+        height: int | None = None,
     ):
         """Override drawing frame.
 
@@ -438,7 +439,7 @@ class RenderContext:
                         "potentially can span multiple lines"
                     )
 
-                def layout(self, rc: RenderContext) -> _t.Tuple[int, int]:
+                def layout(self, rc: RenderContext) -> tuple[int, int]:
                     # The text will be placed at (4, 1), and we'll also limit
                     # its width. So we'll reflect those constrains
                     # by arranging a drawing frame.
@@ -559,9 +560,7 @@ class RenderContext:
 
         self._frame_cursor_color = self._none_color
 
-    def write(
-        self, text: yuio.term.AnyString, /, *, max_width: _t.Optional[int] = None
-    ):
+    def write(self, text: yuio.term.AnyString, /, *, max_width: int | None = None):
         r"""
         Write string at the current position using the current color.
         Move cursor while printing.
@@ -716,7 +715,7 @@ class RenderContext:
         lines: _t.Iterable[yuio.term.AnyString],
         /,
         *,
-        max_width: _t.Optional[int] = None,
+        max_width: int | None = None,
     ):
         """Write multiple lines.
 
@@ -830,7 +829,7 @@ class RenderContext:
 
     def _make_empty_canvas(
         self,
-    ) -> _t.Tuple[_t.List[_t.List[str]], _t.List[_t.List[str]]]:
+    ) -> tuple[list[list[str]], list[list[str]]]:
         lines = [l[:] for l in [[" "] * self._width] * self._height]
         colors = [
             c[:] for c in [[self._frame_cursor_color] * self._width] * self._height
@@ -1000,15 +999,15 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     """
 
-    __bindings: _t.ClassVar[_t.Dict[KeyboardEvent, _t.Callable[[_t.Any], _t.Any]]]
-    __callbacks: _t.ClassVar[_t.List[object]]
+    __bindings: _t.ClassVar[dict[KeyboardEvent, _t.Callable[[_t.Any], _t.Any]]]
+    __callbacks: _t.ClassVar[list[object]]
 
     __in_help_menu: bool = False
     __bell: bool = False
 
     #: Current event that is being processed.
     #: Guaranteed to be not :data:`None` inside event handlers.
-    _cur_event: _t.Optional[KeyboardEvent] = None
+    _cur_event: KeyboardEvent | None = None
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -1028,11 +1027,11 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         for name in event_handler_names:
             cb = getattr(cls, name, None)
             if cb is not None and hasattr(cb, "__yuio_keybindings__"):
-                bindings: _t.List["_Binding"] = cb.__yuio_keybindings__
+                bindings: list[_Binding] = cb.__yuio_keybindings__
                 cls.__bindings.update((binding.event, cb) for binding in bindings)
                 cls.__callbacks.append(cb)
 
-    def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
+    def event(self, e: KeyboardEvent, /) -> Result[T_co] | None:
         """Handle incoming keyboard event.
 
         By default, this function dispatches event to handlers registered
@@ -1047,11 +1046,11 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         else:
             return self.default_event_handler(e)
 
-    def default_event_handler(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
+    def default_event_handler(self, e: KeyboardEvent, /) -> Result[T_co] | None:
         """Process any event that wasn't caught by other event handlers."""
 
     @abc.abstractmethod
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         """Prepare widget for drawing, and recalculate its dimensions
         according to new frame dimensions.
 
@@ -1139,7 +1138,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         self.__bell = True
 
     @property
-    def help_data(self) -> "WidgetHelp":
+    def help_data(self) -> WidgetHelp:
         """Data for displaying help messages.
 
         See :func:`help` for more info.
@@ -1149,13 +1148,13 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         return self.__help_columns
 
     @functools.cached_property
-    def __help_columns(self) -> "WidgetHelp":
-        inline_help: _t.List[Action] = []
-        groups: _t.Dict[str, _t.List[Action]] = {}
+    def __help_columns(self) -> WidgetHelp:
+        inline_help: list[Action] = []
+        groups: dict[str, list[Action]] = {}
 
         for cb in self.__callbacks:
-            bindings: _t.List[_Binding] = getattr(cb, "__yuio_keybindings__", [])
-            help: _t.Optional[_Help] = getattr(cb, "__yuio_help__", None)
+            bindings: list[_Binding] = getattr(cb, "__yuio_keybindings__", [])
+            help: _Help | None = getattr(cb, "__yuio_help__", None)
             if not bindings:
                 continue
             if help is None:
@@ -1189,39 +1188,39 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         return WidgetHelp(inline_help, groups)
 
-    __last_help_data: _t.Optional["WidgetHelp"] = None
-    __prepared_inline_help: _t.List[_t.Tuple[_t.List[str], str, str, int]]
-    __prepared_groups: _t.Dict[str, _t.List[_t.Tuple[_t.List[str], str, str, int]]]
+    __last_help_data: WidgetHelp | None = None
+    __prepared_inline_help: list[tuple[list[str], str, str, int]]
+    __prepared_groups: dict[str, list[tuple[list[str], str, str, int]]]
     __has_help: bool = True
     __width: int = 0
     __height: int = 0
     __menu_content_height: int = 0
     __help_menu_line: int = 0
     __help_menu_search: bool = False
-    __help_menu_search_widget: "Input"
-    __help_menu_search_layout: _t.Tuple[int, int] = 0, 0
+    __help_menu_search_widget: Input
+    __help_menu_search_layout: tuple[int, int] = 0, 0
     __key_width: int = 0
-    __wrapped_groups: _t.List[
-        _t.Tuple[
+    __wrapped_groups: list[
+        tuple[
             str,  # Title
-            _t.List[  # Actions
-                _t.Tuple[  # Action
-                    _t.List[str],  # Keys
-                    _t.List[_ColorizedString],  # Wrapped msg
+            list[  # Actions
+                tuple[  # Action
+                    list[str],  # Keys
+                    list[_ColorizedString],  # Wrapped msg
                     int,  # Keys width
                 ],
             ],
         ]  # FML this type hint -___-
     ]
-    __colorized_inline_help: _t.List[
-        _t.Tuple[  # Action
-            _t.List[str],  # Keys
+    __colorized_inline_help: list[
+        tuple[  # Action
+            list[str],  # Keys
             _ColorizedString,  # Title
             int,  # Keys width
         ]
     ]
 
-    def __help_menu_event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T_co]]:
+    def __help_menu_event(self, e: KeyboardEvent, /) -> Result[T_co] | None:
         if not self.__help_menu_search and e in [
             KeyboardEvent(Key.F1),
             KeyboardEvent(Key.ESCAPE),
@@ -1287,7 +1286,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         return True
 
-    def __help_menu_layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def __help_menu_layout(self, rc: RenderContext, /) -> tuple[int, int]:
         if self.__help_menu_search:
             self.__help_menu_search_layout = self.__help_menu_search_widget.layout(rc)
 
@@ -1303,9 +1302,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         self.__wrapped_groups = []
         for title, actions in self.__prepared_groups.items():
-            wrapped_actions: _t.List[
-                _t.Tuple[_t.List[str], _t.List[_ColorizedString], int]
-            ] = []
+            wrapped_actions: list[tuple[list[str], list[_ColorizedString], int]] = []
             for keys, _, msg, key_width in actions:
                 wrapped_actions.append((keys, formatter.format(msg), key_width))
             self.__wrapped_groups.append((title, wrapped_actions))
@@ -1361,7 +1358,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                 rc.write(" " * (rc.width - 1))
                 rc.set_final_pos(1, 0)
 
-    def __help_menu_layout_inline(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def __help_menu_layout_inline(self, rc: RenderContext, /) -> tuple[int, int]:
         if not self.__clear_layout_cache(rc):
             return (1, 1) if self.__has_help else (0, 0)
 
@@ -1444,8 +1441,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
     }
 
     def __prepare_inline_help(
-        self, data: "WidgetHelp"
-    ) -> _t.List[_t.Tuple[_t.List[str], str, str, int]]:
+        self, data: WidgetHelp
+    ) -> list[tuple[list[str], str, str, int]]:
         return [
             prepared_action
             for action in data.inline_help
@@ -1453,8 +1450,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         ]
 
     def __prepare_groups(
-        self, data: "WidgetHelp"
-    ) -> _t.Dict[str, _t.List[_t.Tuple[_t.List[str], str, str, int]]]:
+        self, data: WidgetHelp
+    ) -> dict[str, list[tuple[list[str], str, str, int]]]:
         help_data = (
             data.with_action(
                 self._KEY_SYMBOLS[Key.F1],
@@ -1527,8 +1524,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         return groups
 
     def __prepare_action(
-        self, action: "Action"
-    ) -> _t.Optional[_t.Tuple[_t.List[str], str, str, int]]:
+        self, action: Action
+    ) -> tuple[list[str], str, str, int] | None:
         if isinstance(action, tuple):
             action_keys, msg = action
             prepared_keys = self.__prepare_keys(action_keys)
@@ -1544,13 +1541,13 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         title = msg.split("\n\n", maxsplit=1)[0]
         return prepared_keys, title, msg, _line_width("/".join(prepared_keys))
 
-    def __prepare_keys(self, action_keys: "ActionKeys") -> _t.List[str]:
+    def __prepare_keys(self, action_keys: ActionKeys) -> list[str]:
         if isinstance(action_keys, (str, Key, KeyboardEvent)):
             return [self.__prepare_key(action_keys)]
         else:
             return [self.__prepare_key(action_key) for action_key in action_keys]
 
-    def __prepare_key(self, action_key: "ActionKey") -> str:
+    def __prepare_key(self, action_key: ActionKey) -> str:
         if isinstance(action_key, str):
             return action_key
         elif isinstance(action_key, KeyboardEvent):
@@ -1594,7 +1591,7 @@ class _Binding:
 
 
 def bind(
-    key: _t.Union[Key, str],
+    key: Key | str,
     *,
     ctrl: bool = False,
     alt: bool = False,
@@ -1637,8 +1634,8 @@ def bind(
 @dataclass(frozen=True, **yuio._with_slots())
 class _Help:
     group: str = "Actions"
-    inline_msg: _t.Optional[str] = None
-    long_msg: _t.Optional[str] = None
+    inline_msg: str | None = None
+    long_msg: str | None = None
 
     def __call__(self, fn: T, /) -> T:
         h = dataclasses.replace(
@@ -1662,9 +1659,9 @@ class _Help:
 def help(
     *,
     group: str = "Actions",
-    inline_msg: _t.Optional[str] = None,
-    long_msg: _t.Optional[str] = None,
-    msg: _t.Optional[str] = None,
+    inline_msg: str | None = None,
+    long_msg: str | None = None,
+    msg: str | None = None,
 ) -> _Help:
     """Set options for how this callback should be displayed.
 
@@ -1716,13 +1713,13 @@ def help(
 
 #: A single key associated with an action.
 #: Can be either a hotkey or a string with an arbitrary description.
-ActionKey: _t.TypeAlias = _t.Union[Key, KeyboardEvent, str]
+ActionKey: _t.TypeAlias = Key | KeyboardEvent | str
 
 #: A list of keys associated with an action.
-ActionKeys: _t.TypeAlias = _t.Union[ActionKey, _t.Collection[ActionKey]]
+ActionKeys: _t.TypeAlias = ActionKey | _t.Collection[ActionKey]
 
 #: An action itself, i.e. a set of hotkeys and a description for them.
-Action: _t.TypeAlias = _t.Union[str, _t.Tuple[ActionKeys, str]]
+Action: _t.TypeAlias = str | tuple[ActionKeys, str]
 
 
 @dataclass(frozen=True, **yuio._with_slots())
@@ -1740,21 +1737,21 @@ class WidgetHelp:
     """
 
     #: List of actions to show in the inline help.
-    inline_help: _t.List[Action] = dataclasses.field(default_factory=list)
+    inline_help: list[Action] = dataclasses.field(default_factory=list)
 
     #: Dict of group titles and actions to show in the help menu.
-    groups: _t.Dict[str, _t.List[Action]] = dataclasses.field(default_factory=dict)
+    groups: dict[str, list[Action]] = dataclasses.field(default_factory=dict)
 
     def with_action(
         self,
-        *bindings: _t.Union[_Binding, ActionKey],
+        *bindings: _Binding | ActionKey,
         group: str = "Actions",
-        msg: _t.Optional[str] = None,
-        inline_msg: _t.Optional[str] = None,
-        long_msg: _t.Optional[str] = None,
+        msg: str | None = None,
+        inline_msg: str | None = None,
+        long_msg: str | None = None,
         prepend: bool = False,
         prepend_group: bool = False,
-    ) -> "WidgetHelp":
+    ) -> WidgetHelp:
         """
         Return a new :class:`WidgetHelp` that has an extra action.
 
@@ -1789,7 +1786,7 @@ class WidgetHelp:
             msg=msg,
         )
 
-    def merge(self, other: "WidgetHelp", /) -> "WidgetHelp":
+    def merge(self, other: WidgetHelp, /) -> WidgetHelp:
         """
         Merge this help data with another one and return
         a new instance of :class:`WidgetHelp`.
@@ -1805,7 +1802,7 @@ class WidgetHelp:
             result.groups[title] = result.groups.get(title, []) + actions
         return result
 
-    def without_group(self, title: str, /) -> "WidgetHelp":
+    def without_group(self, title: str, /) -> WidgetHelp:
         """
         Return a new :class:`WidgetHelp` that has a group with the given title removed.
 
@@ -1818,7 +1815,7 @@ class WidgetHelp:
         result.groups.pop(title, None)
         return result
 
-    def rename_group(self, title: str, new_title: str, /) -> "WidgetHelp":
+    def rename_group(self, title: str, new_title: str, /) -> WidgetHelp:
         """
         Return a new :class:`WidgetHelp` that has a group with the given title renamed.
 
@@ -1836,14 +1833,14 @@ class WidgetHelp:
 
     def __add_action(
         self,
-        *bindings: _t.Union[_Binding, ActionKey],
+        *bindings: _Binding | ActionKey,
         group: str,
-        inline_msg: _t.Optional[str],
-        long_msg: _t.Optional[str],
+        inline_msg: str | None,
+        long_msg: str | None,
         prepend: bool,
         prepend_group: bool,
-        msg: _t.Optional[str],
-    ) -> "WidgetHelp":
+        msg: str | None,
+    ) -> WidgetHelp:
         settings = help(
             group=group,
             inline_msg=inline_msg,
@@ -1905,21 +1902,21 @@ class VerticalLayoutBuilder(_t.Generic[T]):
 
     if _t.TYPE_CHECKING:
 
-        def __new__(cls) -> "VerticalLayoutBuilder[_t.Never]": ...
+        def __new__(cls) -> VerticalLayoutBuilder[_t.Never]: ...
 
     def __init__(self):
-        self._widgets: _t.List[Widget[_t.Any]] = []
-        self._event_receiver: _t.Optional[int] = None
+        self._widgets: list[Widget[_t.Any]] = []
+        self._event_receiver: int | None = None
 
     @_t.overload
     def add(
         self, widget: Widget[_t.Any], /, *, receive_events: _t.Literal[False] = False
-    ) -> "VerticalLayoutBuilder[T]": ...
+    ) -> VerticalLayoutBuilder[T]: ...
 
     @_t.overload
     def add(
         self, widget: Widget[U], /, *, receive_events: _t.Literal[True]
-    ) -> "VerticalLayoutBuilder[U]": ...
+    ) -> VerticalLayoutBuilder[U]: ...
 
     def add(self, widget: Widget[_t.Any], /, *, receive_events=False) -> _t.Any:
         """Add a new widget to the bottom of the layout.
@@ -1951,7 +1948,7 @@ class VerticalLayoutBuilder(_t.Generic[T]):
 
         return other
 
-    def build(self) -> "VerticalLayout[T]":
+    def build(self) -> VerticalLayout[T]:
         layout = VerticalLayout()
         layout._widgets = self._widgets
         layout._event_receiver = self._event_receiver
@@ -1982,13 +1979,13 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
     if _t.TYPE_CHECKING:
 
-        def __new__(cls, *widgets: Widget[object]) -> "VerticalLayout[_t.Never]": ...
+        def __new__(cls, *widgets: Widget[object]) -> VerticalLayout[_t.Never]: ...
 
     def __init__(self, *widgets: Widget[object]):
-        self._widgets: _t.List[Widget[object]] = list(widgets)
-        self._event_receiver: _t.Optional[int] = None
+        self._widgets: list[Widget[object]] = list(widgets)
+        self._event_receiver: int | None = None
 
-        self.__layouts: _t.List[_t.Tuple[int, int]] = []
+        self.__layouts: list[tuple[int, int]] = []
         self.__min_h: int = 0
         self.__max_h: int = 0
 
@@ -2006,7 +2003,7 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
         for widget in widgets:
             self.append(widget)
 
-    def event(self, e: KeyboardEvent) -> _t.Optional[Result[T]]:
+    def event(self, e: KeyboardEvent) -> Result[T] | None:
         """Dispatch event to the widget that was added with ``receive_events=True``.
 
         See :class:`~VerticalLayoutBuilder` for details.
@@ -2015,10 +2012,10 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
         if self._event_receiver is not None:
             return _t.cast(
-                _t.Optional[Result[T]], self._widgets[self._event_receiver].event(e)
+                Result[T] | None, self._widgets[self._event_receiver].event(e)
             )
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         """Calculate layout of the entire stack."""
 
         self.__layouts = [widget.layout(rc) for widget in self._widgets]
@@ -2070,7 +2067,7 @@ class Line(Widget[_t.Never]):
         text: yuio.term.AnyString,
         /,
         *,
-        color: _t.Union[_Color, str, None] = None,
+        color: _Color | str | None = None,
     ):
         self.__text = _ColorizedString(text)
         self.__color = color
@@ -2085,15 +2082,15 @@ class Line(Widget[_t.Never]):
         self.__text = _ColorizedString(text)
 
     @property
-    def color(self) -> _t.Union[_Color, str, None]:
+    def color(self) -> _Color | str | None:
         """Color of the currently displayed text."""
         return self.__color
 
     @color.setter
-    def color(self, color: _t.Union[_Color, str, None], /):
+    def color(self, color: _Color | str | None, /):
         self.__color = color
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         return 1, 1
 
     def draw(self, rc: RenderContext, /):
@@ -2115,7 +2112,7 @@ class Text(Widget[_t.Never]):
         /,
     ):
         self.__text = _ColorizedString(text)
-        self.__wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
+        self.__wrapped_text: list[yuio.term.ColorizedString] | None = None
         self.__wrapped_text_width: int = 0
 
     @property
@@ -2129,7 +2126,7 @@ class Text(Widget[_t.Never]):
         self.__wrapped_text = None
         self.__wrapped_text_width = 0
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         if self.__wrapped_text is None or self.__wrapped_text_width != rc.width:
             self.__wrapped_text = self.__text.wrap(
                 rc.width,
@@ -2217,7 +2214,7 @@ _ESC_RE = re.compile(r"([" + re.escape("".join(map(str, _CHAR_NAMES))) + "])")
 
 
 def _replace_special_symbols(text: str, esc_color: _Color, n_color: _Color):
-    res: _t.List[_t.Union[_Color, str]] = [n_color]
+    res: list[_Color | str] = [n_color]
     i = 0
     for match in _ESC_RE.finditer(text):
         if s := text[i : match.start()]:
@@ -2231,7 +2228,7 @@ def _replace_special_symbols(text: str, esc_color: _Color, n_color: _Color):
     return res
 
 
-def _find_cursor_pos(text: _t.List[_ColorizedString], text_width: int, offset: int):
+def _find_cursor_pos(text: list[_ColorizedString], text_width: int, offset: int):
     total_len = 0
     if not offset:
         return (0, 0)
@@ -2320,7 +2317,7 @@ class Input(Widget[str]):
         self,
         *,
         text: str = "",
-        pos: _t.Optional[int] = None,
+        pos: int | None = None,
         placeholder: str = "",
         decoration: str = ">",
         allow_multiline: bool = False,
@@ -2334,12 +2331,12 @@ class Input(Widget[str]):
         self.__allow_special_characters: bool = allow_special_characters
 
         self.__wrapped_text_width: int = 0
-        self.__wrapped_text: _t.Optional[_t.List["yuio.term.ColorizedString"]] = None
-        self.__pos_after_wrap: _t.Optional[_t.Tuple[int, int]] = None
+        self.__wrapped_text: list[yuio.term.ColorizedString] | None = None
+        self.__pos_after_wrap: tuple[int, int] | None = None
 
         # We keep track of edit history by saving input text
         # and cursor position in this list.
-        self.__history: _t.List[_t.Tuple[str, int, Input._CheckpointType]] = [
+        self.__history: list[tuple[str, int, Input._CheckpointType]] = [
             (self.__text, self.__pos, Input._CheckpointType.SYM)
         ]
         # Sometimes we don't record all actions. For example, entering multiple spaces
@@ -2393,9 +2390,7 @@ class Input(Widget[str]):
         if self.__history[-1][2] is Input._CheckpointType.USR:
             self.undo()
 
-    def _internal_checkpoint(
-        self, action: "Input._CheckpointType", text: str, pos: int
-    ):
+    def _internal_checkpoint(self, action: Input._CheckpointType, text: str, pos: int):
         prev_text, prev_pos, prev_action = self.__history[-1]
 
         if action == prev_action and not self.__require_checkpoint:
@@ -2433,7 +2428,7 @@ class Input(Widget[str]):
         self.__require_checkpoint = False
 
     @bind(Key.ENTER)
-    def enter(self) -> _t.Optional[Result[str]]:
+    def enter(self) -> Result[str] | None:
         if self.__allow_multiline:
             self.insert("\n")
         else:
@@ -2441,7 +2436,7 @@ class Input(Widget[str]):
 
     @bind(Key.ENTER, alt=True)
     @bind("d", ctrl=True)
-    def alt_enter(self) -> _t.Optional[Result[str]]:
+    def alt_enter(self) -> Result[str] | None:
         return Result(self.text)
 
     _NAVIGATE = "Navigate"
@@ -2718,7 +2713,7 @@ class Input(Widget[str]):
         else:
             return 0
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         decoration_width = self._decoration_width
         text_width = rc.width - decoration_width
         if text_width < 2:
@@ -2814,14 +2809,14 @@ class Option(_t.Generic[T_co]):
     display_text_suffix: str = ""
 
     #: Option's short comment.
-    comment: _t.Optional[str] = None
+    comment: str | None = None
 
     #: Option's color tag.
     #:
     #: This color tag will be used to display option.
     #: Specifically, color for the option will be looked up py path
     #: ``"menu/choice/{status}/{element}/{color_tag}"``.
-    color_tag: _t.Optional[str] = None
+    color_tag: str | None = None
 
 
 class Grid(Widget[_t.Never], _t.Generic[T]):
@@ -2848,16 +2843,16 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
     def __init__(
         self,
-        options: _t.List[Option[T]],
+        options: list[Option[T]],
         /,
         *,
         decoration: str = ">",
-        default_index: _t.Optional[int] = 0,
-        min_rows: _t.Optional[int] = 5,
+        default_index: int | None = 0,
+        min_rows: int | None = 5,
     ):
-        self.__options: _t.List[Option[T]]
-        self.__index: _t.Optional[int]
-        self.__min_rows: _t.Optional[int] = min_rows
+        self.__options: list[Option[T]]
+        self.__index: int | None
+        self.__min_rows: int | None = min_rows
         self.__max_column_width: int
         self.__column_width: int
         self.__num_rows: int
@@ -2873,19 +2868,19 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         return self.__num_rows * self.__num_columns
 
     @property
-    def index(self) -> _t.Optional[int]:
+    def index(self) -> int | None:
         """Index of the currently selected option."""
 
         return self.__index
 
     @index.setter
-    def index(self, idx: _t.Optional[int]):
+    def index(self, idx: int | None):
         if idx is None or not self.__options:
             self.__index = None
         elif self.__options:
             self.__index = idx % len(self.__options)
 
-    def get_option(self) -> _t.Optional[Option[T]]:
+    def get_option(self) -> Option[T] | None:
         """
         Get the currently selected option,
         or `None` if there are no options selected.
@@ -2907,9 +2902,9 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
     def set_options(
         self,
-        options: _t.List[Option[T]],
+        options: list[Option[T]],
         /,
-        default_index: _t.Optional[int] = 0,
+        default_index: int | None = 0,
     ):
         """Set a new list of options."""
 
@@ -3054,7 +3049,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
                     self.__index = index
                     break
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         self.__column_width = max(1, min(self.__max_column_width, rc.width))
         self.__num_columns = num_columns = max(1, rc.width // self.__column_width)
         self.__num_rows = max(
@@ -3219,7 +3214,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             rc.write("]")
 
     @property
-    def help_data(self) -> "WidgetHelp":
+    def help_data(self) -> WidgetHelp:
         return super().help_data.with_action(
             "1..9",
             "a..z",
@@ -3253,7 +3248,7 @@ class Choice(Widget[T], _t.Generic[T]):
     @_t.overload
     def __init__(
         self,
-        options: _t.List[Option[T]],
+        options: list[Option[T]],
         /,
         *,
         mapper: _t.Callable[[Option[T]], str] = lambda x: (
@@ -3265,7 +3260,7 @@ class Choice(Widget[T], _t.Generic[T]):
     @_t.overload
     def __init__(
         self,
-        options: _t.List[Option[T]],
+        options: list[Option[T]],
         /,
         *,
         filter: _t.Callable[[Option[T], str], bool],
@@ -3274,12 +3269,12 @@ class Choice(Widget[T], _t.Generic[T]):
 
     def __init__(
         self,
-        options: _t.List[Option[T]],
+        options: list[Option[T]],
         /,
         *,
         mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
         or str(x.value),
-        filter: _t.Optional[_t.Callable[[Option[T], str], bool]] = None,
+        filter: _t.Callable[[Option[T], str], bool] | None = None,
         default_index: int = 0,
     ):
         self.__options = options
@@ -3312,7 +3307,7 @@ class Choice(Widget[T], _t.Generic[T]):
     @bind(Key.ENTER)
     @bind(Key.ENTER, alt=True, show_in_detailed_help=False)
     @bind("d", ctrl=True)
-    def enter(self) -> _t.Optional[Result[T]]:
+    def enter(self) -> Result[T] | None:
         """select"""
         option = self.__grid.get_option()
         if option is not None:
@@ -3326,7 +3321,7 @@ class Choice(Widget[T], _t.Generic[T]):
         self.__update_completion()
         self.__enable_search = False
 
-    def default_event_handler(self, e: KeyboardEvent) -> _t.Optional[Result[T]]:
+    def default_event_handler(self, e: KeyboardEvent) -> Result[T] | None:
         if not self.__enable_search and e == KeyboardEvent(" "):
             return self.enter()
         if not self.__enable_search or e.key in (
@@ -3365,7 +3360,7 @@ class Choice(Widget[T], _t.Generic[T]):
         self.__grid.set_options(options)
         self.__grid.index = index
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         self.__layout = VerticalLayout()
         self.__layout.append(self.__grid)
 
@@ -3382,7 +3377,7 @@ class Choice(Widget[T], _t.Generic[T]):
         return super().help_data.merge(self.__grid.help_data)
 
 
-class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
+class Multiselect(Widget[list[T]], _t.Generic[T]):
     """
     Like :class:`Choice`, but allows selecting multiple items.
 
@@ -3408,7 +3403,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
     @_t.overload
     def __init__(
         self,
-        options: _t.List[Option[T]],
+        options: list[Option[T]],
         /,
         *,
         mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
@@ -3418,7 +3413,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
     @_t.overload
     def __init__(
         self,
-        options: _t.List[Option[T]],
+        options: list[Option[T]],
         /,
         *,
         filter: _t.Callable[[Option[T], str], bool],
@@ -3426,16 +3421,16 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
 
     def __init__(
         self,
-        options: _t.List[Option[T]],
+        options: list[Option[T]],
         /,
         *,
         mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
         or str(x.value),
-        filter: _t.Optional[_t.Callable[[Option[T], str], bool]] = None,
+        filter: _t.Callable[[Option[T], str], bool] | None = None,
     ):
         self.__options = [
             _t.cast(
-                Option[_t.Tuple[T, bool]],
+                Option[tuple[T, bool]],
                 dataclasses.replace(
                     option,
                     value=(option.value, False),
@@ -3452,7 +3447,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
         self.__filter = filter
 
         self.__input = Input(placeholder="Filter options...", decoration="/")
-        self.__grid = Grid[_t.Tuple[T, bool]]([])
+        self.__grid = Grid[tuple[T, bool]]([])
 
         self.__enable_search = False
 
@@ -3477,7 +3472,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
 
     @bind(Key.ENTER, alt=True)
     @bind("d", ctrl=True, show_in_inline_help=True)
-    def enter(self) -> _t.Optional[Result[_t.List[T]]]:
+    def enter(self) -> Result[list[T]] | None:
         """accept"""
         return Result(
             [option.value[0] for option in self.__grid.get_options() if option.value[1]]
@@ -3499,9 +3494,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
         self.__update_completion()
         self.__enable_search = False
 
-    def default_event_handler(
-        self, e: KeyboardEvent
-    ) -> _t.Optional[Result[_t.List[T]]]:
+    def default_event_handler(self, e: KeyboardEvent) -> Result[list[T]] | None:
         if not self.__enable_search or e.key in (
             Key.ARROW_UP,
             Key.SHIFT_TAB,
@@ -3539,7 +3532,7 @@ class Multiselect(Widget[_t.List[T]], _t.Generic[T]):
         self.__grid.set_options(options)
         self.__grid.index = index
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         self.__layout = VerticalLayout()
         self.__layout.append(self.__grid)
 
@@ -3584,12 +3577,12 @@ class InputWithCompletion(Widget[str]):
         self.__grid_active = False
 
         self.__layout: VerticalLayout[_t.Never]
-        self.__rsuffix: _t.Optional[yuio.complete.Completion] = None
+        self.__rsuffix: yuio.complete.Completion | None = None
 
     @bind(Key.ENTER)
     @bind("d", ctrl=True)
     @help(inline_msg="accept")
-    def enter(self) -> _t.Optional[Result[str]]:
+    def enter(self) -> Result[str] | None:
         """accept / select completion"""
         if self.__grid_active and (option := self.__grid.get_option()):
             self._set_input_state_from_completion(option.value)
@@ -3719,7 +3712,7 @@ class InputWithCompletion(Widget[str]):
             if self.__input.text[: self.__input.pos].endswith(rsuffix):
                 self._set_input_state_from_completion(self.__rsuffix, set_rsuffix=False)
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         self.__layout = VerticalLayout()
         self.__layout.append(self.__input)
         if self.__grid_active:
@@ -3771,11 +3764,11 @@ class Map(Widget[T], _t.Generic[T, U]):
         self.__inner = inner
         self.__fn = fn
 
-    def event(self, e: KeyboardEvent, /) -> _t.Optional[Result[T]]:
+    def event(self, e: KeyboardEvent, /) -> Result[T] | None:
         if result := self.__inner.event(e):
             return Result(self.__fn(result.value))
 
-    def layout(self, rc: RenderContext, /) -> _t.Tuple[int, int]:
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         return self.__inner.layout(rc)
 
     def draw(self, rc: RenderContext, /):

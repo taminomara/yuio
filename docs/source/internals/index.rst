@@ -7,6 +7,7 @@ Interfaces that you'll need if you're building something complicated.
    :maxdepth: 2
 
    complete
+   json_schema
    md
    term
    theme

@@ -33,6 +33,7 @@ nitpick_ignore_regex = [
 ]
 autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"
+autodoc_inherit_docstrings = False
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
 vhs_min_version = "0.7.2"

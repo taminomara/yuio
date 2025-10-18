@@ -1623,8 +1623,8 @@ class TestInput:
         widget_checker: WidgetChecker[yuio.widget.Input],
         text: str,
         pos: int,
-        cursor_pos: _t.Tuple[int, int],
-        events: _t.List[_t.Tuple[yuio.widget.KeyboardEvent, int, _t.Tuple[int, int]]],
+        cursor_pos: tuple[int, int],
+        events: list[tuple[yuio.widget.KeyboardEvent, int, tuple[int, int]]],
     ):
         widget = yuio.widget.Input(text=text, pos=pos)
 
@@ -1729,11 +1729,11 @@ class TestInput:
         undo_method: _t.Literal["undo", "yank"],
         text: str,
         pos: int,
-        cursor_pos: _t.Tuple[int, int],
+        cursor_pos: tuple[int, int],
         event: yuio.widget.KeyboardEvent,
         end_text: str,
         end_pos: int,
-        end_cursor_pos: _t.Tuple[int, int],
+        end_cursor_pos: tuple[int, int],
     ):
         no_yank = undo_method == "yank" and event in [
             yuio.widget.KeyboardEvent("h", ctrl=True),
@@ -2652,8 +2652,8 @@ class TestGrid:
     def test_move(
         self,
         widget_checker: WidgetChecker[yuio.widget.Grid[int]],
-        index: _t.Optional[int],
-        events: _t.List[_t.Tuple[yuio.widget.KeyboardEvent, _t.Optional[int]]],
+        index: int | None,
+        events: list[tuple[yuio.widget.KeyboardEvent, int | None]],
     ):
         widget = yuio.widget.Grid(
             [
@@ -2741,8 +2741,8 @@ class TestGrid:
     def test_move_empty(
         self,
         widget_checker: WidgetChecker[yuio.widget.Grid[int]],
-        index: _t.Optional[int],
-        events: _t.List[yuio.widget.KeyboardEvent],
+        index: int | None,
+        events: list[yuio.widget.KeyboardEvent],
     ):
         widget = yuio.widget.Grid([], default_index=index)
 

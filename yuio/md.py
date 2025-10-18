@@ -72,6 +72,8 @@ Markdown AST
 
 """
 
+from __future__ import annotations
+
 import abc
 import contextlib
 import dataclasses
@@ -156,7 +158,7 @@ class MdFormatter:
         self,
         theme: Theme,
         *,
-        width: _t.Optional[int] = None,
+        width: int | None = None,
         allow_headings: bool = True,
     ):
         self.width = width
@@ -164,7 +166,7 @@ class MdFormatter:
         self.allow_headings: bool = allow_headings
 
         self._is_first_line: bool
-        self._out: _t.List[yuio.term.ColorizedString]
+        self._out: list[yuio.term.ColorizedString]
         self._first_line_indent: yuio.term.ColorizedString
         self._continuation_indent: yuio.term.ColorizedString
 
@@ -175,17 +177,17 @@ class MdFormatter:
         return self.__width
 
     @width.setter
-    def width(self, width: _t.Optional[int]):
+    def width(self, width: int | None):
         if width is None:
             width = shutil.get_terminal_size().columns
         self.__width = max(width, 20)
 
-    def format(self, s: str, /) -> _t.List[yuio.term.ColorizedString]:
+    def format(self, s: str, /) -> list[yuio.term.ColorizedString]:
         """Format a markdown document."""
 
         return self.format_node(self.parse(s))
 
-    def parse(self, s: str, /) -> "AstBase":
+    def parse(self, s: str, /) -> AstBase:
         """Parse a markdown document and return an AST node.
 
         .. warning::
@@ -196,7 +198,7 @@ class MdFormatter:
 
         return _MdParser(self.allow_headings).parse(self._dedent(s))
 
-    def format_node(self, node: "AstBase", /) -> _t.List[yuio.term.ColorizedString]:
+    def format_node(self, node: AstBase, /) -> list[yuio.term.ColorizedString]:
         """Format a parsed markdown document.
 
         .. warning::
@@ -219,7 +221,7 @@ class MdFormatter:
         s: str,
         /,
         *,
-        default_color: _t.Union[Color, str] = Color.NONE,
+        default_color: Color | str = Color.NONE,
     ):
         """Parse and colorize contents of a paragraph.
 
@@ -233,7 +235,7 @@ class MdFormatter:
     @contextlib.contextmanager
     def _indent(
         self,
-        color: _t.Union[Color, str, None],
+        color: Color | str | None,
         s: yuio.term.AnyString,
         /,
         *,
@@ -270,10 +272,10 @@ class MdFormatter:
         self._is_first_line = False
         self._first_line_indent = self._continuation_indent
 
-    def _format(self, node: "AstBase", /):
+    def _format(self, node: AstBase, /):
         getattr(self, f"_format_{node.__class__.__name__.lstrip('_')}")(node)
 
-    def _format_Text(self, node: "Text", /, *, default_color: Color):
+    def _format_Text(self, node: Text, /, *, default_color: Color):
         s = self.colorize(
             "\n".join(node.lines).strip(),
             default_color=default_color,
@@ -287,21 +289,21 @@ class MdFormatter:
         ):
             self._line(line)
 
-    def _format_Container(self, node: "Container[TAst]", /):
+    def _format_Container(self, node: Container[TAst], /):
         self._is_first_line = True
         for item in node.items:
             if not self._is_first_line:
                 self._line(self._first_line_indent)
             self._format(item)
 
-    def _format_Document(self, node: "Document", /):
+    def _format_Document(self, node: Document, /):
         self._format_Container(node)
 
-    def _format_ThematicBreak(self, _: "ThematicBreak"):
+    def _format_ThematicBreak(self, _: ThematicBreak):
         decoration = self.theme.msg_decorations.get("thematic_break", "")
         self._line(self._first_line_indent + decoration)
 
-    def _format_Heading(self, node: "Heading", /):
+    def _format_Heading(self, node: Heading, /):
         if not self._is_first_line:
             self._line(self._first_line_indent)
 
@@ -315,12 +317,12 @@ class MdFormatter:
         self._line(self._first_line_indent)
         self._is_first_line = True
 
-    def _format_Paragraph(self, node: "Paragraph", /):
+    def _format_Paragraph(self, node: Paragraph, /):
         self._format_Text(
             node, default_color=self.theme.get_color("msg/text:paragraph")
         )
 
-    def _format_ListItem(self, node: "ListItem", /, *, min_width: int = 0):
+    def _format_ListItem(self, node: ListItem, /, *, min_width: int = 0):
         decoration = self.theme.msg_decorations.get("list", "")
         if node.number is not None:
             decoration = f"{node.number:>{min_width}}." + " " * (
@@ -329,14 +331,14 @@ class MdFormatter:
         with self._indent("msg/decoration:list", decoration):
             self._format_Container(node)
 
-    def _format_Quote(self, node: "Quote", /):
+    def _format_Quote(self, node: Quote, /):
         decoration = self.theme.msg_decorations.get("quote", "")
         with self._indent(
             "msg/decoration:quote", decoration, continue_with_spaces=False
         ):
             self._format_Container(node)
 
-    def _format_Code(self, node: "Code", /):
+    def _format_Code(self, node: Code, /):
         s = SyntaxHighlighter.get_highlighter(node.syntax).highlight(
             self.theme,
             "\n".join(node.lines),
@@ -351,7 +353,7 @@ class MdFormatter:
                 )
             )
 
-    def _format_List(self, node: "List", /):
+    def _format_List(self, node: List, /):
         max_number = max(item.number or 0 for item in node.items)
         min_width = math.ceil(math.log10(max_number)) if max_number > 0 else 1
         self._is_first_line = True
@@ -398,7 +400,7 @@ class Text(AstBase):
     """
 
     #: Text lines as parsed from the original document.
-    lines: _t.List[str] = dataclasses.field(repr=False)
+    lines: list[str] = dataclasses.field(repr=False)
 
     def dump(self, indent: str = "") -> str:
         s = f"{indent}({self._dump_params()}"
@@ -421,7 +423,7 @@ class Container(AstBase, _t.Generic[TAst]):
     """
 
     #: Inner AST nodes in the container.
-    items: _t.List[TAst] = dataclasses.field(repr=False)
+    items: list[TAst] = dataclasses.field(repr=False)
 
     def dump(self, indent: str = "") -> str:
         s = f"{indent or ''}({self._dump_params()}"
@@ -495,7 +497,7 @@ class ListItem(Container[AstBase]):
     """
 
     #: If present, this is the item's number in a numbered list.
-    number: _t.Optional[int]
+    number: int | None
 
 
 @dataclass(**yuio._with_slots())
@@ -643,20 +645,20 @@ class _MdParser:
         type: str
         marker_len: int
         list: List
-        parser: "_MdParser"
-        number: _t.Optional[int] = None
+        parser: _MdParser
+        number: int | None = None
 
     @dataclass(**yuio._with_slots())
     class Quote:
         start: int
         end: int
-        parser: "_MdParser"
+        parser: _MdParser
 
     @dataclass(**yuio._with_slots())
     class Code:
         start: int
         end: int
-        lines: _t.List[str]
+        lines: list[str]
 
     @dataclass(**yuio._with_slots())
     class FencedCode:
@@ -666,23 +668,23 @@ class _MdParser:
         fence_symbol: str
         fence_length: int
         syntax: str
-        lines: _t.List[str]
+        lines: list[str]
 
     @dataclass(**yuio._with_slots())
     class Paragraph:
         start: int
         end: int
-        lines: _t.List[str]
+        lines: list[str]
 
-    State: _t.TypeAlias = _t.Union[Default, List, Quote, Code, FencedCode, Paragraph]
+    State: _t.TypeAlias = Default | List | Quote | Code | FencedCode | Paragraph
 
     def __init__(self, allow_headings: bool = True):
         self._allow_headings = allow_headings
-        self._nodes: _t.List[AstBase] = []
+        self._nodes: list[AstBase] = []
         self._state: _MdParser.State = self.Default()
         self._cur: int = 0
 
-    def _parser(self) -> "_MdParser":
+    def _parser(self) -> _MdParser:
         return _MdParser(self._allow_headings)
 
     @staticmethod
@@ -957,7 +959,7 @@ class _MdParser:
     def _flush_Default(self):
         assert type(self._state) == self.Default
 
-    def _finalize(self) -> _t.List[AstBase]:
+    def _finalize(self) -> list[AstBase]:
         self._flush()
         result = self._nodes
         self._nodes = []
@@ -966,13 +968,13 @@ class _MdParser:
 
 
 #: Global syntax registry.
-_SYNTAXES: _t.Dict[str, "SyntaxHighlighter"] = {}
+_SYNTAXES: dict[str, SyntaxHighlighter] = {}
 
 
 class SyntaxHighlighter(abc.ABC):
     @property
     @abc.abstractmethod
-    def syntaxes(self) -> _t.List[str]:
+    def syntaxes(self) -> list[str]:
         """
         List of syntax names that should be associated with this highlighter.
 
@@ -995,7 +997,7 @@ class SyntaxHighlighter(abc.ABC):
         return self.syntaxes[0] if self.syntaxes else "unknown"
 
     @classmethod
-    def register_highlighter(cls, highlighter: "SyntaxHighlighter"):
+    def register_highlighter(cls, highlighter: SyntaxHighlighter):
         """
         Register a highlighter in a global registry, and allow looking it up
         via the :meth:`~SyntaxHighlighter.get_highlighter` method.
@@ -1006,7 +1008,7 @@ class SyntaxHighlighter(abc.ABC):
             _SYNTAXES[syntax.lower().replace("_", "-")] = highlighter
 
     @classmethod
-    def get_highlighter(cls, syntax: str, /) -> "SyntaxHighlighter":
+    def get_highlighter(cls, syntax: str, /) -> SyntaxHighlighter:
         """
         Look up highlighter by a syntax name.
 
@@ -1022,7 +1024,7 @@ class SyntaxHighlighter(abc.ABC):
         self,
         theme: Theme,
         code: str,
-        default_color: _t.Union[Color, str, None] = None,
+        default_color: Color | str | None = None,
     ) -> yuio.term.ColorizedString:
         """
         Highlight the given code using the given theme.
@@ -1032,7 +1034,7 @@ class SyntaxHighlighter(abc.ABC):
     def _get_default_color(
         self,
         theme: Theme,
-        default_color: _t.Union[Color, str, None],
+        default_color: Color | str | None,
     ) -> Color:
         return theme.to_color(default_color) | theme.get_color(
             f"msg/text:code/{self.syntax}"
@@ -1041,14 +1043,14 @@ class SyntaxHighlighter(abc.ABC):
 
 class _DummySyntaxHighlighter(SyntaxHighlighter):
     @property
-    def syntaxes(self) -> _t.List[str]:
+    def syntaxes(self) -> list[str]:
         return ["text", "plain-text"]
 
     def highlight(
         self,
         theme: Theme,
         code: str,
-        default_color: _t.Union[Color, str, None] = None,
+        default_color: Color | str | None = None,
     ) -> yuio.term.ColorizedString:
         return yuio.term.ColorizedString(
             [
@@ -1065,23 +1067,23 @@ SyntaxHighlighter.register_highlighter(_DummySyntaxHighlighter())
 class _ReSyntaxHighlighter(SyntaxHighlighter):
     def __init__(
         self,
-        syntaxes: _t.List[str],
+        syntaxes: list[str],
         pattern: _t.StrRePattern,
-        str_esc_pattern: _t.Optional[_t.StrRePattern] = None,
+        str_esc_pattern: _t.StrRePattern | None = None,
     ):
         self._syntaxes = syntaxes
         self._pattern = pattern
         self._str_esc_pattern = str_esc_pattern
 
     @property
-    def syntaxes(self) -> _t.List[str]:
+    def syntaxes(self) -> list[str]:
         return self._syntaxes
 
     def highlight(
         self,
         theme: Theme,
         code: str,
-        default_color: _t.Union[Color, str, None] = None,
+        default_color: Color | str | None = None,
     ) -> yuio.term.ColorizedString:
         default_color = self._get_default_color(theme, default_color)
 
@@ -1227,7 +1229,7 @@ SyntaxHighlighter.register_highlighter(
 
 class _TbHighlighter(SyntaxHighlighter):
     @property
-    def syntaxes(self) -> _t.List[str]:
+    def syntaxes(self) -> list[str]:
         return [
             "tb",
             "traceback",
@@ -1269,7 +1271,7 @@ class _TbHighlighter(SyntaxHighlighter):
         self,
         theme: Theme,
         code: str,
-        default_color: _t.Union[Color, str, None] = None,
+        default_color: Color | str | None = None,
     ) -> yuio.term.ColorizedString:
         default_color = self._get_default_color(theme, default_color)
 
@@ -1408,9 +1410,9 @@ def colorize(
     s: str,
     /,
     *,
-    default_color: _t.Union[Color, str] = Color.NONE,
+    default_color: Color | str = Color.NONE,
     parse_cli_flags_in_backticks: bool = False,
-) -> "yuio.term.ColorizedString":
+) -> yuio.term.ColorizedString:
     """Parse and colorize contents of a paragraph.
 
     Apply ``default_color`` to the entire paragraph, and process color tags
@@ -1420,7 +1422,7 @@ def colorize(
 
     default_color = theme.to_color(default_color)
 
-    raw: _t.List[_t.Union[str, Color]] = []
+    raw: list[str | Color] = []
     raw.append(default_color)
 
     stack = [default_color]
@@ -1448,7 +1450,7 @@ def colorize(
             ):
                 raw.append(stack[-1] | theme.get_color("hl/flag:sh-usage"))
             else:
-                raw.append(stack[-1] | theme.get_color("fenced_code"))
+                raw.append(stack[-1] | theme.get_color("code"))
             raw.append(yuio.term.NoWrap(code))
             raw.append(stack[-1])
         elif len(stack) > 1:

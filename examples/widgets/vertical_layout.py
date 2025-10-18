@@ -1,4 +1,4 @@
-from typing import NoReturn, Optional, Tuple
+from typing import NoReturn
 
 import yuio.io
 import yuio.term
@@ -20,12 +20,12 @@ class InputWithHeading(Widget[str]):
         # event handling capabilities in this example.
         self._layout: VerticalLayout[NoReturn]
 
-    def event(self, e: KeyboardEvent) -> Optional[yuio.widget.Result[str]]:
+    def event(self, e: KeyboardEvent) -> yuio.widget.Result[str] | None:
         # Simply forward all events to the input box.
         # We won't use `VerticalLayout`s event handling capabilities in this example.
         return self._input.event(e)
 
-    def layout(self, rc: RenderContext) -> Tuple[int, int]:
+    def layout(self, rc: RenderContext) -> tuple[int, int]:
         # First two widgets will always show...
         self._layout = VerticalLayout(self._heading, self._input)
 

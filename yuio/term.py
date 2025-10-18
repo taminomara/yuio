@@ -91,6 +91,8 @@ Utilities
 
 """
 
+from __future__ import annotations
+
 import colorsys
 import contextlib
 import dataclasses
@@ -160,34 +162,34 @@ class TerminalColors:
     """Colors and theme of the attached terminal."""
 
     #: Background color of a terminal.
-    background: "ColorValue"
+    background: ColorValue
 
     #: Foreground color of a terminal.
-    foreground: "ColorValue"
+    foreground: ColorValue
 
     #: Color value for the default "black" color.
-    black: "ColorValue"
+    black: ColorValue
 
     #: Color value for the default "red" color.
-    red: "ColorValue"
+    red: ColorValue
 
     #: Color value for the default "green" color.
-    green: "ColorValue"
+    green: ColorValue
 
     #: Color value for the default "yellow" color.
-    yellow: "ColorValue"
+    yellow: ColorValue
 
     #: Color value for the default "blue" color.
-    blue: "ColorValue"
+    blue: ColorValue
 
     #: Color value for the default "magenta" color.
-    magenta: "ColorValue"
+    magenta: ColorValue
 
     #: Color value for the default "cyan" color.
-    cyan: "ColorValue"
+    cyan: ColorValue
 
     #: Color value for the default "white" color.
-    white: "ColorValue"
+    white: ColorValue
 
     #: Overall color theme of a terminal, i.e. dark or light.
     lightness: Lightness
@@ -210,7 +212,7 @@ class Term:
     interactive_support: InteractiveSupport = InteractiveSupport.NONE
 
     #: Terminal color settings.
-    terminal_colors: _t.Optional[TerminalColors] = None
+    terminal_colors: TerminalColors | None = None
 
     @property
     def has_colors(self) -> bool:
@@ -355,7 +357,7 @@ def get_term_from_stream(
     )
 
 
-def _get_standard_colors(stream: _t.TextIO) -> _t.Optional[TerminalColors]:
+def _get_standard_colors(stream: _t.TextIO) -> TerminalColors | None:
     try:
         query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join(
             [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
@@ -443,7 +445,7 @@ def _get_standard_colors(stream: _t.TextIO) -> _t.Optional[TerminalColors]:
         return None
 
 
-def _query_term(stream: _t.TextIO, query: str) -> _t.Optional[str]:
+def _query_term(stream: _t.TextIO, query: str) -> str | None:
     try:
         with _enter_raw_mode(stream):
             # Lock the keyboard.
@@ -479,7 +481,7 @@ def _query_term(stream: _t.TextIO, query: str) -> _t.Optional[str]:
         return None
 
 
-def _is_tty(stream: _t.Optional[_t.TextIO]) -> bool:
+def _is_tty(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and stream.isatty()
     except Exception:
@@ -488,7 +490,7 @@ def _is_tty(stream: _t.Optional[_t.TextIO]) -> bool:
 
 if os.name == "posix":
 
-    def _is_foreground(stream: _t.Optional[_t.TextIO]) -> bool:
+    def _is_foreground(stream: _t.TextIO | None) -> bool:
         try:
             return stream is not None and os.getpgrp() == os.tcgetpgrp(stream.fileno())
         except Exception:
@@ -496,23 +498,23 @@ if os.name == "posix":
 
 elif os.name == "nt":
 
-    def _is_foreground(stream: _t.Optional[_t.TextIO]) -> bool:
+    def _is_foreground(stream: _t.TextIO | None) -> bool:
         return True
 
 else:
 
-    def _is_foreground(stream: _t.Optional[_t.TextIO]) -> bool:
+    def _is_foreground(stream: _t.TextIO | None) -> bool:
         return False
 
 
-def _is_interactive_input(stream: _t.Optional[_t.TextIO]) -> bool:
+def _is_interactive_input(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.readable()
     except Exception:
         return False
 
 
-def _is_interactive_output(stream: _t.Optional[_t.TextIO]) -> bool:
+def _is_interactive_output(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.writable()
     except Exception:
@@ -698,10 +700,10 @@ class ColorValue:
     """
 
     #: Color data.
-    data: _t.Union[int, str, _t.Tuple[int, int, int]]
+    data: int | str | tuple[int, int, int]
 
     @classmethod
-    def from_rgb(cls, r: int, g: int, b: int, /) -> "ColorValue":
+    def from_rgb(cls, r: int, g: int, b: int, /) -> ColorValue:
         """Create a color value from rgb components.
 
         Each component should be between 0 and 255.
@@ -716,7 +718,7 @@ class ColorValue:
         return cls((r, g, b))
 
     @classmethod
-    def from_hex(cls, h: str, /) -> "ColorValue":
+    def from_hex(cls, h: str, /) -> ColorValue:
         """Create a color value from a hex string.
 
         Example::
@@ -728,7 +730,7 @@ class ColorValue:
 
         return cls(_parse_hex(h))
 
-    def to_hex(self) -> _t.Optional[str]:
+    def to_hex(self) -> str | None:
         """Return color in hex format with leading ``#``.
 
         Example::
@@ -745,7 +747,7 @@ class ColorValue:
         else:
             return None
 
-    def to_rgb(self) -> _t.Optional[_t.Tuple[int, int, int]]:
+    def to_rgb(self) -> tuple[int, int, int] | None:
         """Return RGB components of the color.
 
         Example::
@@ -762,7 +764,7 @@ class ColorValue:
         else:
             return None
 
-    def darken(self, amount: float, /) -> "ColorValue":
+    def darken(self, amount: float, /) -> ColorValue:
         """Make this color darker by the given percentage.
 
         Amount should be between 0 and 1.
@@ -786,7 +788,7 @@ class ColorValue:
         r, g, b = colorsys.hsv_to_rgb(h, s, v)
         return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
 
-    def lighten(self, amount: float, /) -> "ColorValue":
+    def lighten(self, amount: float, /) -> ColorValue:
         """Make this color lighter by the given percentage.
 
         Amount should be between 0 and 1.
@@ -811,7 +813,7 @@ class ColorValue:
         r, g, b = colorsys.hsv_to_rgb(h, s, v)
         return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
 
-    def match_luminosity(self, other: "ColorValue", /) -> "ColorValue":
+    def match_luminosity(self, other: ColorValue, /) -> ColorValue:
         """Set luminosity of this color equal to one of the other color.
 
         This function will keep hue and saturation of the color intact,
@@ -829,7 +831,7 @@ class ColorValue:
         return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
 
     @staticmethod
-    def lerp(*colors: "ColorValue") -> _t.Callable[[float], "ColorValue"]:
+    def lerp(*colors: ColorValue) -> _t.Callable[[float], ColorValue]:
         """Return a lambda that allows linear interpolation between several colors.
 
         If either color is a single ANSI escape code, the first color is always returned
@@ -898,8 +900,71 @@ class ColorValue:
             return f"<ColorValue {self.data}>"
 
 
+class _Colors:
+    #: No color.
+    NONE: _t.ClassVar[Color] = lambda: Color()  # type: ignore
+
+    #: Bold font style.
+    STYLE_BOLD: _t.ClassVar[Color] = lambda: Color(bold=True)  # type: ignore
+    #: Dim font style.
+    STYLE_DIM: _t.ClassVar[Color] = lambda: Color(dim=True)  # type: ignore
+    #: Not bold nor dim.
+    STYLE_NORMAL: _t.ClassVar[Color] = lambda: Color(bold=False, dim=False)  # type: ignore
+
+    #: Normal foreground color.
+    FORE_NORMAL: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(9))  # type: ignore
+    #: Normal foreground color rendered with dim setting.
+    #:
+    #: This is an alternative to bright black that works with
+    #: most terminals and color schemes.
+    FORE_NORMAL_DIM: _t.ClassVar[Color] = lambda: Color(fore=ColorValue("2"))  # type: ignore
+    #: Black foreground color.
+    #:
+    #: .. warning::
+    #:
+    #:    Avoid using this color, in most terminals it is the same as background color.
+    #:    Instead, use :attr:`~Color.FORE_NORMAL_DIM`.
+    FORE_BLACK: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(0))  # type: ignore
+    #: Red foreground color.
+    FORE_RED: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(1))  # type: ignore
+    #: Green foreground color.
+    FORE_GREEN: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(2))  # type: ignore
+    #: Yellow foreground color.
+    FORE_YELLOW: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(3))  # type: ignore
+    #: Blue foreground color.
+    FORE_BLUE: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(4))  # type: ignore
+    #: Magenta foreground color.
+    FORE_MAGENTA: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(5))  # type: ignore
+    #: Cyan foreground color.
+    FORE_CYAN: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(6))  # type: ignore
+    #: White foreground color.
+    #:
+    #: Avoid using it, in some terminals, notably in the Mac OS default terminal,
+    #: it is unreadable.
+    FORE_WHITE: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(7))  # type: ignore
+
+    #: Normal background color.
+    BACK_NORMAL: _t.ClassVar[Color] = lambda: Color(back=ColorValue(9))  # type: ignore
+    #: Black background color.
+    BACK_BLACK: _t.ClassVar[Color] = lambda: Color(back=ColorValue(0))  # type: ignore
+    #: Red background color.
+    BACK_RED: _t.ClassVar[Color] = lambda: Color(back=ColorValue(1))  # type: ignore
+    #: Green background color.
+    BACK_GREEN: _t.ClassVar[Color] = lambda: Color(back=ColorValue(2))  # type: ignore
+    #: Yellow background color.
+    BACK_YELLOW: _t.ClassVar[Color] = lambda: Color(back=ColorValue(3))  # type: ignore
+    #: Blue background color.
+    BACK_BLUE: _t.ClassVar[Color] = lambda: Color(back=ColorValue(4))  # type: ignore
+    #: Magenta background color.
+    BACK_MAGENTA: _t.ClassVar[Color] = lambda: Color(back=ColorValue(5))  # type: ignore
+    #: Cyan background color.
+    BACK_CYAN: _t.ClassVar[Color] = lambda: Color(back=ColorValue(6))  # type: ignore
+    #: White background color.
+    BACK_WHITE: _t.ClassVar[Color] = lambda: Color(back=ColorValue(7))  # type: ignore
+
+
 @dataclass(frozen=True, **yuio._with_slots())
-class Color:
+class Color(_Colors):
     """Data about terminal output style. Contains
     foreground and background color, as well as text styles.
 
@@ -923,18 +988,18 @@ class Color:
     """
 
     #: Foreground color.
-    fore: _t.Optional[ColorValue] = None
+    fore: ColorValue | None = None
 
     #: Background color.
-    back: _t.Optional[ColorValue] = None
+    back: ColorValue | None = None
 
     #: If true, render text as bold.
-    bold: _t.Optional[bool] = None
+    bold: bool | None = None
 
     #: If true, render text as dim.
-    dim: _t.Optional[bool] = None
+    dim: bool | None = None
 
-    def __or__(self, other: "Color", /):
+    def __or__(self, other: Color, /):
         return Color(
             other.fore if other.fore is not None else self.fore,
             other.back if other.back is not None else self.back,
@@ -942,11 +1007,11 @@ class Color:
             other.dim if other.dim is not None else self.dim,
         )
 
-    def __ior__(self, other: "Color", /):
+    def __ior__(self, other: Color, /):
         return self | other
 
     @classmethod
-    def fore_from_rgb(cls, r: int, g: int, b: int) -> "Color":
+    def fore_from_rgb(cls, r: int, g: int, b: int) -> Color:
         """Create a foreground color value from rgb components.
 
         Each component should be between 0 and 255.
@@ -961,7 +1026,7 @@ class Color:
         return cls(fore=ColorValue.from_rgb(r, g, b))
 
     @classmethod
-    def fore_from_hex(cls, h: str) -> "Color":
+    def fore_from_hex(cls, h: str) -> Color:
         """Create a foreground color value from a hex string.
 
         Example::
@@ -974,7 +1039,7 @@ class Color:
         return cls(fore=ColorValue.from_hex(h))
 
     @classmethod
-    def back_from_rgb(cls, r: int, g: int, b: int) -> "Color":
+    def back_from_rgb(cls, r: int, g: int, b: int) -> Color:
         """Create a background color value from rgb components.
 
         Each component should be between 0 and 255.
@@ -989,7 +1054,7 @@ class Color:
         return cls(back=ColorValue.from_rgb(r, g, b))
 
     @classmethod
-    def back_from_hex(cls, h: str) -> "Color":
+    def back_from_hex(cls, h: str) -> Color:
         """Create a background color value from a hex string.
 
         Example::
@@ -1002,7 +1067,7 @@ class Color:
         return cls(back=ColorValue.from_hex(h))
 
     @staticmethod
-    def lerp(*colors: "Color") -> _t.Callable[[float], "Color"]:
+    def lerp(*colors: Color) -> _t.Callable[[float], Color]:
         """Return a lambda that allows linear interpolation between several colors.
 
         If either color is a single ANSI escape code, the first color is always returned
@@ -1074,71 +1139,10 @@ class Color:
         else:
             return "\x1b[m"
 
-    #: No color.
-    NONE: _t.ClassVar["Color"] = lambda: Color()  # type: ignore
 
-    #: Bold font style.
-    STYLE_BOLD: _t.ClassVar["Color"] = lambda: Color(bold=True)  # type: ignore
-    #: Dim font style.
-    STYLE_DIM: _t.ClassVar["Color"] = lambda: Color(dim=True)  # type: ignore
-    #: Not bold nor dim.
-    STYLE_NORMAL: _t.ClassVar["Color"] = lambda: Color(bold=False, dim=False)  # type: ignore
-
-    #: Normal foreground color.
-    FORE_NORMAL: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(9))  # type: ignore
-    #: Normal foreground color rendered with dim setting.
-    #:
-    #: This is an alternative to bright black that works with
-    #: most terminals and color schemes.
-    FORE_NORMAL_DIM: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue("2"))  # type: ignore
-    #: Black foreground color.
-    #:
-    #: .. warning::
-    #:
-    #:    Avoid using this color, in most terminals it is the same as background color.
-    #:    Instead, use :attr:`~Color.FORE_NORMAL_DIM`.
-    FORE_BLACK: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(0))  # type: ignore
-    #: Red foreground color.
-    FORE_RED: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(1))  # type: ignore
-    #: Green foreground color.
-    FORE_GREEN: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(2))  # type: ignore
-    #: Yellow foreground color.
-    FORE_YELLOW: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(3))  # type: ignore
-    #: Blue foreground color.
-    FORE_BLUE: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(4))  # type: ignore
-    #: Magenta foreground color.
-    FORE_MAGENTA: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(5))  # type: ignore
-    #: Cyan foreground color.
-    FORE_CYAN: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(6))  # type: ignore
-    #: White foreground color.
-    #:
-    #: Avoid using it, in some terminals, notably in the Mac OS default terminal,
-    #: it is unreadable.
-    FORE_WHITE: _t.ClassVar["Color"] = lambda: Color(fore=ColorValue(7))  # type: ignore
-
-    #: Normal background color.
-    BACK_NORMAL: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(9))  # type: ignore
-    #: Black background color.
-    BACK_BLACK: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(0))  # type: ignore
-    #: Red background color.
-    BACK_RED: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(1))  # type: ignore
-    #: Green background color.
-    BACK_GREEN: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(2))  # type: ignore
-    #: Yellow background color.
-    BACK_YELLOW: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(3))  # type: ignore
-    #: Blue background color.
-    BACK_BLUE: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(4))  # type: ignore
-    #: Magenta background color.
-    BACK_MAGENTA: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(5))  # type: ignore
-    #: Cyan background color.
-    BACK_CYAN: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(6))  # type: ignore
-    #: White background color.
-    BACK_WHITE: _t.ClassVar["Color"] = lambda: Color(back=ColorValue(7))  # type: ignore
-
-
-for _n, _v in vars(Color).items():
+for _n, _v in vars(_Colors).items():
     if _n == _n.upper():
-        setattr(Color, _n, _v())
+        setattr(_Colors, _n, _v())
 del _n, _v  # type: ignore
 
 
@@ -1152,7 +1156,7 @@ def _rgb_to_256(r: int, g: int, b: int) -> int:
             return 232 + i - len(color_components)
         r, g, b = i, i, i
     else:
-        r, g, b = [closest_idx(x, color_components) for x in (r, g, b)]
+        r, g, b = (closest_idx(x, color_components) for x in (r, g, b))
     return r * 36 + g * 6 + b + 16
 
 
@@ -1164,7 +1168,7 @@ def _rgb_to_8(r: int, g: int, b: int) -> int:
     )
 
 
-def _8_to_rgb(code: int) -> _t.Tuple[int, int, int]:
+def _8_to_rgb(code: int) -> tuple[int, int, int]:
     return (
         (code & 1) and 0xFF,
         (code & 2) and 0xFF,
@@ -1172,7 +1176,7 @@ def _8_to_rgb(code: int) -> _t.Tuple[int, int, int]:
     )
 
 
-def _parse_hex(h: str) -> _t.Tuple[int, int, int]:
+def _parse_hex(h: str) -> tuple[int, int, int]:
     if not re.match(r"^#[0-9a-fA-F]{6}$", h):
         raise ValueError(f"invalid hex string {h!r}")
     return tuple(int(h[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore
@@ -1231,11 +1235,11 @@ def line_width(s: str, /) -> int:
 
 
 #: Raw colorized string. This is the underlying type for :class:`ColorizedString`.
-RawString: _t.TypeAlias = _t.Iterable[_t.Union[Color, str]]
+RawString: _t.TypeAlias = _t.Iterable[Color | str]
 
 
 #: Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
-AnyString: _t.TypeAlias = _t.Union[str, Color, RawString, "ColorizedString"]
+AnyString: _t.TypeAlias = "str | Color | RawString | ColorizedString"
 
 
 class NoWrap(str):
@@ -1281,7 +1285,7 @@ class ColorizedString:
         *,
         explicit_newline: str = "",
     ):
-        self._parts: _t.List[_t.Union[Color, str]]
+        self._parts: list[Color | str]
         if isinstance(content, (str, Color)):
             self._parts = [content] if content else []
         elif isinstance(content, ColorizedString):
@@ -1324,7 +1328,7 @@ class ColorizedString:
     def __bool__(self) -> bool:
         return self.len > 0
 
-    def iter(self) -> _t.Iterator[_t.Union[Color, str]]:
+    def iter(self) -> _t.Iterator[Color | str]:
         """Iterate over raw parts of the string,
         i.e. the underlying list of strings and colors.
 
@@ -1332,7 +1336,7 @@ class ColorizedString:
 
         return self._parts.__iter__()
 
-    def __iter__(self) -> _t.Iterator[_t.Union[Color, str]]:
+    def __iter__(self) -> _t.Iterator[Color | str]:
         return self.iter()
 
     def wrap(
@@ -1346,7 +1350,7 @@ class ColorizedString:
         break_long_nowrap_words: bool = False,
         first_line_indent: AnyString = "",
         continuation_indent: AnyString = "",
-    ) -> _t.List["ColorizedString"]:
+    ) -> list[ColorizedString]:
         r"""Wrap a long line of text into multiple lines.
 
         :param preserve_spaces:
@@ -1393,7 +1397,7 @@ class ColorizedString:
         self,
         first_line_indent: AnyString = "",
         continuation_indent: AnyString = "",
-    ) -> "ColorizedString":
+    ) -> ColorizedString:
         r"""Indent this string by the given sequence.
 
         :param first_line_indent:
@@ -1439,7 +1443,7 @@ class ColorizedString:
 
         return res
 
-    def percent_format(self, args: _t.Any) -> "ColorizedString":
+    def percent_format(self, args: _t.Any) -> ColorizedString:
         """Format colorized string as if with ``%``-formatting
         (i.e. `old-style formatting`_).
 
@@ -1455,10 +1459,10 @@ class ColorizedString:
 
         return ColorizedString(_percent_format(self, args))
 
-    def __mod__(self, args: _t.Any) -> "ColorizedString":
+    def __mod__(self, args: _t.Any) -> ColorizedString:
         return self.percent_format(args)
 
-    def __imod__(self, args: _t.Any) -> "ColorizedString":
+    def __imod__(self, args: _t.Any) -> ColorizedString:
         self._parts = _percent_format(self, args)
 
         self.__dict__.pop("width", None)
@@ -1466,17 +1470,17 @@ class ColorizedString:
 
         return self
 
-    def __add__(self, rhs: AnyString) -> "ColorizedString":
+    def __add__(self, rhs: AnyString) -> ColorizedString:
         copy = ColorizedString(self)
         copy += rhs
         return copy
 
-    def __radd__(self, lhs: AnyString) -> "ColorizedString":
+    def __radd__(self, lhs: AnyString) -> ColorizedString:
         copy = ColorizedString(lhs)
         copy += self
         return copy
 
-    def __iadd__(self, rhs: AnyString) -> "ColorizedString":
+    def __iadd__(self, rhs: AnyString) -> ColorizedString:
         if isinstance(rhs, (str, Color)):
             if rhs:
                 self._parts.append(rhs)
@@ -1490,16 +1494,16 @@ class ColorizedString:
 
         return self
 
-    def process_colors(self, term: Term, /) -> _t.List[str]:
+    def process_colors(self, term: Term, /) -> list[str]:
         """Convert colors in this string into a normal string
         with ANSI escape sequences.
 
         """
 
-        out: _t.List[str] = []
+        out: list[str] = []
 
-        color: _t.Optional[Color] = None
-        cur_color: _t.Optional[Color] = None
+        color: Color | None = None
+        cur_color: Color | None = None
 
         for part in self._parts:
             if isinstance(part, Color):
@@ -1539,7 +1543,7 @@ _S_SYNTAX = re.compile(
 )
 
 
-def _percent_format(s: ColorizedString, args: _t.Any) -> _t.List[_t.Union[Color, str]]:
+def _percent_format(s: ColorizedString, args: _t.Any) -> list[Color | str]:
     if not isinstance(args, (dict, tuple)):
         args = (args,)
 
@@ -1645,9 +1649,9 @@ class _TextWrapper:
                 max(self.first_line_indent.width, self.continuation_indent.width) + 2
             )
 
-        self.lines: _t.List[ColorizedString] = []
+        self.lines: list[ColorizedString] = []
 
-        self.current_line: _t.List[_t.Union[Color, str]] = [Color.NONE]
+        self.current_line: list[Color | str] = [Color.NONE]
         if self.first_line_indent:
             self.current_line.extend(list(self.first_line_indent))
             self.current_line.append(Color.NONE)
@@ -1659,7 +1663,7 @@ class _TextWrapper:
         self.lines.append(
             ColorizedString(self.current_line, explicit_newline=explicit_newline)
         )
-        self.current_line: _t.List[_t.Union[Color, str]] = []
+        self.current_line: list[Color | str] = []
         if self.continuation_indent:
             self.current_line.append(Color.NONE)
             self.current_line.extend(list(self.continuation_indent))
@@ -1698,7 +1702,7 @@ class _TextWrapper:
         if word:
             self._append_word(word, word_width)
 
-    def wrap(self, text: ColorizedString) -> _t.List[ColorizedString]:
+    def wrap(self, text: ColorizedString) -> list[ColorizedString]:
         need_space_before_word = False
         at_line_beginning = True
 

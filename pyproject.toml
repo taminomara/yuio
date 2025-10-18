@@ -88,7 +88,7 @@ reportRedeclaration = "none"
 deprecateTypingAliases = true
 
 [tool.black]
-force-exclude = '^/docs/source/by_example/code/.*'
+force-exclude = '^(/docs/source/by_example/code/.*|/yuio/_version.py)'
 
 [tool.isort]
 profile = "black"

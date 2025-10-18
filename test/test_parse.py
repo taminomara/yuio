@@ -4,11 +4,14 @@ import os.path
 import pathlib
 import re
 import sys
+from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
 
+import jsonschema
 import pytest
 
+import yuio.json_schema
 import yuio.parse
 from yuio import _typing as _t
 
@@ -26,6 +29,14 @@ class TestStr:
         assert parser.describe_many_or_def() == "<str>"
         assert parser.describe_value("foo") == None
         assert parser.describe_value_or_def("foo") == "foo"
+
+    def test_json_schema(self):
+        parser = yuio.parse.Str()
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.String()
+        )
+        assert parser.to_json_value("asd") == "asd"
 
     def test_parse(self):
         parser = yuio.parse.Str()
@@ -139,6 +150,14 @@ class TestInt:
         assert parser.describe_value(10) == None
         assert parser.describe_value_or_def(10) == "10"
 
+    def test_json_schema(self):
+        parser = yuio.parse.Int()
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.Integer()
+        )
+        assert parser.to_json_value(10) == 10
+
     def test_parse(self):
         parser = yuio.parse.Int()
         assert parser.parse("1") == 1
@@ -192,6 +211,14 @@ class TestFloat:
         assert parser.describe_many_or_def() == "<float>"
         assert parser.describe_value(10.5) == None
         assert parser.describe_value_or_def(10.5) == "10.5"
+
+    def test_json_schema(self):
+        parser = yuio.parse.Float()
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.Number()
+        )
+        assert parser.to_json_value(10.5) == 10.5
 
     def test_parse(self):
         parser = yuio.parse.Float()
@@ -247,6 +274,14 @@ class TestBool:
         assert parser.describe_value(False) == "no"
         assert parser.describe_value_or_def(True) == "yes"
         assert parser.describe_value_or_def(False) == "no"
+
+    def test_json_schema(self):
+        parser = yuio.parse.Bool()
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.Boolean()
+        )
+        assert parser.to_json_value(True) == True
 
     def test_parse(self):
         parser = yuio.parse.Bool()
@@ -307,11 +342,11 @@ class TestEnum:
         assert parser.get_nargs() == None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == "Cats|Dogs|:3"
-        assert parser.describe_or_def() == "Cats|Dogs|:3"
-        assert parser.describe_many() == "Cats|Dogs|:3"
-        assert parser.describe_many_or_def() == "Cats|Dogs|:3"
-        assert parser.describe_value(self.Cuteness.BLAHAJ) == ":3"
+        assert parser.describe() is None
+        assert parser.describe_or_def() == "{Cats|Dogs|:3}"
+        assert parser.describe_many() is None
+        assert parser.describe_many_or_def() == "{Cats|Dogs|:3}"
+        assert parser.describe_value(self.Cuteness.BLAHAJ) == None
         assert parser.describe_value_or_def(self.Cuteness.BLAHAJ) == ":3"
 
     def test_basics_by_name(self):
@@ -320,18 +355,88 @@ class TestEnum:
         assert parser.get_nargs() == None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == "CATS|DOGS|BLAHAJ"
-        assert parser.describe_or_def() == "CATS|DOGS|BLAHAJ"
-        assert parser.describe_many() == "CATS|DOGS|BLAHAJ"
-        assert parser.describe_many_or_def() == "CATS|DOGS|BLAHAJ"
-        assert parser.describe_value(self.Cuteness.BLAHAJ) == "BLAHAJ"
+        assert parser.describe() is None
+        assert parser.describe_or_def() == "{CATS|DOGS|BLAHAJ}"
+        assert parser.describe_many() is None
+        assert parser.describe_many_or_def() == "{CATS|DOGS|BLAHAJ}"
+        assert parser.describe_value(self.Cuteness.BLAHAJ) == None
         assert parser.describe_value_or_def(self.Cuteness.BLAHAJ) == "BLAHAJ"
+
+    def test_json_schema_by_value(self):
+        parser = yuio.parse.Enum(self.Cuteness)
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref(
+            "#/$defs/test.test_parse.TestEnum.Cuteness",
+            "test.test_parse.TestEnum.Cuteness",
+        )
+        schema: _t.Any = ctx.render(res)
+        jsonschema.validate("Cats", schema)
+        jsonschema.validate("Dogs", schema)
+        jsonschema.validate(":3", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("what?", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("DOGS", schema)
+        assert parser.to_json_value(self.Cuteness.BLAHAJ) == ":3"
+
+    def test_json_schema_by_name(self):
+        parser = yuio.parse.Enum(self.Cuteness, by_name=True)
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref(
+            "#/$defs/test.test_parse.TestEnum.Cuteness",
+            "test.test_parse.TestEnum.Cuteness",
+        )
+        schema: _t.Any = ctx.render(res)
+        jsonschema.validate("CATS", schema)
+        jsonschema.validate("DOGS", schema)
+        jsonschema.validate("BLAHAJ", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("what?", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("Dogs", schema)
+        assert parser.to_json_value(self.Cuteness.BLAHAJ) == "BLAHAJ"
+
+    def test_json_schema_name_clash(self):
+        ctx = yuio.json_schema.JsonSchemaContext()
+        parser = yuio.parse.Enum(self.Cuteness)
+        assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
+            "#/$defs/test.test_parse.TestEnum.Cuteness",
+            "test.test_parse.TestEnum.Cuteness",
+        )
+
+        parser = yuio.parse.Enum(self.Cuteness, by_name=True)
+        assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
+            "#/$defs/test.test_parse.TestEnum.Cuteness2",
+            "test.test_parse.TestEnum.Cuteness2",
+        )
+
+        parser = yuio.parse.Enum(self.Cuteness, to_dash_case=True)
+        assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
+            "#/$defs/test.test_parse.TestEnum.Cuteness3",
+            "test.test_parse.TestEnum.Cuteness3",
+        )
+
+        parser = yuio.parse.Enum(self.Cuteness)
+        assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
+            "#/$defs/test.test_parse.TestEnum.Cuteness",
+            "test.test_parse.TestEnum.Cuteness",
+        )
+
+    def test_json_schema_inline(self):
+        parser = yuio.parse.Enum(self.Cuteness, doc_inline=True)
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.Enum(["Cats", "Dogs", ":3"])
 
     def test_by_value(self):
         parser = yuio.parse.Enum(self.Cuteness)
         assert parser.parse("CATS") is self.Cuteness.CATS
         assert parser.parse("CATS") is self.Cuteness.CATS
-        assert parser.parse_config("CATS") is self.Cuteness.CATS
+        assert parser.parse_config("Cats") is self.Cuteness.CATS
+        with pytest.raises(ValueError):
+            parser.parse_config("CATS")
         assert parser.parse("dogs") is self.Cuteness.DOGS
         assert parser.parse(":3") is self.Cuteness.BLAHAJ
         with pytest.raises(ValueError):
@@ -351,8 +456,19 @@ class TestEnum:
         with pytest.raises(ValueError, match="expected string"):
             parser.parse_config(10)
 
-        assert parser.describe() == "RED|GREEN|BLUE"
-        assert parser.describe_value(self.Colors.RED) == "RED"
+        assert parser.describe() == None
+        assert parser.describe_or_def() == "{RED|GREEN|BLUE}"
+        assert parser.describe_value(self.Colors.RED) == None
+        assert parser.describe_value_or_def(self.Colors.RED) == "RED"
+
+    def test_to_dash_case(self):
+        class Colors(enum.Enum):
+            RED = "RED"
+            GREEN_FORE = "GREEN_FORE"
+            GREEN_BACK = "GREEN_BACK"
+
+        parser = yuio.parse.Enum(Colors, to_dash_case=True)
+        assert parser.parse("green-fore") is Colors.GREEN_FORE
 
     def test_short(self):
         class Colors(enum.Enum):
@@ -364,11 +480,10 @@ class TestEnum:
         assert parser.parse("R") is Colors.RED
         assert parser.parse("r") is Colors.RED
         with pytest.raises(
-            ValueError, match="possible candidates are 'GREEN_FORE', 'GREEN_BACK'"
+            ValueError, match="possible candidates are GREEN_FORE, GREEN_BACK"
         ):
             parser.parse("G")
         assert parser.parse("GREEN_F") is Colors.GREEN_FORE
-        assert parser.parse_config("red") is Colors.RED
         with pytest.raises(ValueError, match="did you mean RED?"):
             parser.parse_config("r")
 
@@ -435,6 +550,21 @@ class TestDecimal:
         assert parser.describe_value(Decimal(10)) == None
         assert parser.describe_value_or_def(Decimal(10)) == "10"
 
+    def test_json_schema(self):
+        parser = yuio.parse.Decimal()
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref("#/$defs/Decimal", "Decimal")
+        schema: _t.Any = ctx.render(res)
+        jsonschema.validate(10, schema)
+        jsonschema.validate(10.5, schema)
+        jsonschema.validate("NaN", schema)
+        jsonschema.validate("sNaN", schema)
+        jsonschema.validate("-10e2", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("what?", schema)
+        assert parser.to_json_value(Decimal(10)) == "10"
+
     def test_parse(self):
         parser = yuio.parse.Decimal()
         assert parser.parse("1.5") == Decimal("1.5")
@@ -488,6 +618,22 @@ class TestFraction:
         assert parser.describe_many_or_def() == "<fraction>"
         assert parser.describe_value(Fraction(10)) == None
         assert parser.describe_value_or_def(Fraction(10)) == "10"
+
+    def test_json_schema(self):
+        parser = yuio.parse.Fraction()
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref("#/$defs/Fraction", "Fraction")
+        schema: _t.Any = ctx.render(res)
+        jsonschema.validate(10, schema)
+        jsonschema.validate(10.5, schema)
+        jsonschema.validate("NaN", schema)
+        jsonschema.validate("1/2", schema)
+        jsonschema.validate("-1/2", schema)
+        jsonschema.validate("-10e2", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("what?", schema)
+        assert parser.to_json_value(Fraction("2/3")) == "2/3"
 
     def test_parse(self):
         parser = yuio.parse.Fraction()
@@ -559,7 +705,11 @@ class TestJson:
         with pytest.raises(ValueError, match="unable to decode JSON"):
             parser.parse("x")
         assert isinstance(
-            yuio.parse.from_type_hint(yuio.parse.JsonValue), yuio.parse.Json
+            yuio.parse.from_type_hint(yuio.json_schema.JsonValue), yuio.parse.Json
+        )
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.Any()
         )
 
     def test_structured(self):
@@ -570,10 +720,13 @@ class TestJson:
             parser.parse("x")
         with pytest.raises(ValueError, match="expected list, got str"):
             parser.parse_config("[1, 2, 3]")
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.Array(yuio.json_schema.Integer())
 
     def test_from_type_hint_annotated_unstructured(self):
         parser = yuio.parse.from_type_hint(
-            _t.Annotated[yuio.parse.JsonValue, yuio.parse.Json()]
+            _t.Annotated[yuio.json_schema.JsonValue, yuio.parse.Json()]
         )
         assert parser.parse("1.5") == 1.5
 
@@ -588,7 +741,9 @@ class TestJson:
 
     def test_from_type_hint_annotated_shadowing(self):
         parser = yuio.parse.from_type_hint(
-            _t.Annotated[yuio.parse.JsonValue, yuio.parse.Json(), yuio.parse.Json()]
+            _t.Annotated[
+                yuio.json_schema.JsonValue, yuio.parse.Json(), yuio.parse.Json()
+            ]
         )
         assert parser.parse("[1, 2, 3]") == [1, 2, 3]
         assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
@@ -599,7 +754,9 @@ class TestJson:
             match="don't provide inner parser when using Json with type annotations",
         ):
             yuio.parse.from_type_hint(
-                _t.Annotated[yuio.parse.JsonValue, yuio.parse.Json(yuio.parse.Int())]
+                _t.Annotated[
+                    yuio.json_schema.JsonValue, yuio.parse.Json(yuio.parse.Int())
+                ]
             )
 
     def test_from_type_hint_annotated_structured(self):
@@ -627,6 +784,26 @@ class TestDateTime:
         assert (
             parser.describe_value_or_def(datetime.datetime(2025, 1, 1))
             == "2025-01-01 00:00:00"
+        )
+
+    def test_json_schema(self):
+        parser = yuio.parse.DateTime()
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref("#/$defs/DateTime", "DateTime")
+        schema: _t.Any = ctx.render(res)
+        jsonschema.validate("2025-01-01 15:00", schema)
+        jsonschema.validate("20250101T15:00", schema)
+        jsonschema.validate("2025-W10-2", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("what?", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("2025W10-2", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(10, schema)
+        assert (
+            parser.to_json_value(datetime.datetime(2025, 1, 1, 15))
+            == "2025-01-01 15:00:00"
         )
 
     def test_parse(self):
@@ -698,6 +875,23 @@ class TestDate:
         assert parser.describe_value(datetime.date(2025, 1, 1)) == None
         assert parser.describe_value_or_def(datetime.date(2025, 1, 1)) == "2025-01-01"
 
+    def test_json_schema(self):
+        parser = yuio.parse.Date()
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref("#/$defs/Date", "Date")
+        schema: _t.Any = ctx.render(res)
+        jsonschema.validate("2025-01-01", schema)
+        jsonschema.validate("20250101", schema)
+        jsonschema.validate("2025-W10-2", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("what?", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("2025W10-2", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(10, schema)
+        assert parser.to_json_value(datetime.date(2025, 1, 1)) == "2025-01-01"
+
     def test_parse(self):
         parser = yuio.parse.Date()
 
@@ -759,6 +953,23 @@ class TestTime:
         assert parser.describe_value(datetime.time()) == None
         assert parser.describe_value_or_def(datetime.time()) == "00:00:00"
 
+    def test_json_schema(self):
+        parser = yuio.parse.Time()
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref("#/$defs/Time", "Time")
+        schema: _t.Any = ctx.render(res)
+        jsonschema.validate("15:00", schema)
+        jsonschema.validate("15:00:00.123432Z", schema)
+        jsonschema.validate("15:00:00-02", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("what?", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("15:00:00-02Z", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(10, schema)
+        assert parser.to_json_value(datetime.time(15, 00)) == "15:00:00"
+
     def test_parse(self):
         parser = yuio.parse.Time()
 
@@ -817,6 +1028,25 @@ class TestTimeDelta:
         assert parser.describe_many_or_def() == "<time-delta>"
         assert parser.describe_value(datetime.timedelta(hours=10)) == None
         assert parser.describe_value_or_def(datetime.timedelta(hours=10)) == "10:00:00"
+
+    def test_json_schema(self):
+        parser = yuio.parse.TimeDelta()
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref("#/$defs/TimeDelta", "TimeDelta")
+        schema: _t.Any = ctx.render(res)
+        jsonschema.validate("1day", schema)
+        jsonschema.validate("-1 day", schema)
+        jsonschema.validate("2 weeks 1 day 15:00:00", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("what?", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate("2 weeks 1 day,", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(", 15:00:00", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(10, schema)
+        assert parser.to_json_value(datetime.timedelta(1, 25)) == "1 day, 0:00:25"
 
     def test_parse(self):
         parser = yuio.parse.TimeDelta()
@@ -938,6 +1168,14 @@ class TestPath:
         assert parser.describe_value(pathlib.Path("/")) == None
         assert parser.describe_value_or_def(pathlib.Path("/")) == os.path.sep
 
+    def test_json_schema(self):
+        parser = yuio.parse.Path()
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.String()
+        )
+        assert parser.to_json_value(pathlib.Path("/")) == "/"
+
     def test_parse(
         self,
     ):
@@ -987,10 +1225,10 @@ class TestPath:
     def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(pathlib.Path), yuio.parse.Path)
         assert isinstance(
-            yuio.parse.from_type_hint(_t.Union[pathlib.Path, str]), yuio.parse.Path
+            yuio.parse.from_type_hint(pathlib.Path | str), yuio.parse.Path
         )
         assert isinstance(
-            yuio.parse.from_type_hint(_t.Union[str, pathlib.Path]), yuio.parse.Path
+            yuio.parse.from_type_hint(str | pathlib.Path), yuio.parse.Path
         )
 
     def test_from_type_hint_annotated(self):
@@ -1330,8 +1568,14 @@ class TestOneOf:
 
 
 class TestMap:
+    @dataclass
+    class Wrapper:
+        value: _t.Any
+
     def test_basics(self):
-        parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x)
+        parser = yuio.parse.Map(
+            yuio.parse.Int(), TestMap.Wrapper, lambda wrapped: wrapped.value
+        )
         assert not parser.supports_parse_many()
         assert parser.get_nargs() == None
         with pytest.raises(RuntimeError):
@@ -1340,20 +1584,41 @@ class TestMap:
         assert parser.describe_or_def() == "<int>"
         assert parser.describe_many() == None
         assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(10) == None
-        assert parser.describe_value_or_def(10) == "10"
+        assert parser.describe_value(TestMap.Wrapper(10)) == None
+        assert parser.describe_value_or_def(TestMap.Wrapper(10)) == "10"
 
     def test_basics_collection(self):
-        parser = yuio.parse.Map(yuio.parse.List(yuio.parse.Int()), lambda x: x)
+        parser = yuio.parse.Map(
+            yuio.parse.List(yuio.parse.Int()),
+            TestMap.Wrapper,
+            lambda wrapped: wrapped.value,
+        )
         assert parser.supports_parse_many()
         assert parser.get_nargs() == "*"
-        assert parser.parse_many(["1", "2", "3"]) == [1, 2, 3]
+        assert parser.parse_many(["1", "2", "3"]) == TestMap.Wrapper([1, 2, 3])
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
         assert parser.describe_many() == None
         assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value([]) == ""
-        assert parser.describe_value_or_def([]) == ""
+        assert parser.describe_value(TestMap.Wrapper([])) == ""
+        assert parser.describe_value_or_def(TestMap.Wrapper([])) == ""
+
+    def test_same_type(self):
+        parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2)
+        assert parser.describe_value(20) == None
+        assert parser.describe_value_or_def(20) == "20"
+
+        parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2, lambda x: x // 2)
+        assert parser.describe_value(20) == None
+        assert parser.describe_value_or_def(20) == "10"
+
+    def test_json_schema(self):
+        parser = yuio.parse.Map(yuio.parse.Bool(), lambda x: not x, lambda x: not x)
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.Boolean()
+        )
+        assert parser.to_json_value(True) == False
 
     def test_parse(self):
         parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2)
@@ -1409,6 +1674,14 @@ class TestApply:
         assert parser.describe_many_or_def() == "<int>"
         assert parser.describe_value([]) == ""
         assert parser.describe_value_or_def([]) == ""
+
+    def test_json_schema(self):
+        parser = yuio.parse.Apply(yuio.parse.Int(), lambda x: None)
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.Integer()
+        )
+        assert parser.to_json_value(10) == 10
 
     def test_parse(self):
         value = None
@@ -1485,6 +1758,16 @@ class TestSimpleCollections:
         with pytest.raises(yuio.parse.ParsingError, match="expected .*?, got int"):
             parser.parse_config(123)
 
+    def test_json_schema(self, test_params):
+        parser_cls, ctor = test_params
+        parser = parser_cls(yuio.parse.Int())
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.Array(
+            yuio.json_schema.Integer(), unique_items=issubclass(ctor, (set, frozenset))
+        )
+        assert parser.to_json_value(ctor([1, 2, 3])) == [1, 2, 3]
+
     def test_delim(self, test_params):
         parser_cls, ctor = test_params
 
@@ -1554,6 +1837,23 @@ class TestSimpleCollections:
 
 
 class TestDict:
+    def test_json_schema(self):
+        parser = yuio.parse.Dict(yuio.parse.Str(), yuio.parse.Int())
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.Dict(
+            yuio.json_schema.String(), yuio.json_schema.Integer()
+        )
+        assert parser.to_json_value({"x": 1}) == {"x": 1}
+
+        parser = yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Str())
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.Dict(
+            yuio.json_schema.Integer(), yuio.json_schema.String()
+        )
+        assert parser.to_json_value({1: "x"}) == [[1, "x"]]
+
     def test_parse(self):
         parser = yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Str())
         assert parser.supports_parse_many()
@@ -1601,12 +1901,12 @@ class TestDict:
 
     def test_from_type_hint_annotated(self):
         parser = yuio.parse.from_type_hint(
-            _t.Annotated[_t.Dict[int, str], yuio.parse.Dict()]
+            _t.Annotated[dict[int, str], yuio.parse.Dict()]
         )
         assert parser.parse("1:a 2:b") == {1: "a", 2: "b"}
         parser = yuio.parse.from_type_hint(
             _t.Annotated[
-                _t.Dict[int, str], yuio.parse.Dict(delimiter=",", pair_delimiter="-")
+                dict[int, str], yuio.parse.Dict(delimiter=",", pair_delimiter="-")
             ]
         )
         assert parser.parse("1-a,2-b") == {1: "a", 2: "b"}
@@ -1617,7 +1917,7 @@ class TestDict:
             match="annotating a type with Dict will override all previous annotations",
         ):
             yuio.parse.from_type_hint(
-                _t.Annotated[_t.Dict[int, str], yuio.parse.Dict(), yuio.parse.Dict()]
+                _t.Annotated[dict[int, str], yuio.parse.Dict(), yuio.parse.Dict()]
             )
 
     def test_from_type_hint_annotated_wrong_type(self):
@@ -1637,7 +1937,7 @@ class TestDict:
         ):
             yuio.parse.from_type_hint(
                 _t.Annotated[
-                    _t.Dict[str, int],
+                    dict[str, int],
                     yuio.parse.Dict(yuio.parse.Str(), yuio.parse.Int()),
                 ]
             )
@@ -1658,6 +1958,16 @@ class TestOptional:
         assert parser.describe_value_or_def(10) == "10"
         assert parser.describe_value(None) == "<none>"
         assert parser.describe_value_or_def(None) == "<none>"
+
+    def test_json_schema(self):
+        parser = yuio.parse.Optional(yuio.parse.Int())
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.OneOf(
+            [yuio.json_schema.Integer(), yuio.json_schema.Null()]
+        )
+        assert parser.to_json_value(None) is None
+        assert parser.to_json_value(10) == 10
 
     def test_basics_collection(self):
         parser = yuio.parse.Optional(yuio.parse.List(yuio.parse.Int()))
@@ -1687,7 +1997,7 @@ class TestOptional:
 
     def test_from_type_hint_annotated(self):
         parser = yuio.parse.from_type_hint(
-            _t.Annotated[_t.List[int], yuio.parse.Optional()]
+            _t.Annotated[list[int], yuio.parse.Optional()]
         )
         assert parser.parse_config(None) == None
         assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
@@ -1709,12 +2019,31 @@ class TestUnion:
         assert parser.get_nargs() == None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == "<int>|<str>"
-        assert parser.describe_or_def() == "<int>|<str>"
-        assert parser.describe_many() == "<int>|<str>"
-        assert parser.describe_many_or_def() == "<int>|<str>"
+        assert parser.describe() == "{<int>|<str>}"
+        assert parser.describe_or_def() == "{<int>|<str>}"
+        assert parser.describe_many() == "{<int>|<str>}"
+        assert parser.describe_many_or_def() == "{<int>|<str>}"
         assert parser.describe_value(10) == None
         assert parser.describe_value_or_def(10) == "10"
+
+    def test_json_schema(self):
+        parser = yuio.parse.Union(
+            yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2, lambda x: x // 2),
+            yuio.parse.Date(),
+            yuio.parse.Str(),
+        )
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.OneOf(
+            [
+                yuio.json_schema.Integer(),
+                yuio.json_schema.Ref("#/$defs/Date", "Date"),
+                yuio.json_schema.String(),
+            ]
+        )
+        assert parser.to_json_value("10") == "10"
+        assert parser.to_json_value(datetime.date(2024, 1, 1)) == "2024-01-01"
+        assert parser.to_json_value(10) == 5
 
     def test_parse(self):
         parser = yuio.parse.Union(
@@ -1737,9 +2066,7 @@ class TestUnion:
             parser.parse("asd")  # type: ignore
 
     def test_from_type_hint_annotated(self):
-        parser = yuio.parse.from_type_hint(
-            _t.Annotated[_t.Union[int, str], yuio.parse.Union()]
-        )
+        parser = yuio.parse.from_type_hint(_t.Annotated[int | str, yuio.parse.Union()])
         assert parser.parse("10") == 10
         assert parser.parse("foo") == "foo"
 
@@ -1760,7 +2087,7 @@ class TestUnion:
         ):
             yuio.parse.from_type_hint(
                 _t.Annotated[
-                    _t.Union[int, str],
+                    int | str,
                     yuio.parse.Union(yuio.parse.Int(), yuio.parse.Str()),
                 ]
             )

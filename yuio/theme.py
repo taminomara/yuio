@@ -59,6 +59,7 @@ Use the following loader to create an instance of the default theme:
 .. autoclass:: DefaultTheme
 
 """
+from __future__ import annotations
 
 import dataclasses
 import functools
@@ -73,7 +74,7 @@ T = _t.TypeVar("T")
 
 
 class _ImmutableDictProxy(_t.Mapping[str, T], _t.Generic[T]):
-    def __init__(self, data: _t.Dict[str, T], /, *, attr: str):
+    def __init__(self, data: dict[str, T], /, *, attr: str):
         self.__data = data
         self.__attr = attr
 
@@ -143,10 +144,10 @@ class Theme:
     #: An actual mutable version of :attr:`~Theme.msg_decorations`
     #: is kept here, because `__init_subclass__` will replace
     #: :attr:`~Theme.msg_decorations` with an immutable proxy.
-    __msg_decorations: _t.Dict[str, str]
+    __msg_decorations: dict[str, str]
     #: Keeps track of where a message decoration was inherited from. This var is used
     #: to avoid `__init__`-ing message decorations that were overridden in a subclass.
-    __msg_decoration_sources: _t.Dict[str, _t.Optional[type]] = {}
+    __msg_decoration_sources: dict[str, type | None] = {}
 
     #: Width of a progress bar for :class:`yuio.io.Task`.
     progress_bar_width: int = 15
@@ -229,7 +230,7 @@ class Theme:
     #: This mapping becomes immutable once a theme class is created. The only possible
     #: way to modify it is by using :meth:`~Theme.set_color`
     #: or :meth:`~Theme._set_color_if_not_overridden`.
-    colors: _t.Mapping[str, _t.Union[str, Color, _t.List[_t.Union[str, Color]]]] = {
+    colors: _t.Mapping[str, str | Color | list[str | Color]] = {
         "code": "magenta",
         "note": "green",
         "bold": Color.STYLE_BOLD,
@@ -249,10 +250,10 @@ class Theme:
     #: An actual mutable version of :attr:`~Theme.colors`
     #: is kept here, because `__init_subclass__` will replace
     #: :attr:`~Theme.colors` with an immutable proxy.
-    __colors: _t.Dict[str, _t.Union[str, Color, _t.List[_t.Union[str, Color]]]]
+    __colors: dict[str, str | Color | list[str | Color]]
     #: Keeps track of where a color was inherited from. This var is used
     #: to avoid `__init__`-ing colors that were overridden in a subclass.
-    __color_sources: _t.Dict[str, _t.Optional[type]] = {}
+    __color_sources: dict[str, type | None] = {}
 
     #: When running an `__init__` function, this variable will be set to the class
     #: that implemented it, regardless of type of `self`.
@@ -262,7 +263,7 @@ class Theme:
     #:
     #: This is possible because `__init_subclass__` wraps any implementation
     #: of `__init__` into a wrapper that sets this variable.
-    __expected_source: _t.Optional[type] = None
+    __expected_source: type | None = None
 
     def __init__(self):
         pass
@@ -364,7 +365,7 @@ class Theme:
     def _set_color_if_not_overridden(
         self,
         path: str,
-        color: _t.Union[str, Color, _t.List[_t.Union[str, Color]]],
+        color: str | Color | list[str | Color],
         /,
     ):
         """Set color by path, but only if the color was not overridden in a subclass.
@@ -388,7 +389,7 @@ class Theme:
     def set_color(
         self,
         path: str,
-        color: _t.Union[str, Color, _t.List[_t.Union[str, Color]]],
+        color: str | Color | list[str | Color],
         /,
     ):
         """Set color by path."""
@@ -410,16 +411,16 @@ class Theme:
         """
 
         #: Colors in this node.
-        colors: _t.Union[str, Color, _t.List[_t.Union[str, Color]]] = Color.NONE
+        colors: str | Color | list[str | Color] = Color.NONE
 
         #: Location part of the tree.
-        loc: _t.Dict[str, "Theme.__ColorTree"] = dataclasses.field(default_factory=dict)
+        loc: dict[str, Theme.__ColorTree] = dataclasses.field(default_factory=dict)
 
         #: Context part of the tree.
-        ctx: _t.Dict[str, "Theme.__ColorTree"] = dataclasses.field(default_factory=dict)
+        ctx: dict[str, Theme.__ColorTree] = dataclasses.field(default_factory=dict)
 
     @functools.cached_property
-    def __color_tree(self) -> "Theme.__ColorTree":
+    def __color_tree(self) -> Theme.__ColorTree:
         root = self.__ColorTree()
 
         for path, colors in self.__colors.items():
@@ -442,7 +443,7 @@ class Theme:
         return root
 
     @staticmethod
-    def __parse_path(path: str, /) -> _t.Tuple[_t.List[str], _t.List[str]]:
+    def __parse_path(path: str, /) -> tuple[list[str], list[str]]:
         path_parts = path.split(":", maxsplit=1)
         if len(path_parts) == 1:
             loc, ctx = path_parts[0], ""
@@ -451,7 +452,7 @@ class Theme:
         return loc.split("/") if loc else [], ctx.split("/") if ctx else []
 
     @_t.final
-    @functools.lru_cache(maxsize=None)
+    @functools.cache
     def get_color(self, path: str, /) -> Color:
         """Lookup a color by path."""
 
@@ -459,7 +460,7 @@ class Theme:
         return self.__get_color_in_loc(self.__color_tree, loc, ctx)
 
     def __get_color_in_loc(
-        self, node: "Theme.__ColorTree", loc: _t.List[str], ctx: _t.List[str]
+        self, node: Theme.__ColorTree, loc: list[str], ctx: list[str]
     ):
         color = Color.NONE
 
@@ -471,7 +472,7 @@ class Theme:
 
         return color | self.__get_color_in_ctx(node, ctx)
 
-    def __get_color_in_ctx(self, node: "Theme.__ColorTree", ctx: _t.List[str]):
+    def __get_color_in_ctx(self, node: Theme.__ColorTree, ctx: list[str]):
         color = Color.NONE
 
         for part in ctx:
@@ -482,7 +483,7 @@ class Theme:
 
         return color | self.__get_color_in_node(node)
 
-    def __get_color_in_node(self, node: "Theme.__ColorTree") -> Color:
+    def __get_color_in_node(self, node: Theme.__ColorTree) -> Color:
         color = Color.NONE
 
         if isinstance(node.colors, str):
@@ -495,7 +496,7 @@ class Theme:
 
         return color
 
-    def to_color(self, color_or_path: _t.Union[Color, str, None]) -> Color:
+    def to_color(self, color_or_path: Color | str | None) -> Color:
         """
         Convert color or color path to color.
 
@@ -555,7 +556,6 @@ class DefaultTheme(Theme):
         # Common tags
         # -----------
         "code": "accent_color",
-        "fenced_code": "code",
         "note": "accent_color_2",
         "path": "accent_color",
         #
@@ -570,7 +570,8 @@ class DefaultTheme(Theme):
         "msg/text:question": "heading_color",
         "msg/text:error": "error_color",
         "msg/text:warning": "warning_color",
-        "msg/text:success": "success_color",
+        "msg/text:success": ["bold", "success_color"],
+        "msg/text:failure": ["bold", "error_color"],
         "msg/text:info": "primary_color",
         "msg/text:thematic_break": "secondary_color",
         #
@@ -609,7 +610,7 @@ class DefaultTheme(Theme):
         "hl/comment": "secondary_color",
         "hl/prog": "bold",
         "hl/flag": "accent_color_2",
-        "hl/meta:diff": ["bold", "accent_color"],
+        "hl/meta:diff": "accent_color",
         "hl/added:diff": "green",
         "hl/removed:diff": "red",
         "hl/metavar": "bold",
@@ -722,16 +723,16 @@ def load(term: Term, /) -> Theme:
     import yuio.config
 
     class ThemeData(yuio.config.Config):
-        progress_bar_width: _t.Optional[int] = None
-        progress_bar_start_symbol: _t.Optional[str] = None
-        progress_bar_end_symbol: _t.Optional[str] = None
-        progress_bar_done_symbol: _t.Optional[str] = None
-        progress_bar_pending_symbol: _t.Optional[str] = None
-        spinner_pattern: _t.Optional[str] = None
-        spinner_update_rate_ms: _t.Optional[int] = None
-        spinner_static_symbol: _t.Optional[str] = None
-        msg_decorations: _t.Optional[_t.Dict[str, str]] = None
-        colors: _t.Optional[_t.Dict[str, str]] = None
+        progress_bar_width: int | None = None
+        progress_bar_start_symbol: str | None = None
+        progress_bar_end_symbol: str | None = None
+        progress_bar_done_symbol: str | None = None
+        progress_bar_pending_symbol: str | None = None
+        spinner_pattern: str | None = None
+        spinner_update_rate_ms: int | None = None
+        spinner_static_symbol: str | None = None
+        msg_decorations: dict[str, str] | None = None
+        colors: dict[str, str] | None = None
 
     theme_data = ThemeData.load_from_json_file(path)
 
