@@ -4208,6 +4208,9 @@ class WithDesc(MappingParser[T, T], _t.Generic[T]):
         self.__desc = desc
         super().__init__(inner)
 
+    def check_type(self, value: object) -> _t.TypeGuard[T]:
+        return self._inner.check_type(value)
+
     def describe(self) -> str | None:
         return self.__desc or self._inner.describe()
 
@@ -4219,6 +4222,12 @@ class WithDesc(MappingParser[T, T], _t.Generic[T]):
 
     def describe_many_or_def(self) -> str | tuple[str, ...]:
         return self.__desc or self._inner.describe_many_or_def()
+
+    def describe_value(self, value: object) -> str | None:
+        return self._inner.describe_value(value)
+
+    def describe_value_or_def(self, value: object) -> str:
+        return self._inner.describe_value_or_def(value)
 
     def parse(self, value: str, /) -> T:
         return self._inner.parse(value)
@@ -4240,6 +4249,9 @@ class WithDesc(MappingParser[T, T], _t.Generic[T]):
         /,
     ) -> yuio.widget.Widget[T | yuio.Missing]:
         return self._inner.widget(default, input_description, default_description)
+
+    def to_json_value(self, value: object) -> yuio.json_schema.JsonValue:
+        return self._inner.to_json_value(value)
 
 
 class _WidgetResultMapper(yuio.widget.Map[T | yuio.Missing, str]):
