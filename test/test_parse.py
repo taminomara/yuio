@@ -1174,7 +1174,7 @@ class TestPath:
             parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
             == yuio.json_schema.String()
         )
-        assert parser.to_json_value(pathlib.Path("/")) == "/"
+        assert parser.to_json_value(pathlib.Path("path")) == "path"
 
     def test_parse(
         self,
