@@ -71,7 +71,7 @@ env_list = ["3.14", "3.13", "3.12", "3.11", "3.10", "type", "lint"]
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"
 dependency_groups = ["test"]
-commands = [["pytest"]]
+commands = [["pytest", "--color=yes"]]
 
 [tool.tox.env.type]
 description = "Run type check"
@@ -82,7 +82,7 @@ commands = [["pyright"]]
 description = "Run pre-commit hooks"
 skip_install = true
 dependency_groups = ["lint"]
-commands = [["pre-commit", "run", "--all"]]
+commands = [["pre-commit", "run", "--all", "--color=always"]]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
