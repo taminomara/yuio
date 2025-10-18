@@ -34,8 +34,9 @@ test = [
     "pyright==1.1.406",
     "pytest==8.4.2",
     "sybil==9.2.0",
-    "PyYaml~=6.0",
-    "toml~=0.10",
+    "PyYaml==6.0.3",
+    "toml==0.10.2",
+    "jsonschema==4.25.1",
 ]
 doc = [
     "sybil==9.2.0",
