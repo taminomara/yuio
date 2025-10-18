@@ -31,7 +31,7 @@ dev = [
     {include-group = "doc"},
 ]
 test = [
-    "tox==4.31.0",
+    "tox==4.30.3",
     "pyright==1.1.406",
     "pytest==8.4.2",
     "sybil==9.2.0",
@@ -46,7 +46,7 @@ doc = [
     "sphinx-vhs==1.2.0",
 ]
 lint = [
-    "tox==4.31.0",
+    "tox==4.30.3",
     "black==25.1.0",
     "isort==6.0.1",
     "pre-commit==4.3.0",
