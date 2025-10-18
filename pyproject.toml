@@ -68,7 +68,7 @@ testpaths = ["examples", "test", "yuio", "docs"]
 
 [tool.pyright]
 include = ["yuio", "examples"]
-exclude = ["**/__pycache__"]
+exclude = ["**/__pycache__", "yuio/_version.py"]
 typeCheckingMode = "strict"
 pythonVersion = "3.12"
 pythonPlatform = "All"
