@@ -31,6 +31,7 @@ dev = [
     {include-group = "doc"},
 ]
 test = [
+    "tox==4.31.0",
     "pyright==1.1.406",
     "pytest==8.4.2",
     "sybil==9.2.0",
@@ -45,6 +46,7 @@ doc = [
     "sphinx-vhs==1.2.0",
 ]
 lint = [
+    "tox==4.31.0",
     "black==25.1.0",
     "isort==6.0.1",
     "pre-commit==4.3.0",
@@ -62,6 +64,26 @@ requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel>=0.40"]
 [tool.setuptools_scm]
 write_to = "yuio/_version.py"
 
+[tool.tox]
+requires = ["tox>=4"]
+env_list = ["3.14", "3.13", "3.12", "3.11", "3.10", "type", "lint"]
+
+[tool.tox.env_run_base]
+description = "Run tests under {base_python}"
+dependency_groups = ["test"]
+commands = [["pytest"]]
+
+[tool.tox.env.type]
+description = "Run type check"
+dependency_groups = ["test"]
+commands = [["pyright"]]
+
+[tool.tox.env.lint]
+description = "Run pre-commit hooks"
+skip_install = true
+dependency_groups = ["lint"]
+commands = [["pre-commit", "run", "--all"]]
+
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = ["--strict-markers", "-p no:doctest"]
@@ -71,7 +93,7 @@ testpaths = ["examples", "test", "yuio", "docs"]
 include = ["yuio", "examples"]
 exclude = ["**/__pycache__", "yuio/_version.py", "yuio/_sphinx.py"]
 typeCheckingMode = "strict"
-pythonVersion = "3.12"
+pythonVersion = "3.10"
 pythonPlatform = "All"
 
 reportMissingParameterType = "none"

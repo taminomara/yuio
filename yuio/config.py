@@ -1184,7 +1184,7 @@ class Config:
             import toml
         except ImportError:
             try:
-                import tomllib as toml
+                import tomllib as toml  # type: ignore
             except ImportError:
                 raise ImportError("toml is not available")
 

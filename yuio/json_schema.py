@@ -350,7 +350,7 @@ class Tuple(JsonSchemaType):
         )
 
     def pprint(self) -> str:
-        return f"[{", ".join(item.pprint() for item in self.items)}]"
+        return f"[{', '.join(item.pprint() for item in self.items)}]"
 
 
 @dataclass(frozen=True, **yuio._with_slots())
