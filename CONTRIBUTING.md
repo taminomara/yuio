@@ -46,6 +46,12 @@ pytest --cov=yuio --cov-report=html  # Generate coverage.
 open ./htmlcov/index.html  # Open the generated page.
 ```
 
+To test across all supported interpreters, run `tox`:
+
+```shell
+tox p
+```
+
 
 ## Build docs
 
