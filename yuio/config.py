@@ -1026,10 +1026,10 @@ class Config:
                     mutex_groups[field.group] = group.add_mutually_exclusive_group()
                 field_group = mutex_groups[field.group]
             else:
-                field_group = group
+                field_group = None
 
             if flags is yuio.POSITIONAL:
-                field_group.add_argument(
+                (field_group or group).add_argument(
                     dest,
                     default=yuio.MISSING,
                     help=help,
@@ -1038,7 +1038,7 @@ class Config:
                     **nargs_kw,
                 )
             elif yuio.parse._is_bool_parser(field.parser):
-                mutex_group = field_group.add_mutually_exclusive_group(
+                mutex_group = field_group or group.add_mutually_exclusive_group(
                     required=field.required
                 )
 
@@ -1081,7 +1081,7 @@ class Config:
                         )
                         break
             else:
-                field_group.add_argument(
+                (field_group or group).add_argument(
                     *flags,
                     default=yuio.MISSING,
                     help=help,
