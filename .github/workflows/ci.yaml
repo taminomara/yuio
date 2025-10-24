@@ -145,8 +145,8 @@ jobs:
 
   update_release_branches:
     name: Update partial version branches
-    # needs:
-    #   - publish_to_pypi
+    needs:
+      - publish_to_pypi
     if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
     runs-on: ubuntu-latest
     permissions:
