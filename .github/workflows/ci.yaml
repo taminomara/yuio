@@ -34,6 +34,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Set up python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.13
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install . --group ci
       # Tests
       - name: Set up pythons
         if: ${{ matrix.type == 'test' }}
@@ -45,21 +51,10 @@ jobs:
             3.12
             3.13
             3.14
-      - name: Install test dependencies
-        if: ${{ matrix.type == 'test' }}
-        run: python -m pip install --upgrade pip && python -m pip install . --group test
       - name: Test package
         if: ${{ matrix.type == 'test' }}
         run: tox --skip-env lint --colored yes
       # Lint
-      - name: Set up python 3.13
-        if: ${{ matrix.type == 'code style' }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.13
-      - name: Install lint dependencies
-        if: ${{ matrix.type == 'code style' }}
-        run: python -m pip install --upgrade pip && python -m pip install . --group lint
       - name: Check code style
         if: ${{ matrix.type == 'code style' }}
         run: tox -e lint --colored yes
