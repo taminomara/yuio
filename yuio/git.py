@@ -324,7 +324,7 @@ class Repo:
             self.git("rev-parse", "--path-format=absolute", "--show-toplevel")
             .decode()
             .strip()
-        )
+        ).resolve()
 
     @functools.cached_property
     def git_dir(self) -> pathlib.Path:
@@ -337,7 +337,7 @@ class Repo:
             self.git("rev-parse", "--path-format=absolute", "--git-dir")
             .decode()
             .strip()
-        )
+        ).resolve()
 
     def status(
         self, /, include_ignored: bool = False, include_submodules: bool = True

@@ -36,7 +36,7 @@ def git_env(monkeypatch):
 @pytest.fixture()
 def repo_base():
     with tempfile.TemporaryDirectory() as base_s:
-        base = pathlib.Path(base_s)
+        base = pathlib.Path(base_s).resolve()
 
         template = base / "template"
         template.mkdir()
