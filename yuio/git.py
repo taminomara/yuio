@@ -613,10 +613,12 @@ class Repo:
             commit = next(lines)
             author = next(lines)
             author_email = next(lines)
-            author_datetime = datetime.fromisoformat(next(lines))
+            author_datetime = datetime.fromisoformat(next(lines).replace("Z", "+00:00"))
             committer = next(lines)
             committer_email = next(lines)
-            committer_datetime = datetime.fromisoformat(next(lines))
+            committer_datetime = datetime.fromisoformat(
+                next(lines).replace("Z", "+00:00")
+            )
             tags = next(lines).split()
             title = next(lines)
             body = ""
