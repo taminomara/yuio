@@ -715,11 +715,15 @@ class Repo:
 
         """
 
-        return (
-            self.git("for-each-ref", "--format=%(refname:short)", "refs/remotes")
+        return [
+            remote
+            for remote in self.git(
+                "for-each-ref", "--format=%(refname:short)", "refs/remotes"
+            )
             .decode()
             .splitlines()
-        )
+            if "/" in remote
+        ]
 
 
 @dataclass
