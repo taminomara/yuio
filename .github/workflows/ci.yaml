@@ -122,10 +122,6 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
@@ -146,41 +142,3 @@ jobs:
             ${{ needs.build.outputs.changes }}
 
             [See release on PyPi](${{ needs.build.outputs.link }})
-
-  update_release_branches:
-    name: Update partial version branches
-    needs:
-      - publish_to_pypi
-    if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
-    runs-on: ubuntu-latest
-    environment:
-      name: release-anchors
-    permissions:
-      contents: write
-    steps:
-      - name: Export deploy key
-        run: |
-          mkdir ~/.ssh
-          printenv DEPLOY_KEY > ~/.ssh/deploy_key
-          chmod 400 ~/.ssh/deploy_key
-          ssh-keygen -l -f ~/.ssh/deploy_key
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up python 3.13
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.13
-      - name: Update pip
-        run: python -m pip install --upgrade pip
-      - name: Install CI dependencies
-        run: python -m pip install . --group ci
-      - name: Export deploy key
-        run: ssh-add - <<< "${DEPLOY_KEY}"
-      - name: Update branches
-        run: python scripts/update_branches --push ${{ github.event.ref }}
-        env:
-          GIT_SSH_COMMAND: "ssh -vvv -i ~/.ssh/deploy_key -o IdentitiesOnly=yes"

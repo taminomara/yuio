@@ -1,13 +1,16 @@
 # Changelog
 
-
 ## [Unreleased]
 
-## [2.0.0-beta.4] - 2025-10-12
+## [2.0.0-beta.5] - 2025-10-24
 
 Incomplete beta release.
 
-## [2.0.0-beta.3] - 2025-10-12
+## [2.0.0-beta.4] - 2025-10-18
+
+Incomplete beta release.
+
+## [2.0.0-beta.3] - 2025-10-18
 
 Incomplete beta release.
 
@@ -50,4 +53,7 @@ Outdated release.
 [2.0.0-beta.0]: https://github.com/taminomara/yuio/compare/v1.1.0...v2.0.0-beta.0
 [2.0.0-beta.1]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.0...v2.0.0-beta.1
 [2.0.0-beta.2]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.1...v2.0.0-beta.2
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.2...HEAD
+[2.0.0-beta.3]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.2...v2.0.0-beta.3
+[2.0.0-beta.4]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.3...v2.0.0-beta.4
+[2.0.0-beta.5]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.4...v2.0.0-beta.5
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-beta.5...HEAD
