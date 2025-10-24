@@ -215,13 +215,40 @@ import yuio.term
 import yuio.theme
 import yuio.widget
 from yuio import _typing as _t
-from yuio.term import Color, Term
-from yuio.theme import Theme
-from yuio.widget import RenderContext
+
+__all__ = [
+    "UserIoError",
+    "setup",
+    "get_term",
+    "get_theme",
+    "wrap_streams",
+    "restore_streams",
+    "streams_wrapped",
+    "orig_stderr",
+    "orig_stdout",
+    "info",
+    "warning",
+    "success",
+    "error",
+    "error_with_tb",
+    "failure",
+    "failure_with_tb",
+    "heading",
+    "md",
+    "br",
+    "raw",
+    "ask",
+    "wait_for_user",
+    "detect_editor",
+    "edit",
+    "SuspendOutput",
+    "Task",
+    "Handler",
+]
 
 T = _t.TypeVar("T")
-U = _t.TypeVar("U")
-Cb = _t.TypeVar("Cb", bound=_t.Callable[..., None])
+M = _t.TypeVar("M", default=_t.Never)
+S = _t.TypeVar("S", default=str)
 
 _ExcInfo: _t.TypeAlias = tuple[
     type[BaseException] | None,
@@ -247,13 +274,23 @@ def _manager() -> _IoManager:
     return _IO_MANAGER
 
 
+class UserIoError(IOError):
+    """
+    Raised when interaction with user fails.
+
+    """
+
+
 def setup(
     *,
-    term: Term | None = None,
-    theme: Theme | _t.Callable[[Term], Theme] | None = None,
+    term: yuio.term.Term | None = None,
+    theme: (
+        yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
+    ) = None,
     wrap_stdio: bool = True,
 ):
-    """Initial setup of the logging facilities.
+    """
+    Initial setup of the logging facilities.
 
     :param term:
         terminal that will be used for output.
@@ -293,8 +330,9 @@ def setup(
         wrap_streams()
 
 
-def get_term() -> Term:
-    """Get the global instance of :class:`~yuio.term.Term` that is used
+def get_term() -> yuio.term.Term:
+    """
+    Get the global instance of :class:`~yuio.term.Term` that is used
     with :mod:`yuio.io`.
 
     If global setup wasn't performed, this function implicitly performs it.
@@ -304,8 +342,9 @@ def get_term() -> Term:
     return _manager().term
 
 
-def get_theme() -> Theme:
-    """Get the global instance of :class:`~yuio.theme.Theme`
+def get_theme() -> yuio.theme.Theme:
+    """
+    Get the global instance of :class:`~yuio.theme.Theme`
     that is used with :mod:`yuio.io`.
 
     If global setup wasn't performed, this function implicitly performs it.
@@ -316,7 +355,8 @@ def get_theme() -> Theme:
 
 
 def wrap_streams():
-    """Wrap :data:`sys.stdout` and :data:`sys.stderr` so that they honor
+    """
+    Wrap :data:`sys.stdout` and :data:`sys.stderr` so that they honor
     Yuio tasks and widgets.
 
     .. note::
@@ -346,7 +386,8 @@ def wrap_streams():
 
 
 def restore_streams():
-    """Restore wrapped streams.
+    """
+    Restore wrapped streams.
 
     See :func:`wrap_streams` and :func:`setup`.
 
@@ -366,7 +407,8 @@ def restore_streams():
 
 
 def streams_wrapped() -> bool:
-    """Check if :data:`sys.stdout` and :data:`sys.stderr` are wrapped.
+    """
+    Check if :data:`sys.stdout` and :data:`sys.stderr` are wrapped.
     See :func:`setup`.
 
     """
@@ -375,41 +417,43 @@ def streams_wrapped() -> bool:
 
 
 def orig_stderr() -> _t.TextIO:
-    """Return the original :data:`sys.stderr` before wrapping."""
+    """
+    Return the original :data:`sys.stderr` before wrapping."""
 
     return _ORIG_STDERR or sys.stderr
 
 
 def orig_stdout() -> _t.TextIO:
-    """Return the original :data:`sys.stdout` before wrapping."""
+    """
+    Return the original :data:`sys.stdout` before wrapping."""
 
     return _ORIG_STDOUT or sys.stdout
 
 
-class UserIoError(IOError):
-    """Raised when interaction with user fails."""
-
-
 def info(msg: str, /, *args, **kwargs):
-    """Print an info message."""
+    """
+    Print an info message."""
 
     _manager().print_msg(msg, args, "info", **kwargs)
 
 
 def warning(msg: str, /, *args, **kwargs):
-    """Print a warning message."""
+    """
+    Print a warning message."""
 
     _manager().print_msg(msg, args, "warning", **kwargs)
 
 
 def success(msg: str, /, *args, **kwargs):
-    """Print a success message."""
+    """
+    Print a success message."""
 
     _manager().print_msg(msg, args, "success", **kwargs)
 
 
 def error(msg: str, /, *args, **kwargs):
-    """Print an error message."""
+    """
+    Print an error message."""
 
     _manager().print_msg(msg, args, "error", **kwargs)
 
@@ -417,7 +461,8 @@ def error(msg: str, /, *args, **kwargs):
 def error_with_tb(
     msg: str, /, *args, exc_info: _ExcInfo | bool | None = True, **kwargs
 ):
-    """Print an error message and capture the current exception.
+    """
+    Print an error message and capture the current exception.
 
     Call this function in the ``except`` clause of a ``try`` block
     or in an ``__exit__`` function of a context manager to attach
@@ -434,7 +479,8 @@ def error_with_tb(
 
 
 def failure(msg: str, /, *args, **kwargs):
-    """Print a failure message."""
+    """
+    Print a failure message."""
 
     _manager().print_msg(msg, args, "failure", **kwargs)
 
@@ -442,7 +488,8 @@ def failure(msg: str, /, *args, **kwargs):
 def failure_with_tb(
     msg: str, /, *args, exc_info: _ExcInfo | bool | None = True, **kwargs
 ):
-    """Print a failure message and capture the current exception.
+    """
+    Print a failure message and capture the current exception.
 
     Call this function in the ``except`` clause of a ``try`` block
     or in an ``__exit__`` function of a context manager to attach
@@ -459,14 +506,16 @@ def failure_with_tb(
 
 
 def heading(msg: str, /, *args, **kwargs):
-    """Print a heading message."""
+    """
+    Print a heading message."""
 
     kwargs.setdefault("heading", True)
     _manager().print_msg(msg, args, "heading/1", **kwargs)
 
 
 def md(msg: str, /, *args, **kwargs):
-    """Print a markdown-formatted text.
+    """
+    Print a markdown-formatted text.
 
     Yuio supports all CommonMark block markup except tables. Inline markup is limited
     to backticks and color tags.
@@ -479,13 +528,15 @@ def md(msg: str, /, *args, **kwargs):
 
 
 def br(**kwargs):
-    """Print an empty string."""
+    """
+    Print an empty string."""
 
     _manager().print_direct("\n", **kwargs)
 
 
 def raw(msg: yuio.term.ColorizedString, /, **kwargs):
-    """Print a :class:`~yuio.term.ColorizedString`.
+    """
+    Print a :class:`~yuio.term.ColorizedString`.
 
     This is a bridge between :mod:`yuio.io` and lower-level
     modules like :mod:`yuio.term`.
@@ -518,7 +569,7 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
             self._error_msg = None
             return result
 
-    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
+    def layout(self, rc: yuio.widget.RenderContext, /) -> tuple[int, int]:
         builder = (
             yuio.widget.VerticalLayoutBuilder()
             .add(self._prompt)
@@ -540,7 +591,7 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
         self._layout = builder.build()
         return self._layout.layout(rc)
 
-    def draw(self, rc: RenderContext, /):
+    def draw(self, rc: yuio.widget.RenderContext, /):
         self._layout.draw(rc)
 
     @property
@@ -548,219 +599,205 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
         return self._inner.help_data
 
 
-class _Ask(_t.Generic[T]):
-    def __init__(self, parser: yuio.parse.Parser[T]):
-        self._parser: yuio.parse.Parser[T] = parser
-
-    def __getitem__(self, ty: type[U]) -> _Ask[U]:
-        # eval type
-        container = type("_container", (), {"__annotations__": {"ty": ty}})
-        annotations = _t.get_type_hints(container, include_extras=True)
-        return _Ask(yuio.parse.from_type_hint(annotations["ty"]))
+class _AskMeta(type):
+    __hint = None
 
     @_t.overload
-    def __call__(
-        self,
+    def __call__(  # pyright: ignore[reportInconsistentOverload]
+        cls: type[ask[S]],
         msg: str,
         /,
         *args,
-        default: T | yuio.Missing = yuio.MISSING,
+        default: M | yuio.Missing = yuio.MISSING,
+        parser: yuio.parse.Parser[S] | None = None,
         input_description: str | None = None,
         default_description: str | None = None,
-    ) -> T: ...
+    ) -> S | M: ...
 
-    @_t.overload
-    def __call__(
-        self,
-        msg: str,
-        /,
-        *args,
-        default: None,
-        input_description: str | None = None,
-        default_description: str | None = None,
-    ) -> T | None: ...
+    def __call__(cls, *args, **kwargs):
+        if "parser" not in kwargs:
+            hint = cls.__hint
+            if hint is None:
+                hint = str
+            kwargs["parser"] = yuio.parse.from_type_hint(hint)
+        return _ask(*args, **kwargs)
 
-    @_t.overload
-    def __call__(
-        self,
-        msg: str,
-        /,
-        *args,
-        parser: yuio.parse.Parser[U],
-        default: None,
-        input_description: str | None = None,
-        default_description: str | None = None,
-    ) -> U | None: ...
+    def __getitem(cls, ty):
+        return _AskMeta("ask", (), {"_AskMeta__hint": ty})
 
-    @_t.overload
-    def __call__(
-        self,
-        msg: str,
-        /,
-        *args,
-        parser: yuio.parse.Parser[U],
-        default: U | yuio.Missing = yuio.MISSING,
-        input_description: str | None = None,
-        default_description: str | None = None,
-    ) -> U: ...
+    # A dirty hack to hide `__getitem__` from type checkers. `ask` should look like
+    # an ordinary class with overloaded `__new__` for the magic to work.
+    locals()["__getitem__"] = __getitem
 
-    def __call__(
-        self,
-        msg: str,
-        /,
-        *args,
-        parser: yuio.parse.Parser[_t.Any] | None = None,
-        default: _t.Any = yuio.MISSING,
-        input_description: str | None = None,
-        default_description: str | None = None,
-    ) -> _t.Any:
-        manager = _manager()
-
-        term, formatter, theme = manager.term, manager.formatter, manager.theme
-
-        if not term.istream.readable():
-            if default is not yuio.MISSING:
-                return default
-            else:
-                raise UserIoError(
-                    "can't interact with user in non-interactive environment"
-                )
-
-        if parser is None:
-            parser = self._parser
-        if default is None and not yuio.parse._is_optional_parser(parser):
-            parser = yuio.parse.Optional(parser)
-
-        msg = msg.rstrip()
-        if msg.endswith(":"):
-            needs_colon = True
-            msg = msg[:-1]
+    def __repr__(cls) -> str:
+        if cls.__hint is None:
+            return cls.__name__
         else:
-            needs_colon = msg and not msg[-1] in string.punctuation
+            return f"{cls.__name__}[{_t.type_repr(cls.__hint)}]"
 
-        prompt = formatter.colorize(msg, default_color="msg/text:question")
-        if args:
-            prompt = prompt % args
 
-        if not input_description:
-            input_description = parser.describe()
+@_t.final
+class ask(_t.Generic[S], metaclass=_AskMeta):
+    """
+    Ask user to provide an input, parse it and return a value.
 
+    If `stdin` is not readable, return default if one is present,
+    or raise a :class:`UserIoError`.
+
+    .. vhs:: /_tapes/questions.tape
+        :alt: Demonstration of the `ask` function.
+        :scale: 40%
+
+    :func:`ask` accepts generic parameters, which determine how input is parsed.
+    For example, if you're asking for an enum element,
+    Yuio will show user a choice widget.
+
+    You can also supply a custom :class:`~yuio.parse.Parser`,
+    which will determine the widget that is displayed to the user,
+    the way auto completions work, etc.
+
+    Example:
+
+    .. code-block:: python
+
+        class Level(enum.Enum):
+            WARNING = "Warning",
+            INFO = "Info",
+            DEBUG = "Debug",
+
+        answer = ask[Level]('Choose a logging level', default=Level.INFO)
+
+    :param msg:
+        prompt to display to user.
+    :param args:
+        arguments for prompt formatting.
+    :param parser:
+        parser to use to parse user input. See :mod:`yuio.parse` for more info.
+    :param default:
+        default value to return if user input is empty.
+    :param input_description:
+        description of the expected input, like ``"yes/no"`` for boolean
+        inputs.
+    :param default_description:
+        description of the `default` value.
+
+    """
+
+
+def _ask(
+    msg: str,
+    /,
+    *args,
+    parser: yuio.parse.Parser[_t.Any],
+    default: _t.Any = yuio.MISSING,
+    input_description: str | None = None,
+    default_description: str | None = None,
+) -> _t.Any:
+    manager = _manager()
+
+    term, formatter, theme = manager.term, manager.formatter, manager.theme
+
+    if not term.istream.readable():
         if default is not yuio.MISSING:
-            if default_description is None:
-                default_description = parser.describe_value(default)
-            if default_description is None:
-                default_description = str(default)
-
-        if get_term().is_fully_interactive:
-            # Use widget.
-
-            if needs_colon:
-                prompt += formatter.colorize(":", default_color="msg/text:question")
-
-            widget = _AskWidget(
-                prompt, parser.widget(default, input_description, default_description)
-            )
-            with SuspendOutput() as s:
-                try:
-                    result = widget.run(term, theme)
-                except (OSError, EOFError) as e:
-                    raise UserIoError("unexpected end of input") from e
-
-                if result is yuio.MISSING:
-                    result = default
-
-                confirmation = prompt + (
-                    formatter.colorize(" `%s`\n") % parser.describe_value_or_def(result)
-                )
-
-                s.raw(confirmation)
-                return result
+            return default
         else:
-            # Use raw input.
+            raise UserIoError("can't interact with user in non-interactive environment")
 
-            if input_description:
-                prompt += (
-                    formatter.colorize(" (%s)", default_color="msg/text:question")
-                    % input_description
-                )
-            if default_description:
-                prompt += (
-                    formatter.colorize(" [`%s`]", default_color="msg/text:question")
-                    % default_description
-                )
-            prompt += formatter.colorize(
-                ": " if needs_colon else " ", default_color="msg/text:question"
+    if default is None and not yuio.parse._is_optional_parser(parser):
+        parser = yuio.parse.Optional(parser)
+
+    msg = msg.rstrip()
+    if msg.endswith(":"):
+        needs_colon = True
+        msg = msg[:-1]
+    else:
+        needs_colon = msg and not msg[-1] in string.punctuation
+
+    prompt = formatter.colorize(msg, default_color="msg/text:question")
+    if args:
+        prompt = prompt % args
+
+    if not input_description:
+        input_description = parser.describe()
+
+    if default is not yuio.MISSING:
+        if default_description is None:
+            try:
+                default_description = parser.describe_value(default)
+            except TypeError:
+                pass
+        if default_description is None:
+            default_description = str(default)
+
+    if get_term().is_fully_interactive:
+        # Use widget.
+
+        if needs_colon:
+            prompt += formatter.colorize(":", default_color="msg/text:question")
+
+        widget = _AskWidget(
+            prompt, parser.widget(default, input_description, default_description)
+        )
+        with SuspendOutput() as s:
+            try:
+                result = widget.run(term, theme)
+            except (OSError, EOFError) as e:
+                raise UserIoError("unexpected end of input") from e
+
+            if result is yuio.MISSING:
+                result = default
+
+            try:
+                result_desc = parser.describe_value_or_def(result)
+            except TypeError:
+                result_desc = str(result)
+
+            confirmation = prompt + (formatter.colorize(" `%s`\n") % result_desc)
+
+            s.raw(confirmation)
+            return result
+    else:
+        # Use raw input.
+
+        if input_description:
+            prompt += (
+                formatter.colorize(" (%s)", default_color="msg/text:question")
+                % input_description
             )
-            with SuspendOutput() as s:
-                while True:
+        if default_description:
+            prompt += (
+                formatter.colorize(" [`%s`]", default_color="msg/text:question")
+                % default_description
+            )
+        prompt += formatter.colorize(
+            ": " if needs_colon else " ", default_color="msg/text:question"
+        )
+        with SuspendOutput() as s:
+            while True:
+                try:
+                    s.raw(prompt)
+                    answer = term.istream.readline().strip()
+                except (OSError, EOFError) as e:
+                    raise UserIoError("unexpected end of input") from None
+                if not answer and default is not yuio.MISSING:
+                    return default
+                elif not answer:
+                    s.error("Input is required.")
+                else:
                     try:
-                        s.raw(prompt)
-                        answer = term.istream.readline().strip()
-                    except (OSError, EOFError) as e:
-                        raise UserIoError("unexpected end of input") from None
-                    if not answer and default is not yuio.MISSING:
-                        return default
-                    elif not answer:
-                        s.error("Input is required.")
-                    else:
-                        try:
-                            return parser.parse(answer)
-                        except yuio.parse.ParsingError as e:
-                            s.error(f"Error: %s.", e)
-
-
-ask: _Ask[str] = _Ask[str](yuio.parse.Str())
-"""Ask user to provide an input, parse it and return a value.
-
-If `stdin` is not readable, return default if one is present,
-or raise a :class:`UserIoError`.
-
-.. vhs:: /_tapes/questions.tape
-   :alt: Demonstration of the `ask` function.
-   :scale: 40%
-
-:func:`ask` accepts generic parameters, which determine how input is parsed.
-For example, if you're asking for an enum element,
-Yuio will show user a choice widget.
-
-You can also supply a custom :class:`~yuio.parse.Parser`,
-which will determine the widget that is displayed to the user,
-the way auto completions work, etc.
-
-Example::
-
-    class Level(enum.Enum):
-        WARNING = "Warning",
-        INFO = "Info",
-        DEBUG = "Debug",
-
-    answer = ask[Level]('Choose a logging level', default=Level.INFO)
-
-:param msg:
-    prompt to display to user.
-:param args:
-    arguments for prompt formatting.
-:param parser:
-    parser to use to parse user input. See :mod:`yuio.parse` for more info.
-:param default:
-    default value to return if user input is empty.
-:param input_description:
-    description of the expected input, like ``"yes/no"`` for boolean
-    inputs.
-:param default_description:
-    description of the `default` value.
-
-"""
+                        return parser.parse(answer)
+                    except yuio.parse.ParsingError as e:
+                        s.error(f"Error: %s.", e)
 
 
 class _WaitForUserWidget(yuio.widget.Widget[None]):
     def __init__(self, prompt: yuio.term.ColorizedString):
         self._prompt = yuio.widget.Text(prompt)
 
-    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
+    def layout(self, rc: yuio.widget.RenderContext, /) -> tuple[int, int]:
         return self._prompt.layout(rc)
 
-    def draw(self, rc: RenderContext, /):
+    def draw(self, rc: yuio.widget.RenderContext, /):
         return self._prompt.draw(rc)
 
     @yuio.widget.bind(yuio.widget.Key.ENTER)
@@ -776,7 +813,8 @@ def wait_for_user(
     /,
     *args,
 ):
-    """A simple function to wait for user to press enter.
+    """
+    A simple function to wait for user to press enter.
 
     If `stdin` is not readable, does not do anything.
 
@@ -811,7 +849,8 @@ def wait_for_user(
 
 
 def detect_editor() -> str | None:
-    """Detect the user's preferred editor.
+    """
+    Detect the user's preferred editor.
 
     This function checks the ``EDITOR`` environment variable.
     If it's not found, it checks whether ``nano`` or ``vi``
@@ -839,7 +878,8 @@ def edit(
     editor: str | None = None,
     file_ext: str | None = None,
 ) -> str:
-    """Ask user to edit some text.
+    """
+    Ask user to edit some text.
 
     This function creates a temporary file with the given text
     and opens it in an editor. After editing is done, it strips away
@@ -905,7 +945,8 @@ def edit(
 
 
 class SuspendOutput:
-    """A context manager for pausing output.
+    """
+    A context manager for pausing output.
 
     This is handy for when you need to take control over the output stream.
     For example, the :func:`ask` function uses this class internally.
@@ -921,7 +962,8 @@ class SuspendOutput:
         _manager().suspend()
 
     def resume(self):
-        """Manually resume the logging process."""
+        """
+        Manually resume the logging process."""
 
         if not self._resumed:
             _manager().resume()
@@ -929,77 +971,88 @@ class SuspendOutput:
 
     @staticmethod
     def info(msg: str, /, *args, **kwargs):
-        """Log an :func:`info` message, ignore suspended status."""
+        """
+        Log an :func:`info` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         info(msg, *args, **kwargs)
 
     @staticmethod
     def warning(msg: str, /, *args, **kwargs):
-        """Log a :func:`warning` message, ignore suspended status."""
+        """
+        Log a :func:`warning` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         warning(msg, *args, **kwargs)
 
     @staticmethod
     def success(msg: str, /, *args, **kwargs):
-        """Log a :func:`success` message, ignore suspended status."""
+        """
+        Log a :func:`success` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         success(msg, *args, **kwargs)
 
     @staticmethod
     def error(msg: str, /, *args, **kwargs):
-        """Log an :func:`error` message, ignore suspended status."""
+        """
+        Log an :func:`error` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         error(msg, *args, **kwargs)
 
     @staticmethod
     def error_with_tb(msg: str, /, *args, **kwargs):
-        """Log an :func:`error_with_tb` message, ignore suspended status."""
+        """
+        Log an :func:`error_with_tb` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         error_with_tb(msg, *args, **kwargs)
 
     @staticmethod
     def failure(msg: str, /, *args, **kwargs):
-        """Log an :func:`failure` message, ignore suspended status."""
+        """
+        Log an :func:`failure` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         failure(msg, *args, **kwargs)
 
     @staticmethod
     def failure_with_tb(msg: str, /, *args, **kwargs):
-        """Log an :func:`failure_with_tb` message, ignore suspended status."""
+        """
+        Log an :func:`failure_with_tb` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         failure_with_tb(msg, *args, **kwargs)
 
     @staticmethod
     def heading(msg: str, /, *args, **kwargs):
-        """Log a :func:`heading` message, ignore suspended status."""
+        """
+        Log a :func:`heading` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         heading(msg, *args, **kwargs)
 
     @staticmethod
     def md(msg: str, /, *args, **kwargs):
-        """Log a markdown-formatted text."""
+        """
+        Log a markdown-formatted text."""
 
         kwargs.setdefault("ignore_suspended", True)
         md(msg, *args, **kwargs)
 
     @staticmethod
     def br(**kwargs):
-        """Log an empty string."""
+        """
+        Log an empty string."""
 
         kwargs.setdefault("ignore_suspended", True)
         br(**kwargs)
 
     @staticmethod
     def raw(msg: yuio.term.ColorizedString, **kwargs):
-        """Log a :class:`~yuio.term.ColorizedString`."""
+        """
+        Log a :class:`~yuio.term.ColorizedString`."""
 
         kwargs.setdefault("ignore_suspended", True)
         raw(msg, **kwargs)
@@ -1034,7 +1087,8 @@ class _IterTask(_t.Generic[T]):
 
 
 class Task:
-    """A class for indicating progress of some task.
+    """
+    A class for indicating progress of some task.
 
     You can have multiple tasks at the same time,
     create subtasks, set task's progress or add a comment about
@@ -1109,7 +1163,8 @@ class Task:
         unit: str = "",
         ndigits: int | None = None,
     ):
-        """Indicate progress of this task.
+        """
+        Indicate progress of this task.
 
         If given one argument, it is treated as percentage between `0` and `1`.
 
@@ -1173,7 +1228,8 @@ class Task:
         *,
         ndigits: int = 2,
     ):
-        """Indicate progress of this task using human-readable 1024-based size units.
+        """
+        Indicate progress of this task using human-readable 1024-based size units.
 
         Example::
 
@@ -1219,7 +1275,8 @@ class Task:
         unit: str = "",
         ndigits: int = 2,
     ):
-        """Indicate progress of this task while scaling numbers in accordance
+        """
+        Indicate progress of this task while scaling numbers in accordance
         with SI system.
 
         Example::
@@ -1271,7 +1328,8 @@ class Task:
         unit: str = "",
         ndigits: int = 0,
     ) -> _t.Iterable[T]:
-        """Helper for updating progress automatically
+        """
+        Helper for updating progress automatically
         while iterating over a collection.
 
         For example::
@@ -1291,7 +1349,8 @@ class Task:
         return _IterTask(collection, self, unit, ndigits)
 
     def comment(self, comment: str | None, /, *args):
-        """Set a comment for a task.
+        """
+        Set a comment for a task.
 
         Comment is displayed after the progress.
 
@@ -1313,17 +1372,20 @@ class Task:
         _manager().set_task_comment(self, comment, args)
 
     def done(self):
-        """Indicate that this task has finished successfully."""
+        """
+        Indicate that this task has finished successfully."""
 
         _manager().finish_task(self, Task._Status.DONE)
 
     def error(self):
-        """Indicate that this task has finished with an error."""
+        """
+        Indicate that this task has finished with an error."""
 
         _manager().finish_task(self, Task._Status.ERROR)
 
     def subtask(self, msg: str, /, *args) -> Task:
-        """Create a subtask within this task."""
+        """
+        Create a subtask within this task."""
 
         return Task(msg, *args, _parent=self)
 
@@ -1338,29 +1400,31 @@ class Task:
 
 
 class Handler(logging.Handler):
-    """A handler that redirects all log messages to yuio."""
+    """
+    A handler that redirects all log messages to yuio.
 
-    def createLock(self) -> None:
-        self.lock = threading.Lock()
+    """
 
-    def emit(self, record: LogRecord) -> None:
+    def emit(self, record: LogRecord):
         _manager().print_rec(record)
 
 
 class _IoManager(abc.ABC):
-    term: Term
-    theme: Theme
+    term: yuio.term.Term
+    theme: yuio.theme.Theme
 
     def __init__(
         self,
-        term: Term | None = None,
-        theme: Theme | _t.Callable[[Term], Theme] | None = None,
+        term: yuio.term.Term | None = None,
+        theme: (
+            yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
+        ) = None,
         enable_bg_updates: bool = True,
     ):
         self.term = term or yuio.term.get_term_from_stream(orig_stderr(), sys.stdin)
         if theme is None:
             self.theme = yuio.theme.load(self.term)
-        elif isinstance(theme, Theme):
+        elif isinstance(theme, yuio.theme.Theme):
             self.theme = theme
         else:
             self.theme = theme(self.term)
@@ -1394,15 +1458,17 @@ class _IoManager(abc.ABC):
 
     def setup(
         self,
-        term: Term | None = None,
-        theme: Theme | _t.Callable[[Term], Theme] | None = None,
+        term: yuio.term.Term | None = None,
+        theme: (
+            yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
+        ) = None,
     ):
         self._clear_tasks()
 
         if term is not None:
             self.term = term
         if theme is not None:
-            if not isinstance(theme, Theme):
+            if not isinstance(theme, yuio.theme.Theme):
                 theme = theme(self.term)
             self.theme = self.formatter.theme = theme
 
@@ -1730,7 +1796,7 @@ class _IoManager(abc.ABC):
         if heading:
             res += "\n"
 
-        res += Color.NONE
+        res += yuio.term.Color.NONE
 
         return res
 
@@ -1750,8 +1816,6 @@ class _IoManager(abc.ABC):
 
         logger = record.name
         level = record.levelname
-        if level in ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]:
-            level = level[:4]
         message = record.getMessage()
 
         ctx = record.levelname.lower()
@@ -1779,7 +1843,7 @@ class _IoManager(abc.ABC):
         if record.stack_info:
             res += self._format_tb(record.stack_info, "  ")
 
-        res += Color.NONE
+        res += yuio.term.Color.NONE
 
         return res
 
@@ -1804,7 +1868,7 @@ class _IoManager(abc.ABC):
         res += self.theme.get_color(f"task:{ctx}")
         res += "\n"
 
-        res += Color.NONE
+        res += yuio.term.Color.NONE
 
         return res
 
@@ -1881,7 +1945,7 @@ class _IoManager(abc.ABC):
             self._rc.set_color_path(f"task/progressbar:{task._status.value}")
             self._rc.write(self.theme.progress_bar_start_symbol)
 
-            done_color = Color.lerp(
+            done_color = yuio.term.Color.lerp(
                 self.theme.get_color("task/progressbar/done/start"),
                 self.theme.get_color("task/progressbar/done/end"),
             )
@@ -1890,7 +1954,7 @@ class _IoManager(abc.ABC):
                 self._rc.set_color(done_color((i + i / total_width) / total_width))
                 self._rc.write(self.theme.progress_bar_done_symbol)
 
-            pending_color = Color.lerp(
+            pending_color = yuio.term.Color.lerp(
                 self.theme.get_color("task/progressbar/pending/start"),
                 self.theme.get_color("task/progressbar/pending/end"),
             )

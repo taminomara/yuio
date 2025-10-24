@@ -59,6 +59,7 @@ Use the following loader to create an instance of the default theme:
 .. autoclass:: DefaultTheme
 
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -68,7 +69,12 @@ from dataclasses import dataclass
 
 import yuio.term
 from yuio import _typing as _t
-from yuio.term import Color, Term
+
+__all__ = [
+    "Theme",
+    "DefaultTheme",
+    "load",
+]
 
 T = _t.TypeVar("T")
 
@@ -110,16 +116,11 @@ class _ImmutableDictProxy(_t.Mapping[str, T], _t.Generic[T]):
 
 
 class Theme:
-    """Base class for Yuio themes."""
+    """
+    Base class for Yuio themes.
 
-    _Self = _t.TypeVar("_Self", bound="Theme")
+    """
 
-    #: Decorative symbols for certain text elements, such as headings,
-    #: list items, etc.
-    #:
-    #: This mapping becomes immutable once a theme class is created. The only possible
-    #: way to modify it is by using :meth:`~Theme.set_msg_decoration`
-    #: or :meth:`~Theme._set_msg_decoration_if_not_overridden`.
     msg_decorations: _t.Mapping[str, str] = {
         "heading/section": "",
         "heading/1": "⣿ ",
@@ -140,130 +141,190 @@ class Theme:
         # 'menu_select': '#',
         # 'menu_search': '/',
     }
+    """
+    Decorative symbols for certain text elements, such as headings,
+    list items, etc.
 
-    #: An actual mutable version of :attr:`~Theme.msg_decorations`
-    #: is kept here, because `__init_subclass__` will replace
-    #: :attr:`~Theme.msg_decorations` with an immutable proxy.
+    This mapping becomes immutable once a theme class is created. The only possible
+    way to modify it is by using :meth:`~Theme.set_msg_decoration`
+    or :meth:`~Theme._set_msg_decoration_if_not_overridden`.
+
+    """
+
     __msg_decorations: dict[str, str]
-    #: Keeps track of where a message decoration was inherited from. This var is used
-    #: to avoid `__init__`-ing message decorations that were overridden in a subclass.
+    """
+    An actual mutable version of :attr:`~Theme.msg_decorations`
+    is kept here, because `__init_subclass__` will replace
+    :attr:`~Theme.msg_decorations` with an immutable proxy.
+
+    """
+
     __msg_decoration_sources: dict[str, type | None] = {}
+    """
+    Keeps track of where a message decoration was inherited from. This var is used
+    to avoid `__init__`-ing message decorations that were overridden in a subclass.
 
-    #: Width of a progress bar for :class:`yuio.io.Task`.
+    """
+
     progress_bar_width: int = 15
-    #: A symbol rendered on a left side of a progressbar.
-    #:
-    #: Set to ``"["`` to enclose progressbar in square brackets, for example.
-    progress_bar_start_symbol: str = ""
-    #: A symbol rendered on a right side of a progressbar.
-    #:
-    #: Set to ``"]"`` to enclose progressbar in square brackets, for example.
-    progress_bar_end_symbol: str = ""
-    #: Symbol rendered in the filled portion of a progressbar.
-    progress_bar_done_symbol: str = "■"
-    #: Symbol rendered in the unfilled portion of a progressbar.
-    progress_bar_pending_symbol: str = "□"
-    #: Spinner pattern for running tasks that don't have a progressbar.
-    #:
-    #: Every tick, a symbol in front of a task's heading updates, showing elements
-    #: of this sequence.
-    spinner_pattern: _t.Sequence[str] = "⣤⣤⣤⠶⠛⠛⠛⠶"
-    #: How often the :attr:`~Theme.spinner_pattern` changes.
-    spinner_update_rate_ms: int = 200
-    #: Symbol for finished and failed tasks.
-    #:
-    #: It meant to resemble a static spinner.
-    spinner_static_symbol = "⣿"
+    """
+    Width of a progress bar for :class:`yuio.io.Task`.
 
-    #: Mapping of color paths to actual colors.
-    #:
-    #: Themes use color paths to describe styles and colors for different
-    #: parts of an application. Color paths are similar to file paths,
-    #: they use snake case identifiers separated by slashes, and consist of
-    #: two parts separated by a colon.
-    #:
-    #: The first part represents an object, i.e. what are we coloring.
-    #:
-    #: The second part represents a context, i.e. what is the state or location
-    #: of an object that we're coloring.
-    #:
-    #: For example, a color for the filled part of the task's progress bar
-    #: has path ``"task/progressbar/done"``, a color for a text of an error
-    #: log record has path ``"log/message:error"``, and a color for a string escape
-    #: sequence in a highlighted python code has path ``"hl/str/esc:python"``.
-    #:
-    #: A color at a certain path is propagated to all sub-paths. For example,
-    #: if ``"task/progressbar"`` is bold, and ``"task/progressbar/done"`` is green,
-    #: the final color will be bold green.
-    #:
-    #: Each color path can be associated with either an instance
-    #: of :class:`~yuio.term.Color`, another path, or a list of colors and paths.
-    #:
-    #: If path is mapped to a :class:`~yuio.term.Color`, then the path is associated
-    #: with that particular color.
-    #:
-    #: If path is mapped to another path, then the path is associated with
-    #: the color value for that other path (please don't create recursions here).
-    #:
-    #: If path is mapped to a list of colors and paths, then those colors and paths
-    #: are combined.
-    #:
-    #: For example::
-    #:
-    #:     colors = {
-    #:         'heading_color': Color.BOLD,
-    #:         'error_color': Color.RED,
-    #:         'tb/heading': ['heading_color', 'error_color'],
-    #:     }
-    #:
-    #: Here, color of traceback's heading ``"tb/heading"`` will be bold and red.
-    #:
-    #: The base theme class provides colors for basic tags, such as `bold`, `red`,
-    #: `code`, `note`, etc. :class:`DefaultTheme` expands on it, providing main
-    #: colors that control the overall look of the theme, and then colors for all
-    #: interface elements.
-    #:
-    #: When deriving from a theme, you can override this mapping. When looking up
-    #: colors via :meth:`~Theme.get_color`, base classes will be tried for color,
-    #: in order of method resolution.
-    #:
-    #: This mapping becomes immutable once a theme class is created. The only possible
-    #: way to modify it is by using :meth:`~Theme.set_color`
-    #: or :meth:`~Theme._set_color_if_not_overridden`.
-    colors: _t.Mapping[str, str | Color | list[str | Color]] = {
+    """
+
+    progress_bar_start_symbol: str = ""
+    """
+    A symbol rendered on a left side of a progressbar.
+
+    Set to ``"["`` to enclose progressbar in square brackets, for example.
+
+    """
+
+    progress_bar_end_symbol: str = ""
+    """
+    A symbol rendered on a right side of a progressbar.
+
+    Set to ``"]"`` to enclose progressbar in square brackets, for example.
+
+    """
+
+    progress_bar_done_symbol: str = "■"
+    """
+    Symbol rendered in the filled portion of a progressbar.
+
+    """
+
+    progress_bar_pending_symbol: str = "□"
+    """
+    Symbol rendered in the unfilled portion of a progressbar.
+
+    """
+
+    spinner_pattern: _t.Sequence[str] = "⣤⣤⣤⠶⠛⠛⠛⠶"
+    """
+    Spinner pattern for running tasks that don't have a progressbar.
+
+    Every tick, a symbol in front of a task's heading updates, showing elements
+    of this sequence.
+
+    """
+
+    spinner_update_rate_ms: int = 200
+    """
+    How often the :attr:`~Theme.spinner_pattern` changes.
+
+    """
+
+    spinner_static_symbol = "⣿"
+    """
+    Symbol for finished and failed tasks.
+
+    It meant to resemble a static spinner.
+
+    """
+
+    colors: _t.Mapping[str, str | yuio.term.Color | list[str | yuio.term.Color]] = {
         "code": "magenta",
         "note": "green",
-        "bold": Color.STYLE_BOLD,
+        "bold": yuio.term.Color.STYLE_BOLD,
         "b": "bold",
-        "dim": Color.STYLE_DIM,
+        "dim": yuio.term.Color.STYLE_DIM,
         "d": "dim",
-        "normal": Color.FORE_NORMAL,
-        "normal_dim": Color.FORE_NORMAL_DIM,
-        "red": Color.FORE_RED,
-        "green": Color.FORE_GREEN,
-        "yellow": Color.FORE_YELLOW,
-        "blue": Color.FORE_BLUE,
-        "magenta": Color.FORE_MAGENTA,
-        "cyan": Color.FORE_CYAN,
+        "normal": yuio.term.Color.FORE_NORMAL,
+        "normal_dim": yuio.term.Color.FORE_NORMAL_DIM,
+        "red": yuio.term.Color.FORE_RED,
+        "green": yuio.term.Color.FORE_GREEN,
+        "yellow": yuio.term.Color.FORE_YELLOW,
+        "blue": yuio.term.Color.FORE_BLUE,
+        "magenta": yuio.term.Color.FORE_MAGENTA,
+        "cyan": yuio.term.Color.FORE_CYAN,
     }
+    """
+    Mapping of color paths to actual colors.
 
-    #: An actual mutable version of :attr:`~Theme.colors`
-    #: is kept here, because `__init_subclass__` will replace
-    #: :attr:`~Theme.colors` with an immutable proxy.
-    __colors: dict[str, str | Color | list[str | Color]]
-    #: Keeps track of where a color was inherited from. This var is used
-    #: to avoid `__init__`-ing colors that were overridden in a subclass.
+    Themes use color paths to describe styles and colors for different
+    parts of an application. yuio.term.Color paths are similar to file paths,
+    they use snake case identifiers separated by slashes, and consist of
+    two parts separated by a colon.
+
+    The first part represents an object, i.e. what are we coloring.
+
+    The second part represents a context, i.e. what is the state or location
+    of an object that we're coloring.
+
+    For example, a color for the filled part of the task's progress bar
+    has path ``"task/progressbar/done"``, a color for a text of an error
+    log record has path ``"log/message:error"``, and a color for a string escape
+    sequence in a highlighted python code has path ``"hl/str/esc:python"``.
+
+    A color at a certain path is propagated to all sub-paths. For example,
+    if ``"task/progressbar"`` is bold, and ``"task/progressbar/done"`` is green,
+    the final color will be bold green.
+
+    Each color path can be associated with either an instance
+    of :class:`~yuio.term.Color`, another path, or a list of colors and paths.
+
+    If path is mapped to a :class:`~yuio.term.Color`, then the path is associated
+    with that particular color.
+
+    If path is mapped to another path, then the path is associated with
+    the color value for that other path (please don't create recursions here).
+
+    If path is mapped to a list of colors and paths, then those colors and paths
+    are combined.
+
+    For example::
+
+        colors = {
+            'heading_color': yuio.term.Color.BOLD,
+            'error_color': yuio.term.Color.RED,
+            'tb/heading': ['heading_color', 'error_color'],
+        }
+
+    Here, color of traceback's heading ``"tb/heading"`` will be bold and red.
+
+    The base theme class provides colors for basic tags, such as `bold`, `red`,
+    `code`, `note`, etc. :class:`DefaultTheme` expands on it, providing main
+    colors that control the overall look of the theme, and then colors for all
+    interface elements.
+
+    When deriving from a theme, you can override this mapping. When looking up
+    colors via :meth:`~Theme.get_color`, base classes will be tried for color,
+    in order of method resolution.
+
+    This mapping becomes immutable once a theme class is created. The only possible
+    way to modify it is by using :meth:`~Theme.set_color`
+    or :meth:`~Theme._set_color_if_not_overridden`.
+
+    """
+
+    __colors: dict[str, str | yuio.term.Color | list[str | yuio.term.Color]]
+    """
+    An actual mutable version of :attr:`~Theme.colors`
+    is kept here, because `__init_subclass__` will replace
+    :attr:`~Theme.colors` with an immutable proxy.
+
+    """
+
     __color_sources: dict[str, type | None] = {}
+    """
+    Keeps track of where a color was inherited from. This var is used
+    to avoid `__init__`-ing colors that were overridden in a subclass.
 
-    #: When running an `__init__` function, this variable will be set to the class
-    #: that implemented it, regardless of type of `self`.
-    #:
-    #: That is, inside `DefaultTheme.__init__`, `__expected_source` is set
-    #: to `DefaultTheme`, in `MyTheme.__init__` it is `MyTheme`, etc.
-    #:
-    #: This is possible because `__init_subclass__` wraps any implementation
-    #: of `__init__` into a wrapper that sets this variable.
+    """
+
     __expected_source: type | None = None
+    """
+    When running an `__init__` function, this variable will be set to the class
+    that implemented it, regardless of type of `self`.
+
+    That is, inside `DefaultTheme.__init__`, `__expected_source` is set
+    to `DefaultTheme`, in `MyTheme.__init__` it is `MyTheme`, etc.
+
+    This is possible because `__init_subclass__` wraps any implementation
+    of `__init__` into a wrapper that sets this variable.
+
+    """
 
     def __init__(self):
         pass
@@ -324,7 +385,8 @@ class Theme:
         msg_decoration: str,
         /,
     ):
-        """Set message decoration by name, but only if it wasn't overridden
+        """
+        Set message decoration by name, but only if it wasn't overridden
         in a subclass.
 
         This method should be called from `__init__` implementations
@@ -349,7 +411,10 @@ class Theme:
         msg_decoration: str,
         /,
     ):
-        """Set message decoration by name."""
+        """
+        Set message decoration by name.
+
+        """
 
         if "_Theme__msg_decorations" not in self.__dict__:
             self.__msg_decorations = self.__class__.__msg_decorations.copy()
@@ -365,10 +430,11 @@ class Theme:
     def _set_color_if_not_overridden(
         self,
         path: str,
-        color: str | Color | list[str | Color],
+        color: str | yuio.term.Color | list[str | yuio.term.Color],
         /,
     ):
-        """Set color by path, but only if the color was not overridden in a subclass.
+        """
+        Set color by path, but only if the color was not overridden in a subclass.
 
         This method should be called from `__init__` implementations
         to dynamically set colors. It will only set the color if it was not overridden
@@ -389,10 +455,13 @@ class Theme:
     def set_color(
         self,
         path: str,
-        color: str | Color | list[str | Color],
+        color: str | yuio.term.Color | list[str | yuio.term.Color],
         /,
     ):
-        """Set color by path."""
+        """
+        Set color by path.
+
+        """
 
         if "_Theme__colors" not in self.__dict__:
             self.__colors = self.__class__.__colors.copy()
@@ -410,14 +479,25 @@ class Theme:
 
         """
 
-        #: Colors in this node.
-        colors: str | Color | list[str | Color] = Color.NONE
+        colors: str | yuio.term.Color | list[str | yuio.term.Color] = (
+            yuio.term.Color.NONE
+        )
+        """
+        Colors in this node.
 
-        #: Location part of the tree.
+        """
+
         loc: dict[str, Theme.__ColorTree] = dataclasses.field(default_factory=dict)
+        """
+        Location part of the tree.
 
-        #: Context part of the tree.
+        """
+
         ctx: dict[str, Theme.__ColorTree] = dataclasses.field(default_factory=dict)
+        """
+        Context part of the tree.
+
+        """
 
     @functools.cached_property
     def __color_tree(self) -> Theme.__ColorTree:
@@ -453,8 +533,11 @@ class Theme:
 
     @_t.final
     @functools.cache
-    def get_color(self, path: str, /) -> Color:
-        """Lookup a color by path."""
+    def get_color(self, path: str, /) -> yuio.term.Color:
+        """
+        Lookup a color by path.
+
+        """
 
         loc, ctx = self.__parse_path(path)
         return self.__get_color_in_loc(self.__color_tree, loc, ctx)
@@ -462,7 +545,7 @@ class Theme:
     def __get_color_in_loc(
         self, node: Theme.__ColorTree, loc: list[str], ctx: list[str]
     ):
-        color = Color.NONE
+        color = yuio.term.Color.NONE
 
         for part in loc:
             if part not in node.loc:
@@ -473,7 +556,7 @@ class Theme:
         return color | self.__get_color_in_ctx(node, ctx)
 
     def __get_color_in_ctx(self, node: Theme.__ColorTree, ctx: list[str]):
-        color = Color.NONE
+        color = yuio.term.Color.NONE
 
         for part in ctx:
             if part not in node.ctx:
@@ -483,8 +566,8 @@ class Theme:
 
         return color | self.__get_color_in_node(node)
 
-    def __get_color_in_node(self, node: Theme.__ColorTree) -> Color:
-        color = Color.NONE
+    def __get_color_in_node(self, node: Theme.__ColorTree) -> yuio.term.Color:
+        color = yuio.term.Color.NONE
 
         if isinstance(node.colors, str):
             color |= self.get_color(node.colors)
@@ -496,15 +579,15 @@ class Theme:
 
         return color
 
-    def to_color(self, color_or_path: Color | str | None) -> Color:
+    def to_color(self, color_or_path: yuio.term.Color | str | None) -> yuio.term.Color:
         """
         Convert color or color path to color.
 
         """
 
         if color_or_path is None:
-            return Color.NONE
-        elif isinstance(color_or_path, Color):
+            return yuio.term.Color.NONE
+        elif isinstance(color_or_path, yuio.term.Color):
             return color_or_path
         else:
             return self.get_color(color_or_path)
@@ -514,7 +597,8 @@ Theme.__init_subclass__()
 
 
 class DefaultTheme(Theme):
-    """Default Yuio theme. Adapts for terminal background color,
+    """
+    Default Yuio theme. Adapts for terminal background color,
     if one can be detected.
 
     This theme defines *main colors*, which you can override by subclassing.
@@ -532,10 +616,6 @@ class DefaultTheme(Theme):
 
     """
 
-    #: Colors for default theme are separated into several sections.
-    #:
-    #: The main section (the first one) has common settings which are referenced
-    #: from all other sections. You'll probably want to override
     colors = {
         #
         # Main settings
@@ -602,9 +682,9 @@ class DefaultTheme(Theme):
         # Syntax highlighting
         # -------------------
         "hl/kwd": "bold",
-        "hl/str": Color.NONE,
+        "hl/str": yuio.term.Color.NONE,
         "hl/str/esc": "bold",
-        "hl/lit": Color.NONE,
+        "hl/lit": yuio.term.Color.NONE,
         "hl/punct": "blue",
         "hl/punct:sh-usage": "secondary_color",
         "hl/comment": "secondary_color",
@@ -619,7 +699,7 @@ class DefaultTheme(Theme):
         "tb/frame/usr/file/module": "code",
         "tb/frame/usr/file/line": "code",
         "tb/frame/usr/file/path": "code",
-        "tb/frame/usr/code": Color.NONE,
+        "tb/frame/usr/code": yuio.term.Color.NONE,
         "tb/frame/usr/highlight": "low_priority_color_a",
         "tb/frame/lib": "dim",
         "tb/frame/lib/file/module": "tb/frame/usr/file/module",
@@ -668,8 +748,15 @@ class DefaultTheme(Theme):
         "menu/decoration/quick-select": "secondary_color",
         "menu/decoration:choice/normal": "menu/text",
     }
+    """
+    Colors for default theme are separated into several sections.
 
-    def __init__(self, term: Term):
+    The main section (the first one) has common settings which are referenced
+    from all other sections. You'll probably want to override
+
+    """
+
+    def __init__(self, term: yuio.term.Term):
         super().__init__()
 
         if term.terminal_colors is None:
@@ -678,10 +765,12 @@ class DefaultTheme(Theme):
         # Gradients look bad in other modes.
         if term.has_colors_true:
             self._set_color_if_not_overridden(
-                "task/progressbar/done/start", Color(fore=term.terminal_colors.blue)
+                "task/progressbar/done/start",
+                yuio.term.Color(fore=term.terminal_colors.blue),
             )
             self._set_color_if_not_overridden(
-                "task/progressbar/done/end", Color(fore=term.terminal_colors.magenta)
+                "task/progressbar/done/end",
+                yuio.term.Color(fore=term.terminal_colors.magenta),
             )
 
         if term.terminal_colors.lightness == yuio.term.Lightness.UNKNOWN:
@@ -693,25 +782,38 @@ class DefaultTheme(Theme):
         if term.terminal_colors.lightness is term.terminal_colors.lightness.DARK:
             self._set_color_if_not_overridden(
                 "low_priority_color_a",
-                Color(fore=foreground.match_luminosity(background.lighten(0.30))),
+                yuio.term.Color(
+                    fore=foreground.match_luminosity(background.lighten(0.30))
+                ),
             )
             self._set_color_if_not_overridden(
                 "low_priority_color_b",
-                Color(fore=foreground.match_luminosity(background.lighten(0.25))),
+                yuio.term.Color(
+                    fore=foreground.match_luminosity(background.lighten(0.25))
+                ),
             )
         else:
             self._set_color_if_not_overridden(
                 "low_priority_color_a",
-                Color(fore=foreground.match_luminosity(background.darken(0.30))),
+                yuio.term.Color(
+                    fore=foreground.match_luminosity(background.darken(0.30))
+                ),
             )
             self._set_color_if_not_overridden(
                 "low_priority_color_b",
-                Color(fore=foreground.match_luminosity(background.darken(0.25))),
+                yuio.term.Color(
+                    fore=foreground.match_luminosity(background.darken(0.25))
+                ),
             )
 
 
-def load(term: Term, /) -> Theme:
-    """Loads a default theme."""
+def load(term: yuio.term.Term, /) -> Theme:
+    """
+    Loads a default theme.
+
+    """
+
+    import yuio.term
 
     # NOTE: loading themes from json is beta, don't use it yet.
 
@@ -761,7 +863,10 @@ def load(term: Term, /) -> Theme:
         theme.colors = theme_data.colors
 
         for k, v in theme_data.colors.items():
-            v = [Color.fore_from_hex(c) if c.startswith("#") else c for c in v.split()]
+            v = [
+                yuio.term.Color.fore_from_hex(c) if c.startswith("#") else c
+                for c in v.split()
+            ]
             theme.set_color(k, v[0] if len(v) == 1 else v)
 
     return theme

@@ -75,9 +75,15 @@ these strings are parsed and transformed into :class:`ColorizedString`:
 .. autoclass:: ColorizedString
    :members:
 
-.. autodata:: RawString
+.. class:: RawString
 
-.. autodata:: AnyString
+    Raw colorized string. This is the underlying type
+    for :class:`ColorizedString`.
+
+.. class:: AnyString
+
+    Any string (i.e. a :class:`str`, a raw colorized string,
+    or a normal colorized string).
 
 .. autoclass:: NoWrap
 
@@ -101,140 +107,258 @@ import functools
 import os
 import re
 import sys
+import typing
 import unicodedata
 from dataclasses import dataclass
 
 import yuio
 from yuio import _typing as _t
 
+__all__ = [
+    "Lightness",
+    "ColorSupport",
+    "InteractiveSupport",
+    "TerminalColors",
+    "Term",
+    "get_term_from_stream",
+    "ColorValue",
+    "Color",
+    "line_width",
+    "NoWrap",
+    "Esc",
+    "ColorizedString",
+    "RawString",
+    "AnyString",
+]
+
 T = _t.TypeVar("T")
 
 
 class Lightness(enum.Enum):
-    """Overall color theme of a terminal.
+    """
+    Overall color theme of a terminal.
 
     Can help with deciding which colors to use when printing output.
 
     """
 
-    #: We couldn't determine terminal background, or it wasn't dark
-    #: or bright enough to fall in one category or another.
     UNKNOWN = enum.auto()
+    """
+    We couldn't determine terminal background, or it wasn't dark
+    or bright enough to fall in one category or another.
 
-    #: Terminal background is dark.
+    """
+
     DARK = enum.auto()
+    """
+    Terminal background is dark.
 
-    #: Terminal background is light.
+    """
+
     LIGHT = enum.auto()
+    """
+    Terminal background is light.
+
+    """
 
 
 class ColorSupport(enum.IntEnum):
-    """Terminal's capability for coloring output."""
+    """
+    Terminal's capability for coloring output.
 
-    #: Color codes are not supported.
+    """
+
     NONE = 0
+    """
+    Color codes are not supported.
 
-    #: Only simple 8-bit color codes are supported.
+    """
+
     ANSI = 1
+    """
+    Only simple 8-bit color codes are supported.
+
+    """
 
     #: 256-encoded colors are supported.
     ANSI_256 = 2
 
-    #: True colors are supported.
     ANSI_TRUE = 3
+    """
+    True colors are supported.
+
+    """
 
 
 class InteractiveSupport(enum.IntEnum):
-    """Terminal's capability for rendering interactive widgets."""
+    """
+    Terminal's capability for rendering interactive widgets.
 
-    #: Terminal can't render anything interactive.
+    """
+
     NONE = 0
+    """
+    Terminal can't render anything interactive.
 
-    #: Terminal can move cursor and erase lines.
+    """
+
     MOVE_CURSOR = 1
+    """
+    Terminal can move cursor and erase lines.
 
-    #: Terminal can process queries, enter ``CBREAK`` mode, etc.
+    """
+
     FULL = 2
+    """
+    Terminal can process queries, enter ``CBREAK`` mode, etc.
+
+    """
 
 
 @dataclass(frozen=True)
 class TerminalColors:
-    """Colors and theme of the attached terminal."""
+    """
+    Colors and theme of the attached terminal.
 
-    #: Background color of a terminal.
+    """
+
     background: ColorValue
+    """
+    Background color of a terminal.
 
-    #: Foreground color of a terminal.
+    """
+
     foreground: ColorValue
+    """
+    Foreground color of a terminal.
 
-    #: Color value for the default "black" color.
+    """
+
     black: ColorValue
+    """
+    Color value for the default "black" color.
 
-    #: Color value for the default "red" color.
+    """
+
     red: ColorValue
+    """
+    Color value for the default "red" color.
 
-    #: Color value for the default "green" color.
+    """
+
     green: ColorValue
+    """
+    Color value for the default "green" color.
 
-    #: Color value for the default "yellow" color.
+    """
+
     yellow: ColorValue
+    """
+    Color value for the default "yellow" color.
 
-    #: Color value for the default "blue" color.
+    """
+
     blue: ColorValue
+    """
+    Color value for the default "blue" color.
 
-    #: Color value for the default "magenta" color.
+    """
+
     magenta: ColorValue
+    """
+    Color value for the default "magenta" color.
 
-    #: Color value for the default "cyan" color.
+    """
+
     cyan: ColorValue
+    """
+    Color value for the default "cyan" color.
 
-    #: Color value for the default "white" color.
+    """
+
     white: ColorValue
+    """
+    Color value for the default "white" color.
 
-    #: Overall color theme of a terminal, i.e. dark or light.
+    """
+
     lightness: Lightness
+    """
+    Overall color theme of a terminal, i.e. dark or light.
+
+    """
 
 
 @dataclass(frozen=True)
 class Term:
-    """Overall info about a terminal."""
+    """
+    Overall info about a terminal.
 
-    #: Terminal's output stream.
+    """
+
     ostream: _t.TextIO
+    """
+    Terminal's output stream.
 
-    #: Terminal's input stream.
+    """
+
     istream: _t.TextIO
+    """
+    Terminal's input stream.
 
-    #: Terminal's capability for coloring output.
+    """
+
     color_support: ColorSupport = ColorSupport.NONE
+    """
+    Terminal's capability for coloring output.
 
-    #: Terminal's capability for rendering interactive widgets.
+    """
+
     interactive_support: InteractiveSupport = InteractiveSupport.NONE
+    """
+    Terminal's capability for rendering interactive widgets.
 
-    #: Terminal color settings.
+    """
+
     terminal_colors: TerminalColors | None = None
+    """
+    Terminal color settings.
+
+    """
 
     @property
     def has_colors(self) -> bool:
-        """Return :data:`True` if terminal supports simple 8-bit color codes."""
+        """
+        Return :data:`True` if terminal supports simple 8-bit color codes.
+
+        """
 
         return self.color_support >= ColorSupport.ANSI
 
     @property
     def has_colors_256(self) -> bool:
-        """Return :data:`True` if terminal supports 256-encoded colors."""
+        """
+        Return :data:`True` if terminal supports 256-encoded colors.
+
+        """
 
         return self.color_support >= ColorSupport.ANSI_256
 
     @property
     def has_colors_true(self) -> bool:
-        """Return :data:`True` if terminal supports true colors."""
+        """
+        Return :data:`True` if terminal supports true colors.
+
+        """
 
         return self.color_support >= ColorSupport.ANSI_TRUE
 
     @property
     def can_move_cursor(self) -> bool:
-        """Return :data:`True` if terminal can move cursor and erase lines."""
+        """
+        Return :data:`True` if terminal can move cursor and erase lines.
+
+        """
 
         return (
             self.has_colors
@@ -243,7 +367,8 @@ class Term:
 
     @property
     def can_query_terminal(self) -> bool:
-        """Return :data:`True` if terminal can process queries, enter CBREAK mode, etc.
+        """
+        Return :data:`True` if terminal can process queries, enter CBREAK mode, etc.
 
         This is an alias to :attr:`~Term.is_fully_interactive`.
 
@@ -253,7 +378,10 @@ class Term:
 
     @property
     def is_fully_interactive(self) -> bool:
-        """Return :data:`True` if we're in a fully interactive environment."""
+        """
+        Return :data:`True` if we're in a fully interactive environment.
+
+        """
 
         return self.has_colors and self.interactive_support >= InteractiveSupport.FULL
 
@@ -272,7 +400,8 @@ _CI_ENV_VARS = [
 def get_term_from_stream(
     ostream: _t.TextIO, istream: _t.TextIO, /, *, query_terminal_colors: bool = True
 ) -> Term:
-    """Query info about a terminal attached to the given stream.
+    """
+    Query info about a terminal attached to the given stream.
 
     If ``query_terminal_colors`` is :data:`True`, Yuio will try to query background
     and foreground color of the terminal.
@@ -684,7 +813,8 @@ else:
 
 @dataclass(frozen=True, **yuio._with_slots())
 class ColorValue:
-    """Data about a single color.
+    """
+    Data about a single color.
 
     Can be either a single ANSI escape code, or an RGB-tuple.
 
@@ -699,12 +829,16 @@ class ColorValue:
 
     """
 
-    #: Color data.
     data: int | str | tuple[int, int, int]
+    """
+    Color data.
+
+    """
 
     @classmethod
     def from_rgb(cls, r: int, g: int, b: int, /) -> ColorValue:
-        """Create a color value from rgb components.
+        """
+        Create a color value from rgb components.
 
         Each component should be between 0 and 255.
 
@@ -719,7 +853,8 @@ class ColorValue:
 
     @classmethod
     def from_hex(cls, h: str, /) -> ColorValue:
-        """Create a color value from a hex string.
+        """
+        Create a color value from a hex string.
 
         Example::
 
@@ -731,7 +866,8 @@ class ColorValue:
         return cls(_parse_hex(h))
 
     def to_hex(self) -> str | None:
-        """Return color in hex format with leading ``#``.
+        """
+        Return color in hex format with leading ``#``.
 
         Example::
 
@@ -748,7 +884,8 @@ class ColorValue:
             return None
 
     def to_rgb(self) -> tuple[int, int, int] | None:
-        """Return RGB components of the color.
+        """
+        Return RGB components of the color.
 
         Example::
 
@@ -765,7 +902,8 @@ class ColorValue:
             return None
 
     def darken(self, amount: float, /) -> ColorValue:
-        """Make this color darker by the given percentage.
+        """
+        Make this color darker by the given percentage.
 
         Amount should be between 0 and 1.
 
@@ -789,7 +927,8 @@ class ColorValue:
         return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
 
     def lighten(self, amount: float, /) -> ColorValue:
-        """Make this color lighter by the given percentage.
+        """
+        Make this color lighter by the given percentage.
 
         Amount should be between 0 and 1.
 
@@ -814,7 +953,8 @@ class ColorValue:
         return ColorValue.from_rgb(int(r * 0xFF), int(g * 0xFF), int(b * 0xFF))
 
     def match_luminosity(self, other: ColorValue, /) -> ColorValue:
-        """Set luminosity of this color equal to one of the other color.
+        """
+        Set luminosity of this color equal to one of the other color.
 
         This function will keep hue and saturation of the color intact,
         but it will become as bright as the other color.
@@ -832,7 +972,8 @@ class ColorValue:
 
     @staticmethod
     def lerp(*colors: ColorValue) -> _t.Callable[[float], ColorValue]:
-        """Return a lambda that allows linear interpolation between several colors.
+        """
+        Return a lambda that allows linear interpolation between several colors.
 
         If either color is a single ANSI escape code, the first color is always returned
         from the lambda.
@@ -900,72 +1041,10 @@ class ColorValue:
             return f"<ColorValue {self.data}>"
 
 
-class _Colors:
-    #: No color.
-    NONE: _t.ClassVar[Color] = lambda: Color()  # type: ignore
-
-    #: Bold font style.
-    STYLE_BOLD: _t.ClassVar[Color] = lambda: Color(bold=True)  # type: ignore
-    #: Dim font style.
-    STYLE_DIM: _t.ClassVar[Color] = lambda: Color(dim=True)  # type: ignore
-    #: Not bold nor dim.
-    STYLE_NORMAL: _t.ClassVar[Color] = lambda: Color(bold=False, dim=False)  # type: ignore
-
-    #: Normal foreground color.
-    FORE_NORMAL: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(9))  # type: ignore
-    #: Normal foreground color rendered with dim setting.
-    #:
-    #: This is an alternative to bright black that works with
-    #: most terminals and color schemes.
-    FORE_NORMAL_DIM: _t.ClassVar[Color] = lambda: Color(fore=ColorValue("2"))  # type: ignore
-    #: Black foreground color.
-    #:
-    #: .. warning::
-    #:
-    #:    Avoid using this color, in most terminals it is the same as background color.
-    #:    Instead, use :attr:`~Color.FORE_NORMAL_DIM`.
-    FORE_BLACK: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(0))  # type: ignore
-    #: Red foreground color.
-    FORE_RED: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(1))  # type: ignore
-    #: Green foreground color.
-    FORE_GREEN: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(2))  # type: ignore
-    #: Yellow foreground color.
-    FORE_YELLOW: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(3))  # type: ignore
-    #: Blue foreground color.
-    FORE_BLUE: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(4))  # type: ignore
-    #: Magenta foreground color.
-    FORE_MAGENTA: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(5))  # type: ignore
-    #: Cyan foreground color.
-    FORE_CYAN: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(6))  # type: ignore
-    #: White foreground color.
-    #:
-    #: Avoid using it, in some terminals, notably in the Mac OS default terminal,
-    #: it is unreadable.
-    FORE_WHITE: _t.ClassVar[Color] = lambda: Color(fore=ColorValue(7))  # type: ignore
-
-    #: Normal background color.
-    BACK_NORMAL: _t.ClassVar[Color] = lambda: Color(back=ColorValue(9))  # type: ignore
-    #: Black background color.
-    BACK_BLACK: _t.ClassVar[Color] = lambda: Color(back=ColorValue(0))  # type: ignore
-    #: Red background color.
-    BACK_RED: _t.ClassVar[Color] = lambda: Color(back=ColorValue(1))  # type: ignore
-    #: Green background color.
-    BACK_GREEN: _t.ClassVar[Color] = lambda: Color(back=ColorValue(2))  # type: ignore
-    #: Yellow background color.
-    BACK_YELLOW: _t.ClassVar[Color] = lambda: Color(back=ColorValue(3))  # type: ignore
-    #: Blue background color.
-    BACK_BLUE: _t.ClassVar[Color] = lambda: Color(back=ColorValue(4))  # type: ignore
-    #: Magenta background color.
-    BACK_MAGENTA: _t.ClassVar[Color] = lambda: Color(back=ColorValue(5))  # type: ignore
-    #: Cyan background color.
-    BACK_CYAN: _t.ClassVar[Color] = lambda: Color(back=ColorValue(6))  # type: ignore
-    #: White background color.
-    BACK_WHITE: _t.ClassVar[Color] = lambda: Color(back=ColorValue(7))  # type: ignore
-
-
-@dataclass(frozen=True, **yuio._with_slots())
-class Color(_Colors):
-    """Data about terminal output style. Contains
+@dataclass(frozen=True)
+class Color:
+    """
+    Data about terminal output style. Contains
     foreground and background color, as well as text styles.
 
     This class only contains data about the color. It doesn't know anything about
@@ -987,17 +1066,29 @@ class Color(_Colors):
 
     """
 
-    #: Foreground color.
     fore: ColorValue | None = None
+    """
+    Foreground color.
 
-    #: Background color.
+    """
+
     back: ColorValue | None = None
+    """
+    Background color.
 
-    #: If true, render text as bold.
+    """
+
     bold: bool | None = None
+    """
+    If true, render text as bold.
 
-    #: If true, render text as dim.
+    """
+
     dim: bool | None = None
+    """
+    If true, render text as dim.
+
+    """
 
     def __or__(self, other: Color, /):
         return Color(
@@ -1012,7 +1103,8 @@ class Color(_Colors):
 
     @classmethod
     def fore_from_rgb(cls, r: int, g: int, b: int) -> Color:
-        """Create a foreground color value from rgb components.
+        """
+        Create a foreground color value from rgb components.
 
         Each component should be between 0 and 255.
 
@@ -1027,7 +1119,8 @@ class Color(_Colors):
 
     @classmethod
     def fore_from_hex(cls, h: str) -> Color:
-        """Create a foreground color value from a hex string.
+        """
+        Create a foreground color value from a hex string.
 
         Example::
 
@@ -1040,7 +1133,8 @@ class Color(_Colors):
 
     @classmethod
     def back_from_rgb(cls, r: int, g: int, b: int) -> Color:
-        """Create a background color value from rgb components.
+        """
+        Create a background color value from rgb components.
 
         Each component should be between 0 and 255.
 
@@ -1055,7 +1149,8 @@ class Color(_Colors):
 
     @classmethod
     def back_from_hex(cls, h: str) -> Color:
-        """Create a background color value from a hex string.
+        """
+        Create a background color value from a hex string.
 
         Example::
 
@@ -1068,7 +1163,8 @@ class Color(_Colors):
 
     @staticmethod
     def lerp(*colors: Color) -> _t.Callable[[float], Color]:
-        """Return a lambda that allows linear interpolation between several colors.
+        """
+        Return a lambda that allows linear interpolation between several colors.
 
         If either color is a single ANSI escape code, the first color is always returned
         from the lambda.
@@ -1117,7 +1213,8 @@ class Color(_Colors):
                 return lambda f, /: colors[0]
 
     def as_code(self, term: Term, /) -> str:
-        """Convert this color into an ANSI escape code
+        """
+        Convert this color into an ANSI escape code
         with respect to the given terminal capabilities.
 
         """
@@ -1139,10 +1236,159 @@ class Color(_Colors):
         else:
             return "\x1b[m"
 
+    NONE: typing.ClassVar[Color] = dict()  # type: ignore
+    """
+    No color.
 
-for _n, _v in vars(_Colors).items():
+    """
+
+    STYLE_BOLD: typing.ClassVar[Color] = dict(bold=True)  # type: ignore
+    """
+    Bold font style.
+
+    """
+
+    STYLE_DIM: typing.ClassVar[Color] = dict(dim=True)  # type: ignore
+    """
+    Dim font style.
+
+    """
+
+    STYLE_NORMAL: typing.ClassVar[Color] = dict(bold=False, dim=False)  # type: ignore
+    """
+    Not bold nor dim.
+
+    """
+
+    FORE_NORMAL: typing.ClassVar[Color] = dict(fore=ColorValue(9))  # type: ignore
+    """
+    Normal foreground color.
+
+    """
+
+    FORE_NORMAL_DIM: typing.ClassVar[Color] = dict(fore=ColorValue("2"))  # type: ignore
+    """
+    Normal foreground color rendered with dim setting.
+
+    This is an alternative to bright black that works with
+    most terminals and color schemes.
+
+    """
+
+    FORE_BLACK: typing.ClassVar[Color] = dict(fore=ColorValue(0))  # type: ignore
+    """
+    Black foreground color.
+
+    .. warning::
+
+       Avoid using this color, in most terminals it is the same as background color.
+       Instead, use :attr:`~Color.FORE_NORMAL_DIM`.
+
+    """
+
+    FORE_RED: typing.ClassVar[Color] = dict(fore=ColorValue(1))  # type: ignore
+    """
+    Red foreground color.
+
+    """
+
+    FORE_GREEN: typing.ClassVar[Color] = dict(fore=ColorValue(2))  # type: ignore
+    """
+    Green foreground color.
+
+    """
+
+    FORE_YELLOW: typing.ClassVar[Color] = dict(fore=ColorValue(3))  # type: ignore
+    """
+    Yellow foreground color.
+
+    """
+
+    FORE_BLUE: typing.ClassVar[Color] = dict(fore=ColorValue(4))  # type: ignore
+    """
+    Blue foreground color.
+
+    """
+
+    FORE_MAGENTA: typing.ClassVar[Color] = dict(fore=ColorValue(5))  # type: ignore
+    """
+    Magenta foreground color.
+
+    """
+
+    FORE_CYAN: typing.ClassVar[Color] = dict(fore=ColorValue(6))  # type: ignore
+    """
+    Cyan foreground color.
+
+    """
+
+    FORE_WHITE: typing.ClassVar[Color] = dict(fore=ColorValue(7))  # type: ignore
+    """
+    White foreground color.
+
+    Avoid using it, in some terminals, notably in the Mac OS default terminal,
+    it is unreadable.
+
+    """
+
+    BACK_NORMAL: typing.ClassVar[Color] = dict(back=ColorValue(9))  # type: ignore
+    """
+    Normal background color.
+
+    """
+
+    BACK_BLACK: typing.ClassVar[Color] = dict(back=ColorValue(0))  # type: ignore
+    """
+    Black background color.
+
+    """
+
+    BACK_RED: typing.ClassVar[Color] = dict(back=ColorValue(1))  # type: ignore
+    """
+    Red background color.
+
+    """
+
+    BACK_GREEN: typing.ClassVar[Color] = dict(back=ColorValue(2))  # type: ignore
+    """
+    Green background color.
+
+    """
+
+    BACK_YELLOW: typing.ClassVar[Color] = dict(back=ColorValue(3))  # type: ignore
+    """
+    Yellow background color.
+
+    """
+
+    BACK_BLUE: typing.ClassVar[Color] = dict(back=ColorValue(4))  # type: ignore
+    """
+    Blue background color.
+
+    """
+
+    BACK_MAGENTA: typing.ClassVar[Color] = dict(back=ColorValue(5))  # type: ignore
+    """
+    Magenta background color.
+
+    """
+
+    BACK_CYAN: typing.ClassVar[Color] = dict(back=ColorValue(6))  # type: ignore
+    """
+    Cyan background color.
+
+    """
+
+    BACK_WHITE: typing.ClassVar[Color] = dict(back=ColorValue(7))  # type: ignore
+    """
+    White background color.
+
+    """
+
+
+for _n, _v in vars(Color).items():
     if _n == _n.upper():
-        setattr(_Colors, _n, _v())
+        setattr(Color, _n, Color(**_v))
 del _n, _v  # type: ignore
 
 
@@ -1183,7 +1429,8 @@ def _parse_hex(h: str) -> tuple[int, int, int]:
 
 
 def line_width(s: str, /) -> int:
-    """Calculates string width when the string is displayed
+    """
+    Calculates string width when the string is displayed
     in a terminal.
 
     This function makes effort to detect wide characters
@@ -1234,16 +1481,9 @@ def line_width(s: str, /) -> int:
         )
 
 
-#: Raw colorized string. This is the underlying type for :class:`ColorizedString`.
-RawString: _t.TypeAlias = _t.Iterable[Color | str]
-
-
-#: Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
-AnyString: _t.TypeAlias = "str | Color | RawString | ColorizedString"
-
-
 class NoWrap(str):
-    """A string that will not be wrapped by the text wrapper.
+    """
+    A string that will not be wrapped by the text wrapper.
 
     See :meth:`ColorizedString.wrap` for more info.
 
@@ -1261,7 +1501,8 @@ class Esc(NoWrap):
 
 @_t.final
 class ColorizedString:
-    """A string with colors.
+    """
+    A string with colors.
 
     This class is a wrapper over a list of strings and colors.
     Each color applies to strings after it, right until the next color.
@@ -1297,7 +1538,8 @@ class ColorizedString:
 
     @property
     def explicit_newline(self) -> str:
-        """Explicit newline indicates that a line of a wrapped text
+        """
+        Explicit newline indicates that a line of a wrapped text
         was broken because the original text contained a new line character.
 
         See :meth:`~ColorizedString.wrap` for details.
@@ -1308,7 +1550,8 @@ class ColorizedString:
 
     @functools.cached_property
     def width(self) -> int:
-        """String width when the string is displayed in a terminal.
+        """
+        String width when the string is displayed in a terminal.
 
         See :func:`line_width` for more information.
 
@@ -1318,7 +1561,10 @@ class ColorizedString:
 
     @functools.cached_property
     def len(self) -> int:
-        """Line length in bytes, ignoring all colors."""
+        """
+        Line length in bytes, ignoring all colors.
+
+        """
 
         return sum(len(s) for s in self._parts if isinstance(s, str))
 
@@ -1329,7 +1575,8 @@ class ColorizedString:
         return self.len > 0
 
     def iter(self) -> _t.Iterator[Color | str]:
-        """Iterate over raw parts of the string,
+        """
+        Iterate over raw parts of the string,
         i.e. the underlying list of strings and colors.
 
         """
@@ -1351,7 +1598,8 @@ class ColorizedString:
         first_line_indent: AnyString = "",
         continuation_indent: AnyString = "",
     ) -> list[ColorizedString]:
-        r"""Wrap a long line of text into multiple lines.
+        r"""
+        Wrap a long line of text into multiple lines.
 
         :param preserve_spaces:
             if set to :data:`True`, all spaces are preserved.
@@ -1398,7 +1646,8 @@ class ColorizedString:
         first_line_indent: AnyString = "",
         continuation_indent: AnyString = "",
     ) -> ColorizedString:
-        r"""Indent this string by the given sequence.
+        r"""
+        Indent this string by the given sequence.
 
         :param first_line_indent:
             this will be appended to the first line in the string.
@@ -1444,7 +1693,8 @@ class ColorizedString:
         return res
 
     def percent_format(self, args: _t.Any) -> ColorizedString:
-        """Format colorized string as if with ``%``-formatting
+        """
+        Format colorized string as if with ``%``-formatting
         (i.e. `old-style formatting`_).
 
         .. _old-style formatting: https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting
@@ -1495,7 +1745,8 @@ class ColorizedString:
         return self
 
     def process_colors(self, term: Term, /) -> list[str]:
-        """Convert colors in this string into a normal string
+        """
+        Convert colors in this string into a normal string
         with ANSI escape sequences.
 
         """
@@ -1527,6 +1778,33 @@ class ColorizedString:
             return f"<ColorizedString({str(self)!r}, explicit_newline={self.explicit_newline!r})>"
         else:
             return f"<ColorizedString({str(self)!r})>"
+
+
+if _t.TYPE_CHECKING:
+
+    RawString: _t.TypeAlias = _t.Iterable[Color | str]
+    """
+    Raw colorized string. This is the underlying type for :class:`ColorizedString`.
+
+    """
+
+    AnyString: _t.TypeAlias = _t.Union[str, Color, RawString, ColorizedString]  # type: ignore
+    """
+    Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
+
+    """
+
+elif "__YUIO_SPHINX_BUILD" in os.environ:
+
+    class RawString: ...
+
+    class AnyString: ...
+
+else:
+
+    RawString: _t.TypeAlias = lambda x: x  # type: ignore
+
+    AnyString: _t.TypeAlias = lambda x: x  # type: ignore
 
 
 _S_SYNTAX = re.compile(

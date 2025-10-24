@@ -100,6 +100,8 @@ File path parsers
 .. autoclass:: GitRepo
 
 
+.. _validating-parsers:
+
 Validators
 ----------
 
@@ -143,7 +145,7 @@ Auxiliary parsers
 
 .. autoclass:: Strip(inner: Parser[T], /)
 
-.. autoclass:: WithDesc(inner: Parser[T], desc: str /)
+.. autoclass:: WithMeta(inner: Parser[T], desc: str /, *, completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING)
 
 
 Deriving parsers from type hints
@@ -349,7 +351,7 @@ returning an instance of :class:`Parser`. When inner parser is omitted,
             @overload
             def __new__(cls, inner: Parser[T], delimiter: str | None = None) -> PartialParser:
                 ...
-            def __new__(cls, *args, **kwargs) -> _t.Any:
+            def __new__(cls, *args, **kwargs) -> Any:
                 ...
 
 With these type hints, our example will fail to type check: :func:`yuio.io.ask`
@@ -393,7 +395,7 @@ Adding type hint conversions
 You can register a converter so that :func:`from_type_hint` can derive custom
 parsers from type hints:
 
-.. autofunction:: register_type_hint_conversion
+.. autofunction:: register_type_hint_conversion(cb: Cb) -> Cb
 
 When implementing a callback, you might need to specify a delimiter
 for a collection parser. Use :func:`suggest_delim_for_type_hint_conversion`:
@@ -401,6 +403,7 @@ for a collection parser. Use :func:`suggest_delim_for_type_hint_conversion`:
 .. autofunction:: suggest_delim_for_type_hint_conversion
 
 """
+
 from __future__ import annotations
 
 import abc
@@ -419,12 +422,73 @@ import textwrap
 import threading
 import traceback
 import types
+import typing
 
 import yuio
 import yuio.complete
 import yuio.json_schema
 import yuio.widget
 from yuio import _typing as _t
+from yuio.json_schema import JsonValue
+
+__all__ = [
+    "JsonValue",
+    "ParsingError",
+    "PartialParser",
+    "Parser",
+    "ValueParser",
+    "WrappingParser",
+    "MappingParser",
+    "Map",
+    "Apply",
+    "ValidatingParser",
+    "Str",
+    "Int",
+    "Float",
+    "Bool",
+    "Enum",
+    "Decimal",
+    "Fraction",
+    "Json",
+    "DateTime",
+    "Date",
+    "Time",
+    "TimeDelta",
+    "Path",
+    "NonExistentPath",
+    "ExistingPath",
+    "File",
+    "Dir",
+    "GitRepo",
+    "CollectionParser",
+    "List",
+    "Set",
+    "FrozenSet",
+    "Dict",
+    "Tuple",
+    "Optional",
+    "Union",
+    "Bound",
+    "LenBound",
+    "OneOf",
+    "WithMeta",
+    "Lower",
+    "Upper",
+    "CaseFold",
+    "Strip",
+    "Regex",
+    "Gt",
+    "Ge",
+    "Lt",
+    "Le",
+    "LenGt",
+    "LenGe",
+    "LenLt",
+    "LenLe",
+    "from_type_hint",
+    "register_type_hint_conversion",
+    "suggest_delim_for_type_hint_conversion",
+]
 
 T_co = _t.TypeVar("T_co", covariant=True)
 T = _t.TypeVar("T")
@@ -441,7 +505,8 @@ P = _t.TypeVar("P", bound="Parser[_t.Any]")
 
 
 class ParsingError(ValueError, argparse.ArgumentTypeError):
-    """Raised when parsing or validation fails.
+    """
+    Raised when parsing or validation fails.
 
     This exception is derived from both :class:`ValueError`
     and :class:`argparse.ArgumentTypeError` to ensure that error messages
@@ -456,7 +521,7 @@ class PartialParser(abc.ABC):
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.__orig_traceback = traceback.extract_stack()
         while self.__orig_traceback and self.__orig_traceback[-1].filename.endswith(
             "yuio/parse.py"
@@ -533,9 +598,12 @@ class Parser(PartialParser, _t.Generic[T_co]):
     # Original type hint from which this parser was derived.
     __typehint: _t.Any = None
 
-    #: An attribute for unwrapping parsers that validate or map results
-    #: of other parsers.
     __wrapped_parser__: Parser[object] | None = None
+    """
+    An attribute for unwrapping parsers that validate or map results
+    of other parsers.
+
+    """
 
     @abc.abstractmethod
     def parse(self, value: str, /) -> T_co:
@@ -1350,7 +1418,8 @@ def Regex(*args, group: int | str = 0) -> _t.Any:
 
 
 class Apply(MappingParser[T, T], _t.Generic[T]):
-    """A wrapper that applies the given function to the result of a wrapped widget.
+    """
+    A wrapper that applies the given function to the result of a wrapped widget.
 
     Example::
 
@@ -1670,6 +1739,8 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
     :param by_name:
         if :data:`True`, the parser will use enumerator names, instead of
         their values, to match the input.
+    :param to_dash_case:
+        convert enum names/values to dash case.
     :param doc_inline:
         inline this enum in json schema and in documentation.
 
@@ -2517,8 +2588,11 @@ class CollectionParser(
 
     """
 
-    #: If set to :data:`False`, autocompletion will not suggest item duplicates.
-    _allow_completing_duplicates: _t.ClassVar[bool] = True
+    _allow_completing_duplicates: typing.ClassVar[bool] = True
+    """
+    If set to :data:`False`, autocompletion will not suggest item duplicates.
+
+    """
 
     def __init__(
         self,
@@ -2651,7 +2725,8 @@ class CollectionParser(
 
 
 class List(CollectionParser[list[T], T], _t.Generic[T]):
-    """Parser for lists.
+    """
+    Parser for lists.
 
     Will split a string by the given delimiter, and parse each item
     using a subparser.
@@ -2695,7 +2770,8 @@ class List(CollectionParser[list[T], T], _t.Generic[T]):
 
 
 class Set(CollectionParser[set[T], T], _t.Generic[T]):
-    """Parser for sets.
+    """
+    Parser for sets.
 
     Will split a string by the given delimiter, and parse each item
     using a subparser.
@@ -2756,7 +2832,8 @@ class Set(CollectionParser[set[T], T], _t.Generic[T]):
 
 
 class FrozenSet(CollectionParser[frozenset[T], T], _t.Generic[T]):
-    """Parser for frozen sets.
+    """
+    Parser for frozen sets.
 
     Will split a string by the given delimiter, and parse each item
     using a subparser.
@@ -2804,7 +2881,8 @@ class FrozenSet(CollectionParser[frozenset[T], T], _t.Generic[T]):
 
 
 class Dict(CollectionParser[dict[K, V], tuple[K, V]], _t.Generic[K, V]):
-    """Parser for dicts.
+    """
+    Parser for dicts.
 
     Will split a string by the given delimiter, and parse each item
     using a :py:class:`Tuple` parser.
@@ -2904,7 +2982,8 @@ class Tuple(
     PartialParser,
     _t.Generic[TU],
 ):
-    """Parser for tuples of fixed lengths.
+    """
+    Parser for tuples of fixed lengths.
 
     :param parsers:
         parsers for each tuple element.
@@ -3594,8 +3673,6 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
 
 
 class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
-    _Self = _t.TypeVar("_Self", bound="_BoundImpl[_t.Any, _t.Any]")
-
     def __init__(
         self,
         inner: Parser[T] | None,
@@ -3869,7 +3946,8 @@ def Le(*args) -> _t.Any:
 
 
 class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
-    """Check that length of a value is upper- or lower-bound by some constraints.
+    """
+    Check that length of a value is upper- or lower-bound by some constraints.
 
     The signature is the same as of the :class:`Bound` class.
 
@@ -4172,40 +4250,61 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
         return yuio.widget.Choice(options, default_index=default_index)
 
 
-class WithDesc(MappingParser[T, T], _t.Generic[T]):
+class WithMeta(MappingParser[T, T], _t.Generic[T]):
     """
-    Overrides inline help messages of a wrapped parser.
+    Overrides inline help messages and other meta information of a wrapped parser.
 
     Inline help messages will show up as hints in autocompletion and widgets.
 
     :param inner:
         inner parser.
     :param desc:
-        description override.
+        description override. This short string will be used in CLI, widgets, and
+        autocompleters to describe expected value.
+    :param completer:
+        completer override.
 
     """
 
     if _t.TYPE_CHECKING:
 
         @_t.overload
-        def __new__(cls, inner: Parser[T], desc: str, /) -> MappingParser[T, T]: ...
+        def __new__(
+            cls,
+            inner: Parser[T],
+            /,
+            *,
+            desc: str | None = None,
+            completer: yuio.complete.Completer | yuio.Missing | None = yuio.MISSING,
+        ) -> MappingParser[T, T]: ...
 
         @_t.overload
-        def __new__(cls, desc: str, /) -> PartialParser: ...
+        def __new__(
+            cls,
+            /,
+            *,
+            desc: str | None = None,
+            completer: yuio.complete.Completer | yuio.Missing | None = yuio.MISSING,
+        ) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
 
-    def __init__(self, *args):
+    def __init__(
+        self,
+        *args,
+        desc: str | None = None,
+        completer: yuio.complete.Completer | yuio.Missing | None = yuio.MISSING,
+    ):
         inner: Parser[T] | None
-        desc: str
-        if len(args) == 1:
-            inner, desc = None, args[0]
-        elif len(args) == 2:
-            inner, desc = args
+        if not args:
+            inner = None
+        elif len(args) == 1:
+            inner = args[0]
         else:
-            raise TypeError(f"expected 1 or 2 positional arguments, got {len(args)}")
+            raise TypeError(f"expected at most 1 positional argument, got {len(args)}")
 
         self.__desc = desc
+        self.__completer = completer
         super().__init__(inner)
 
     def check_type(self, value: object) -> _t.TypeGuard[T]:
@@ -4240,6 +4339,12 @@ class WithDesc(MappingParser[T, T], _t.Generic[T]):
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return self._inner.options()
+
+    def completer(self) -> yuio.complete.Completer | None:
+        if self.__completer is not yuio.MISSING:
+            return self.__completer  # type: ignore
+        else:
+            return self._inner.completer()
 
     def widget(
         self,
@@ -4527,18 +4632,6 @@ def suggest_delim_for_type_hint_conversion() -> str | None:
         return None
 
 
-def _str_ty_union_parser(ty, origin, args, target, parser):
-    if ty is target:
-        return parser()
-    is_union = _t.is_union(origin)
-    is_optional = is_union and types.NoneType in args
-    if len(args) == 2 + is_optional and str in args and target in args:
-        if is_optional:
-            return Optional(parser())
-        else:
-            return parser()
-
-
 register_type_hint_conversion(lambda ty, origin, args: Str() if ty is str else None)
 register_type_hint_conversion(lambda ty, origin, args: Int() if ty is int else None)
 register_type_hint_conversion(lambda ty, origin, args: Float() if ty is float else None)
@@ -4606,10 +4699,10 @@ register_type_hint_conversion(
     uses_delim=True,
 )
 register_type_hint_conversion(
-    lambda ty, origin, args: _str_ty_union_parser(ty, origin, args, pathlib.Path, Path)
+    lambda ty, origin, args: Path() if ty is pathlib.Path else None
 )
 register_type_hint_conversion(
-    lambda ty, origin, args: (Json() if ty is yuio.json_schema.JsonValue else None)
+    lambda ty, origin, args: Json() if ty is yuio.json_schema.JsonValue else None
 )
 register_type_hint_conversion(
     lambda ty, origin, args: DateTime() if ty is datetime.datetime else None

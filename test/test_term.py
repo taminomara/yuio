@@ -484,8 +484,8 @@ class TestColorizedString:
                     [yuio.term.Color.NONE, "wo", "rd"],
                     [yuio.term.Color.NONE, "wo", "rd"],
                 ],
-                marks=pytest.mark.skip(
-                    "this is a bug which I'm not sure how to fix atm"
+                marks=pytest.mark.xfail(
+                    reason="this is a bug which I'm not sure how to fix atm"
                 ),
             ),
             (

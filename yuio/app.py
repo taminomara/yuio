@@ -12,7 +12,9 @@ Creating and running an app
 ---------------------------
 
 Yuio's CLI applications have functional interface. Decorate main function
-with the :func:`app` decorator, and use :meth:`App.run` method to start it::
+with the :func:`app` decorator, and use :meth:`App.run` method to start it:
+
+.. code-block:: python
 
     # Let's define an app with one flag and one positional argument.
     @app
@@ -43,7 +45,13 @@ Use the `parser` parameter of the :func:`field` function to override them.
 
 Arguments with bool parsers and parsers that support
 :meth:`parsing collections <yuio.parse.Parser.supports_parse_many>`
-are handled to provide better CLI experience::
+are handled to provide better CLI experience:
+
+.. invisible-code-block: python
+
+    import pathlib
+
+.. code-block:: python
 
     @app
     def main(
@@ -51,7 +59,7 @@ are handled to provide better CLI experience::
         verbose: bool = True,
 
         # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`
-        inputs: list[Path],
+        inputs: list[pathlib.Path] = [],
     ):
         ...
 
@@ -59,13 +67,17 @@ are handled to provide better CLI experience::
 
 .. autoclass:: App
 
-   .. automethod:: run
+    .. automethod:: run
+
+    .. method:: command(...)
+
+        The original callable what was wrapped by :func:`app`.
 
 
-Configuring flags and options
------------------------------
+Configuring CLI arguments
+-------------------------
 
-Names and types of flags are determined by names and types of the app function's
+Names and types of arguments are determined by names and types of the app function's
 arguments. You can use the :func:`field` function to override them:
 
 .. autofunction:: field
@@ -76,20 +88,26 @@ arguments. You can use the :func:`field` function to override them:
 
 .. autodata:: yuio.POSITIONAL
 
+.. autodata:: yuio.OMIT
+
 .. autofunction:: inline
 
 .. autofunction:: positional
+
+.. autoclass:: MutuallyExclusiveGroup
 
 
 Creating argument groups
 ------------------------
 
-You can use :class:`~yuio.config.Config` as a type of an app function's argument.
-This will make all of config's fields into flags as well. By default, Yuio will use
-argument's name as a prefix for all fields in the config; you can override it
-with :func:`field` or :func:`inline`::
+You can use :class:`~yuio.config.Config` as a type of an app function's parameter.
+This will make all of config fields into flags as well. By default, Yuio will use
+parameter name as a prefix for all fields in the config; you can override it
+with :func:`field` or :func:`inline`:
 
-    class KillCmdConfig(Config):
+.. code-block:: python
+
+    class KillCmdConfig(yuio.config.Config):
         # Will be loaded from `--signal`.
         signal: int
 
@@ -111,8 +129,8 @@ with :func:`field` or :func:`inline`::
 
 .. note::
 
-   Positional arguments are not allowed in configs,
-   only in apps.
+    Positional arguments are not allowed in configs,
+    only in apps.
 
 
 App settings
@@ -122,30 +140,32 @@ You can override default usage and help messages as well as control some of the 
 help formatting using its arguments:
 
 .. class:: App
-   :noindex:
+    :noindex:
 
-   .. autoattribute:: prog
+    .. autoattribute:: prog
 
-   .. autoattribute:: usage
+    .. autoattribute:: usage
 
-   .. autoattribute:: description
+    .. autoattribute:: description
 
-   .. autoattribute:: help
+    .. autoattribute:: help
 
-   .. autoattribute:: epilog
+    .. autoattribute:: epilog
 
-   .. autoattribute:: allow_abbrev
+    .. autoattribute:: allow_abbrev
 
-   .. autoattribute:: subcommand_required
+    .. autoattribute:: subcommand_required
 
-   .. autoattribute:: setup_logging
+    .. autoattribute:: setup_logging
 
 
 Creating sub-commands
 ---------------------
 
 You can create multiple sub-commands for the main function
-using the :meth:`App.subcommand` method::
+using the :meth:`App.subcommand` method:
+
+.. code-block:: python
 
     @app
     def main():
@@ -168,9 +188,9 @@ attached to the ``main()`` command. See the `example app`_ for details.
 .. _example app: https://github.com/taminomara/yuio/blob/main/examples/app
 
 .. class:: App
-   :noindex:
+    :noindex:
 
-   .. automethod:: subcommand
+    .. automethod:: subcommand
 
 
 Controlling how sub-commands are invoked
@@ -183,7 +203,9 @@ to :data:`False`.
 When this happens, we need to understand whether a subcommand was invoked or not.
 To determine this, you can accept a special parameter called ``_command_info``
 of type :class:`CommandInfo`. It will contain info about the current function,
-including its name and subcommand::
+including its name and subcommand:
+
+.. code-block:: python
 
     @app
     def main(_command_info: CommandInfo):
@@ -192,7 +214,9 @@ including its name and subcommand::
             ...
 
 You can call the subcommand on your own by using ``_command_info.subcommand``
-as a callable::
+as a callable:
+
+.. code-block:: python
 
     @app
     def main(_command_info: CommandInfo):
@@ -200,7 +224,9 @@ as a callable::
             _command_info.subcommand()  # manually invoking a subcommand
 
 If you wish to disable calling the subcommand, you can return :data:`False`
-from the main function::
+from the main function:
+
+.. code-block:: python
 
     @app
     def main(_command_info: CommandInfo):
@@ -244,20 +270,30 @@ __all__ = [
     "positional",
     "MutuallyExclusiveGroup",
     "AppError",
-    "Command",
     "CommandInfo",
     "app",
     "App",
 ]
 
-Command: _t.TypeAlias = _t.Callable[..., None]
-C = _t.TypeVar("C", bound=Command)
-C2 = _t.TypeVar("C2", bound=Command)
+C = _t.TypeVar("C", bound=_t.Callable[..., None])
+C2 = _t.TypeVar("C2", bound=_t.Callable[..., None])
 
 
 class AppError(Exception):
-    def __init__(self, msg: str, *args: _t.Any):
-        self.msg: str = msg
+    """
+    An error that you can throw from an app to finish its execution without printing
+    a traceback. If ``msg`` is given, it will be printed using :func:`yuio.io.failure`;
+    otherwise, the app quietly exits with code ``1``.
+
+    :param msg:
+        error message, will be passed to :func:`yuio.io.failure`.
+    :param args:
+        formatting arguments for the error message.
+
+    """
+
+    def __init__(self, msg: str | None = None, *args: _t.Any):
+        self.msg: str | None = msg
         self.args: tuple[_t.Any, ...] = args
 
 
@@ -286,7 +322,7 @@ def app(
 
 
 def app(
-    command: Command | None = None,
+    command: _t.Callable[..., None] | None = None,
     /,
     *,
     prog: str | None = None,
@@ -295,7 +331,8 @@ def app(
     epilog: str | None = None,
     version: str | None = None,
 ) -> _t.Any:
-    """Create an application.
+    """
+    Create an application.
 
     This is a decorator that's supposed to be used on the main method
     of the application. This decorator returns an :class:`App` object.
@@ -333,25 +370,37 @@ def app(
 
 @dataclass(frozen=True, eq=False, match_args=False)
 class CommandInfo:
-    """Data about the invoked command."""
+    """
+    Data about the invoked command.
 
-    #: Name of the current command.
-    #:
-    #: If it was invoked by alias,
-    #: this will contains the primary command name.
-    #:
-    #: For the main function, the name will be set to ``"__main__"``.
+    """
+
     name: str
+    """
+    Name of the current command.
 
-    #: Subcommand of this command, if one was given.
+    If it was invoked by alias,
+    this will contains the primary command name.
+
+    For the main function, the name will be set to ``"__main__"``.
+
+    """
+
     subcommand: CommandInfo | None
+    """
+    Subcommand of this command, if one was given.
+
+    """
 
     # Internal, do not use.
     _config: _t.Any = dataclasses.field(repr=False)
     _executed: bool = dataclasses.field(default=False, repr=False)
 
     def __call__(self) -> _t.Literal[False]:
-        """Execute this command."""
+        """
+        Execute this command.
+
+        """
 
         if self._executed:
             return False
@@ -371,7 +420,8 @@ class CommandInfo:
 
 
 class App(_t.Generic[C]):
-    """A class that encapsulates app settings and logic for running it.
+    """
+    A class that encapsulates app settings and logic for running it.
 
     It is better to create instances of this class using the :func:`app` decorator,
     as it provides means to decorate the main function and specify all of the app's
@@ -398,74 +448,83 @@ class App(_t.Generic[C]):
         epilog: str | None = None,
         version: str | None = None,
     ):
-        #: Program or subcommand display name.
-        #:
-        #: By default, inferred from :data:`sys.argv` and subcommand names.
-        #:
-        #: See `prog <https://docs.python.org/3/library/argparse.html#prog>`_
-        #: in :mod:`argparse`.
         self.prog: str | None = prog
+        """
+        Program or subcommand display name.
 
-        #: Program or subcommand synapsis.
-        #:
-        #: This string will be colorized according to `bash` syntax,
-        #: and then it will be ``%``-formatted with a single keyword argument `prog`.
-        #: If command supports multiple signatures, each of them should be listed
-        #: on a separate string. For example::
-        #:
-        #:     @app
-        #:     def main(): ...
-        #:
-        #:     main.usage = """
-        #:     %(prog)s [-q] [-f] [-m] [<branch>]
-        #:     %(prog)s [-q] [-f] [-m] --detach [<branch>]
-        #:     %(prog)s [-q] [-f] [-m] [--detach] <commit>
-        #:     ...
-        #:     """
-        #:
-        #: By default, generated from CLI flags by argparse.
-        #:
-        #: See `usage <https://docs.python.org/3/library/argparse.html#usage>`_
-        #: in :mod:`argparse`.
+        By default, inferred from :data:`sys.argv` and subcommand names.
+
+        See `prog <https://docs.python.org/3/library/argparse.html#prog>`_
+        in :mod:`argparse`.
+
+        """
+
         self.usage: str | None = usage
+        """
+        Program or subcommand synapsis.
+
+        This string will be colorized according to `bash` syntax,
+        and then it will be ``%``-formatted with a single keyword argument `prog`.
+        If command supports multiple signatures, each of them should be listed
+        on a separate string. For example::
+
+            @app
+            def main(): ...
+
+            main.usage = \"\"\"
+            %(prog)s [-q] [-f] [-m] [<branch>]
+            %(prog)s [-q] [-f] [-m] --detach [<branch>]
+            %(prog)s [-q] [-f] [-m] [--detach] <commit>
+            ...
+            \"\"\"
+
+        By default, generated from CLI flags by argparse.
+
+        See `usage <https://docs.python.org/3/library/argparse.html#usage>`_
+        in :mod:`argparse`.
+
+        """
 
         if not description and command.__doc__:
             description = command.__doc__
 
-        #: Text that is shown before CLI flags help, usually contains
-        #: short description of the program or subcommand.
-        #:
-        #: The text should be formatted using markdown. For example:
-        #:
-        #: .. code-block:: python
-        #:
-        #:    @app
-        #:    def main(): ...
-        #:
-        #:    main.description = """
-        #:    this command does a thing.
-        #:
-        #:    # different ways to do a thing
-        #:
-        #:    this command can apply multiple algorithms to achieve
-        #:    a necessary state in which a thing can be done. This includes:
-        #:
-        #:    - randomly turning the screen on and off;
-        #:
-        #:    - banging a head on a table;
-        #:
-        #:    - fiddling with your PCs power cord.
-        #:
-        #:    By default, the best algorithm is determined automatically.
-        #:    However, you can hint a preferred algorithm via the `--hint-algo` flag.
-        #:
-        #:    """
-        #:
-        #: By default, inferred from command's docstring.
-        #:
-        #: See `description <https://docs.python.org/3/library/argparse.html#description>`_
-        #: in :mod:`argparse`.
         self.description: str | None = description
+        """
+        Text that is shown before CLI flags help, usually contains
+        short description of the program or subcommand.
+
+        The text should be formatted using markdown. For example:
+
+        .. code-block:: python
+
+           @app
+           def main(): ...
+
+           main.description = \"\"\"
+           this command does a thing.
+
+           # different ways to do a thing
+
+           this command can apply multiple algorithms to achieve
+           a necessary state in which a thing can be done. This includes:
+
+           - randomly turning the screen on and off;
+
+           - banging a head on a table;
+
+           - fiddling with your PCs power cord.
+
+           By default, the best algorithm is determined automatically.
+           However, you can hint a preferred algorithm via the `--hint-algo` flag.
+
+           \"\"\"
+
+        By default, inferred from command's docstring.
+
+        See `description <https://docs.python.org/3/library/argparse.html#description>`_
+        in :mod:`argparse`.
+
+        """
 
         if help is yuio.DISABLED:
             help = argparse.SUPPRESS
@@ -473,52 +532,73 @@ class App(_t.Generic[C]):
             lines = description.split("\n\n", 1)
             help = lines[0].rstrip(".")
 
-        #: Short help message that is shown when listing subcommands.
-        #:
-        #: By default, inferred from command's docstring.
-        #:
-        #: See `help <https://docs.python.org/3/library/argparse.html#help>`_
-        #: in :mod:`argparse`.
         self.help: str | None = help
+        """
+        Short help message that is shown when listing subcommands.
 
-        #: Text that is shown after the main portion of the help message.
-        #:
-        #: Text format is identical to the one for :attr:`~App.description`.
-        #:
-        #: See `epilog <https://docs.python.org/3/library/argparse.html#epilog>`_
-        #: in :mod:`argparse`.
+        By default, inferred from command's docstring.
+
+        See `help <https://docs.python.org/3/library/argparse.html#help>`_
+        in :mod:`argparse`.
+
+        """
+
         self.epilog: str | None = epilog
+        """
+        Text that is shown after the main portion of the help message.
 
-        #: Allow abbreviating CLI flags if that doesn't create ambiguity.
-        #:
-        #: Disabled by default.
-        #:
-        #: See `allow_abbrev <https://docs.python.org/3/library/argparse.html#allow-abbrev>`_
-        #: in :mod:`argparse`.
+        Text format is identical to the one for :attr:`~App.description`.
+
+        See `epilog <https://docs.python.org/3/library/argparse.html#epilog>`_
+        in :mod:`argparse`.
+
+        """
+
         self.allow_abbrev: bool = False
+        """
+        Allow abbreviating CLI flags if that doesn't create ambiguity.
 
-        #: Require the user to provide a subcommand for this command.
-        #:
-        #: If this command doesn't have any subcommands, this option is ignored.
-        #:
-        #: Enabled by default.
+        Disabled by default.
+
+        See `allow_abbrev <https://docs.python.org/3/library/argparse.html#allow-abbrev>`_
+        in :mod:`argparse`.
+
+        """
+
         self.subcommand_required: bool = True
+        """
+        Require the user to provide a subcommand for this command.
 
-        #: If :data:`True`, the app will call :func:`logging.basicConfig` during
-        #: its initialization. Disable this if you want to customize
-        #: logging initialization.
-        #:
-        #: Disabling this option also removes the ``--verbose`` flag form the CLI.
+        If this command doesn't have any subcommands, this option is ignored.
+
+        Enabled by default.
+
+        """
+
         self.setup_logging: bool = True
+        """
+        If :data:`True`, the app will call :func:`logging.basicConfig` during
+        its initialization. Disable this if you want to customize
+        logging initialization.
 
-        #: A custom theme that will be passed to :func:`yuio.io.setup`
-        #: on application startup.
+        Disabling this option also removes the ``--verbose`` flag form the CLI.
+
+        """
+
         self.theme: (
             yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
         ) = None
+        """
+        A custom theme that will be passed to :func:`yuio.io.setup`
+        on application startup.
 
-        #: If not :data:`None`, add ``--version`` flag to the CLI.
+        """
+
         self.version: str | None = version
+        """
+        If not :data:`None`, add ``--version`` flag to the CLI.
+
+        """
 
         self.__sub_apps: dict[str, App._SubApp] = {}
 
@@ -549,8 +629,11 @@ class App(_t.Generic[C]):
                     kwargs[name] = arg
             return CommandInfo("__raw__", None, self.__config_type(**kwargs), False)()
 
-        #: The original callable what was wrapped by :func:`app`.
         self.command: C = command  # type: ignore
+        """
+        The original callable what was wrapped by :func:`app`.
+
+        """
 
     @_t.overload
     def subcommand(
@@ -581,7 +664,7 @@ class App(_t.Generic[C]):
 
     def subcommand(
         self,
-        cb: Command | None = None,
+        cb: _t.Callable[..., None] | None = None,
         /,
         *,
         name: str | None = None,
@@ -591,7 +674,8 @@ class App(_t.Generic[C]):
         description: str | None = None,
         epilog: str | None = None,
     ) -> _t.Any:
-        """Register a subcommand for the given app.
+        """
+        Register a subcommand for the given app.
 
         This method can be used as a decorator, similar to the :func:`app` function.
 
@@ -674,7 +758,8 @@ class App(_t.Generic[C]):
             command()
             exit(0)
         except AppError as e:
-            yuio.io.failure(e.msg, *e.args)
+            if e.msg:
+                yuio.io.failure(e.msg, *e.args)
             exit(1)
         except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
             # Make sure we print subcommand's usage, not the main one.
@@ -867,7 +952,7 @@ class App(_t.Generic[C]):
         return serializer
 
     def __write_completions(self, shell: str):
-        yuio.complete.write_completions(self.__get_completions(), self.prog, shell)
+        yuio.complete._write_completions(self.__get_completions(), self.prog, shell)
 
 
 class _NoReprConfig(yuio.config.Config):
@@ -875,7 +960,7 @@ class _NoReprConfig(yuio.config.Config):
         return "<move along, nothing to see here>"
 
 
-def _command_from_callable(cb: Command) -> type[yuio.config.Config]:
+def _command_from_callable(cb: _t.Callable[..., None]) -> type[yuio.config.Config]:
     sig = inspect.signature(cb)
 
     dct = {}
@@ -938,7 +1023,7 @@ def _command_from_callable(cb: Command) -> type[yuio.config.Config]:
 
 
 def _command_from_callable_run_impl(
-    cb: Command, params: list[str], accepts_command_info
+    cb: _t.Callable[..., None], params: list[str], accepts_command_info
 ):
     def run(self, command_info):
         kw = {name: getattr(self, name) for name in params}
@@ -992,7 +1077,8 @@ class _Namespace(argparse.Namespace):
 
 def _make_completions_action(app: App[_t.Any]):
     class _CompletionsAction(argparse.Action):
-        usage = False
+        def get_usage(self):
+            return False
 
         parser = yuio.parse.OneOf(
             yuio.parse.Lower(yuio.parse.Str()),
@@ -1014,21 +1100,24 @@ def _make_completions_action(app: App[_t.Any]):
 
 
 class _NoOpAction(argparse.Action):
-    usage = False
+    def get_usage(self):
+        return False
 
     def __call__(self, parser, namespace, value, *args):
         pass
 
 
 class _StoreConstAction(argparse.Action):
-    usage = False
+    def get_usage(self):
+        return False
 
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, self.const)
 
 
 class _HelpAction(argparse.Action):
-    usage = False
+    def get_usage(self):
+        return False
 
     def __call__(self, parser, namespace, values, option_string=None):
         parser.print_help()
@@ -1036,7 +1125,8 @@ class _HelpAction(argparse.Action):
 
 
 class _VersionAction(argparse.Action):
-    usage = False
+    def get_usage(self):
+        return False
 
     def __init__(self, version=None, **kwargs):
         super().__init__(**kwargs)
@@ -1263,7 +1353,9 @@ class _HelpFormatter:
                     elif elem._group_actions:
                         group_actions = []
                         for action in elem._group_actions:
-                            usage_settings = getattr(action, "get_usage", lambda: True)
+                            usage_settings = getattr(
+                                action, "get_usage", lambda: True
+                            )()
                             if usage_settings is yuio.OMIT:
                                 has_omitted_usages = True
                             elif (
@@ -1274,17 +1366,14 @@ class _HelpFormatter:
                                 group_actions.append(action)
                         if not group_actions:
                             continue
+                        if sep:
+                            c_usage_elems += self._usage_main_color
+                            c_usage_elems += " "
                         if len(group_actions) == 1:
-                            if sep:
-                                c_usage_elems += self._usage_main_color
-                                c_usage_elems += " "
                             self._format_action_short(group_actions[0], c_usage_elems)
                             sep = True
                         else:
                             for i, action in enumerate(group_actions):
-                                if sep:
-                                    c_usage_elems += self._usage_main_color
-                                    c_usage_elems += " "
                                 if i == 0:
                                     c_usage_elems += self._usage_punct_color
                                     c_usage_elems += "(" if elem.required else "["

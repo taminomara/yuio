@@ -81,11 +81,18 @@ the :class:`WidgetHelp` yourself:
 .. autoclass:: WidgetHelp
    :members:
 
-.. autodata:: ActionKey
+.. class:: ActionKey
 
-.. autodata:: ActionKeys
+    A single key associated with an action.
+    Can be either a hotkey or a string with an arbitrary description.
 
-.. autodata:: Action
+.. class:: ActionKeys
+
+    A list of keys associated with an action.
+
+.. class:: Action
+
+    An action itself, i.e. a set of hotkeys and a description for them.
 
 
 Pre-defined widgets
@@ -112,8 +119,8 @@ Pre-defined widgets
 
 .. autoclass:: Apply
 
-
 """
+
 from __future__ import annotations
 
 import abc
@@ -126,6 +133,7 @@ import re
 import shutil
 import string
 import sys
+import typing
 from dataclasses import dataclass
 
 import yuio.complete
@@ -138,6 +146,32 @@ from yuio.term import Esc as _Esc
 from yuio.term import Term as _Term
 from yuio.term import line_width as _line_width
 from yuio.theme import Theme as _Theme
+
+__all__ = [
+    "Key",
+    "KeyboardEvent",
+    "RenderContext",
+    "Result",
+    "Widget",
+    "bind",
+    "help",
+    "ActionKey",
+    "ActionKeys",
+    "Action",
+    "WidgetHelp",
+    "VerticalLayoutBuilder",
+    "VerticalLayout",
+    "Line",
+    "Text",
+    "Input",
+    "Option",
+    "Grid",
+    "Choice",
+    "Multiselect",
+    "InputWithCompletion",
+    "Map",
+    "Apply",
+]
 
 _SPACE_BETWEEN_COLUMNS = 2
 _MIN_COLUMN_WIDTH = 10
@@ -155,64 +189,124 @@ T_co = _t.TypeVar("T_co", covariant=True)
 
 
 class Key(enum.Enum):
-    """Non-character keys."""
+    """
+    Non-character keys.
 
-    #: `Enter` key.
+    """
+
     ENTER = enum.auto()
+    """
+    `Enter` key.
 
-    #: `Escape` key.
+    """
+
     ESCAPE = enum.auto()
+    """
+    `Escape` key.
 
-    #: `Delete` key.
+    """
+
     DELETE = enum.auto()
+    """
+    `Delete` key.
 
-    #: `Backspace` key.
+    """
+
     BACKSPACE = enum.auto()
+    """
+    `Backspace` key.
 
-    #: `Tab` key.
+    """
+
     TAB = enum.auto()
+    """
+    `Tab` key.
 
-    #: `Tab` key with `Shift` modifier.
+    """
+
     SHIFT_TAB = enum.auto()
+    """
+    `Tab` key with `Shift` modifier.
 
-    #: `Home` key.
+    """
+
     HOME = enum.auto()
+    """
+    `Home` key.
 
-    #: `End` key.
+    """
+
     END = enum.auto()
+    """
+    `End` key.
 
-    #: `PageUp` key.
+    """
+
     PAGE_UP = enum.auto()
+    """
+    `PageUp` key.
 
-    #: `PageDown` key.
+    """
+
     PAGE_DOWN = enum.auto()
+    """
+    `PageDown` key.
 
-    #: `ArrowUp` key.
+    """
+
     ARROW_UP = enum.auto()
+    """
+    `ArrowUp` key.
 
-    #: `ArrowDown` key.
+    """
+
     ARROW_DOWN = enum.auto()
+    """
+    `ArrowDown` key.
 
-    #: `ArrowLeft` key.
+    """
+
     ARROW_LEFT = enum.auto()
+    """
+    `ArrowLeft` key.
 
-    #: `ArrowRight` key.
+    """
+
     ARROW_RIGHT = enum.auto()
+    """
+    `ArrowRight` key.
 
-    #: `F1` key.
+    """
+
     F1 = enum.auto()
+    """
+    `F1` key.
 
-    #: `F2` key.
+    """
+
     F2 = enum.auto()
+    """
+    `F2` key.
 
-    #: `F3` key.
+    """
+
     F3 = enum.auto()
+    """
+    `F3` key.
 
-    #: `F4` key.
+    """
+
     F4 = enum.auto()
+    """
+    `F4` key.
 
-    #: Triggered when a text is pasted into a terminal.
+    """
+
     PASTE = enum.auto()
+    """
+    Triggered when a text is pasted into a terminal.
+
+    """
 
     def __str__(self) -> str:
         return self.name.replace("_", " ").title()
@@ -220,30 +314,44 @@ class Key(enum.Enum):
 
 @dataclass(frozen=True, **yuio._with_slots())
 class KeyboardEvent:
-    """A single keyboard event.
+    """
+    A single keyboard event.
 
     Note that we don't have separate flag for when :kbd:`Shift` was pressed with
     keystroke because that results in :attr:`~KeyboardEvent.key` being a capital letter.
 
     """
 
-    #: Which key was pressed? Can be a single character,
-    #: or a :class:`Key` for non-character keys.
     key: Key | str
+    """
+    Which key was pressed? Can be a single character,
+    or a :class:`Key` for non-character keys.
 
-    #: Whether a :kbd:`Ctrl` modifier was pressed with keystroke.
+    """
+
     ctrl: bool = False
+    """
+    Whether a :kbd:`Ctrl` modifier was pressed with keystroke.
 
-    #: Whether an :kbd:`Alt` (:kbd:`Option` on macs) modifier was pressed with keystroke.
+    """
+
     alt: bool = False
+    """
+    Whether an :kbd:`Alt` (:kbd:`Option` on macs) modifier was pressed with keystroke.
 
-    #: If ``key`` is :attr:`Key.PASTE`, this attribute will contain pasted string.
+    """
+
     paste_str: str | None = dataclasses.field(default=None, compare=False)
+    """
+    If ``key`` is :attr:`Key.PASTE`, this attribute will contain pasted string.
+
+    """
 
 
 @_t.final
 class RenderContext:
-    """A canvas onto which widgets render themselves.
+    """
+    A canvas onto which widgets render themselves.
 
     This class represents a canvas with size equal to the available space on the terminal.
     Like a real terminal, it has a character grid and a virtual cursor that can be moved
@@ -344,13 +452,19 @@ class RenderContext:
 
     @property
     def term(self) -> _Term:
-        """Terminal where we render the widgets."""
+        """
+        Terminal where we render the widgets.
+
+        """
 
         return self._term
 
     @property
     def theme(self) -> _Theme:
-        """Current color theme."""
+        """
+        Current color theme.
+
+        """
 
         return self._theme
 
@@ -364,7 +478,8 @@ class RenderContext:
         width: int | None = None,
         height: int | None = None,
     ):
-        """Override drawing frame.
+        """
+        Override drawing frame.
 
         Widgets are always drawn in the frame's top-left corner,
         and they can take the entire frame size.
@@ -504,36 +619,52 @@ class RenderContext:
 
     @property
     def width(self) -> int:
-        """Get width of the current frame."""
+        """
+        Get width of the current frame.
+
+        """
 
         return self._frame_w
 
     @property
     def height(self) -> int:
-        """Get height of the current frame."""
+        """
+        Get height of the current frame.
+
+        """
 
         return self._frame_h
 
     def set_pos(self, x: int, y: int, /):
-        """Set current cursor position within the frame."""
+        """
+        Set current cursor position within the frame.
+
+        """
 
         self._frame_cursor_x = x
         self._frame_cursor_y = y
 
     def move_pos(self, dx: int, dy: int, /):
-        """Move current cursor position by the given amount."""
+        """
+        Move current cursor position by the given amount.
+
+        """
 
         self._frame_cursor_x += dx
         self._frame_cursor_y += dy
 
     def new_line(self):
-        """Move cursor to new line within the current frame."""
+        """
+        Move cursor to new line within the current frame.
+
+        """
 
         self._frame_cursor_x = 0
         self._frame_cursor_y += 1
 
     def set_final_pos(self, x: int, y: int, /):
-        """Set position where the cursor should end up
+        """
+        Set position where the cursor should end up
         after everything has been rendered.
 
         By default, cursor will end up at the beginning of the last line.
@@ -546,17 +677,26 @@ class RenderContext:
         self._final_y = y + self._frame_y
 
     def set_color_path(self, path: str, /):
-        """Set current color by fetching it from the theme by path."""
+        """
+        Set current color by fetching it from the theme by path.
+
+        """
 
         self._frame_cursor_color = self._theme.get_color(path).as_code(self._term)
 
     def set_color(self, color: _Color, /):
-        """Set current color."""
+        """
+        Set current color.
+
+        """
 
         self._frame_cursor_color = color.as_code(self._term)
 
     def reset_color(self):
-        """Set current color to the default color of the terminal."""
+        """
+        Set current color to the default color of the terminal.
+
+        """
 
         self._frame_cursor_color = self._none_color
 
@@ -717,7 +857,8 @@ class RenderContext:
         *,
         max_width: int | None = None,
     ):
-        """Write multiple lines.
+        """
+        Write multiple lines.
 
         Each line is printed using :meth:`~RenderContext.write`,
         so newline characters and tabs within each line are replaced with spaces.
@@ -766,12 +907,18 @@ class RenderContext:
             self.write(line, max_width=max_width)
 
     def bell(self):
-        """Ring a terminal bell."""
+        """
+        Ring a terminal bell.
+
+        """
 
         self._bell = True
 
     def prepare(self, *, full_redraw: bool = False, alternative_buffer: bool = False):
-        """Reset output canvas and prepare context for a new round of widget formatting."""
+        """
+        Reset output canvas and prepare context for a new round of widget formatting.
+
+        """
 
         if self._override_wh:
             width, height = self._override_wh
@@ -821,7 +968,10 @@ class RenderContext:
         self._full_redraw = full_redraw
 
     def clear_screen(self):
-        """Clear screen and prepare for a full redraw."""
+        """
+        Clear screen and prepare for a full redraw.
+
+        """
 
         self._out.append("\x1b[2J\x1b[1H")
         self._term_x, self._term_y = 0, 0
@@ -837,7 +987,10 @@ class RenderContext:
         return lines, colors
 
     def render(self):
-        """Render current canvas onto the terminal."""
+        """
+        Render current canvas onto the terminal.
+
+        """
 
         if not self.term.can_move_cursor:
             # For tests. Widgets can't work with dumb terminals
@@ -900,7 +1053,10 @@ class RenderContext:
             self._out.clear()
 
     def finalize(self):
-        """Erase any rendered widget and move cursor to the initial position."""
+        """
+        Erase any rendered widget and move cursor to the initial position.
+
+        """
 
         self.prepare(full_redraw=True)
 
@@ -952,7 +1108,8 @@ class RenderContext:
 
 @dataclass(frozen=True, **yuio._with_slots())
 class Result(_t.Generic[T_co]):
-    """Result of a widget run.
+    """
+    Result of a widget run.
 
     We have to wrap the return value of event processors into this class.
     Otherwise we won't be able to distinguish between returning `None`
@@ -960,12 +1117,16 @@ class Result(_t.Generic[T_co]):
 
     """
 
-    #: Result of a widget run.
     value: T_co
+    """
+    Result of a widget run.
+
+    """
 
 
 class Widget(abc.ABC, _t.Generic[T_co]):
-    """Base class for all interactive console elements.
+    """
+    Base class for all interactive console elements.
 
     Widgets are displayed with their :meth:`~Widget.run` method.
     They always go through the same event loop:
@@ -999,15 +1160,18 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     """
 
-    __bindings: _t.ClassVar[dict[KeyboardEvent, _t.Callable[[_t.Any], _t.Any]]]
-    __callbacks: _t.ClassVar[list[object]]
+    __bindings: typing.ClassVar[dict[KeyboardEvent, _t.Callable[[_t.Any], _t.Any]]]
+    __callbacks: typing.ClassVar[list[object]]
 
     __in_help_menu: bool = False
     __bell: bool = False
 
-    #: Current event that is being processed.
-    #: Guaranteed to be not :data:`None` inside event handlers.
     _cur_event: KeyboardEvent | None = None
+    """
+    Current event that is being processed.
+    Guaranteed to be not :data:`None` inside event handlers.
+
+    """
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -1032,7 +1196,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                 cls.__callbacks.append(cb)
 
     def event(self, e: KeyboardEvent, /) -> Result[T_co] | None:
-        """Handle incoming keyboard event.
+        """
+        Handle incoming keyboard event.
 
         By default, this function dispatches event to handlers registered
         via :func:`bind`. If no handler is found,
@@ -1047,11 +1212,15 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             return self.default_event_handler(e)
 
     def default_event_handler(self, e: KeyboardEvent, /) -> Result[T_co] | None:
-        """Process any event that wasn't caught by other event handlers."""
+        """
+        Process any event that wasn't caught by other event handlers.
+
+        """
 
     @abc.abstractmethod
     def layout(self, rc: RenderContext, /) -> tuple[int, int]:
-        """Prepare widget for drawing, and recalculate its dimensions
+        """
+        Prepare widget for drawing, and recalculate its dimensions
         according to new frame dimensions.
 
         Yuio's widgets always take all available width. They should return
@@ -1062,7 +1231,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     @abc.abstractmethod
     def draw(self, rc: RenderContext, /):
-        """Draw the widget.
+        """
+        Draw the widget.
 
         Render context's drawing frame dimensions are guaranteed to be between
         the minimum and the maximum height returned from the last call
@@ -1072,7 +1242,10 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     @_t.final
     def run(self, term: _Term, theme: _Theme, /) -> T_co:
-        """Read user input and run the widget."""
+        """
+        Read user input and run the widget.
+
+        """
 
         if not term.is_fully_interactive:
             raise RuntimeError("terminal doesn't support rendering widgets")
@@ -1139,7 +1312,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
     @property
     def help_data(self) -> WidgetHelp:
-        """Data for displaying help messages.
+        """
+        Data for displaying help messages.
 
         See :func:`help` for more info.
 
@@ -1464,6 +1638,11 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                 long_msg="refresh screen",
             )
             .with_action(
+                self._CTRL + "c",
+                group="Other Actions",
+                long_msg="send interrupt signal",
+            )
+            .with_action(
                 "C-...",
                 group="Terminology",
                 long_msg="means `Ctrl+...`",
@@ -1598,7 +1777,8 @@ def bind(
     show_in_inline_help: bool = False,
     show_in_detailed_help: bool = True,
 ) -> _Binding:
-    """Register an event handler for a widget.
+    """
+    Register an event handler for a widget.
 
     Widget's methods can be registered as handlers for keyboard events.
     When a new event comes in, it is checked to match arguments of this decorator.
@@ -1663,7 +1843,8 @@ def help(
     long_msg: str | None = None,
     msg: str | None = None,
 ) -> _Help:
-    """Set options for how this callback should be displayed.
+    """
+    Set options for how this callback should be displayed.
 
     This decorator controls automatic generation of help messages for a widget.
 
@@ -1711,20 +1892,32 @@ def help(
     )
 
 
-#: A single key associated with an action.
-#: Can be either a hotkey or a string with an arbitrary description.
 ActionKey: _t.TypeAlias = Key | KeyboardEvent | str
+"""
+A single key associated with an action.
+Can be either a hotkey or a string with an arbitrary description.
 
-#: A list of keys associated with an action.
+"""
+
+
 ActionKeys: _t.TypeAlias = ActionKey | _t.Collection[ActionKey]
+"""
+A list of keys associated with an action.
 
-#: An action itself, i.e. a set of hotkeys and a description for them.
+"""
+
+
 Action: _t.TypeAlias = str | tuple[ActionKeys, str]
+"""
+An action itself, i.e. a set of hotkeys and a description for them.
+
+"""
 
 
 @dataclass(frozen=True, **yuio._with_slots())
 class WidgetHelp:
-    """Data for automatic help generation.
+    """
+    Data for automatic help generation.
 
     .. warning::
 
@@ -1736,11 +1929,17 @@ class WidgetHelp:
 
     """
 
-    #: List of actions to show in the inline help.
     inline_help: list[Action] = dataclasses.field(default_factory=list)
+    """
+    List of actions to show in the inline help.
 
-    #: Dict of group titles and actions to show in the help menu.
+    """
+
     groups: dict[str, list[Action]] = dataclasses.field(default_factory=dict)
+    """
+    Dict of group titles and actions to show in the help menu.
+
+    """
 
     def with_action(
         self,
@@ -1884,7 +2083,8 @@ class WidgetHelp:
 
 @_t.final
 class VerticalLayoutBuilder(_t.Generic[T]):
-    """Builder for :class:`VerticalLayout` that allows for precise control
+    """
+    Builder for :class:`VerticalLayout` that allows for precise control
     of keyboard events.
 
     By default, :class:`VerticalLayout` does not handle incoming keyboard events.
@@ -1919,7 +2119,8 @@ class VerticalLayoutBuilder(_t.Generic[T]):
     ) -> VerticalLayoutBuilder[U]: ...
 
     def add(self, widget: Widget[_t.Any], /, *, receive_events=False) -> _t.Any:
-        """Add a new widget to the bottom of the layout.
+        """
+        Add a new widget to the bottom of the layout.
 
         If `receive_events` is `True`, all incoming events will be forwarded
         to the added widget. Only the latest widget added with ``receive_events=True``
@@ -1956,7 +2157,8 @@ class VerticalLayoutBuilder(_t.Generic[T]):
 
 
 class VerticalLayout(Widget[T], _t.Generic[T]):
-    """Helper class for stacking widgets together.
+    """
+    Helper class for stacking widgets together.
 
     You can stack your widgets together, then calculate their layout
     and draw them all at once.
@@ -1990,7 +2192,10 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
         self.__max_h: int = 0
 
     def append(self, widget: Widget[_t.Any], /):
-        """Add a widget to the end of the stack."""
+        """
+        Add a widget to the end of the stack.
+
+        """
 
         if isinstance(widget, VerticalLayout):
             self._widgets.extend(widget._widgets)
@@ -1998,13 +2203,17 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
             self._widgets.append(widget)
 
     def extend(self, widgets: _t.Iterable[Widget[_t.Any]], /):
-        """Add multiple widgets to the end of the stack."""
+        """
+        Add multiple widgets to the end of the stack.
+
+        """
 
         for widget in widgets:
             self.append(widget)
 
     def event(self, e: KeyboardEvent) -> Result[T] | None:
-        """Dispatch event to the widget that was added with ``receive_events=True``.
+        """
+        Dispatch event to the widget that was added with ``receive_events=True``.
 
         See :class:`~VerticalLayoutBuilder` for details.
 
@@ -2016,7 +2225,10 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
             )
 
     def layout(self, rc: RenderContext, /) -> tuple[int, int]:
-        """Calculate layout of the entire stack."""
+        """
+        Calculate layout of the entire stack.
+
+        """
 
         self.__layouts = [widget.layout(rc) for widget in self._widgets]
         assert all(l[0] <= l[1] for l in self.__layouts), "incorrect layout"
@@ -2025,7 +2237,10 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
         return self.__min_h, self.__max_h
 
     def draw(self, rc: RenderContext, /):
-        """Draw the stack according to the calculated layout and available height."""
+        """
+        Draw the stack according to the calculated layout and available height.
+
+        """
 
         assert len(self._widgets) == len(self.__layouts), (
             "you need to call `VerticalLayout.layout()` "
@@ -2060,7 +2275,10 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
 
 class Line(Widget[_t.Never]):
-    """A widget that prints a single line of text."""
+    """
+    A widget that prints a single line of text.
+
+    """
 
     def __init__(
         self,
@@ -2074,7 +2292,10 @@ class Line(Widget[_t.Never]):
 
     @property
     def text(self) -> yuio.term.ColorizedString:
-        """Currently displayed text."""
+        """
+        Currently displayed text.
+
+        """
         return self.__text
 
     @text.setter
@@ -2083,7 +2304,10 @@ class Line(Widget[_t.Never]):
 
     @property
     def color(self) -> _Color | str | None:
-        """Color of the currently displayed text."""
+        """
+        Color of the currently displayed text.
+
+        """
         return self.__color
 
     @color.setter
@@ -2104,7 +2328,10 @@ class Line(Widget[_t.Never]):
 
 
 class Text(Widget[_t.Never]):
-    """A widget that prints wrapped text."""
+    """
+    A widget that prints wrapped text.
+
+    """
 
     def __init__(
         self,
@@ -2117,7 +2344,10 @@ class Text(Widget[_t.Never]):
 
     @property
     def text(self) -> yuio.term.ColorizedString:
-        """Currently displayed text."""
+        """
+        Currently displayed text.
+
+        """
         return self.__text
 
     @text.setter
@@ -2299,19 +2529,34 @@ class Input(Widget[str]):
     _WORD_SEPARATORS = string.punctuation + string.whitespace
 
     class _CheckpointType(enum.Enum):
-        """Types of entries in the history buffer."""
+        """
+        Types of entries in the history buffer.
 
-        #: User-initiated checkpoint.
+        """
+
         USR = enum.auto()
+        """
+        User-initiated checkpoint.
 
-        #: Checkpoint before a symbol was inserted.
+        """
+
         SYM = enum.auto()
+        """
+        Checkpoint before a symbol was inserted.
 
-        #: Checkpoint before a space was inserted.
+        """
+
         SEP = enum.auto()
+        """
+        Checkpoint before a space was inserted.
 
-        #: Checkpoint before something was deleted.
+        """
+
         DEL = enum.auto()
+        """
+        Checkpoint before something was deleted.
+
+        """
 
     def __init__(
         self,
@@ -2355,7 +2600,10 @@ class Input(Widget[str]):
 
     @property
     def text(self) -> str:
-        """Current text in the input box."""
+        """
+        Current text in the input box.
+
+        """
         return self.__text
 
     @text.setter
@@ -2367,7 +2615,8 @@ class Input(Widget[str]):
 
     @property
     def pos(self) -> int:
-        """Current cursor position, measured in code points before the cursor.
+        """
+        Current cursor position, measured in code points before the cursor.
 
         That is, if the text is `"quick brown fox"` with cursor right before the word
         "brown", then :attr:`~Input.pos` is equal to `len("quick ")`.
@@ -2381,12 +2630,18 @@ class Input(Widget[str]):
         self.__pos_after_wrap = None
 
     def checkpoint(self):
-        """Manually create an entry in the history buffer."""
+        """
+        Manually create an entry in the history buffer.
+
+        """
         self.__history.append((self.text, self.pos, Input._CheckpointType.USR))
         self.__history_skipped_actions = 0
 
     def restore_checkpoint(self):
-        """Restore the last manually created checkpoint."""
+        """
+        Restore the last manually created checkpoint.
+
+        """
         if self.__history[-1][2] is Input._CheckpointType.USR:
             self.undo()
 
@@ -2796,27 +3051,45 @@ class Option(_t.Generic[T_co]):
 
     """
 
-    #: Option's value that will be returned from widget.
     value: T_co
+    """
+    Option's value that will be returned from widget.
 
-    #: What should be displayed in the autocomplete list.
+    """
+
     display_text: str
+    """
+    What should be displayed in the autocomplete list.
 
-    #: Prefix that will be displayed before :attr:`~Option.display_text`.
+    """
+
     display_text_prefix: str = ""
+    """
+    Prefix that will be displayed before :attr:`~Option.display_text`.
 
-    #: Suffix that will be displayed after :attr:`~Option.display_text`.
+    """
+
     display_text_suffix: str = ""
+    """
+    Suffix that will be displayed after :attr:`~Option.display_text`.
 
-    #: Option's short comment.
+    """
+
     comment: str | None = None
+    """
+    Option's short comment.
 
-    #: Option's color tag.
-    #:
-    #: This color tag will be used to display option.
-    #: Specifically, color for the option will be looked up py path
-    #: ``"menu/choice/{status}/{element}/{color_tag}"``.
+    """
+
     color_tag: str | None = None
+    """
+    Option's color tag.
+
+    This color tag will be used to display option.
+    Specifically, color for the option will be looked up py path
+    ``"menu/choice/{status}/{element}/{color_tag}"``.
+
+    """
 
 
 class Grid(Widget[_t.Never], _t.Generic[T]):
@@ -2869,7 +3142,10 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
     @property
     def index(self) -> int | None:
-        """Index of the currently selected option."""
+        """
+        Index of the currently selected option.
+
+        """
 
         return self.__index
 
@@ -2891,12 +3167,18 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             return self.__options[self.__index]
 
     def has_options(self) -> bool:
-        """Return :data:`True` if the options list is not empty."""
+        """
+        Return :data:`True` if the options list is not empty.
+
+        """
 
         return bool(self.__options)
 
     def get_options(self) -> _t.Sequence[Option[T]]:
-        """Get all options."""
+        """
+        Get all options.
+
+        """
 
         return self.__options
 
@@ -2906,7 +3188,10 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         /,
         default_index: int | None = 0,
     ):
-        """Set a new list of options."""
+        """
+        Set a new list of options.
+
+        """
 
         self.__options = options
         self.__max_column_width = max(
@@ -3461,6 +3746,8 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
         """select"""
         if self.__enable_search and self._cur_event == KeyboardEvent(" "):
             self.__input.event(KeyboardEvent(" "))
+            self.__update_completion()
+            return
         option = self.__grid.get_option()
         if option is not None:
             option.value = (option.value[0], not option.value[1])
@@ -3474,9 +3761,7 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
     @bind("d", ctrl=True, show_in_inline_help=True)
     def enter(self) -> Result[list[T]] | None:
         """accept"""
-        return Result(
-            [option.value[0] for option in self.__grid.get_options() if option.value[1]]
-        )
+        return Result([option.value[0] for option in self.__options if option.value[1]])
 
     @bind("/")
     def search(self):
@@ -3680,9 +3965,12 @@ class InputWithCompletion(Widget[str]):
     def _dispatch_input_event(self, e: KeyboardEvent):
         if self.__rsuffix:
             # We need to drop current rsuffix in some cases:
-            if not e.ctrl and not e.alt and isinstance(e.key, str):
+            if (not e.ctrl and not e.alt and isinstance(e.key, str)) or (
+                e.key is Key.PASTE and e.paste_str
+            ):
+                text = e.key if e.key is not Key.PASTE else e.paste_str
                 # When user prints something...
-                if e.key in self.__rsuffix.rsymbols:
+                if text and text[0] in self.__rsuffix.rsymbols:
                     # ...that is in `rsymbols`...
                     self._drop_rsuffix()
             elif e in [
@@ -3703,6 +3991,7 @@ class InputWithCompletion(Widget[str]):
             ]:
                 # ...or when user moves cursor.
                 self._drop_rsuffix()
+        self.__rsuffix = None
         self.__input.event(e)
         self._deactivate_completion()
 
@@ -3725,14 +4014,15 @@ class InputWithCompletion(Widget[str]):
     @property
     def help_data(self) -> WidgetHelp:
         return (
-            super()
-            .help_data.merge(
-                self.__grid.help_data.rename_group(
-                    Grid._NAVIGATE, "Navigate Completions"
-                )
+            (super().help_data)
+            .merge(
+                (self.__grid.help_data)
+                .without_group("Actions")
+                .rename_group(Grid._NAVIGATE, "Navigate Completions")
             )
             .merge(
-                self.__input.help_data.without_group("Actions")
+                (self.__input.help_data)
+                .without_group("Actions")
                 .rename_group(Input._NAVIGATE, "Navigate Input")
                 .rename_group(Input._MODIFY, "Modify Input")
             )
@@ -3740,7 +4030,8 @@ class InputWithCompletion(Widget[str]):
 
 
 class Map(Widget[T], _t.Generic[T, U]):
-    """A wrapper that maps result of the given widget using the given function.
+    """
+    A wrapper that maps result of the given widget using the given function.
 
     ..
         >>> class Input(Widget):
@@ -3780,7 +4071,8 @@ class Map(Widget[T], _t.Generic[T, U]):
 
 
 class Apply(Map[T, T], _t.Generic[T]):
-    """A wrapper that applies the given function to the result of a wrapped widget.
+    """
+    A wrapper that applies the given function to the result of a wrapped widget.
 
     ..
         >>> class Input(Widget):

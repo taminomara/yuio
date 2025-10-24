@@ -85,56 +85,107 @@ import re
 import string
 import subprocess
 import sys
+import typing
 from dataclasses import dataclass
 
 import yuio
 import yuio.md
 from yuio import _typing as _t
 
+__all__ = [
+    "Completion",
+    "CompletionCollector",
+    "Completer",
+    "Empty",
+    "Option",
+    "Choice",
+    "Alternative",
+    "List",
+    "Tuple",
+    "File",
+    "Dir",
+]
+
 
 @dataclass(frozen=True, **yuio._with_slots())
 @functools.total_ordering
 class Completion:
-    """A single completion."""
+    """
+    A single completion.
 
-    #: See :class:`CompletionCollector.iprefix` for details.
+    """
+
     iprefix: str
+    """
+    See :class:`CompletionCollector.iprefix` for details.
 
-    #: Text of the completion.
+    """
+
     completion: str
+    """
+    Text of the completion.
 
-    #: See :class:`CompletionCollector.rsuffix` for details.
+    """
+
     rsuffix: str
+    """
+    See :class:`CompletionCollector.rsuffix` for details.
 
-    #: See :class:`CompletionCollector.rsymbols` for details.
+    """
+
     rsymbols: str
+    """
+    See :class:`CompletionCollector.rsymbols` for details.
 
-    #: See :class:`CompletionCollector.isuffix` for details.
+    """
+
     isuffix: str
+    """
+    See :class:`CompletionCollector.isuffix` for details.
 
-    #: Short comment displayed alongside the completion.
+    """
+
     comment: str | None
+    """
+    Short comment displayed alongside the completion.
 
-    #: Prefix that will be displayed before :attr:`~Completion.completion`
-    #: when listing completions, but will not be inserted once completion
-    #: is applied.
+    """
+
     dprefix: str
+    """
+    Prefix that will be displayed before :attr:`~Completion.completion`
+    when listing completions, but will not be inserted once completion
+    is applied.
 
-    #: Like :attr:`~Completion.dprefix`, but it's a suffix.
+    """
+
     dsuffix: str
+    """
+    Like :attr:`~Completion.dprefix`, but it's a suffix.
 
-    #: Group id, used to sort completions.
-    #:
-    #: Actual content of this property is an implementation detail.
+    """
+
     group_id: yuio.SupportsLt[_t.Any] = dataclasses.field(repr=False)
+    """
+    Group id, used to sort completions.
 
-    #: Color tag that's used when displaying this completion.
-    #:
-    #: See :meth:`CompletionCollector.add_group` for details.
+    Actual content of this property is an implementation detail.
+
+    """
+
     group_color_tag: str | None
+    """
+    Color tag that's used when displaying this completion.
+
+    See :meth:`CompletionCollector.add_group` for details.
+
+    """
 
     def __lt__(self, other: Completion) -> bool:
-        """Completions are ordered by their groups and then alphabetically."""
+        """
+        Completions are ordered by their groups and then alphabetically.
+
+        """
 
         return self.group_id < other.group_id or (
             self.group_id == other.group_id and self.completion < other.completion
@@ -148,7 +199,8 @@ class Completion:
     **({} if sys.version_info < (3, 10, 0) else {"match_args": False}),
 )
 class CompletionCollector:
-    """A class that collects completions as completers are running.
+    """
+    A class that collects completions as completers are running.
 
     The text that is being completed is split into four parts, similar
     to what you might see in ZSH completion widgets. The main two are:
@@ -159,7 +211,7 @@ class CompletionCollector:
 
     When completions are added to the collector, they are checked against
     the current prefix to determine if they match the entered text. If they
-    do, the completion system will replace text from `prefix` and `suffix`
+    do, the completion system will replace text from ``prefix`` and ``suffix``
     with the new completion string.
 
     The two additional parts are:
@@ -170,8 +222,8 @@ class CompletionCollector:
 
     For example, suppose you're completing a second element
     of a colon-separated list. The list completer will set up
-    the collector so that `prefix` and `suffix` contain parts of the
-    current list element, while `iprefix` and `isuffix` contain
+    the collector so that ``prefix`` and ``suffix`` contain parts of the
+    current list element, while ``iprefix`` and ``isuffix`` contain
     the rest of the elements:
 
     .. code-block:: text
@@ -182,8 +234,8 @@ class CompletionCollector:
                              └ cursor
 
     Now, if the completer adds a completion ``"list_elements"``,
-    this text will replace the `prefix` and `suffix`, but not `iprefix`
-    and `isuffix`. So, after the completion is applied, the string will
+    this text will replace the ``prefix`` and ``suffix``, but not ``iprefix``
+    and ``isuffix``. So, after the completion is applied, the string will
     look like so:
 
     .. code-block:: text
@@ -192,7 +244,7 @@ class CompletionCollector:
                       └┬──────────┘
                        this got replaced
 
-    Finally, there is `rsuffix`:
+    Finally, there is ``rsuffix``:
 
     .. autoattribute:: rsuffix
 
@@ -225,40 +277,61 @@ class CompletionCollector:
 
     """
 
-    #: Contains text that goes before the :attr:`~CompletionCollector.prefix`.
-    #:
-    #: This prefix is not considered when checking whether a completion
-    #: matches a text, and it is not replaced by the completion. It will also
-    #: not be shown in the table of completions.
-    #:
-    #: This prefix starts empty, and then parts of :attr:`~CompletionCollector.prefix`
-    #: are moved to :attr:`~CompletionCollector.iprefix` as completers split it into
-    #: list elements.
     iprefix: str
+    """
+    Contains text that goes before the :attr:`~CompletionCollector.prefix`.
 
-    #: Portion of the completed text before the cursor.
+    This prefix is not considered when checking whether a completion
+    matches a text, and it is not replaced by the completion. It will also
+    not be shown in the table of completions.
+
+    This prefix starts empty, and then parts of :attr:`~CompletionCollector.prefix`
+    are moved to :attr:`~CompletionCollector.iprefix` as completers split it into
+    list elements.
+
+    """
+
     prefix: str
+    """
+    Portion of the completed text before the cursor.
 
-    #: Portion of the completed text after the cursor.
+    """
+
     suffix: str
+    """
+    Portion of the completed text after the cursor.
 
-    #: Starts empty, and may be set to hold a list separator.
-    #:
-    #: This suffix will be added after the completion. However, it will be automatically
-    #: removed if the user types one of :attr:`CompletionCollector.rsymbols`,
-    #: or moves cursor, or alters input in some other way.
+    """
+
     rsuffix: str
+    """
+    Starts empty, and may be set to hold a list separator.
 
-    #: If user types one of the symbols from this string,
-    #: :attr:`~.CompletionCollector.rsuffix` will be removed.
+    This suffix will be added after the completion. However, it will be automatically
+    removed if the user types one of :attr:`CompletionCollector.rsymbols`,
+    or moves cursor, or alters input in some other way.
+
+    """
+
     rsymbols: str
+    """
+    If user types one of the symbols from this string,
+    :attr:`~.CompletionCollector.rsuffix` will be removed.
 
-    #: Similar to :attr:`CompletionCollector.iprefix`, but for suffixes.
+    """
+
     isuffix: str
+    """
+    Similar to :attr:`CompletionCollector.iprefix`, but for suffixes.
 
-    #: Completions from this set will not be added. This is useful
-    #: when completing lists of unique values.
+    """
+
     dedup_words: frozenset[str]
+    """
+    Completions from this set will not be added. This is useful
+    when completing lists of unique values.
+
+    """
 
     # Internal fields.
     _group_id: int
@@ -282,25 +355,35 @@ class CompletionCollector:
 
     @property
     def full_prefix(self) -> str:
-        """Portion of the final completed text that goes before the cursor."""
+        """
+        Portion of the final completed text that goes before the cursor.
+
+        """
 
         return self.iprefix + self.prefix
 
     @property
     def full_suffix(self) -> str:
-        """Portion of the final completed text that goes after the cursor."""
+        """
+        Portion of the final completed text that goes after the cursor.
+
+        """
 
         return self.suffix + self.isuffix
 
     @property
     def text(self) -> str:
-        """Portion of the text that is being autocompleted."""
+        """
+        Portion of the text that is being autocompleted.
+
+        """
 
         return self.prefix + self.suffix
 
     @contextlib.contextmanager
     def save_state(self):
-        """Save current state of the collector, i.e. prefixes,
+        """
+        Save current state of the collector, i.e. prefixes,
         suffixes, etc., upon entering this context manager,
         then restore state upon exiting.
 
@@ -329,7 +412,8 @@ class CompletionCollector:
         dsuffix: str = "",
         color_tag: str | None = None,
     ):
-        """Add a new completion.
+        """
+        Add a new completion.
 
         :param completion:
             completed text without :attr:`~CompletionCollector.iprefix`
@@ -399,7 +483,8 @@ class CompletionCollector:
         )
 
     def add_group(self, /, *, sorted: bool = True, color_tag: str | None = None):
-        """Add a new completions group.
+        """
+        Add a new completions group.
 
         All completions added after call to this method will be placed to the new group.
         They will be grouped together, and colored according to the group's color tag.
@@ -420,12 +505,16 @@ class CompletionCollector:
 
     @property
     def num_completions(self) -> int:
-        """Number of completions that were added so far."""
+        """
+        Number of completions that added so far.
+
+        """
 
         return len(self._completions)
 
     def split_off_prefix(self, delim: str | None = None, /):
-        """Move everything up to the last occurrence of `delim`
+        """
+        Move everything up to the last occurrence of ``delim``
         from :attr:`~CompletionCollector.prefix`
         to :attr:`~CompletionCollector.iprefix`.
 
@@ -438,7 +527,8 @@ class CompletionCollector:
             self.prefix = parts[1]
 
     def split_off_suffix(self, delim: str | None = None, /):
-        """Move everything past the first occurrence of `delim`
+        """
+        Move everything past the first occurrence of ``delim``
         from :attr:`~CompletionCollector.suffix`
         to :attr:`~CompletionCollector.isuffix`.
 
@@ -451,7 +541,8 @@ class CompletionCollector:
             self.isuffix = delim + parts[1] + self.isuffix
 
     def finalize(self) -> list[Completion]:
-        """Finish collecting completions and return everything that was collected.
+        """
+        Finish collecting completions and return everything that was collected.
 
         Do not reuse a collector after it was finalized.
 
@@ -640,7 +731,10 @@ def _commonprefix(m: list[str]) -> str:
 
 
 class Completer(abc.ABC):
-    """An interface for text completion providers."""
+    """
+    An interface for text completion providers.
+
+    """
 
     def complete(
         self, text: str, pos: int, /, *, do_corrections: bool = True
@@ -693,13 +787,19 @@ class Completer(abc.ABC):
     def _get_completion_model(
         self, *, is_many: bool = False
     ) -> _CompleterSerializer.Model:
-        """Internal, do not use."""
+        """
+        Internal, do not use.
+
+        """
 
         return _CompleterSerializer.CustomCompleter(self)
 
 
 class Empty(Completer):
-    """An empty completer that returns no values."""
+    """
+    An empty completer that returns no values.
+
+    """
 
     def _process(self, collector: CompletionCollector):
         pass  # nothing to do
@@ -712,17 +812,32 @@ class Empty(Completer):
 
 @dataclass(frozen=True, **yuio._with_slots())
 class Option:
-    """A single completion option for the :class:`Choice` completer."""
+    """
+    A single completion option for the :class:`Choice` completer.
 
-    #: This string will replace an element that is being completed.
+    """
+
     completion: str
+    """
+    This string will replace an element that is being completed.
 
-    #: Short comment displayed alongside the completion.
+    """
+
     comment: str | None = None
+    """
+    Short comment displayed alongside the completion.
+
+    """
 
 
 class Choice(Completer):
-    """Completes input from a predefined list of completions."""
+    """
+    Completes input from a predefined list of completions.
+
+    :param choices:
+        options to choose completion from.
+
+    """
 
     def __init__(self, choices: _t.Collection[Option], /):
         self._choices: _t.Collection[Option] = choices
@@ -740,9 +855,20 @@ class Choice(Completer):
 
 
 class Alternative(Completer):
-    """Joins outputs from multiple completers."""
+    """
+    Joins outputs from multiple completers.
 
-    def __init__(self, completers: list[tuple[str, Completer]]):
+    :param completers:
+        list of inner completers.
+
+        This is a list of tuples. First tuple element is a description of a completion
+        group. It will be displayed when this completer is used in shells
+        that support it (namely, ZSH). Second tuple element is the inner completer
+        itself.
+
+    """
+
+    def __init__(self, completers: list[tuple[str, Completer]], /):
         self._completers = completers
 
     def _process(self, collector: CompletionCollector, /):
@@ -763,7 +889,18 @@ class Alternative(Completer):
 
 
 class List(Completer):
-    """Completes a value-separated list of elements."""
+    """
+    Completes a value-separated list of elements.
+
+    :param inner:
+        completer for list items.
+    :param delimiter:
+        a character that separates list items. :data:`None` separates by any whitespace
+        character, similar to :meth:`str.split`.
+    :param allow_duplicates:
+        whether to show completions that already appear in the list.
+
+    """
 
     def __init__(
         self,
@@ -812,10 +949,19 @@ class List(Completer):
 
 
 class Tuple(Completer):
-    """Completes a value-separated tuple of elements."""
+    """
+    Completes a value-separated tuple of elements.
 
-    def __init__(self, *inners: Completer, delimiter: str | None = None):
-        self._inners = inners
+    :param inner:
+        completers for each tuple element.
+    :param delimiter:
+        a character that separates list items. :data:`None` separates by any whitespace
+        character, similar to :meth:`str.split`.
+
+    """
+
+    def __init__(self, *inner: Completer, delimiter: str | None = None):
+        self._inner = inner
         if delimiter == "":
             raise ValueError("empty delimiter")
         self._delimiter = delimiter
@@ -831,7 +977,7 @@ class Tuple(Completer):
             # `.split(None)` will trim whitespaces at the end.
             # Make sure we count those towards the current position in the tuple.
             pos += 1
-        if pos > len(self._inners):
+        if pos > len(self._inner):
             return
         if pos > 0:
             pos -= 1
@@ -841,7 +987,7 @@ class Tuple(Completer):
         collector.rsuffix = self._delimiter or " "
         collector.rsymbols += self._delimiter or string.whitespace
 
-        self._inners[pos]._process(collector)
+        self._inner[pos]._process(collector)
 
     def _get_completion_model(
         self, *, is_many: bool = False
@@ -849,18 +995,21 @@ class Tuple(Completer):
         if is_many:
             return _CompleterSerializer.TupleMany(
                 self._delimiter or " ",
-                [inner._get_completion_model() for inner in self._inners],
+                [inner._get_completion_model() for inner in self._inner],
             )
         else:
             return _CompleterSerializer.Tuple(
                 self._delimiter or " ",
-                [inner._get_completion_model() for inner in self._inners],
+                [inner._get_completion_model() for inner in self._inner],
             )
 
 
 class File(Completer):
     """
     Completes file paths.
+
+    :param extensions:
+        allowed file extensions, should include the leading dot.
 
     """
 
@@ -1038,11 +1187,7 @@ class _CompleterSerializer:
         )
         if get_parser := getattr(action, "get_parser", None):
             parser = get_parser()
-            completer = None
-            if get_completer := getattr(action, "get_completer", None):
-                completer = get_completer()
-            if completer is None:
-                completer = parser.completer()
+            completer = parser.completer()
             if completer is None:
                 completer = Empty()
             completion_model = completer._get_completion_model(
@@ -1112,7 +1257,7 @@ class _CompleterSerializer:
                     "subcommand",
                     "<cmd>",
                     1,
-                    _CompleterSerializer.ChoiceWithDescriptions(
+                    _CompleterSerializer.ChoiceWithMetariptions(
                         [
                             (name, help)
                             for name, (_, is_alias, help) in self._subcommands.items()
@@ -1191,7 +1336,7 @@ class _CompleterSerializer:
         return contents
 
     class ModelBase:
-        tag: _t.ClassVar[str] = "-"
+        tag: typing.ClassVar[str] = "-"
 
         def __init_subclass__(cls, tag: str = "-", **kwargs):
             super().__init_subclass__(**kwargs)
@@ -1224,7 +1369,7 @@ class _CompleterSerializer:
             return [self.tag, str(len(self.choices)), *self.choices]
 
     @dataclass()
-    class ChoiceWithDescriptions(Model, tag="cd"):
+    class ChoiceWithMetariptions(Model, tag="cd"):
         choices: list[tuple[str, str]]
 
         def dump(self) -> list[str]:
@@ -1303,7 +1448,7 @@ def _run_custom_completer(s: _CompleterSerializer, data: str, word: str):
         )
 
 
-def write_completions(
+def _write_completions(
     s: _CompleterSerializer, prog: str | None = None, shell: str = "all"
 ):
     import yuio.app

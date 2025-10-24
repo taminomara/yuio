@@ -1,8 +1,10 @@
 import datetime
 import os
 import pathlib
+import sys
 
 os.environ["__YUIO_SPHINX_BUILD"] = "1"
+sys.path.append(str(pathlib.Path(__file__).parent / "_code"))
 
 import yuio
 
@@ -20,6 +22,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.githubpages",
+    "yuio.ext.sphinx",
     "sphinx_design",
     "sphinx_vhs",
 ]
@@ -34,6 +37,18 @@ nitpick_ignore_regex = [
 autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"
 autodoc_inherit_docstrings = False
+autodoc_type_aliases = {
+    "ActionKey": "yuio.widget.ActionKey",
+    "ActionKeys": "yuio.widget.ActionKeys",
+    "Action": "yuio.widget.Action",
+    # "RawString": "yuio.term.RawString",
+    # "AnyString": "yuio.term.AnyString",
+    # "JsonValue": "yuio.json_schema.JsonValue",
+    # "Disabled": "yuio.DISABLED",
+    # "Missing": "yuio.MISSING",
+    # "Positional": "yuio.POSITIONAL",
+    # "Omit": "yuio.OMIT",
+}
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
 vhs_min_version = "0.7.2"
@@ -42,6 +57,7 @@ vhs_min_version = "0.7.2"
 
 html_theme = "furo"
 html_static_path = ["_static"]
+html_css_files = ["extra.css"]
 html_js_files = [
     "mermaid-init.js",
     (

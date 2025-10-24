@@ -21,7 +21,9 @@ classifiers = [
     "Environment :: Console",
     "Typing :: Typed",
 ]
-dependencies = ["typing-extensions>=4.13,<5"]
+dependencies = [
+    "typing-extensions>=4.13,<5",
+]
 
 [dependency-groups]
 dev = [
@@ -32,6 +34,7 @@ dev = [
 ]
 test = [
     "tox==4.30.3",
+    "virtualenv-pyenv==0.5.0",
     "pyright==1.1.406",
     "pytest==8.4.2",
     "sybil==9.2.0",
@@ -47,9 +50,13 @@ doc = [
 ]
 lint = [
     "tox==4.30.3",
+    "virtualenv-pyenv==0.5.0",
     "black==25.1.0",
     "isort==6.0.1",
     "pre-commit==4.3.0",
+]
+ci = [
+    "PyGithub==2.8.1",
 ]
 
 [project.urls]
@@ -66,7 +73,7 @@ write_to = "yuio/_version.py"
 
 [tool.tox]
 requires = ["tox>=4"]
-env_list = ["3.14", "3.13", "3.12", "3.11", "3.10", "type", "lint"]
+env_list = ["3.14t", "3.14", "3.13", "3.12", "3.11", "3.10", "type", "lint"]
 
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"
@@ -91,7 +98,7 @@ testpaths = ["examples", "test", "yuio", "docs"]
 
 [tool.pyright]
 include = ["yuio", "examples"]
-exclude = ["**/__pycache__", "yuio/_version.py", "yuio/_sphinx.py"]
+exclude = ["**/__pycache__", "yuio/_version.py", "yuio/ext/sphinx.py", "yuio/_vendor/*"]
 typeCheckingMode = "strict"
 pythonVersion = "3.10"
 pythonPlatform = "All"
@@ -111,9 +118,9 @@ reportRedeclaration = "none"
 deprecateTypingAliases = true
 
 [tool.black]
-force-exclude = '^(/docs/source/by_example/code/.*|/yuio/_version.py)'
+force-exclude = '^(/docs/source/by_example/.*|/yuio/_version.py|/yuio/_vendor/.*)'
 
 [tool.isort]
 profile = "black"
-extend_skip_glob = ["docs/source/by_example/code/*"]
+extend_skip_glob = ["docs/source/by_example/*", "yuio/_vendor/*"]
 skip_gitignore = true

@@ -19,5 +19,6 @@ pytest_collect_file = Sybil(
         SkipParser(),
     ],
     patterns=["*.rst", "*.py"],
+    excludes=["yuio/_vendor/*", "yuio/ext/sphinx.py"],
     teardown=_teardown,
 ).pytest()

@@ -317,8 +317,6 @@ class IOMocker:
 
     """
 
-    _Self = _t.TypeVar("_Self", bound="IOMocker")
-
     def __init__(
         self,
         ostream: io.StringIO | None = None,
@@ -349,7 +347,7 @@ class IOMocker:
         self._height = height
         self._wrap_streams = wrap_streams
 
-    def refresh(self: _Self) -> _Self:
+    def refresh(self) -> _t.Self:
         """
         Refresh screen.
 
@@ -357,11 +355,11 @@ class IOMocker:
         return self.key("l", ctrl=True)
 
     def key(
-        self: _Self,
+        self,
         key: str | yuio.widget.Key,
         ctrl: bool = False,
         alt: bool = False,
-    ) -> _Self:
+    ) -> _t.Self:
         """
         Yield a key from the mocked keyboard event stream.
 
@@ -371,7 +369,7 @@ class IOMocker:
         )
         return self
 
-    def keyboard_event(self: _Self, keyboard_event: yuio.widget.KeyboardEvent) -> _Self:
+    def keyboard_event(self, keyboard_event: yuio.widget.KeyboardEvent) -> _t.Self:
         """
         Yield a keyboard event from the mocked keyboard event stream.
 
@@ -379,7 +377,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), keyboard_event))
         return self
 
-    def text(self: _Self, text: str) -> _Self:
+    def text(self, text: str) -> _t.Self:
         """
         Yield a text, one letter at a time, from the mocked keyboard event stream.
 
@@ -388,7 +386,7 @@ class IOMocker:
         self._events.extend((stack_summary, yuio.widget.KeyboardEvent(c)) for c in text)
         return self
 
-    def paste(self: _Self, text: str) -> _Self:
+    def paste(self, text: str) -> _t.Self:
         """
         Yield a text as a single paste event, from the mocked keyboard event stream.
 
@@ -403,12 +401,12 @@ class IOMocker:
         return self
 
     def expect_screen(
-        self: _Self,
+        self,
         screen: list[str] | None = None,
         colors: list[str] | None = None,
         cursor_x: int | None = None,
         cursor_y: int | None = None,
-    ) -> _Self:
+    ) -> _t.Self:
         """
         Check that the current contents of the output stream,
         when rendered onto a terminal, produce the given screen contents.
@@ -419,7 +417,7 @@ class IOMocker:
         )
         return self
 
-    def expect(self: _Self, fn: _t.Callable[[], bool]) -> _Self:
+    def expect(self, fn: _t.Callable[[], bool]) -> _t.Self:
         """
         Run a lambda function and assert that it returns :data:`True`.
 
@@ -431,7 +429,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
-    def expect_eq(self: _Self, fn: _t.Callable[[], T], expected: T) -> _Self:
+    def expect_eq(self, fn: _t.Callable[[], T], expected: T) -> _t.Self:
         """
         Run a lambda function and assert that it returns a value
         equal to the `expected`.
@@ -444,7 +442,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
-    def expect_ne(self: _Self, fn: _t.Callable[[], T], expected: T) -> _Self:
+    def expect_ne(self, fn: _t.Callable[[], T], expected: T) -> _t.Self:
         """
         Run a lambda function and assert that it returns a value
         not equal to the `expected`.
@@ -457,7 +455,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _WidgetAssert(cb)))
         return self
 
-    def expect_widget_to_continue(self: _Self) -> _Self:
+    def expect_widget_to_continue(self) -> _t.Self:
         """
         Expect that a widget requests another event from
         the mocked keyboard event stream.
@@ -469,7 +467,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _KeyboardEventStreamDone()))
         return self
 
-    def expect_istream_read(self: _Self, result: str) -> _Self:
+    def expect_istream_read(self, result: str) -> _t.Self:
         """
         Expect a call to `istream.read()` and return the given result from it.
 
@@ -477,7 +475,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinRead(result)))
         return self
 
-    def expect_istream_readline(self: _Self, result: str) -> _Self:
+    def expect_istream_readline(self, result: str) -> _t.Self:
         """
         Expect a call to `istream.readline()` and return the given result from it.
 
@@ -485,7 +483,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinReadline(result)))
         return self
 
-    def expect_istream_read(self: _Self, result: list[str]) -> _Self:
+    def expect_istream_read(self, result: list[str]) -> _t.Self:
         """
         Expect a call to `istream.readlines()` and return the given result from it.
 
@@ -493,7 +491,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinReadlines(result)))
         return self
 
-    def expect_mark(self: _Self, mark: str | None = None) -> _Self:
+    def expect_mark(self, mark: str | None = None) -> _t.Self:
         """
         Expect a call to :meth:`IoMocker.mark`.
 
@@ -628,11 +626,11 @@ class IOMocker:
 
         yuio.widget.RenderContext._override_wh = (width, height)
 
-        if wrap_streams:
-            assert not yuio.io.streams_wrapped(), "previous test didn't clean up?"
-            yuio.io.wrap_streams()
-
         try:
+            if wrap_streams:
+                assert not yuio.io.streams_wrapped(), "previous test didn't clean up?"
+                yuio.io.wrap_streams()
+
             try:
                 yield
             except _KeyboardEventStreamDone:
@@ -689,11 +687,9 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
     """
 
-    _Self = _t.TypeVar("_Self", bound="WidgetChecker[_t.Any]")
-
     _widget: W | None = None
 
-    def call(self: _Self, fn: _t.Callable[[W], None]) -> _Self:
+    def call(self, fn: _t.Callable[[W], None]) -> _t.Self:
         """
         Run a function with widget as an input.
 
@@ -706,7 +702,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self
 
-    def expect_widget(self: _Self, fn: _t.Callable[[W], bool]) -> _Self:
+    def expect_widget(self, fn: _t.Callable[[W], bool]) -> _t.Self:
         """
         Assert some property of a widget.
 
@@ -719,7 +715,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self
 
-    def expect_widget_eq(self: _Self, fn: _t.Callable[[W], T], expected: T) -> _Self:
+    def expect_widget_eq(self, fn: _t.Callable[[W], T], expected: T) -> _t.Self:
         """
         Assert that some property of a widget equals to the given value.
 
@@ -732,7 +728,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
         self._events.append((self._get_stack_summary(), _WidgetAssert(widget_fn)))
         return self
 
-    def expect_widget_ne(self: _Self, fn: _t.Callable[[W], T], expected: T) -> _Self:
+    def expect_widget_ne(self, fn: _t.Callable[[W], T], expected: T) -> _t.Self:
         """
         Assert that some property of a widget is not equal to the given value.
 
@@ -1107,7 +1103,7 @@ def _render_screen(commands: str, width: int) -> tuple[list[str], list[str], int
                 # Color.
                 for code in part[:-1].split(";"):
                     bold = False
-                    if not code or code == "0":
+                    if not code or code in ["0", "39"]:
                         color = " "
                     else:
                         int_code = int(code)
@@ -1120,7 +1116,7 @@ def _render_screen(commands: str, width: int) -> tuple[list[str], list[str], int
                         else:
                             assert (
                                 False
-                            ), "dont use non-standard colors with this assertion"
+                            ), f"don't use non-standard colors with this assertion: {int_code}"
                     if bold:
                         color = "#" if color == " " else color.upper()
             elif fn == "J":

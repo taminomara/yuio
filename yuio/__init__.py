@@ -78,7 +78,10 @@ _T_contra = _t.TypeVar("_T_contra", contravariant=True)
 
 
 class SupportsLt(_t.Protocol[_T_contra]):
-    """Protocol for objects that can be compared to each other."""
+    """
+    Protocol for objects that can be compared to each other.
+
+    """
 
     @_abc.abstractmethod
     def __lt__(self, other: _T_contra, /) -> bool: ...
@@ -103,7 +106,8 @@ _TO_DASH_CASE_RE = _re.compile(
 
 
 def to_dash_case(s: str, /) -> str:
-    """Convert ``CamelCase`` or ``snake_case`` identifier to a ``dash-case`` one.
+    """
+    Convert ``CamelCase`` or ``snake_case`` identifier to a ``dash-case`` one.
 
     This function assumes ASCII input, and will not work correctly
     with non-ASCII characters.
@@ -182,22 +186,53 @@ class _Placeholders(_enum.Enum):
         return self.value
 
 
-#: Type of the :data:`DISABLED` placeholder.
 Disabled: _t.TypeAlias = _t.Literal[_Placeholders.DISABLED]
-#: Indicates that some functionality is disabled.
+"""
+Type of the :data:`DISABLED` placeholder.
+
+"""
+
 DISABLED: Disabled = _Placeholders.DISABLED
+"""
+Indicates that some functionality is disabled.
 
-#: Type of the :data:`MISSING` placeholder.
+"""
+
+
 Missing: _t.TypeAlias = _t.Literal[_Placeholders.MISSING]
-#: Indicates that some value is missing.
+"""
+Type of the :data:`MISSING` placeholder.
+
+"""
+
 MISSING: Missing = _Placeholders.MISSING
+"""
+Indicates that some value is missing.
 
-#: Type of the :data:`POSITIONAL` placeholder.
+"""
+
+
 Positional: _t.TypeAlias = _t.Literal[_Placeholders.POSITIONAL]
-#: Used with :func:`yuio.app.field` to enable positional arguments.
-POSITIONAL: Positional = _Placeholders.POSITIONAL
+"""
+Type of the :data:`POSITIONAL` placeholder.
 
-#: Type of the :data:`OMIT` placeholder.
+"""
+
+POSITIONAL: Positional = _Placeholders.POSITIONAL
+"""
+Used with :func:`yuio.app.field` to enable positional arguments.
+
+"""
+
+
 Omit: _t.TypeAlias = _t.Literal[_Placeholders.OMIT]
-#: Used with :func:`yuio.app.field` to enable positional arguments.
+"""
+Type of the :data:`OMIT` placeholder.
+
+"""
+
 OMIT: Omit = _Placeholders.OMIT
+"""
+Used with :func:`yuio.app.field` to omit arguments from CLI usage.
+
+"""

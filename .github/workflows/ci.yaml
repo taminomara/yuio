@@ -55,21 +55,18 @@ jobs:
         if: ${{ matrix.type == 'code style' }}
         run: tox -e lint --colored yes
 
-  # Builds and publishes python packages.
+  # Builds python packages.
   #
   # Only runs on tag pushes.
-  publish_to_pypi:
-    name: Publish package to PyPi
-    needs:
-      - test
+  build:
+    name: Build package
     if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/yuio
-    permissions:
-      contents: write
-      id-token: write
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      link: ${{ steps.metadata.outputs.link }}
+      status: ${{ steps.changelog.outputs.status }}
+      changes: ${{ steps.changelog.outputs.changes }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -98,6 +95,38 @@ jobs:
       - name: Build project
         run: |
           python3 -m build .
+      - name: Upload the build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  # Publishes python packages.
+  #
+  # Only runs on tag pushes.
+  publish_to_pypi:
+    name: Publish package to PyPi
+    needs:
+      - test
+      - build
+    if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/yuio
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
       - name: Publish to pypi
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
@@ -105,11 +134,35 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          prerelease: ${{ steps.changelog.outputs.status == 'prereleased' }}
-          draft: ${{ steps.changelog.outputs.status == 'unreleased' }}
+          prerelease: ${{ needs.build.outputs.status == 'prereleased' }}
+          draft: ${{ needs.build.outputs.status == 'unreleased' }}
           body: |
             ## Changelog
 
-            ${{ steps.changelog.outputs.changes }}
+            ${{ needs.build.outputs.changes }}
 
-            [See release on PyPi](${{ steps.metadata.outputs.link }})
+            [See release on PyPi](${{ needs.build.outputs.link }})
+
+  update_release_branches:
+    name: Update partial version branches
+    # needs:
+    #   - publish_to_pypi
+    if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.13
+      - name: Update pip
+        run: python -m pip install --upgrade pip
+      - name: Install CI dependencies
+        run: python -m pip install . --group ci
+      - name: Update branches
+        run: python scripts/update_branches --push ${{ github.event.ref }}

@@ -748,7 +748,7 @@ class TestJson:
         assert parser.parse("[1, 2, 3]") == [1, 2, 3]
         assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
 
-    def test_from_type_hint_annotated_unstructured(self):
+    def test_from_type_hint_annotated_unstructured_non_partial(self):
         with pytest.raises(
             TypeError,
             match="don't provide inner parser when using Json with type annotations",
@@ -759,7 +759,7 @@ class TestJson:
                 ]
             )
 
-    def test_from_type_hint_annotated_structured(self):
+    def test_from_type_hint_annotated_structured_non_partial(self):
         with pytest.raises(
             TypeError,
             match="don't provide inner parser when using Json with type annotations",
@@ -1176,9 +1176,7 @@ class TestPath:
         )
         assert parser.to_json_value(pathlib.Path("path")) == "path"
 
-    def test_parse(
-        self,
-    ):
+    def test_parse(self):
         parser = yuio.parse.Path()
         assert parser.parse("/a/s/d") == pathlib.Path("/a/s/d").resolve().absolute()
         assert parser.parse("/a/s/d/..") == pathlib.Path("/a/s").resolve().absolute()
@@ -1224,12 +1222,6 @@ class TestPath:
 
     def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(pathlib.Path), yuio.parse.Path)
-        assert isinstance(
-            yuio.parse.from_type_hint(pathlib.Path | str), yuio.parse.Path
-        )
-        assert isinstance(
-            yuio.parse.from_type_hint(str | pathlib.Path), yuio.parse.Path
-        )
 
     def test_from_type_hint_annotated(self):
         parser = yuio.parse.from_type_hint(
@@ -2090,4 +2082,49 @@ class TestUnion:
                     int | str,
                     yuio.parse.Union(yuio.parse.Int(), yuio.parse.Str()),
                 ]
+            )
+
+
+class TestWithMeta:
+    def test_basics(self):
+        parser = yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == None
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() == "desc"
+        assert parser.describe_or_def() == "desc"
+        assert parser.describe_many() == "desc"
+        assert parser.describe_many_or_def() == "desc"
+        assert parser.describe_value(10) == None
+        assert parser.describe_value_or_def(10) == "10"
+
+    def test_json_schema(self):
+        parser = yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")
+        assert (
+            parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+            == yuio.json_schema.Integer()
+        )
+        assert parser.to_json_value(10) == 10
+
+    def test_parse(self):
+        parser = yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")
+        assert parser.parse("1") == 1
+        assert parser.parse_config(1) == 1
+
+    def test_from_type_hint_annotated(self):
+        parser = yuio.parse.from_type_hint(
+            _t.Annotated[int, yuio.parse.WithMeta(desc="desc")]
+        )
+        assert parser.describe() == "desc"
+
+    def test_from_type_hint_annotated_not_partial(self):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "don't provide inner parser when using WithMeta with type annotations"
+            ),
+        ):
+            yuio.parse.from_type_hint(
+                _t.Annotated[str, yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")]
             )

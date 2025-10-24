@@ -15,6 +15,8 @@ loggers from :mod:`yuio.io`.
 
 .. autofunction:: sh
 
+.. autoclass:: ExecError
+
 """
 
 from __future__ import annotations
@@ -24,15 +26,35 @@ import pathlib
 import subprocess
 import threading
 
-import yuio
 from yuio import _typing as _t
+
+__all__ = [
+    "ExecError",
+    "exec",
+    "sh",
+]
 
 _LOGGER = logging.getLogger("yuio.exec")
 
 
+class ExecError(subprocess.CalledProcessError):
+    """
+    Raised when executed command returns a non-zero status.
+
+    """
+
+    def __str__(self):
+        res = super().__str__()
+        if stderr := getattr(self, "stderr"):
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode(errors="replace")
+            res += "\n\nStderr:\n" + stderr
+        return res
+
+
 @_t.overload
 def exec(
-    *args: str,
+    *args: str | pathlib.Path,
     cwd: str | pathlib.Path | None = None,
     env: dict[str, str] | None = None,
     input: str | None = None,
@@ -43,7 +65,7 @@ def exec(
 
 @_t.overload
 def exec(
-    *args: str,
+    *args: str | pathlib.Path,
     cwd: str | pathlib.Path | None = None,
     env: dict[str, str] | None = None,
     input: bytes | None = None,
@@ -52,15 +74,27 @@ def exec(
 ) -> bytes: ...
 
 
+@_t.overload
 def exec(
-    *args: str,
+    *args: str | pathlib.Path,
+    cwd: str | pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
+    input: str | bytes | None = None,
+    level: int = logging.DEBUG,
+    text: bool,
+) -> str | bytes: ...
+
+
+def exec(
+    *args: str | pathlib.Path,
     cwd: None | str | pathlib.Path = None,
     env: dict[str, str] | None = None,
     input: None | str | bytes = None,
     level: int = logging.DEBUG,
     text: bool = True,
 ):
-    """Run an executable and return its stdout.
+    """
+    Run an executable and return its stdout.
 
     Command's stderr is interactively printed to the log.
 
@@ -99,6 +133,10 @@ def exec(
         stdin=None if input is None else subprocess.PIPE,
     ) as process:
         stdout = []
+        stderr = []
+
+        if _LOGGER.isEnabledFor(level):
+            _LOGGER.log(level, " ".join(map(str, args)))
 
         def read_stderr(fh):
             while True:
@@ -106,26 +144,18 @@ def exec(
                 if not line:
                     return
                 if isinstance(line, bytes):
-                    try:
-                        line = line.decode()
-                    except UnicodeDecodeError:
-                        yuio._logger.exception(
-                            "unable to decode stderr line:\n%r",
-                            line,
-                        )
-                        line = line.decode(errors="replace")
+                    line = line.decode(errors="replace")
+                stderr.append(line)
                 _LOGGER.log(level, line.rstrip("\n"))
 
         def read_stdout(fh):
             stdout.append(fh.read())
 
-        process_desc = " ".join(args)
-
         assert process.stdout
         stdout_thread = threading.Thread(
             target=read_stdout,
             args=(process.stdout,),
-            name=f"yuio stdout handler for {process_desc}",
+            name=f"yuio stdout handler for sub-process",
         )
         stdout_thread.daemon = True
         stdout_thread.start()
@@ -134,7 +164,7 @@ def exec(
         stderr_thread = threading.Thread(
             target=read_stderr,
             args=(process.stderr,),
-            name=f"yuio stderr handler for {process_desc}",
+            name=f"yuio stderr handler for sub-process",
         )
         stderr_thread.daemon = True
         stderr_thread.start()
@@ -142,6 +172,8 @@ def exec(
         if input is not None:
             assert process.stdin is not None
             process.stdin.write(input)
+            process.stdin.flush()
+            process.stdin.close()
 
         stdout_thread.join()
         stderr_thread.join()
@@ -149,7 +181,9 @@ def exec(
         process.wait()
 
         if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode, args)
+            raise ExecError(
+                process.returncode, args, output="".join(stdout), stderr="".join(stderr)
+            )
 
         return stdout[0]
 
@@ -182,6 +216,20 @@ def sh(
 ) -> bytes: ...
 
 
+@_t.overload
+def sh(
+    cmd: str,
+    /,
+    *,
+    shell: str = "/bin/sh",
+    cwd: str | pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
+    input: bytes | None = None,
+    level: int = logging.DEBUG,
+    text: bool,
+) -> str | bytes: ...
+
+
 def sh(
     cmd: str,
     /,
@@ -193,7 +241,8 @@ def sh(
     level: int = logging.DEBUG,
     text: bool = True,
 ):
-    """Run command in a shell, return its stdout.
+    """
+    Run command in a shell, return its stdout.
 
     :param cmd:
         shell command.
@@ -221,7 +270,7 @@ def sh(
         cmd,
         cwd=cwd,
         env=env,
-        input=input,  # type: ignore
+        input=input,
         level=level,
-        text=text,  # type: ignore
+        text=text,
     )

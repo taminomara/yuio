@@ -1,0 +1,139 @@
+#! /usr/bin/env python
+
+import contextlib
+import pathlib
+import shutil
+import tempfile
+
+import github
+import requests
+import requests.adapters
+from packaging.version import Version
+
+import yuio.app
+import yuio.config
+import yuio.io
+
+TEMPLATE = """# TYPING EXTENSIONS
+#
+# Version: {version}
+#
+# Included for cases when Yuio runs in an isolated environment
+# which can't install dependencies.
+#
+#
+# LICENSE
+#
+{license}
+
+try:
+    import typing_extensions as _
+except ImportError:
+    pass
+else:
+    raise ImportError(
+        "typing_extensions is available as a non-vendored module"
+    )
+
+{src}
+"""
+
+
+class GithubAuth(yuio.config.Config):
+    login: str | None = None
+    password: str | None = None  # TODO: secret str
+
+
+@yuio.app.app
+def main():
+    auth_config = GithubAuth.load_from_env("GITHUB")
+    if auth_config.login and auth_config.password:
+        auth = github.Auth.Login(auth_config.login, auth_config.password)
+    else:
+        yuio.io.info("Using unauthenticated github connection")
+        auth = None
+    api = github.Github(auth=auth)
+    repo = api.get_repo("python/typing_extensions")
+
+    with contextlib.ExitStack() as stack:
+        task = stack.enter_context(yuio.io.Task("Updating typing extensions"))
+
+        task.comment("searching for latest release")
+
+        found_version = None
+        found_release = None
+        for release in task.iter(list(repo.get_releases())):
+            version = Version(release.tag_name)
+            if version.is_prerelease:
+                continue
+            if found_version is None or found_version < version:
+                found_version = version
+                found_release = release
+        if found_release is None:
+            raise yuio.app.AppError("Error: can't find release for typing_extensions")
+        else:
+            yuio.io.info("Found typing_extensions `%s`", found_version)
+
+        yuio.io.info("Downloading from <c path>%s</c>", found_release.tarball_url)
+        task.progress(None)
+        task.comment("downloading")
+
+        dest_dir = pathlib.Path(stack.enter_context(tempfile.TemporaryDirectory()))
+        dest_file = dest_dir / "typing_extensions.tar.gz"
+
+        session = stack.enter_context(requests.Session())
+        adapter = requests.adapters.HTTPAdapter(max_retries=5)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+
+        with requests.get(found_release.tarball_url, stream=True, timeout=60) as stream:
+            stream.raise_for_status()
+
+            try:
+                size = int(stream.headers["content-length"])
+            except (KeyError, ValueError):
+                size = 1
+            downloaded = 0
+
+            with open(dest_file, "wb") as f:
+                for chunk in stream.iter_content(64 * 1024):
+                    f.write(chunk)
+                    if size:
+                        # note: this does not take content-encoding into account.
+                        # our contents are not encoded, though, so this is fine.
+                        downloaded += len(chunk)
+                        task.progress_size(downloaded, size)
+
+        task.progress(None)
+        task.comment("extracting archive")
+
+        shutil.unpack_archive(dest_file, dest_dir)
+
+        archive_dir = None
+        for file in dest_dir.iterdir():
+            if file.is_dir() and "typing_extensions" in file.name:
+                archive_dir = file
+                break
+        if archive_dir is None:
+            raise yuio.app.AppError("failed to unpack archive")
+
+        src = archive_dir.joinpath("src/typing_extensions.py").read_text()
+        license = "# " + (
+            (archive_dir.joinpath("LICENSE"))
+            .read_text()
+            .replace("\n", "\n# ")
+            .rstrip("\n# ")
+            .replace("# \n", "#\n")
+            .rstrip()
+        )
+        vendored = TEMPLATE.format(version=found_version, src=src, license=license)
+
+        pathlib.Path(__file__).parent.joinpath(
+            "../yuio/_vendor/typing_extensions.py"
+        ).write_text(vendored.rstrip() + "\n")
+
+    yuio.io.success("Done")
+
+
+if __name__ == "__main__":
+    main.run()

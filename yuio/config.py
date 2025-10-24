@@ -261,12 +261,23 @@ import yuio.json_schema
 import yuio.parse
 from yuio import _typing as _t
 
+__all__ = [
+    "MutuallyExclusiveGroup",
+    "field",
+    "inline",
+    "positional",
+    "Config",
+]
+
 T = _t.TypeVar("T")
 Cfg = _t.TypeVar("Cfg", bound="Config")
 
 
 class MutuallyExclusiveGroup:
-    pass
+    """
+    A sentinel for creating mutually exclusive groups.
+
+    """
 
 
 @dataclass(frozen=True)
@@ -277,6 +288,7 @@ class _FieldSettings:
     env: str | yuio.Disabled | None = None
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None
     completer: yuio.complete.Completer | None = None
+    metavar: str | None = None
     required: bool = False
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None
     group: MutuallyExclusiveGroup | None = None
@@ -400,6 +412,9 @@ class _FieldSettings:
                 )
 
         completer = self.completer
+        metavar = self.metavar
+        if parser is not None and (completer is not None or metavar is not None):
+            parser = yuio.parse.WithMeta(parser, desc=metavar, completer=completer)
 
         merge = self.merge
 
@@ -422,7 +437,6 @@ class _FieldSettings:
             help,
             env,
             flags,
-            completer,
             is_subconfig,
             ty,
             required,
@@ -439,7 +453,6 @@ class _Field:
     help: str | yuio.Disabled
     env: str | yuio.Disabled
     flags: list[str] | yuio.Positional | yuio.Disabled
-    completer: yuio.complete.Completer | None
     is_subconfig: bool
     ty: type
     required: bool
@@ -452,6 +465,7 @@ class _Field:
 def field(
     *,
     completer: yuio.complete.Completer | None = None,
+    metavar: str | None = None,
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
@@ -469,6 +483,7 @@ def field(
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
+    metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     group: MutuallyExclusiveGroup | None = None,
     usage: yuio.Omit | bool | None = None,
@@ -484,6 +499,7 @@ def field(
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
+    metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     group: MutuallyExclusiveGroup | None = None,
     usage: yuio.Omit | bool | None = None,
@@ -498,11 +514,14 @@ def field(
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
+    metavar: str | None = None,
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None,
     group: MutuallyExclusiveGroup | None = None,
     usage: yuio.Omit | bool | None = None,
 ) -> _t.Any:
-    """Field descriptor, used for additional configuration of flags and config fields.
+    """
+    Field descriptor, used for additional configuration of CLI arguments
+    and config fields.
 
     In apps::
 
@@ -529,7 +548,7 @@ def field(
     :param parser:
         parser that will be used to parse and CLI arguments.
     :param help:
-        Help message that will be used in CLI argument description.
+        help message that will be used in CLI argument description.
 
         Pass :data:`~yuio.DISABLED` to remove this field from CLI help.
 
@@ -538,14 +557,14 @@ def field(
 
         Help messages are formatted using Markdown (see :mod:`yuio.md`).
     :param env:
-        In configs, specifies name of environment variable that will be used
+        in configs, specifies name of environment variable that will be used
         if loading config from environment variable.
 
         Pass :data:`~yuio.DISABLED` to disable loading this field form environment variable.
 
         Pass an empty string to disable prefixing nested config variables.
     :param flags:
-        List of names (or a single name) of CLI flags that will be used for this field.
+        list of names (or a single name) of CLI flags that will be used for this field.
 
         In configs, pass :data:`~yuio.DISABLED` to disable loading this field form CLI arguments.
 
@@ -553,15 +572,28 @@ def field(
 
         Pass an empty string to disable prefixing nested config flags.
     :param completer:
-        completer that will be used for autocompletion in CLI.
+        completer that will be used for autocompletion in CLI. Using this option
+        is equivalent to overriding ``completer`` with :class:`yuio.parse.WithMeta`.
+    :param metavar:
+        value description that will be used for CLI help messages. Using this option
+        is equivalent to overriding ``desc`` with :class:`yuio.parse.WithMeta`.
     :param merge:
         defines how values of this field are merged when configs are updated.
+    :param group:
+        defines mutually exclusive group for this field. Create an instance
+        of :class:`yuio.app.MutuallyExclusiveGroup` and pass it to all fields that
+        should be mutually exclusive.
+    :param usage:
+        controls how this field renders in CLI usage section. Passing :data:`False`
+        removes this field from usage, and passing :class:`yuio.OMIT` replaces all
+        omitted fields with a single string ``"<options>"``.
 
     """
 
     return _FieldSettings(
         default=default,
         completer=completer,
+        metavar=metavar,
         parser=parser,
         help=help,
         env=env,
@@ -576,7 +608,8 @@ def inline(
     help: str | yuio.Disabled | None = None,
     usage: yuio.Omit | bool | None = None,
 ) -> _t.Any:
-    """A shortcut for inlining nested configs.
+    """
+    A shortcut for inlining nested configs.
 
     Equivalent to calling :func:`~yuio.app.field` with ``env`` and ``flags``
     set to an empty string.
@@ -592,6 +625,7 @@ def positional(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
+    metavar: str | None = None,
     usage: yuio.Omit | bool | None = None,
 ) -> _t.Any: ...
 
@@ -604,6 +638,7 @@ def positional(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
+    metavar: str | None = None,
     usage: yuio.Omit | bool | None = None,
 ) -> T | None: ...
 
@@ -616,6 +651,7 @@ def positional(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
+    metavar: str | None = None,
     usage: yuio.Omit | bool | None = None,
 ) -> T: ...
 
@@ -627,9 +663,11 @@ def positional(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
+    metavar: str | None = None,
     usage: yuio.Omit | bool | None = None,
 ) -> _t.Any:
-    """A shortcut for adding a positional argument.
+    """
+    A shortcut for adding a positional argument.
 
     Equivalent to calling :func:`field` with ``flags`` set to :data:`~yuio.POSITIONAL`.
 
@@ -642,6 +680,7 @@ def positional(
         env=env,
         flags=yuio.POSITIONAL,
         completer=completer,
+        metavar=metavar,
         usage=usage,
     )
 
@@ -656,10 +695,6 @@ def _action(
         @staticmethod
         def get_parser():
             return field.parser
-
-        @staticmethod
-        def get_completer():
-            return field.completer
 
         @staticmethod
         def get_merge():
@@ -704,7 +739,8 @@ def _action(
     field_specifiers=(field, inline, positional),
 )
 class Config:
-    """Base class for configs.
+    """
+    Base class for configs.
 
     Pass keyword args to set fields, or pass another config to copy it::
 
@@ -731,12 +767,6 @@ class Config:
     .. automethod:: validate_config
 
     """
-
-    _Self = _t.TypeVar("_Self", bound="Config")
-
-    # Value is generated lazily by `__get_fields`.
-    __allow_positionals: _t.ClassVar[bool] = False
-    __fields: _t.ClassVar[dict[str, _Field] | None]
 
     @classmethod
     def __get_fields(cls) -> dict[str, _Field]:
@@ -805,10 +835,10 @@ class Config:
         super().__init_subclass__(**kwargs)
 
         if _allow_positionals is not None:
-            cls.__allow_positionals = _allow_positionals
-        cls.__fields = None
+            cls.__allow_positionals: bool = _allow_positionals
+        cls.__fields: dict[str, _Field] | None = None
 
-    def __init__(self: _Self, *args: _Self, **kwargs):
+    def __init__(self, *args: _t.Self | dict[str, _t.Any], **kwargs):
         for name, field in self.__get_fields().items():
             if field.is_subconfig:
                 setattr(self, name, field.ty())
@@ -818,8 +848,9 @@ class Config:
 
         self.update(kwargs)
 
-    def update(self: _Self, other: _Self | dict[str, _t.Any], /):
-        """Update fields in this config with fields from another config.
+    def update(self, other: _t.Self | dict[str, _t.Any], /):
+        """
+        Update fields in this config with fields from another config.
 
         This function is similar to :meth:`dict.update`.
 
@@ -859,7 +890,7 @@ class Config:
                         setattr(self, name, ns[name])
 
     @classmethod
-    def load_from_env(cls: type[_Self], prefix: str = "") -> _Self:
+    def load_from_env(cls, prefix: str = "") -> _t.Self:
         """
         Load config from environment variables.
 
@@ -880,7 +911,7 @@ class Config:
             ) from None
 
     @classmethod
-    def __load_from_env(cls: type[_Self], prefix: str = "") -> _Self:
+    def __load_from_env(cls, prefix: str = "") -> _t.Self:
 
         fields = {}
 
@@ -903,20 +934,20 @@ class Config:
 
     @classmethod
     def _load_from_namespace(
-        cls: type[_Self],
+        cls,
         namespace: argparse.Namespace,
         /,
         *,
         ns_prefix: str = "",
-    ) -> _Self:
+    ) -> _t.Self:
         result = cls.__load_from_namespace(namespace, ns_prefix + ":")
         result.validate_config()
         return result
 
     @classmethod
     def __load_from_namespace(
-        cls: type[_Self], namespace: argparse.Namespace, prefix: str
-    ) -> _Self:
+        cls, namespace: argparse.Namespace, prefix: str
+    ) -> _t.Self:
         fields = {}
 
         for name, field in cls.__get_fields().items():
@@ -1094,13 +1125,13 @@ class Config:
 
     @classmethod
     def load_from_json_file(
-        cls: type[_Self],
+        cls,
         path: str | pathlib.Path,
         /,
         *,
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
-    ) -> _Self:
+    ) -> _t.Self:
         """
         Load config from a ``.json`` file.
 
@@ -1121,14 +1152,15 @@ class Config:
 
     @classmethod
     def load_from_yaml_file(
-        cls: type[_Self],
+        cls,
         path: str | pathlib.Path,
         /,
         *,
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
-    ) -> _Self:
-        """Load config from a ``.yaml`` file.
+    ) -> _t.Self:
+        """
+        Load config from a ``.yaml`` file.
 
         This requires `PyYaml <https://pypi.org/project/PyYAML/>`_ package
         to be installed.
@@ -1155,14 +1187,15 @@ class Config:
 
     @classmethod
     def load_from_toml_file(
-        cls: type[_Self],
+        cls,
         path: str | pathlib.Path,
         /,
         *,
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
-    ) -> _Self:
-        """Load config from a ``.toml`` file.
+    ) -> _t.Self:
+        """
+        Load config from a ``.toml`` file.
 
         This requires
         `tomllib <https://docs.python.org/3/library/tomllib.html>`_ or
@@ -1194,12 +1227,12 @@ class Config:
 
     @classmethod
     def __load_from_file(
-        cls: type[_Self],
+        cls,
         path: str | pathlib.Path,
         file_parser: _t.Callable[[str], _t.Any],
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
-    ) -> _Self:
+    ) -> _t.Self:
         if ignore_missing_file and not os.path.exists(path):
             return cls()
 
@@ -1217,14 +1250,15 @@ class Config:
 
     @classmethod
     def load_from_parsed_file(
-        cls: type[_Self],
+        cls,
         parsed: dict[str, object],
         /,
         *,
         ignore_unknown_fields: bool = False,
         path: str | pathlib.Path | None = None,
-    ) -> _Self:
-        """Load config from parsed config file.
+    ) -> _t.Self:
+        """
+        Load config from parsed config file.
 
         This method takes a dict with arbitrary values that you'd get from
         parsing type-rich configs such as ``yaml`` or ``json``.
@@ -1258,11 +1292,11 @@ class Config:
 
     @classmethod
     def __load_from_parsed_file(
-        cls: type[_Self],
+        cls,
         parsed: dict[str, object],
         ignore_unknown_fields: bool = False,
         field_prefix: str = "",
-    ) -> _Self:
+    ) -> _t.Self:
         if not isinstance(parsed, dict):
             raise TypeError("config should be a dict")
 
@@ -1299,7 +1333,7 @@ class Config:
         else:
             return value
 
-    # A dirty hack to hide __getattribute__ from type checkers.
+    # A dirty hack to hide `__getattribute__` from type checkers.
     locals()["__getattribute__"] = __getattribute
 
     def __repr__(self):
@@ -1383,4 +1417,4 @@ class Config:
         )
 
 
-Config.__init_subclass__()
+Config.__init_subclass__(_allow_positionals=False)

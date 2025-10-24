@@ -59,7 +59,7 @@ Ctrl+L
 Show
 
 Sleep 1s
-Type "python ./examples/tasks_multithreaded.py"
+Type "python examples/tasks_multithreaded.py"
 Enter
 Sleep 12s
 Sleep 4s
@@ -69,7 +69,7 @@ Ctrl+L
 Show
 
 Sleep 1s
-Type "python ./examples/prompt.py"
+Type "python examples/prompt.py"
 Enter
 Sleep 1s
 Up@500ms 2

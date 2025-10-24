@@ -9,77 +9,97 @@ or having headaches because autocompletion was just an afterthought.
 Yuio got you.
 
 .. vhs:: /_tapes/demo.tape
-   :alt: Demonstration of yuio capabilities.
-   :scale: 50%
+    :alt: Demonstration of yuio capabilities.
+    :scale: 50%
 
 
 .. invisible-code-block: python
 
-   import io
-   import pathlib
-   import sys
-   import yuio.app
-   import yuio.term
-   import yuio.io
+    import io
+    import pathlib
+    import sys
+    import yuio.app
+    import yuio.config
+    import yuio.term
+    import yuio.io
 
-   yuio.io.setup(term=yuio.term.Term(io.StringIO(), io.StringIO()))
+    yuio.io.setup(term=yuio.term.Term(io.StringIO(), io.StringIO()))
 
 
 Features
 --------
 
-- Easy to setup CLI apps with autocompletion out of the box:
+-   Easy to setup CLI apps with autocompletion out of the box:
 
-  .. code-block:: python
+    .. code-block:: python
 
-     @yuio.app.app
-     def main(
-         #: input files for the program.
-         inputs: list[pathlib.Path] = yuio.app.positional(),
-     ):
-         ...
+        @yuio.app.app
+        def main(
+              #: input files for the program.
+              inputs: list[pathlib.Path] = yuio.app.positional(),
+        ):
+              ...
 
-     if __name__ == "__main__":
-         main.run()
+        if __name__ == "__main__":
+              main.run()
 
-- Colored output with inline tags and markdown:
+-   Colored output with inline tags and markdown:
 
-  .. code-block:: python
+    .. code-block:: python
 
-     yuio.io.info('<c bold>Yuio</c>: a user-friendly io library!')
+        yuio.io.info('<c bold>Yuio</c>: a user-friendly io library!')
 
-- Status indication with progress bars that don't break your console:
+-   Status indication with progress bars that don't break your console:
 
-  .. invisible-code-block: python
+    .. invisible-code-block: python
 
-     sources = []
+        sources = []
 
-  .. code-block:: python
+    .. code-block:: python
 
-     with yuio.io.Task('Loading sources') as task:
-         for source in task.iter(sources):
-             ...
+        with yuio.io.Task('Loading sources') as task:
+              for source in task.iter(sources):
+                   ...
 
-- User interactions, input parsing and simple widgets:
+-   User interactions, input parsing and simple widgets:
 
-  .. invisible-code-block: python
+    .. invisible-code-block: python
 
-     ostream = yuio.io.get_term().ostream
-     ostream.write("foobar\n")
-     ostream.seek(0)
-     del ostream
+        ostream = yuio.io.get_term().ostream
+        ostream.write("foobar\n")
+        ostream.seek(0)
+        del ostream
 
-  .. code-block:: python
+    .. code-block:: python
 
-     answer = yuio.io.ask("What's your favorite treat?", default="waffles")
+        answer = yuio.io.ask("What's your favorite treat?", default="waffles")
 
-- And many more!
+-   Loading configs from all sorts of places:
+
+    .. invisible-code-block: python
+
+        path = "/dev/null"
+
+    .. code-block:: python
+
+        class AppConfig(yuio.config.Config):
+            #: number of threads to use, default is auto-detect.
+            n_threads: int | None = None
+
+        config = AppConfig()
+        config.update(AppConfig.load_from_toml_file(path))
+        config.update(AppConfig.load_from_env(prefix="APP"))
+        ...
+
+-   No dependencies, perfect for use in un-configured environments.
+
+-   And many more!
 
 
 Requirements
 ------------
 
-The only requirement is ``python >= 3.8``.
+The only requirement is ``python >= 3.10``.
 
 
 Installation
@@ -89,7 +109,7 @@ Install ``yuio`` with pip:
 
 .. code-block:: console
 
-   $ pip install yuio
+    $ pip install yuio
 
 Or just copy-paste the ``yuio`` directory to somewhere in the ``PYTHONPATH`` of your project.
 
@@ -106,8 +126,8 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   by_example/index
-   main_features/index
-   internals/index
+    by_example/index
+    main_features/index
+    internals/index

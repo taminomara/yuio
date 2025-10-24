@@ -21,12 +21,32 @@ if __name__ == "__main__":
 
     if changes := status.changes:
         for change in changes:
-            path = (
-                change.path
-                if change.path_from is None
-                else f"{change.path_from} -> {change.path}"
-            )
-            yuio.io.info("%s: `%s%s`", path, change.staged.value, change.tree.value)
+            if isinstance(change, yuio.git.UnmergedFileStatus):
+                yuio.io.info(
+                    "%s: `unmerged %s%s`",
+                    change.path,
+                    change.us.value,
+                    change.them.value,
+                )
+            elif isinstance(change, yuio.git.FileStatus):
+                path = (
+                    change.path
+                    if change.path_from is None
+                    else f"{change.path_from} -> {change.path}"
+                )
+                yuio.io.info("%s: `%s%s`", path, change.staged.value, change.tree.value)
+            else:
+                yuio.io.info("%s", change.path)
+
+            if isinstance(
+                change, (yuio.git.SubmoduleStatus, yuio.git.UnmergedSubmoduleStatus)
+            ):
+                yuio.io.info(
+                    "  (submodule%s%s%s)",
+                    ", commit changed" if change.commit_changed else "",
+                    ", has tracked changes" if change.has_tracked_changes else "",
+                    ", has untracked changes" if change.has_untracked_changes else "",
+                )
     else:
         yuio.io.info("No files were changed!")
 

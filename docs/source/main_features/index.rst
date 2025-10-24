@@ -12,3 +12,4 @@ The primary interface that you'll be using.
    config
    exec
    git
+   sphinx_ext

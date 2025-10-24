@@ -51,35 +51,35 @@ class TestSetup:
     def setup(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io._IO_MANAGER", None)
 
-    @pytest.mark.xfail(reason="TODO")
+    @pytest.mark.skip(reason="TODO")
     def test_simple(self):
         pass
 
-    @pytest.mark.xfail(reason="TODO")
+    @pytest.mark.skip(reason="TODO")
     def test_term(self):
         pass
 
-    @pytest.mark.xfail(reason="TODO")
+    @pytest.mark.skip(reason="TODO")
     def test_theme(self):
         pass
 
-    @pytest.mark.xfail(reason="TODO")
+    @pytest.mark.skip(reason="TODO")
     def test_theme_callable(self):
         pass
 
-    @pytest.mark.xfail(reason="TODO")
+    @pytest.mark.skip(reason="TODO")
     def test_term_theme(self):
         pass
 
-    @pytest.mark.xfail(reason="TODO")
+    @pytest.mark.skip(reason="TODO")
     def test_term_theme_callable(self):
         pass
 
-    @pytest.mark.xfail(reason="TODO")
+    @pytest.mark.skip(reason="TODO")
     def test_wrap_streams(self):
         pass
 
-    @pytest.mark.xfail(reason="TODO")
+    @pytest.mark.skip(reason="TODO")
     def test_wrap_streams_non_interactive(self):
         pass
 
@@ -533,7 +533,7 @@ class TestAsk:
 
         with io_mocker.mock():
             assert yuio.io.ask[bool](
-                "Enter some numbers", parser=yuio.parse.List(yuio.parse.Int())
+                "Enter some numbers", parser=yuio.parse.List(yuio.parse.Int())  # type: ignore
             ) == [123, 456]
 
 
@@ -752,7 +752,7 @@ class TestAskNonInteractive:
 
         with io_mocker.mock():
             assert yuio.io.ask[bool](
-                "Enter some numbers", parser=yuio.parse.List(yuio.parse.Int())
+                "Enter some numbers", parser=yuio.parse.List(yuio.parse.Int())  # type: ignore
             ) == [123, 456]
 
 
@@ -2145,11 +2145,11 @@ class TestLog:
         self.logger.critical("critical")
 
         value = ostream.getvalue()
-        assert "yuio.test.test_log DEBU debug" in value
+        assert "yuio.test.test_log DEBUG debug" in value
         assert "yuio.test.test_log INFO info" in value
-        assert "yuio.test.test_log WARN warning" in value
-        assert "yuio.test.test_log ERRO error" in value
-        assert "yuio.test.test_log CRIT critical" in value
+        assert "yuio.test.test_log WARNING warning" in value
+        assert "yuio.test.test_log ERROR error" in value
+        assert "yuio.test.test_log CRITICAL critical" in value
 
     def test_log_tb(self, ostream: io.StringIO):
         self.logger.debug("debug")

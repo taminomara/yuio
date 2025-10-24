@@ -3,8 +3,9 @@ import yuio.io
 if __name__ == "__main__":
     yuio.io.heading("Message colors")
 
+    yuio.io.success("Success message is bold green.")
+    yuio.io.failure("Failure message is bold red.")
     yuio.io.info("Info message is default color.")
-    yuio.io.success("Success message is green.")
     yuio.io.warning("Warning message is yellow.")
     yuio.io.error("Error message is red.")
 

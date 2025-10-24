@@ -14,33 +14,89 @@ Interacting with a repository
 -----------------------------
 
 All repository interactions are done through the :class:`Repo` class
-and its methods. If an interaction fails, a :class:`GitException` is raised.
+and its methods. If an interaction fails, a :class:`GitError` is raised.
 
 .. autoclass:: Repo
-   :members:
+    :members:
 
-.. autoclass:: GitException
+.. autoclass:: GitError
 
 
-Commit and status objects
--------------------------
+Status objects
+--------------
 
-Some of :class:`Repo` commands return parsed descriptions of git objects:
+:meth:`Repo.status` returns repository status parsed from ``git status`` command.
+It can show changed and unmerged files and submodules. See details about change
+representation in `git status`__ manual.
 
-.. autoclass:: Commit
-   :members:
+__ https://git-scm.com/docs/git-status#_output
 
-.. autoclass:: CommitTrailers
-   :members:
+Yuio represents ``git status`` output as close to the original as possible,
+but makes some convenience renames. This results in somewhat unexpected
+class structure:
+
+.. raw:: html
+
+    <p>
+    <pre class="mermaid">
+    ---
+    config:
+        class:
+            hideEmptyMembersBox: true
+    ---
+    classDiagram
+
+    class PathStatus
+    click PathStatus href "#yuio.git.PathStatus" "yuio.git.PathStatus"
+
+    class FileStatus
+    click FileStatus href "#yuio.git.FileStatus" "yuio.git.FileStatus"
+    PathStatus <|-- FileStatus
+
+    class SubmoduleStatus
+    click SubmoduleStatus href "#yuio.git.SubmoduleStatus" "yuio.git.SubmoduleStatus"
+    FileStatus <|-- SubmoduleStatus
+
+    class UnmergedFileStatus
+    click UnmergedFileStatus href "#yuio.git.UnmergedFileStatus" "yuio.git.UnmergedFileStatus"
+    PathStatus <|-- UnmergedFileStatus
+
+    class UnmergedSubmoduleStatus
+    click UnmergedSubmoduleStatus href "#yuio.git.UnmergedSubmoduleStatus" "yuio.git.UnmergedSubmoduleStatus"
+    UnmergedFileStatus <|-- UnmergedSubmoduleStatus
+    </pre>
+    </p>
 
 .. autoclass:: Status
-   :members:
+    :members:
+
+.. autoclass:: PathStatus
+    :members:
 
 .. autoclass:: FileStatus
-   :members:
+    :members:
+
+.. autoclass:: SubmoduleStatus
+    :members:
+
+.. autoclass:: UnmergedFileStatus
+    :members:
+
+.. autoclass:: UnmergedSubmoduleStatus
+    :members:
 
 .. autoclass:: Modification
-   :members:
+    :members:
+
+
+Commit objects
+--------------
+
+.. autoclass:: Commit
+    :members:
+
+.. autoclass:: CommitTrailers
+    :members:
 
 
 Parsing git refs
@@ -84,6 +140,7 @@ Autocompleting git refs
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import enum
 import functools
@@ -99,36 +156,76 @@ import yuio.complete
 import yuio.parse
 from yuio import _typing as _t
 
+__all__ = [
+    "GitError",
+    "Ref",
+    "Tag",
+    "Branch",
+    "Remote",
+    "Repo",
+    "Commit",
+    "CommitTrailers",
+    "Modification",
+    "PathStatus",
+    "FileStatus",
+    "SubmoduleStatus",
+    "UnmergedFileStatus",
+    "UnmergedSubmoduleStatus",
+    "Status",
+    "RefCompleterMode",
+    "RefCompleter",
+    "RefParser",
+    "TagParser",
+    "BranchParser",
+    "RemoteParser",
+    "CommitParser",
+]
+
 _logger = logging.getLogger(__name__)
 
 
-class GitException(subprocess.SubprocessError):
-    """Raised when git returns a non-zero exit code."""
+class GitError(subprocess.SubprocessError):
+    """
+    Raised when git returns a non-zero exit code.
+
+    """
 
 
-#: A special kind of string that contains a git object reference.
-#:
-#: Ref is not guaranteed to be valid; this type is used in type hints
-#: to make use of the :class:`RefParser`.
 Ref = _t.NewType("Ref", str)
+"""
+A special kind of string that contains a git object reference.
 
-#: A special kind of string that contains a tag name.
-#:
-#: Ref is not guaranteed to be valid; this type is used in type hints
-#: to make use of the :class:`TagParser`.
+Ref is not guaranteed to be valid; this type is used in type hints
+to make use of the :class:`RefParser`.
+
+"""
+
 Tag = _t.NewType("Tag", str)
+"""
+A special kind of string that contains a tag name.
 
-#: A special kind of string that contains a branch name.
-#:
-#: Ref is not guaranteed to be valid; this type is used in type hints
-#: to make use of the :class:`BranchParser`.
+Ref is not guaranteed to be valid; this type is used in type hints
+to make use of the :class:`TagParser`.
+
+"""
+
 Branch = _t.NewType("Branch", str)
+"""
+A special kind of string that contains a branch name.
 
-#: A special kind of string that contains a remote branch name.
-#:
-#: Ref is not guaranteed to be valid; this type is used in type hints
-#: to make use of the :class:`RemoteParser`.
+Ref is not guaranteed to be valid; this type is used in type hints
+to make use of the :class:`BranchParser`.
+
+"""
+
 Remote = _t.NewType("Remote", str)
+"""
+A special kind of string that contains a remote branch name.
+
+Ref is not guaranteed to be valid; this type is used in type hints
+to make use of the :class:`RemoteParser`.
+
+"""
 
 
 _LOG_FMT = "%H%n%aN%n%aE%n%aI%n%cN%n%cE%n%cI%n%(decorate:prefix=,suffix=,tag=,separator= )%n%w(0,0,1)%B%w(0,0)%n-"
@@ -144,24 +241,33 @@ class Repo:
         path to the repo root dir.
     :param skip_checks:
         don't check if we're inside a repo.
+    :param env:
+        environment variables for the git executable.
 
     """
 
-    def __init__(self, path: pathlib.Path | str, /, skip_checks: bool = False):
+    def __init__(
+        self,
+        path: pathlib.Path | str,
+        /,
+        skip_checks: bool = False,
+        env: dict[str, str] | None = None,
+    ):
         self.__path = pathlib.Path(path)
-
-        try:
-            self.git("--version")
-        except FileNotFoundError:
-            raise GitException(f"git executable was not found")
+        self.__env = env
 
         if skip_checks:
             return
 
         try:
+            self.git("--version")
+        except FileNotFoundError:
+            raise GitError(f"git executable not found")
+
+        try:
             self.git("rev-parse", "--is-inside-work-tree")
-        except GitException:
-            raise GitException(f"{path} is not a git repository")
+        except GitError:
+            raise GitError(f"{path} is not a git repository")
 
     @property
     def path(self) -> pathlib.Path:
@@ -172,63 +278,101 @@ class Repo:
 
         return self.__path
 
-    def git(self, *args: str) -> bytes:
+    def git(self, *args: str | pathlib.Path, capture_output: bool = True) -> bytes:
         """
         Call git and return its stdout.
 
         """
 
         if _logger.isEnabledFor(logging.DEBUG):
-            _logger.debug("git %s", " ".join(args))
+            _logger.debug("git %s", " ".join(map(str, args)))
 
-        res = subprocess.run(
-            ["git"] + list(args),
-            capture_output=True,
-            cwd=self.__path,
-        )
+        with contextlib.ExitStack() as context:
+            if not capture_output:
+                import yuio.io
+
+                context.enter_context(yuio.io.SuspendOutput())
+            try:
+                res = subprocess.run(
+                    ["git"] + list(args),
+                    capture_output=capture_output,
+                    cwd=self.__path,
+                    env=self.__env,
+                )
+            except FileNotFoundError:
+                raise GitError(f"git executable not found")
 
         if res.stderr:
             _logger.debug("%s", res.stderr.decode())
 
         if res.returncode != 0:
-            raise GitException(
+            raise GitError(
                 f"git exited with status code {res.returncode}:\n"
                 f"{res.stderr.decode()}"
             )
 
         return res.stdout
 
+    @functools.cached_property
     def root(self) -> pathlib.Path:
         """
-        Get the root directory of the repo.
+        The root directory of the repo.
 
         """
 
-        return pathlib.Path(self.git("rev-parse", "--show-toplevel").decode())
+        return pathlib.Path(
+            self.git("rev-parse", "--path-format=absolute", "--show-toplevel")
+            .decode()
+            .strip()
+        )
 
+    @functools.cached_property
     def git_dir(self) -> pathlib.Path:
         """
         Get path to the ``.git`` directory of the repo.
 
         """
 
-        return pathlib.Path(self.git("rev-parse", "--git-dir").decode())
+        return pathlib.Path(
+            self.git("rev-parse", "--path-format=absolute", "--git-dir")
+            .decode()
+            .strip()
+        )
 
-    def status(self) -> Status:
+    def status(
+        self, /, include_ignored: bool = False, include_submodules: bool = True
+    ) -> Status:
         """
         Query the current repository status.
 
+        :param include_ignored:
+            include ignored status in the list of changes. Disable by default.
+
+        :param include_submodules:
+            include status of submodules in the list of changes. Enabled by default.
+
         """
 
-        text = self.git("status", "--porcelain=v2", "--branch", "-z")
+        text = self.git(
+            "status",
+            "--porcelain=v2",
+            "-z",
+            "--ahead-behind",
+            "--branch",
+            "--renames",
+            "--untracked-files=normal",
+            "--ignore-submodules=" + ("none" if include_submodules else "all"),
+            "--ignored=" + ("matching" if include_ignored else "no"),
+        )
         lines = iter(text.split(b"\0"))
 
-        status = Status(commit="")
+        status = Status(commit=None)
 
         for line_b in lines:
             line = line_b.decode()
             if line.startswith("# branch.oid"):
-                status.commit = line[13:]
+                if line[13:] != "(initial)":
+                    status.commit = line[13:]
             elif line.startswith("# branch.head"):
                 if line[14:] != "(detached)":
                     status.branch = line[14:]
@@ -240,42 +384,141 @@ class Repo:
                 status.ahead = int(match.group(1))
                 status.behind = int(match.group(2))
             elif line.startswith("1"):
-                match = re.match(r"^(.)(.) .{4} (?:[^ ]+ ){5}(.*)$", line[2:])
+                match = re.match(
+                    r"^(?P<X>.)(?P<Y>.) (?P<sub>.{4}) (?:[^ ]+ ){5}(?P<path>.*)$",
+                    line[2:],
+                )
                 assert match is not None
-                file_status = FileStatus(
-                    path=pathlib.Path(match.group(3)),
-                    staged=Modification(match.group(1)),
-                    tree=Modification(match.group(2)),
-                )
-                status.changes.append(file_status)
-                status.has_tracked_changes |= (
-                    file_status.staged is not Modification.UNTRACKED
-                )
-                status.has_untracked_changes |= (
-                    file_status.staged is Modification.UNTRACKED
-                )
+                sub = match.group("sub")
+                if sub[0] == "S":
+                    path_status = SubmoduleStatus(
+                        path=pathlib.Path(match.group("path")),
+                        path_from=None,
+                        staged=Modification(match.group("X")),
+                        tree=Modification(match.group("Y")),
+                        commit_changed=sub[1] != ".",
+                        has_tracked_changes=sub[2] != ".",
+                        has_untracked_changes=sub[3] != ".",
+                    )
+                else:
+                    path_status = FileStatus(
+                        path=pathlib.Path(match.group("path")),
+                        path_from=None,
+                        staged=Modification(match.group("X")),
+                        tree=Modification(match.group("Y")),
+                    )
+                status.changes.append(path_status)
             elif line.startswith("2"):
-                match = re.match(r"^(.)(.) .{4} (?:[^ ]+ ){6}(.*)$", line[2:])
+                match = re.match(
+                    r"^(?P<X>.)(?P<Y>.) (?P<sub>.{4}) (?:[^ ]+ ){6}(?P<path>.*)$",
+                    line[2:],
+                )
                 assert match is not None
-                file_status = FileStatus(
-                    path=pathlib.Path(match.group(3)),
-                    path_from=pathlib.Path(next(lines).decode()),
-                    staged=Modification(match.group(1)),
-                    tree=Modification(match.group(2)),
+                path_from = pathlib.Path(next(lines).decode())
+                sub = match.group("sub")
+                if sub[0] == "S":
+                    path_status = SubmoduleStatus(
+                        path=pathlib.Path(match.group("path")),
+                        path_from=path_from,
+                        staged=Modification(match.group("X")),
+                        tree=Modification(match.group("Y")),
+                        commit_changed=sub[1] != ".",
+                        has_tracked_changes=sub[2] != ".",
+                        has_untracked_changes=sub[3] != ".",
+                    )
+                else:
+                    path_status = FileStatus(
+                        path=pathlib.Path(match.group("path")),
+                        path_from=path_from,
+                        staged=Modification(match.group("X")),
+                        tree=Modification(match.group("Y")),
+                    )
+                status.changes.append(path_status)
+            elif line.startswith("u"):
+                match = re.match(
+                    r"^(?P<X>.)(?P<Y>.) (?P<sub>.{4}) (?:[^ ]+ ){7}(?P<path>.*)$",
+                    line[2:],
                 )
-                status.changes.append(file_status)
-                status.has_tracked_changes |= (
-                    file_status.staged is not Modification.UNTRACKED
+                assert match is not None
+                sub = match.group("sub")
+                if sub[0] == "S":
+                    path_status = UnmergedSubmoduleStatus(
+                        path=pathlib.Path(match.group("path")),
+                        us=Modification(match.group("X")),
+                        them=Modification(match.group("Y")),
+                        commit_changed=sub[1] != ".",
+                        has_tracked_changes=sub[2] != ".",
+                        has_untracked_changes=sub[3] != ".",
+                    )
+                else:
+                    path_status = UnmergedFileStatus(
+                        path=pathlib.Path(match.group("path")),
+                        us=Modification(match.group("X")),
+                        them=Modification(match.group("Y")),
+                    )
+                status.changes.append(path_status)
+            elif line.startswith("?"):
+                status.changes.append(
+                    FileStatus(
+                        path=pathlib.Path(line[2:]),
+                        path_from=None,
+                        staged=Modification.UNTRACKED,
+                        tree=Modification.UNTRACKED,
+                    )
                 )
-                status.has_untracked_changes |= (
-                    file_status.staged is Modification.UNTRACKED
+            elif line.startswith("!"):
+                status.changes.append(
+                    FileStatus(
+                        path=pathlib.Path(line[2:]),
+                        path_from=None,
+                        staged=Modification.IGNORED,
+                        tree=Modification.IGNORED,
+                    )
                 )
 
+        try:
+            status.cherry_pick_head = (
+                self.git("rev-parse", "--verify", "CHERRY_PICK_HEAD").decode().strip()
+            )
+        except GitError:
+            pass
+        try:
+            status.merge_head = (
+                self.git("rev-parse", "--verify", "MERGE_HEAD").decode().strip()
+            )
+        except GitError:
+            pass
+        try:
+            status.rebase_head = (
+                self.git("rev-parse", "--verify", "REBASE_HEAD").decode().strip()
+            )
+        except GitError:
+            pass
+        try:
+            status.revert_head = (
+                self.git("rev-parse", "--verify", "REVERT_HEAD").decode().strip()
+            )
+        except GitError:
+            pass
+
         return status
+
+    def print_status(self):
+        """
+        Run ``git status`` and show its output to the user.
+
+        """
+
+        self.git("status", capture_output=False)
 
     def log(self, *refs: str, max_entries: int | None = None) -> list[Commit]:
         """
         Query the log for given git objects.
+
+        :param refs:
+            git references that will be passed to ``git log``.
+        :param max_entries:
+            maximum number of returned references.
 
         """
 
@@ -311,6 +554,16 @@ class Repo:
 
         __ https://git-scm.com/docs/git-interpret-trailers
 
+        :param refs:
+            git references that will be passed to ``git log``.
+        :param max_entries:
+            maximum number of checked commits.
+
+            .. warning::
+
+                This option limits number of checked commits, not the number
+                of trailers.
+
         """
 
         args = [f"--pretty=format:{_LOG_TRAILERS_FMT}"]
@@ -334,32 +587,25 @@ class Repo:
         """
         Query information for the given git object.
 
-        Return `None` if object is not found.
+        Return :data:`None` if object is not found.
+
+        :param ref:
+            git reference that will be passed to ``git log``.
 
         """
 
         try:
             self.git("rev-parse", "--verify", ref)
-        except GitException:
+        except GitError:
             return None
 
-        text = self.git(
-            "log",
-            f"--pretty=format:{_LOG_FMT}",
-            "-n1",
-            ref,
-        )
-
-        lines = iter(text.decode().split("\n"))
-
-        commit = self.__parse_single_log_entry(lines)
-
-        if commit is None:
+        log = self.log(ref, max_entries=1)
+        if not log:
             return None
-
-        commit.orig_ref = ref
-
-        return commit
+        else:
+            commit = log[0]
+            commit.orig_ref = ref
+            return commit
 
     @staticmethod
     def __parse_single_log_entry(lines) -> Commit | None:
@@ -483,42 +729,75 @@ class Commit:
 
     """
 
-    #: Commit hash.
     hash: str
+    """
+    Commit hash.
 
-    #: Tags attached to this commit.
+    """
+
     tags: list[str]
+    """
+    Tags attached to this commit.
 
-    #: Author name.
+    """
+
     author: str
+    """
+    Author name.
 
-    #: Author email.
+    """
+
     author_email: str
+    """
+    Author email.
 
-    #: Author time.
+    """
+
     author_datetime: datetime
+    """
+    Author time.
 
-    #: Committer name.
+    """
+
     committer: str
+    """
+    Committer name.
 
-    #: Committer email.
+    """
+
     committer_email: str
+    """
+    Committer email.
 
-    #: Committer time.
+    """
+
     committer_datetime: datetime
+    """
+    Committer time.
 
-    #: Commit title, i.e. first line of the message.
+    """
+
     title: str
+    """
+    Commit title, i.e. first line of the message.
 
-    #: Commit body, i.e. the rest of the message.
+    """
+
     body: str
+    """
+    Commit body, i.e. the rest of the message.
 
-    #: If commit was parsed from a user input, this field will contain
-    #: original input. I.e. if a user enters ``HEAD`` and it gets resolved
-    #: into a commit, `orig_ref` will contain string ``"HEAD"``.
-    #:
-    #: See also :class:`CommitParser`.
+    """
+
     orig_ref: str | None = None
+    """
+    If commit was parsed from a user input, this field will contain
+    original input. I.e. if a user enters ``HEAD`` and it gets resolved
+    into a commit, `orig_ref` will contain string ``"HEAD"``.
+
+    See also :class:`CommitParser`.
+
+    """
 
     @property
     def short_hash(self):
@@ -543,94 +822,327 @@ class CommitTrailers:
 
     """
 
-    #: Commit hash.
     hash: str
+    """
+    Commit hash.
 
-    #: Key-value pairs for commit trailers.
+    """
+
     trailers: list[tuple[str, str]]
+    """
+    Key-value pairs for commit trailers.
+
+    """
 
 
 class Modification(enum.Enum):
-    """For changed file, what modification was applied to it."""
+    """
+    For changed file or submodule, what modification was applied to it.
 
-    #: File wasn't changed.
+    """
+
     UNMODIFIED = "."
+    """
+    File wasn't changed.
 
-    #: File was changed.
+    """
+
     MODIFIED = "M"
+    """
+    File was changed.
 
-    #: File was created.
+    """
+
+    SUBMODULE_MODIFIED = "m"
+    """
+    Contents of submodule were modified.
+
+    """
+
+    TYPE_CHANGED = "T"
+    """
+    File type changed.
+
+    """
+
     ADDED = "A"
+    """
+    File was created.
 
-    #: File was deleted.
+    """
+
     DELETED = "D"
+    """
+    File was deleted.
 
-    #: File was renamed (and possibly changed).
+    """
+
     RENAMED = "R"
+    """
+    File was renamed (and possibly changed).
 
-    #: File was copied (and possibly changed).
+    """
+
     COPIED = "C"
+    """
+    File was copied (and possibly changed).
 
-    #: File with conflicts is unmerged.
-    UNMERGED = "U"
+    """
 
-    #: File is in ``.gitignore``.
-    IGNORED = "?"
+    UPDATED = "U"
+    """
+    File was updated but unmerged.
 
-    #: File was created but not yet added to git, i.e. not staged.
-    UNTRACKED = "!"
+    """
+
+    UNTRACKED = "?"
+    """
+    File is untracked, i.e. not yet staged or committed.
+
+    """
+
+    IGNORED = "!"
+    """
+    File is in ``.gitignore``.
+
+    """
 
 
 @dataclass
-class FileStatus:
-    """Status of a changed file."""
+class PathStatus:
+    """
+    Status of a changed path.
 
-    #: Path of the file.
+    """
+
     path: pathlib.Path
+    """
+    Path of the file.
 
-    #: If file was moved, contains path where it was moved from.
-    path_from: pathlib.Path | None = None
+    """
 
-    #: File modification in the index (staged).
-    staged: Modification = Modification.UNMODIFIED
 
-    #: File modification in the tree (unstaged).
-    tree: Modification = Modification.UNMODIFIED
+@dataclass
+class FileStatus(PathStatus):
+    """
+    Status of a changed file.
+
+    """
+
+    path_from: pathlib.Path | None
+    """
+    If file was moved, contains path where it was moved from.
+
+    """
+
+    staged: Modification
+    """
+    File modification in the index (staged).
+
+    """
+
+    tree: Modification
+    """
+    File modification in the tree (unstaged).
+
+    """
+
+
+@dataclass
+class SubmoduleStatus(FileStatus):
+    """
+    Status of a submodule.
+
+    """
+
+    commit_changed: bool
+    """
+    The submodule has a different HEAD than recorded in the index.
+
+    """
+
+    has_tracked_changes: bool
+    """
+    Tracked files were changed in the submodule.
+
+    """
+
+    has_untracked_changes: bool
+    """
+    Untracked files were changed in the submodule.
+
+    """
+
+
+@dataclass
+class UnmergedFileStatus(PathStatus):
+    """
+    Status of an unmerged file.
+
+    """
+
+    us: Modification
+    """
+    File modification that has happened at the head.
+
+    """
+
+    them: Modification
+    """
+    File modification that has happened at the merge head.
+
+    """
+
+
+@dataclass
+class UnmergedSubmoduleStatus(UnmergedFileStatus):
+    """
+    Status of an unmerged submodule.
+
+    """
+
+    commit_changed: bool
+    """
+    The submodule has a different HEAD than recorded in the index.
+
+    """
+
+    has_tracked_changes: bool
+    """
+    Tracked files were changed in the submodule.
+
+    """
+
+    has_untracked_changes: bool
+    """
+    Untracked files were changed in the submodule.
+
+    """
 
 
 @dataclass
 class Status:
-    """Status of a working copy."""
+    """
+    Status of a working copy.
 
-    #: Current commit hash.
-    commit: str
+    """
 
-    #: Name of the current branch.
+    commit: str | None
+    """
+    Current commit hash. Can be absent if current branch is orphaned and doesn't have
+    any commits yet.
+
+    """
+
     branch: str | None = None
+    """
+    Name of the current branch.
 
-    #: Name of the upstream branch.
+    """
+
     upstream: str | None = None
+    """
+    Name of the upstream branch.
 
-    #: Number of commits the branch is ahead of upstream.
+    """
+
     ahead: int | None = None
+    """
+    Number of commits the branch is ahead of upstream.
 
-    #: Number of commits the branch is behind of upstream.
+    """
+
     behind: int | None = None
+    """
+    Number of commits the branch is behind of upstream.
 
-    #: True if any tracked file was changed.
-    has_tracked_changes: bool = False
+    """
 
-    #: True if any file was added but not tracked.
-    has_untracked_changes: bool = False
+    changes: list[PathStatus] = dataclasses.field(default_factory=list)
+    """
+    List of changed files, both tracked and untracked.
 
-    #: List of changed files, both tracked and untracked.
-    changes: list[FileStatus] = dataclasses.field(default_factory=list)
+    See details about change representation in `git status`__ manual.
 
-    @property
-    def has_changes(self) -> bool:
-        """True if there are any changes in the repository."""
+    __ https://git-scm.com/docs/git-status#_output
 
-        return self.has_tracked_changes or self.has_untracked_changes
+    """
+
+    cherry_pick_head: str | None = None
+    """
+    Position of the ``CHERRY_PICK_HEAD``.
+
+    If this field is not :data:`None`, cherry pick is in progress.
+
+    """
+
+    merge_head: str | None = None
+    """
+    Position of the ``MERGE_HEAD``.
+
+    If this field is not :data:`None`, merge is in progress.
+
+    """
+
+    rebase_head: str | None = None
+    """
+    Position of the ``REBASE_HEAD``.
+
+    If this field is not :data:`None`, rebase is in progress.
+
+    """
+
+    revert_head: str | None = None
+    """
+    Position of the ``REVERT_HEAD``.
+
+    If this field is not :data:`None`, revert is in progress.
+
+    """
+
+    def has_staged_changes(self) -> bool:
+        """
+        Return :data:`True` if there are unstaged changes in this repository.
+
+        """
+
+        return next(self.get_staged_changes(), None) is not None
+
+    def get_staged_changes(self) -> _t.Iterator[PathStatus]:
+        return (
+            change
+            for change in self.changes
+            if isinstance(change, FileStatus)
+            and change.staged
+            not in [
+                Modification.UNMODIFIED,
+                Modification.IGNORED,
+                Modification.UNTRACKED,
+            ]
+        )
+
+    def has_unstaged_changes(self) -> bool:
+        """
+        Return :data:`True` if there are unstaged changes in this repository.
+
+        """
+
+        return next(self.get_unstaged_changes(), None) is not None
+
+    def get_unstaged_changes(self) -> _t.Iterator[PathStatus]:
+        return (
+            change
+            for change in self.changes
+            if isinstance(change, UnmergedFileStatus)
+            or (
+                isinstance(change, FileStatus)
+                and change.tree
+                not in [
+                    Modification.UNMODIFIED,
+                    Modification.IGNORED,
+                ]
+            )
+        )
 
 
 class RefCompleterMode(enum.Enum):
@@ -639,17 +1151,29 @@ class RefCompleterMode(enum.Enum):
 
     """
 
-    #: Completes branches.
-    Branch = "b"
+    BRANCH = "b"
+    """
+    Completes branches.
 
-    #: Completes remote branches.
-    Remote = "r"
+    """
 
-    #: Completes tags.
-    Tag = "t"
+    REMOTE = "r"
+    """
+    Completes remote branches.
 
-    #: Completes ``HEAD`` and ``ORIG_HEAD``.
-    Head = "h"
+    """
+
+    TAG = "t"
+    """
+    Completes tags.
+
+    """
+
+    HEAD = "h"
+    """
+    Completes ``HEAD`` and ``ORIG_HEAD``.
+
+    """
 
 
 class RefCompleter(yuio.complete.Completer):
@@ -668,32 +1192,32 @@ class RefCompleter(yuio.complete.Completer):
 
         self._repo = repo
         self._modes = modes or {
-            RefCompleterMode.Branch,
-            RefCompleterMode.Tag,
-            RefCompleterMode.Head,
+            RefCompleterMode.BRANCH,
+            RefCompleterMode.TAG,
+            RefCompleterMode.HEAD,
         }
 
     def _process(self, collector: yuio.complete.CompletionCollector, /):
         try:
-            if RefCompleterMode.Head in self._modes:
+            if RefCompleterMode.HEAD in self._modes:
                 collector.add_group()
-                git_dir = self._repo.git_dir()
+                git_dir = self._repo.git_dir
                 for head in ["HEAD", "ORIG_HEAD"]:
                     if (git_dir / head).exists():
                         collector.add(head)
-            if RefCompleterMode.Branch in self._modes:
+            if RefCompleterMode.BRANCH in self._modes:
                 collector.add_group()
                 for branch in self._repo.branches():
                     collector.add(branch, comment="branch")
-            if RefCompleterMode.Remote in self._modes:
+            if RefCompleterMode.REMOTE in self._modes:
                 collector.add_group()
                 for remote in self._repo.remotes():
                     collector.add(remote, comment="remote")
-            if RefCompleterMode.Tag in self._modes:
+            if RefCompleterMode.TAG in self._modes:
                 collector.add_group()
                 for tag in self._repo.tags():
                     collector.add(tag, comment="tag")
-        except GitException:
+        except GitError:
             pass
 
     def _get_completion_model(
@@ -717,6 +1241,9 @@ def CommitParser(*, repo: Repo) -> yuio.parse.Parser[Commit]:
     If you need a simple string without additional validation,
     use :class:`RefParser`.
 
+    :param repo:
+        initialized repository is required to ensure that commit is valid.
+
     """
 
     def map(value: str, /) -> Commit:
@@ -728,65 +1255,38 @@ def CommitParser(*, repo: Repo) -> yuio.parse.Parser[Commit]:
     def rev(value: Commit | object) -> str:
         if isinstance(value, Commit):
             return str(value)
-        elif isinstance(value, str):
-            return value
         else:
             raise TypeError(
                 f"parser Commit can't handle value "
                 f"of type {_t.type_repr(type(value))}"
             )
 
-    return yuio.parse.Map(yuio.parse.Str(), map, rev)
+    return yuio.parse.WithMeta(
+        yuio.parse.Map(yuio.parse.Str(), map, rev),
+        desc="<commit>",
+        completer=RefCompleter(repo),
+    )
 
 
 T = _t.TypeVar("T")
 
 
-class _RefParserImpl(yuio.parse.ValidatingParser[T], _t.Generic[T]):
-    if _t.TYPE_CHECKING:
-
-        def __new__(
-            cls,
-            /,
-            *,
-            repo_path: Repo | str | pathlib.Path | None = None,
-            should_exist: bool = False,
-        ) -> _RefParserImpl[T]: ...
-
-    def __init__(
-        self,
-        /,
-        *,
-        repo_path: Repo | str | pathlib.Path | None = None,
-        should_exist: bool = False,
-    ):
-        super().__init__(_t.cast(yuio.parse.Parser[T], yuio.parse.Str()))
-
-        if repo_path is None:
-            repo_path = pathlib.Path.cwd()
-        elif isinstance(repo_path, Repo):
-            repo_path = repo_path.path
-        else:
-            repo_path = pathlib.Path(repo_path)
-
-        self._repo_path = repo_path
-        self._should_exist = should_exist
-
+class _RefParserImpl(yuio.parse.Str, _t.Generic[T]):
     @functools.cached_property
-    def _repo(self) -> Repo:
-        try:
-            return Repo(self._repo_path, skip_checks=not self._should_exist)
-        except GitException as e:
-            raise yuio.parse.ParsingError(str(e)) from None
+    def _description(self):
+        return "<" + self.__class__.__name__.removesuffix("Parser").lower() + ">"
 
-    def _validate(self, value: T, /):
-        if self._should_exist and self._repo.show(str(value)) is None:
-            raise yuio.parse.ParsingError(
-                f"{value} does not exist in {self._repo_path}"
-            )
+    def describe(self) -> str | None:
+        return self._description
 
-    def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(self._repo)
+    def describe_or_def(self) -> str:
+        return self._description
+
+    def describe_many(self) -> str | tuple[str, ...] | None:
+        return self._description
+
+    def describe_many_or_def(self) -> str | tuple[str, ...]:
+        return self._description
 
 
 class RefParser(_RefParserImpl[Ref]):
@@ -796,85 +1296,66 @@ class RefParser(_RefParserImpl[Ref]):
 
     """
 
+    def completer(self) -> yuio.complete.Completer:
+        return RefCompleter(
+            Repo(pathlib.Path.cwd(), skip_checks=True),
+        )
+
 
 class TagParser(_RefParserImpl[Tag]):
     """
-    A parser that checks if the given string is a valid tag name.
+    A parser that provides autocompletion for git tag, but doesn't verify
+    anything else.
 
     """
 
-    def _validate(self, value: Tag, /):
-        try:
-            self._repo.git("check-ref-format", f"refs/tags/{value}")
-        except GitException:
-            raise yuio.parse.ParsingError(f"{value} is not a valid tag name") from None
-
-        super()._validate(value)
-
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(self._repo, {RefCompleterMode.Tag})
+        return RefCompleter(
+            Repo(pathlib.Path.cwd(), skip_checks=True),
+            {RefCompleterMode.TAG},
+        )
 
 
 class BranchParser(_RefParserImpl[Branch]):
     """
-    A parser that checks if the given string is a valid tag name.
+    A parser that provides autocompletion for git branches, but doesn't verify
+    anything else.
 
     """
 
-    def _validate(self, value: Branch, /):
-        try:
-            self._repo.git("check-ref-format", f"refs/heads/{value}")
-        except GitException:
-            raise yuio.parse.ParsingError(
-                f"{value} is not a valid branch name"
-            ) from None
-
-        super()._validate(value)
-
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(self._repo, {RefCompleterMode.Branch})
+        return RefCompleter(
+            Repo(pathlib.Path.cwd(), skip_checks=True),
+            {RefCompleterMode.BRANCH},
+        )
 
 
 class RemoteParser(_RefParserImpl[Remote]):
     """
-    A parser that checks if the given string is a valid tag remote branch.
+    A parser that provides autocompletion for git remotes, but doesn't verify
+    anything else.
 
     """
 
-    def _validate(self, value: Remote, /):
-        try:
-            self._repo.git("check-ref-format", f"refs/remotes/{value}")
-        except GitException:
-            raise yuio.parse.ParsingError(
-                f"{value} is not a valid branch name"
-            ) from None
-
-        super()._validate(value)
-
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(self._repo, {RefCompleterMode.Branch})
+        return RefCompleter(
+            Repo(pathlib.Path.cwd(), skip_checks=True),
+            {RefCompleterMode.REMOTE},
+        )
 
 
 yuio.parse.register_type_hint_conversion(
-    lambda ty, origin, args: yuio.parse._str_ty_union_parser(
-        ty, origin, args, Ref, RefParser
-    )
+    lambda ty, origin, args: RefParser() if ty is Ref else None
 )
 
 yuio.parse.register_type_hint_conversion(
-    lambda ty, origin, args: yuio.parse._str_ty_union_parser(
-        ty, origin, args, Tag, TagParser
-    )
+    lambda ty, origin, args: TagParser() if ty is Tag else None
 )
 
 yuio.parse.register_type_hint_conversion(
-    lambda ty, origin, args: yuio.parse._str_ty_union_parser(
-        ty, origin, args, Branch, BranchParser
-    )
+    lambda ty, origin, args: BranchParser() if ty is Branch else None
 )
 
 yuio.parse.register_type_hint_conversion(
-    lambda ty, origin, args: yuio.parse._str_ty_union_parser(
-        ty, origin, args, Remote, RemoteParser
-    )
+    lambda ty, origin, args: RemoteParser() if ty is Remote else None
 )

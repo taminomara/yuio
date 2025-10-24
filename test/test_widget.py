@@ -3,6 +3,7 @@ import string
 
 import pytest
 
+import yuio.complete
 import yuio.term
 import yuio.theme
 import yuio.widget
@@ -2841,3 +2842,1351 @@ class TestGrid:
         )
         widget_checker.expect_widget_to_continue()
         widget_checker.check(widget)
+
+
+class TestChoice:
+    def test_empty(self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]):
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(yuio.widget.Choice([]))
+
+    def test_simple(self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]):
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(
+            yuio.widget.Choice(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == 1
+
+    def test_default_index(
+        self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]
+    ):
+        widget_checker.expect_screen(
+            [
+                "  a                 ",
+                "> b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(
+            yuio.widget.Choice(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ],
+                default_index=1,
+            )
+        )
+
+        assert result == 2
+
+    def test_navigate(self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]):
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "  a                 ",
+                "> b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(
+            yuio.widget.Choice(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == 2
+
+    def test_accept_by_space(
+        self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]
+    ):
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(" ")
+
+        result = widget_checker.check(
+            yuio.widget.Choice(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == 1
+
+    def test_search(self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]):
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("/")
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "/ Filter options... ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key("a")
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "/ a                 ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(" ")
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "/ a                 ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key("/")
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "/ a /               ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "/ a                 ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "/ Filter options... ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("/a")
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "/ a                 ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ESCAPE)
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "f1 help             ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("/a")
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(
+            yuio.widget.Choice(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == 1
+
+    def test_navigate_in_search(
+        self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]
+    ):
+        widget_checker.key("/")
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "/ Filter options... ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "  a                 ",
+                "> b                 ",
+                "  c                 ",
+                "/ Filter options... ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ARROW_UP)
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "  b                 ",
+                "  c                 ",
+                "/ Filter options... ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(
+            yuio.widget.Choice(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == 1
+
+    def test_filter(self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]):
+        widget_checker.text("/1")
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "/ 1                 ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(
+            yuio.widget.Choice(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ],
+                filter=lambda opt, req: str(opt.value) == req,
+            )
+        )
+
+        assert result == 1
+
+    def test_mapper(self, widget_checker: WidgetChecker[yuio.widget.Choice[int]]):
+        widget_checker.text("/a")
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "/ a                 ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.key("A")
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "/ A                 ",
+                "f1 help             ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(
+            yuio.widget.Choice(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ],
+                mapper=lambda opt: opt.display_text.upper(),
+            )
+        )
+
+        assert result == 1
+
+
+class TestMultiselect:
+    def test_empty(self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]):
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "C-d accept • f1 help",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(yuio.widget.Multiselect([]))
+        assert result == []
+
+    def test_simple(self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]):
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "  - b               ",
+                "  - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.expect_screen(
+            [
+                "> * a               ",
+                "  - b               ",
+                "  - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(
+            yuio.widget.Multiselect(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == [1]
+
+    def test_select_many(
+        self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]
+    ):
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "  - b               ",
+                "  - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.key("c")
+        widget_checker.expect_screen(
+            [
+                "  * a               ",
+                "  - b               ",
+                "> - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(
+            yuio.widget.Multiselect(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == [1, 3]
+
+    def test_navigate(
+        self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]
+    ):
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "  - b               ",
+                "  - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "  * a               ",
+                "> - b               ",
+                "  - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(
+            yuio.widget.Multiselect(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == [1, 2]
+
+    def test_select_by_space(
+        self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]
+    ):
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "  - b               ",
+                "  - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key(" ")
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(
+            yuio.widget.Multiselect(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == [1]
+
+    def test_search(self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]):
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "  - b               ",
+                "  - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key("/")
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "  - b               ",
+                "  - c               ",
+                "/ Filter options... ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key("a")
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "/ a                 ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(" ")
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "/ a                 ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key("/")
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "/ a /               ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "/ a                 ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.expect_screen(
+            [
+                "> * a               ",
+                "/ a                 ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.expect_screen(
+            [
+                "> * a               ",
+                "  - b               ",
+                "  - c               ",
+                "/ Filter options... ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "  * a               ",
+                "> - b               ",
+                "  - c               ",
+                "/ Filter options... ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.expect_screen(
+            [
+                "  * a               ",
+                "> - b               ",
+                "  - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.text("/c")
+        widget_checker.expect_screen(
+            [
+                "> - c               ",
+                "/ c                 ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ESCAPE)
+        widget_checker.expect_screen(
+            [
+                "  * a               ",
+                "  - b               ",
+                "> - c               ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.text("/b")
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(
+            yuio.widget.Multiselect(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ]
+            )
+        )
+
+        assert result == [1, 2]
+
+    def test_filter(self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]):
+        widget_checker.text("/1")
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "/ 1                 ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(
+            yuio.widget.Multiselect(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ],
+                filter=lambda opt, req: str(opt.value) == req,
+            )
+        )
+
+        assert result == [1]
+
+    def test_mapper(self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]):
+        widget_checker.text("/a")
+        widget_checker.expect_screen(
+            [
+                "No options to displa",
+                "/ a                 ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.BACKSPACE)
+        widget_checker.key("A")
+        widget_checker.expect_screen(
+            [
+                "> - a               ",
+                "/ A                 ",
+                "C-d accept • f1 help",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(
+            yuio.widget.Multiselect(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c"),
+                ],
+                mapper=lambda opt: opt.display_text.upper(),
+            )
+        )
+
+        assert result == [1]
+
+
+class TestInputWithCompletion:
+    @pytest.fixture
+    def widget(self):
+        return yuio.widget.InputWithCompletion(
+            yuio.complete.Choice(
+                [
+                    yuio.complete.Option("apple"),
+                    yuio.complete.Option("banana"),
+                    yuio.complete.Option("bamboo"),
+                    yuio.complete.Option("mayweed"),
+                ]
+            )
+        )
+
+    @pytest.fixture
+    def widget_list(self):
+        return yuio.widget.InputWithCompletion(
+            yuio.complete.List(
+                yuio.complete.Choice(
+                    [
+                        yuio.complete.Option("apple"),
+                        yuio.complete.Option("banana"),
+                        yuio.complete.Option("bamboo"),
+                        yuio.complete.Option("mayweed"),
+                    ]
+                )
+            )
+        )
+
+    def test_simple(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.expect_screen(
+            [
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.expect_widget_to_continue()
+
+        widget_checker.check(widget)
+
+    def test_input(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.expect_screen(
+            [
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("abc")
+        widget_checker.expect_screen(
+            [
+                "> abc               ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "abc"
+
+    def test_no_completion(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.expect_screen(
+            [
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("x")
+        widget_checker.expect_screen(
+            [
+                "> x                 ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> x                 ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "x"
+
+    def test_finish_single_option(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.expect_screen(
+            [
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("a")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> apple             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "apple"
+
+    def test_finish_single_option_part(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.expect_screen(
+            [
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("b")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("n")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "banana"
+
+    def test_finish_single_option_and_undo(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.expect_screen(
+            [
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.text("a")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> apple             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("-", ctrl=True)
+        widget_checker.expect_screen(
+            [
+                "> a                 ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "a"
+
+    def test_complete(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.text("ba")
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "  bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> bamboo            ",
+                "> bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "  bamboo  > banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "banana"
+
+    def test_navigate_completions(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.text("ba")
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "  bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ARROW_DOWN)
+        widget_checker.expect_screen(
+            [
+                "> bamboo            ",
+                "> bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ARROW_RIGHT)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "  bamboo  > banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "banana"
+
+    def test_complete_with_trailing_text(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.text("xxx")
+        widget_checker.key("a", ctrl=True)
+        widget_checker.text("ba")
+        widget_checker.expect_screen(
+            [
+                "> baxxx             ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> baxxx             ",
+                "  bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> bamboo            ",
+                "> bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "  bamboo  > banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "banana"
+
+    def test_cancel(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.text("ba")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "  bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ESCAPE)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> bamboo            ",
+                "> bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ESCAPE)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "ba"
+
+    def test_undo(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.text("ba")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "  bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("-", ctrl=True)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> bamboo            ",
+                "> bamboo    banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("-", ctrl=True)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+
+        result = widget_checker.check(widget)
+        assert result == "ba"
+
+    def test_continue_typing(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.text("ba")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "  bamboo  > banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("s")
+        widget_checker.expect_screen(
+            [
+                "> bananas           ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        result = widget_checker.check(widget)
+        assert result == "bananas"
+
+    def test_paste(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.text("ba")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "  bamboo  > banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.paste("ses")
+        widget_checker.expect_screen(
+            [
+                "> bananases         ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        result = widget_checker.check(widget)
+        assert result == "bananases"  # hobbitses!
+
+    def test_continue_typing_and_undo(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        widget_checker.text("ba")
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.key(yuio.widget.Key.TAB)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "  bamboo  > banana  ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("s")
+        widget_checker.expect_screen(
+            [
+                "> bananas           ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("-", ctrl=True)
+        widget_checker.expect_screen(
+            [
+                "> banana            ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("-", ctrl=True)
+        widget_checker.expect_screen(
+            [
+                "> ba                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key("-", ctrl=True)
+        widget_checker.expect_screen(
+            [
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ]
+        )
+        widget_checker.key(yuio.widget.Key.ENTER)
+        result = widget_checker.check(widget)
+        assert result == ""
+
+    def test_rsymbols_on_enter(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        pass
+
+    def test_rsymbols_on_typing(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        pass
+
+    def test_rsymbols_on_esc(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        pass
+
+    def test_rsymbols_on_undo(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        pass
+
+    def test_rsymbols_on_paste(
+        self,
+        widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
+        widget: yuio.widget.InputWithCompletion,
+    ):
+        pass
+
+    # todo: test arrays

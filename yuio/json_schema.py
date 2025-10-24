@@ -109,6 +109,7 @@ wrap the schema into :class:`Meta`:
     :members:
 
 """
+
 from __future__ import annotations
 
 import abc
@@ -120,9 +121,33 @@ from dataclasses import dataclass
 import yuio
 from yuio import _typing as _t
 
+__all__ = [
+    "JsonValue",
+    "JsonSchemaContext",
+    "JsonSchemaType",
+    "Ref",
+    "Array",
+    "Tuple",
+    "Dict",
+    "Null",
+    "Boolean",
+    "Number",
+    "Integer",
+    "String",
+    "Any",
+    "Never",
+    "OneOf",
+    "AllOf",
+    "AnyOf",
+    "Enum",
+    "Object",
+    "Opaque",
+    "Meta",
+]
+
 T = _t.TypeVar("T")
 
-if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:
+if _t.TYPE_CHECKING:
     JsonValue: _t.TypeAlias = (
         str
         | int
@@ -131,6 +156,10 @@ if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:
         | _t.Sequence["JsonValue"]
         | _t.Mapping[str, "JsonValue"]
     )
+elif "__YUIO_SPHINX_BUILD" in os.environ:
+
+    class JsonValue: ...
+
 else:
 
     def _JsonValue(arg: T) -> T:
