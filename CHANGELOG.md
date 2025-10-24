@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [2.0.0-beta.6] - 2025-10-25
+
+Incomplete beta release.
+
 ## [2.0.0-beta.5] - 2025-10-24
 
 Incomplete beta release.
