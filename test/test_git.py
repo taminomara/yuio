@@ -1,4 +1,5 @@
 import datetime
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -92,11 +93,13 @@ def test_not_a_repo_skip_checks():
             repo.status()
 
 
+@pytest.mark.skipif(os.name == "nt", reason="windows")
 def test_git_unavailable(repo_path):
     with pytest.raises(yuio.git.GitError, match="git executable not found"):
         yuio.git.Repo(repo_path, env={"PATH": ""})
 
 
+@pytest.mark.skipif(os.name == "nt", reason="windows")
 def test_git_unavailable_skip_checks(repo_path):
     repo = yuio.git.Repo(repo_path, env={"PATH": ""}, skip_checks=True)
     with pytest.raises(yuio.git.GitError, match="git executable not found"):

@@ -1,4 +1,5 @@
 import logging
+import os
 import pathlib
 
 import pytest
@@ -16,6 +17,7 @@ def test_input():
     assert result == "hello\n"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="bash is not available on windows")
 def test_logging(capsys):
     logging.basicConfig(level=logging.DEBUG, force=True)
     logging.root.manager._clear_cache()  # type: ignore
@@ -41,20 +43,23 @@ def test_env():
     assert "FOO=BAR" in result
 
 
+@pytest.mark.skipif(os.name == "nt", reason="bash is not available on windows")
 def test_cwd(tmp_path):
     result = yuio.exec.exec("pwd", cwd=tmp_path)
-    assert pathlib.Path(result.strip()).resolve() == tmp_path.resolve()
+    assert result.strip() == str(tmp_path)
 
 
 def test_path(tmp_path):
     yuio.exec.exec("ls", pathlib.Path(tmp_path))
 
 
+@pytest.mark.skipif(os.name == "nt", reason="bash is not available on windows")
 def test_fail():
     with pytest.raises(yuio.exec.ExecError, match="message"):
         yuio.exec.exec("bash", "-c", "echo 'message' 1>&2; echo 'result'; exit 1")
 
 
+@pytest.mark.skipif(os.name == "nt", reason="bash is not available on windows")
 def test_sh():
     result = yuio.exec.sh("echo hello")
     assert result == "hello\n"
