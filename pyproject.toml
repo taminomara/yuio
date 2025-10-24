@@ -73,7 +73,7 @@ write_to = "yuio/_version.py"
 
 [tool.tox]
 requires = ["tox>=4"]
-env_list = ["3.14t", "3.14", "3.13t", "3.13", "3.12", "3.11", "3.10", "type", "lint"]
+env_list = ["3.14t", "3.14", "3.13", "3.12", "3.11", "3.10", "type", "lint"]
 
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"

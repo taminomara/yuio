@@ -44,7 +44,6 @@ jobs:
             3.11
             3.12
             3.13
-            3.13t
             3.14
       - name: Install test dependencies
         if: ${{ matrix.type == 'test' }}
@@ -53,6 +52,11 @@ jobs:
         if: ${{ matrix.type == 'test' }}
         run: tox --skip-env lint --colored yes
       # Lint
+      - name: Set up python 3.13
+        if: ${{ matrix.type == 'code style' }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.13
       - name: Install lint dependencies
         if: ${{ matrix.type == 'code style' }}
         run: python -m pip install --upgrade pip && python -m pip install . --group lint
