@@ -84,6 +84,7 @@ commands = [["pytest", "--color=yes"]]
 description = "Run type check"
 dependency_groups = ["test"]
 commands = [["pyright"]]
+base_python = ["3.10"]
 
 [tool.tox.env.lint]
 description = "Run pre-commit hooks"
