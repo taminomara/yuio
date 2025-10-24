@@ -740,7 +740,7 @@ class App(_t.Generic[C]):
             yuio.complete._run_custom_completer(
                 self.__get_completions(), args[index + 1], args[index + 2]
             )
-            exit(0)
+            sys.exit(0)
 
         yuio.io.setup(theme=self.theme, wrap_stdio=True)
 
@@ -756,11 +756,11 @@ class App(_t.Generic[C]):
         try:
             command = self.__load_from_namespace(namespace)
             command()
-            exit(0)
+            sys.exit(0)
         except AppError as e:
             if e.msg:
                 yuio.io.failure(e.msg, *e.args)
-            exit(1)
+            sys.exit(1)
         except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
             # Make sure we print subcommand's usage, not the main one.
             subcommand_path = self.__get_subcommand_path(namespace)
@@ -776,7 +776,7 @@ class App(_t.Generic[C]):
                     flags=re.MULTILINE | re.DOTALL,
                 )
             yuio.io.failure_with_tb("Error: %s", msg)
-            exit(3)
+            sys.exit(3)
         finally:
             yuio.io.restore_streams()
 
@@ -1050,7 +1050,7 @@ class _ArgumentParser(argparse.ArgumentParser):
     def error(self, message: str) -> _t.NoReturn:
         self.print_usage()
         yuio.io.failure("Error: %s", message)
-        exit(2)
+        sys.exit(2)
 
 
 class _Namespace(argparse.Namespace):
