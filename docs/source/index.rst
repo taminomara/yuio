@@ -76,9 +76,7 @@ Features
 
 -   Loading configs from all sorts of places:
 
-    .. invisible-code-block: python
-
-        path = "/dev/null"
+    .. skip: next
 
     .. code-block:: python
 
