@@ -21,9 +21,9 @@ def main(
 
     if version.epoch:
         raise yuio.app.AppError("Epoch not supported")
-    if version.is_prerelease:
-        yuio.io.success("Nothing to do: version is a pre-release")
-        return
+    # if version.is_prerelease:
+    #     yuio.io.success("Nothing to do: version is a pre-release")
+    #     return
 
     repo = yuio.git.Repo(pathlib.Path(__file__).parent)
 
