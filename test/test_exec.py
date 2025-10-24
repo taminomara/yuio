@@ -43,7 +43,7 @@ def test_env():
 
 def test_cwd(tmp_path):
     result = yuio.exec.exec("pwd", cwd=tmp_path)
-    assert result.strip() == str(tmp_path)
+    assert pathlib.Path(result.strip()).resolve() == tmp_path.resolve()
 
 
 def test_path(tmp_path):
