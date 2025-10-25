@@ -53,7 +53,7 @@ jobs:
             3.14
       - name: Test package
         if: ${{ matrix.type == 'test' }}
-        run: tox --skip-env lint --colored yes
+        run: tox --skip-env lint --colored yes run-parallel
       # Lint
       - name: Check code style
         if: ${{ matrix.type == 'code style' }}
