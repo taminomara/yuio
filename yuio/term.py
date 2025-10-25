@@ -439,6 +439,12 @@ def get_term_from_stream(
 
     color_support = ColorSupport.NONE
     in_ci = "CI" in os.environ
+    if "GITHUB_ACTIONS" in os.environ:
+        color_support = ColorSupport.ANSI_TRUE
+        in_ci = True
+    elif any(ci in os.environ for ci in _CI_ENV_VARS):
+        color_support = ColorSupport.ANSI
+        in_ci = True
     if (
         "--force-color" in sys.argv
         or "--force-colors" in sys.argv
@@ -450,12 +456,6 @@ def get_term_from_stream(
         if os.name == "nt":
             if _enable_vt_processing(ostream):
                 color_support = ColorSupport.ANSI_TRUE
-        elif "GITHUB_ACTIONS" in os.environ:
-            color_support = ColorSupport.ANSI_TRUE
-            in_ci = True
-        elif any(ci in os.environ for ci in _CI_ENV_VARS):
-            color_support = ColorSupport.ANSI
-            in_ci = True
         elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
             color_support = ColorSupport.ANSI_TRUE
         elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
