@@ -125,6 +125,8 @@ __all__ = [
     "TerminalColors",
     "Term",
     "get_term_from_stream",
+    "detect_ci",
+    "detect_ci_color_support",
     "ColorValue",
     "Color",
     "line_width",
