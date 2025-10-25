@@ -40,6 +40,8 @@ jobs:
           python-version: 3.13
       - name: Install dependencies
         run: python -m pip install --upgrade pip && python -m pip install . --group ci
+      - name: Output stats
+        run: scripts/output_stats
       # Tests
       - name: Set up pythons
         if: ${{ matrix.type == 'test' }}
