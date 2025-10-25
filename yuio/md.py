@@ -1519,6 +1519,8 @@ def colorize(
                 raw.append(stack[-1] | theme.get_color("code"))
             raw.append(yuio.term.NoWrap(code))
             raw.append(stack[-1])
+        elif punct := tag.group("punct"):
+            raw.append(punct)
         elif len(stack) > 1:
             stack.pop()
             raw.append(stack[-1])
@@ -1535,4 +1537,22 @@ def strip_color_tags(s: str) -> str:
     Remove all color tags from a string.
 
     """
-    return __TAG_RE.sub("", s)
+
+    raw: list[str] = []
+
+    last_pos = 0
+    for tag in __TAG_RE.finditer(s):
+        raw.append(s[last_pos : tag.start()])
+        last_pos = tag.end()
+
+        if code := tag.group("code"):
+            code = code.replace("\n", " ")
+            if code.startswith(" ") and code.endswith(" ") and not code.isspace():
+                code = code[1:-1]
+            raw.append(code)
+        elif punct := tag.group("punct"):
+            raw.append(punct)
+
+    raw.append(s[last_pos:])
+
+    return "".join(raw)
