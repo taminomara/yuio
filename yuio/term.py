@@ -95,6 +95,10 @@ Utilities
 
 .. autofunction:: line_width
 
+.. autofunction:: detect_ci
+
+.. autofunction:: detect_ci_color_support
+
 """
 
 from __future__ import annotations
@@ -394,6 +398,7 @@ _CI_ENV_VARS = [
     "BUILDKITE",
     "DRONE",
     "TEAMCITY_VERSION",
+    "GITHUB_ACTIONS",
 ]
 
 
@@ -436,15 +441,8 @@ def get_term_from_stream(
     has_interactive_output = _is_interactive_output(ostream)
     has_interactive_input = _is_interactive_input(istream)
     is_foreground = _is_foreground(ostream) and _is_foreground(istream)
-
-    color_support = ColorSupport.NONE
-    in_ci = "CI" in os.environ
-    if "GITHUB_ACTIONS" in os.environ:
-        color_support = ColorSupport.ANSI_TRUE
-        in_ci = True
-    elif any(ci in os.environ for ci in _CI_ENV_VARS):
-        color_support = ColorSupport.ANSI
-        in_ci = True
+    in_ci = detect_ci()
+    color_support = detect_ci_color_support()
     if (
         "--force-color" in sys.argv
         or "--force-colors" in sys.argv
@@ -484,6 +482,32 @@ def get_term_from_stream(
         interactive_support=interactive_support,
         terminal_colors=theme,
     )
+
+
+def detect_ci() -> bool:
+    """
+    Scan environment variables to detect if we're in a known CI environment.
+
+    """
+
+    return "CI" in os.environ or any(ci in os.environ for ci in _CI_ENV_VARS)
+
+
+def detect_ci_color_support() -> ColorSupport:
+    """
+    Scan environment variables to detect an appropriate level of color support
+    of a CI environment.
+
+    If we're not in CI, return :attr:`ColorSupport.NONE`.
+
+    """
+
+    if "GITHUB_ACTIONS" in os.environ:
+        return ColorSupport.ANSI_TRUE
+    elif any(ci in os.environ for ci in _CI_ENV_VARS):
+        return ColorSupport.ANSI
+    else:
+        return ColorSupport.NONE
 
 
 def _get_standard_colors(stream: _t.TextIO) -> TerminalColors | None:
