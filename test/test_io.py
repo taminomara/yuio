@@ -771,6 +771,13 @@ class TestAskUnreadable:
         with io_mocker.mock():
             assert yuio.io.ask("Meow?", default="Meow!") == "Meow!"
 
+    def test_default_non_interactive(self, io_mocker: IOMocker):
+        with io_mocker.mock():
+            assert (
+                yuio.io.ask("Meow?", default="Meow!", default_non_interactive="Boop!")
+                == "Boop!"
+            )
+
     def test_no_default(self, io_mocker: IOMocker):
         with io_mocker.mock():
             with pytest.raises(

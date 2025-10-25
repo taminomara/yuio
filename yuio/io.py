@@ -609,6 +609,7 @@ class _AskMeta(type):
         /,
         *args,
         default: M | yuio.Missing = yuio.MISSING,
+        default_non_interactive: _t.Any = yuio.MISSING,
         parser: yuio.parse.Parser[S] | None = None,
         input_description: str | None = None,
         default_description: str | None = None,
@@ -675,6 +676,11 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
         parser to use to parse user input. See :mod:`yuio.parse` for more info.
     :param default:
         default value to return if user input is empty.
+    :param default_non_interactive:
+        default value returned if input stream is not readable. If not given,
+        ``default`` is used instead. This is handy when you want to ask user if they
+        want to continue with ``default`` set to :data:`False`,
+        but ``default_non_interactive`` set to :data:`True`.
     :param input_description:
         description of the expected input, like ``"yes/no"`` for boolean
         inputs.
@@ -690,6 +696,7 @@ def _ask(
     *args,
     parser: yuio.parse.Parser[_t.Any],
     default: _t.Any = yuio.MISSING,
+    default_non_interactive: _t.Any = yuio.MISSING,
     input_description: str | None = None,
     default_description: str | None = None,
 ) -> _t.Any:
@@ -698,10 +705,11 @@ def _ask(
     term, formatter, theme = manager.term, manager.formatter, manager.theme
 
     if not term.istream.readable():
-        if default is not yuio.MISSING:
-            return default
-        else:
+        if default_non_interactive is yuio.MISSING:
+            default_non_interactive = default
+        if default_non_interactive is yuio.MISSING:
             raise UserIoError("can't interact with user in non-interactive environment")
+        return default_non_interactive
 
     if default is None and not yuio.parse._is_optional_parser(parser):
         parser = yuio.parse.Optional(parser)
@@ -1108,9 +1116,9 @@ class Task:
     """
 
     class _Status(enum.Enum):
-        RUNNING = "running"
         DONE = "done"
         ERROR = "error"
+        RUNNING = "running"
 
     def __init__(
         self,
@@ -1690,6 +1698,9 @@ class _IoManager(abc.ABC):
             return
 
         task._status = status
+        for subtask in task._subtasks:
+            if subtask._status == Task._Status.RUNNING:
+                self._finish_task(subtask, status)
 
         if self.term.can_move_cursor:
             if task in self._tasks:
@@ -1737,13 +1748,37 @@ class _IoManager(abc.ABC):
             self._tasks_printed = 0
             self._needs_update = False
 
-            self._rc.prepare()
-            self.formatter.width = self._rc.width
+            self._prepare_for_rendering_tasks()
             for task in self._tasks:
                 self._draw_task(task, 0)
             self._renders += 1
             self._rc.set_final_pos(0, self._tasks_printed)
             self._rc.render()
+
+    def _prepare_for_rendering_tasks(self):
+        self._rc.prepare()
+        self.formatter.width = self._rc.width
+
+        self.n_tasks = dict.fromkeys(Task._Status, 0)
+        self.displayed_tasks = dict.fromkeys(Task._Status, 0)
+
+        stack = self._tasks.copy()
+        while stack:
+            task = stack.pop()
+            self.n_tasks[task._status] += 1
+            stack.extend(task._subtasks)
+
+        self.display_tasks = self.n_tasks.copy()
+        total_tasks = sum(self.display_tasks.values())
+        height = self._rc.height
+        if total_tasks > height:
+            height -= 1  # account for '+x more' message
+            for status in Task._Status:
+                to_hide = min(total_tasks - height, self.display_tasks[status])
+                self.display_tasks[status] -= to_hide
+                total_tasks -= to_hide
+                if total_tasks <= height:
+                    break
 
     def _format_msg(
         self,
@@ -1895,6 +1930,8 @@ class _IoManager(abc.ABC):
         return task._cached_comment
 
     def _draw_task(self, task: Task, indent: int):
+        self.displayed_tasks[task._status] += 1
+
         self._tasks_printed += 1
         self._rc.move_pos(indent * 2, 0)
         self._draw_task_progressbar(task)
