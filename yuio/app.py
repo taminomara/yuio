@@ -296,6 +296,12 @@ class AppError(Exception):
         self.msg: str | None = msg
         self.args: tuple[_t.Any, ...] = args
 
+    def __str__(self) -> str:
+        msg = self.msg
+        if msg and self.args:
+            msg %= self.args
+        return msg or super().__str__()
+
 
 @_t.overload
 def app(
@@ -1077,21 +1083,24 @@ class _Namespace(argparse.Namespace):
 
 def _make_completions_action(app: App[_t.Any]):
     class _CompletionsAction(argparse.Action):
-        def get_usage(self):
+        @staticmethod
+        def get_usage():
             return False
 
-        parser = yuio.parse.OneOf(
-            yuio.parse.Lower(yuio.parse.Str()),
-            ["all", "bash", "zsh", "fish", "uninstall"],
-        )
+        @staticmethod
+        def get_parser():
+            return yuio.parse.OneOf(
+                yuio.parse.Lower(yuio.parse.Str()),
+                ["all", "bash", "zsh", "fish", "pwsh", "uninstall"],
+            )
 
         def __init__(self, **kwargs):
-            kwargs["metavar"] = self.parser.describe_or_def()
+            kwargs["metavar"] = self.get_parser().describe_or_def()
             super().__init__(**kwargs)
 
         def __call__(self, parser, namespace, value, *args):
             try:
-                app._App__write_completions(self.parser.parse(value or "all"))  # type: ignore
+                app._App__write_completions(self.get_parser().parse(value or "all"))  # type: ignore
             except argparse.ArgumentTypeError as e:
                 raise argparse.ArgumentError(self, str(e))
             parser.exit()
@@ -1100,7 +1109,8 @@ def _make_completions_action(app: App[_t.Any]):
 
 
 class _NoOpAction(argparse.Action):
-    def get_usage(self):
+    @staticmethod
+    def get_usage():
         return False
 
     def __call__(self, parser, namespace, value, *args):
@@ -1108,7 +1118,8 @@ class _NoOpAction(argparse.Action):
 
 
 class _StoreConstAction(argparse.Action):
-    def get_usage(self):
+    @staticmethod
+    def get_usage():
         return False
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -1116,7 +1127,8 @@ class _StoreConstAction(argparse.Action):
 
 
 class _HelpAction(argparse.Action):
-    def get_usage(self):
+    @staticmethod
+    def get_usage():
         return False
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -1125,7 +1137,8 @@ class _HelpAction(argparse.Action):
 
 
 class _VersionAction(argparse.Action):
-    def get_usage(self):
+    @staticmethod
+    def get_usage():
         return False
 
     def __init__(self, version=None, **kwargs):

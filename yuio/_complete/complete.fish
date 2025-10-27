@@ -1,30 +1,23 @@
-complete -c @prog@ -f -a '(__yuio_compl_v1 @data@)'
+# Yuio project, MIT license.
+#
+# https://github.com/taminomara/yuio/
+#
+# Do not edit: this file was generated automatically by Yuio @version@.
 
+# replace-prefix: __yuio_compl
 
-# Load Yuio completion system, if not loaded already.
+complete -c @prog@ -f -a '(__yuio_compl @data@)'
 
-
-set -l _YUIO_COMPL_V1_VERSION 1
-
-if [ -n "$YUIO_COMPL_V1_VERSION" ] && [ "$YUIO_COMPL_V1_VERSION" -ge "$_YUIO_COMPL_V1_VERSION" ]
-    set -x _YUIO_COMPL_V1_VERSION
-    return
-end
-
-set -g YUIO_COMPL_V1_VERSION $_YUIO_COMPL_V1_VERSION
-set -x _YUIO_COMPL_V1_VERSION
-
-
-function __yuio_compl_v1 -a compdata_path
-    set -g __yuio_compl_v1__compdata_path $compdata_path
+function __yuio_compl -a compdata_path
+    set -g __yuio_compl__compdata_path $compdata_path
 
     set words (commandline -pco; commandline -pct)
 
-    if set -q __yuio_compl_v1_cache__compdata_path \
-            && [ $compdata_path = $__yuio_compl_v1_cache__compdata_path ] \
-            && set -q __yuio_compl_v1_cache__words \
-            && [ "$words" = "$__yuio_compl_v1_cache__words" ]
-        printf '%s\n' $__yuio_compl_v1_cache__result
+    if set -q __yuio_compl_cache__compdata_path \
+            && [ $compdata_path = $__yuio_compl_cache__compdata_path ] \
+            && set -q __yuio_compl_cache__words \
+            && [ "$words" = "$__yuio_compl_cache__words" ]
+        printf '%s\n' $__yuio_compl_cache__result
         return 0
     end
 
@@ -40,8 +33,9 @@ function __yuio_compl_v1 -a compdata_path
     set free_opt 0        # Current free option.
     set free_nargs 0      # How many nargs left to process in the current free option.
     set free_opts_only '' # Set to `1` when we've seen an `--` token.
+    set prefix ''         # For options in form `--x=y`, this is the prefix `--x=`.
 
-    set free_nargs (__yuio_compl_v1__load_nargs $cmd $free_opt) || return
+    set free_nargs (__yuio_compl__load_nargs $cmd $free_opt) || return
 
     for cur in $words[2..]
         if [ -z $free_opts_only ] && [ $word = '--' ]
@@ -51,14 +45,14 @@ function __yuio_compl_v1 -a compdata_path
             # Previous word was an option, so in this position we expect option's args,
             # if there are any.
             set opt $word
-            set nargs (__yuio_compl_v1__load_nargs $cmd $opt) || return
+            set nargs (__yuio_compl__load_nargs $cmd $opt) || return
             if [ $nargs = '-' ]  # for options like --help or --version
                 return 0
             end
         else if [ -z $opt ] && [ $free_nargs = 0 ]
             # We've exhausted current free args.
             set free_opt (math $free_opt + 1 )
-            set free_nargs (__yuio_compl_v1__load_nargs $cmd $free_opt) || return
+            set free_nargs (__yuio_compl__load_nargs $cmd $free_opt) || return
         else if string match -q -- '-*' $opt && [ $nargs = 0 ]
             # We've exhausted nargs for the current option.
             set opt ''
@@ -69,16 +63,18 @@ function __yuio_compl_v1 -a compdata_path
             set nargs 0
             set free_opt 0
             set free_nargs 0
-            set free_nargs (__yuio_compl_v1__load_nargs $cmd $free_opt) || return
+            set free_nargs (__yuio_compl__load_nargs $cmd $free_opt) || return
         end
 
         set word "$cur"
+        set prefix ''
 
         if [ -z $free_opts_only ] && string match -q -- '--*=*' $word
             # This is a long option with a value (i.e. `--foo=bar`).
             # In this position, we complete option's value.
             set split (string split -m1 -- '=' $word)
             set opt $split[1]
+            set prefix "$opt="
             set word $split[2]
             set nargs 0
         else if [ -z $free_opts_only ] && string match -q -- '-*' $word
@@ -129,7 +125,7 @@ function __yuio_compl_v1 -a compdata_path
         end
     end
 
-    set -g __yuio_compl_v1__compspec_i 6
+    set -g __yuio_compl__compspec_i 6
 
     set cursor (commandline -Cpt)
     if [ -n $word ]
@@ -144,44 +140,44 @@ function __yuio_compl_v1 -a compdata_path
 
     if [ -z $opt ]
         if [ -z $free_opts_only ] && string match -q -- '-*' $word
-            set result (__yuio_compl_v1__complete_opts $cmd) || return
+            set result (__yuio_compl__complete_opts $cmd) || return
         else
             # completing a free arg
-            __yuio_compl_v1__load_compspec $cmd $free_opt || return
+            __yuio_compl__load_compspec $cmd $free_opt || return
             set apos '0'
-            if string match -qr -- '^\d+$' $__yuio_compl_v1__compspec[5] \
+            if string match -qr -- '^\d+$' $__yuio_compl__compspec[5] \
                     && string match -qr -- '^\d+$' $free_nargs
-                set apos (math $__yuio_compl_v1__compspec[5] - $free_nargs)
+                set apos (math $__yuio_compl__compspec[5] - $free_nargs)
             end
-            set result (__yuio_compl_v1__complete $word $cursor '' '' '' --apos=$apos) || return
+            set result (__yuio_compl__complete $word $cursor '' '' '' --apos=$apos) || return
         end
     else
         # compleing an option value
-        __yuio_compl_v1__load_compspec $cmd $opt || return
+        __yuio_compl__load_compspec $cmd $opt || return
         set apos 1
-        if string match -qr -- '^\d+$' $__yuio_compl_v1__compspec[5] \
+        if string match -qr -- '^\d+$' $__yuio_compl__compspec[5] \
                 && string match -qr -- '^\d+$' $nargs
-            set apos (math $__yuio_compl_v1__compspec[5] - $nargs)
+            set apos (math $__yuio_compl__compspec[5] - $nargs)
         end
-        set result (__yuio_compl_v1__complete $word $cursor '' '' '' --apos=$apos) || return
+        set result (__yuio_compl__complete $word $cursor $prefix '' '' --apos=$apos) || return
     end
 
-    set -g __yuio_compl_v1_cache__compdata_path $__yuio_compl_v1__compdata_path
-    set -g __yuio_compl_v1_cache__words $words
-    set -g __yuio_compl_v1_cache__result $result
+    set -g __yuio_compl_cache__compdata_path $__yuio_compl__compdata_path
+    set -g __yuio_compl_cache__words $words
+    set -g __yuio_compl_cache__result $result
 
-    printf '%s\n' $__yuio_compl_v1_cache__result
+    printf '%s\n' $__yuio_compl_cache__result
 end
 
-function __yuio_compl_v1__load_nargs -a cmd -a opt
-    __yuio_compl_v1__load_compspec $cmd $opt
-    set nargs $__yuio_compl_v1__compspec[5]
+function __yuio_compl__load_nargs -a cmd -a opt
+    __yuio_compl__load_compspec $cmd $opt
+    set nargs $__yuio_compl__compspec[5]
     test -z $nargs && set nargs 0
     echo $nargs
 end
 
-function __yuio_compl_v1__load_compspec -a cmd -a opt
-    set -g __yuio_compl_v1__compspec (
+function __yuio_compl__load_compspec -a cmd -a opt
+    set -g __yuio_compl__compspec (
         awk -F '\t' -v cmd="$cmd" -v opt="$opt" \
             '
                 $1==cmd {
@@ -193,11 +189,11 @@ function __yuio_compl_v1__load_compspec -a cmd -a opt
                         }
                     }
                 }
-            ' "$__yuio_compl_v1__compdata_path" | tr '\t' '\n'
+            ' "$__yuio_compl__compdata_path" | tr '\t' '\n'
     )
 end
 
-function __yuio_compl_v1__complete_opts -a cmd
+function __yuio_compl__complete_opts -a cmd
     awk -F '\t' -v OFS='\t' -v cmd="$cmd" \
         '
             $1==cmd {
@@ -206,13 +202,13 @@ function __yuio_compl_v1__complete_opts -a cmd
                     print options[i], $3
                 }
             }
-        ' "$__yuio_compl_v1__compdata_path"
+        ' "$__yuio_compl__compdata_path"
 end
 
 # Read compspec and apply it, adding results to compreply.
 #
 # This function requires `compspec_i` and `compspec` variables being set.
-function __yuio_compl_v1__complete -a word cursor prefix suffix desc
+function __yuio_compl__complete -a word cursor prefix suffix desc
     set word "$argv[1]"
     set cursor "$argv[2]"
     set prefix "$argv[3]"
@@ -220,46 +216,47 @@ function __yuio_compl_v1__complete -a word cursor prefix suffix desc
     set desc "$argv[5]"
     argparse skip apos= -- $argv[6..] || return
 
-    if [ (count $__yuio_compl_v1__compspec) = 0 ]
+    if [ (count $__yuio_compl__compspec) = 0 ]
         return 0
     end
 
-    set completer (__yuio_compl_v1__complete__pop) || return
-    set size (__yuio_compl_v1__complete__pop) || return
+    set completer (__yuio_compl__complete__pop) || return
+    set size (__yuio_compl__complete__pop) || return
 
-    __yuio_compl_v1__assert_int $size || return
+    __yuio_compl__assert_int $size || return
 
-    set end_index (math $__yuio_compl_v1__compspec_i + $size)
+    set end_index (math $__yuio_compl__compspec_i + $size)
 
     if set -q _flag_skip
-        __yuio_compl_v1__complete__set_i $end_index || return
+        __yuio_compl__complete__set_i $end_index || return
         return 0
     end
 
     switch $completer
         case f
             # complete files
-            set ext (__yuio_compl_v1__complete__pop) || return
+            set ext (__yuio_compl__complete__pop) || return
             printf '%s\n' $prefix(__fish_complete_path $word $desc)$suffix
         case d
             # complete directories
             printf '%s\n' $prefix(__fish_complete_directories $word $desc)$suffix
         case c
             # complete choices
-            set choices (__yuio_compl_v1__complete__pop_n $size) || return
+            set choices (__yuio_compl__complete__pop_n $size) || return
             printf '%s\n' $prefix$choices$suffix\t$desc
         case cd
+            # complete choices with descriptions
             set half_size (math $size / 2)
-            set choices (__yuio_compl_v1__complete__pop_n $half_size) || return
-            set descriptions (__yuio_compl_v1__complete__pop_n $half_size) || return
+            set choices (__yuio_compl__complete__pop_n $half_size) || return
+            set descriptions (__yuio_compl__complete__pop_n $half_size) || return
             for i in (seq $half_size)
                 printf '%s\n' $prefix$choices[$i]$suffix\t$descriptions[$i]
             end
         case g
             # complete git
             if command -v git > /dev/null && git rev-parse --is-inside-work-tree >/dev/null 2>&1
-                set modes (__yuio_compl_v1__complete__pop) || return
-                set worktree ( git rev-parse --show-toplevel 2>/dev/null )/.git
+                set modes (__yuio_compl__complete__pop) || return
+                set worktree ( git rev-parse --absolute-git-dir 2>/dev/null )
                 if string match -q -- '*H*' $modes
                     for head in (HEAD ORIG_HEAD)
                         if [ -e $worktree/$head ]
@@ -285,7 +282,7 @@ function __yuio_compl_v1__complete -a word cursor prefix suffix desc
             end
         case l
             # complete list
-            set delim (__yuio_compl_v1__complete__pop) || return
+            set delim (__yuio_compl__complete__pop) || return
             [ -z $delim ] && set delim ' '
 
             # split word by delim
@@ -296,6 +293,7 @@ function __yuio_compl_v1__complete -a word cursor prefix suffix desc
                 set word_suffix (string sub -s (math $cursor + 1) -- $word)
             end
             set word_prefix_parts (string split -m1 -r -- $delim $word_prefix )
+            [ (count $word_prefix_parts) -lt 2 ] && set -p word_prefix_parts ""
             [ -n "$word_prefix_parts[1]" ] && set word_prefix_parts[1] $word_prefix_parts[1]$delim
             set word_suffix_parts (string split -m1 -- $delim $word_suffix )
             set word_suffix_parts[2] "$delim$word_suffix_parts[2]"
@@ -303,21 +301,21 @@ function __yuio_compl_v1__complete -a word cursor prefix suffix desc
             set cursor (string length -- "$word_prefix_parts[2]")
             set prefix $prefix"$word_prefix_parts[1]"
             set suffix "$word_suffix_parts[2]"$suffix
-            __yuio_compl_v1__complete $word $cursor $prefix $suffix $desc || return
+            __yuio_compl__complete $word $cursor $prefix $suffix $desc || return
         case lm
             # complete list with "supports many"
-            set delim (__yuio_compl_v1__complete__pop) || return
+            set delim (__yuio_compl__complete__pop) || return
 
             # now just pass this to the underlying completer, because each positional
             # for "lm" mode is its own separate list.
-            __yuio_compl_v1__complete $word $cursor $prefix $suffix $desc || return
+            __yuio_compl__complete $word $cursor $prefix $suffix $desc || return
         case t
             # complete tuple
-            set delim (__yuio_compl_v1__complete__pop) || return
+            set delim (__yuio_compl__complete__pop) || return
             [ -z $delim ] && set delim ' '
 
-            set len (__yuio_compl_v1__complete__pop) || return
-            __yuio_compl_v1__assert_int $len || return
+            set len (__yuio_compl__complete__pop) || return
+            __yuio_compl__assert_int $len || return
 
             # split word by delim
             set word_prefix ''
@@ -327,6 +325,7 @@ function __yuio_compl_v1__complete -a word cursor prefix suffix desc
                 set word_suffix (string sub -s (math $cursor + 1) -- $word)
             end
             set word_prefix_parts (string split -m1 -r -- $delim $word_prefix )
+            [ (count $word_prefix_parts) -lt 2 ] && set -p word_prefix_parts ""
             [ -n "$word_prefix_parts[1]" ] && set word_prefix_parts[1] $word_prefix_parts[1]$delim
             set word_suffix_parts (string split -m1 -- $delim $word_suffix )
             [ -n "$word_suffix_parts[2]" ] && set word_suffix_parts[2] $delim$word_suffix_parts[2]
@@ -340,41 +339,42 @@ function __yuio_compl_v1__complete -a word cursor prefix suffix desc
             if [ $pos -le $len ]
                 set i
                 for i in (seq (math $pos - 1))
-                    __yuio_compl_v1__complete $word $cursor $prefix $suffix $desc --skip || return
+                    __yuio_compl__complete $word $cursor $prefix $suffix $desc --skip || return
                 end
                 [ $pos -lt $len ] && set suffix $delim$suffix
-                __yuio_compl_v1__complete $word $cursor $prefix $suffix $desc || return
+                __yuio_compl__complete $word $cursor $prefix $suffix $desc || return
             end
         case tm
             # complete tuple with "supports many"
             set apos "$_flag_apos"
             [ -z $_flag_apos ] && set _flag_apos '1'
 
-            set delim (__yuio_compl_v1__complete__pop) || return
+            set delim (__yuio_compl__complete__pop) || return
 
-            set len (__yuio_compl_v1__complete__pop) || return
-            __yuio_compl_v1__assert_int $len || return
+            set len (__yuio_compl__complete__pop) || return
+            __yuio_compl__assert_int $len || return
 
             # find out position in the tuple
             if [ $apos -le $len ]
                 set i
                 for i in (seq (math $apos - 1))
-                    __yuio_compl_v1__complete --skip || return
+                    __yuio_compl__complete --skip || return
                 end
-                __yuio_compl_v1__complete $word $cursor $prefix $suffix $desc || return
+                __yuio_compl__complete $word $cursor $prefix $suffix $desc || return
             end
         case a
             # complete alternatives
-            set len (__yuio_compl_v1__complete__pop) || return
-            __yuio_compl_v1__assert_int $len || return
+            set len (__yuio_compl__complete__pop) || return
+            __yuio_compl__assert_int $len || return
             set i
             for i in seq $len
-                set desc (__yuio_compl_v1__complete__pop)
-                __yuio_compl_v1__complete $word $cursor $prefix $suffix $desc || return
+                set desc (__yuio_compl__complete__pop)
+                __yuio_compl__complete $word $cursor $prefix $suffix $desc || return
             end
         case cc
+            # custom completer
             set words (commandline -pco)
-            set data (__yuio_compl_v1__complete__pop) || return
+            set data (__yuio_compl__complete__pop) || return
             set choices ($words[1] --no-color --yuio-custom-completer-- $data $word) || return
             for choice in $choices
                 set choice_parts (string split -r -m1 -- \t $choice)
@@ -382,44 +382,44 @@ function __yuio_compl_v1__complete -a word cursor prefix suffix desc
             end
     end
 
-    __yuio_compl_v1__complete__set_i $end_index
+    __yuio_compl__complete__set_i $end_index
 end
 
-function __yuio_compl_v1__complete__pop
-    __yuio_compl_v1__complete__pop_n 1
+function __yuio_compl__complete__pop
+    __yuio_compl__complete__pop_n 1
 end
 
-function __yuio_compl_v1__complete__pop_n -a n
-    __yuio_compl_v1__assert_int $n || return
+function __yuio_compl__complete__pop_n -a n
+    __yuio_compl__assert_int $n || return
 
-    set i (math $__yuio_compl_v1__compspec_i + $n)
+    set i (math $__yuio_compl__compspec_i + $n)
 
-    if [ $i -gt (math (count $__yuio_compl_v1__compspec) + 1) ];
+    if [ $i -gt (math (count $__yuio_compl__compspec) + 1) ];
         echo "$prog: $(status current-function): compspec index out of range" >&2
         status print-stack-trace >&2
         return 2
     end
 
-    printf '%s\n' $__yuio_compl_v1__compspec[$__yuio_compl_v1__compspec_i..(math $i - 1)]
-    set -g __yuio_compl_v1__compspec_i $i
+    printf '%s\n' $__yuio_compl__compspec[$__yuio_compl__compspec_i..(math $i - 1)]
+    set -g __yuio_compl__compspec_i $i
 end
 
-function __yuio_compl_v1__complete__set_i -a i
-    __yuio_compl_v1__assert_int $i || return
-    if [ $i -gt (math (count $__yuio_compl_v1__compspec) + 1) ]
+function __yuio_compl__complete__set_i -a i
+    __yuio_compl__assert_int $i || return
+    if [ $i -gt (math (count $__yuio_compl__compspec) + 1) ]
         echo "$prog: $(status current-function): compspec index out of range" >&2
         status print-stack-trace >&2
         return 2
-    else if [ $i -lt $__yuio_compl_v1__compspec_i ]
+    else if [ $i -lt $__yuio_compl__compspec_i ]
         echo "$prog: $(status current-function): moving backwards" >&2
         status print-stack-trace >&2
         return 2
     end
 
-    set -g __yuio_compl_v1__compspec_i "$i"
+    set -g __yuio_compl__compspec_i "$i"
 end
 
-function __yuio_compl_v1__assert_int
+function __yuio_compl__assert_int
     for arg in $argv
       if not string match -qr -- '^\d+$' $arg
         echo "$prog: $(status current-function): '$arg' is not an integer" >&2

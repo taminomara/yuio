@@ -1,0 +1,23 @@
+#! /usr/bin/env python
+
+import yuio.app
+import yuio.complete
+import yuio.io
+
+
+class Completer(yuio.complete.Completer):
+    def _process(self, collector: yuio.complete.CompletionCollector):
+        collector.add("foo", comment="comment for foo")
+        collector.add("bar", comment="comment for bar")
+        collector.add("baz", comment="comment for baz")
+
+
+@yuio.app.app
+def main(
+    args: list[str] = yuio.app.positional(completer=Completer()),
+):
+    yuio.io.info("args = `%r`", args)
+
+
+if __name__ == "__main__":
+    main.run()
