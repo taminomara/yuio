@@ -4,36 +4,50 @@
 #
 # Do not edit: this file was generated automatically by Yuio @version@.
 
-Register-ArgumentCompleter -Native -CommandName '@prog@' -ScriptBlock {
-    param ($WordToComplete, $CommandAst, $CursorColumn)
-    Complete-Wrapped $WordToComplete $CommandAst $CursorColumn '@data@'
-}
+using namespace System.Collections.Generic
+using namespace System.Management.Automation
 
-# Entry point for completion, wrapped in try-catch.
-function Complete-Wrapped {
-    param ($WordToComplete, $CommandAst, $CursorColumn, $CompdataPath)
+Register-ArgumentCompleter -Native -CommandName '@true_prog@' -ScriptBlock {
+    param ($WordToComplete, $CommandAst, $CursorPosition)
     try {
-        Complete $WordToComplete $CommandAst $CursorColumn $CompdataPath
+        Complete $CommandAst $CursorPosition
     } catch {
         Write-Debug "`nError in completion:`n`n$_`n`nStack trace:`n`n$($_.ScriptStackTrace)"
         return $null
     }
 }
 
+class Compspec {
+    [string] $Desc
+    [string] $Meta
+    [object] $Nargs
+    [string[]] $Command
+}
+
+class Context {
+    [string] $Prog
+    [int] $APos
+    [int] $Pos
+    [string[]] $Command
+}
+
 # Entry point for completion.
 function Complete {
-    param ($WordToComplete, $CommandAst, $CursorColumn, $CompdataPath)
+    param (
+        [Parameter(Mandatory=$true)][Language.CommandAst] $CommandAst,
+        [Parameter(Mandatory=$true)][int] $CursorPosition
+    )
 
     # Build a list of arguments
-    $prefixArgs = [System.Collections.ArrayList]@()
-    $prefix = ''
-    $suffix = ''
+    [List[string]] $prefixArgs = @()
+    [string] $prefix = ''
+    [string] $suffix = ''
     foreach ($arg in $CommandAst.CommandElements | Select-Object -Skip 1) {
-        if ($arg.Extent.EndOffset -lt $CursorColumn) {
+        if ($arg.Extent.EndOffset -lt $CursorPosition) {
             $text = Unescape-String $arg.Extent.Text
             [void]$prefixArgs.Add($text)
         } else {
-            $pos = $CursorColumn - $arg.Extent.StartOffset
+            $pos = $CursorPosition - $arg.Extent.StartOffset
             $text = Unescape-String $arg.Extent.Text.Insert($pos, "`0YUIO_CURSOR`0")
             $prefix, $suffix = $text -split "`0YUIO_CURSOR`0", 2
             break
@@ -42,9 +56,9 @@ function Complete {
     [void]$prefixArgs.Add("$prefix$suffix")
 
     # Load compdata
-    $compdata = Load-Compdata -compdataPath $CompdataPath
+    [Dictionary[string, Dictionary[string, Compspec]]] $compdata = Load-Compdata
 
-    $word = ''
+    $word = '' # Current word.
     $cmd = '' # Current (sub)command.
     $opt = '' # Current option.
     $nargs = 0 # How many nargs left to process in the current option.
@@ -149,7 +163,7 @@ function Complete {
             if ($compspec.Nargs -is [int] -and $nargs -is [int]) {
                 $apos = $compspec.Nargs - $freeNargs
             }
-            $context = [pscustomobject]@{
+            $context = [Context]@{
                 Prog = $CommandAst.CommandElements[0].Extent.Text
                 APos = $apos
                 Pos = 0
@@ -163,7 +177,7 @@ function Complete {
         if ($compspec.Nargs -is [int] -and $nargs -is [int]) {
             $apos = $compspec.Nargs - $nargs
         }
-        $context = [pscustomobject]@{
+        $context = [Context]@{
             Prog = $CommandAst.CommandElements[0].Extent.Text
             APos = $apos
             Pos = 0
@@ -179,7 +193,7 @@ function Complete {
     }
 
     foreach ($completion in $result) {
-        [System.Management.Automation.CompletionResult]::new(
+        [CompletionResult]::new(
             (Escape-String $completion.CompletionText),
             $completion.ListItemText,
             $completion.ResultType,
@@ -189,12 +203,16 @@ function Complete {
 }
 
 function Get-Compspec {
-    param ($Compdata, $CommandPath, $Flag)
+    param (
+        [Parameter(Mandatory=$true)][Dictionary[string, Dictionary[string, Compspec]]] $Compdata,
+        [string] $CommandPath,
+        [Parameter(Mandatory=$true)][string] $Flag
+    )
 
     $pathData = $Compdata[$CommandPath]
 
-    if ($pathData -eq $null) {
-        return [pscustomobject]@{
+    if ($null -eq $pathData) {
+        return [Compspec]@{
             Desc = ''
             Meta = ''
             Nargs = 0
@@ -204,8 +222,8 @@ function Get-Compspec {
 
     $argspec = $pathData[$Flag]
 
-    if ($argspec -eq $null) {
-        return [pscustomobject]@{
+    if ($null -eq $argspec) {
+        return [Compspec]@{
             Desc = ''
             Meta = ''
             Nargs = 0
@@ -217,11 +235,9 @@ function Get-Compspec {
 }
 
 function Load-Compdata {
-    param ($CompdataPath)
+    [Dictionary[string, Dictionary[string, Compspec]]] $compdata = @{}
 
-    $compdata = @{}
-
-    foreach ($line in Get-Content -Path $CompdataPath) {
+    foreach ($line in Get-Content -Path '@data@') {
         $items = $line.Split("`t")
 
         $path = $items[0]
@@ -238,11 +254,11 @@ function Load-Compdata {
         }
 
         foreach ($flag in $flags) {
-            if ($compdata[$path] -eq $null) {
+            if ($null -eq $compdata[$path]) {
                 $compdata[$path] = @{}
             }
 
-            $compdata[$path][$flag] = [pscustomobject]@{
+            $compdata[$path][$flag] = [Compspec]@{
                 Desc = $desc
                 Meta = $meta
                 Nargs = $nargs
@@ -255,26 +271,43 @@ function Load-Compdata {
 }
 
 function Complete-Flags {
-    param ($Compdata, $CommandPath)
+    param (
+        [Parameter(Mandatory=$true)][Dictionary[string, Dictionary[string, Compspec]]] $Compdata,
+        [string] $CommandPath
+    )
 
     $pathData = $Compdata[$CommandPath]
 
-    if ($pathData -eq $null) {
+    if ($null -eq $pathData) {
         @()
     } else {
-        $pathData.GetEnumerator() | Where-Object { $_.Key -match "^\-" } | ForEach-Object {
-            [System.Management.Automation.CompletionResult]::new(
-                "$($_.Key) ",
-                $_.Key,
-                'ParameterName',
-                (Coalesce $_.Value.Desc $_.Key)
-            )
-        }
+        @(
+            $pathData.GetEnumerator()
+            | Where-Object { $_.Key -match "^\-" }
+            | Sort-Object -Property { $_.Key -replace '^--?', '' }
+            | ForEach-Object {
+                [CompletionResult]::new(
+                    "$($_.Key) ",
+                    $_.Key,
+                    'ParameterName',
+                    (Coalesce $_.Value.Desc $_.Key)
+                )
+            }
+        )
     }
 }
 
 function Complete-Args {
-    param ($Context, $Iprefix, $Prefix, $Suffix, $Isuffix, $EndSep, $Desc = "", $Skip = $false)
+    param (
+        [Context] $Context,
+        [string] $Iprefix,
+        [string] $Prefix,
+        [string] $Suffix,
+        [string] $Isuffix,
+        [string] $EndSep,
+        [string] $Desc = "",
+        [switch] $Skip = $false
+    )
 
     if ($Context.Command.get_Length() -eq 0) {
         return @()
@@ -289,7 +322,7 @@ function Complete-Args {
         return
     }
 
-    $results = [System.Collections.ArrayList]@()
+    [List[CompletionResult]] $results = @()
 
     switch ($completer) {
         'f' {
@@ -306,7 +339,7 @@ function Complete-Args {
         'c' {
             $results = @(
                 Pop-NCommands $Context $size | Foreach-Object {
-                    [System.Management.Automation.CompletionResult]::new(
+                    [CompletionResult]::new(
                         $_,
                         $_,
                         'ProviderItem',
@@ -321,7 +354,7 @@ function Complete-Args {
             $choices = @(Pop-NCommands $Context $halfSize)
             $descriptions = @(Pop-NCommands $Context $halfSize)
             for ($i = 0; $i -lt $halfSize; $i++) {
-                [void]$results.Add([System.Management.Automation.CompletionResult]::new(
+                [void]$results.Add([CompletionResult]::new(
                     $choices[$i],
                     $choices[$i],
                     'ProviderItem',
@@ -340,11 +373,11 @@ function Complete-Args {
                 if ($modes -match 'H') {
                     foreach ($head in @('HEAD', 'ORIG_HEAD')) {
                         if (Test-Path (Join-Path -Path $gitDir -ChildPath $head) -PathType Leaf) {
-                            [void]$results.Add([System.Management.Automation.CompletionResult]::new(
+                            [void]$results.Add([CompletionResult]::new(
                                 $head,
                                 $head,
                                 'ProviderItem',
-                                'Head'
+                                'head'
                             ))
                         }
                     }
@@ -352,33 +385,33 @@ function Complete-Args {
                 if ($modes -match 'b') {
                     $refs = git for-each-ref --format='%(refname:short)' refs/heads
                     foreach ($ref in $refs) {
-                        [void]$results.Add([System.Management.Automation.CompletionResult]::new(
+                        [void]$results.Add([CompletionResult]::new(
                             $ref,
                             $ref,
                             'ProviderItem',
-                            'Local Branch'
+                            'local Branch'
                         ))
                     }
                 }
                 if ($modes -match 'r') {
                     $refs = git for-each-ref --format='%(refname:short)' refs/remotes
                     foreach ($ref in $refs) {
-                        [void]$results.Add([System.Management.Automation.CompletionResult]::new(
+                        [void]$results.Add([CompletionResult]::new(
                             $ref,
                             $ref,
                             'ProviderItem',
-                            'Remote Branch'
+                            'remote Branch'
                         ))
                     }
                 }
                 if ($modes -match 't') {
                     $refs = git for-each-ref --format='%(refname:short)' refs/tags
                     foreach ($ref in $refs) {
-                        [void]$results.Add([System.Management.Automation.CompletionResult]::new(
+                        [void]$results.Add([CompletionResult]::new(
                             $ref,
                             $ref,
                             'ProviderItem',
-                            'Tag'
+                            'tag'
                         ))
                     }
                 }
@@ -439,7 +472,7 @@ function Complete-Args {
                 }
 
                 for ($i = 1; $i -lt $prefixParts.get_Length(); $i++) {
-                    Complete-Args $Context -Skip $true
+                    Complete-Args $Context -Skip
                 }
 
                 if ($prefixParts.get_Length() -lt $len) {
@@ -457,7 +490,7 @@ function Complete-Args {
 
             if ($Context.Apos -le $len) {
                 for ($i = 1; $i -lt $Context.Apos; $i++) {
-                    Complete-Args $Context -Skip $true
+                    Complete-Args $Context -Skip
                 }
                 $results = @(
                     Complete-Args $Context $Iprefix $Prefix $Suffix $Isuffix $EndSep $Desc
@@ -476,7 +509,7 @@ function Complete-Args {
             $choices = & $Context.Prog @('--no-color', '--yuio-custom-completer--', $data, $Prefix)
             foreach ($choice in $choices) {
                 $choiceParts = $choice -split '\t', 2
-                [void]$results.Add([System.Management.Automation.CompletionResult]::new(
+                [void]$results.Add([CompletionResult]::new(
                     $choiceParts[0],
                     $choiceParts[0],
                     'ProviderItem',
@@ -493,11 +526,16 @@ function Complete-Args {
 }
 
 function Add-Surroundings {
-    param($Results, $Iprefix, $Isuffix, $EndSep)
+    param(
+        [Parameter(Mandatory=$true)][List[CompletionResult]] $Results,
+        [string] $Iprefix,
+        [string] $Isuffix,
+        [string] $EndSep
+    )
 
     if ($Iprefix -or $Isuffix -or $EndSep) {
         $Results | Foreach-Object {
-            [System.Management.Automation.CompletionResult]::new(
+            [CompletionResult]::new(
                 "$Iprefix$($_.CompletionText)$Isuffix$EndSep",
                 $_.ListItemText,
                 $_.ResultType,
@@ -510,14 +548,19 @@ function Add-Surroundings {
 }
 
 function Pop-Command {
-    param ($Context)
+    param (
+        [Parameter(Mandatory=$true)][Context] $Context
+    )
 
     $Context.Command[$Context.Pos]
     $Context.Pos += 1
 }
 
 function Pop-NCommands {
-    param ($Context, $n)
+    param (
+        [Parameter(Mandatory=$true)][Context] $Context,
+        [Parameter(Mandatory=$true)][int] $n
+    )
 
     $Context.Command[$Context.Pos..($Context.Pos + $n - 1)]
     $Context.Pos += $n
@@ -526,7 +569,7 @@ function Pop-NCommands {
 function Coalesce {
     param (
         [Parameter(
-            Mandatory=$True,
+            Mandatory=$true,
             ValueFromRemainingArguments=$true,
             Position = 0
         )] $listArgs
@@ -541,7 +584,7 @@ function Coalesce {
 
 function Escape-String {
     param (
-        [string]$Arg
+        [Parameter(Mandatory=$true)][string] $Arg
     )
 
     $pattern = '([`^$*+?{}\[\]\\|()\n\r\t\b\a\f\v\e\0,''"])'
@@ -563,7 +606,9 @@ function Escape-String {
 }
 
 function Unescape-String {
-    param ($Arg)
+    param (
+        [Parameter(Mandatory=$true)][string] $Arg
+    )
 
     $isSingleQuoted = $false
     if ($Arg.StartsWith('"') -and $Arg.EndsWith('"')) {

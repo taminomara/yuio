@@ -82,6 +82,7 @@ import math
 import os
 import pathlib
 import re
+import shutil
 import string
 import subprocess
 import sys
@@ -1455,20 +1456,52 @@ def _run_custom_completer(s: _CompleterSerializer, data: str, word: str):
         )
 
 
+_PROG_ESCAPE = str.maketrans(
+    string.punctuation + string.whitespace,
+    "_" * (len(string.punctuation) + len(string.whitespace)),
+)
+
+
 def _write_completions(
     s: _CompleterSerializer, prog: str | None = None, shell: str = "all"
 ):
     import yuio.io
 
-    prog = prog or pathlib.Path(sys.argv[0]).name
+    true_prog = prog or pathlib.Path(sys.argv[0]).stem
+    prog = (prog or pathlib.Path(sys.argv[0]).stem).translate(_PROG_ESCAPE)
+
+    if pathlib.Path(sys.argv[0]).stem == "__main__":
+        yuio.io.failure(
+            "You've invoked this program as a python module, most likely with "
+            "`python -m <module>`. For completions to work, the program "
+            "must be invoked as a command in your `$PATH`"
+        )
+        sys.exit(1)
+    if not prog:
+        yuio.io.failure("Failed to generate completion because program name is empty")
+        sys.exit(1)
+    if not re.match(r"^[a-zA-Z0-9_-]+$", prog):
+        yuio.io.failure(
+            "Failed to generate completion due to "
+            "forbidden characters in program name: `%r`",
+            prog,
+        )
+        sys.exit(1)
 
     if shell == "uninstall":
         shell = "all"
-        yuio.io.heading("Uninstalling completions for `%s`", prog)
+        yuio.io.heading("Uninstalling completions for `%s`", true_prog)
         install = False
     else:
-        yuio.io.heading("Generating completions for `%s`", prog)
+        yuio.io.heading("Generating completions for `%s`", true_prog)
         install = True
+
+        if not shutil.which(true_prog):
+            yuio.io.warning(
+                "Program `%s` is not in your `$PATH`. Completions might not be able "
+                "to initialize",
+                true_prog,
+            )
 
     if sys.platform == "win32":
         data_home = cache_home = config_home = pathlib.Path(
@@ -1501,23 +1534,20 @@ def _write_completions(
 
     if shell in ["all", "bash"]:
         _write_bash_script(
-            prog, install, compdata_path, data_home, cache_home, config_home
+            prog, true_prog, install, compdata_path, data_home, cache_home, config_home
         )
     if shell in ["all", "zsh"]:
         _write_zsh_script(
-            prog, install, compdata_path, data_home, cache_home, config_home
+            prog, true_prog, install, compdata_path, data_home, cache_home, config_home
         )
     if shell in ["all", "fish"]:
         _write_fish_script(
-            prog, install, compdata_path, data_home, cache_home, config_home
+            prog, true_prog, install, compdata_path, data_home, cache_home, config_home
         )
     if shell in ["all", "pwsh"]:
         _write_pwsh_script(
-            prog, install, compdata_path, data_home, cache_home, config_home
+            prog, true_prog, install, compdata_path, data_home, cache_home, config_home
         )
-
-    if shell == "uninstall":
-        pass
 
     yuio.io.success("All done! Please restart your shell for changes to take effect.")
     if install:
@@ -1526,6 +1556,7 @@ def _write_completions(
 
 def _write_bash_script(
     prog: str,
+    true_prog: str,
     install: bool,
     compdata_path: pathlib.Path,
     data_home: pathlib.Path,
@@ -1544,10 +1575,10 @@ def _write_bash_script(
     except subprocess.CalledProcessError:
         bash_completions_home = data_home / "bash-completion/completions/"
     bash_completions_home = pathlib.Path(bash_completions_home)
-    script_dest = bash_completions_home / prog
+    script_dest = bash_completions_home / true_prog
 
     if install:
-        _write_script(script_dest, "complete.bash", prog, str(compdata_path))
+        _write_script(script_dest, "complete.bash", prog, true_prog, compdata_path)
         yuio.io.info("Wrote Bash script to <c path>%s</c>", script_dest)
     elif script_dest.exists():
         os.remove(script_dest)
@@ -1556,6 +1587,7 @@ def _write_bash_script(
 
 def _write_zsh_script(
     prog: str,
+    true_prog: str,
     install: bool,
     compdata_path: pathlib.Path,
     data_home: pathlib.Path,
@@ -1568,11 +1600,11 @@ def _write_zsh_script(
     needs_cache_cleanup = False
 
     zsh_completions_home = data_home / "zsh/completions"
-    script_dest = zsh_completions_home / ("_" + prog)
+    script_dest = zsh_completions_home / ("_" + true_prog)
 
     if install:
         needs_cache_cleanup = True
-        _write_script(script_dest, "complete.zsh", prog, str(compdata_path))
+        _write_script(script_dest, "complete.zsh", prog, true_prog, compdata_path)
         yuio.io.info("Wrote Zsh script to <c path>%s</c>", script_dest)
     elif script_dest.exists():
         needs_cache_cleanup = True
@@ -1651,6 +1683,7 @@ def _write_zsh_script(
 
 def _write_fish_script(
     prog: str,
+    true_prog: str,
     install: bool,
     compdata_path: pathlib.Path,
     data_home: pathlib.Path,
@@ -1660,10 +1693,10 @@ def _write_fish_script(
     import yuio.io
 
     fish_completions_home = data_home / "fish/vendor_completions.d"
-    script_dest = fish_completions_home / (prog + ".fish")
+    script_dest = fish_completions_home / (true_prog + ".fish")
 
     if install:
-        _write_script(script_dest, "complete.fish", prog, str(compdata_path))
+        _write_script(script_dest, "complete.fish", prog, true_prog, compdata_path)
         yuio.io.info("Wrote Fish script to <c path>%s</c>", script_dest)
     elif script_dest.exists():
         os.remove(script_dest)
@@ -1672,6 +1705,7 @@ def _write_fish_script(
 
 def _write_pwsh_script(
     prog: str,
+    true_prog: str,
     install: bool,
     compdata_path: pathlib.Path,
     data_home: pathlib.Path,
@@ -1709,9 +1743,9 @@ def _write_pwsh_script(
 
     data_dir = data_home / "yuio/pwsh"
     loader_path = data_dir / "LoadCompletions.ps1"
-    script_dest = data_dir / f"_{prog}.ps1"
+    script_dest = data_dir / f"_{true_prog}.ps1"
     if install:
-        _write_script(script_dest, "complete.ps1", prog, str(compdata_path))
+        _write_script(script_dest, "complete.ps1", prog, true_prog, compdata_path)
         yuio.io.info("Wrote PowerShell script to <c path>%s</c>", script_dest)
         _write_pwsh_loader(loader_path, data_dir)
     elif script_dest.exists():
@@ -1754,21 +1788,22 @@ def _write_pwsh_script(
             )
 
 
-def _write_script(path: pathlib.Path, script_name: str, prog: str, compdata_path: str):
+def _write_script(
+    path: pathlib.Path,
+    script_name: str,
+    prog: str,
+    true_prog: str,
+    compdata_path: pathlib.Path,
+):
     script_template_path = pathlib.Path(__file__).parent / "_complete" / script_name
     script_template = script_template_path.read_text()
     script = (
         (script_template)
         .replace("@prog@", prog)
-        .replace("@data@", compdata_path)
+        .replace("@true_prog@", true_prog)
+        .replace("@data@", str(compdata_path))
         .replace("@version@", yuio.__version__)
     )
-
-    replaces = re.finditer(r"^\s*#\s*replace-prefix:\s*(.+?)\s*$", script, re.MULTILINE)
-    for replace in replaces:
-        script = re.sub(
-            r"" + re.escape(replace.group(1)), f"{replace.group(1)}__{prog}", script
-        )
 
     path.parent.mkdir(exist_ok=True, parents=True)
     path.write_text(script)

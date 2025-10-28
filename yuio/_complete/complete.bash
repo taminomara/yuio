@@ -4,39 +4,26 @@
 #
 # Do not edit: this file was generated automatically.
 
-# replace-prefix: __yuio_compl
-# replace-prefix: _YUIO_COMPL
-
-function __@prog@ {
-    local prog="$1"
-    local compdata_path="@data@";
-    __yuio_compl
-}
-
-complete -F __@prog@ $1
+complete -F __yuio_compl__@prog@__complete $1
 
 if (( BASH_VERSINFO[0] < 5 )); then
-    _YUIO_COMPL_ERR="bash>=5 is required, you have $BASH_VERSION"
+    _YUIO_COMPL_ERR_@prog@="bash>=5 is required, you have $BASH_VERSION"
 elif [[ -z $BASH_COMPLETION_VERSINFO ]]; then
-    _YUIO_COMPL_ERR="bash-completion==2 is required"
+    _YUIO_COMPL_ERR_@prog@="bash-completion==2 is required"
 elif (( BASH_COMPLETION_VERSINFO[0] != 2 )); then
-    _YUIO_COMPL_ERR="bash-completion==2 is required, you have ${BASH_COMPLETION_VERSINFO[0]}"
+    _YUIO_COMPL_ERR_@prog@="bash-completion==2 is required, you have ${BASH_COMPLETION_VERSINFO[0]}"
 fi
-if [[ -n $_YUIO_COMPL_ERR ]]; then
-    function __yuio_compl {
-        echo "${prog:+"$prog: "}$_YUIO_COMPL_ERR" >&2; return 1
+if [[ -n $_YUIO_COMPL_ERR_@prog@ ]]; then
+    function __yuio_compl__@prog@__complete {
+        echo "${prog:+"$prog: "}$_YUIO_COMPL_ERR_@prog@" >&2; return 1
     }
     return 1
 fi
 
 # Entry point for completion.
-#
-# Completion data is passed by variables. `$prog` should contain
-# name of the program that is being completed, and `$compdata_path`
-# should contain completions data.
-function __yuio_compl {
+function __yuio_compl__@prog@__complete {
+    local prog="$1"
     [[ -z $prog ]] && (echo "$prog: $FUNCNAME: empty prog" >&2; return 2)
-    [[ -z $compdata_path ]] && (echo "$prog: $FUNCNAME: empty compdata_path" >&2; return 2)
 
     local IFS=$' \t\n'
 
@@ -68,7 +55,7 @@ function __yuio_compl {
     local free_nargs=0      # How many nargs left to process in the current free option.
     local free_opts_only=   # Set to `1` when we've seen an `--` token.
 
-    __yuio_compl__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
+    __yuio_compl__@prog@__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
 
     # Look through all arguments and determine (sub)command
     # and option that we're completing:
@@ -81,14 +68,14 @@ function __yuio_compl {
             # Previous word was an option, so in this position we expect option's args,
             # if there are any.
             opt=$word
-            __yuio_compl__load_nargs_by_ref nargs "$cmd" "$opt"
+            __yuio_compl__@prog@__load_nargs_by_ref nargs "$cmd" "$opt"
             if [[ $nargs == '-' ]]; then  # for options like --help or --version
                 return 0
             fi
         elif [[ -z $opt && $free_nargs == 0 ]]; then
             # We've exhausted current free args.
             (( free_opt++ ))
-            __yuio_compl__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
+            __yuio_compl__@prog@__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
         elif [[ $opt == -* && $nargs == 0 ]]; then
             # We've exhausted nargs for the current option.
             opt=''
@@ -99,7 +86,7 @@ function __yuio_compl {
             nargs=0
             free_opt=0
             free_nargs=0
-            __yuio_compl__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
+            __yuio_compl__@prog@__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
         fi
 
         word="${words[$i]}"
@@ -177,26 +164,26 @@ function __yuio_compl {
     local compspec_i=5 compspec apos=1
     if [[ -z $opt ]]; then
         if [[ -z $free_opts_only && $word == -* ]]; then
-            __yuio_compl__complete_opts "$cmd" || return
+            __yuio_compl__@prog@__complete_opts "$cmd" || return
         else
-            __yuio_compl__load_compspec_by_ref compspec "$cmd" "$free_opt"
+            __yuio_compl__@prog@__load_compspec_by_ref compspec "$cmd" "$free_opt"
 
             if [[ ${compspec[4]} =~ [0-9]+ ]] \
                     && [[ $free_nargs =~ [0-9]+ ]]; then
                 ((apos = ${compspec[4]} - $free_nargs))
             fi
 
-            __yuio_compl__complete || return
+            __yuio_compl__@prog@__complete_arg || return
         fi
     else
-        __yuio_compl__load_compspec_by_ref compspec "$cmd" "$opt"
+        __yuio_compl__@prog@__load_compspec_by_ref compspec "$cmd" "$opt"
 
         if [[ ${compspec[4]} =~ [0-9]+ ]] \
                 && [[ $nargs =~ [0-9]+ ]]; then
             ((apos = ${compspec[4]} - $nargs))
         fi
 
-        __yuio_compl__complete || return
+        __yuio_compl__@prog@__complete_arg || return
     fi
 
     __ltrim_colon_completions "$cur"
@@ -211,12 +198,12 @@ function __yuio_compl {
 # @param $2 (sub)command path, i.e. for `git stash list` it will be `/stash/list`.
 # @param $3 option, either a flag name (i.e. `--help`), a free option index (i.e. `0`
 #           for the first free option), or `c` for subcommand.
-function __yuio_compl__load_nargs_by_ref {
+function __yuio_compl__@prog@__load_nargs_by_ref {
     (( $# != 3 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME var cmd opt" >&2 )
 
-    local compspec; __yuio_compl__load_compspec_by_ref compspec "$2" "$3"
+    local compspec; __yuio_compl__@prog@__load_compspec_by_ref compspec "$2" "$3"
     local nargs="${compspec[4]:-0}"
-    local $1 && __yuio_compl__upvars -v $1 "$nargs"
+    local $1 && __yuio_compl__@prog@__upvars -v $1 "$nargs"
 }
 
 # Given (sub)command and option name, load option's compspec.
@@ -226,7 +213,7 @@ function __yuio_compl__load_nargs_by_ref {
 # @param $2 (sub)command path, i.e. for `git stash list` it will be `/stash/list`.
 # @param $3 option, either a flag name (i.e. `--help`), a free option index (i.e. `0`
 #           for the first free option), or `c` for subcommand.
-function __yuio_compl__load_compspec_by_ref {
+function __yuio_compl__@prog@__load_compspec_by_ref {
     (( $# != 3 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME var cmd opt" >&2 )
 
     local raw_compspec=$(
@@ -241,7 +228,7 @@ function __yuio_compl__load_compspec_by_ref {
                         }
                     }
                 }
-            ' $compdata_path | tr $'\t' $'\a'
+            ' '@data@' | tr $'\t' $'\a'
     )
 
     local IFS=$'\a'
@@ -249,13 +236,13 @@ function __yuio_compl__load_compspec_by_ref {
     # otherwise `read` ignores empty fields. We also need to add dot to the end,
     # otherwise `read` ignores last field if its empty.
     local compspec; read -ra compspec <<< "$raw_compspec$IFS."
-    local $1 && __yuio_compl__upvars -a${#compspec[@]} $1 ${compspec+"${compspec[@]}"}
+    local $1 && __yuio_compl__@prog@__upvars -a${#compspec[@]} $1 ${compspec+"${compspec[@]}"}
 }
 
 # Add available flags for the given subcommand to compreply.
 #
 # @param $1 (sub)command path, i.e. for `git stash list` it will be `/stash/list`.
-function __yuio_compl__complete_opts {
+function __yuio_compl__@prog@__complete_opts {
     (( $# != 1 )) && ( echo "$prog: $FUNCNAME: USAGE: $FUNCNAME cmd" >&2 )
 
     local opts=$(
@@ -267,7 +254,7 @@ function __yuio_compl__complete_opts {
                         print options[i]
                     }
                 }
-            ' $compdata_path
+            ' '@data@'
     )
 
     local IFS=$'\n'
@@ -277,16 +264,16 @@ function __yuio_compl__complete_opts {
 # Read compspec and apply it, adding results to compreply.
 #
 # This function requires `compspec_i`, `compspec`, and `apos` variables being set.
-function __yuio_compl__complete {
+function __yuio_compl__@prog@__complete_arg {
     # compspec will be non-empty due to how we parse it.
     if [[ ${#compspec[@]} -le 2 ]]; then
         return 0
     fi
 
-    local completer; __yuio_compl__complete__pop completer || return
-    local size; __yuio_compl__complete__pop size || return
+    local completer; __yuio_compl__@prog@__compspec_pop completer || return
+    local size; __yuio_compl__@prog@__compspec_pop size || return
 
-    __yuio_compl__assert_int "$FUNCNAME: $opt" "$size" || return
+    __yuio_compl__@prog@__assert_int "$FUNCNAME: $opt" "$size" || return
 
     local end_index=0
     ((end_index = compspec_i + size))
@@ -294,7 +281,7 @@ function __yuio_compl__complete {
     while (($#)); do
         case $1 in
             --skip)
-                __yuio_compl__complete__set_i $end_index
+                __yuio_compl__@prog@__compspec_set_i $end_index
                 return
                 ;;
             *)
@@ -309,7 +296,7 @@ function __yuio_compl__complete {
     case $completer in
         f)
             # complete files
-            local ext; __yuio_compl__complete__pop ext || return
+            local ext; __yuio_compl__@prog@__compspec_pop ext || return
             _filedir ${ext:+"$ext"}
         ;;
         d)
@@ -318,21 +305,21 @@ function __yuio_compl__complete {
         ;;
         c)
             # complete choices
-            local choices=(); __yuio_compl__complete__pop_n $size choices || return
+            local choices=(); __yuio_compl__@prog@__compspec_pop_n $size choices || return
             printf -v choices "%q\n" "${choices[@]}"
             COMPREPLY+=( $(compgen -W "$choices" -- "$cur"))
         ;;
         cd)
             # complete choices with descriptions
             local half_size; (( half_size = $size / 2 ))
-            local choices=(); __yuio_compl__complete__pop_n $half_size choices || return
+            local choices=(); __yuio_compl__@prog@__compspec_pop_n $half_size choices || return
             printf -v choices "%q\n" "${choices[@]}"
             COMPREPLY+=( $(compgen -W "$choices" -- "$cur"))
         ;;
         g)
             # complete git
             if $(command -v git > /dev/null) && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-                local modes; __yuio_compl__complete__pop modes || return
+                local modes; __yuio_compl__@prog@__compspec_pop modes || return
                 local worktree=$( git rev-parse --show-toplevel 2>/dev/null )/.git
                 if [[ $modes == *H* ]]; then
                     local head heads=( HEAD ORIG_HEAD )
@@ -356,14 +343,14 @@ function __yuio_compl__complete {
         l)
             # complete list
             compopt -o nospace 2>/dev/null
-            local delim; __yuio_compl__complete__pop delim || return
+            local delim; __yuio_compl__@prog@__compspec_pop delim || return
             delim="${delim:- }"
 
             # split cur by delim
             local prefix=''; [[ $cur == *"$delim"* ]] && prefix="${cur%"$delim"*}$delim"
             local cur="${cur##*"$delim"}"
             local cur_suffix="${cur_suffix#*"$delim"}"
-            __yuio_compl__complete || return
+            __yuio_compl__@prog@__complete_arg || return
             if [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == "$cur" ]]; then
                 # append delim on the second tab
                 compopt -o nospace 2>/dev/null
@@ -390,15 +377,15 @@ function __yuio_compl__complete {
         ;;
         lm)
             # complete list with "supports many"
-            local delim; __yuio_compl__complete__pop delim || return
+            local delim; __yuio_compl__@prog@__compspec_pop delim || return
 
             # now just pass this to the underlying completer, because each positional
             # for "lm" mode is its own separate list.
-            __yuio_compl__complete || return
+            __yuio_compl__@prog@__complete_arg || return
         ;;
         t)
             # complete tuple
-            local delim; __yuio_compl__complete__pop delim || return
+            local delim; __yuio_compl__@prog@__compspec_pop delim || return
             delim="${delim:- }"
 
             # split cur by delim
@@ -407,14 +394,14 @@ function __yuio_compl__complete {
             local cur_suffix="${cur_suffix#*"$delim"}"
             local pos=$(printf '%s' "$prefix" | grep -o "$delim" | wc -l)
 
-            local len; __yuio_compl__complete__pop len || return
-            __yuio_compl__assert_int "$FUNCNAME: $opt" "$len" || return
+            local len; __yuio_compl__@prog@__compspec_pop len || return
+            __yuio_compl__@prog@__assert_int "$FUNCNAME: $opt" "$len" || return
             if (( $pos < $len )); then
                 local i
                 for ((i = 0; i < $pos; i++)); do
-                    __yuio_compl__complete --skip || return
+                    __yuio_compl__@prog@__complete_arg --skip || return
                 done
-                __yuio_compl__complete || return
+                __yuio_compl__@prog@__complete_arg || return
                 if [[ ${#COMPREPLY[@]} -eq 1 ]] && (( $pos + 1 < $len )); then
                     # append delim if we're not at the last tuple element
                     compopt -o nospace 2>/dev/null
@@ -439,54 +426,54 @@ function __yuio_compl__complete {
         ;;
         tm)
             # complete tuple with "supports many"
-            local delim; __yuio_compl__complete__pop delim || return
+            local delim; __yuio_compl__@prog@__compspec_pop delim || return
 
-            local len; __yuio_compl__complete__pop len || return
-            __yuio_compl__assert_int "$FUNCNAME: $opt" "$len" || return
+            local len; __yuio_compl__@prog@__compspec_pop len || return
+            __yuio_compl__@prog@__assert_int "$FUNCNAME: $opt" "$len" || return
 
             if (( $apos <= $len )); then
                 local i
                 for ((i = 1; i < $apos; i++)); do
-                    __yuio_compl__complete --skip || return
+                    __yuio_compl__@prog@__complete_arg --skip || return
                 done
-                __yuio_compl__complete || return
+                __yuio_compl__@prog@__complete_arg || return
             fi
         ;;
         a)
             # complete alternatives
-            local len; __yuio_compl__complete__pop len || return
-            __yuio_compl__assert_int "$FUNCNAME: $opt" "$len" || return
+            local len; __yuio_compl__@prog@__compspec_pop len || return
+            __yuio_compl__@prog@__assert_int "$FUNCNAME: $opt" "$len" || return
             local i
             for ((i = 0; i < $len; i++)); do
                 # TODO: render descriptions when `a` is a top-level completer.
                 #       See https://stackoverflow.com/questions/66483519/.
-                __yuio_compl__complete__pop # description
-                __yuio_compl__complete || return
+                __yuio_compl__@prog@__compspec_pop # description
+                __yuio_compl__@prog@__complete_arg || return
             done
         ;;
         cc)
             # custom completer
-            local data; __yuio_compl__complete__pop data || return
+            local data; __yuio_compl__@prog@__compspec_pop data || return
             local choices=( $( ${words[0]} --no-color --yuio-custom-completer-- "$data" "$cur" "$cur_suffix" ) ) || return
             COMPREPLY+=( $(compgen -W "${choices[*]%$'\t'*}" -- "$cur"))
         ;;
     esac
 
-    __yuio_compl__upvars -A${#COMPREPLY[@]} COMPREPLY ${COMPREPLY+"${COMPREPLY[@]}"}
+    __yuio_compl__@prog@__upvars -A${#COMPREPLY[@]} COMPREPLY ${COMPREPLY+"${COMPREPLY[@]}"}
 
-    __yuio_compl__complete__set_i $end_index
+    __yuio_compl__@prog@__compspec_set_i $end_index
 }
 
 # Pop an argument from compspec and assign it to the given variable.
 #
 # @param $1 name of the variable where to store the result.
-function __yuio_compl__complete__pop {
+function __yuio_compl__@prog@__compspec_pop {
     if (( $compspec_i >= ${#compspec[@]} )); then
         echo "$prog: $FUNCNAME: compspec index out of range" >&2
         return 2
     fi
 
-    [[ "$1" ]] && local $1 && __yuio_compl__upvars -v $1 "${compspec[$compspec_i]}"
+    [[ "$1" ]] && local $1 && __yuio_compl__@prog@__upvars -v $1 "${compspec[$compspec_i]}"
     ((compspec_i++))
 }
 
@@ -494,13 +481,13 @@ function __yuio_compl__complete__pop {
 #
 # @param $1 number of arguments to pop freom compspec.
 # @param $2 name of the variable where to store the result.
-function __yuio_compl__complete__pop_n {
+function __yuio_compl__@prog@__compspec_pop_n {
     if (( $compspec_i + $1 > ${#compspec[@]} )); then
         echo "$prog: $FUNCNAME: compspec index out of range" >&2
         return 2
     fi
 
-    [[ "$2" ]] && local $2 && __yuio_compl__upvars -a$1 $2 "${compspec[@]:$compspec_i:$1}"
+    [[ "$2" ]] && local $2 && __yuio_compl__@prog@__upvars -a$1 $2 "${compspec[@]:$compspec_i:$1}"
     ((compspec_i+=n))
 }
 
@@ -508,7 +495,7 @@ function __yuio_compl__complete__pop_n {
 # all arguments before this index.
 #
 # @param $1 new compspec index.
-function __yuio_compl__complete__set_i {
+function __yuio_compl__@prog@__compspec_set_i {
     if (( $1 > ${#compspec[@]} )); then
         echo "$prog: $FUNCNAME: compspec index out of range" >&2
         return 2
@@ -522,7 +509,7 @@ function __yuio_compl__complete__set_i {
 
 # Set variables one scope above the caller.
 #
-# Usage: local [name]... && __yuio_compl__upvars [[-v | -aN | -AN] name ...]...
+# Usage: local [name]... && __yuio_compl__@prog@__upvars [[-v | -aN | -AN] name ...]...
 #
 # Options:
 #     -v name value         assign `value` to variable `name`.
@@ -530,8 +517,8 @@ function __yuio_compl__complete__set_i {
 #     -AN name [value ...]  append next `N` arguments to array `name`.
 #
 # Example assign `idx=2` and `arr=(x y z)` one scope above:
-#     local idx arr && __yuio_compl__upvars -v idx 2 -a3 arr x y z
-function __yuio_compl__upvars {
+#     local idx arr && __yuio_compl__@prog@__upvars -v idx 2 -a3 arr x y z
+function __yuio_compl__@prog@__upvars {
     while (($#)); do
         case $1 in
             -[aA]*)
@@ -561,7 +548,7 @@ function __yuio_compl__upvars {
 #
 # @param $1 funcname for error message.
 # @param $@ integers to chek.
-function __yuio_compl__assert_int {
+function __yuio_compl__@prog@__assert_int {
     local funcname=$1
     shift
 

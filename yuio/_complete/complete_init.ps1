@@ -6,7 +6,7 @@
 
 # LOADER_VERSION: 1
 
-if ($global:_YUIO_COMPL_V1_INIT_PATHS -eq $null) {
+if ($null -eq $global:_YUIO_COMPL_V1_INIT_PATHS) {
     $global:_YUIO_COMPL_V1_INIT_PATHS = @()
 }
 
