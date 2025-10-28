@@ -1804,6 +1804,10 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
             items[e] = name
         return lambda e: items[e]
 
+    @functools.cached_property
+    def __docs(self) -> dict[str, str]:
+        return yuio._find_docs(self._inner)
+
     def parse(self, value: str, /) -> E:
         cf_value = value.strip().casefold()
 
@@ -1863,14 +1867,22 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         assert self.assert_type(value)
         return str(self.__getter(value))
 
-    def options(self) -> _t.Collection[yuio.widget.Option[E]] | None:
+    def options(self) -> _t.Collection[yuio.widget.Option[E]]:
+        docs = self.__docs
         return [
-            yuio.widget.Option(e, display_text=self.__getter(e)) for e in self._inner
+            yuio.widget.Option(
+                e, display_text=self.__getter(e), comment=docs.get(e.name)
+            )
+            for e in self._inner
         ]
 
     def completer(self) -> yuio.complete.Completer | None:
+        docs = self.__docs
         return yuio.complete.Choice(
-            [yuio.complete.Option(self.__getter(e)) for e in self._inner]
+            [
+                yuio.complete.Option(self.__getter(e), comment=docs.get(e.name))
+                for e in self._inner
+            ]
         )
 
     def widget(
@@ -1880,9 +1892,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         default_description: str | None,
         /,
     ) -> yuio.widget.Widget[E | yuio.Missing]:
-        options: list[yuio.widget.Option[E | yuio.Missing]] = [
-            yuio.widget.Option(e, self.__getter(e)) for e in self._inner
-        ]
+        options: list[yuio.widget.Option[E | yuio.Missing]] = list(self.options())
 
         if default is yuio.MISSING:
             default_index = 0

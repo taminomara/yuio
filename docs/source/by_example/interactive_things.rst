@@ -67,7 +67,7 @@ of a simple string:
     Type "python -m interactive_things_code.querying"
     Enter
     Sleep 1s
-    Type "Indigo Montoya"
+    Type "Miku"
     Sleep 500ms
     Enter
     Sleep 500ms

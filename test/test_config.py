@@ -635,10 +635,10 @@ class TestArgs:
             self.load_from_args(MyConfig, "--a 1 --c")
 
     class DocSubConfig(yuio.config.Config):
-        #: help for `a`.
+        #: help for `a`
         a: str
 
-        #: help for `b`.
+        #: Help for `b`.
         b: bool = False
 
         c: int
@@ -646,11 +646,17 @@ class TestArgs:
     class DocConfig(yuio.config.Config):
         #: help for `sub`.
         sub: "TestArgs.DocSubConfig"
-        #: doc x
+        #: doc :field:`~obj.x`
         x: bool | None = None
-        #: doc y
+
         y: bool = True
-        #: doc n
+        """
+        doc :field:`y <obj.y>`
+
+        the rest of the docs!
+        """
+
+        #: doc `n`
         n: bool = False
 
     def test_help(self):
@@ -658,15 +664,16 @@ class TestArgs:
         TestArgs.DocConfig._setup_arg_parser(parser)
         help = parser.format_help()
         assert "help for `sub`:\n" in help
-        assert "  --sub-a <str>  help for `a`.\n" in help
-        assert "  --sub-b        help for `b`.\n" in help
+        assert "  --sub-a <str>  help for `a`\n" in help
+        assert "  --sub-b        help for `b`\n" in help
+        assert "  --sub-b        help for `b`.\n" not in help
         assert "  --sub-no-b     disable <c hl/flag:sh-usage>--sub-b</c>\n" in help
         assert "  --sub-c <int>\n" in help
-        assert "  --x            doc x\n" in help
+        assert "  --x            doc `x`\n" in help
         assert "  --no-x         disable <c hl/flag:sh-usage>--x</c>\n" in help
-        assert "  --no-y         doc y\n" in help
+        assert "  --no-y         doc `y`\n" in help
         assert "  --y" not in help
-        assert "  --n            doc n\n" in help
+        assert "  --n            doc `n`\n" in help
         assert "  --no-n" not in help
 
     def test_help_disabled(self):

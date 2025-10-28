@@ -117,7 +117,38 @@ def to_dash_case(s: str, /) -> str:
     return _TO_DASH_CASE_RE.sub("-", s).lower()
 
 
-_COMMENT_RE = _re.compile(r"^\s*#: ?(.*)\r?\n?$")
+_COMMENT_RE = _re.compile(r"^\s*#:(.*)\r?\n?$")
+_RST_ROLE_RE = _re.compile(r"(?::[\w+.:-]+:|__?)`((?:[^`\n\\]|\\.)+)`")
+_RST_ROLE_TITLE_RE = _re.compile(r"^((?:[^`\n\\]|\\.)*) <(?:[^`\n\\]|\\.)*>$")
+
+
+def _rst_repl(match: _re.Match[str]):
+    text: str = match.group(1)
+    if title_match := _RST_ROLE_TITLE_RE.match(text):
+        text = title_match.group(1)
+    elif text.startswith("~"):
+        text = text.rsplit(".", maxsplit=1)[-1]
+    return f"`{text}`"
+
+
+def _process_docstring(s: str):
+    first, *rest = s.splitlines(keepends=True)
+    value = (first.strip() + "\n" + _textwrap.dedent("".join(rest))).strip()
+
+    if (index := value.find("\n\n")) != -1:
+        value = value[:index]
+
+    value = _RST_ROLE_RE.sub(_rst_repl, value)
+
+    if (
+        len(value) > 2
+        and value[0].isupper()
+        and (value[1].islower() or value[1].isspace())
+    ):
+        value = value[0].lower() + value[1:]
+    if value.endswith(".") and not value.endswith(".."):
+        value = value[:-1]
+    return value
 
 
 def _find_docs(obj: _t.Any) -> dict[str, str]:
@@ -141,15 +172,26 @@ def _find_docs(obj: _t.Any) -> dict[str, str]:
     cdef = node.body[0]
 
     if isinstance(cdef, ast.ClassDef):
-        fields = [
-            (stmt.lineno, stmt.target.id)
-            for stmt in cdef.body
+        fields: list[tuple[int, str]] = []
+        last_field: str | None = None
+        for stmt in cdef.body:
             if (
-                isinstance(stmt, ast.AnnAssign)
-                and isinstance(stmt.target, ast.Name)
-                and not stmt.target.id.startswith("_")
-            )
-        ]
+                last_field
+                and isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Constant)
+                and isinstance(stmt.value.value, str)
+            ):
+                docs[last_field] = _process_docstring(stmt.value.value)
+            last_field = None
+            if isinstance(stmt, ast.AnnAssign):
+                target = stmt.target
+            elif isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+                target = stmt.targets[0]
+            else:
+                continue
+            if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                fields.append((stmt.lineno, target.id))
+                last_field = target.id
     elif isinstance(cdef, ast.FunctionDef):
         fields = [
             (field.lineno, field.arg)
@@ -162,12 +204,12 @@ def _find_docs(obj: _t.Any) -> dict[str, str]:
         comment_lines: list[str] = []
         for before_line in sourcelines[pos - 2 :: -1]:
             if match := _COMMENT_RE.match(before_line):
-                comment_lines.append(_textwrap.dedent(match.group(1)))
+                comment_lines.append(match.group(1))
             else:
                 break
 
         if comment_lines:
-            docs[name] = "\n".join(reversed(comment_lines))
+            docs[name] = _process_docstring("\n".join(reversed(comment_lines)))
 
     return docs
 
