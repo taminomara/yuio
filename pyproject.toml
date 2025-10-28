@@ -5,7 +5,7 @@ description = "Lite and user-friendly CLI library"
 dynamic = ["version"]
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
