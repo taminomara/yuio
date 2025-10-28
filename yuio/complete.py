@@ -849,9 +849,14 @@ class Choice(Completer):
     def _get_completion_model(
         self, *, is_many: bool = False
     ) -> _CompleterSerializer.Model:
-        return _CompleterSerializer.Choice(
-            [option.completion for option in self._choices]
-        )
+        if any(option.comment for option in self._choices):
+            return _CompleterSerializer.ChoiceWithDesc(
+                [(option.completion, option.comment or "") for option in self._choices]
+            )
+        else:
+            return _CompleterSerializer.Choice(
+                [option.completion for option in self._choices]
+            )
 
 
 class Alternative(Completer):
@@ -1259,7 +1264,7 @@ class _CompleterSerializer:
                     "subcommand",
                     "<cmd>",
                     1,
-                    _CompleterSerializer.ChoiceWithMetariptions(
+                    _CompleterSerializer.ChoiceWithDesc(
                         [
                             (name, help)
                             for name, (_, is_alias, help) in self._subcommands.items()
@@ -1371,7 +1376,7 @@ class _CompleterSerializer:
             return [self.tag, str(len(self.choices)), *self.choices]
 
     @dataclass()
-    class ChoiceWithMetariptions(Model, tag="cd"):
+    class ChoiceWithDesc(Model, tag="cd"):
         choices: list[tuple[str, str]]
 
         def dump(self) -> list[str]:
@@ -1379,7 +1384,7 @@ class _CompleterSerializer:
                 self.tag,
                 str(len(self.choices) * 2),
                 *[c[0] for c in self.choices],
-                *[c[1] for c in self.choices],
+                *[yuio.md.strip_color_tags(c[1]) for c in self.choices],
             ]
 
     @dataclass()
