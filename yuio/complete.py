@@ -1521,33 +1521,69 @@ def _write_completions(
     compdata_path = data_home / f"yuio/{prog}.compdata.tsv"
 
     if install:
-        result = []
-        s._dump("", result)
-        compdata = "\n".join(result)
+        task_heading = "Installing completions"
+    else:
+        task_heading = "Uninstalling completions"
 
-        os.makedirs(data_home / "yuio", exist_ok=True)
-        compdata_path.write_text(compdata)
-        yuio.io.info("Wrote completion data to <c path>%s</c>", compdata_path)
-    elif compdata_path.exists():
-        os.remove(compdata_path)
-        yuio.io.info("Removed <c path>%s</c>", compdata_path)
+    with yuio.io.Task(task_heading) as t:
+        if install:
+            result = []
+            s._dump("", result)
+            compdata = "\n".join(result)
 
-    if shell in ["all", "bash"]:
-        _write_bash_script(
-            prog, true_prog, install, compdata_path, data_home, cache_home, config_home
-        )
-    if shell in ["all", "zsh"]:
-        _write_zsh_script(
-            prog, true_prog, install, compdata_path, data_home, cache_home, config_home
-        )
-    if shell in ["all", "fish"]:
-        _write_fish_script(
-            prog, true_prog, install, compdata_path, data_home, cache_home, config_home
-        )
-    if shell in ["all", "pwsh"]:
-        _write_pwsh_script(
-            prog, true_prog, install, compdata_path, data_home, cache_home, config_home
-        )
+            os.makedirs(data_home / "yuio", exist_ok=True)
+            compdata_path.write_text(compdata)
+            yuio.io.info(
+                "Wrote <c note>completion data</c> to <c path>%s</c>", compdata_path
+            )
+        elif compdata_path.exists():
+            os.remove(compdata_path)
+            yuio.io.info("Removed <c path>%s</c>", compdata_path)
+
+        if shell in ["all", "bash"]:
+            t.comment("Bash")
+            _write_bash_script(
+                prog,
+                true_prog,
+                install,
+                compdata_path,
+                data_home,
+                cache_home,
+                config_home,
+            )
+        if shell in ["all", "zsh"]:
+            t.comment("Zsh")
+            _write_zsh_script(
+                prog,
+                true_prog,
+                install,
+                compdata_path,
+                data_home,
+                cache_home,
+                config_home,
+            )
+        if shell in ["all", "fish"]:
+            t.comment("Fish")
+            _write_fish_script(
+                prog,
+                true_prog,
+                install,
+                compdata_path,
+                data_home,
+                cache_home,
+                config_home,
+            )
+        if shell in ["all", "pwsh"]:
+            t.comment("PowerShell")
+            _write_pwsh_script(
+                prog,
+                true_prog,
+                install,
+                compdata_path,
+                data_home,
+                cache_home,
+                config_home,
+            )
 
     yuio.io.success("All done! Please restart your shell for changes to take effect.")
     if install:
@@ -1566,6 +1602,12 @@ def _write_bash_script(
     import yuio.exec
     import yuio.io
 
+    if sys.platform == "win32":
+        yuio.io.warning(
+            "Skipped <c note>Bash</c>: completion script doesn't support windows"
+        )
+        return
+
     try:
         bash_completions_home = yuio.exec.exec(
             "bash",
@@ -1579,7 +1621,7 @@ def _write_bash_script(
 
     if install:
         _write_script(script_dest, "complete.bash", prog, true_prog, compdata_path)
-        yuio.io.info("Wrote Bash script to <c path>%s</c>", script_dest)
+        yuio.io.info("Wrote <c note>Bash</c> script to <c path>%s</c>", script_dest)
     elif script_dest.exists():
         os.remove(script_dest)
         yuio.io.info("Removed <c path>%s</c>", script_dest)
@@ -1597,6 +1639,12 @@ def _write_zsh_script(
     import yuio.exec
     import yuio.io
 
+    if sys.platform == "win32":
+        yuio.io.warning(
+            "Skipped <c note>Zsh</c>: completion script doesn't support windows"
+        )
+        return
+
     needs_cache_cleanup = False
 
     zsh_completions_home = data_home / "zsh/completions"
@@ -1605,7 +1653,7 @@ def _write_zsh_script(
     if install:
         needs_cache_cleanup = True
         _write_script(script_dest, "complete.zsh", prog, true_prog, compdata_path)
-        yuio.io.info("Wrote Zsh script to <c path>%s</c>", script_dest)
+        yuio.io.info("Wrote <c note>Zsh</c> script to <c path>%s</c>", script_dest)
     elif script_dest.exists():
         needs_cache_cleanup = True
 
@@ -1643,7 +1691,7 @@ def _write_zsh_script(
             with open(zprofile_path, "a") as f:
                 f.write(zprofile_append_text)
             yuio.io.info(
-                "Modified <c path>%s</c> to add <c path>%s</c> to `fpath`",
+                "<c note>Note:</c> modified <c path>%s</c> to add <c path>%s</c> to `fpath`",
                 zprofile_path,
                 zsh_completions_home,
             )
@@ -1651,7 +1699,7 @@ def _write_zsh_script(
         zprofile_text = zprofile_path.read_text()
         if zprofile_append_text in zprofile_text:
             yuio.io.info(
-                "Note: modifications to <c path>%s</c> are not removed"
+                "<c note>Note:</c> modifications to <c path>%s</c> are not removed"
                 " because other completions might rely on them",
                 zprofile_path,
             )
@@ -1666,7 +1714,10 @@ def _write_zsh_script(
         for file in zcomp_basedir.iterdir():
             if file.is_file() and re.match(r"^\.?zcompdump", file.name):
                 os.remove(file)
-                yuio.io.info("Deleted Zsh completions cache at <c path>%s</c>", file)
+                yuio.io.info(
+                    "<c note>Note:</c> deleted Zsh completions cache at <c path>%s</c>",
+                    file,
+                )
 
     try:
         # Run zsh with the right flags in case zshrc runs compinit.
@@ -1692,12 +1743,18 @@ def _write_fish_script(
 ):
     import yuio.io
 
+    if sys.platform == "win32":
+        yuio.io.warning(
+            "Skipped <c note>Fish</c>: completion script doesn't support windows"
+        )
+        return
+
     fish_completions_home = data_home / "fish/vendor_completions.d"
     script_dest = fish_completions_home / (true_prog + ".fish")
 
     if install:
         _write_script(script_dest, "complete.fish", prog, true_prog, compdata_path)
-        yuio.io.info("Wrote Fish script to <c path>%s</c>", script_dest)
+        yuio.io.info("Wrote <c note>Fish</c> script to <c path>%s</c>", script_dest)
     elif script_dest.exists():
         os.remove(script_dest)
         yuio.io.info("Removed <c path>%s</c>", script_dest)
@@ -1715,27 +1772,54 @@ def _write_pwsh_script(
     import yuio.exec
     import yuio.io
 
+    if shutil.which("pwsh"):
+        command = "pwsh"
+    elif shutil.which("powershell"):
+        command = "powershell"
+    else:
+        yuio.io.warning(
+            "Skipped <c note>PowerShell</c>: `pwsh` command is not available"
+        )
+        return
+
     try:
-        profile_s = (
+        pwsh_data = (
             yuio.exec.exec(
-                "pwsh",
-                "-l",
-                "-c",
-                "Write-Host $PROFILE",
+                command,
+                "-Command",
+                'Write-Host "$($PSVersionTable.PSVersion);$PROFILE"',
             )
             .splitlines()[-1]
             .strip()
         )
     except subprocess.CalledProcessError as e:
-        yuio.io.info(
-            "Skipped PowerShell: failed to get powershell `$PROFILE` path: %s", e
+        yuio.io.warning(
+            "Skipped <c note>PowerShell</c>: failed to get powershell `$PROFILE` path: %s",
+            e,
         )
         return
     except FileNotFoundError:
-        yuio.io.info("Skipped PowerShell: `pwsh` command not found")
+        yuio.io.warning("Skipped <c note>PowerShell</c>: `pwsh` command not found")
+        return
+    if match := re.match(r"^(\d+(?:\.\d+)*);(.*)$", pwsh_data):
+        version = match.group(1)
+        profile_s = match.group(2)
+    else:
+        yuio.io.warning(
+            "Skipped <c note>PowerShell</c>: can't determine powershell version"
+        )
         return
     if not profile_s:
-        yuio.io.info("Skipped PowerShell: powershell `$PROFILE` path is empty")
+        yuio.io.warning(
+            "Skipped <c note>PowerShell</c>: powershell `$PROFILE` path is empty"
+        )
+        return
+    if tuple(int(v) for v in version.split(".")) < (5, 0, 0):
+        yuio.io.warning(
+            "Skipped <c note>PowerShell</c>: completions script requires "
+            "PowerShell 5 or newer, you have %s",
+            version,
+        )
         return
 
     profile_path = pathlib.Path(profile_s).expanduser().resolve()
@@ -1746,7 +1830,9 @@ def _write_pwsh_script(
     script_dest = data_dir / f"_{true_prog}.ps1"
     if install:
         _write_script(script_dest, "complete.ps1", prog, true_prog, compdata_path)
-        yuio.io.info("Wrote PowerShell script to <c path>%s</c>", script_dest)
+        yuio.io.info(
+            "Wrote <c note>PowerShell</c> script to <c path>%s</c>", script_dest
+        )
         _write_pwsh_loader(loader_path, data_dir)
     elif script_dest.exists():
         os.remove(script_dest)
@@ -1756,9 +1842,8 @@ def _write_pwsh_script(
         data_dirs = [
             pathlib.Path(f).expanduser().resolve()
             for f in yuio.exec.exec(
-                "pwsh",
-                "-l",
-                "-c",
+                command,
+                "-Command",
                 'Write-Host ($_YUIO_COMPL_V1_INIT_PATHS -join "`n")',
             )
             .strip()
@@ -1774,7 +1859,7 @@ def _write_pwsh_script(
             with open(profile_path, "a") as f:
                 f.write(pwsh_profile_append_text)
             yuio.io.info(
-                "Modified <c path>%s</c> to call <c path>%s</c> on startup",
+                "<c note>Note:</c> modified <c path>%s</c> to call <c path>%s</c> on startup",
                 profile_path,
                 loader_path,
             )
@@ -1782,7 +1867,7 @@ def _write_pwsh_script(
         pwsh_profile_text = profile_path.read_text()
         if pwsh_profile_append_text in pwsh_profile_text:
             yuio.io.info(
-                "Note: modifications to <c path>%s</c> are not removed"
+                "<c note>Note:</c> modifications to <c path>%s</c> are not removed"
                 " because other completions might rely on them",
                 profile_path,
             )
@@ -1828,7 +1913,8 @@ def _write_pwsh_loader(loader_path: pathlib.Path, data_dir: pathlib.Path):
 
         if current_version_s is None:
             yuio.io.warning(
-                "Can't determine version of <c path>%s</c>, file will be overridden",
+                "<c note>Note:</c> can't determine version of <c path>%s</c>, "
+                "file will be overridden",
                 loader_path,
             )
         elif int(loader_version.group(1)) <= int(current_version_s.group(1)):
@@ -1836,4 +1922,4 @@ def _write_pwsh_loader(loader_path: pathlib.Path, data_dir: pathlib.Path):
 
     loader_template = loader_template.replace("@data@", str(data_dir))
     loader_path.write_text(loader_template)
-    yuio.io.info("Wrote PowerShell script to <c path>%s</c>", loader_path)
+    yuio.io.info("Wrote <c note>PowerShell</c> script to <c path>%s</c>", loader_path)

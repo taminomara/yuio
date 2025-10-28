@@ -282,10 +282,10 @@ function Complete-Flags {
         @()
     } else {
         @(
-            $pathData.GetEnumerator()
-            | Where-Object { $_.Key -match "^\-" }
-            | Sort-Object -Property { $_.Key -replace '^--?', '' }
-            | ForEach-Object {
+            $pathData.GetEnumerator() | `
+            Where-Object { $_.Key -match "^\-" } | `
+            Sort-Object -Property { $_.Key -replace '^--?', '' } | `
+            ForEach-Object {
                 [CompletionResult]::new(
                     "$($_.Key) ",
                     $_.Key,
@@ -331,8 +331,8 @@ function Complete-Args {
         }
         'd' {
             $results = @(
-                [Management.Automation.CompletionCompleters]::CompleteFilename($Prefix)
-                | Where-Object { $_.ResultType -eq 'ProviderContainer' }
+                [Management.Automation.CompletionCompleters]::CompleteFilename($Prefix) | `
+                Where-Object { $_.ResultType -eq 'ProviderContainer' }
             )
             $results = @(Add-Surroundings $results $Iprefix $Isuffix $EndSep)
         }
