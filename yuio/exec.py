@@ -348,12 +348,14 @@ def _process_io_selectors(
 
     last_line = ""
 
-    def read_stderr(selector: selectors.BaseSelector, fh: _t.BinaryIO | _t.TextIO):
+    def read_stderr(
+        selector: selectors.BaseSelector, fd: int, fh: _t.BinaryIO | _t.TextIO
+    ):
         nonlocal last_line
-        text = fh.read(select.PIPE_BUF)
+        text = os.read(fd, 32 * 1024)
         if not text:
+            selector.unregister(fd)
             fh.close()
-            selector.unregister(fh)
             return
         stderr.append(text)
         if isinstance(text, bytes):
@@ -365,35 +367,46 @@ def _process_io_selectors(
                 logger.log(level, "-> %s", last_line + line.rstrip("\r\n"))
                 last_line = ""
 
-    def read_stdout(selector: selectors.BaseSelector, fh: _t.BinaryIO | _t.TextIO):
-        text = fh.read(select.PIPE_BUF)
+    def read_stdout(
+        selector: selectors.BaseSelector, fd: int, fh: _t.BinaryIO | _t.TextIO
+    ):
+        text = os.read(fd, 32 * 1024)
         if not text:
+            selector.unregister(fd)
             fh.close()
-            selector.unregister(fh)
             return
         stdout.append(text)
 
     index = 0
 
-    def write_stdin(selector: selectors.BaseSelector, fh: _t.BinaryIO | _t.TextIO):
+    def write_stdin(
+        selector: selectors.BaseSelector, fd: int, fh: _t.BinaryIO | _t.TextIO
+    ):
         nonlocal index
         assert input is not None
-        index += fh.write(input[index : index + select.PIPE_BUF])  # type: ignore
-        if index >= len(input):
-            fh.flush()
+        try:
+            index += os.write(fd, input[index : index + select.PIPE_BUF])  # type: ignore
+        except BrokenPipeError:
+            selector.unregister(fd)
             fh.close()
-            selector.unregister(fh)
             return
+        if index >= len(input):
+            selector.unregister(fd)
+            fh.close()
 
     with _Selector() as selector:
         selector.register(process.stderr, selectors.EVENT_READ, read_stderr)
         selector.register(process.stdout, selectors.EVENT_READ, read_stdout)
         if process.stdin is not None:
             selector.register(process.stdin, selectors.EVENT_WRITE, write_stdin)
+            try:
+                process.stdin.flush()
+            except BrokenPipeError:
+                pass
 
         while selector.get_map():
             for key, _ in selector.select():
-                key.data(selector, key.fileobj)
+                key.data(selector, key.fd, key.fileobj)
 
     if process.stdin is not None:
         assert process.stdin.closed
