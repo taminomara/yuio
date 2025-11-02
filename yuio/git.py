@@ -21,6 +21,12 @@ and its methods. If an interaction fails, a :class:`GitError` is raised.
 
 .. autoclass:: GitError
 
+.. autoclass:: GitExecError
+
+.. autoclass:: GitUnavailableError
+
+.. autoclass:: NotARepositoryError
+
 
 Status objects
 --------------
@@ -140,24 +146,26 @@ Autocompleting git refs
 
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import enum
 import functools
 import logging
 import pathlib
 import re
-import subprocess
 import textwrap
 from dataclasses import dataclass
 from datetime import datetime
 
 import yuio.complete
+import yuio.exec
 import yuio.parse
 from yuio import _typing as _t
 
 __all__ = [
     "GitError",
+    "GitExecError",
+    "GitUnavailableError",
+    "NotARepositoryError",
     "Ref",
     "Tag",
     "Branch",
@@ -184,9 +192,30 @@ __all__ = [
 _logger = logging.getLogger(__name__)
 
 
-class GitError(subprocess.SubprocessError):
+class GitError(Exception):
+    """
+    Raised when interaction with git fails.
+
+    """
+
+
+class GitExecError(GitError, yuio.exec.ExecError):
     """
     Raised when git returns a non-zero exit code.
+
+    """
+
+
+class GitUnavailableError(GitError, FileNotFoundError):
+    """
+    Raised when git executable can't be found.
+
+    """
+
+
+class NotARepositoryError(GitError, FileNotFoundError):
+    """
+    Raised when given path is not in git repository.
 
     """
 
@@ -228,6 +257,8 @@ to make use of the :class:`RemoteParser`.
 """
 
 
+# See https://git-scm.com/docs/git-log#_pretty_formats
+# for explanation of these incantations.
 _LOG_FMT = "%H%n%aN%n%aE%n%aI%n%cN%n%cE%n%cI%n%(decorate:prefix=,suffix=,tag=,separator= )%n%w(0,0,1)%B%w(0,0)%n-"
 _LOG_TRAILERS_FMT = "%H%n%w(0,1,1)%(trailers:only=true)%w(0,0)%n-"
 _LOG_TRAILER_KEY_RE = re.compile(r"^(?P<key>\S+):\s")
@@ -239,8 +270,6 @@ class Repo:
 
     :param path:
         path to the repo root dir.
-    :param skip_checks:
-        don't check if we're inside a repo.
     :param env:
         environment variables for the git executable.
 
@@ -250,24 +279,24 @@ class Repo:
         self,
         path: pathlib.Path | str,
         /,
-        skip_checks: bool = False,
         env: dict[str, str] | None = None,
     ):
         self.__path = pathlib.Path(path)
         self.__env = env
-
-        if skip_checks:
-            return
+        self.__git_is_available = None
+        self.__is_repo = None
 
         try:
-            self.git("--version")
-        except FileNotFoundError:
-            raise GitError(f"git executable not found")
+            version = self.git("--version")
+        except GitExecError:
+            raise GitUnavailableError(f"git executable is not available")
+
+        _logger.debug("%s", version.decode(errors="replace").strip())
 
         try:
             self.git("rev-parse", "--is-inside-work-tree")
-        except GitError:
-            raise GitError(f"{path} is not a git repository")
+        except GitExecError:
+            raise NotARepositoryError(f"{self.__path} is not a git repository")
 
     @property
     def path(self) -> pathlib.Path:
@@ -277,41 +306,6 @@ class Repo:
         """
 
         return self.__path
-
-    def git(self, *args: str | pathlib.Path, capture_output: bool = True) -> bytes:
-        """
-        Call git and return its stdout.
-
-        """
-
-        if _logger.isEnabledFor(logging.DEBUG):
-            _logger.debug("git %s", " ".join(map(str, args)))
-
-        with contextlib.ExitStack() as context:
-            if not capture_output:
-                import yuio.io
-
-                context.enter_context(yuio.io.SuspendOutput())
-            try:
-                res = subprocess.run(
-                    ["git"] + list(args),
-                    capture_output=capture_output,
-                    cwd=self.__path,
-                    env=self.__env,
-                )
-            except FileNotFoundError:
-                raise GitError(f"git executable not found")
-
-        if res.stderr:
-            _logger.debug("%s", res.stderr.decode())
-
-        if res.returncode != 0:
-            raise GitError(
-                f"git exited with status code {res.returncode}:\n"
-                f"{res.stderr.decode()}"
-            )
-
-        return res.stdout
 
     @functools.cached_property
     def root(self) -> pathlib.Path:
@@ -338,6 +332,40 @@ class Repo:
             .decode()
             .strip()
         ).resolve()
+
+    @_t.overload
+    def git(self, *args: str | pathlib.Path) -> bytes: ...
+
+    @_t.overload
+    def git(self, *args: str | pathlib.Path, capture_io: _t.Literal[False]) -> None: ...
+
+    @_t.overload
+    def git(self, *args: str | pathlib.Path, capture_io: bool) -> bytes | None: ...
+
+    def git(self, *args: str | pathlib.Path, capture_io: bool = True):
+        """
+        Call git and return its stdout.
+
+        :param args:
+            arguments for the ``git`` command.
+        :param capture_io:
+            If set to :data:`False`, command's stderr and stdout are not captured.
+
+        """
+
+        try:
+            return yuio.exec.exec(
+                "git",
+                *args,
+                cwd=self.__path,
+                env=self.__env,
+                capture_io=capture_io,
+                text=False,
+            )
+        except yuio.exec.ExecError as e:
+            raise GitExecError(e.returncode, e.cmd, e.output, e.stderr)
+        except FileNotFoundError as e:
+            raise GitUnavailableError("git executable not found")
 
     def status(
         self, /, include_ignored: bool = False, include_submodules: bool = True
@@ -509,7 +537,7 @@ class Repo:
 
         """
 
-        self.git("status", capture_output=False)
+        self.git("status", capture_io=False)
 
     def log(self, *refs: str, max_entries: int | None = None) -> list[Commit]:
         """
