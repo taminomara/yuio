@@ -112,7 +112,9 @@ def to_dash_case(s: str, /) -> str:
 
 
 _COMMENT_RE = _re.compile(r"^\s*#:(.*)\r?\n?$")
-_RST_ROLE_RE = _re.compile(r"(?::[\w+.:-]+:|__?)`((?:[^`\n\\]|\\.)+)`")
+_RST_ROLE_RE = _re.compile(
+    r"(?::[\w+.:-]+:|__?)?`((?:[^`\n\\]|\\.)+)`(?::[\w+.:-]+:|__?)?"
+)
 _RST_ROLE_TITLE_RE = _re.compile(r"^((?:[^`\n\\]|\\.)*) <(?:[^`\n\\]|\\.)*>$")
 
 
