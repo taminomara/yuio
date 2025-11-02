@@ -167,7 +167,8 @@ class MdFormatter:
             )
          ```
 
-      Yuio supports ``python``, ``traceback``, ``bash``, and ``diff`` syntaxes.
+      Yuio supports ``python``, ``traceback``, ``bash``, ``diff``,
+      and ``json`` syntaxes.
 
     Inline markdown only handles inline code blocks:
 

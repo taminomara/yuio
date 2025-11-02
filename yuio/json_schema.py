@@ -147,7 +147,7 @@ __all__ = [
 
 T = _t.TypeVar("T")
 
-if _t.TYPE_CHECKING:
+if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:
     JsonValue: _t.TypeAlias = (
         str
         | int
@@ -156,9 +156,6 @@ if _t.TYPE_CHECKING:
         | _t.Sequence["JsonValue"]
         | _t.Mapping[str, "JsonValue"]
     )
-elif "__YUIO_SPHINX_BUILD" in os.environ:
-
-    class JsonValue: ...
 
 else:
 

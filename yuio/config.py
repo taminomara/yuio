@@ -253,6 +253,7 @@ import json
 import os
 import pathlib
 import textwrap
+import types
 from dataclasses import dataclass
 
 import yuio
@@ -276,6 +277,15 @@ Cfg = _t.TypeVar("Cfg", bound="Config")
 class MutuallyExclusiveGroup:
     """
     A sentinel for creating mutually exclusive groups.
+
+    Pass an instance of this class all :func:`~yuio.app.field`\\ s that should
+    be mutually exclusive.
+
+    .. warning::
+
+        Exclusivity checks only work within a single config/command. Passing
+        the same :class:`MutuallyExclusiveGroup` to fields in different configs
+        or commands will not have any effects.
 
     """
 
@@ -393,10 +403,7 @@ class _FieldSettings:
             args = _t.get_args(ty)
 
             is_optional = (
-                default is None
-                or _t.is_union(origin)
-                and len(args) == 2
-                and type(None) in args
+                default is None or _t.is_union(origin) and types.NoneType in args
             )
 
             if is_optional and not yuio.parse._is_optional_parser(parser):
@@ -523,39 +530,21 @@ def field(
     Field descriptor, used for additional configuration of CLI arguments
     and config fields.
 
-    In apps::
-
-        @app
-        def main(
-            # Will be loaded from `--input`.
-            input: pathlib.Path | None = None,
-
-            # Will be loaded from `-o` or `--output`.
-            output: pathlib.Path | None = field(default=None, flags=['-p', '--pid'])
-        ):
-            ...
-
-    In configs::
-
-        class AppConfig(Config):
-            model: pathlib.Path | None = field(
-                default=None,
-                help="trained model to execute",
-            )
-
     :param default:
         default value for the field or CLI argument.
     :param parser:
-        parser that will be used to parse and CLI arguments.
+        parser that will be used to parse config values and CLI arguments.
     :param help:
         help message that will be used in CLI argument description.
 
         Pass :data:`~yuio.DISABLED` to remove this field from CLI help.
 
-        By default, help message is inferred from comments right above the field
-        definition (comments must start with ``#:``).
-
         Help messages are formatted using Markdown (see :mod:`yuio.md`).
+
+        By default, first paragraph of the field's documentation is used.
+        The documentation is processed using markdown parser; additionally, RST roles
+        are processed, trailing dot is removed, and capitalization is normalized
+        to match style of default help messages.
     :param env:
         in configs, specifies name of environment variable that will be used
         if loading config from environment variable.
@@ -587,6 +576,36 @@ def field(
         controls how this field renders in CLI usage section. Passing :data:`False`
         removes this field from usage, and passing :class:`yuio.OMIT` replaces all
         omitted fields with a single string ``"<options>"``.
+
+    **Example:**
+
+    In apps:
+
+    .. invisible-code-block: python
+
+        import yuio.app
+
+    .. code-block:: python
+
+        @yuio.app.app
+        def main(
+            # Will be loaded from `--input`.
+            input: pathlib.Path | None = None,
+
+            # Will be loaded from `-o` or `--output`.
+            output: pathlib.Path | None = field(default=None, flags=['-p', '--pid'])
+        ):
+            ...
+
+    In configs:
+
+    .. code-block:: python
+
+        class AppConfig(Config):
+            model: pathlib.Path | None = field(
+                default=None,
+                help="trained model to execute",
+            )
 
     """
 
@@ -1141,7 +1160,7 @@ class Config:
             if :data:`True`, this method will ignore fields that aren't listed
             in config class.
         :param ignore_missing_file:
-            if :data:`True`, silently ignore a file missing error. This is useful
+            if :data:`True`, silently ignore a missing file error. This is useful
             when loading a config from a home directory.
 
         """
@@ -1171,7 +1190,7 @@ class Config:
             if :data:`True`, this method will ignore fields that aren't listed
             in config class.
         :param ignore_missing_file:
-            if :data:`True`, silently ignore a file missing error. This is useful
+            if :data:`True`, silently ignore a missing file error. This is useful
             when loading a config from a home directory.
 
         """
@@ -1208,7 +1227,7 @@ class Config:
             if :data:`True`, this method will ignore fields that aren't listed
             in config class.
         :param ignore_missing_file:
-            if :data:`True`, silently ignore a file missing error. This is useful
+            if :data:`True`, silently ignore a missing file error. This is useful
             when loading a config from a home directory.
 
         """

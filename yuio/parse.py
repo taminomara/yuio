@@ -61,31 +61,27 @@ Value parsers
 
 .. autoclass:: Bool
 
-.. autoclass:: Enum(enum_type: typing.Type[E], /, *, by_name: bool = False)
+.. autoclass:: Enum
 
 .. autoclass:: Decimal
 
 .. autoclass:: Fraction
 
-.. autoclass:: Json(inner: Parser[T] | None = None, /)
+.. autoclass:: Json
 
-.. autoclass:: List(inner: Parser[T], /, *, delimiter: str | None = None)
+.. autoclass:: List
 
-.. autoclass:: Set(inner: Parser[T], /, *, delimiter: str | None = None)
+.. autoclass:: Set
 
-.. autoclass:: FrozenSet(inner: Parser[T], /, *, delimiter: str | None = None)
+.. autoclass:: FrozenSet
 
-.. autoclass:: Dict(key: Parser[K], value: Parser[V], /, *, delimiter: str | None = None, pair_delimiter: str = ":")
+.. autoclass:: Dict
 
-.. autoclass:: Tuple(*parsers: Parser[T], delimiter: str | None = None)
+.. autoclass:: Tuple
 
-.. autoclass:: Optional(inner: Parser[T], /)
+.. autoclass:: Optional
 
-.. autoclass:: Union(*parsers: Parser[T])
-
-
-File path parsers
------------------
+.. autoclass:: Union
 
 .. autoclass:: Path
 
@@ -105,47 +101,47 @@ File path parsers
 Validators
 ----------
 
-.. autoclass:: Regex(inner: Parser[str], regex: str | re.Pattern[str], /, *, group: int | str = 0)
+.. autoclass:: Regex
 
-.. autoclass:: Bound(inner: Parser[Cmp], /, *, lower: Cmp | None = None, lower_inclusive: Cmp | None = None, upper: Cmp | None = None, upper_inclusive: Cmp | None = None)
+.. autoclass:: Bound
 
-.. autoclass:: Gt(inner: Parser[Cmp], bound: Cmp, /)
+.. autoclass:: Gt
 
-.. autoclass:: Ge(inner: Parser[Cmp], bound: Cmp, /)
+.. autoclass:: Ge
 
-.. autoclass:: Lt(inner: Parser[Cmp], bound: Cmp, /)
+.. autoclass:: Lt
 
-.. autoclass:: Le(inner: Parser[Cmp], bound: Cmp, /)
+.. autoclass:: Le
 
-.. autoclass:: LenBound(inner: Parser[Sz], /, *, lower: int | None = None, lower_inclusive: int | None = None, upper: int | None = None, upper_inclusive: int | None = None)
+.. autoclass:: LenBound
 
-.. autoclass:: LenGt(inner: Parser[Sz], bound: int, /)
+.. autoclass:: LenGt
 
-.. autoclass:: LenGe(inner: Parser[Sz], bound: int, /)
+.. autoclass:: LenGe
 
-.. autoclass:: LenLt(inner: Parser[Sz], bound: int, /)
+.. autoclass:: LenLt
 
-.. autoclass:: LenLe(inner: Parser[Sz], bound: int, /)
+.. autoclass:: LenLe
 
-.. autoclass:: OneOf(inner: Parser[T], values: typing.Collection[T], /)
+.. autoclass:: OneOf
 
 
 Auxiliary parsers
 -----------------
 
-.. autoclass:: Map(inner: Parser[U], fn: typing.Callable[[U], T], rev: typing.Callable[[T | object], U] | None = None, /)
+.. autoclass:: Map
 
-.. autoclass:: Apply(inner: Parser[T], fn: typing.Callable[[T], None], /)
+.. autoclass:: Apply
 
-.. autoclass:: Lower(inner: Parser[T], /)
+.. autoclass:: Lower
 
-.. autoclass:: Upper(inner: Parser[T], /)
+.. autoclass:: Upper
 
-.. autoclass:: CaseFold(inner: Parser[T], /)
+.. autoclass:: CaseFold
 
-.. autoclass:: Strip(inner: Parser[T], /)
+.. autoclass:: Strip
 
-.. autoclass:: WithMeta(inner: Parser[T], desc: str /, *, completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING)
+.. autoclass:: WithMeta
 
 
 Deriving parsers from type hints
@@ -220,7 +216,7 @@ Other parser methods
 --------------------
 
 :class:`Parser` defines some more methods and attributes.
-You don't usually need because Yuio handles everything they do itself.
+They're rarely used because Yuio handles everything they do itself.
 However, you can still use them in case you need to.
 
 .. autoclass:: Parser
@@ -621,7 +617,12 @@ class Parser(PartialParser, _t.Generic[T_co]):
         For collection parsers, parse and validate collection
         by parsing its items one-by-one.
 
-        Example::
+        :param value:
+            collection of values to parse.
+
+        **Example:**
+
+        ::
 
             >>> # Let's say we're parsing a set of ints.
             >>> parser = Set(Int())
@@ -632,9 +633,6 @@ class Parser(PartialParser, _t.Generic[T_co]):
             >>> # We can parse collection from its items:
             >>> parser.parse_many(user_input)
             {1, 2, 3}
-
-        :param value:
-            collection of values to parse.
 
         """
 
@@ -654,7 +652,12 @@ class Parser(PartialParser, _t.Generic[T_co]):
         This method accepts python values that would result from
         parsing json, yaml, and similar formats.
 
-        Example::
+        :param value:
+            config value to parse.
+
+        **Example:**
+
+        ::
 
             >>> # Let's say we're parsing a set of ints.
             >>> parser = Set(Int())
@@ -667,15 +670,12 @@ class Parser(PartialParser, _t.Generic[T_co]):
             >>> parser.parse_config(user_config)
             {1, 2, 3}
 
-        :param value:
-            config value to parse.
-
         """
 
     @abc.abstractmethod
     def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
         """
-        Generate `nargs` for argparse.
+        Generate ``nargs`` for argparse.
 
         """
 
@@ -717,12 +717,16 @@ class Parser(PartialParser, _t.Generic[T_co]):
         """
         Return a human-readable description of an expected input.
 
+        Used to describe expected input in widgets.
+
         """
 
     @abc.abstractmethod
     def describe_or_def(self) -> str:
         """
         Like :py:meth:`~Parser.describe`, but guaranteed to return something.
+
+        Used to describe expected input in CLI help.
 
         """
 
@@ -740,12 +744,16 @@ class Parser(PartialParser, _t.Generic[T_co]):
         """
         Like :py:meth:`~Parser.describe_many`, but guaranteed to return something.
 
+        Used to describe expected input in CLI help.
+
         """
 
     @abc.abstractmethod
     def describe_value(self, value: object, /) -> str | None:
         """
         Return a human-readable description of the given value.
+
+        Used to describe default input in widgets.
 
         Note that, since parser's type parameter is covariant, this function is not
         guaranteed to receive a value of the same type that this parser produces.
@@ -760,6 +768,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
     def describe_value_or_def(self, value: object, /) -> str:
         """
         Like :py:meth:`~Parser.describe_value`, but guaranteed to return something.
+
+        Used in error messages, and to describe returned input in widgets.
 
         Note that, since parser's type parameter is covariant, this function is not
         guaranteed to receive a value of the same type that this parser produces.
@@ -776,7 +786,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
         Return options for a :class:`~yuio.widget.Multiselect` widget.
 
         This function can be implemented for parsers that return a fixed set
-        of pre-defined values, like :class:`Enum` or :class:`OneOf` widgets.
+        of pre-defined values, like :class:`Enum` or :class:`OneOf`.
         Collection parsers may use this data to improve their widgets.
         For example, the :class:`Set` parser will use
         a :class:`~yuio.widget.Multiselect` widget.
@@ -806,7 +816,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         This function is used when reading values from user via :func:`yuio.io.ask`.
 
-        The returned widget must produce values of type `T`. If `default` is given,
+        The returned widget must produce values of type ``T``. If ``default`` is given,
         and the user input is empty, the widget must produce
         the :data:`~yuio.MISSING` constant (*not* the default constant).
         This is because the default value might be of any type
@@ -875,7 +885,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
         class MyType:
             data: str
 
-    Example:
+    **Example:**
 
     .. code-block:: python
 
@@ -1167,15 +1177,9 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
 
 
 class Map(MappingParser[T, U], _t.Generic[T, U]):
-    """
+    """Map(inner: Parser[U], fn: typing.Callable[[U], T], rev: typing.Callable[[T | object], U] | None = None, /)
+
     A wrapper that maps result of the given parser using the given function.
-
-    Example::
-
-        >>> # Run `Int` parser, then square the result.
-        >>> int_parser = Map(Int(), lambda x: x ** 2)
-        >>> int_parser.parse("8")
-        64
 
     :param inner:
         a parser whose result will be mapped.
@@ -1184,14 +1188,31 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
     :param rev:
         a function used to un-map a value.
 
-        This function should be present if mapping operation changes value's type
-        or not idempotent. It is used in :meth:`Parser.describe_value`
+        This function is used in :meth:`Parser.describe_value`
         and :meth:`Parser.to_json_value` to convert parsed value back
         to its original state.
 
         Note that, since parser's type parameter is covariant, this function is not
         guaranteed to receive a value of the same type that this parser produces.
-        In this case, you can raise a :class:`TypeError`.
+        In this case, you should raise a :class:`TypeError`.
+
+    **Example:**
+
+    ..
+
+        >>> import math
+
+    ::
+
+        >>> parser = yuio.parse.Map(
+        ...     yuio.parse.Int(),
+        ...     lambda x: 2 ** x,
+        ...     lambda x: int(math.log2(x)),
+        ... )
+        >>> parser.parse("10")
+        1024
+        >>> parser.describe_value_or_def(1024)
+        '10'
 
     """
 
@@ -1302,7 +1323,8 @@ def Lower() -> PartialParser: ...
 
 
 def Lower(*args) -> _t.Any:
-    """
+    """Lower(inner: Parser[str], /)
+
     Applies :meth:`str.lower` to the result of a string parser.
 
     :param inner:
@@ -1320,7 +1342,8 @@ def Upper() -> PartialParser: ...
 
 
 def Upper(*args) -> _t.Any:
-    """
+    """Upper(inner: Parser[str], /)
+
     Applies :meth:`str.upper` to the result of a string parser.
 
     :param inner:
@@ -1338,7 +1361,8 @@ def CaseFold() -> PartialParser: ...
 
 
 def CaseFold(*args) -> _t.Any:
-    """
+    """CaseFold(inner: Parser[str], /)
+
     Applies :meth:`str.casefold` to the result of a string parser.
 
     :param inner:
@@ -1356,7 +1380,8 @@ def Strip() -> PartialParser: ...
 
 
 def Strip(*args) -> _t.Any:
-    """
+    """Strip(inner: Parser[str], /)
+
     Applies :meth:`str.strip` to the result of a string parser.
 
     :param inner:
@@ -1382,7 +1407,8 @@ def Regex(
 
 
 def Regex(*args, group: int | str = 0) -> _t.Any:
-    """
+    """Regex(inner: Parser[str], regex: str | re.Pattern[str], /, *, group: int | str = 0)
+
     Matches the parsed string with the given regular expression.
 
     If regex has capturing groups, parser can return contents of a group.
@@ -1418,22 +1444,25 @@ def Regex(*args, group: int | str = 0) -> _t.Any:
 
 
 class Apply(MappingParser[T, T], _t.Generic[T]):
-    """
-    A wrapper that applies the given function to the result of a wrapped widget.
+    """Apply(inner: Parser[T], fn: typing.Callable[[T], None], /)
 
-    Example::
-
-        >>> # Run `Int` parser, then print its output before returning.
-        >>> print_output = Apply(Int(), print)
-        >>> result = print_output.parse("10")
-        10
-        >>> result
-        10
+    A wrapper that applies the given function to the result of a wrapped parser.
 
     :param inner:
         a parser used to extract and validate a value.
     :param fn:
         a function that will be called after parsing a value.
+
+    **Example:**
+
+    ::
+
+        >>> # Run `Int` parser, then print its output before returning.
+        >>> print_output = Apply(Int(), lambda x: print(f"Value is {x}"))
+        >>> result = print_output.parse("10")
+        Value is 10
+        >>> result
+        10
 
     """
 
@@ -1520,7 +1549,10 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
     This class wraps another parser and passes all method calls to it.
     All parsed values are additionally passed to :meth:`~ValidatingParser._validate`.
 
-    Example:
+    :param inner:
+        a parser which output will be validated.
+
+    **Example:**
 
     .. code-block:: python
 
@@ -1535,9 +1567,6 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
         Traceback (most recent call last):
         ...
         yuio.parse.ParsingError: value should be lowercase
-
-    :param inner:
-        a parser which output will be validated.
 
     """
 
@@ -1683,7 +1712,7 @@ class Bool(ValueParser[bool]):
         return value
 
     def describe(self) -> str | None:
-        return "yes|no"
+        return "{yes|no}"
 
     def describe_value(self, value: object, /) -> str | None:
         return "yes" if value else "no"
@@ -1731,7 +1760,8 @@ class Bool(ValueParser[bool]):
 
 
 class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
-    """
+    """Enum(enum_type: typing.Type[E], /, *, by_name: bool = False, to_dash_case: bool = False, doc_inline: bool = False)
+
     Parser for enums, as defined in the standard :mod:`enum` module.
 
     :param enum_type:
@@ -2049,7 +2079,8 @@ class Fraction(ValueParser[fractions.Fraction]):
 
 
 class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
-    """
+    """Json(inner: Parser[T] | None = None, /)
+
     A parser that tries to parse value as JSON.
 
     This parser will load JSON strings into python objects.
@@ -2476,6 +2507,9 @@ class NonExistentPath(Path):
     """
     Parse a file system path and verify that it doesn't exist.
 
+    :param extensions:
+        list of allowed file extensions, including preceding dots.
+
     """
 
     def _validate(self, value: pathlib.Path, /):
@@ -2489,6 +2523,9 @@ class ExistingPath(Path):
     """
     Parse a file system path and verify that it exists.
 
+    :param extensions:
+        list of allowed file extensions, including preceding dots.
+
     """
 
     def _validate(self, value: pathlib.Path, /):
@@ -2501,6 +2538,9 @@ class ExistingPath(Path):
 class File(ExistingPath):
     """
     Parse a file system path and verify that it points to a regular file.
+
+    :param extensions:
+        list of allowed file extensions, including preceding dots.
 
     """
 
@@ -2550,7 +2590,8 @@ class GitRepo(Dir):
 class CollectionParser(
     WrappingParser[C, Parser[T]], ValueParser[C], PartialParser, _t.Generic[C, T]
 ):
-    """
+    """CollectionParser(inner: Parser[T] | None, /, *, ty: type[C], ctor: typing.Callable[[typing.Iterable[T]], C], iter: typing.Callable[[C], typing.Iterable[T]] = iter, config_type: type[C2] | tuple[type[C2], ...] = list, config_type_iter: typing.Callable[[C2], typing.Iterable[T]] = iter, delimiter: str | None = None)
+
     A base class for implementing collection parsing. It will split a string
     by the given delimiter, parse each item using a subparser, and then pass
     the result to the given constructor.
@@ -2735,7 +2776,8 @@ class CollectionParser(
 
 
 class List(CollectionParser[list[T], T], _t.Generic[T]):
-    """
+    """List(inner: Parser[T], /, *, delimiter: str | None = None)
+
     Parser for lists.
 
     Will split a string by the given delimiter, and parse each item
@@ -2780,7 +2822,8 @@ class List(CollectionParser[list[T], T], _t.Generic[T]):
 
 
 class Set(CollectionParser[set[T], T], _t.Generic[T]):
-    """
+    """Set(inner: Parser[T], /, *, delimiter: str | None = None)
+
     Parser for sets.
 
     Will split a string by the given delimiter, and parse each item
@@ -2842,7 +2885,8 @@ class Set(CollectionParser[set[T], T], _t.Generic[T]):
 
 
 class FrozenSet(CollectionParser[frozenset[T], T], _t.Generic[T]):
-    """
+    """FrozenSet(inner: Parser[T], /, *, delimiter: str | None = None)
+
     Parser for frozen sets.
 
     Will split a string by the given delimiter, and parse each item
@@ -2891,7 +2935,8 @@ class FrozenSet(CollectionParser[frozenset[T], T], _t.Generic[T]):
 
 
 class Dict(CollectionParser[dict[K, V], tuple[K, V]], _t.Generic[K, V]):
-    """
+    """Dict(key: Parser[K], value: Parser[V], /, *, delimiter: str | None = None, pair_delimiter: str = ":")
+
     Parser for dicts.
 
     Will split a string by the given delimiter, and parse each item
@@ -2992,7 +3037,8 @@ class Tuple(
     PartialParser,
     _t.Generic[TU],
 ):
-    """
+    """Tuple(*parsers: Parser[T], delimiter: str | None = None)
+
     Parser for tuples of fixed lengths.
 
     :param parsers:
@@ -3002,7 +3048,9 @@ class Tuple(
 
     """
 
-    # Shitty hack to allow type inference in older pythons.
+    # See the links below for an explanation of shy this is so ugly:
+    # https://github.com/python/typing/discussions/1450
+    # https://github.com/python/typing/issues/1216
     if _t.TYPE_CHECKING:
         T1 = _t.TypeVar("T1")
         T2 = _t.TypeVar("T2")
@@ -3200,7 +3248,8 @@ class Tuple(
     def parse_many(self, value: _t.Sequence[str], /) -> TU:
         if len(value) != len(self._inner):
             raise ParsingError(
-                f"expected {len(self._inner)} element{'' if len(self._inner) == 1 else 's'}"
+                f"expected {len(self._inner)} "
+                f"element{'' if len(self._inner) == 1 else 's'}, got {len(value)}"
             )
 
         return _t.cast(
@@ -3215,7 +3264,8 @@ class Tuple(
             )
         elif len(value) != len(self._inner):
             raise ParsingError(
-                f"expected {len(self._inner)} element{'' if len(self._inner) == 1 else 's'}"
+                f"expected {len(self._inner)} "
+                f"element{'' if len(self._inner) == 1 else 's'}, got {len(value)}"
             )
 
         return _t.cast(
@@ -3305,11 +3355,15 @@ class Tuple(
         return [parser.to_json_value(item) for parser, item in zip(self._inner, value)]
 
     def __repr__(self):
-        return f"{self.__class__.__name__}{self._inner_raw!r}"
+        if self._inner_raw is not None:
+            return f"{self.__class__.__name__}{self._inner_raw!r}"
+        else:
+            return self.__class__.__name__
 
 
 class Optional(MappingParser[T | None, T], _t.Generic[T]):
-    """
+    """Optional(inner: Parser[T], /)
+
     Parser for optional values.
 
     Allows handling :data:`None`\\ s when parsing config. Does not change how strings
@@ -3386,7 +3440,8 @@ class Optional(MappingParser[T | None, T], _t.Generic[T]):
 
 
 class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic[T]):
-    """
+    """Union(*parsers: Parser[T])
+
     Tries several parsers and returns the first successful result.
 
     .. warning::
@@ -3411,7 +3466,9 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
 
     """
 
-    # Shitty hack to allow type inference in older pythons.
+    # See the links below for an explanation of shy this is so ugly:
+    # https://github.com/python/typing/discussions/1450
+    # https://github.com/python/typing/issues/1216
     if _t.TYPE_CHECKING:
         T1 = _t.TypeVar("T1")
         T2 = _t.TypeVar("T2")
@@ -3771,14 +3828,9 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
 
 
 class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
-    """
+    """Bound(inner: Parser[Cmp], /, *, lower: Cmp | None = None, lower_inclusive: Cmp | None = None, upper: Cmp | None = None, upper_inclusive: Cmp | None = None)
+
     Check that value is upper- or lower-bound by some constraints.
-
-    Example::
-
-        >>> # Int in range `0 < x <= 1`:
-        >>> Bound(Int(), lower=0, upper_inclusive=1)
-        Bound(Int, 0 < x <= 1)
 
     :param inner:
         parser whose result will be validated.
@@ -3794,6 +3846,14 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
     :param upper_inclusive:
         set upper bound for value, so we require that ``value <= upper``.
         Can't be given if ``upper`` is also given.
+
+    **Example:**
+
+    ::
+
+        >>> # Int in range `0 < x <= 1`:
+        >>> Bound(Int(), lower=0, upper_inclusive=1)
+        Bound(Int, 0 < x <= 1)
 
     """
 
@@ -3870,11 +3930,14 @@ def Gt(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
 
 
 def Gt(*args) -> _t.Any:
-    """
+    """Gt(inner: Parser[Cmp], bound: Cmp, /)
+
     Alias for :class:`Bound`.
 
     :param inner:
         parser whose result will be validated.
+    :param bound:
+        lower bound for parsed values.
 
     """
 
@@ -3893,11 +3956,14 @@ def Ge(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
 
 
 def Ge(*args) -> _t.Any:
-    """
+    """Ge(inner: Parser[Cmp], bound: Cmp, /)
+
     Alias for :class:`Bound`.
 
     :param inner:
         parser whose result will be validated.
+    :param bound:
+        lower inclusive bound for parsed values.
 
     """
 
@@ -3916,11 +3982,14 @@ def Lt(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
 
 
 def Lt(*args) -> _t.Any:
-    """
+    """Lt(inner: Parser[Cmp], bound: Cmp, /)
+
     Alias for :class:`Bound`.
 
     :param inner:
         parser whose result will be validated.
+    :param bound:
+        upper bound for parsed values.
 
     """
 
@@ -3939,11 +4008,14 @@ def Le(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
 
 
 def Le(*args) -> _t.Any:
-    """
+    """Le(inner: Parser[Cmp], bound: Cmp, /)
+
     Alias for :class:`Bound`.
 
     :param inner:
         parser whose result will be validated.
+    :param bound:
+        upper inclusive bound for parsed values.
 
     """
 
@@ -3956,16 +4028,11 @@ def Le(*args) -> _t.Any:
 
 
 class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
-    """
+    """LenBound(inner: Parser[Sz], /, *, lower: int | None = None, lower_inclusive: int | None = None, upper: int | None = None, upper_inclusive: int | None = None)
+
     Check that length of a value is upper- or lower-bound by some constraints.
 
     The signature is the same as of the :class:`Bound` class.
-
-    Example::
-
-        >>> # List of up to five ints:
-        >>> LenBound(List(Int()), upper_inclusive=5)
-        LenBound(List(Int), len <= 5)
 
     :param inner:
         parser whose result will be validated.
@@ -3981,6 +4048,14 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
     :param upper_inclusive:
         set upper bound for value's length, so we require that ``len(value) <= upper``.
         Can't be given if ``upper`` is also given.
+
+    **Example:**
+
+    ::
+
+        >>> # List of up to five ints:
+        >>> LenBound(List(Int()), upper_inclusive=5)
+        LenBound(List(Int), len <= 5)
 
     """
 
@@ -4079,11 +4154,14 @@ def LenGt(bound: int, /) -> PartialParser: ...
 
 
 def LenGt(*args) -> _t.Any:
-    """
+    """LenGt(inner: Parser[Sz], bound: int, /)
+
     Alias for :class:`LenBound`.
 
     :param inner:
         parser whose result will be validated.
+    :param bound:
+        lower bound for parsed values's length.
 
     """
 
@@ -4102,11 +4180,14 @@ def LenGe(bound: int, /) -> PartialParser: ...
 
 
 def LenGe(*args) -> _t.Any:
-    """
+    """LenGe(inner: Parser[Sz], bound: int, /)
+
     Alias for :class:`LenBound`.
 
     :param inner:
         parser whose result will be validated.
+    :param bound:
+        lower inclusive bound for parsed values's length.
 
     """
 
@@ -4125,11 +4206,14 @@ def LenLt(bound: int, /) -> PartialParser: ...
 
 
 def LenLt(*args) -> _t.Any:
-    """
+    """LenLt(inner: Parser[Sz], bound: int, /)
+
     Alias for :class:`LenBound`.
 
     :param inner:
         parser whose result will be validated.
+    :param bound:
+        upper bound for parsed values's length.
 
     """
 
@@ -4148,11 +4232,14 @@ def LenLe(bound: int, /) -> PartialParser: ...
 
 
 def LenLe(*args) -> _t.Any:
-    """
+    """LenLe(inner: Parser[Sz], bound: int, /)
+
     Alias for :class:`LenBound`.
 
     :param inner:
         parser whose result will be validated.
+    :param bound:
+        upper inclusive bound for parsed values's length.
 
     """
 
@@ -4165,7 +4252,8 @@ def LenLe(*args) -> _t.Any:
 
 
 class OneOf(ValidatingParser[T], _t.Generic[T]):
-    """
+    """OneOf(inner: Parser[T], values: typing.Collection[T], /)
+
     Check that the parsed value is one of the given set of values.
 
     Example::
@@ -4261,7 +4349,8 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
 
 class WithMeta(MappingParser[T, T], _t.Generic[T]):
-    """
+    """WithMeta(inner: Parser[T], /, *, desc: str, completer: yuio.complete.Completer | None | ~yuio.MISSING = MISSING)
+
     Overrides inline help messages and other meta information of a wrapped parser.
 
     Inline help messages will show up as hints in autocompletion and widgets.
@@ -4270,9 +4359,9 @@ class WithMeta(MappingParser[T, T], _t.Generic[T]):
         inner parser.
     :param desc:
         description override. This short string will be used in CLI, widgets, and
-        autocompleters to describe expected value.
+        completers to describe expected value.
     :param completer:
-        completer override.
+        completer override. Pass :data:`None` to disable completion.
 
     """
 
@@ -4433,19 +4522,22 @@ def from_type_hint(ty: object, /) -> Parser[object]: ...
 
 
 def from_type_hint(ty: _t.Any, /) -> Parser[object]:
-    """
+    """from_type_hint(ty: type[T], /) -> Parser[T]
+
     Create parser from a type hint.
-
-    Example::
-
-        >>> from_type_hint(list[int] | None)
-        Optional(List(Int))
 
     :param ty:
         A type hint.
 
         This type hint should not contain strings or forward references. Make sure
         they're resolved before passing it to this function.
+
+    **Example:**
+
+    ::
+
+        >>> from_type_hint(list[int] | None)
+        Optional(List(Int))
 
     """
 
@@ -4600,7 +4692,7 @@ def suggest_delim_for_type_hint_conversion() -> str | None:
             def to_json_schema(self, ctx, /): ...
             def to_json_value(self, value, /): ...
 
-    Example:
+    **Example:**
 
     .. code-block:: python
 

@@ -1816,31 +1816,17 @@ class ColorizedString:
             return f"<ColorizedString({str(self)!r})>"
 
 
-if _t.TYPE_CHECKING:
+RawString: _t.TypeAlias = _t.Iterable[Color | str]
+"""
+Raw colorized string. This is the underlying type for :class:`ColorizedString`.
 
-    RawString: _t.TypeAlias = _t.Iterable[Color | str]
-    """
-    Raw colorized string. This is the underlying type for :class:`ColorizedString`.
+"""
 
-    """
+AnyString: _t.TypeAlias = _t.Union[str, Color, RawString, ColorizedString]  # type: ignore
+"""
+Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
 
-    AnyString: _t.TypeAlias = _t.Union[str, Color, RawString, ColorizedString]  # type: ignore
-    """
-    Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
-
-    """
-
-elif "__YUIO_SPHINX_BUILD" in os.environ:
-
-    class RawString: ...
-
-    class AnyString: ...
-
-else:
-
-    RawString: _t.TypeAlias = lambda x: x  # type: ignore
-
-    AnyString: _t.TypeAlias = lambda x: x  # type: ignore
+"""
 
 
 _S_SYNTAX = re.compile(

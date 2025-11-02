@@ -2,8 +2,6 @@
 Utilities
 ---------
 
-.. autoclass:: SupportsLt
-
 .. autofunction:: to_dash_case
 
 
@@ -18,11 +16,7 @@ These values are used in places where :data:`None` is ambiguous.
 
 .. autodata:: POSITIONAL
 
-.. autodata:: Disabled
-
-.. autodata:: Missing
-
-.. autodata:: Positional
+.. autodata:: OMIT
 
 """
 
@@ -40,10 +34,10 @@ from yuio import _typing as _t
 
 try:
     from yuio._version import *
-except ImportError:
+except ImportError:  # pragma: no cover
     raise ImportError(
         "yuio._version not found. if you are developing locally, "
-        "run `pip install -e .[test,doc]` to generate it"
+        "run `pip install -e .` to generate it"
     )
 
 __all__ = [
@@ -62,7 +56,7 @@ _logger.setLevel("DEBUG")  # handlers will do all the filtering
 _logger.propagate = False
 
 _debug = "YUIO_DEBUG" in _os.environ
-if _debug:
+if _debug:  # pragma: no cover
     __level = _os.environ.get("YUIO_DEBUG_LEVEL", "DEBUG")
     __file = _os.environ.get("YUIO_DEBUG_FILE") or "yuio.log"
     __file_handler = _logging.FileHandler(__file, delay=True)
@@ -224,7 +218,13 @@ class _Placeholders(_enum.Enum):
     POSITIONAL = "<positional>"
     OMIT = "<omit>"
 
+    def __bool__(self) -> _t.Literal[False]:
+        return False
+
     def __repr__(self):
+        return f"yuio.{self.name}"
+
+    def __str__(self) -> str:
         return self.value
 
 
