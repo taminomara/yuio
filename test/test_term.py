@@ -1362,7 +1362,7 @@ class TestTerm:
             == False
         )
 
-    @pytest.mark.skipif(os.name == "nt", reason="this test is for unix only")
+    @pytest.mark.skipif(os.name == "nt", reason="unix")
     @pytest.mark.parametrize(
         "kwargs,expected_term",
         [
@@ -1590,7 +1590,7 @@ class TestTerm:
             expected = yuio.term.Term(ostream, istream, **expected_term)
             assert term == expected
 
-    @pytest.mark.skipif(os.name != "nt", reason="this test is for windows only")
+    @pytest.mark.skipif(os.name != "nt", reason="windows")
     @pytest.mark.parametrize(
         "kwargs,expected_term",
         [

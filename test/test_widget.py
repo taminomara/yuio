@@ -2318,19 +2318,19 @@ class TestGrid:
                         4,
                     ),
                     (
-                        yuio.widget.KeyboardEvent(yuio.widget.Key.SHIFT_TAB),
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB, shift=True),
                         3,
                     ),
                     (
-                        yuio.widget.KeyboardEvent(yuio.widget.Key.SHIFT_TAB),
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB, shift=True),
                         2,
                     ),
                     (
-                        yuio.widget.KeyboardEvent(yuio.widget.Key.SHIFT_TAB),
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB, shift=True),
                         1,
                     ),
                     (
-                        yuio.widget.KeyboardEvent(yuio.widget.Key.SHIFT_TAB),
+                        yuio.widget.KeyboardEvent(yuio.widget.Key.TAB, shift=True),
                         0,
                     ),
                 ],
@@ -4154,6 +4154,7 @@ class TestInputWithCompletion:
         result = widget_checker.check(widget)
         assert result == ""
 
+    @pytest.mark.skip(reason="TODO")
     def test_rsymbols_on_enter(
         self,
         widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
@@ -4161,6 +4162,7 @@ class TestInputWithCompletion:
     ):
         pass
 
+    @pytest.mark.skip(reason="TODO")
     def test_rsymbols_on_typing(
         self,
         widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
@@ -4168,6 +4170,7 @@ class TestInputWithCompletion:
     ):
         pass
 
+    @pytest.mark.skip(reason="TODO")
     def test_rsymbols_on_esc(
         self,
         widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
@@ -4175,6 +4178,7 @@ class TestInputWithCompletion:
     ):
         pass
 
+    @pytest.mark.skip(reason="TODO")
     def test_rsymbols_on_undo(
         self,
         widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],
@@ -4182,6 +4186,7 @@ class TestInputWithCompletion:
     ):
         pass
 
+    @pytest.mark.skip(reason="TODO")
     def test_rsymbols_on_paste(
         self,
         widget_checker: WidgetChecker[yuio.widget.InputWithCompletion],

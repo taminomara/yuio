@@ -492,9 +492,15 @@ def test_file(tmpdir):
     root = pathlib.Path(tmpdir)
     root.joinpath("foo.toml").touch()
     root.joinpath("bar.cfg").touch()
-    root.joinpath("baz.cfg").symlink_to(root / "bar.cfg")
     root.joinpath("dir1").mkdir()
     root.joinpath("dir2").mkdir()
+
+    if os.name == "nt":
+        root.joinpath("baz.cfg").touch()
+        symlink_suffix = ""
+    else:
+        root.joinpath("baz.cfg").symlink_to(root / "bar.cfg")
+        symlink_suffix = "@"
 
     completer = yuio.complete.File()
 
@@ -502,7 +508,7 @@ def test_file(tmpdir):
 
     assert _get_file_completions(base, completer.complete(base, len(base))) == [
         ("__base__", "bar.cfg", "", "", "", "", "", None),
-        ("__base__", "baz.cfg", "", "", "", "", "@", None),
+        ("__base__", "baz.cfg", "", "", "", "", symlink_suffix, None),
         ("__base__", "dir1" + os.path.sep, "", "", "", "", "", None),
         ("__base__", "dir2" + os.path.sep, "", "", "", "", "", None),
         ("__base__", "foo.toml", "", "", "", "", "", None),
@@ -512,7 +518,7 @@ def test_file(tmpdir):
         base, completer.complete(base + "ba", len(base) + 2)
     ) == [
         ("__base__", "bar.cfg", "", "", "", "", "", None),
-        ("__base__", "baz.cfg", "", "", "", "", "@", None),
+        ("__base__", "baz.cfg", "", "", "", "", symlink_suffix, None),
     ]
 
     completer = yuio.complete.File(extensions=[".toml"])
@@ -525,7 +531,7 @@ def test_file(tmpdir):
     completer = yuio.complete.List(yuio.complete.File(), delimiter=";")
     assert _get_file_completions(base, completer.complete(base, len(base))) == [
         ("__base__", "bar.cfg", "", ";", ";", "", "", None),
-        ("__base__", "baz.cfg", "", ";", ";", "", "@", None),
+        ("__base__", "baz.cfg", "", ";", ";", "", symlink_suffix, None),
         ("__base__", "dir1" + os.path.sep, "", "", ";", "", "", None),
         ("__base__", "dir2" + os.path.sep, "", "", ";", "", "", None),
         ("__base__", "foo.toml", "", ";", ";", "", "", None),
@@ -535,7 +541,7 @@ def test_file(tmpdir):
         base, completer.complete(base + ";xyz", len(base))
     ) == [
         ("__base__", "bar.cfg", ";xyz", "", "", "", "", None),
-        ("__base__", "baz.cfg", ";xyz", "", "", "", "@", None),
+        ("__base__", "baz.cfg", ";xyz", "", "", "", symlink_suffix, None),
         ("__base__", "dir1" + os.path.sep, ";xyz", "", "", "", "", None),
         ("__base__", "dir2" + os.path.sep, ";xyz", "", "", "", "", None),
         ("__base__", "foo.toml", ";xyz", "", "", "", "", None),

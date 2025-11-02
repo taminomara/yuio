@@ -201,7 +201,7 @@
 #             assert False, "should never launch"
 
 #         with pytest.raises(
-#             TypeError, match="positional multi-value arguments can't have defaults"
+#             TypeError, match=r"positional multi-value arguments can't have defaults"
 #         ):
 #             cmd.run("".split())
 

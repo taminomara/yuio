@@ -82,28 +82,14 @@ def repo(repo_path):
 
 def test_not_a_repo():
     with tempfile.TemporaryDirectory() as base:
-        with pytest.raises(yuio.git.GitError, match="not a git repository"):
+        with pytest.raises(yuio.git.NotARepositoryError, match=r"not a git repository"):
             yuio.git.Repo(base)
-
-
-def test_not_a_repo_skip_checks():
-    with tempfile.TemporaryDirectory() as base:
-        repo = yuio.git.Repo(base, skip_checks=True)
-        with pytest.raises(yuio.git.GitError):
-            repo.status()
 
 
 @pytest.mark.skipif(os.name == "nt", reason="windows")
 def test_git_unavailable(repo_path):
-    with pytest.raises(yuio.git.GitError, match="git executable not found"):
+    with pytest.raises(yuio.git.GitUnavailableError, match=r"git executable not found"):
         yuio.git.Repo(repo_path, env={"PATH": ""})
-
-
-@pytest.mark.skipif(os.name == "nt", reason="windows")
-def test_git_unavailable_skip_checks(repo_path):
-    repo = yuio.git.Repo(repo_path, env={"PATH": ""}, skip_checks=True)
-    with pytest.raises(yuio.git.GitError, match="git executable not found"):
-        repo.status()
 
 
 def test_simple(repo_path):
@@ -752,7 +738,7 @@ class TestCommitParser:
         parser = yuio.git.CommitParser(repo=repo)
         assert parser.parse("HEAD") == repo.show("HEAD")
         assert parser.parse_config("HEAD") == repo.show("HEAD")
-        with pytest.raises(ValueError, match="invalid git ref"):
+        with pytest.raises(ValueError, match=r"invalid git ref"):
             parser.parse("WAT")
 
     def test_completer(self, repo):

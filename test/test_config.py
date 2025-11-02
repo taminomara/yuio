@@ -3,9 +3,11 @@
 import argparse
 import enum
 
+import jsonschema
 import pytest
 
 import yuio.config
+import yuio.json_schema
 import yuio.parse
 from yuio import _typing as _t
 
@@ -51,14 +53,14 @@ class TestBasics:
             f2: str
 
         c = MyConfig()
-        with pytest.raises(AttributeError, match="f1 is not configured"):
+        with pytest.raises(AttributeError, match=r"f1 is not configured"):
             _ = c.f1
-        with pytest.raises(AttributeError, match="f2 is not configured"):
+        with pytest.raises(AttributeError, match=r"f2 is not configured"):
             _ = c.f2
 
         c = MyConfig(f1="a")
         assert c.f1 == "a"
-        with pytest.raises(AttributeError, match="f2 is not configured"):
+        with pytest.raises(AttributeError, match=r"f2 is not configured"):
             _ = c.f2
 
         c = MyConfig(f1="a", f2="b")
@@ -71,14 +73,14 @@ class TestBasics:
             f2: str = yuio.config.field()
 
         c = MyConfig()
-        with pytest.raises(AttributeError, match="f1 is not configured"):
+        with pytest.raises(AttributeError, match=r"f1 is not configured"):
             _ = c.f1
-        with pytest.raises(AttributeError, match="f2 is not configured"):
+        with pytest.raises(AttributeError, match=r"f2 is not configured"):
             _ = c.f2
 
         c = MyConfig(f1="a")
         assert c.f1 == "a"
-        with pytest.raises(AttributeError, match="f2 is not configured"):
+        with pytest.raises(AttributeError, match=r"f2 is not configured"):
             _ = c.f2
 
         c = MyConfig(f1="a", f2="b")
@@ -98,8 +100,8 @@ class TestBasics:
             f1: str = "1"
             f2: str
 
-        assert repr(MyConfig()) == "MyConfig(\n  f1='1',\n  f2=<missing>\n)"
-        assert repr(MyConfig(f1="x")) == "MyConfig(\n  f1='x',\n  f2=<missing>\n)"
+        assert repr(MyConfig()) == "MyConfig(\n  f1='1',\n  f2=yuio.MISSING\n)"
+        assert repr(MyConfig(f1="x")) == "MyConfig(\n  f1='x',\n  f2=yuio.MISSING\n)"
         assert repr(MyConfig(f2="y")) == "MyConfig(\n  f1='1',\n  f2='y'\n)"
 
     def test_inheritance(self):
@@ -142,14 +144,14 @@ class TestBasics:
 
         c = Child()
 
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.field_without_default
         assert c.field_with_default == 0
         assert c.field_without_default_that_gets_overridden_with_default == 0
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.field_without_default_that_gets_overridden_without_default
         assert c.field_with_default_that_gets_overridden_with_default == 0
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.field_with_default_that_gets_overridden_without_default
         assert c.new_field == "x"
 
@@ -166,9 +168,9 @@ class TestBasics:
             repr(MyConfig()) == "MyConfig(\n"
             "  sub=SubConfig(\n"
             "    a='a',\n"
-            "    b=<missing>\n"
+            "    b=yuio.MISSING\n"
             "  ),\n"
-            "  x=<missing>\n"
+            "  x=yuio.MISSING\n"
             ")"
         )
         assert (
@@ -177,7 +179,7 @@ class TestBasics:
             "    a='a',\n"
             "    b='2'\n"
             "  ),\n"
-            "  x=<missing>\n"
+            "  x=yuio.MISSING\n"
             ")"
         )
 
@@ -237,7 +239,7 @@ class TestBasics:
             f: "Ty"  # type: ignore
 
         with pytest.raises(
-            NameError, match="forward references do not work inside functions"
+            NameError, match=r"forward references do not work inside functions"
         ):
             ResolveConfig(f=10)
 
@@ -245,7 +247,7 @@ class TestBasics:
         class MyConfig1(yuio.config.Config):
             x: int
 
-        with pytest.raises(yuio.parse.ParsingError, match="expected int"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"expected int"):
             assert MyConfig1.load_from_parsed_file(dict(x=None))
 
         class MyConfig2(yuio.config.Config):
@@ -276,7 +278,7 @@ class TestEnv:
             f2: str = "f2"
 
         c = MyConfig.load_from_env()
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.f1
         assert c.f2 == "f2"
 
@@ -326,7 +328,7 @@ class TestEnv:
         c = MyConfig.load_from_env()
         assert c.f1 == "f1.3"
 
-        with pytest.raises(TypeError, match="empty env variable name"):
+        with pytest.raises(TypeError, match=r"empty env variable name"):
 
             class ErrConfig(yuio.config.Config):
                 a: str = yuio.config.field(env="")
@@ -347,7 +349,7 @@ class TestEnv:
         assert c.s == "x"
 
         monkeypatch.setenv("S", "z")
-        with pytest.raises(ValueError, match="one of 'x', 'y'"):
+        with pytest.raises(ValueError, match=r"one of 'x', 'y'"):
             _ = MyConfig1.load_from_env()
 
         class E(enum.Enum):
@@ -476,7 +478,7 @@ class TestArgs:
 
         c = self.load_from_args(MyConfig, "--a abc")
         assert c.a == "abc"
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.b
         assert c.c == 5
 
@@ -501,14 +503,14 @@ class TestArgs:
         c = self.load_from_args(MyConfig, "--a-long bar")
         assert c.a == "bar"
 
-        with pytest.raises(TypeError, match="empty flag"):
+        with pytest.raises(TypeError, match=r"empty flag"):
 
             class _ErrConfig1(yuio.config.Config):
                 a: str = yuio.config.field(flags="")
 
             self.load_from_args(_ErrConfig1, "")
 
-        with pytest.raises(TypeError, match="empty flag"):
+        with pytest.raises(TypeError, match=r"empty flag"):
 
             class _ErrConfig2(yuio.config.Config):
                 a: str = yuio.config.field(flags=[""])
@@ -599,7 +601,7 @@ class TestArgs:
             a: str = yuio.config.positional()
 
         with pytest.raises(
-            TypeError, match="positional arguments are not allowed in configs"
+            TypeError, match=r"positional arguments are not allowed in configs"
         ):
             self.load_from_args(MyConfig, "abc")
 
@@ -702,23 +704,23 @@ class TestArgs:
         assert "sub_no_help" not in help
         assert "sub_no_help_2" not in help
 
-    # def test_usage_disabled(self):
-    #     class SubConfig(yuio.config.Config):
-    #         a: str = yuio.config.field(help="help for a")
+    def test_usage_disabled(self):
+        class SubConfig(yuio.config.Config):
+            a: str = yuio.config.field(help="help for a")
 
-    #     class SubConfigNoHelp(yuio.config.Config):
-    #         b: str = yuio.config.field(help="help for b")
+        class SubConfigNoHelp(yuio.config.Config):
+            b: str = yuio.config.field(help="help for b")
 
-    #     class MyConfig(yuio.config.Config):
-    #         c: str
-    #         d: str = yuio.config.field(usage=False)
-    #         sub: SubConfig
-    #         sub_no_help: SubConfigNoHelp = yuio.config.field(usage=False)
+        class MyConfig(yuio.config.Config):
+            c: str
+            d: str = yuio.config.field(usage=False)
+            sub: SubConfig
+            sub_no_help: SubConfigNoHelp = yuio.config.field(usage=False)
 
-    #     parser = argparse.ArgumentParser()
-    #     MyConfig._setup_arg_parser(parser)
-    #     usage = parser.format_usage()
-    #     print(usage)
+        parser = argparse.ArgumentParser()
+        MyConfig._setup_arg_parser(parser)
+        usage = parser.format_usage()
+        print(usage)
 
 
 class TestLoadFromFile:
@@ -735,7 +737,7 @@ class TestLoadFromFile:
 
         c = MyConfig.load_from_parsed_file(dict(a="abc"))
         assert c.a == "abc"
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.b
         assert c.c == 5
 
@@ -745,7 +747,7 @@ class TestLoadFromFile:
             b: int
             c: int = 5
 
-        with pytest.raises(ValueError, match="unknown field x"):
+        with pytest.raises(ValueError, match=r"unknown field x"):
             MyConfig.load_from_parsed_file(dict(a="abc", b=10, x=11))
 
     def test_load_from_parsed_file_unknown_fields_ignored(self):
@@ -757,14 +759,14 @@ class TestLoadFromFile:
             dict(a="abc", x=10), ignore_unknown_fields=True
         )
         assert c.a == "abc"
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.b
 
     def test_load_from_parsed_file_type_mismatch(self):
         class MyConfig(yuio.config.Config):
             a: str
 
-        with pytest.raises(yuio.parse.ParsingError, match="expected string"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"expected string"):
             MyConfig.load_from_parsed_file(dict(a=10))
 
     def test_load_from_parsed_file_subconfig(self):
@@ -779,7 +781,7 @@ class TestLoadFromFile:
         assert c.b == "abc"
         assert c.c.a == "cde"
 
-        with pytest.raises(ValueError, match="unknown field c.x"):
+        with pytest.raises(ValueError, match=r"unknown field c\.x"):
             MyConfig.load_from_parsed_file(dict(b="abc", c=dict(x="cde")))
 
     def test_load_from_json_file(self, tmp_path):
@@ -808,15 +810,15 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match="unknown field x"):
+        with pytest.raises(ValueError, match=r"unknown field x"):
             MyConfig.load_from_json_file(data_path_2)
 
         c = MyConfig.load_from_json_file(
             tmp_path / "foo.json", ignore_missing_file=True
         )
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.a
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.b
         assert c.c == 5
 
@@ -846,15 +848,15 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match="unknown field x"):
+        with pytest.raises(ValueError, match=r"unknown field x"):
             MyConfig.load_from_yaml_file(data_path_2)
 
         c = MyConfig.load_from_yaml_file(
             tmp_path / "foo.yaml", ignore_missing_file=True
         )
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.a
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.b
         assert c.c == 5
 
@@ -884,15 +886,15 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match="unknown field x"):
+        with pytest.raises(ValueError, match=r"unknown field x"):
             MyConfig.load_from_toml_file(data_path_2)
 
         c = MyConfig.load_from_toml_file(
             tmp_path / "foo.toml", ignore_missing_file=True
         )
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.a
-        with pytest.raises(AttributeError, match="is not configured"):
+        with pytest.raises(AttributeError, match=r"is not configured"):
             _ = c.b
         assert c.c == 5
 
@@ -973,3 +975,49 @@ class TestMerge:
         with pytest.raises(SystemExit):
             main.run(["--x=1", "foo", "--x=2"])
         assert seen_x == 3
+
+
+class TestJsonSchema:
+    class MyConfig(yuio.config.Config):
+        x: int = 5
+        y: list[int]
+
+    class MyConfig2(yuio.config.Config):
+        x: "TestJsonSchema.MyConfig"
+        y: int = 5
+
+    def test_to_json_schema(self):
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = TestJsonSchema.MyConfig.to_json_schema(ctx)
+        assert res == yuio.json_schema.Ref(
+            "#/$defs/test.test_config.TestJsonSchema.MyConfig",
+            "test.test_config.TestJsonSchema.MyConfig",
+        )
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate({"x": 5, "y": [1, 2, 3]}, schema)
+        validator.validate({"x": 5}, schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate("what?", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate({"x": "y"}, schema)
+
+    def test_to_json_value(self):
+        config = TestJsonSchema.MyConfig(x=10, y=[3, 2, 1])
+        assert config.to_json_value() == {"x": 10, "y": [3, 2, 1]}
+
+        config = TestJsonSchema.MyConfig()
+        assert config.to_json_value() == {"x": 5}
+        assert config.to_json_value(include_defaults=False) == {}
+
+        config = TestJsonSchema.MyConfig(y=[1])
+        assert config.to_json_value() == {"x": 5, "y": [1]}
+        assert config.to_json_value(include_defaults=False) == {"y": [1]}
+
+        config = TestJsonSchema.MyConfig2()
+        assert config.to_json_value() == {"x": {"x": 5}, "y": 5}
+        assert config.to_json_value(include_defaults=False) == {}
+
+        config = TestJsonSchema.MyConfig2(x=TestJsonSchema.MyConfig(x=5))
+        assert config.to_json_value() == {"x": {"x": 5}, "y": 5}
+        assert config.to_json_value(include_defaults=False) == {"x": {"x": 5}}

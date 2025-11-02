@@ -1,5 +1,7 @@
 import io
+import os
 import sys
+import textwrap
 
 import pytest
 
@@ -693,21 +695,21 @@ class TestAskNonInteractive:
     def test_parser(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Are you there? (yes|",
-                "no)                 ",
+                "Are you there? ({yes",
+                "|no})               ",
             ],
         )
         io_mocker.expect_istream_readline("what?\n")
         io_mocker.expect_screen(
             [
-                "Are you there? (yes|",
-                "no) what?           ",
+                "Are you there? ({yes",
+                "|no}) what?         ",
                 "Error: can't parse  ",
                 "'what?', enter      ",
                 "either 'yes' or     ",
                 "'no'.               ",
-                "Are you there? (yes|",
-                "no)                 ",
+                "Are you there? ({yes",
+                "|no})               ",
             ],
         )
         io_mocker.expect_istream_readline("y\n")
@@ -718,21 +720,21 @@ class TestAskNonInteractive:
     def test_parser_hint(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Are you there? (yes|",
-                "no)                 ",
+                "Are you there? ({yes",
+                "|no})               ",
             ],
         )
         io_mocker.expect_istream_readline("what?\n")
         io_mocker.expect_screen(
             [
-                "Are you there? (yes|",
-                "no) what?           ",
+                "Are you there? ({yes",
+                "|no}) what?         ",
                 "Error: can't parse  ",
                 "'what?', enter      ",
                 "either 'yes' or     ",
                 "'no'.               ",
-                "Are you there? (yes|",
-                "no)                 ",
+                "Are you there? ({yes",
+                "|no})               ",
             ],
         )
         io_mocker.expect_istream_readline("y\n")
@@ -781,7 +783,7 @@ class TestAskUnreadable:
     def test_no_default(self, io_mocker: IOMocker):
         with io_mocker.mock():
             with pytest.raises(
-                yuio.io.UserIoError, match="non-interactive environment"
+                yuio.io.UserIoError, match=r"non-interactive environment"
             ):
                 yuio.io.ask("Meow?")
 
@@ -923,66 +925,119 @@ class TestWaitForUserUnreadable:
 
 
 class TestDetectEditor:
-    def test_env(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.fixture(autouse=True)
+    def setup_env(self, monkeypatch):
+        monkeypatch.delenv("EDITOR", raising=False)
+        monkeypatch.delenv("VISUAL", raising=False)
+        yield
+
+    @pytest.mark.skipif(os.name == "nt", reason="windows")
+    def test_env_editor(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("EDITOR", "foobar")
         assert yuio.io.detect_editor() == "foobar"
 
-    @pytest.mark.parametrize("editor", ["vi", "nano", "notepad.exe"])
+    @pytest.mark.skipif(os.name == "nt", reason="windows")
+    def test_env_visual(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("EDITOR", "foobar")
+        monkeypatch.setenv("VISUAL", "visual")
+        assert yuio.io.detect_editor() == "visual"
+
+    @pytest.mark.skipif(os.name != "nt", reason="unix")
+    def test_env_windows(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("EDITOR", "foobar")
+        monkeypatch.setenv("VISUAL", "visual")
+        monkeypatch.setattr(
+            "shutil.which", lambda exc: exc if exc == "notepad" else None
+        )
+        assert yuio.io.detect_editor() == "notepad"
+
+    @pytest.mark.parametrize(
+        "editor",
+        [
+            "vi",
+            "nano",
+            "notepad",
+        ],
+    )
     def test_which(self, editor: str, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("shutil.which", lambda exc: exc if exc == editor else None)
         assert yuio.io.detect_editor() == editor
 
     def test_fail(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.delenv("EDITOR", raising=False)
         monkeypatch.setattr("shutil.which", lambda exc: None)
         assert yuio.io.detect_editor() is None
 
+    def test_fallbacks(self, monkeypatch: pytest.MonkeyPatch):
+        seen = []
+        monkeypatch.setattr("shutil.which", lambda exc: (seen.append(exc), None)[1])
+        assert yuio.io.detect_editor(fallbacks=["fallback 1", "fallback 2"]) is None
+        assert seen == ["fallback 1", "fallback 2"]
 
+
+@pytest.mark.skipif(os.name == "nt", reason="windows")
 class TestEdit:
-    # no space after 'edited' because on windows,
-    # cmd.exe adds space to the output (wtf?)
-    _EDITOR = "echo edited>>"
+    _EDITOR = "echo ' edited' >>"
 
     def test_simple(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
-        assert yuio.io.edit("foobar") == "foobaredited\n"
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: self._EDITOR)
+        assert yuio.io.edit("foobar") == "foobar edited\n"
 
     def test_editor(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: None)
-        assert yuio.io.edit("foobar", editor=self._EDITOR) == "foobaredited\n"
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: None)
+        assert yuio.io.edit("foobar", editor=self._EDITOR) == "foobar edited\n"
 
     def test_editor_error(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "exit 1; cat")
-        with pytest.raises(yuio.io.UserIoError, match="editing failed"):
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: "exit 1; cat")
+        with pytest.raises(yuio.io.UserIoError, match=r"editing failed"):
             assert yuio.io.edit("foobar")
 
     def test_no_editor(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: None)
-        with pytest.raises(yuio.io.UserIoError, match="can't detect an editor"):
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: None)
+        with pytest.raises(yuio.io.UserIoError, match=r"can't detect an editor"):
             assert yuio.io.edit("foobar")
 
     def test_comments(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
-        assert yuio.io.edit("# foo\n  # bar\nbaz #") == "baz #edited\n"
-        assert yuio.io.edit("foo\n#") == "foo\n"
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: self._EDITOR)
+        assert (
+            yuio.io.edit("# foo\n  # bar\nbaz #", comment_marker="#")
+            == "baz # edited\n"
+        )
+        assert yuio.io.edit("foo\n#", comment_marker="#") == "foo\n"
 
     def test_comments_custom_marker(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: self._EDITOR)
         assert (
             yuio.io.edit("// foo\n  # bar\nbaz //", comment_marker="//")
-            == "  # bar\nbaz //edited\n"
+            == "  # bar\nbaz // edited\n"
         )
         assert yuio.io.edit("foo\n//", comment_marker="//") == "foo\n"
 
     def test_comments_custom_marker_special_symbols(
         self, monkeypatch: pytest.MonkeyPatch
     ):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: self._EDITOR)
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: self._EDITOR)
         assert yuio.io.edit("a\nb\n[ab]", comment_marker="[ab]") == "a\nb\n"
 
     def test_file_removed(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda: "rm")
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: "rm")
         assert yuio.io.edit("foo") == ""
+
+
+@pytest.mark.skipif(os.name != "nt", reason="windows")
+class TestEditWin:
+    SCRIPT = textwrap.dedent(
+        """
+        @echo off
+        echo Edited content> %1
+    """
+    )
+
+    def test_edit(self, tmp_path, monkeypatch):
+        script = tmp_path / "edit.bat"
+        script.write_text(TestEditWin.SCRIPT)
+
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: str(script))
+        assert yuio.io.edit("foo").strip() == "Edited content"
 
 
 class TestTask:
@@ -1067,7 +1122,7 @@ class TestTask:
         )
 
         with io_mocker.mock():
-            with pytest.raises(RuntimeError, match="eh..."):
+            with pytest.raises(RuntimeError, match=r"eh..."):
                 with yuio.io.Task("task"):
                     io_mocker.mark()
                     raise RuntimeError("eh...")
