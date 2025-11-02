@@ -1164,21 +1164,23 @@ class _ReSyntaxHighlighter(SyntaxHighlighter):
                 if not text:
                     continue
                 name = name.split("__", maxsplit=1)[-1]
-                str_color = default_color | theme.get_color(f"hl/str:{self.syntax}")
-                esc_color = default_color | theme.get_color(f"hl/str/esc:{self.syntax}")
                 if self._str_esc_pattern is not None and name == "str":
+                    str_color = default_color | theme.get_color(f"hl/str:{self.syntax}")
+                    esc_color = default_color | theme.get_color(
+                        f"hl/str/esc:{self.syntax}"
+                    )
                     last_escape_pos = 0
                     for escape_unit in self._str_esc_pattern.finditer(text):
                         if last_escape_pos < escape_unit.start():
                             out += str_color
                             out += text[last_escape_pos : escape_unit.start()]
                         last_escape_pos = escape_unit.end()
-                        if escape := code_unit.group(0):
+                        if escape := text[escape_unit.start() : escape_unit.end()]:
                             out += esc_color
                             out += escape
                     if last_escape_pos < len(text):
                         out += str_color
-                        out += code[last_escape_pos:]
+                        out += text[last_escape_pos:]
                 else:
                     out += default_color | theme.get_color(f"hl/{name}:{self.syntax}")
                     out += text
@@ -1214,10 +1216,24 @@ SyntaxHighlighter.register_highlighter(
                     | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
                     | 0x[0-9a-fA-F]+                        # hex
                     | 0b[01]+)                              # bin
-                | (?P<punct>[{}()[\]\\;|!&])                # punctuation
+                | (?P<punct>[{}()\[\]\\;|!&])               # punctuation
                 | (?P<comment>\#.*$)                        # comment
             """,
             re.MULTILINE | re.VERBOSE,
+        ),
+        str_esc_pattern=re.compile(
+            r"""
+                \\(
+                    \n
+                    | [\\'"abfnrtv]
+                    | [0-7]{3}
+                    | x[0-9a-fA-F]{2}
+                    | u[0-9a-fA-F]{4}
+                    | U[0-9a-fA-F]{8}
+                    | N\{[^}\n]+\}
+                )
+            """,
+            re.VERBOSE,
         ),
     )
 )
@@ -1240,7 +1256,7 @@ SyntaxHighlighter.register_highlighter(
                     '(?:[.\n]*?)*'                          # singly-quoted string
                   | "(?:\\.|[^\\"])*")                      # doubly-quoted string
                 | (?P<punct>
-                      [{}()[\]\\;!&|]                       # punctuation
+                      [{}()\[\]\\;!&|]                      # punctuation
                     | <{1,3}                                # input redirect
                     | [12]?>{1,2}(?:&[12])?)                # output redirect
                 | (?P<comment>\#.*$)                        # comment
@@ -1270,7 +1286,7 @@ SyntaxHighlighter.register_highlighter(
                       -[-a-zA-Z0-9_]+\b                     # flag
                     | <options>                             # options
                   )
-                | (?P<punct>[{}()[\]\\;!&|])                # punctuation
+                | (?P<punct>[{}()\[\]\\;!&|])               # punctuation
             """,
             re.MULTILINE | re.VERBOSE,
         ),
@@ -1286,6 +1302,29 @@ SyntaxHighlighter.register_highlighter(
                 | (?P<removed>^\-[^\r\n]*$)
             """,
             re.MULTILINE | re.VERBOSE,
+        ),
+    ),
+)
+SyntaxHighlighter.register_highlighter(
+    _ReSyntaxHighlighter(
+        ["json"],
+        re.compile(
+            r"""
+                (?P<kwd>\b(?:true|false|null)\b)            # keyword
+                | (?P<str>"(?:\\.|[^\\"])*(?:"|\n))         # doubly-quoted string
+                | (?P<punct>[{}\[\],:])                     # punctuation
+            """,
+            re.MULTILINE | re.VERBOSE,
+        ),
+        str_esc_pattern=re.compile(
+            r"""
+                \\(
+                    \n
+                    | [\\/"bfnrt]
+                    | u[0-9a-fA-F]{4}
+                )
+            """,
+            re.VERBOSE,
         ),
     ),
 )
