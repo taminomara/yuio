@@ -1,0 +1,47 @@
+#! /usr/bin/env python
+
+import pathlib
+import sys
+
+import yuio.app
+import yuio.io
+
+_PREAMBLE = """
+# Yuio project, MIT license.
+#
+# https://github.com/taminomara/yuio/
+#
+# You're free to copy this file to your project and edit it for your needs,
+# just keep this copyright line please :3
+
+""".lstrip()
+
+
+@yuio.app.app
+def main(files: list[pathlib.Path] = yuio.app.positional()):
+    if not files:
+        raise yuio.app.AppError("Run this tool using `pre-commit run --all`")
+    changed = []
+    for file in files:
+        text = file.read_text()
+        if not text or text.isspace():
+            continue
+        if not text.startswith(_PREAMBLE):
+            lines = text.splitlines()
+            i = 0
+            for line in lines:
+                if not line or line.startswith("#"):
+                    i += 1
+                else:
+                    break
+            lines = lines[i:]
+            file.write_text(_PREAMBLE + "\n".join(lines) + "\n")
+            changed.append(file)
+    if changed:
+        for file in changed:
+            yuio.io.info("Fixed <c path>%s</c>", file)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main.run()

@@ -13,6 +13,13 @@ repos:
         entry: isort --filter-files
         types_or: [python, pyi]
         require_serial: true
+      - id: check-preamble
+        name: check that python files start with license comment
+        language: system
+        entry: scripts/check_file_headers
+        types: [python]
+        files: 'yuio/.*'
+        exclude: '^(yuio/_vendor/.*|yuio/_version.py)'
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -29,6 +36,7 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: check-shebang-scripts-are-executable
+      - id: check-executables-have-shebangs
       - id: check-symlinks
       - id: destroyed-symlinks
       - id: check-vcs-permalinks
