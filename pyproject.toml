@@ -35,7 +35,7 @@ dev = [
 ]
 test = [
     "jsonschema==4.25.1",
-    "libtmux==0.46.2",
+    "libtmux==0.47.0",
     "pyright==1.1.407",
     "pytest-cov==7.0.0",
     "pytest==8.4.2",
@@ -56,7 +56,7 @@ lint = [
 ]
 ci = [
     "PyGithub==2.8.1",
-    "tox==4.30.3",
+    "tox==4.32.0",
     "virtualenv-pyenv==0.5.0",
 ]
 
