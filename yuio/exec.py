@@ -8,12 +8,10 @@
 """
 This module provides helpers to run subprocesses and get their output.
 
-It handles subprocesses stderr and stdout in a way that doesn't break
+It handles subprocess' stderr and stdout in a way that doesn't break
 loggers from :mod:`yuio.io`.
 
 .. autofunction:: exec
-
-.. autofunction:: sh
 
 .. autoclass:: ExecError
 
@@ -21,8 +19,12 @@ loggers from :mod:`yuio.io`.
 
 from __future__ import annotations
 
+import contextlib
 import logging
+import os
 import pathlib
+import select
+import selectors
 import subprocess
 import threading
 
@@ -31,7 +33,6 @@ from yuio import _typing as _t
 __all__ = [
     "ExecError",
     "exec",
-    "sh",
 ]
 
 _LOGGER = logging.getLogger("yuio.exec")
@@ -41,11 +42,32 @@ class ExecError(subprocess.CalledProcessError):
     """
     Raised when executed command returns a non-zero status.
 
+    .. py:data:: returncode
+        :type: int
+
+        Return code of the called command.
+
+    .. py:data:: cmd
+        :type: tuple[str | pathlib.Path]
+
+        Initial ``args`` passed to the :func:`exec`.
+
+    .. py:data:: output
+                 stderr
+        :type: str | bytes | None
+
+        Captured stdout.
+
+    .. py:data:: stderr
+        :type: str | bytes | None
+
+        Captured stderr.
+
     """
 
     def __str__(self):
         res = super().__str__()
-        if stderr := getattr(self, "stderr"):
+        if stderr := getattr(self, "stderr", None):
             if isinstance(stderr, bytes):
                 stderr = stderr.decode(errors="replace")
             res += "\n\nStderr:\n" + stderr
@@ -58,6 +80,8 @@ def exec(
     cwd: str | pathlib.Path | None = None,
     env: dict[str, str] | None = None,
     input: str | None = None,
+    capture_io: _t.Literal[True] = True,
+    logger: logging.Logger | logging.LoggerAdapter[_t.Any] | str | None = None,
     level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
 ) -> str: ...
@@ -69,6 +93,8 @@ def exec(
     cwd: str | pathlib.Path | None = None,
     env: dict[str, str] | None = None,
     input: bytes | None = None,
+    capture_io: _t.Literal[True] = True,
+    logger: logging.Logger | logging.LoggerAdapter[_t.Any] | str | None = None,
     level: int = logging.DEBUG,
     text: _t.Literal[False],
 ) -> bytes: ...
@@ -79,26 +105,53 @@ def exec(
     *args: str | pathlib.Path,
     cwd: str | pathlib.Path | None = None,
     env: dict[str, str] | None = None,
-    input: str | bytes | None = None,
-    level: int = logging.DEBUG,
-    text: bool,
-) -> str | bytes: ...
+    input: str | None = None,
+    capture_io: _t.Literal[False],
+    text: _t.Literal[True] = True,
+) -> None: ...
+
+
+@_t.overload
+def exec(
+    *args: str | pathlib.Path,
+    cwd: str | pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
+    input: bytes | None = None,
+    capture_io: _t.Literal[False],
+    text: _t.Literal[False],
+) -> None: ...
+
+
+@_t.overload
+def exec(
+    *args: str | pathlib.Path,
+    cwd: None | str | pathlib.Path = None,
+    env: dict[str, str] | None = None,
+    capture_io: bool = True,
+    input: None | str | bytes = None,
+    logger: logging.Logger | logging.LoggerAdapter[_t.Any] | str | None = None,
+    level: int | None = None,
+    text: bool = False,
+) -> str | bytes | None: ...
 
 
 def exec(
     *args: str | pathlib.Path,
     cwd: None | str | pathlib.Path = None,
     env: dict[str, str] | None = None,
+    capture_io: bool = True,
     input: None | str | bytes = None,
-    level: int = logging.DEBUG,
+    logger: logging.Logger | logging.LoggerAdapter[_t.Any] | str | None = None,
+    level: int | None = None,
     text: bool = True,
-):
+) -> str | bytes | None:
     """
     Run an executable and return its stdout.
 
     Command's stderr is interactively printed to the log.
 
     If the command fails, a :class:`~subprocess.CalledProcessError` is raised.
+    If command can't be started, raises :class:`OSError`.
 
     :param args:
         command arguments.
@@ -107,170 +160,257 @@ def exec(
     :param env:
         define the environment variables for the command.
     :param input:
-        string with command's stdin.
+        string with command's stdin. If ``text`` is set to :data:`False`, this should
+        be :class:`bytes`, otherwise it should be a :data:`str`.
+    :param capture_io:
+        if set to :data:`False`, process' stdout and stderr are not captured;
+        ``logger`` and ``level`` arguments can't be given in this case, and this
+        function returns :data:`None` instead of process' output.
+    :param logger:
+        logger that will be used for logging command's output. Default is to log
+        to ``yuio.exec``.
     :param level:
-        logging level for stderr outputs.
-        By default, it is set to :data:`logging.DEBUG`, which hides all the output.
+        logging level for stderr outputs. By default, it is set
+        to :data:`logging.DEBUG`.
     :param text:
-        if :data:`True` (default), decode stdout using the system default encoding.
+        if set to :data:`False` stdout is returned as :class:`bytes`
+        the system default encoding.
     :return:
-        string (or bytes) with command's stdout.
+        string (or bytes) with command's stdout, or :data:`None` if ``capture_io``
+        is :data:`False`.
 
     """
 
-    if cwd is not None:
-        if not isinstance(cwd, pathlib.Path):
-            cwd = pathlib.Path(cwd)
-        cwd = cwd.expanduser().resolve()
+    if not capture_io:
+        for name, param in [
+            ("logger", logger),
+            ("level", level),
+        ]:
+            if param is not None:
+                raise ValueError(f"{name} can't be specified when capture_io is False")
 
-    with subprocess.Popen(
-        args,
-        cwd=cwd,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=text,
-        stdin=None if input is None else subprocess.PIPE,
-    ) as process:
-        stdout = []
-        stderr = []
+    level = level if level is not None else logging.DEBUG
 
-        if _LOGGER.isEnabledFor(level):
-            _LOGGER.log(level, " ".join(map(str, args)))
+    if logger is None:
+        logger = _LOGGER
+    elif isinstance(logger, str):
+        logger = logging.getLogger(logger)
 
-        def read_stderr(fh):
-            while True:
-                line = fh.readline()
-                if not line:
-                    return
-                if isinstance(line, bytes):
-                    line = line.decode(errors="replace")
-                stderr.append(line)
-                _LOGGER.log(level, line.rstrip("\n"))
+    logger.log(level, " ".join(map(str, args)))
 
-        def read_stdout(fh):
-            stdout.append(fh.read())
+    with contextlib.ExitStack() as s:
+        if not capture_io:
+            import yuio.io
 
-        assert process.stdout
-        stdout_thread = threading.Thread(
-            target=read_stdout,
-            args=(process.stdout,),
-            name=f"yuio stdout handler for sub-process",
+            s.enter_context(yuio.io.SuspendOutput())
+
+        process = s.enter_context(
+            subprocess.Popen(
+                args,
+                cwd=cwd,
+                env=env,
+                stdout=subprocess.PIPE if capture_io else None,
+                stderr=subprocess.PIPE if capture_io else None,
+                text=text,
+                stdin=(
+                    (subprocess.DEVNULL if input is None else subprocess.PIPE)
+                    if capture_io
+                    else None
+                ),
+            )
         )
-        stdout_thread.daemon = True
-        stdout_thread.start()
 
-        assert process.stderr
-        stderr_thread = threading.Thread(
-            target=read_stderr,
-            args=(process.stderr,),
-            name=f"yuio stderr handler for sub-process",
-        )
-        stderr_thread.daemon = True
-        stderr_thread.start()
-
-        if input is not None:
-            assert process.stdin is not None
-            process.stdin.write(input)
-            process.stdin.flush()
-            process.stdin.close()
-
-        stdout_thread.join()
-        stderr_thread.join()
+        stdout, stderr = _process_io(process, capture_io, input, logger, level)
 
         process.wait()
 
+        if not capture_io:
+            stdout_str = None
+        elif text:
+            stdout_str = "".join(_t.cast(list[str], stdout))
+        else:
+            stdout_str = b"".join(_t.cast(list[bytes], stdout))
+
         if process.returncode != 0:
+            if not capture_io:
+                stderr_str = None
+            elif text:
+                stderr_str = "".join(_t.cast(list[str], stderr))
+            else:
+                stderr_str = b"".join(_t.cast(list[bytes], stderr))
+
             raise ExecError(
-                process.returncode, args, output="".join(stdout), stderr="".join(stderr)
+                process.returncode, args, output=stdout_str, stderr=stderr_str
             )
 
-        return stdout[0]
+        return stdout_str
 
 
-@_t.overload
-def sh(
-    cmd: str,
-    /,
-    *,
-    shell: str = "/bin/sh",
-    cwd: str | pathlib.Path | None = None,
-    env: dict[str, str] | None = None,
-    input: str | None = None,
-    level: int = logging.DEBUG,
-    text: _t.Literal[True] = True,
-) -> str: ...
-
-
-@_t.overload
-def sh(
-    cmd: str,
-    /,
-    *,
-    shell: str = "/bin/sh",
-    cwd: str | pathlib.Path | None = None,
-    env: dict[str, str] | None = None,
-    input: bytes | None = None,
-    level: int = logging.DEBUG,
-    text: _t.Literal[False],
-) -> bytes: ...
-
-
-@_t.overload
-def sh(
-    cmd: str,
-    /,
-    *,
-    shell: str = "/bin/sh",
-    cwd: str | pathlib.Path | None = None,
-    env: dict[str, str] | None = None,
-    input: bytes | None = None,
-    level: int = logging.DEBUG,
-    text: bool,
-) -> str | bytes: ...
-
-
-def sh(
-    cmd: str,
-    /,
-    *,
-    shell: str = "/bin/sh",
-    cwd: str | pathlib.Path | None = None,
-    env: dict[str, str] | None = None,
-    input: str | bytes | None = None,
-    level: int = logging.DEBUG,
-    text: bool = True,
+def _process_io(
+    process: subprocess.Popen[_t.Any],
+    capture_io: bool,
+    input: str | bytes | None,
+    logger: logging.Logger | logging.LoggerAdapter[_t.Any],
+    level: int,
 ):
-    """
-    Run command in a shell, return its stdout.
+    if not capture_io:
+        return _process_io_nocap(process, input, logger, level)
+    elif os.name == "nt":
+        return _process_io_threads(process, input, logger, level)
+    else:
+        return _process_io_selectors(process, input, logger, level)
 
-    :param cmd:
-        shell command.
-    :param shell:
-        which shell to use. Default is ``/bin/sh``.
-    :param cwd:
-        set the current directory before the command is executed.
-    :param env:
-        define the environment variables for the command.
-    :param input:
-        string with command's stdin.
-    :param level:
-        logging level for stderr outputs.
-        By default, it is set to :data:`logging.DEBUG`, which hides all the output.
-    :param text:
-        if :data:`True` (default), decode stdout using the system default encoding.
-    :return:
-        string (or bytes) with command's stdout.
 
-    """
+def _process_io_threads(
+    process: subprocess.Popen[_t.Any],
+    input: str | bytes | None,
+    logger: logging.Logger | logging.LoggerAdapter[_t.Any],
+    level: int,
+):
+    stdout = []
+    stderr = []
 
-    return exec(
-        shell,
-        "-c",
-        cmd,
-        cwd=cwd,
-        env=env,
-        input=input,
-        level=level,
-        text=text,
+    def read_stderr(fh: _t.BinaryIO | _t.TextIO):
+        last_line = ""
+        while True:
+            text = fh.read()
+            if not text:
+                fh.close()
+                return
+            stderr.append(text)
+            if isinstance(text, bytes):
+                text = text.decode(errors="replace")
+            for line in text.splitlines(keepends=True):
+                if not line.endswith("\n"):
+                    last_line += line
+                else:
+                    logger.log(level, "-> %s", last_line + line.rstrip("\r\n"))
+                    last_line = ""
+
+    def read_stdout(fh: _t.BinaryIO | _t.TextIO):
+        while True:
+            text = fh.read()
+            if not text:
+                fh.close()
+                return
+            stdout.append(text)
+
+    assert process.stdout
+    stdout_thread = threading.Thread(
+        target=read_stdout,
+        args=(process.stdout,),
+        name=f"yuio stdout handler for sub-process",
     )
+    stdout_thread.daemon = True
+    stdout_thread.start()
+
+    assert process.stderr
+    stderr_thread = threading.Thread(
+        target=read_stderr,
+        args=(process.stderr,),
+        name=f"yuio stderr handler for sub-process",
+    )
+    stderr_thread.daemon = True
+    stderr_thread.start()
+
+    if input is not None:
+        assert process.stdin is not None
+        process.stdin.write(input)
+        process.stdin.flush()
+        process.stdin.close()
+
+    stdout_thread.join()
+    stderr_thread.join()
+
+    return stdout, stderr
+
+
+# From subprocess implementation: "poll/select have the advantage of not requiring
+# any extra file descriptor, contrarily to epoll/kqueue (also, they require a single
+# syscall)."
+if hasattr(selectors, "PollSelector"):
+    _Selector = selectors.PollSelector
+else:
+    _Selector = selectors.SelectSelector
+
+
+def _process_io_selectors(
+    process: subprocess.Popen[_t.Any],
+    input: str | bytes | None,
+    logger: logging.Logger | logging.LoggerAdapter[_t.Any],
+    level: int,
+):
+    assert process.stdout
+    assert process.stderr
+
+    stdout = []
+    stderr = []
+
+    last_line = ""
+
+    def read_stderr(selector: selectors.BaseSelector, fh: _t.BinaryIO | _t.TextIO):
+        nonlocal last_line
+        text = fh.read(select.PIPE_BUF)
+        if not text:
+            fh.close()
+            selector.unregister(fh)
+            return
+        stderr.append(text)
+        if isinstance(text, bytes):
+            text = text.decode(errors="replace")
+        for line in text.splitlines(keepends=True):
+            if not line.endswith("\n"):
+                last_line += line
+            else:
+                logger.log(level, "-> %s", last_line + line.rstrip("\r\n"))
+                last_line = ""
+
+    def read_stdout(selector: selectors.BaseSelector, fh: _t.BinaryIO | _t.TextIO):
+        text = fh.read(select.PIPE_BUF)
+        if not text:
+            fh.close()
+            selector.unregister(fh)
+            return
+        stdout.append(text)
+
+    index = 0
+
+    def write_stdin(selector: selectors.BaseSelector, fh: _t.BinaryIO | _t.TextIO):
+        nonlocal index
+        assert input is not None
+        index += fh.write(input[index : index + select.PIPE_BUF])  # type: ignore
+        if index >= len(input):
+            fh.flush()
+            fh.close()
+            selector.unregister(fh)
+            return
+
+    with _Selector() as selector:
+        selector.register(process.stderr, selectors.EVENT_READ, read_stderr)
+        selector.register(process.stdout, selectors.EVENT_READ, read_stdout)
+        if process.stdin is not None:
+            selector.register(process.stdin, selectors.EVENT_WRITE, write_stdin)
+
+        while selector.get_map():
+            for key, _ in selector.select():
+                key.data(selector, key.fileobj)
+
+    if process.stdin is not None:
+        assert process.stdin.closed
+
+    return stdout, stderr
+
+
+def _process_io_nocap(
+    process: subprocess.Popen[_t.Any],
+    input: str | bytes | None,
+    logger: logging.Logger | logging.LoggerAdapter[_t.Any],
+    level: int,
+):
+    if input is not None:
+        assert process.stdin is not None
+        process.stdin.write(input)
+        process.stdin.flush()
+        process.stdin.close()
+
+    return None, None
