@@ -714,14 +714,17 @@ if os.name == "posix":
     def _read_keycode() -> str:
         assert sys.__stdin__ is not None
 
-        key = os.read(sys.__stdin__.fileno(), 1)
+        key = os.read(sys.__stdin__.fileno(), 128)
         while bool(select.select([sys.__stdin__], [], [], 0)[0]):
-            key += os.read(sys.__stdin__.fileno(), 1)
+            key += os.read(sys.__stdin__.fileno(), 128)
 
         return key.decode(sys.__stdin__.encoding, errors="replace")
 
     def _flush_input_buffer():
-        pass
+        assert sys.__stdin__ is not None
+
+        while bool(select.select([sys.__stdin__], [], [], 0.001)[0]):
+            os.read(sys.__stdin__.fileno(), 1)
 
     def _enable_vt_processing(ostream: _t.TextIO) -> bool:
         return False  # This is a windows functionality
