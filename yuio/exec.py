@@ -270,7 +270,7 @@ def _process_io_threads(
     stdout = []
     stderr = []
 
-    def read_stderr(fh: _t.BinaryIO | _t.TextIO):
+    def read_stderr(fh: _t.IO[_t.Any]):
         last_line = ""
         while True:
             text = fh.read()
@@ -287,7 +287,7 @@ def _process_io_threads(
                     logger.log(level, "-> %s", last_line + line.rstrip("\r\n"))
                     last_line = ""
 
-    def read_stdout(fh: _t.BinaryIO | _t.TextIO):
+    def read_stdout(fh: _t.IO[_t.Any]):
         while True:
             text = fh.read()
             if not text:
@@ -315,8 +315,11 @@ def _process_io_threads(
 
     if input is not None:
         assert process.stdin is not None
-        process.stdin.write(input)
-        process.stdin.flush()
+        try:
+            process.stdin.write(input)
+            process.stdin.flush()
+        except BrokenPipeError:
+            pass
         process.stdin.close()
 
     stdout_thread.join()
@@ -342,15 +345,20 @@ def _process_io_selectors(
 ):
     assert process.stdout
     assert process.stderr
+    if input is not None:
+        assert process.stdin
+        if process.text_mode:  # type: ignore
+            input = input.encode(process.stdin.encoding, process.stdin.errors)  # type: ignore
+        input_data = memoryview(input)  # type: ignore
+    else:
+        input_data = None
 
-    stdout = []
-    stderr = []
+    stdout: list[bytes] = []
+    stderr: list[bytes] = []
 
     last_line = ""
 
-    def read_stderr(
-        selector: selectors.BaseSelector, fd: int, fh: _t.BinaryIO | _t.TextIO
-    ):
+    def read_stderr(selector: selectors.BaseSelector, fd: int, fh: _t.IO[_t.Any]):
         nonlocal last_line
         text = os.read(fd, 32 * 1024)
         if not text:
@@ -367,9 +375,7 @@ def _process_io_selectors(
                 logger.log(level, "-> %s", last_line + line.rstrip("\r\n"))
                 last_line = ""
 
-    def read_stdout(
-        selector: selectors.BaseSelector, fd: int, fh: _t.BinaryIO | _t.TextIO
-    ):
+    def read_stdout(selector: selectors.BaseSelector, fd: int, fh: _t.IO[_t.Any]):
         text = os.read(fd, 32 * 1024)
         if not text:
             selector.unregister(fd)
@@ -379,18 +385,16 @@ def _process_io_selectors(
 
     index = 0
 
-    def write_stdin(
-        selector: selectors.BaseSelector, fd: int, fh: _t.BinaryIO | _t.TextIO
-    ):
+    def write_stdin(selector: selectors.BaseSelector, fd: int, fh: _t.IO[_t.Any]):
         nonlocal index
-        assert input is not None
+        assert input_data is not None
         try:
-            index += os.write(fd, input[index : index + select.PIPE_BUF])  # type: ignore
+            index += os.write(fd, input_data[index : index + select.PIPE_BUF])
         except BrokenPipeError:
             selector.unregister(fd)
             fh.close()
             return
-        if index >= len(input):
+        if index >= len(input_data):
             selector.unregister(fd)
             fh.close()
 
@@ -411,7 +415,19 @@ def _process_io_selectors(
     if process.stdin is not None:
         assert process.stdin.closed
 
-    return stdout, stderr
+    return _decode(process, stdout, process.stdout), _decode(
+        process, stderr, process.stderr
+    )
+
+
+def _decode(
+    process: subprocess.Popen[_t.Any], lines: list[bytes], stream: _t.IO[_t.Any]
+):
+    if not process.text_mode:  # type: ignore
+        return lines
+    raw = b"".join(lines)
+    text = raw.decode(stream.encoding, stream.errors)  # type: ignore
+    return [text.replace("\r\n", "\n").replace("\r", "\n")]
 
 
 def _process_io_nocap(
@@ -422,8 +438,11 @@ def _process_io_nocap(
 ):
     if input is not None:
         assert process.stdin is not None
-        process.stdin.write(input)
-        process.stdin.flush()
+        try:
+            process.stdin.write(input)
+            process.stdin.flush()
+        except BrokenPipeError:
+            pass
         process.stdin.close()
 
     return None, None
