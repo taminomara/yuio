@@ -196,109 +196,157 @@ class Key(enum.Enum):
 
     ENTER = enum.auto()
     """
-    `Enter` key.
+    :kbd:`Enter` key.
 
     """
 
     ESCAPE = enum.auto()
     """
-    `Escape` key.
+    :kbd:`Escape` key.
+
+    """
+
+    INSERT = enum.auto()
+    """
+    :kbd:`Insert` key.
 
     """
 
     DELETE = enum.auto()
     """
-    `Delete` key.
+    :kbd:`Delete` key.
 
     """
 
     BACKSPACE = enum.auto()
     """
-    `Backspace` key.
+    :kbd:`Backspace` key.
 
     """
 
     TAB = enum.auto()
     """
-    `Tab` key.
-
-    """
-
-    SHIFT_TAB = enum.auto()
-    """
-    `Tab` key with `Shift` modifier.
+    :kbd:`Tab` key.
 
     """
 
     HOME = enum.auto()
     """
-    `Home` key.
+    :kbd:`Home` key.
 
     """
 
     END = enum.auto()
     """
-    `End` key.
+    :kbd:`End` key.
 
     """
 
     PAGE_UP = enum.auto()
     """
-    `PageUp` key.
+    :kbd:`PageUp` key.
 
     """
 
     PAGE_DOWN = enum.auto()
     """
-    `PageDown` key.
+    :kbd:`PageDown` key.
 
     """
 
     ARROW_UP = enum.auto()
     """
-    `ArrowUp` key.
+    :kbd:`ArrowUp` key.
 
     """
 
     ARROW_DOWN = enum.auto()
     """
-    `ArrowDown` key.
+    :kbd:`ArrowDown` key.
 
     """
 
     ARROW_LEFT = enum.auto()
     """
-    `ArrowLeft` key.
+    :kbd:`ArrowLeft` key.
 
     """
 
     ARROW_RIGHT = enum.auto()
     """
-    `ArrowRight` key.
+    :kbd:`ArrowRight` key.
 
     """
 
     F1 = enum.auto()
     """
-    `F1` key.
+    :kbd:`F1` key.
 
     """
 
     F2 = enum.auto()
     """
-    `F2` key.
+    :kbd:`F2` key.
 
     """
 
     F3 = enum.auto()
     """
-    `F3` key.
+    :kbd:`F3` key.
 
     """
 
     F4 = enum.auto()
     """
-    `F4` key.
+    :kbd:`F4` key.
+
+    """
+
+    F5 = enum.auto()
+    """
+    :kbd:`F5` key.
+
+    """
+
+    F6 = enum.auto()
+    """
+    :kbd:`F6` key.
+
+    """
+
+    F7 = enum.auto()
+    """
+    :kbd:`F7` key.
+
+    """
+
+    F8 = enum.auto()
+    """
+    :kbd:`F8` key.
+
+    """
+
+    F9 = enum.auto()
+    """
+    :kbd:`F9` key.
+
+    """
+
+    F10 = enum.auto()
+    """
+    :kbd:`F10` key.
+
+    """
+
+    F11 = enum.auto()
+    """
+    :kbd:`F11` key.
+
+    """
+
+    F12 = enum.auto()
+    """
+    :kbd:`F12` key.
 
     """
 
@@ -320,6 +368,14 @@ class KeyboardEvent:
     Note that we don't have separate flag for when :kbd:`Shift` was pressed with
     keystroke because that results in :attr:`~KeyboardEvent.key` being a capital letter.
 
+    .. warning::
+
+        Protocol for interacting with terminals is quite old, and not all terminals
+        support all keystroke combinations.
+
+        Use ``python -m yuio.dbg.showkey`` to check how your terminal reports
+        keystrokes, and how Yuio interprets them.
+
     """
 
     key: Key | str
@@ -333,11 +389,54 @@ class KeyboardEvent:
     """
     Whether a :kbd:`Ctrl` modifier was pressed with keystroke.
 
+    For letter keys modified with control, the letter is always lowercase; if terminal
+    supports reporting :kbd:`Shift` being pressed, the :attr:`~KeyboardEvent.shift`
+    attribute will be set when this happens. This does not affect
+    punctuation keys, though:
+
+    .. skip-next:
+
+    .. code-block:: python
+
+        # `Ctrl+X` was pressed.
+        KeyboardEvent("x", ctrl=True)
+
+        # `Ctrl+Shift+X` was pressed. Not all terminals are able
+        # to report this correctly, though.
+        KeyboardEvent("x", ctrl=True, shift=True)
+
+        # This can't happen.
+        KeyboardEvent("X", ctrl=True)
+
+        # `Ctrl+_` was pressed. On most keyboards, the actual keystroke
+        # is `Ctrl+Shift+-`, but most terminals can't properly report this.
+        KeyboardEvent("_", ctrl=True)
+
     """
 
     alt: bool = False
     """
     Whether an :kbd:`Alt` (:kbd:`Option` on macs) modifier was pressed with keystroke.
+
+    """
+
+    shift: bool = False
+    """
+    Whether a :kbd:`Shift` modifier was pressed with keystroke.
+
+    Note that, when letters are typed with shift, they will not have this flag.
+    Instead, their upper case version will be set as :attr:`~KeyboardEvent.key`:
+
+    .. skip-next:
+
+    .. code-block:: python
+
+        KeyboardEvent("x")  # `X` was pressed.
+        KeyboardEvent("X")  # `Shift+X` was pressed.
+
+    .. warning::
+
+        Only :kbd:`Shift+Tab` can be reliably reported by all terminals.
 
     """
 
@@ -1250,7 +1349,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         if not term.is_fully_interactive:
             raise RuntimeError("terminal doesn't support rendering widgets")
 
-        with yuio.term._enter_raw_mode(term.ostream, bracketed_paste=True):
+        with yuio.term._enter_raw_mode(
+            term.ostream, bracketed_paste=True, modify_keyboard=True
+        ):
             rc = RenderContext(term, theme)
 
             events = _event_stream()
@@ -1730,18 +1831,23 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         if isinstance(action_key, str):
             return action_key
         elif isinstance(action_key, KeyboardEvent):
-            ctrl, alt, key = action_key.ctrl, action_key.alt, action_key.key
+            ctrl, alt, shift, key = (
+                action_key.ctrl,
+                action_key.alt,
+                action_key.shift,
+                action_key.key,
+            )
         else:
-            ctrl, alt, key = False, False, action_key
+            ctrl, alt, shift, key = False, False, False, action_key
 
         symbol = ""
 
-        if key is Key.SHIFT_TAB:
-            symbol += self._SHIFT
-            key = Key.TAB
-        elif isinstance(key, str) and key.lower() != key:
-            symbol += self._SHIFT
+        if isinstance(key, str) and key.lower() != key:
+            shift = True
             key = key.lower()
+
+        if shift:
+            symbol += self._SHIFT
 
         if ctrl:
             symbol += self._CTRL
@@ -1774,6 +1880,7 @@ def bind(
     *,
     ctrl: bool = False,
     alt: bool = False,
+    shift: bool = False,
     show_in_inline_help: bool = False,
     show_in_detailed_help: bool = True,
 ) -> _Binding:
@@ -1807,7 +1914,7 @@ def bind(
 
     """
 
-    e = KeyboardEvent(key=key, ctrl=ctrl, alt=alt)
+    e = KeyboardEvent(key=key, ctrl=ctrl, alt=alt, shift=shift)
     return _Binding(e, show_in_inline_help, show_in_detailed_help)
 
 
@@ -1872,7 +1979,7 @@ def help(
                 \"\"\"next item\"\"\"
                 ...
 
-            @bind(Key.SHIFT_TAB)
+            @bind(Key.TAB, shift=True)
             @help(group=NAVIGATE)
             def shift_tab(self):
                 \"\"\"previous item\"\"\"
@@ -3202,7 +3309,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
     _NAVIGATE = "Navigate"
 
     @bind(Key.ARROW_UP)
-    @bind(Key.SHIFT_TAB)
+    @bind(Key.TAB, shift=True)
     @help(group=_NAVIGATE)
     def prev_item(self):
         """previous item"""
@@ -3611,7 +3718,6 @@ class Choice(Widget[T], _t.Generic[T]):
             return self.enter()
         if not self.__enable_search or e.key in (
             Key.ARROW_UP,
-            Key.SHIFT_TAB,
             Key.ARROW_DOWN,
             Key.TAB,
             Key.ARROW_LEFT,
@@ -3782,7 +3888,6 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
     def default_event_handler(self, e: KeyboardEvent) -> Result[list[T]] | None:
         if not self.__enable_search or e.key in (
             Key.ARROW_UP,
-            Key.SHIFT_TAB,
             Key.ARROW_DOWN,
             Key.TAB,
             Key.ARROW_LEFT,
@@ -3922,7 +4027,6 @@ class InputWithCompletion(Widget[str]):
             Key.ARROW_UP,
             Key.ARROW_DOWN,
             Key.TAB,
-            Key.SHIFT_TAB,
             Key.PAGE_UP,
             Key.PAGE_DOWN,
             Key.HOME,
@@ -4102,127 +4206,238 @@ class Apply(Map[T, T], _t.Generic[T]):
         super().__init__(inner, mapper)
 
 
-def _event_stream() -> _t.Iterator[KeyboardEvent]:
-    while True:
-        key = yuio.term._read_keycode()
+@dataclass
+class _EventStreamState:
+    key: str = ""
+    index: int = 0
 
-        if key.startswith("\x1b[200~"):
-            yield _parse_paste(key[6:])
+    def load(self):
+        self.key = yuio.term._read_keycode()
+        self.index = 0
 
-        # Esc key
-        elif key == "\x1b":
-            yield KeyboardEvent(Key.ESCAPE)
-        elif key == "\x1b\x1b":
-            yield KeyboardEvent(Key.ESCAPE, alt=True)
+    def next(self):
+        ch = self.peek()
+        self.index += 1
+        return ch
 
-        # CSI
-        elif key == "\x1b[":
-            yield KeyboardEvent("[", alt=True)
-        elif key.startswith("\x1b["):
-            yield from _parse_csi(key[2:])
-        elif key.startswith("\x1b\x1b["):
-            yield from _parse_csi(key[3:], alt=True)
-
-        # SS2
-        elif key == "\x1bN":
-            yield KeyboardEvent("N", alt=True)
-        elif key.startswith("\x1bN"):
-            yield from _parse_csi(key[2:])
-        elif key.startswith("\x1b\x1bN"):
-            yield from _parse_csi(key[3:], alt=True)
-
-        # SS3
-        elif key == "\x1bO":
-            yield KeyboardEvent("O", alt=True)
-        elif key.startswith("\x1bO"):
-            yield from _parse_csi(key[2:])
-        elif key.startswith("\x1b\x1bO"):
-            yield from _parse_csi(key[3:], alt=True)
-
-        # DSC
-        elif key == "\x1bP":
-            yield KeyboardEvent("P", alt=True)
-        elif key.startswith("\x1bP"):
-            yield from _parse_csi(key[2:])
-        elif key.startswith("\x1b\x1bP"):
-            yield from _parse_csi(key[3:], alt=True)
-
-        # Alt + Key
-        elif key.startswith("\x1b"):
-            yield from _parse_char(key[1:], alt=True)
-
-        # Just normal keypress
+    def peek(self):
+        if self.index >= len(self.key):
+            return ""
         else:
-            yield from _parse_char(key)
+            return self.key[self.index]
+
+    def tail(self):
+        return self.key[self.index :]
+
+
+def _event_stream() -> _t.Iterator[KeyboardEvent]:
+    # Implementation is heavily inspired by libtermkey by Paul Evans, MIT license.
+
+    state = _EventStreamState()
+    while True:
+        ch = state.next()
+        if not ch:
+            state.load()
+            ch = state.next()
+        if ch == "\x1b":
+            alt = False
+            ch = state.next()
+            while ch == "\x1b":
+                alt = True
+                ch = state.next()
+            if not ch:
+                yield KeyboardEvent(Key.ESCAPE, alt=alt)
+            elif ch == "[":
+                yield from _parse_csi(state, alt)
+            elif ch in "N]":
+                _parse_dcs(state)
+            elif ch == "O":
+                yield from _parse_ss3(state, alt)
+            else:
+                yield from _parse_char(ch, alt=True)
+        elif ch == "\x9b":
+            # CSI
+            yield from _parse_csi(state, False)
+        elif ch in "\x90\x9d":
+            # DCS or SS2
+            _parse_dcs(state)
+        elif ch == "\x8f":
+            # SS3
+            yield from _parse_ss3(state, False)
+        else:
+            # Char
+            yield from _parse_char(ch)
+
+
+def _parse_ss3(state: _EventStreamState, alt: bool = False):
+    ch = state.next()
+    if not ch:
+        yield KeyboardEvent("O", alt=True)
+    else:
+        yield from _parse_ss3_key(ch, alt=alt)
+
+
+def _parse_dcs(state: _EventStreamState):
+    while True:
+        ch = state.next()
+        if ch == "\x9c":
+            break
+        elif ch == "\x1b" and state.peek() == "\\":
+            state.next()
+            break
+        elif not ch:
+            state.load()
+
+
+def _parse_csi(state: _EventStreamState, alt: bool = False):
+    buffer = ""
+    while state.peek() and not (0x40 <= ord(state.peek()) <= 0x80):
+        buffer += state.next()
+    cmd = state.next()
+    if not cmd:
+        yield KeyboardEvent("[", alt=True)
+        return
+    if buffer.startswith(("?", "<", ">", "=")):
+        # Some command response, ignore.
+        return
+    args = buffer.split(";")
+
+    shift = ctrl = False
+    if len(args) > 1:
+        try:
+            modifiers = int(args[1]) - 1
+        except ValueError:
+            pass
+        else:
+            shift = bool(modifiers & 1)
+            alt |= bool(modifiers & 2)
+            ctrl = bool(modifiers & 4)
+
+    if cmd == "~":
+        if args[0] == "27":
+            try:
+                ch = chr(int(args[2]))
+            except (ValueError, KeyError):
+                pass
+            else:
+                yield from _parse_char(ch, ctrl=ctrl, alt=alt)
+        elif args[0] == "200":
+            yield KeyboardEvent(Key.PASTE, paste_str=_read_pasted_content(state))
+        elif key := _CSI_CODES.get(args[0]):
+            yield KeyboardEvent(key, ctrl=ctrl, alt=alt, shift=shift)
+    elif cmd == "u":
+        try:
+            ch = chr(int(args[0]))
+        except ValueError:
+            pass
+        else:
+            yield from _parse_char(ch, ctrl=ctrl, alt=alt, shift=shift)
+    elif cmd in "mMyR":
+        # Some command response, ignore.
+        pass
+    else:
+        yield from _parse_ss3_key(cmd, ctrl=ctrl, alt=alt, shift=shift)
+
+
+def _parse_ss3_key(
+    cmd: str, ctrl: bool = False, alt: bool = False, shift: bool = False
+):
+    if key := _SS3_CODES.get(cmd):
+        if cmd == "Z":
+            shift = True
+        yield KeyboardEvent(key, ctrl=ctrl, alt=alt, shift=shift)
+
+
+_SS3_CODES = {
+    "A": Key.ARROW_UP,
+    "B": Key.ARROW_DOWN,
+    "C": Key.ARROW_RIGHT,
+    "D": Key.ARROW_LEFT,
+    "E": Key.HOME,
+    "F": Key.END,
+    "H": Key.HOME,
+    "Z": Key.TAB,
+    "P": Key.F1,
+    "Q": Key.F2,
+    "R": Key.F3,
+    "S": Key.F4,
+    "M": Key.ENTER,
+    " ": " ",
+    "I": Key.TAB,
+    "X": "=",
+    "j": "*",
+    "k": "+",
+    "l": ",",
+    "m": "-",
+    "n": ".",
+    "o": "/",
+    "p": "0",
+    "q": "1",
+    "r": "2",
+    "s": "3",
+    "t": "4",
+    "u": "5",
+    "v": "6",
+    "w": "7",
+    "x": "8",
+    "y": "9",
+}
 
 
 _CSI_CODES = {
     "1": Key.HOME,
+    "2": Key.INSERT,
     "3": Key.DELETE,
     "4": Key.END,
     "5": Key.PAGE_UP,
     "6": Key.PAGE_DOWN,
     "7": Key.HOME,
     "8": Key.END,
-    "A": Key.ARROW_UP,
-    "B": Key.ARROW_DOWN,
-    "C": Key.ARROW_RIGHT,
-    "D": Key.ARROW_LEFT,
-    "F": Key.END,
-    "H": Key.HOME,
-    "Z": Key.SHIFT_TAB,
-    "P": Key.F1,
-    "Q": Key.F2,
-    "R": Key.F3,
-    "S": Key.F4,
+    "11": Key.F1,
+    "12": Key.F2,
+    "13": Key.F3,
+    "14": Key.F4,
+    "15": Key.F5,
+    "17": Key.F6,
+    "18": Key.F7,
+    "19": Key.F8,
+    "20": Key.F9,
+    "21": Key.F10,
+    "23": Key.F11,
+    "24": Key.F12,
+    "200": Key.PASTE,
 }
 
 
-def _parse_csi(
-    csi: str, ctrl: bool = False, alt: bool = False
-) -> _t.Iterable[KeyboardEvent]:
-    if match := re.match(r"^(?P<code>\d+)?(?:;(?P<modifier>\d+))?~$", csi):
-        code = match.group("code") or "1"
-        modifier = int(match.group("modifier") or "1") - 1
-    elif match := re.match(r"^(?:\d+;)?(?P<modifier>\d+)?(?P<code>[A-Z0-9]+)$", csi):
-        code = match.group("code") or "1"
-        modifier = int(match.group("modifier") or "1") - 1
-    else:
-        return
-
-    alt |= bool(modifier & 2)
-    ctrl |= bool(modifier & 4)
-
-    if (key := _CSI_CODES.get(code)) is not None:
-        yield KeyboardEvent(key, ctrl, alt)
-
-
 def _parse_char(
-    char: str, ctrl: bool = False, alt: bool = False
+    ch: str, ctrl: bool = False, alt: bool = False, shift: bool = False
 ) -> _t.Iterable[KeyboardEvent]:
-    if char == "\t":
-        yield KeyboardEvent(Key.TAB, ctrl, alt)
-    elif char in "\r\n":
-        yield KeyboardEvent(Key.ENTER, ctrl, alt)
-    elif char == "\x7f":
-        yield KeyboardEvent(Key.BACKSPACE, ctrl, alt)
-    elif len(char) == 1 and "\x01" <= char <= "\x1a":
-        yield KeyboardEvent(chr(ord(char) - 0x1 + ord("a")), True, alt)
-    elif len(char) == 1 and "\x0c" <= char <= "\x1f":
-        yield KeyboardEvent(chr(ord(char) - 0x1C + ord("4")), True, alt)
-    elif (len(char) == 1 and (char in string.printable or ord(char) >= 160)) or len(
-        char
-    ) > 1:
-        yield KeyboardEvent(char, ctrl, alt)
+    if ch == "\t":
+        yield KeyboardEvent(Key.TAB, ctrl, alt, shift)
+    elif ch in "\r\n":
+        yield KeyboardEvent(Key.ENTER, ctrl, alt, shift)
+    elif ch == "\x08":
+        yield KeyboardEvent(Key.BACKSPACE, ctrl, alt, shift)
+    elif ch == "\x1b":
+        yield KeyboardEvent(Key.ESCAPE, ctrl, alt, shift)
+    elif ch == "\x7f":
+        yield KeyboardEvent(Key.BACKSPACE, ctrl, alt, shift)
+    elif "\x00" <= ch <= "\x1a":
+        yield KeyboardEvent(chr(ord(ch) + ord("a") - 0x1), True, alt, shift)
+    elif "\x0c" <= ch <= "\x1f":
+        yield KeyboardEvent(chr(ord(ch) + ord("4") - 0x1C), True, alt, shift)
+    elif ch in string.printable or ord(ch) >= 160:
+        yield KeyboardEvent(ch, ctrl, alt, shift)
 
 
-def _parse_paste(key: str) -> KeyboardEvent:
+def _read_pasted_content(state: _EventStreamState) -> str:
     buf = ""
     while True:
-        index = key.find("\x1b[201~")
+        index = state.tail().find("\x1b[201~")
         if index == -1:
-            buf += key
+            buf += state.tail()
         else:
-            buf += key[:index]
-            return KeyboardEvent(Key.PASTE, paste_str=buf)
-        key = yuio.term._read_keycode()
+            buf += state.tail()[:index]
+            state.index += index
+            return buf
+        state.load()

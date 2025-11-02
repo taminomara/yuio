@@ -693,21 +693,33 @@ if os.name == "posix":
     import tty
 
     @contextlib.contextmanager
-    def _enter_raw_mode(stream: _t.TextIO, bracketed_paste: bool = False):
+    def _enter_raw_mode(
+        stream: _t.TextIO, bracketed_paste: bool = False, modify_keyboard: bool = False
+    ):
         assert sys.__stdin__ is not None
 
         prev_mode = termios.tcgetattr(sys.__stdin__)
         tty.setcbreak(sys.__stdin__, termios.TCSANOW)
 
+        prologue = []
         if bracketed_paste:
-            stream.write("\x1b[?2004h")
+            prologue.append("\x1b[?2004h")
+        if modify_keyboard:
+            prologue.append("\033[>4;2m")
+        if prologue:
+            stream.write("".join(prologue))
             stream.flush()
 
         try:
             yield
         finally:
+            epilogue = []
             if bracketed_paste:
-                stream.write("\x1b[?2004l")
+                epilogue.append("\x1b[?2004l")
+            if modify_keyboard:
+                epilogue.append("\033[>4m")
+            if epilogue:
+                stream.write("".join(epilogue))
                 stream.flush()
             termios.tcsetattr(sys.__stdin__, termios.TCSAFLUSH, prev_mode)
 
@@ -767,7 +779,9 @@ elif os.name == "nt":
         _ISTREAM_HANDLE = None
 
     @contextlib.contextmanager
-    def _enter_raw_mode(stream: _t.TextIO, bracketed_paste: bool = False):
+    def _enter_raw_mode(
+        stream: _t.TextIO, bracketed_paste: bool = False, modify_keyboard: bool = False
+    ):
         assert _ISTREAM_HANDLE is not None
 
         mode = ctypes.wintypes.DWORD()
@@ -836,7 +850,9 @@ elif os.name == "nt":
 else:
 
     @contextlib.contextmanager
-    def _enter_raw_mode(stream: _t.TextIO, bracketed_paste: bool = False):
+    def _enter_raw_mode(
+        stream: _t.TextIO, bracketed_paste: bool = False, modify_keyboard: bool = False
+    ):
         raise OSError("not supported")
         yield
 
