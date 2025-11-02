@@ -112,20 +112,26 @@ Install ``yuio`` with pip:
 Or just copy-paste the ``yuio`` directory to somewhere in the ``PYTHONPATH`` of your project.
 
 
-Examples
---------
-
-See examples at `taminomara/yuio`_.
-
-.. _taminomara/yuio: https://github.com/taminomara/yuio/blob/main/examples/
-
-
 Contents
 --------
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     by_example/index
     main_features/index
     internals/index
+
+.. toctree::
+    :hidden:
+    :caption: Links
+
+    GitHub <https://github.com/taminomara/yuio>
+
+
+More examples
+-------------
+
+See more examples at `taminomara/yuio`_.
+
+.. _taminomara/yuio: https://github.com/taminomara/yuio/blob/main/examples/

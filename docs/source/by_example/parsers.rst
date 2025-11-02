@@ -1,7 +1,7 @@
 Parsing user input
 ==================
 
-Introduction to parsers and :mod:`yuio.parse`.
+    Introduction to parsers and :mod:`yuio.parse`.
 
 Parsers control how Yuio interprets user input; they provide hints about which widgets
 to use, how to do autocompletion, and so on. Every time you get data from user,
@@ -18,6 +18,7 @@ Parser classes are located in :mod:`yuio.parse`. Let's make a simple parser
 for positive integers:
 
 .. code-block:: python
+    :emphasize-lines: 3
 
     import yuio.parse
 
@@ -81,13 +82,7 @@ when it comes to constraints or validation. You'll have to use
 
 Here, we've created a parser for dictionaries that map strings to *positive ints*.
 Technically, Yuio will derive a parser from ``int``, then it will apply
-``yuio.parse.Gt(0)`` on top of it::
-
-    >>> parser = yuio.parse.from_type_hint(type_hint)
-    >>> parser.parse("x:-5")
-    Traceback (most recent call last):
-    ...
-    yuio.parse.ParsingError: value should be greater than 0, got -5 instead
+``yuio.parse.Gt(0)`` on top of it.
 
 Notice that we didn't specify inner parser for :class:`~yuio.parse.Gt`.
 This is because its internal parser will be derived from type hint,
@@ -207,7 +202,7 @@ While Yuio supports parsing collections, it doesn't provide a fully capable
 context-free parser; instead, it relies on splitting string by delimiters,
 which can be limiting.
 
-To enable parsing more complex structures, Yuio provides a :class:`yuio.parse.Json`.
+To enable parsing more complex structures, Yuio has :class:`yuio.parse.Json` parser.
 
 It can be used on its own:
 
@@ -280,7 +275,7 @@ Validating parsers
 ------------------
 
 Yuio provides :ref:`a variety <validating-parsers>` of parsers that validate
-user input. If' however, you need a more complex validating procedure,
+user input. If, however, you need a more complex validating procedure,
 you can use :class:`yuio.parse.Apply` with a custom function that throws
 :class:`yuio.parse.ParsingError` if validation fails.
 
@@ -293,6 +288,7 @@ For example, let's make a parser that checks if the input is even:
         :sync: parsers
 
         .. code-block:: python
+            :emphasize-lines: 7
 
             def assert_is_even(value: int):
                 if value % 2 != 0:
@@ -357,7 +353,7 @@ You can also use :class:`yuio.parse.Map` to implement a custom mutation.
 
 Note that parsers need to convert parsed values back to their original form
 when printing them, building documentation, or converting to JSON. For this reason,
-:class:`yuio.parse.Map` allows specifying a function to undo the change:
+:class:`~yuio.parse.Map` allows specifying a function to undo the change:
 
 .. invisible-code-block: python
 
@@ -394,3 +390,55 @@ when printing them, building documentation, or converting to JSON. For this reas
             1024
             >>> parser.describe_value_or_def(1024)
             '10'
+
+
+Union parsers
+-------------
+
+Yuio supports parsing unions of types:
+
+.. tab-set::
+    :sync-group: parser-usage
+
+    .. tab-item:: Parsers
+        :sync: parsers
+
+        ::
+
+            >>> parser = yuio.parse.Union(yuio.parse.Int(), yuio.parse.Str())
+            >>> parser.parse("10")
+            10
+            >>> parser.parse("kitten")
+            'kitten'
+
+    .. tab-item:: Annotations
+        :sync: annotations
+
+        ::
+
+            >>> parser = yuio.parse.from_type_hint(int | str)
+            >>> parser.parse("10")
+            10
+            >>> parser.parse("kitten")
+            'kitten'
+
+.. warning::
+
+    Order of parsers matters. Since parsers are tried in the same order as they're
+    given, make sure to put parsers that are likely to succeed at the end.
+
+    For example, this parser will always return a string because
+    :class:`~yuio.parse.Str` can't fail::
+
+        >>> parser = yuio.parse.Union(yuio.parse.Str(), yuio.parse.Int())  # Always returns a string!
+        >>> parser.parse("10")
+        '10'
+
+    To fix this, put :class:`~yuio.parse.Str` at the end so that
+    :class:`~yuio.parse.Int` is tried first::
+
+        >>> parser = yuio.parse.Union(yuio.parse.Int(), yuio.parse.Str())
+        >>> parser.parse("10")
+        10
+        >>> parser.parse("not an int")
+        'not an int'

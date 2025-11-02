@@ -1,7 +1,7 @@
 Command line interfaces
 ========================
 
-Exploring Yuio apps deeper.
+    Exploring Yuio apps deeper.
 
 
 Creating and using apps
@@ -53,6 +53,7 @@ By default, all CLI arguments become flags. You can turn them into positionals
 by using :func:`yuio.app.positional`:
 
 .. code-block:: python
+    :emphasize-lines: 4
 
     @yuio.app.app
     def main(
@@ -70,6 +71,7 @@ For this, create a :class:`yuio.app.MutuallyExclusiveGroup` and pass it to
 all such arguments:
 
 .. code-block:: python
+    :emphasize-lines: 1,6-8
 
     GROUP = yuio.app.MutuallyExclusiveGroup()
 
@@ -96,6 +98,14 @@ CLI arguments into sections:
 
 Notice that we use :func:`yuio.app.inline` to inline config field names
 without prefixing them with ``--executor-config-...``.
+
+.. vhs-inline::
+    :scale: 40%
+
+    Source "docs/source/_tapes/_config_by_example.tape"
+    Type "python -m cli_code.config -h | less -R"
+    Enter
+    Sleep 6s
 
 
 Subcommands
@@ -142,9 +152,9 @@ This will result in the following help message:
 Autocompletion
 --------------
 
-Yuio can generate autocompletion for Bash, Fish and Zsh. It installs completions
-automatically, without any need to pipe shell scripts into specific files.
-Just run your app with ``--completions`` flag:
+Yuio can generate autocompletion for Bash, Fish, Zsh, and PowerShell.
+It installs completions automatically, without any need to pipe shell scripts
+into specific files. Just run your app with ``--completions`` flag:
 
 .. code-block:: console
 
@@ -160,6 +170,7 @@ Just run your app with ``--completions`` flag:
     Show
     Type "./app --completions"
     Enter
+    Wait
     Sleep 6s
     Hide
     Type "zsh -li"
@@ -183,8 +194,7 @@ Just run your app with ``--completions`` flag:
     Sleep 100ms
     Type " b"
     Enter
-    Sleep 4s
+    Sleep 6s
     Hide
     Type "rm -rf ./.vhs_tmp"
     Enter
-    Show

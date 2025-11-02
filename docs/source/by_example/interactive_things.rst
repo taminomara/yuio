@@ -1,13 +1,13 @@
 Interacting with user
 =====================
 
-Everything about :mod:`yuio.io` and Yuio's interactive capabilities.
+    Everything about :mod:`yuio.io` and Yuio's interactive capabilities.
 
 
 Printing messages
 -----------------
 
-Yuio offers a logging-like functions to print different sorts of messages:
+Yuio offers a logging-like functions to print messages:
 
 .. literalinclude:: interactive_things_code/printing.py
     :language: python
@@ -53,7 +53,7 @@ a formal or an informal greeting:
 .. literalinclude:: interactive_things_code/querying.py
     :language: python
     :lines: 1-16
-    :emphasize-lines: 5,12,13
+    :emphasize-lines: 5,11-15
 
 We've used :func:`yuio.io.ask` to get data from the user. It's like :func:`input`,
 but automatically parses the user input, and can use different widgets based
@@ -85,13 +85,17 @@ Suppose you have some long-running job, and you want to indicate that it is runn
 
 .. literalinclude:: interactive_things_code/task.py
     :language: python
-    :emphasize-lines: 7
+    :lines: 7-8
+    :dedent:
+    :emphasize-lines: 1
 
 And if the job can report its progress, we can even show a progressbar:
 
 .. literalinclude:: interactive_things_code/progress.py
     :language: python
-    :emphasize-lines: 9,11,12
+    :lines: 9-14
+    :dedent:
+    :emphasize-lines: 1,3-4
 
 :class:`~yuio.io.Task` has lots of helper methods on it. For example, the above code
 can be simplified using :meth:`yuio.io.Task.iter`: a function that automatically
@@ -116,6 +120,7 @@ a commit message? Yuio can do the same:
     :language: python
     :lines: 6-12
     :dedent:
+    :emphasize-lines: 1-5
 
 
 Logging
@@ -127,6 +132,7 @@ from ``WARNING`` to ``DEBUG``:
 
 .. literalinclude:: interactive_things_code/logging.py
     :language: python
+    :emphasize-lines: 4,8-9
 
 This is how verbose output will look like:
 
@@ -159,6 +165,13 @@ does just that:
     :emphasize-lines: 2
     :dedent:
 
+
+.. tip::
+
+    :mod:`yuio.exec` provides a simple wrapper around :mod:`subprocess` that will
+    log process' ``stderr``, and return process' ``stdout``.
+
+
 :class:`yuio.io.SuspendOutput` will disable all output, including prints
 and writes to :data:`sys.stderr` and :data:`sys.stdout`. To bypass it,
 use :func:`yuio.io.orig_stderr`, :func:`yuio.io.orig_stdout`, and methods
@@ -178,8 +191,3 @@ Here's a more complicated example:
     Type "python -m interactive_things_code.suspend_complex"
     Enter
     Sleep 6s
-
-.. note::
-
-    :mod:`yuio.exec` provides a simple wrapper around :mod:`subprocess` that will
-    log process' ``stderr``, and return process' ``stdout``.

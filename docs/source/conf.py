@@ -32,22 +32,32 @@ intersphinx_mapping = {
     "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
 }
 nitpick_ignore_regex = [
-    (r"py:class", r"(.*\.)?([A-Z]{1,2}|[A-Z]+_co|Cmp|SupportsLt|Sz|TAst|_[^.]*)")
+    (r"py:obj", r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|_[^.]*)"),
+    (r"py:class", r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|_[^.]*)"),
 ]
 autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"
 autodoc_inherit_docstrings = False
 autodoc_type_aliases = {
-    "ActionKey": "yuio.widget.ActionKey",
-    "ActionKeys": "yuio.widget.ActionKeys",
-    "Action": "yuio.widget.Action",
-    # "RawString": "yuio.term.RawString",
-    # "AnyString": "yuio.term.AnyString",
-    # "JsonValue": "yuio.json_schema.JsonValue",
-    # "Disabled": "yuio.DISABLED",
-    # "Missing": "yuio.MISSING",
-    # "Positional": "yuio.POSITIONAL",
-    # "Omit": "yuio.OMIT",
+    "yuio.Disabled": "~yuio.DISABLED",
+    "yuio.Missing": "~yuio.MISSING",
+    "yuio.Positional": "~yuio.POSITIONAL",
+    "yuio.Omit": "~yuio.OMIT",
+    **{
+        name: path
+        for path in [
+            "~yuio.widget.ActionKey",
+            "~yuio.widget.ActionKeys",
+            "~yuio.widget.Action",
+            "~yuio.term.RawString",
+            "~yuio.term.AnyString",
+            "~yuio.json_schema.JsonValue",
+        ]
+        for name in [
+            path.rsplit(".", maxsplit=1)[-1].removeprefix("~"),
+            path.removeprefix("~"),
+        ]
+    },
 }
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
@@ -70,3 +80,35 @@ html_theme_options = {
     "source_branch": "main",
     "source_directory": "docs/source",
 }
+
+# fmt: off
+from sphinx.util import inspect
+
+
+# See https://github.com/sphinx-doc/sphinx/issues/14003
+class TypeAliasForwardRef(inspect.TypeAliasForwardRef):
+    def __repr__(self) -> str:
+        return self.name
+
+    def __or__(self, value):
+        import typing
+        return typing.Union[self, value]  # type: ignore
+
+    def __ror__(self, value):
+        import typing
+        return typing.Union[value, self]  # type: ignore
+
+inspect.TypeAliasForwardRef = TypeAliasForwardRef
+del TypeAliasForwardRef
+del inspect
+
+# See https://github.com/sphinx-doc/sphinx/issues/14005
+import sphinx.domains.python._annotations
+from sphinx.domains.python._annotations import parse_reftarget as _parse_reftarget
+
+
+def parse_reftarget(*args, **kwargs):
+    _, reftarget, title, refspecific = _parse_reftarget(*args, **kwargs)
+    return "obj", reftarget, title, refspecific
+sphinx.domains.python._annotations.parse_reftarget = parse_reftarget
+# fmt: on

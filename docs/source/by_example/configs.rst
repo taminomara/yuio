@@ -1,13 +1,19 @@
 Configs
 =======
 
-Adding configuration for our app.
+    Working with configuration files.
+
+
+.. invisible-code-block: python
+
+    from typing import Annotated
+    import yuio.app
 
 
 Defining a config
 -----------------
 
-Last time we've make an app for greeting users. Let's add a config for it:
+Let's create a config for our :doc:`hello world app <hello_world>`:
 
 .. code-block:: python
 
@@ -32,10 +38,7 @@ We can use parsers described in the previous chapter to customize parsing
 of config fields:
 
 .. code-block:: python
-
-    from typing import Annotated
-    import yuio.config
-    import yuio.parse
+    :emphasize-lines: 3
 
     class Config(yuio.config.Config):
         #: number of threads to use for executing model
@@ -51,6 +54,7 @@ Let's load our config. We can load it from a file, from environment variables,
 and from CLI arguments:
 
 .. code-block:: python
+    :emphasize-lines: 4-6
 
     @yuio.app.app
     def main(cli_config: Config = yuio.app.field(flags=["--cfg"])):
@@ -60,6 +64,24 @@ and from CLI arguments:
         config.update(cli_config)
 
 We simply load configs from all available sources and merge them together.
+
+Note that :meth:`~yuio.config.Config.update` will not override fields that have
+defaults, but aren't present in a particular config instance. This makes it safe
+to merge configs in such a way::
+
+    >>> class Config(yuio.config.Config):
+    ...     a: str = "default a"
+    ...     b: str = "default b"
+
+    >>> config_1 = Config(a="custom a", b="custom b")
+
+    >>> # Here, `config_1.b` is not overridden, even though it has default.
+    >>> config_1.update(Config(a="custom a 2"))
+    >>> config_1
+    Config(
+      a='custom a 2',
+      b='custom b'
+    )
 
 
 Adding verification
@@ -127,7 +149,7 @@ You can adjust names of config fields when loading configs from CLI arguments
 or environment variables:
 
 .. code-block:: python
-    :emphasize-lines: 4,5,10,11
+    :emphasize-lines: 5-6,11-12
 
     class Config(yuio.config.Config):
         #: whether to use formal or informal template
@@ -190,11 +212,14 @@ Configs can be nested:
 
 When loading from file, nested configs are parsed from nested objects:
 
-.. code-block:: yaml
+.. code-block:: json
 
-    executor:
-        threads: 16
-        gpu: true
+    {
+        "executor": {
+            "threads": 16,
+            "gpu": true
+        }
+    }
 
 When loading from environment or CLI, names for fields of the nested config
 will be prefixed by the name of its field in the parent config. In our example,
@@ -204,6 +229,7 @@ and environment variable ``EXECUTOR_THREADS``.
 You can change the prefixes by overriding field's name in the parent config:
 
 .. code-block:: python
+    :emphasize-lines: 4-5
 
     class AppConfig(yuio.config.Config):
         #: executor options
@@ -215,6 +241,7 @@ You can change the prefixes by overriding field's name in the parent config:
 You can also disable prefixing by using :func:`yuio.config.inline <yuio.app.inline>`:
 
 .. code-block:: python
+    :emphasize-lines: 3
 
     class AppConfig(yuio.config.Config):
         #: executor options

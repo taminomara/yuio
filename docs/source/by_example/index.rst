@@ -11,7 +11,7 @@ A simple step-by-step guide that will walk you through Yuio's essentials.
     __ https://github.com/taminomara/yuio/issues
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     hello_world
     interactive_things

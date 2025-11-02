@@ -9,7 +9,7 @@ def main():
         time.sleep(1)
 
         # All progress bars, prints, and so on are suspended
-        # while `git status` runs.
+        # inside of this context manager.
         with yuio.io.SuspendOutput() as o:
             # But you can manually bypass output suspension.
             o.info("Running `git status`:")
