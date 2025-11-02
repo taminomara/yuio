@@ -233,7 +233,7 @@ class JsonSchemaContext:
         """
 
         schema: dict[str, JsonValue] = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$schema": "https://json-schema.org/draft-07/schema",
         }
         if id:
             schema["$id"] = id
@@ -353,7 +353,7 @@ class Tuple(JsonSchemaType):
 
     """
 
-    items: list[JsonSchemaType]
+    items: _t.Sequence[JsonSchemaType]
     """
     Types of tuple elements.
 
@@ -362,8 +362,8 @@ class Tuple(JsonSchemaType):
     def render(self) -> dict[str, JsonValue]:
         return {
             "type": "array",
-            "items": False,
-            "prefixItems": [item.render() for item in self.items],
+            "items": [item.render() for item in self.items],
+            "additionalItems": False,
         }
 
     def remove_opaque(self) -> JsonSchemaType | None:
@@ -535,13 +535,13 @@ class OneOf(JsonSchemaType):
 
     precedence = 2
 
-    items: list[JsonSchemaType]
+    items: _t.Sequence[JsonSchemaType]
     """
     Inner items.
 
     """
 
-    def __new__(cls, items: list[JsonSchemaType]) -> JsonSchemaType:
+    def __new__(cls, items: _t.Sequence[JsonSchemaType]) -> JsonSchemaType:
         flatten: list[JsonSchemaType] = []
         for type in items:
             if isinstance(type, Never):
@@ -584,13 +584,13 @@ class AllOf(JsonSchemaType):
 
     precedence = 1
 
-    items: list[JsonSchemaType]
+    items: _t.Sequence[JsonSchemaType]
     """
     Inner items.
 
     """
 
-    def __new__(cls, items: list[JsonSchemaType]) -> JsonSchemaType:
+    def __new__(cls, items: _t.Sequence[JsonSchemaType]) -> JsonSchemaType:
         flatten: list[JsonSchemaType] = []
         for type in items:
             if isinstance(type, Never):
@@ -633,13 +633,13 @@ class AnyOf(JsonSchemaType):
 
     precedence = 2
 
-    items: list[JsonSchemaType]
+    items: _t.Sequence[JsonSchemaType]
     """
     Inner items.
 
     """
 
-    def __new__(cls, items: list[JsonSchemaType]) -> JsonSchemaType:
+    def __new__(cls, items: _t.Sequence[JsonSchemaType]) -> JsonSchemaType:
         flatten: list[JsonSchemaType] = []
         for type in items:
             if isinstance(type, Never):
@@ -682,29 +682,32 @@ class Enum(JsonSchemaType):
 
     precedence = 2
 
-    constants: list[str | int | float | bool | None]
+    constants: _t.Sequence[str | int | float | bool | None]
     """
     Enum elements.
 
     """
 
-    def render(self) -> dict[str, JsonValue]:
-        types = set()
-        for item in self.constants:
-            if item is None:
-                types.add("null")
-            elif isinstance(item, str):
-                types.add("string")
-            elif isinstance(item, int):
-                types.add("integer")
-            elif isinstance(item, float):
-                types.add("number")
-            elif isinstance(item, bool):
-                types.add("boolean")
-            else:
-                assert False, item
+    descriptions: _t.Sequence[str | None] | None = None
+    """
+    Descriptions for enum items.
 
-        return {"type": list(types), "enum": self.constants}
+    """
+
+    def render(self) -> dict[str, JsonValue]:
+        if self.descriptions is None:
+            return {"enum": list(self.constants)}
+        else:
+            assert len(self.descriptions) == len(self.constants)
+            return {
+                "oneOf": [
+                    {
+                        "const": const,
+                        **({"description": description} if description else {}),
+                    }
+                    for const, description in zip(self.constants, self.descriptions)
+                ]
+            }
 
     def pprint(self) -> str:
         return " | ".join(f"{json.dumps(item)}" for item in self.constants)

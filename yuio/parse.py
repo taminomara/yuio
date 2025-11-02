@@ -1939,14 +1939,19 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
+        items = [self.__getter(e) for e in self._inner]
+        docs = self.__docs
+        descriptions = [docs.get(e.name) for e in self._inner]
+        if not any(descriptions):
+            descriptions = None
         if self.__doc_inline:
-            return yuio.json_schema.Enum([self.__getter(e) for e in self._inner])
+            return yuio.json_schema.Enum(items, descriptions)
         else:
             return ctx.add_type(
                 Enum._TyWrapper(self._inner, self.__by_name, self.__to_dash_case),
                 _t.type_repr(self._inner),
                 lambda: yuio.json_schema.Meta(
-                    yuio.json_schema.Enum([self.__getter(e) for e in self._inner]),
+                    yuio.json_schema.Enum(items, descriptions),
                     title=self._inner.__name__,
                     description=self._inner.__doc__,
                 ),
