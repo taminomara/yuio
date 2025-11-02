@@ -8,15 +8,20 @@ updates:
       dev:
         patterns:
         - "furo"
+        - "libtmux"
+        - "PyGithub"
         - "pyright"
         - "pytest-cov"
         - "pytest"
         - "PyYaml"
         - "sphinx_design"
+        - "sphinx-autobuild"
         - "sphinx-vhs"
         - "sybil"
         - "toml"
+        - "tox"
         - "typing_extensions"
+        - "virtualenv-pyenv"
       style:
         patterns:
         - "black"

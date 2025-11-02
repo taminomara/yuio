@@ -27,25 +27,27 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest-cov==7.0.0",
-    {include-group = "test"},
-    {include-group = "lint"},
-    {include-group = "doc"},
+    "sphinx-autobuild==2025.8.25",
     {include-group = "ci"},
+    {include-group = "doc"},
+    {include-group = "lint"},
+    {include-group = "test"},
 ]
 test = [
-    "pyright==1.1.407",
-    "pytest==8.4.2",
-    "sybil==9.2.0",
-    "PyYaml==6.0.3",
-    "toml==0.10.2",
     "jsonschema==4.25.1",
+    "libtmux==0.46.2",
+    "pyright==1.1.407",
+    "pytest-cov==7.0.0",
+    "pytest==8.4.2",
+    "PyYaml==6.0.3",
+    "sybil==9.2.0",
+    "toml==0.10.2",
 ]
 doc = [
-    "sybil==9.2.0",
     "furo==2025.9.25",
     "sphinx_design==0.6.1",
     "sphinx-vhs==1.2.0",
+    "sybil==9.2.0",
 ]
 lint = [
     "black==25.9.0",
@@ -53,8 +55,8 @@ lint = [
     "pre-commit==4.3.0",
 ]
 ci = [
-    "tox==4.30.3",
     "PyGithub==2.8.1",
+    "tox==4.30.3",
     "virtualenv-pyenv==0.5.0",
 ]
 
@@ -125,3 +127,7 @@ force-exclude = '^(/docs/source/by_example/.*|/yuio/_version.py|/yuio/_vendor/.*
 profile = "black"
 extend_skip_glob = ["docs/source/by_example/*", "yuio/_vendor/*"]
 skip_gitignore = true
+
+[tool.coverage.run]
+include = ["yuio/**/*.py"]
+omit = ["yuio/dbg/*.py", "yuio/_*.py", "yuio/_vendor/**/*.py"]

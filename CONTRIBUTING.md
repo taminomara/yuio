@@ -42,7 +42,7 @@ To generate HTML coverage report
 (will be available in the `htmlcov` directory):
 
 ```shell
-pytest --cov=yuio --cov-report=html  # Generate coverage.
+pytest --cov --cov-report=html  # Generate coverage.
 open ./htmlcov/index.html  # Open the generated page.
 ```
 
