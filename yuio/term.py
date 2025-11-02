@@ -110,6 +110,7 @@ import enum
 import functools
 import os
 import re
+import shutil
 import sys
 import typing
 import unicodedata
@@ -444,7 +445,7 @@ def get_term_from_stream(
     has_interactive_input = _is_interactive_input(istream)
     is_foreground = _is_foreground(ostream) and _is_foreground(istream)
     in_ci = detect_ci()
-    color_support = detect_ci_color_support()
+    color_support = ColorSupport.NONE
     if (
         "--force-color" in sys.argv
         or "--force-colors" in sys.argv
@@ -453,13 +454,22 @@ def get_term_from_stream(
     ):
         color_support = ColorSupport.ANSI
     if has_interactive_output:
-        if os.name == "nt":
+        if in_ci:
+            color_support = detect_ci_color_support()
+        elif os.name == "nt":
             if _enable_vt_processing(ostream):
                 color_support = ColorSupport.ANSI_TRUE
         elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
             color_support = ColorSupport.ANSI_TRUE
         elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
-            color_support = ColorSupport.ANSI_256
+            if (
+                os.name == "posix"
+                and term == "xterm-256color"
+                and shutil.which("wslinfo")
+            ):
+                color_support = ColorSupport.ANSI_TRUE
+            else:
+                color_support = ColorSupport.ANSI_256
         elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
             color_support = ColorSupport.ANSI
 
