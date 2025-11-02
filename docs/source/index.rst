@@ -23,8 +23,6 @@ Yuio got you.
     import yuio.term
     import yuio.io
 
-    yuio.io.setup(term=yuio.term.Term(io.StringIO(), io.StringIO()))
-
 
 Features
 --------
