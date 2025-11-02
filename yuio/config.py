@@ -783,6 +783,8 @@ class Config:
 
     .. automethod:: to_json_schema
 
+    .. automethod:: to_json_value
+
     .. automethod:: validate_config
 
     """
@@ -802,7 +804,6 @@ class Config:
             docs = {}
 
         fields = {}
-        defaults = {}
 
         for base in reversed(cls.__mro__):
             if base is not cls and hasattr(base, "_Config__get_fields"):
@@ -819,33 +820,17 @@ class Config:
                 ) from None
             raise
 
-        for name in cls.__annotations__:
-            if name.startswith("_"):
-                continue
+        for name, field in cls.__gathered_fields.items():
+            if not isinstance(field, _FieldSettings):
+                field = _FieldSettings(default=field)
 
-            value = cls.__dict__.get(name, yuio.MISSING)
-            if isinstance(value, _FieldSettings):
-                field = value
-            else:
-                field = _FieldSettings(default=value)
-
-            fields[name] = full_field = field._update_defaults(
+            fields[name] = field._update_defaults(
                 f"{cls.__qualname__}.{name}",
                 name,
                 types[name],
                 docs.get(name),
                 cls.__allow_positionals,
             )
-            if full_field.is_subconfig:
-                defaults[name] = full_field.ty
-            else:
-                defaults[name] = full_field.default
-
-        # We don't want to set any attributes on cls if any `_update_defaults` has
-        # raised an exception. For this reason, we defer setting defaults
-        # until all fields were processed.
-        for name, default in defaults.items():
-            setattr(cls, name, default)
         cls.__fields = fields
 
         return fields
@@ -856,6 +841,21 @@ class Config:
         if _allow_positionals is not None:
             cls.__allow_positionals: bool = _allow_positionals
         cls.__fields: dict[str, _Field] | None = None
+
+        cls.__gathered_fields: dict[str, _FieldSettings | _t.Any] = {}
+        for name in cls.__annotations__:
+            if not name.startswith("_"):
+                cls.__gathered_fields[name] = cls.__dict__.get(name, yuio.MISSING)
+        for name, value in cls.__dict__.items():
+            if isinstance(value, _FieldSettings) and name not in cls.__gathered_fields:
+                qualname = f"{cls.__qualname__}.{name}"
+                raise TypeError(
+                    f"error in {qualname}: field without annotations is not allowed"
+                )
+        for name, value in cls.__gathered_fields.items():
+            if isinstance(value, _FieldSettings):
+                value = value.default
+            setattr(cls, name, value)
 
     def __init__(self, *args: _t.Self | dict[str, _t.Any], **kwargs):
         for name, field in self.__get_fields().items():
