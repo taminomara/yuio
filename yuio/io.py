@@ -50,6 +50,10 @@ To print messages for the user, use these functions:
 
 .. autofunction:: success
 
+.. autofunction:: failure
+
+.. autofunction:: failure_with_tb
+
 .. autofunction:: error
 
 .. autofunction:: error_with_tb
@@ -58,9 +62,13 @@ To print messages for the user, use these functions:
 
 .. autofunction:: md
 
+.. autofunction:: hl
+
 .. autofunction:: br
 
 .. autofunction:: raw
+
+.. autofunction:: out
 
 
 .. _color-tags:
@@ -109,8 +117,7 @@ Indicating progress
 You can use the :class:`Task` class to indicate status and progress
 of some task:
 
-.. autoclass:: Task
-
+.. autoclass:: Task(msg: str, /, *args, comment: str | None = None)
 
    .. automethod:: progress
 
@@ -157,25 +164,33 @@ using the :class:`SuspendOutput` context manager.
 
 .. autoclass:: SuspendOutput
 
-   .. automethod:: resume
+    .. automethod:: resume
 
-   .. automethod:: info
+    .. automethod:: info
 
-   .. automethod:: warning
+    .. automethod:: warning
 
-   .. automethod:: success
+    .. automethod:: success
 
-   .. automethod:: error
+    .. automethod:: failure
 
-   .. automethod:: error_with_tb
+    .. automethod:: failure_with_tb
 
-   .. automethod:: heading
+    .. automethod:: error
 
-   .. automethod:: md
+    .. automethod:: error_with_tb
 
-   .. automethod:: br
+    .. automethod:: heading
 
-   .. automethod:: raw
+    .. automethod:: md
+
+    .. automethod:: hl
+
+    .. automethod:: br
+
+    .. automethod:: raw
+
+    .. automethod:: out
 
 
 Python's `logging` and yuio
@@ -235,8 +250,10 @@ __all__ = [
     "failure_with_tb",
     "heading",
     "md",
+    "hl",
     "br",
     "raw",
+    "out",
     "ask",
     "wait_for_user",
     "detect_editor",
@@ -418,42 +435,78 @@ def streams_wrapped() -> bool:
 
 def orig_stderr() -> _t.TextIO:
     """
-    Return the original :data:`sys.stderr` before wrapping."""
+    Return the original :data:`sys.stderr` before wrapping.
+
+    """
 
     return _ORIG_STDERR or sys.stderr
 
 
 def orig_stdout() -> _t.TextIO:
     """
-    Return the original :data:`sys.stdout` before wrapping."""
+    Return the original :data:`sys.stdout` before wrapping.
+
+    """
 
     return _ORIG_STDOUT or sys.stdout
 
 
 def info(msg: str, /, *args, **kwargs):
+    """info(msg: str, /, *args)
+
+    Print an info message.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
     """
-    Print an info message."""
 
     _manager().print_msg(msg, args, "info", **kwargs)
 
 
 def warning(msg: str, /, *args, **kwargs):
+    """warning(msg: str, /, *args)
+
+    Print a warning message.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
     """
-    Print a warning message."""
 
     _manager().print_msg(msg, args, "warning", **kwargs)
 
 
 def success(msg: str, /, *args, **kwargs):
+    """success(msg: str, /, *args)
+
+    Print a success message.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
     """
-    Print a success message."""
 
     _manager().print_msg(msg, args, "success", **kwargs)
 
 
 def error(msg: str, /, *args, **kwargs):
+    """error(msg: str, /, *args)
+
+    Print an error message.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
     """
-    Print an error message."""
 
     _manager().print_msg(msg, args, "error", **kwargs)
 
@@ -461,13 +514,18 @@ def error(msg: str, /, *args, **kwargs):
 def error_with_tb(
     msg: str, /, *args, exc_info: _ExcInfo | bool | None = True, **kwargs
 ):
-    """
+    """error_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
+
     Print an error message and capture the current exception.
 
     Call this function in the ``except`` clause of a ``try`` block
     or in an ``__exit__`` function of a context manager to attach
     current exception details to the log message.
 
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
     :param exc_info:
         either a boolean indicating that the current exception
         should be captured (default is :data:`True`), or a tuple
@@ -479,8 +537,16 @@ def error_with_tb(
 
 
 def failure(msg: str, /, *args, **kwargs):
+    """failure(msg: str, /, *args)
+
+    Print a failure message.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
     """
-    Print a failure message."""
 
     _manager().print_msg(msg, args, "failure", **kwargs)
 
@@ -488,12 +554,18 @@ def failure(msg: str, /, *args, **kwargs):
 def failure_with_tb(
     msg: str, /, *args, exc_info: _ExcInfo | bool | None = True, **kwargs
 ):
-    """
+    """failure_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
+
     Print a failure message and capture the current exception.
 
     Call this function in the ``except`` clause of a ``try`` block
     or in an ``__exit__`` function of a context manager to attach
     current exception details to the log message.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
 
     :param exc_info:
         either a boolean indicating that the current exception
@@ -506,15 +578,24 @@ def failure_with_tb(
 
 
 def heading(msg: str, /, *args, **kwargs):
+    """heading(msg: str, /, *args)
+
+    Print a heading message.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
     """
-    Print a heading message."""
 
     kwargs.setdefault("heading", True)
     _manager().print_msg(msg, args, "heading/1", **kwargs)
 
 
 def md(msg: str, /, *args, **kwargs):
-    """
+    """md(msg: str, /, *args)
+
     Print a markdown-formatted text.
 
     Yuio supports all CommonMark block markup except tables. Inline markup is limited
@@ -522,20 +603,56 @@ def md(msg: str, /, *args, **kwargs):
 
     See :mod:`yuio.md` for more info.
 
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
     """
 
     _manager().print_md(msg, args, **kwargs)
 
 
-def br(**kwargs):
+def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
+    """hl(msg: str, /, *args, syntax: str)
+
+    Print highlighted code.
+
+    See :mod:`yuio.md` for more info.
+
+    :param msg:
+        code to highlight.
+    :param args:
+        arguments for ``%``\\ -formatting the code.
+
     """
-    Print an empty string."""
+
+    if isinstance(syntax, str):
+        syntax = yuio.md.SyntaxHighlighter.get_highlighter(syntax)
+    highlighted = syntax.highlight(get_theme(), msg)
+    if args:
+        highlighted %= args
+    raw(highlighted, **kwargs)
+
+
+def br(**kwargs):
+    """br()
+
+    Print an empty string.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
+    """
 
     _manager().print_direct("\n", **kwargs)
 
 
 def raw(msg: yuio.term.ColorizedString, /, **kwargs):
-    """
+    """raw(msg: ~yuio.term.ColorizedString, /, *args)
+
     Print a :class:`~yuio.term.ColorizedString`.
 
     This is a bridge between :mod:`yuio.io` and lower-level
@@ -545,9 +662,28 @@ def raw(msg: yuio.term.ColorizedString, /, **kwargs):
     is when you need to build a :class:`~yuio.term.ColorizedString`
     yourself.
 
+    :param msg:
+        message to print.
+
     """
 
     _manager().print_raw(msg, **kwargs)
+
+
+def out(msg: str, /, *args, **kwargs):
+    """out(msg: str, /, *args)
+
+    Like :func:`info`, but sends output to ``stdout`` instead of ``stderr``.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+
+    """
+
+    kwargs.setdefault("to_stdout", True)
+    info(msg, *args, **kwargs)
 
 
 class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
@@ -639,10 +775,13 @@ class _AskMeta(type):
 
 @_t.final
 class ask(_t.Generic[S], metaclass=_AskMeta):
-    """
+    """ask(msg: str, /, *args, input_description: str | None = None) -> str
+    ask[T](msg: str, /, *args, parser: ~yuio.parse.Parser[T], input_description: str | None = None) -> T
+    ask[T](msg: str, /, *args, parser: ~yuio.parse.Parser[T] | None = None, default: U, default_non_interactive: U, input_description: str | None = None, default_description: str | None = None) -> T | U
+
     Ask user to provide an input, parse it and return a value.
 
-    If `stdin` is not readable, return default if one is present,
+    If ``stdin`` is not readable, return default if one is present,
     or raise a :class:`UserIoError`.
 
     .. vhs:: /_tapes/questions.tape
@@ -657,21 +796,10 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
     which will determine the widget that is displayed to the user,
     the way auto completions work, etc.
 
-    Example:
-
-    .. code-block:: python
-
-        class Level(enum.Enum):
-            WARNING = "Warning",
-            INFO = "Info",
-            DEBUG = "Debug",
-
-        answer = ask[Level]('Choose a logging level', default=Level.INFO)
-
     :param msg:
         prompt to display to user.
     :param args:
-        arguments for prompt formatting.
+        arguments for ``%``\\ - formatting the prompt.
     :param parser:
         parser to use to parse user input. See :mod:`yuio.parse` for more info.
     :param default:
@@ -686,6 +814,17 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
         inputs.
     :param default_description:
         description of the `default` value.
+
+    **Example:**
+
+    .. code-block:: python
+
+        class Level(enum.Enum):
+            WARNING = "Warning",
+            INFO = "Info",
+            DEBUG = "Debug",
+
+        answer = ask[Level]('Choose a logging level', default=Level.INFO)
 
     """
 
@@ -824,7 +963,12 @@ def wait_for_user(
     """
     A simple function to wait for user to press enter.
 
-    If `stdin` is not readable, does not do anything.
+    If ``stdin`` is not readable, does not do anything.
+
+    :param msg:
+        prompt to display to user.
+    :param args:
+        arguments for ``%``\\ - formatting the prompt.
 
     """
 
@@ -856,42 +1000,50 @@ def wait_for_user(
             return
 
 
-def detect_editor() -> str | None:
+def detect_editor(fallbacks: list[str] | None = None) -> str | None:
     """
     Detect the user's preferred editor.
 
-    This function checks the ``EDITOR`` environment variable.
-    If it's not found, it checks whether ``nano`` or ``vi``
-    are available. Otherwise, it returns `None`.
+    This function checks the ``VISUAL`` and ``EDITOR`` environment variables.
+    If they're not set, it checks if any of the fallback editors are available.
+    If none can be found, it returns :data:`None`.
+
+    :param fallbacks:
+        list of fallback editors to try. By default, we try "nano", "vim", "vi",
+        "msedit", "edit", "notepad", "gedit".
 
     """
 
-    if editor := os.environ.get("EDITOR"):
-        return editor
-    elif editor := shutil.which("nano"):
-        return editor
-    elif editor := shutil.which("vi"):
-        return editor
-    elif editor := shutil.which("notepad.exe"):
-        return editor
-    else:
-        return None
+    if os.name != "nt":
+        if editor := os.environ.get("VISUAL"):
+            return editor
+        elif editor := os.environ.get("EDITOR"):
+            return editor
+
+    if fallbacks is None:
+        fallbacks = ["nano", "vim", "vi", "msedit", "edit", "notepad", "gedit"]
+    for fallback in fallbacks:
+        if shutil.which(fallback):
+            return fallback
+    return None
 
 
 def edit(
     text: str,
     /,
     *,
-    comment_marker: str | None = "#",
+    comment_marker: str | None = None,
     editor: str | None = None,
-    file_ext: str | None = None,
+    file_ext: str = ".txt",
+    fallbacks: list[str] | None = None,
+    check_saved: bool = True,
 ) -> str:
     """
     Ask user to edit some text.
 
     This function creates a temporary file with the given text
     and opens it in an editor. After editing is done, it strips away
-    all lines that start with `comment_marker`, if one is given.
+    all lines that start with ``comment_marker``, if one is given.
 
     If editor is not available or returns a non-zero exit code,
     a :class:`UserIoError` is raised.
@@ -899,11 +1051,23 @@ def edit(
     If launched in a non-interactive environment, returns the text
     unedited (comments are still removed, though).
 
+    :param text:
+        text to edit.
+    :param comment_marker:
+        lines starting with this marker will be removed from the output after edit.
+    :param editor:
+        overrides shell command for editor.
+    :param file_ext:
+        extension for the temporary file, can be used to enable syntax highlighting
+        in editors that support it.
+    :param fallbacks:
+        list of fallback editors to try, see :func:`detect_editor` for details.
+
     """
 
     if _manager().term.is_fully_interactive:
         if editor is None:
-            editor = detect_editor()
+            editor = detect_editor(fallbacks)
 
         if editor is None:
             raise UserIoError(
@@ -917,9 +1081,23 @@ def edit(
             with open(fd, "w") as file:
                 file.write(text)
 
+            if os.name == "nt":
+                # Windows doesn't use $VISUAL/$EDITOR, so shell execution is not needed.
+                # Plus, quoting arguments for CMD.exe is hard af.
+                args = [editor, filepath]
+                shell = False
+            else:
+                # $VISUAL/$EDITOR can include flags, so we need to use shell instead.
+                try:
+                    from shlex import quote
+                except ImportError:
+                    from pipes import quote
+                args = f"{editor} {quote(filepath)}"
+                shell = True
+
             try:
                 with SuspendOutput():
-                    res = subprocess.run(f'{editor} "{filepath}"', shell=True)
+                    res = subprocess.run(args, shell=shell)
             except FileNotFoundError:
                 raise UserIoError(
                     "can't use this editor, ensure that the $EDITOR "
@@ -928,7 +1106,10 @@ def edit(
                 )
 
             if res.returncode != 0:
-                raise UserIoError("editing failed")
+                raise UserIoError(
+                    f"editing failed: editor {editor!r} "
+                    f"returned exit code {res.returncode}"
+                )
 
             if not os.path.exists(filepath):
                 text = ""
@@ -971,7 +1152,9 @@ class SuspendOutput:
 
     def resume(self):
         """
-        Manually resume the logging process."""
+        Manually resume the logging process.
+
+        """
 
         if not self._resumed:
             _manager().resume()
@@ -979,91 +1162,146 @@ class SuspendOutput:
 
     @staticmethod
     def info(msg: str, /, *args, **kwargs):
+        """info(msg: str, /, *args)
+
+        Log an :func:`info` message, ignore suspended status.
+
         """
-        Log an :func:`info` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         info(msg, *args, **kwargs)
 
     @staticmethod
     def warning(msg: str, /, *args, **kwargs):
+        """warning(msg: str, /, *args)
+
+        Log a :func:`warning` message, ignore suspended status.
+
         """
-        Log a :func:`warning` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         warning(msg, *args, **kwargs)
 
     @staticmethod
     def success(msg: str, /, *args, **kwargs):
+        """success(msg: str, /, *args)
+
+        Log a :func:`success` message, ignore suspended status.
+
         """
-        Log a :func:`success` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         success(msg, *args, **kwargs)
 
     @staticmethod
     def error(msg: str, /, *args, **kwargs):
+        """error(msg: str, /, *args)
+
+        Log an :func:`error` message, ignore suspended status.
+
         """
-        Log an :func:`error` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         error(msg, *args, **kwargs)
 
     @staticmethod
     def error_with_tb(msg: str, /, *args, **kwargs):
+        """error_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
+
+        Log an :func:`error_with_tb` message, ignore suspended status.
+
         """
-        Log an :func:`error_with_tb` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         error_with_tb(msg, *args, **kwargs)
 
     @staticmethod
     def failure(msg: str, /, *args, **kwargs):
+        """failure(msg: str, /, *args)
+
+        Log a :func:`failure` message, ignore suspended status.
+
         """
-        Log an :func:`failure` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         failure(msg, *args, **kwargs)
 
     @staticmethod
     def failure_with_tb(msg: str, /, *args, **kwargs):
+        """failure_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
+
+        Log a :func:`failure_with_tb` message, ignore suspended status.
+
         """
-        Log an :func:`failure_with_tb` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         failure_with_tb(msg, *args, **kwargs)
 
     @staticmethod
     def heading(msg: str, /, *args, **kwargs):
+        """heading(msg: str, /, *args)
+
+        Log a :func:`heading` message, ignore suspended status.
+
         """
-        Log a :func:`heading` message, ignore suspended status."""
 
         kwargs.setdefault("ignore_suspended", True)
         heading(msg, *args, **kwargs)
 
     @staticmethod
     def md(msg: str, /, *args, **kwargs):
+        """md(msg: str, /, *args)
+
+        Log an :func:`md` message, ignore suspended status.
+
         """
-        Log a markdown-formatted text."""
 
         kwargs.setdefault("ignore_suspended", True)
         md(msg, *args, **kwargs)
 
     @staticmethod
     def br(**kwargs):
+        """br()
+
+        Log a :func:`br` message, ignore suspended status.
+
         """
-        Log an empty string."""
 
         kwargs.setdefault("ignore_suspended", True)
         br(**kwargs)
 
     @staticmethod
-    def raw(msg: yuio.term.ColorizedString, **kwargs):
+    def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
+        """hl(msg: str, /, *args, syntax: str)
+
+        Log an :func:`md` message, ignore suspended status.
+
         """
-        Log a :class:`~yuio.term.ColorizedString`."""
+
+        kwargs.setdefault("ignore_suspended", True)
+        hl(msg, *args, syntax=syntax, **kwargs)
+
+    @staticmethod
+    def raw(msg: yuio.term.ColorizedString, **kwargs):
+        """raw(msg: ~yuio.term.ColorizedString, /, *args)
+
+        Log a :func:`raw` message, ignore suspended status.
+
+        """
 
         kwargs.setdefault("ignore_suspended", True)
         raw(msg, **kwargs)
+
+    @staticmethod
+    def out(msg: str, **kwargs):
+        """out(msg: str, /, *args)
+
+        Log a :func:`str` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault("ignore_suspended", True)
+        out(msg, **kwargs)
 
     def __enter__(self):
         return self
@@ -1097,6 +1335,14 @@ class _IterTask(_t.Generic[T]):
 class Task:
     """
     A class for indicating progress of some task.
+
+    :param msg:
+        task heading.
+    :param args:
+        arguments for ``%``\\ -formatting the task heading.
+    :param comment:
+        comment for the task. Can be specified after creation
+        via the :meth:`~Task.comment` method.
 
     You can have multiple tasks at the same time,
     create subtasks, set task's progress or add a comment about
@@ -1172,13 +1418,35 @@ class Task:
         ndigits: int | None = None,
     ):
         """
+        progress(progress: float | None, /, *, ndigits: int = 2)
+        progress(done: float | int, total: float | int, /, *, unit: str = "", ndigits: int = 0) ->
+
         Indicate progress of this task.
 
-        If given one argument, it is treated as percentage between `0` and `1`.
+        If given one argument, it is treated as percentage between ``0`` and ``1``.
 
         If given two arguments, they are treated as amount of finished work,
-        and a total amount of work. In this case, optional argument `unit`
-        can be used to indicate units, in which amount is calculated::
+        and a total amount of work. In this case, optional argument ``unit``
+        can be used to indicate units, in which amount is calculated.
+
+        If given a single :data:`None`, reset task progress.
+
+        :param progress:
+            a percentage between ``0`` and ``1``, or :data:`None`
+            to reset task progress.
+        :param done:
+            amount of finished work, should be less than or equal to ``total``.
+        :param total:
+            total amount of work.
+        :param unit:
+            unit for measuring progress. Only displayed when progress is given
+            as ``done`` and ``total``.
+        :param ndigits:
+            number of digits to display after a decimal point.
+
+        **Example:**
+
+        .. code-block:: python
 
             with Task("Loading cargo") as task:
                 task.progress(110, 150, unit="Kg")
@@ -1188,8 +1456,6 @@ class Task:
         .. code-block:: text
 
            ■■■■■■■■■■■□□□□ Loading cargo - 110/150Kg
-
-        If given a single :data:`None`, reset task progress.
 
         """
 
@@ -1239,7 +1505,16 @@ class Task:
         """
         Indicate progress of this task using human-readable 1024-based size units.
 
-        Example::
+        :param done:
+            amount of processed data.
+        :param total:
+            total amount of data.
+        :param ndigits:
+            number of digits to display after a decimal point.
+
+        **Example:**
+
+        .. code-block:: python
 
             with Task("Downloading a file") as task:
                 task.progress_size(31.05 * 2**20, 150 * 2**20)
@@ -1287,7 +1562,18 @@ class Task:
         Indicate progress of this task while scaling numbers in accordance
         with SI system.
 
-        Example::
+        :param done:
+            amount of finished work, should be less than or equal to ``total``.
+        :param total:
+            total amount of work.
+        :param unit:
+            unit for measuring progress.
+        :param ndigits:
+            number of digits to display after a decimal point.
+
+        **Example:**
+
+        .. code-block:: python
 
             with Task("Charging a capacitor") as task:
                 task.progress_scale(889.25E-3, 1, unit="V")
@@ -1340,7 +1626,22 @@ class Task:
         Helper for updating progress automatically
         while iterating over a collection.
 
-        For example::
+        :param collection:
+            an iterable collection. Should support returning its length.
+        :param total:
+            total amount of work.
+        :param unit:
+            unit for measuring progress.
+        :param ndigits:
+            number of digits to display after a decimal point.
+
+        **Example:**
+
+        .. invisible-code-block: python
+
+            urls = []
+
+        .. code-block:: python
 
             with Task('Fetching data') as t:
                 for url in t.iter(urls):
@@ -1362,7 +1663,18 @@ class Task:
 
         Comment is displayed after the progress.
 
-        For example::
+        :param comment:
+            comment to display beside task progress.
+        :param args:
+            arguments for ``%``\\ -formatting comment.
+
+        **Example:**
+
+        .. invisible-code-block: python
+
+            urls = []
+
+        .. code-block:: python
 
             with Task('Fetching data') as t:
                 for url in urls:
@@ -1381,21 +1693,35 @@ class Task:
 
     def done(self):
         """
-        Indicate that this task has finished successfully."""
+        Indicate that this task has finished successfully.
+
+        """
 
         _manager().finish_task(self, Task._Status.DONE)
 
     def error(self):
         """
-        Indicate that this task has finished with an error."""
+        Indicate that this task has finished with an error.
+
+        """
 
         _manager().finish_task(self, Task._Status.ERROR)
 
-    def subtask(self, msg: str, /, *args) -> Task:
+    def subtask(self, msg: str, /, *args, comment: str | None = None) -> Task:
         """
-        Create a subtask within this task."""
+        Create a subtask within this task.
 
-        return Task(msg, *args, _parent=self)
+        :param msg:
+            subtask heading.
+        :param args:
+            arguments for ``%``\\ -formatting the subtask heading.
+        :param comment:
+            comment for the task. Can be specified after creation
+            via the :meth:`~Task.comment` method.
+
+        """
+
+        return Task(msg, *args, _parent=self, comment=comment)
 
     def __enter__(self):
         return self
@@ -1409,7 +1735,7 @@ class Task:
 
 class Handler(logging.Handler):
     """
-    A handler that redirects all log messages to yuio.
+    A handler that redirects all log messages to Yuio.
 
     """
 
@@ -1430,6 +1756,9 @@ class _IoManager(abc.ABC):
         enable_bg_updates: bool = True,
     ):
         self.term = term or yuio.term.get_term_from_stream(orig_stderr(), sys.stdin)
+        self.out_term = yuio.term.get_term_from_stream(
+            orig_stdout(), sys.stdin, query_terminal_colors=False
+        )
         if theme is None:
             self.theme = yuio.theme.load(self.term)
         elif isinstance(theme, yuio.theme.Theme):
@@ -1537,12 +1866,18 @@ class _IoManager(abc.ABC):
         exc_info: _ExcInfo | bool | None = None,
         ignore_suspended: bool = False,
         heading: bool = False,
+        term: yuio.term.Term | None = None,
+        to_stdout: bool = False,
     ):
         with _IO_LOCK:
+            if term is None:
+                term = self.out_term if to_stdout else self.term
             col_msg = self._format_msg(
                 msg, args, color or tag, exc_info=exc_info, heading=heading
             )
-            self._emit_lines(col_msg.process_colors(self.term), None, ignore_suspended)
+            self._emit_lines(
+                col_msg.process_colors(term), term.ostream, ignore_suspended
+            )
 
     def print_md(
         self,
@@ -1551,10 +1886,16 @@ class _IoManager(abc.ABC):
         /,
         *,
         ignore_suspended: bool = False,
+        term: yuio.term.Term | None = None,
+        to_stdout: bool = False,
     ):
         with _IO_LOCK:
+            if term is None:
+                term = self.out_term if to_stdout else self.term
             col_md = self._format_md(msg, args)
-            self._emit_lines(col_md.process_colors(self.term), None, ignore_suspended)
+            self._emit_lines(
+                col_md.process_colors(term), term.ostream, ignore_suspended
+            )
 
     def print_rec(
         self,
@@ -1570,9 +1911,13 @@ class _IoManager(abc.ABC):
         /,
         *,
         ignore_suspended: bool = False,
+        term: yuio.term.Term | None = None,
+        to_stdout: bool = False,
     ):
         with _IO_LOCK:
-            self._emit_lines(msg.process_colors(self.term), None, ignore_suspended)
+            if term is None:
+                term = self.out_term if to_stdout else self.term
+            self._emit_lines(msg.process_colors(term), term.ostream, ignore_suspended)
 
     def print_direct(
         self,
