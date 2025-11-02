@@ -681,10 +681,13 @@ class DefaultTheme(Theme):
         #
         # Syntax highlighting
         # -------------------
-        "hl/kwd": "bold",
-        "hl/str": yuio.term.Color.NONE,
-        "hl/str/esc": "bold",
-        "hl/lit": yuio.term.Color.NONE,
+        "hl/kwd": "accent_color",
+        "hl/str": "yellow",
+        "hl/str:sh-usage": yuio.term.Color.NONE,
+        "hl/str/esc": "accent_color_2",
+        "hl/str/esc:sh-usage": yuio.term.Color.NONE,
+        "hl/lit": "accent_color_2",
+        "hl/lit:sh-usage": yuio.term.Color.NONE,
         "hl/punct": "blue",
         "hl/punct:sh-usage": "secondary_color",
         "hl/comment": "secondary_color",
