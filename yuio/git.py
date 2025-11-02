@@ -1215,16 +1215,17 @@ class RefCompleter(yuio.complete.Completer):
     Completes git refs.
 
     :param repo:
-        source of completions.
+        source of completions. If not given, this completer will try to use current
+        directory as a repo root, and fail silently if it's not a repo.
     :param modes:
         which objects to complete.
 
     """
 
-    def __init__(self, repo: Repo, modes: set[RefCompleterMode] | None = None):
+    def __init__(self, repo: Repo | None, modes: set[RefCompleterMode] | None = None):
         super().__init__()
 
-        self._repo = repo
+        self._repo: Repo | None | _t.Literal[False] = repo
         self._modes = modes or {
             RefCompleterMode.BRANCH,
             RefCompleterMode.TAG,
@@ -1232,6 +1233,13 @@ class RefCompleter(yuio.complete.Completer):
         }
 
     def _process(self, collector: yuio.complete.CompletionCollector, /):
+        if self._repo is None:
+            try:
+                self._repo = Repo(pathlib.Path.cwd())
+            except (GitError, OSError):
+                self._repo = False
+        if not self._repo:
+            return
         try:
             if RefCompleterMode.HEAD in self._modes:
                 collector.add_group()
@@ -1331,9 +1339,7 @@ class RefParser(_RefParserImpl[Ref]):
     """
 
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(
-            Repo(pathlib.Path.cwd(), skip_checks=True),
-        )
+        return RefCompleter(None)
 
 
 class TagParser(_RefParserImpl[Tag]):
@@ -1344,10 +1350,7 @@ class TagParser(_RefParserImpl[Tag]):
     """
 
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(
-            Repo(pathlib.Path.cwd(), skip_checks=True),
-            {RefCompleterMode.TAG},
-        )
+        return RefCompleter(None, {RefCompleterMode.TAG})
 
 
 class BranchParser(_RefParserImpl[Branch]):
@@ -1358,10 +1361,7 @@ class BranchParser(_RefParserImpl[Branch]):
     """
 
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(
-            Repo(pathlib.Path.cwd(), skip_checks=True),
-            {RefCompleterMode.BRANCH},
-        )
+        return RefCompleter(None, {RefCompleterMode.BRANCH})
 
 
 class RemoteParser(_RefParserImpl[Remote]):
@@ -1372,10 +1372,7 @@ class RemoteParser(_RefParserImpl[Remote]):
     """
 
     def completer(self) -> yuio.complete.Completer:
-        return RefCompleter(
-            Repo(pathlib.Path.cwd(), skip_checks=True),
-            {RefCompleterMode.REMOTE},
-        )
+        return RefCompleter(None, {RefCompleterMode.REMOTE})
 
 
 yuio.parse.register_type_hint_conversion(
