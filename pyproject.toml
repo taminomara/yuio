@@ -90,7 +90,6 @@ base_python = ["3.10"]
 
 [tool.tox.env.lint]
 description = "Run pre-commit hooks"
-skip_install = true
 dependency_groups = ["lint"]
 commands = [["pre-commit", "run", "--all", "--color=always"]]
 

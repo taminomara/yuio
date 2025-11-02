@@ -1,5 +1,5 @@
-import os
 import pathlib
+import platform
 import sys
 import time
 
@@ -28,7 +28,7 @@ def pane(server: Server, tmp_path, cov):
     yield pane
 
 
-@pytest.mark.skipif(os.name == "nt", reason="windows")
+@pytest.mark.skipif(platform.system() != "Linux", reason="linux only")
 def test_example(pane: Pane, tmp_path, python_path):
     output_path = tmp_path / "output.txt"
     pane.send_keys(
