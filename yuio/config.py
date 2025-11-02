@@ -1402,6 +1402,37 @@ class Config:
 
         return ctx.add_type(cls, _t.type_repr(cls), lambda: cls.__to_json_schema(ctx))
 
+    def to_json_value(
+        self, *, include_defaults: bool = True
+    ) -> yuio.json_schema.JsonValue:
+        """
+        Convert this config to a representation suitable for JSON serialization.
+
+        :param include_defaults:
+            if :data:`False`, default values will be skipped.
+
+        """
+
+        data = {}
+        for name, field in self.__get_fields().items():
+            if not include_defaults and name not in self.__dict__:
+                continue
+            if field.is_subconfig:
+                value = getattr(self, name).to_json_value(
+                    include_defaults=include_defaults
+                )
+                if value:
+                    data[name] = value
+            else:
+                assert field.parser
+                try:
+                    value = getattr(self, name)
+                except AttributeError:
+                    pass
+                else:
+                    data[name] = field.parser.to_json_value(value)
+        return data
+
     @classmethod
     def __to_json_schema(
         cls, ctx: yuio.json_schema.JsonSchemaContext
