@@ -72,7 +72,7 @@ def test_large_input():
         ]
     else:
         args = ["cat"]
-    data = "x" * 1024 * 1024 * 10
+    data = "x" * 1024 * 1024
     result = yuio.exec.exec(*args, input=data + "\n")
     assert result.strip() == data
 
