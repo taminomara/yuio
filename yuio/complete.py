@@ -1067,7 +1067,7 @@ class File(Completer):
                             color_tag = "symlink"
                             dsuffix = "@"
                         elif path.is_file():
-                            if sys.platform != "win32" and os.access(path, os.X_OK):
+                            if os.name != "nt" and os.access(path, os.X_OK):
                                 color_tag = "exec"
                                 dsuffix = "*"
                             else:
@@ -1503,7 +1503,7 @@ def _write_completions(
                 true_prog,
             )
 
-    if sys.platform == "win32":
+    if os.name == "nt":
         data_home = cache_home = config_home = pathlib.Path(
             os.environ.get("LOCALAPPDATA") or (pathlib.Path.home() / "AppData/Local")
         )
@@ -1602,7 +1602,7 @@ def _write_bash_script(
     import yuio.exec
     import yuio.io
 
-    if sys.platform == "win32":
+    if os.name == "nt":
         yuio.io.warning(
             "Skipped <c note>Bash</c>: completion script doesn't support windows"
         )
@@ -1639,7 +1639,7 @@ def _write_zsh_script(
     import yuio.exec
     import yuio.io
 
-    if sys.platform == "win32":
+    if os.name == "nt":
         yuio.io.warning(
             "Skipped <c note>Zsh</c>: completion script doesn't support windows"
         )
@@ -1743,7 +1743,7 @@ def _write_fish_script(
 ):
     import yuio.io
 
-    if sys.platform == "win32":
+    if os.name == "nt":
         yuio.io.warning(
             "Skipped <c note>Fish</c>: completion script doesn't support windows"
         )
