@@ -19,12 +19,12 @@ with the :func:`app` decorator, and use :meth:`App.run` method to start it:
     # Let's define an app with one flag and one positional argument.
     @app
     def main(
-        #: help message for `arg`.
+        #: help message for `arg`
         arg: str = positional(),
-        #: help message for `--flag`.
+        #: help message for `--flag`
         flag: int = 0
     ):
-        """this command does a thing."""
+        """this command does a thing"""
         yuio.io.info("flag=%r, arg=%r", flag, arg)
 
     if __name__ == "__main__":
@@ -41,7 +41,7 @@ right above the field definition (comments must start with ``#:``).
 They are all formatted using Markdown (see :mod:`yuio.md`).
 
 Parsers for CLI argument values are derived from type hints.
-Use the `parser` parameter of the :func:`field` function to override them.
+Use the ``parser`` parameter of the :func:`field` function to override them.
 
 Arguments with bool parsers and parsers that support
 :meth:`parsing collections <yuio.parse.Parser.supports_parse_many>`
@@ -56,7 +56,9 @@ are handled to provide better CLI experience:
     @app
     def main(
         # Will create flags `--verbose` and `--no-verbose`.
-        verbose: bool = True,
+        # Since default is `False`, `--no-verbose` will be hidden from help
+        # to reduce clutter.
+        verbose: bool = False,
 
         # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`
         inputs: list[pathlib.Path] = [],
@@ -354,7 +356,7 @@ def app(
     :param epilog:
         overrides program's epilog, see :attr:`App.epilog`.
     :param version:
-        program's version, will be displayed using the `--version` flag.
+        program's version, will be displayed using the :flag:`--version` flag.
 
     """
 
@@ -469,8 +471,8 @@ class App(_t.Generic[C]):
         """
         Program or subcommand synapsis.
 
-        This string will be colorized according to `bash` syntax,
-        and then it will be ``%``-formatted with a single keyword argument `prog`.
+        This string will be processed using the to ``bash`` syntax,
+        and then it will be ``%``-formatted with a single keyword argument ``prog``.
         If command supports multiple signatures, each of them should be listed
         on a separate string. For example::
 
@@ -484,7 +486,7 @@ class App(_t.Generic[C]):
             ...
             \"\"\"
 
-        By default, generated from CLI flags by argparse.
+        By default, usage is generated from CLI flags.
 
         See `usage <https://docs.python.org/3/library/argparse.html#usage>`_
         in :mod:`argparse`.
@@ -602,7 +604,7 @@ class App(_t.Generic[C]):
 
         self.version: str | None = version
         """
-        If not :data:`None`, add ``--version`` flag to the CLI.
+        If not :data:`None`, add :flag:`--version` flag to the CLI.
 
         """
 
@@ -693,7 +695,7 @@ class App(_t.Generic[C]):
             overrides subcommand's usage description, see :attr:`App.usage`.
         :param help:
             overrides subcommand's short help, see :attr:`App.help`.
-            pass :data:`yuio.DISABLED` to hide this subcommand in CLI help message.
+            pass :data:`~yuio.DISABLED` to hide this subcommand in CLI help message.
         :param description:
             overrides subcommand's description, see :attr:`App.description`.
         :param epilog:
@@ -772,6 +774,9 @@ class App(_t.Generic[C]):
             subcommand_path = self.__get_subcommand_path(namespace)
             subparser = subparsers_map[subcommand_path]
             subparser.error(str(e))
+        except KeyboardInterrupt:
+            yuio.io.failure("Received Keyboard Interrupt, stopping now")
+            sys.exit(130)
         except Exception as e:
             msg = str(e)
             if "Original traceback:" in msg:
