@@ -8,7 +8,7 @@
 """
 Basic blocks for building interactive elements.
 
-This is a low-level API module, upon which :mod:`yuio.io` builds
+This is a low-level module upon which :mod:`yuio.io` builds
 its higher-level abstraction.
 
 

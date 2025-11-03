@@ -14,7 +14,7 @@ if __name__ == "__main__":
     try:
         import json
 
-        json.loads("{ nah, this is not a valid json 😕 }")
+        json.loads("{ nah, this is not a valid JSON 😕 }")
     except:
         yuio.io.error_with_tb("Something went horribly wrong!")
 

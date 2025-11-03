@@ -578,9 +578,12 @@ class PartialParser(abc.ABC):
         :param parser:
             a parser instance that was created by inspecting type hints
             and previous annotations.
-        :return:
+        :returns:
             a result of upgrading this parser from partial to full. This method
             usually returns ``self``.
+        :raises:
+            :class:`TypeError` if this parser can't be wrapped. Specifically, this
+            method should raise a :class:`TypeError` for any non-partial parser.
 
         """
 
@@ -608,6 +611,10 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :param value:
             value to parse.
+        :returns:
+            a parsed and processed value.
+        :raises:
+            :class:`ParsingError`.
 
         """
 
@@ -619,20 +626,24 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :param value:
             collection of values to parse.
+        :returns:
+            each value parsed and assembled into the target collection.
+        :raises:
+            :class:`ParsingError`. Also raises :class:`RuntimeError` if trying to call
+            this method on a parser that doesn't supports parsing collections
+            of objects.
+        :example:
+            ::
 
-        **Example:**
+                >>> # Let's say we're parsing a set of ints.
+                >>> parser = Set(Int())
 
-        ::
+                >>> # And the user enters collection items one-by-one.
+                >>> user_input = ['1', '2', '3']
 
-            >>> # Let's say we're parsing a set of ints.
-            >>> parser = Set(Int())
-
-            >>> # And the user enters collection items one-by-one.
-            >>> user_input = ['1', '2', '3']
-
-            >>> # We can parse collection from its items:
-            >>> parser.parse_many(user_input)
-            {1, 2, 3}
+                >>> # We can parse collection from its items:
+                >>> parser.parse_many(user_input)
+                {1, 2, 3}
 
         """
 
@@ -641,6 +652,9 @@ class Parser(PartialParser, _t.Generic[T_co]):
         """
         Return :data:`True` if this parser returns a collection
         and so supports :meth:`~Parser.parse_many`.
+
+        :returns:
+            :data:`True` if :meth:`~Parser.parse_many` is safe to call.
 
         """
 
@@ -654,28 +668,35 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :param value:
             config value to parse.
+        :returns:
+            verified and processed config value.
+        :raises:
+            :class:`ParsingError`.
+        :example:
+            ::
 
-        **Example:**
+                >>> # Let's say we're parsing a set of ints.
+                >>> parser = Set(Int())
 
-        ::
+                >>> # And we're loading it from json.
+                >>> import json
+                >>> user_config = json.loads('[1, 2, 3]')
 
-            >>> # Let's say we're parsing a set of ints.
-            >>> parser = Set(Int())
-
-            >>> # And we're loading it from json.
-            >>> import json
-            >>> user_config = json.loads('[1, 2, 3]')
-
-            >>> # We can process parsed json:
-            >>> parser.parse_config(user_config)
-            {1, 2, 3}
+                >>> # We can process parsed json:
+                >>> parser.parse_config(user_config)
+                {1, 2, 3}
 
         """
 
     @abc.abstractmethod
-    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
         """
         Generate ``nargs`` for argparse.
+
+        :returns:
+            ``nargs`` as defined by argparse. If :meth:`~Parser.supports_parse_many`
+            returns :data:`True`, value should be ``"+"``, ``"*"``, ``"?"``,
+            or an integer. Otherwise, value should be :data:`None`.
 
         """
 
@@ -689,6 +710,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :param value:
             value that needs a type check.
+        :returns:
+            :data:`True` if the value matches the type of this parser.
 
         """
 
@@ -703,6 +726,10 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :param value:
             value that needs a type check.
+        :returns:
+            always returns :data:`True`.
+        :raises:
+            :class:`TypeError`.
 
         """
 
@@ -719,6 +746,10 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         Used to describe expected input in widgets.
 
+        :returns:
+            human-readable description of an expected input. Van return :data:`None`
+            for simple values that don't need a special description.
+
         """
 
     @abc.abstractmethod
@@ -727,6 +758,9 @@ class Parser(PartialParser, _t.Generic[T_co]):
         Like :py:meth:`~Parser.describe`, but guaranteed to return something.
 
         Used to describe expected input in CLI help.
+
+        :returns:
+            human-readable description of an expected input.
 
         """
 
@@ -737,6 +771,15 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         Used with :meth:`~Parser.parse_many`.
 
+        :returns:
+            human-readable description of expected inputs. If the value is a string,
+            then it describes an individual member of a collection. The the value
+            is a tuple, then each of the tuple's element describes an expected value
+            at the corresponding position.
+        :raises:
+            :class:`RuntimeError` if trying to call this method on a parser
+            that doesn't supports parsing collections of objects.
+
         """
 
     @abc.abstractmethod
@@ -745,6 +788,15 @@ class Parser(PartialParser, _t.Generic[T_co]):
         Like :py:meth:`~Parser.describe_many`, but guaranteed to return something.
 
         Used to describe expected input in CLI help.
+
+        :returns:
+            human-readable description of expected inputs. If the value is a string,
+            then it describes an individual member of a collection. The the value
+            is a tuple, then each of the tuple's element describes an expected value
+            at the corresponding position.
+        :raises:
+            :class:`RuntimeError` if trying to call this method on a parser
+            that doesn't supports parsing collections of objects.
 
         """
 
@@ -761,6 +813,12 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :param value:
             value that needs a description.
+        :returns:
+            description of a value in the format that this parser would expect to see
+            in a CLI argument or an environment variable.
+        :raises:
+            :class:`TypeError` if the given value is not of type
+            that this parser produces.
 
         """
 
@@ -777,6 +835,12 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :param value:
             value that needs a description.
+        :returns:
+            description of a value in the format that this parser would expect to see
+            in a CLI argument or an environment variable.
+        :raises:
+            :class:`TypeError` if the given value is not of type
+            that this parser produces.
 
         """
 
@@ -791,6 +855,11 @@ class Parser(PartialParser, _t.Generic[T_co]):
         For example, the :class:`Set` parser will use
         a :class:`~yuio.widget.Multiselect` widget.
 
+        :returns:
+            a full list of options that will be passed to
+            a :class:`~yuio.widget.Multiselect` widget, or :data:`None`
+            if the set of possible values is not known.
+
         """
 
     @abc.abstractmethod
@@ -800,6 +869,9 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         This function is used when assembling autocompletion functions for shells,
         and when reading values from user via :func:`yuio.io.ask`.
+
+        :returns:
+            a completer that will be used with CLI arguments or widgets.
 
         """
 
@@ -832,6 +904,10 @@ class Parser(PartialParser, _t.Generic[T_co]):
             a string describing what input is expected.
         :param default_description:
             a string describing default value.
+        :returns:
+            a widget that will be used to ask user for values. The widget can choose
+            to use :func:`~Parser.completer` or :func:`~Parser.options`, or implement
+            some custom logic.
 
         """
 
@@ -840,7 +916,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
         """
-        Create a Json schema object based on this parser.
+        Create a JSON schema object based on this parser.
 
         The purpose of this method is to make schemas for use in IDEs, i.e. to provide
         autocompletion or simple error checking. The returned schema is not guaranteed
@@ -849,6 +925,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :param ctx:
             context for building a schema.
+        :returns:
+            a JSON schema that describes structure of values expected by this parser.
 
         """
 
@@ -860,6 +938,12 @@ class Parser(PartialParser, _t.Generic[T_co]):
         Note that, since parser's type parameter is covariant, this function is not
         guaranteed to receive a value of the same type that this parser produces.
         Call :meth:`~Parser.assert_type` to check for this case.
+
+        :returns:
+            a value converted to JSON-serializable representation.
+        :raises:
+            :class:`TypeError` if the given value is not of type
+            that this parser produces.
 
         """
 
@@ -877,45 +961,43 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
 
     :param ty:
         type of the produced value, used in :meth:`~Parser.check_type`.
+    :example:
+        .. invisible-code-block: python
 
-    .. invisible-code-block: python
+            from dataclasses import dataclass
+            @dataclass
+            class MyType:
+                data: str
 
-        from dataclasses import dataclass
-        @dataclass
-        class MyType:
-            data: str
+        .. code-block:: python
 
-    **Example:**
+            class MyTypeParser(ValueParser[MyType]):
+                def __init__(self):
+                    super().__init__(MyType)
 
-    .. code-block:: python
+                def parse(self, value: str, /) -> MyType:
+                    return self.parse_config(value)
 
-        class MyTypeParser(ValueParser[MyType]):
-            def __init__(self):
-                super().__init__(MyType)
+                def parse_config(self, value: object, /) -> MyType:
+                    if not isinstance(value, str):
+                        raise ParsingError(f'expected a string, got {value!r}')
+                    return MyType(value)
 
-            def parse(self, value: str, /) -> MyType:
-                return self.parse_config(value)
+                def to_json_schema(
+                    self, ctx: yuio.json_schema.JsonSchemaContext, /
+                ) -> yuio.json_schema.JsonSchemaType:
+                    return yuio.json_schema.String()
 
-            def parse_config(self, value: object, /) -> MyType:
-                if not isinstance(value, str):
-                    raise ParsingError(f'expected a string, got {value!r}')
-                return MyType(value)
+                def to_json_value(
+                    self, value: object, /
+                ) -> yuio.json_schema.JsonValue:
+                    assert self.assert_type(value)
+                    return value.data
 
-            def to_json_schema(
-                self, ctx: yuio.json_schema.JsonSchemaContext, /
-            ) -> yuio.json_schema.JsonSchemaType:
-                return yuio.json_schema.String()
+        ::
 
-            def to_json_value(
-                self, value: object, /
-            ) -> yuio.json_schema.JsonValue:
-                assert self.assert_type(value)
-                return value.data
-
-    ::
-
-        >>> MyTypeParser().parse('pancake')
-        MyType(data='pancake')
+            >>> MyTypeParser().parse('pancake')
+            MyType(data='pancake')
 
     """
 
@@ -967,7 +1049,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
     def supports_parse_many(self) -> bool:
         return False
 
-    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
         return None
 
     def check_type(self, value: object) -> _t.TypeGuard[T]:
@@ -1069,12 +1151,13 @@ class WrappingParser(Parser[T], _t.Generic[T, U]):
         """
         Internal resource wrapped by this parser.
 
-        Accessing it when the parser is in a partial state triggers an error
-        and warns user that they didn't provide an inner parser.
+        :raises:
+            Accessing it when the parser is in a partial state triggers an error
+            and warns user that they didn't provide an inner parser.
 
-        Setting a new value when the parser is not in a partial state triggers
-        an error and warns user that they shouldn't provide an inner parser
-        in type annotations.
+            Setting a new value when the parser is not in a partial state triggers
+            an error and warns user that they shouldn't provide an inner parser
+            in type annotations.
 
         """
 
@@ -1145,7 +1228,7 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
     def supports_parse_many(self) -> bool:
         return self._inner.supports_parse_many()
 
-    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
         return self._inner.get_nargs()
 
     def describe(self) -> str | None:
@@ -1195,24 +1278,21 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
         Note that, since parser's type parameter is covariant, this function is not
         guaranteed to receive a value of the same type that this parser produces.
         In this case, you should raise a :class:`TypeError`.
+    :example:
+        ..
+            >>> import math
 
-    **Example:**
+        ::
 
-    ..
-
-        >>> import math
-
-    ::
-
-        >>> parser = yuio.parse.Map(
-        ...     yuio.parse.Int(),
-        ...     lambda x: 2 ** x,
-        ...     lambda x: int(math.log2(x)),
-        ... )
-        >>> parser.parse("10")
-        1024
-        >>> parser.describe_value_or_def(1024)
-        '10'
+            >>> parser = yuio.parse.Map(
+            ...     yuio.parse.Int(),
+            ...     lambda x: 2 ** x,
+            ...     lambda x: int(math.log2(x)),
+            ... )
+            >>> parser.parse("10")
+            1024
+            >>> parser.describe_value_or_def(1024)
+            '10'
 
     """
 
@@ -1416,7 +1496,7 @@ def Regex(*args, group: int | str = 0) -> _t.Any:
     :param regex:
         regular expression for matching.
     :param group:
-        mane of index of a capturing group that should be used to get the final
+        name or index of a capturing group that should be used to get the final
         parsed value.
 
     """
@@ -1452,17 +1532,15 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
         a parser used to extract and validate a value.
     :param fn:
         a function that will be called after parsing a value.
+    :example:
+        ::
 
-    **Example:**
-
-    ::
-
-        >>> # Run `Int` parser, then print its output before returning.
-        >>> print_output = Apply(Int(), lambda x: print(f"Value is {x}"))
-        >>> result = print_output.parse("10")
-        Value is 10
-        >>> result
-        10
+            >>> # Run `Int` parser, then print its output before returning.
+            >>> print_output = Apply(Int(), lambda x: print(f"Value is {x}"))
+            >>> result = print_output.parse("10")
+            Value is 10
+            >>> result
+            10
 
     """
 
@@ -1551,22 +1629,20 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
 
     :param inner:
         a parser which output will be validated.
+    :example:
+        .. code-block:: python
 
-    **Example:**
+            class IsLower(ValidatingParser[str]):
+                def _validate(self, value: str, /):
+                    if not value.islower():
+                        raise ParsingError('value should be lowercase')
 
-    .. code-block:: python
+        ::
 
-        class IsLower(ValidatingParser[str]):
-            def _validate(self, value: str, /):
-                if not value.islower():
-                    raise ParsingError('value should be lowercase')
-
-    ::
-
-        >>> IsLower(Str()).parse('Not lowercase!')
-        Traceback (most recent call last):
-        ...
-        yuio.parse.ParsingError: value should be lowercase
+            >>> IsLower(Str()).parse('Not lowercase!')
+            Traceback (most recent call last):
+            ...
+            yuio.parse.ParsingError: value should be lowercase
 
     """
 
@@ -1588,10 +1664,10 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
         """
         Implementation of value validation.
 
-        Should raise :class:`ParsingError` if validation fails.
-
         :param value:
             value which needs validating.
+        :raises:
+            should raise :class:`ParsingError` if validation fails.
 
         """
 
@@ -2706,7 +2782,7 @@ class CollectionParser(
             self._inner.parse_config(item) for item in self._config_type_iter(value)
         )
 
-    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
         return "*"
 
     def describe(self) -> str | None:
@@ -3283,7 +3359,7 @@ class Tuple(
     def supports_parse_many(self) -> bool:
         return True
 
-    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
         return len(self._inner)
 
     def describe(self) -> str | None:
@@ -3851,14 +3927,12 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
     :param upper_inclusive:
         set upper bound for value, so we require that ``value <= upper``.
         Can't be given if ``upper`` is also given.
+    :example:
+        ::
 
-    **Example:**
-
-    ::
-
-        >>> # Int in range `0 < x <= 1`:
-        >>> Bound(Int(), lower=0, upper_inclusive=1)
-        Bound(Int, 0 < x <= 1)
+            >>> # Int in range `0 < x <= 1`:
+            >>> Bound(Int(), lower=0, upper_inclusive=1)
+            Bound(Int, 0 < x <= 1)
 
     """
 
@@ -4053,14 +4127,12 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
     :param upper_inclusive:
         set upper bound for value's length, so we require that ``len(value) <= upper``.
         Can't be given if ``upper`` is also given.
+    :example:
+        ::
 
-    **Example:**
-
-    ::
-
-        >>> # List of up to five ints:
-        >>> LenBound(List(Int()), upper_inclusive=5)
-        LenBound(List(Int), len <= 5)
+            >>> # List of up to five ints:
+            >>> LenBound(List(Int()), upper_inclusive=5)
+            LenBound(List(Int), len <= 5)
 
     """
 
@@ -4111,7 +4183,7 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             desc="length of a value",
         )
 
-    def get_nargs(self) -> _t.Literal["-", "+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
         if not self._inner.supports_parse_many():
             # somebody bound len of a string?
             return self._inner.get_nargs()
@@ -4261,16 +4333,16 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
     Check that the parsed value is one of the given set of values.
 
-    Example::
-
-        >>> # Accepts only strings 'A', 'B', or 'C':
-        >>> OneOf(Str(), ['A', 'B', 'C'])
-        OneOf(Str)
-
     :param inner:
         parser whose result will be validated.
     :param values:
         collection of allowed values.
+    :example:
+        ::
+
+            >>> # Accepts only strings 'A', 'B', or 'C':
+            >>> OneOf(Str(), ['A', 'B', 'C'])
+            OneOf(Str)
 
     """
 
@@ -4532,17 +4604,20 @@ def from_type_hint(ty: _t.Any, /) -> Parser[object]:
     Create parser from a type hint.
 
     :param ty:
-        A type hint.
+        a type hint.
 
         This type hint should not contain strings or forward references. Make sure
         they're resolved before passing it to this function.
+    :returns:
+        a parser instance created from type hint.
+    :raises:
+        :class:`TypeError` if type hint contains forward references or types
+        that don't have associated parsers.
+    :example:
+        ::
 
-    **Example:**
-
-    ::
-
-        >>> from_type_hint(list[int] | None)
-        Optional(List(Int))
+            >>> from_type_hint(list[int] | None)
+            Optional(List(Int))
 
     """
 
@@ -4635,41 +4710,39 @@ def register_type_hint_conversion(
 
     This function can be used as a decorator.
 
-    .. invisible-code-block: python
-
-        class MyType: ...
-        class MyTypeParser(ValueParser[MyType]):
-            def __init__(self): super().__init__(MyType)
-            def parse(self, value: str, /): ...
-            def parse_config(self, value, /): ...
-            def to_json_schema(self, ctx, /): ...
-            def to_json_value(self, value, /): ...
-
-    Example:
-
-    .. code-block:: python
-
-        @register_type_hint_conversion
-        def my_type_conversion(ty, origin, args):
-            if ty is MyType:
-                return MyTypeParser()
-            else:
-                return None
-
-    ::
-
-        >>> from_type_hint(MyType)
-        MyTypeParser
-
-    .. invisible-code-block: python
-
-        del _FROM_TYPE_HINT_CALLBACKS[-1]
-
     :param cb:
         a function that should inspect a type hint and possibly return a parser.
     :param uses_delim:
         indicates that callback will use
         :func:`suggest_delim_for_type_hint_conversion`.
+    :example:
+        .. invisible-code-block: python
+
+            class MyType: ...
+            class MyTypeParser(ValueParser[MyType]):
+                def __init__(self): super().__init__(MyType)
+                def parse(self, value: str, /): ...
+                def parse_config(self, value, /): ...
+                def to_json_schema(self, ctx, /): ...
+                def to_json_value(self, value, /): ...
+
+        .. code-block:: python
+
+            @register_type_hint_conversion
+            def my_type_conversion(ty, origin, args):
+                if ty is MyType:
+                    return MyTypeParser()
+                else:
+                    return None
+
+        ::
+
+            >>> from_type_hint(MyType)
+            MyTypeParser
+
+        .. invisible-code-block: python
+
+            del _FROM_TYPE_HINT_CALLBACKS[-1]
 
     """
 
@@ -4697,32 +4770,34 @@ def suggest_delim_for_type_hint_conversion() -> str | None:
             def to_json_schema(self, ctx, /): ...
             def to_json_value(self, value, /): ...
 
-    **Example:**
+    :raises:
+        :class:`RuntimeError` if called from a type converter that
+        didn't set ``uses_delim`` to :data:`True`.
+    :example:
+        .. code-block:: python
 
-    .. code-block:: python
+            @register_type_hint_conversion(uses_delim=True)
+            def my_collection_conversion(ty, origin, args):
+                if origin is MyCollection:
+                    return MyCollectionParser(
+                        from_type_hint(args[0]),
+                        delimiter=suggest_delim_for_type_hint_conversion(),
+                    )
+                else:
+                    return None
 
-        @register_type_hint_conversion(uses_delim=True)
-        def my_collection_conversion(ty, origin, args):
-            if origin is MyCollection:
-                return MyCollectionParser(
-                    from_type_hint(args[0]),
-                    delimiter=suggest_delim_for_type_hint_conversion(),
-                )
-            else:
-                return None
+        ::
 
-    ::
+            >>> parser = from_type_hint(MyCollection[MyCollection[str]])
+            >>> parser
+            MyCollectionParser(MyCollectionParser(Str))
+            >>> parser._delimiter is None
+            True
+            >>> parser._inner._delimiter == ","
+            True
 
-        >>> parser = from_type_hint(MyCollection[MyCollection[str]])
-        >>> parser
-        MyCollectionParser(MyCollectionParser(Str))
-        >>> parser._delimiter is None
-        True
-        >>> parser._inner._delimiter == ","
-        True
-
-    ..
-        >>> del _FROM_TYPE_HINT_CALLBACKS[-1]
+        ..
+            >>> del _FROM_TYPE_HINT_CALLBACKS[-1]
 
     """
 

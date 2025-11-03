@@ -93,7 +93,7 @@ can be just markdown docstrings!
     :scale: 40%
 
     Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m hello_world_code.help -h | less -R"
+    Type "python -m hello_world_code.help -h"
     Enter
     Sleep 6s
 

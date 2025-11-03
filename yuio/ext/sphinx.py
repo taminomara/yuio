@@ -367,15 +367,14 @@ Roles
 
     __ https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#option-lists
 
-    Example:
+    :example:
+        .. code-block:: rst
 
-    .. code-block:: rst
+            Use the :flag:`--quiet` flag to suppress output.
 
-        Use the :flag:`--quiet` flag to suppress output.
+        .. dropdown:: Example output
 
-    .. dropdown:: Example output
-
-        Use the :flag:`--quiet` flag to suppress output.
+            Use the :flag:`--quiet` flag to suppress output.
 
 """
 

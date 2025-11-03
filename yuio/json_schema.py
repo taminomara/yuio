@@ -6,7 +6,7 @@
 # just keep this copyright line please :3
 
 """
-A simple Json schema representation to describe configs and types.
+A simple JSON schema representation to describe configs and types.
 
 This module primarily used with
 :meth:`Parser.to_json_schema <yuio.parse.Parser.to_json_schema>`
@@ -18,7 +18,7 @@ to generate config schemas used in IDEs.
     in which case it will be parsed with the :class:`~yuio.parse.Json` parser.
 
 
-Json types
+JSON types
 ----------
 
 .. autoclass:: JsonSchemaType
@@ -79,8 +79,8 @@ Json types
     :members:
 
 
-Building schemas
-----------------
+Building a schema
+-----------------
 
 Most likely you'll get a schema from
 :meth:`Config.to_json_schema <yuio.config.Config.to_json_schema>`
@@ -160,7 +160,7 @@ else:
 
     def _JsonValue(arg: T) -> T:
         """
-        Json value marker, used to detect Json type hints at runtime.
+        JSON value marker, used to detect JSON type hints at runtime.
 
         """
 
@@ -195,6 +195,8 @@ class JsonSchemaContext:
         :param make_schema:
             a lambda that will be called if ``ty`` wasn't added to this context before.
             It should build and return the schema for this type.
+        :returns:
+            a :class:`Ref` type pointing to the just-added schema.
 
         """
 
@@ -214,6 +216,8 @@ class JsonSchemaContext:
 
         :param ref:
             contents of the ``$ref`` anchor.
+        :returns:
+            schema that was earlier passed to :meth:`~JsonSchemaContext.add_type`.
 
         """
 
@@ -228,6 +232,9 @@ class JsonSchemaContext:
     ) -> JsonValue:
         """
         Convert schema to a value suitable for JSON serialization.
+
+        :returns:
+            complete JSON representation of a schema.
 
         """
 
@@ -273,7 +280,7 @@ class JsonSchemaType(abc.ABC):
     @abc.abstractmethod
     def pprint(self) -> str:
         """
-        Pretty-print this type.
+        Pretty-print this type using TypeScript syntax.
 
         """
 
@@ -675,7 +682,7 @@ class AnyOf(JsonSchemaType):
 @dataclass(frozen=True, **yuio._with_slots())
 class Enum(JsonSchemaType):
     """
-    A enum of primitive constants.
+    An enum of primitive constants.
 
     """
 
@@ -689,7 +696,8 @@ class Enum(JsonSchemaType):
 
     descriptions: _t.Sequence[str | None] | None = None
     """
-    Descriptions for enum items.
+    Descriptions for enum items. If given, list of descriptions should have the same
+    length as the list of constants.
 
     """
 
@@ -720,6 +728,10 @@ class Object(JsonSchemaType):
     """
 
     properties: dict[str, JsonSchemaType]
+    """
+    Object keys and their types.
+
+    """
 
     def render(self) -> dict[str, JsonValue]:
         return {
@@ -758,7 +770,8 @@ class Opaque(JsonSchemaType):
 
     schema: dict[str, JsonValue]
     """
-    Arbitrary schema.
+    Arbitrary schema. This should be a dictionary so that :class:`Meta` can add
+    additional data to it.
 
     """
 

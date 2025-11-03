@@ -15,4 +15,7 @@ class Console(enum.Enum):
 
 if __name__ == "__main__":
     consoles = yuio.io.ask[set[Console]]("Which consoles do you own?")
-    yuio.io.info("You own `%s`", ", ".join(map(str, consoles)) or "...nothing?")
+    if len(consoles) == len(Console):
+        yuio.io.info("You own all of them!")
+    else:
+        yuio.io.info("You own `%s`", ", ".join(map(str, consoles)) or "...nothing?")

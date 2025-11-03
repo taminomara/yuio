@@ -357,6 +357,8 @@ def app(
         overrides program's epilog, see :attr:`App.epilog`.
     :param version:
         program's version, will be displayed using the :flag:`--version` flag.
+    :returns:
+        an :class:`App` object that wraps the original function.
 
     """
 
@@ -622,8 +624,10 @@ class App(_t.Generic[C]):
             updated=(),
         )
 
+        self._command = command
+
         @functools.wraps(command)
-        def command(*args, **kwargs):
+        def wrapped_command(*args, **kwargs):
             if args:
                 names = self.__config_type.__annotations__
                 if len(args) > len(names):
@@ -637,7 +641,7 @@ class App(_t.Generic[C]):
                     kwargs[name] = arg
             return CommandInfo("__raw__", None, self.__config_type(**kwargs), False)()
 
-        self.command: C = command  # type: ignore
+        self.command: C = wrapped_command  # type: ignore
         """
         The original callable what was wrapped by :func:`app`.
 
@@ -700,6 +704,8 @@ class App(_t.Generic[C]):
             overrides subcommand's description, see :attr:`App.description`.
         :param epilog:
             overrides subcommand's epilog, see :attr:`App.epilog`.
+        :returns:
+            a new :class:`App` object for a subcommand.
 
         """
 
@@ -737,6 +743,8 @@ class App(_t.Generic[C]):
         :param args:
             command line arguments. If none are given,
             use arguments from :data:`sys.argv`.
+        :returns:
+            this method does not return, it exits the program instead.
 
         """
 

@@ -72,21 +72,6 @@ to the one from :mod:`logging`:
 .. autofunction:: out
 
 
-.. _io-msg-kwargs::
-
-Additional keyword arguments
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-All printing functions take additional keyword arguments:
-
-tag
-exc_info
-ignore_suspended
-heading
-term
-to_stdout
-
-
 .. _color-tags:
 
 Coloring the output
@@ -379,6 +364,9 @@ def get_term() -> yuio.term.Term:
 
     If global setup wasn't performed, this function implicitly performs it.
 
+    :returns:
+        Instance of :class:`~yuio.term.Term` that's used to print messages and tasks.
+
     """
 
     return _manager_data()[0]
@@ -390,6 +378,9 @@ def get_theme() -> yuio.theme.Theme:
     that is used with :mod:`yuio.io`.
 
     If global setup wasn't performed, this function implicitly performs it.
+
+    :returns:
+        Instance of :class:`~yuio.theme.Theme` that's used to format messages and tasks.
 
     """
 
@@ -429,7 +420,7 @@ def wrap_streams():
 
 def restore_streams():
     """
-    Restore wrapped streams.
+    Restore wrapped streams. If streams weren't wrapped, does nothing.
 
     See :func:`wrap_streams` and :func:`setup`.
 
@@ -453,9 +444,13 @@ def streams_wrapped() -> bool:
     Check if :data:`sys.stdout` and :data:`sys.stderr` are wrapped.
     See :func:`setup`.
 
+    :returns:
+        :data:`True` is streams are currently wrapped, :data:`False` otherwise.
+
     """
 
-    return _STREAMS_WRAPPED
+    with _IO_LOCK:
+        return _STREAMS_WRAPPED
 
 
 def orig_stderr() -> _t.TextIO:
@@ -477,15 +472,14 @@ def orig_stdout() -> _t.TextIO:
 
 
 def info(msg: str, /, *args, **kwargs):
-    """
+    """info(msg: str, /, *args)
+
     Print an info message.
 
     :param msg:
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -494,15 +488,14 @@ def info(msg: str, /, *args, **kwargs):
 
 
 def warning(msg: str, /, *args, **kwargs):
-    """
+    """warning(msg: str, /, *args)
+
     Print a warning message.
 
     :param msg:
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -511,15 +504,14 @@ def warning(msg: str, /, *args, **kwargs):
 
 
 def success(msg: str, /, *args, **kwargs):
-    """
+    """success(msg: str, /, *args)
+
     Print a success message.
 
     :param msg:
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -528,15 +520,14 @@ def success(msg: str, /, *args, **kwargs):
 
 
 def error(msg: str, /, *args, **kwargs):
-    """
+    """error(msg: str, /, *args)
+
     Print an error message.
 
     :param msg:
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -547,7 +538,8 @@ def error(msg: str, /, *args, **kwargs):
 def error_with_tb(
     msg: str, /, *args, exc_info: _ExcInfo | bool | None = True, **kwargs
 ):
-    """
+    """error_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
+
     Print an error message and capture the current exception.
 
     Call this function in the ``except`` clause of a ``try`` block
@@ -562,8 +554,6 @@ def error_with_tb(
         either a boolean indicating that the current exception
         should be captured (default is :data:`True`), or a tuple
         of three elements, as returned by :func:`sys.exc_info`.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -572,15 +562,14 @@ def error_with_tb(
 
 
 def failure(msg: str, /, *args, **kwargs):
-    """
+    """failure(msg: str, /, *args)
+
     Print a failure message.
 
     :param msg:
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -591,7 +580,8 @@ def failure(msg: str, /, *args, **kwargs):
 def failure_with_tb(
     msg: str, /, *args, exc_info: _ExcInfo | bool | None = True, **kwargs
 ):
-    """
+    """failure_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
+
     Print a failure message and capture the current exception.
 
     Call this function in the ``except`` clause of a ``try`` block
@@ -606,8 +596,6 @@ def failure_with_tb(
         either a boolean indicating that the current exception
         should be captured (default is :data:`True`), or a tuple
         of three elements, as returned by :func:`sys.exc_info`.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -616,15 +604,14 @@ def failure_with_tb(
 
 
 def heading(msg: str, /, *args, **kwargs):
-    """
+    """heading(msg: str, /, *args)
+
     Print a heading message.
 
     :param msg:
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -634,7 +621,8 @@ def heading(msg: str, /, *args, **kwargs):
 
 
 def md(msg: str, /, *args, **kwargs):
-    """
+    """md(msg: str, /, *args)
+
     Print a markdown-formatted text.
 
     Yuio supports all CommonMark block markup except tables. Inline markup is limited
@@ -645,8 +633,6 @@ def md(msg: str, /, *args, **kwargs):
         so this function can be used with triple quote literals.
     :param args:
         arguments for ``%``\\ -formatting the message.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -662,8 +648,19 @@ def md(msg: str, /, *args, **kwargs):
     raw(res, **kwargs)
 
 
-def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
+def br(**kwargs):
+    """br()
+
+    Print an empty string.
+
     """
+
+    _manager().print_direct("\n", **kwargs)
+
+
+def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
+    """hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter)
+
     Print highlighted code. See :mod:`yuio.md` for more info.
 
     :param msg:
@@ -673,8 +670,6 @@ def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
         arguments for ``%``\\ -formatting the code.
     :param syntax:
         syntax name or :class:`~yuio.md.SyntaxHighlighter` class.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -686,20 +681,9 @@ def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
     raw(highlighted, **kwargs)
 
 
-def br(**kwargs):
-    """
-    Print an empty string.
-
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
-
-    """
-
-    _manager().print_direct("\n", **kwargs)
-
-
 def raw(msg: yuio.term.ColorizedString, /, **kwargs):
-    """
+    """raw(msg: yuio.term.ColorizedString, /)
+
     Print a :class:`~yuio.term.ColorizedString`.
 
     This is a bridge between :mod:`yuio.io` and lower-level
@@ -711,8 +695,6 @@ def raw(msg: yuio.term.ColorizedString, /, **kwargs):
 
     :param msg:
         message to print.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -720,15 +702,14 @@ def raw(msg: yuio.term.ColorizedString, /, **kwargs):
 
 
 def out(msg: str, /, *args, **kwargs):
-    """
+    """out(msg: str, /, *args)
+
     Like :func:`info`, but sends output to ``stdout`` instead of ``stderr``.
 
     :param msg:
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
-    :param kwargs:
-        additional settings for message printer, see `below <io-msg-kwargs>`_.
 
     """
 
@@ -864,17 +845,17 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
         inputs.
     :param default_description:
         description of the `default` value.
+    :returns:
+        parsed user input.
+    :example:
+        .. code-block:: python
 
-    **Example:**
+            class Level(enum.Enum):
+                WARNING = "Warning",
+                INFO = "Info",
+                DEBUG = "Debug",
 
-    .. code-block:: python
-
-        class Level(enum.Enum):
-            WARNING = "Warning",
-            INFO = "Info",
-            DEBUG = "Debug",
-
-        answer = ask[Level]('Choose a logging level', default=Level.INFO)
+            answer = ask[Level]('Choose a logging level', default=Level.INFO)
 
     """
 
@@ -1056,6 +1037,9 @@ def detect_editor(fallbacks: list[str] | None = None) -> str | None:
     :param fallbacks:
         list of fallback editors to try. By default, we try "nano", "vim", "vi",
         "msedit", "edit", "notepad", "gedit".
+    :returns:
+        on Windows, returns an executable name; on unix, may return a shell command
+        or an executable name.
 
     """
 
@@ -1081,7 +1065,7 @@ def edit(
     editor: str | None = None,
     file_ext: str = ".txt",
     fallbacks: list[str] | None = None,
-    check_saved: bool = True,
+    dedent: bool = False,
 ) -> str:
     """
     Ask user to edit some text.
@@ -1107,8 +1091,26 @@ def edit(
         in editors that support it.
     :param fallbacks:
         list of fallback editors to try, see :func:`detect_editor` for details.
+    :param dedent:
+        remove leading indentation from text before opening an editor.
+    :returns:
+        an edited string with comments removed.
+    :example:
+        .. code-block:: python
+
+            message = yuio.io.edit(
+                \"\"\"
+                    # Please enter the commit message for your changes. Lines starting
+                    # with '#' will be ignored, and an empty message aborts the commit.
+                \"\"\",
+                comment_marker="#",
+                dedent=True,
+            )
 
     """
+
+    if dedent:
+        text = yuio._dedent(text)
 
     term, _, _ = _manager_data()
 
@@ -1208,7 +1210,7 @@ class SuspendOutput:
 
     @staticmethod
     def info(msg: str, /, *args, **kwargs):
-        """
+        """info(msg: str, /, *args)
         Log an :func:`info` message, ignore suspended status.
 
         """
@@ -1218,7 +1220,7 @@ class SuspendOutput:
 
     @staticmethod
     def warning(msg: str, /, *args, **kwargs):
-        """
+        """warning(msg: str, /, *args)
         Log a :func:`warning` message, ignore suspended status.
 
         """
@@ -1228,7 +1230,7 @@ class SuspendOutput:
 
     @staticmethod
     def success(msg: str, /, *args, **kwargs):
-        """
+        """success(msg: str, /, *args)
         Log a :func:`success` message, ignore suspended status.
 
         """
@@ -1238,7 +1240,7 @@ class SuspendOutput:
 
     @staticmethod
     def error(msg: str, /, *args, **kwargs):
-        """
+        """error(msg: str, /, *args)
         Log an :func:`error` message, ignore suspended status.
 
         """
@@ -1248,7 +1250,7 @@ class SuspendOutput:
 
     @staticmethod
     def error_with_tb(msg: str, /, *args, **kwargs):
-        """
+        """error_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
         Log an :func:`error_with_tb` message, ignore suspended status.
 
         """
@@ -1258,7 +1260,7 @@ class SuspendOutput:
 
     @staticmethod
     def failure(msg: str, /, *args, **kwargs):
-        """
+        """failure(msg: str, /, *args)
         Log a :func:`failure` message, ignore suspended status.
 
         """
@@ -1268,7 +1270,7 @@ class SuspendOutput:
 
     @staticmethod
     def failure_with_tb(msg: str, /, *args, **kwargs):
-        """
+        """failure_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
         Log a :func:`failure_with_tb` message, ignore suspended status.
 
         """
@@ -1278,7 +1280,7 @@ class SuspendOutput:
 
     @staticmethod
     def heading(msg: str, /, *args, **kwargs):
-        """
+        """heading(msg: str, /, *args)
         Log a :func:`heading` message, ignore suspended status.
 
         """
@@ -1288,7 +1290,7 @@ class SuspendOutput:
 
     @staticmethod
     def md(msg: str, /, *args, **kwargs):
-        """
+        """md(msg: str, /, *args)
         Log an :func:`md` message, ignore suspended status.
 
         """
@@ -1298,7 +1300,7 @@ class SuspendOutput:
 
     @staticmethod
     def br(**kwargs):
-        """
+        """br()
         Log a :func:`br` message, ignore suspended status.
 
         """
@@ -1308,7 +1310,7 @@ class SuspendOutput:
 
     @staticmethod
     def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
-        """
+        """hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter)
         Log an :func:`md` message, ignore suspended status.
 
         """
@@ -1318,7 +1320,7 @@ class SuspendOutput:
 
     @staticmethod
     def raw(msg: yuio.term.ColorizedString, **kwargs):
-        """
+        """raw(msg: yuio.term.ColorizedString, /)
         Log a :func:`raw` message, ignore suspended status.
 
         """
@@ -1328,8 +1330,8 @@ class SuspendOutput:
 
     @staticmethod
     def out(msg: str, **kwargs):
-        """
-        Log a :func:`str` message, ignore suspended status.
+        """out(msg: str, /, *args)
+        Log an :func:`out` message, ignore suspended status.
 
         """
 
@@ -1476,19 +1478,17 @@ class Task:
             as ``done`` and ``total``.
         :param ndigits:
             number of digits to display after a decimal point.
+        :example:
+            .. code-block:: python
 
-        **Example:**
+                with Task("Loading cargo") as task:
+                    task.progress(110, 150, unit="Kg")
 
-        .. code-block:: python
+            This will print the following:
 
-            with Task("Loading cargo") as task:
-                task.progress(110, 150, unit="Kg")
+            .. code-block:: text
 
-        This will print the following:
-
-        .. code-block:: text
-
-           ■■■■■■■■■■■□□□□ Loading cargo - 110/150Kg
+                ■■■■■■■■■■■□□□□ Loading cargo - 110/150Kg
 
         """
 
@@ -1544,19 +1544,17 @@ class Task:
             total amount of data.
         :param ndigits:
             number of digits to display after a decimal point.
+        :example:
+            .. code-block:: python
 
-        **Example:**
+                with Task("Downloading a file") as task:
+                    task.progress_size(31.05 * 2**20, 150 * 2**20)
 
-        .. code-block:: python
+            This will print:
 
-            with Task("Downloading a file") as task:
-                task.progress_size(31.05 * 2**20, 150 * 2**20)
+            .. code-block:: text
 
-        This will print:
-
-        .. code-block:: text
-
-           ■■■□□□□□□□□□□□□ Downloading a file - 31.05/150.00M
+                ■■■□□□□□□□□□□□□ Downloading a file - 31.05/150.00M
 
         """
 
@@ -1603,20 +1601,17 @@ class Task:
             unit for measuring progress.
         :param ndigits:
             number of digits to display after a decimal point.
+        :example:
+            .. code-block:: python
 
-        **Example:**
+                with Task("Charging a capacitor") as task:
+                    task.progress_scale(889.25E-3, 1, unit="V")
 
-        .. code-block:: python
+            This will print:
 
-            with Task("Charging a capacitor") as task:
-                task.progress_scale(889.25E-3, 1, unit="V")
+            .. code-block:: text
 
-
-        This will print:
-
-        .. code-block:: text
-
-           ■■■■■■■■■■■■■□□ Charging a capacitor - 889.25mV/1.00V
+                ■■■■■■■■■■■■■□□ Charging a capacitor - 889.25mV/1.00V
 
         """
 
@@ -1667,24 +1662,22 @@ class Task:
             unit for measuring progress.
         :param ndigits:
             number of digits to display after a decimal point.
+        :example:
+            .. invisible-code-block: python
 
-        **Example:**
+                urls = []
 
-        .. invisible-code-block: python
+            .. code-block:: python
 
-            urls = []
+                with Task('Fetching data') as t:
+                    for url in t.iter(urls):
+                        ...
 
-        .. code-block:: python
+            This will output the following:
 
-            with Task('Fetching data') as t:
-                for url in t.iter(urls):
-                    ...
+            .. code-block:: text
 
-        This will output the following:
-
-        .. code-block:: text
-
-           ■■■■■□□□□□□□□□□ Fetching data - 1/3
+                ■■■■■□□□□□□□□□□ Fetching data - 1/3
 
         """
 
@@ -1700,25 +1693,23 @@ class Task:
             comment to display beside task progress.
         :param args:
             arguments for ``%``\\ -formatting comment.
+        :example:
+            .. invisible-code-block: python
 
-        **Example:**
+                urls = []
 
-        .. invisible-code-block: python
+            .. code-block:: python
 
-            urls = []
+                with Task('Fetching data') as t:
+                    for url in urls:
+                        t.comment(url)
+                        ...
 
-        .. code-block:: python
+            This will output the following:
 
-            with Task('Fetching data') as t:
-                for url in urls:
-                    t.comment(url)
-                    ...
+            .. code-block:: text
 
-        This will output the following:
-
-        .. code-block:: text
-
-           ⣿ Fetching data - https://google.com
+                ⣿ Fetching data - https://google.com
 
         """
 
@@ -1751,6 +1742,8 @@ class Task:
         :param comment:
             comment for the task. Can be specified after creation
             via the :meth:`~Task.comment` method.
+        :returns:
+            a new :class:`Task` that will be displayed as a sub-task of this task.
 
         """
 
@@ -2329,7 +2322,12 @@ class _IoManager(abc.ABC):
         if task._status != Task._Status.RUNNING:
             self._rc.set_color_path(f"task/decoration:{task._status.value}")
             self._rc.write(self._theme.spinner_static_symbol)
-        elif task._progress is None:
+        elif (
+            task._progress is None
+            or self._theme.progress_bar_width <= 1
+            or not self._theme.progress_bar_done_symbol
+            or not self._theme.progress_bar_pending_symbol
+        ):
             self._rc.set_color_path(f"task/decoration:{task._status.value}")
             if self._theme.spinner_pattern:
                 self._rc.write(
@@ -2350,7 +2348,7 @@ class _IoManager(abc.ABC):
             )
 
             for i in range(0, done_width):
-                self._rc.set_color(done_color((i + i / total_width) / total_width))
+                self._rc.set_color(done_color(i / (total_width - 1)))
                 self._rc.write(self._theme.progress_bar_done_symbol)
 
             pending_color = yuio.term.Color.lerp(
@@ -2359,7 +2357,7 @@ class _IoManager(abc.ABC):
             )
 
             for i in range(done_width, total_width):
-                self._rc.set_color(pending_color((i + i / total_width) / total_width))
+                self._rc.set_color(pending_color(i / (total_width - 1)))
                 self._rc.write(self._theme.progress_bar_pending_symbol)
 
             self._rc.set_color_path(f"task/progressbar:{task._status.value}")

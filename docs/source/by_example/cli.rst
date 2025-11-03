@@ -103,7 +103,7 @@ without prefixing them with ``--executor-config-...``.
     :scale: 40%
 
     Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m cli_code.config -h | less -R"
+    Type "python -m cli_code.config -h"
     Enter
     Sleep 6s
 
@@ -140,12 +140,8 @@ This will result in the following help message:
     :scale: 40%
 
     Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m cli_code.settings -h | less -R"
+    Type "python -m cli_code.settings -h"
     Enter
-    Sleep 1s
-    Down@250ms 4
-    Sleep 1s
-    Down@250ms 5
     Sleep 6s
 
 

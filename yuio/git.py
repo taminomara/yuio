@@ -271,6 +271,9 @@ class Repo:
         path to the repo root dir.
     :param env:
         environment variables for the git executable.
+    :raises:
+        constructor of this class may raise :class:`GitError` if git isn't available
+        or if the given part is not inside of a git repository.
 
     """
 
@@ -349,6 +352,10 @@ class Repo:
             arguments for the ``git`` command.
         :param capture_io:
             If set to :data:`False`, command's stderr and stdout are not captured.
+        :returns:
+            output of the git command.
+        :raises:
+            :class:`GitError`, :class:`OSError`.
 
         """
 
@@ -374,9 +381,12 @@ class Repo:
 
         :param include_ignored:
             include ignored status in the list of changes. Disable by default.
-
         :param include_submodules:
             include status of submodules in the list of changes. Enabled by default.
+        :returns:
+            current repository status.
+        :raises:
+            :class:`GitError`, :class:`OSError`.
 
         """
 
@@ -546,6 +556,10 @@ class Repo:
             git references that will be passed to ``git log``.
         :param max_entries:
             maximum number of returned references.
+        :returns:
+            list of found commits.
+        :raises:
+            :class:`GitError`, :class:`OSError`.
 
         """
 
@@ -590,6 +604,10 @@ class Repo:
 
                 This option limits number of checked commits, not the number
                 of trailers.
+        :returns:
+            list of found commits and their trailers.
+        :raises:
+            :class:`GitError`, :class:`OSError`.
 
         """
 
@@ -618,6 +636,10 @@ class Repo:
 
         :param ref:
             git reference that will be passed to ``git log``.
+        :returns:
+            found commit or :data:`None`.
+        :raises:
+            :class:`OSError`.
 
         """
 
@@ -712,6 +734,12 @@ class Repo:
         """
         List all tags in this repository.
 
+        :returns:
+            list of strings representing tags, without ``refs/tags`` prefix,
+            sorted lexicographically as strings.
+        :raises:
+            :class:`GitError`, :class:`OSError`.
+
         """
 
         return (
@@ -724,6 +752,12 @@ class Repo:
         """
         List all branches in this repository.
 
+        :returns:
+            list of strings representing branch names, without ``refs/heads`` prefix,
+            sorted lexicographically as strings.
+        :raises:
+            :class:`GitError`, :class:`OSError`.
+
         """
 
         return (
@@ -735,6 +769,12 @@ class Repo:
     def remotes(self) -> list[str]:
         """
         List all remote branches in this repository.
+
+        :returns:
+            list of strings representing remote branches, without
+            ``refs/remotes`` prefix, sorted lexicographically as strings.
+        :raises:
+            :class:`GitError`, :class:`OSError`.
 
         """
 

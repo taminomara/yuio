@@ -150,9 +150,6 @@ def exec(
 
     Command's stderr is interactively printed to the log.
 
-    If the command fails, a :class:`~subprocess.CalledProcessError` is raised.
-    If command can't be started, raises :class:`OSError`.
-
     :param args:
         command arguments.
     :param cwd:
@@ -170,14 +167,15 @@ def exec(
         logger that will be used for logging command's output. Default is to log
         to ``yuio.exec``.
     :param level:
-        logging level for stderr outputs. By default, it is set
-        to :data:`logging.DEBUG`.
+        logging level for stderr outputs. Default is :data:`logging.DEBUG`.
     :param text:
-        if set to :data:`False` stdout is returned as :class:`bytes`
-        the system default encoding.
-    :return:
+        if set to :data:`False`, stdout is returned as :class:`bytes`.
+    :returns:
         string (or bytes) with command's stdout, or :data:`None` if ``capture_io``
         is :data:`False`.
+    :raises:
+        If the command fails, a :class:`~subprocess.CalledProcessError` is raised.
+        If command can't be started, raises :class:`OSError`.
 
     """
 

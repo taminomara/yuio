@@ -9,7 +9,7 @@
 Everything to do with terminal output: detecting terminal capabilities,
 working with colors and themes, formatting text.
 
-This is a low-level API module, upon which :mod:`yuio.io` builds
+This is a low-level module upon which :mod:`yuio.io` builds
 its higher-level abstraction.
 
 
@@ -26,11 +26,10 @@ However, you can get a :class:`Term` object by using :func:`get_term_from_stream
 
 .. autofunction:: get_term_from_stream
 
-:class:`Term` contains all info about what kinds of things the terminal
-supports. If available, it will also have info about terminal's theme,
-i.e. dark or light background, etc:
-
 .. autoclass:: Term
+   :members:
+
+.. autoclass:: TerminalColors
    :members:
 
 .. autoclass:: Lightness
@@ -40,9 +39,6 @@ i.e. dark or light background, etc:
    :members:
 
 .. autoclass:: InteractiveSupport
-   :members:
-
-.. autoclass:: TerminalColors
    :members:
 
 
@@ -56,11 +52,6 @@ for every aspect of text presentation:
 .. autoclass:: Color
    :members:
 
-A single color value is stored in the :class:`ColorValue` class.
-Usually you don't need to use these directly, as you will be working
-with :class:`Color` instances. Nevertheless, you can operate individual
-colors should you need such thing:
-
 .. autoclass:: ColorValue
    :members:
 
@@ -69,18 +60,20 @@ Coloring and formatting text
 ----------------------------
 
 The higher-level :mod:`io` module uses strings with xml-like color
-tags to transfer information about line formatting. Here, on the lower level,
-these strings are parsed and transformed into :class:`ColorizedString`:
+tags to store information about line formatting. Here, on the lower level,
+these strings are parsed and transformed to :class:`ColorizedString`\\ s:
 
 .. autoclass:: ColorizedString
    :members:
 
-.. class:: RawString
+.. type:: RawString
+    :canonical: typing.Iterable[Color | str]
 
     Raw colorized string. This is the underlying type
     for :class:`ColorizedString`.
 
-.. class:: AnyString
+.. type:: AnyString
+    :canonical: str | Color | RawString | ColorizedString
 
     Any string (i.e. a :class:`str`, a raw colorized string,
     or a normal colorized string).
@@ -299,7 +292,9 @@ class TerminalColors:
 @dataclass(frozen=True)
 class Term:
     """
-    Overall info about a terminal.
+    This class contains all info about what kinds of things the terminal
+    supports. If available, it will also have info about terminal's theme,
+    i.e. dark or light background, etc.
 
     """
 
@@ -329,12 +324,12 @@ class Term:
 
     terminal_colors: TerminalColors | None = None
     """
-    Terminal color settings.
+    Terminal's default foreground, background, and text colors.
 
     """
 
     @property
-    def has_colors(self) -> bool:
+    def supports_colors(self) -> bool:
         """
         Return :data:`True` if terminal supports simple 8-bit color codes.
 
@@ -343,7 +338,7 @@ class Term:
         return self.color_support >= ColorSupport.ANSI
 
     @property
-    def has_colors_256(self) -> bool:
+    def supports_colors_256(self) -> bool:
         """
         Return :data:`True` if terminal supports 256-encoded colors.
 
@@ -352,7 +347,7 @@ class Term:
         return self.color_support >= ColorSupport.ANSI_256
 
     @property
-    def has_colors_true(self) -> bool:
+    def supports_colors_true(self) -> bool:
         """
         Return :data:`True` if terminal supports true colors.
 
@@ -368,14 +363,14 @@ class Term:
         """
 
         return (
-            self.has_colors
+            self.supports_colors
             and self.interactive_support >= InteractiveSupport.MOVE_CURSOR
         )
 
     @property
     def can_query_terminal(self) -> bool:
         """
-        Return :data:`True` if terminal can process queries, enter CBREAK mode, etc.
+        Return :data:`True` if terminal can process queries, enter ``CBREAK`` mode, etc.
 
         This is an alias to :attr:`~Term.is_fully_interactive`.
 
@@ -390,7 +385,7 @@ class Term:
 
         """
 
-        return self.has_colors and self.interactive_support >= InteractiveSupport.FULL
+        return self.supports_colors and self.interactive_support >= InteractiveSupport.FULL
 
 
 _CI_ENV_VARS = [
@@ -411,8 +406,15 @@ def get_term_from_stream(
     """
     Query info about a terminal attached to the given stream.
 
-    If ``query_terminal_colors`` is :data:`True`, Yuio will try to query background
-    and foreground color of the terminal.
+    :param ostream:
+        output stream.
+    :param istream:
+        input stream.
+    :param query_terminal_colors:
+        By default, this function queries background, foreground, and text colors
+        of the terminal if ``ostream`` and ``istream`` are connected to a TTY.
+
+        Set this parameter to :data:`False` to disable querying.
 
     """
 
@@ -871,22 +873,34 @@ class ColorValue:
     """
     Data about a single color.
 
-    Can be either a single ANSI escape code, or an RGB-tuple.
-
-    Single ANSI escape code represents a standard terminal color code.
-    The actual color value for it is controlled by the terminal's user.
-    Therefore, it doesn't permit operations on colors,
-    such as :meth:`ColorValue.darken` or :meth:`ColorValue.lerp`.
-
-    An RGB-tuple represents a true color. When displaying on a terminal that
-    doesn't support true colors, it will be converted to a corresponding
-    256-color or an 8-color automatically.
-
     """
 
     data: int | str | tuple[int, int, int]
     """
     Color data.
+
+    Can be one of three things:
+
+    -   an int value represents an 8-bit color code (a value between ``0`` and ``7``).
+
+        The actual color value for 8-bit color codes is controlled by the terminal's user.
+        Therefore, it doesn't permit operations on colors.
+
+        Depending on where this value is used (foreground or background), it will
+        result in either ``3x`` or ``4x`` SGR parameter.
+
+    -   an RGB-tuple represents a true color.
+
+        When converted for a terminal that doesn't support true colors,
+        it is automatically mapped to a corresponding 256- or 8-bit color.
+
+        Depending on where this value is used (foreground or background), it will
+        result in either ``38``/``3x`` or ``48``/``4x`` SGR parameter sequence.
+
+    -   A string value represents `a parameter for the SGR command`__. Yuio will add this
+        value to an SGR escape sequence as is, without any modification.
+
+    __ https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters
 
     """
 
@@ -897,10 +911,11 @@ class ColorValue:
 
         Each component should be between 0 and 255.
 
-        Example::
+        :example:
+            ::
 
-            >>> ColorValue.from_rgb(0xA0, 0x1E, 0x9C)
-            <ColorValue #A01E9C>
+                >>> ColorValue.from_rgb(0xA0, 0x1E, 0x9C)
+                <ColorValue #A01E9C>
 
         """
 
@@ -911,10 +926,11 @@ class ColorValue:
         """
         Create a color value from a hex string.
 
-        Example::
+        :example:
+            ::
 
-            >>> ColorValue.from_hex('#A01E9C')
-            <ColorValue #A01E9C>
+                >>> ColorValue.from_hex('#A01E9C')
+                <ColorValue #A01E9C>
 
         """
 
@@ -924,11 +940,12 @@ class ColorValue:
         """
         Return color in hex format with leading ``#``.
 
-        Example::
+        :example:
+            ::
 
-            >>> a = ColorValue.from_hex('#A01E9C')
-            >>> a.to_hex()
-            '#A01E9C'
+                >>> a = ColorValue.from_hex('#A01E9C')
+                >>> a.to_hex()
+                '#A01E9C'
 
         """
 
@@ -942,16 +959,16 @@ class ColorValue:
         """
         Return RGB components of the color.
 
-        Example::
+        :example:
+            ::
 
-            >>> a = ColorValue.from_hex('#A01E9C')
-            >>> a.to_rgb()
-            (160, 30, 156)
+                >>> a = ColorValue.from_hex('#A01E9C')
+                >>> a.to_rgb()
+                (160, 30, 156)
+
         """
 
-        if isinstance(self.data, int):
-            return _8_to_rgb(self.data)
-        elif isinstance(self.data, tuple):
+        if isinstance(self.data, tuple):
             return self.data
         else:
             return None
@@ -962,11 +979,12 @@ class ColorValue:
 
         Amount should be between 0 and 1.
 
-        Example::
+        :example:
+            ::
 
-            >>> # Darken by 30%.
-            ... ColorValue.from_hex('#A01E9C').darken(0.30)
-            <ColorValue #70156D>
+                >>> # Darken by 30%.
+                ... ColorValue.from_hex('#A01E9C').darken(0.30)
+                <ColorValue #70156D>
 
         """
 
@@ -987,11 +1005,12 @@ class ColorValue:
 
         Amount should be between 0 and 1.
 
-        Example::
+        :example:
+            ::
 
-            >>> # Lighten by 30%.
-            ... ColorValue.from_hex('#A01E9C').lighten(0.30)
-            <ColorValue #BC23B7>
+                >>> # Lighten by 30%.
+                ... ColorValue.from_hex('#A01E9C').lighten(0.30)
+                <ColorValue #BC23B7>
 
         """
 
@@ -1033,23 +1052,31 @@ class ColorValue:
         If either color is a single ANSI escape code, the first color is always returned
         from the lambda.
 
-        Example::
+        :param colors:
+            colors of a gradient.
+        :returns:
+            a callable that allows interpolating between colors: it accepts a float
+            value between ``1`` and ``0`` and returns a color.
+        :raises:
+            :class:`ValueError` if no colors are given.
+        :example:
+            ::
 
-            >>> a = ColorValue.from_hex('#A01E9C')
-            >>> b = ColorValue.from_hex('#22C60C')
-            >>> lerp = ColorValue.lerp(a, b)
+                >>> a = ColorValue.from_hex('#A01E9C')
+                >>> b = ColorValue.from_hex('#22C60C')
+                >>> lerp = ColorValue.lerp(a, b)
 
-            >>> lerp(0)
-            <ColorValue #A01E9C>
-            >>> lerp(0.5)
-            <ColorValue #617254>
-            >>> lerp(1)
-            <ColorValue #22C60C>
+                >>> lerp(0)
+                <ColorValue #A01E9C>
+                >>> lerp(0.5)
+                <ColorValue #617254>
+                >>> lerp(1)
+                <ColorValue #22C60C>
 
         """
 
         if not colors:
-            raise TypeError("lerp expected at least 1 argument, got 0")
+            raise ValueError("lerp expected at least 1 argument, got 0")
         elif len(colors) == 1 or not all(
             isinstance(color.data, tuple) for color in colors
         ):
@@ -1076,15 +1103,15 @@ class ColorValue:
         return self._as_code(term, fg_bg_prefix="4")
 
     def _as_code(self, term: Term, /, fg_bg_prefix: str) -> str:
-        if not term.has_colors:
+        if not term.supports_colors:
             return ""
         elif isinstance(self.data, int):
             return f"{fg_bg_prefix}{self.data}"
         elif isinstance(self.data, str):
             return self.data
-        elif term.has_colors_true:
+        elif term.supports_colors_true:
             return f"{fg_bg_prefix}8;2;{self.data[0]};{self.data[1]};{self.data[2]}"
-        elif term.has_colors_256:
+        elif term.supports_colors_256:
             return f"{fg_bg_prefix}8;5;{_rgb_to_256(*self.data)}"
         else:
             return f"{fg_bg_prefix}{_rgb_to_8(*self.data)}"
@@ -1163,10 +1190,11 @@ class Color:
 
         Each component should be between 0 and 255.
 
-        Example::
+        :example:
+            ::
 
-            >>> Color.fore_from_rgb(0xA0, 0x1E, 0x9C)
-            Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
+                >>> Color.fore_from_rgb(0xA0, 0x1E, 0x9C)
+                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
 
         """
 
@@ -1177,10 +1205,11 @@ class Color:
         """
         Create a foreground color value from a hex string.
 
-        Example::
+        :example:
+            ::
 
-            >>> Color.fore_from_hex('#A01E9C')
-            Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
+                >>> Color.fore_from_hex('#A01E9C')
+                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
 
         """
 
@@ -1193,10 +1222,11 @@ class Color:
 
         Each component should be between 0 and 255.
 
-        Example::
+        :example:
+            ::
 
-            >>> Color.back_from_rgb(0xA0, 0x1E, 0x9C)
-            Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None)
+                >>> Color.back_from_rgb(0xA0, 0x1E, 0x9C)
+                Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None)
 
         """
 
@@ -1207,10 +1237,11 @@ class Color:
         """
         Create a background color value from a hex string.
 
-        Example::
+        :example:
+            ::
 
-            >>> Color.back_from_hex('#A01E9C')
-            Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None)
+                >>> Color.back_from_hex('#A01E9C')
+                Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None)
 
         """
 
@@ -1224,23 +1255,31 @@ class Color:
         If either color is a single ANSI escape code, the first color is always returned
         from the lambda.
 
-        Example::
+        :param colors:
+            colors of a gradient.
+        :returns:
+            a callable that allows interpolating between colors: it accepts a float
+            value between ``1`` and ``0`` and returns a color.
+        :raises:
+            :class:`ValueError` if no colors given.
+        :example:
+            ::
 
-            >>> a = Color.fore_from_hex('#A01E9C')
-            >>> b = Color.fore_from_hex('#22C60C')
-            >>> lerp = Color.lerp(a, b)
+                >>> a = Color.fore_from_hex('#A01E9C')
+                >>> b = Color.fore_from_hex('#22C60C')
+                >>> lerp = Color.lerp(a, b)
 
-            >>> lerp(0)
-            Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
-            >>> lerp(0.5)
-            Color(fore=<ColorValue #617254>, back=None, bold=None, dim=None)
-            >>> lerp(1)
-            Color(fore=<ColorValue #22C60C>, back=None, bold=None, dim=None)
+                >>> lerp(0)
+                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
+                >>> lerp(0.5)
+                Color(fore=<ColorValue #617254>, back=None, bold=None, dim=None)
+                >>> lerp(1)
+                Color(fore=<ColorValue #22C60C>, back=None, bold=None, dim=None)
 
         """
 
         if not colors:
-            raise TypeError("lerp expected at least 1 argument, got 0")
+            raise ValueError("lerp expected at least 1 argument, got 0")
         elif len(colors) == 1:
             return lambda f, /: colors[0]
         else:
@@ -1274,7 +1313,7 @@ class Color:
 
         """
 
-        if not term.has_colors:
+        if not term.supports_colors:
             return ""
 
         codes = []
@@ -1466,14 +1505,6 @@ def _rgb_to_8(r: int, g: int, b: int) -> int:
         (1 if r >= 128 else 0)
         | (1 if g >= 128 else 0) << 1
         | (1 if b >= 128 else 0) << 2
-    )
-
-
-def _8_to_rgb(code: int) -> tuple[int, int, int]:
-    return (
-        (code & 1) and 0xFF,
-        (code & 2) and 0xFF,
-        (code & 4) and 0xFF,
     )
 
 
@@ -1676,13 +1707,15 @@ class ColorizedString:
             a string that will be prepended before the first line.
         :param continuation_indent:
             a string that will be prepended before all subsequent lines.
+        :returns:
+            a list of individual lines without newline characters at the end.
+        :example:
+            ::
 
-        Example::
-
-            >>> ColorizedString("hello, world!\nit's a good day!").wrap(13)  # doctest: +NORMALIZE_WHITESPACE
-            [<ColorizedString('hello, world!', explicit_newline='\n')>,
-             <ColorizedString("it's a good")>,
-             <ColorizedString('day!')>]
+                >>> ColorizedString("hello, world!\nit's a good day!").wrap(13)  # doctest: +NORMALIZE_WHITESPACE
+                [<ColorizedString('hello, world!', explicit_newline='\n')>,
+                <ColorizedString("it's a good")>,
+                <ColorizedString('day!')>]
 
         """
 
@@ -1709,10 +1742,11 @@ class ColorizedString:
         :param continuation_indent:
             this will be appended to subsequent lines in the string.
 
-        Example::
+        :example:
+            ::
 
-            >>> ColorizedString("hello, world!\nit's a good day!").indent("# ", "  ")
-            <ColorizedString("# hello, world!\n  it's a good day!")>
+                >>> ColorizedString("hello, world!\nit's a good day!").indent("# ", "  ")
+                <ColorizedString("# hello, world!\n  it's a good day!")>
 
         """
 
@@ -1750,15 +1784,26 @@ class ColorizedString:
     def percent_format(self, args: _t.Any) -> ColorizedString:
         """
         Format colorized string as if with ``%``-formatting
-        (i.e. `old-style formatting`_).
+        (i.e. `printf-style formatting`__).
 
-        .. _old-style formatting: https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting
+        Calling this method is equivalent to using ``%`` operator with this string
+        on its left hand side.
 
-        Example::
+        __ https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting
 
-            >>> line = ColorizedString("Hello, %s!")
-            >>> line % "Username"
-            <ColorizedString('Hello, Username!')>
+        :param args:
+            arguments for formatting. Can be either a tuple of a dict. Any other value
+            will be converted to a tuple of one element.
+        :returns:
+            formatted string.
+        :raises:
+            :class:`TypeError` if formatting fails.
+        :example:
+            ::
+
+                >>> line = ColorizedString("Hello, %s!")
+                >>> line % "Username"
+                <ColorizedString('Hello, Username!')>
 
         """
 
@@ -1801,8 +1846,7 @@ class ColorizedString:
 
     def process_colors(self, term: Term, /) -> list[str]:
         """
-        Convert colors in this string into a normal string
-        with ANSI escape sequences.
+        Convert colors in this string to ANSI escape sequences.
 
         """
 
@@ -1894,10 +1938,9 @@ def _percent_format(s: ColorizedString, args: _t.Any) -> list[Color | str]:
 
     raw = []
     for part in s:
-        if isinstance(part, NoWrap):
-            raw.append(NoWrap(_S_SYNTAX.sub(repl, part)))
-        elif isinstance(part, str):
-            raw.append(_S_SYNTAX.sub(repl, part))
+        if isinstance(part, str):
+            # Note: preserve NoWrap/Esc wrappers.
+            raw.append(part.__class__(_S_SYNTAX.sub(repl, part)))
         else:
             raw.append(part)
 

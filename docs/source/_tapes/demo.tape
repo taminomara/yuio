@@ -21,7 +21,7 @@ Sleep 1s
 
 Type "yuio.io.info('This is an "
 Sleep 100ms
-Type "<c bold>"
+Type "<c bold green>"
 Sleep 100ms
 Type "info message!</c>')"
 Sleep 100ms

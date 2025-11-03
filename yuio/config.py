@@ -576,36 +576,37 @@ def field(
         controls how this field renders in CLI usage section. Passing :data:`False`
         removes this field from usage, and passing :class:`yuio.OMIT` replaces all
         omitted fields with a single string ``"<options>"``.
+    :returns:
+        a magic object that will be replaced with field's default value once a new
+        config class is created.
+    :example:
+        In apps:
 
-    **Example:**
+        .. invisible-code-block: python
 
-    In apps:
+            import yuio.app
 
-    .. invisible-code-block: python
+        .. code-block:: python
 
-        import yuio.app
+            @yuio.app.app
+            def main(
+                # Will be loaded from `--input`.
+                input: pathlib.Path | None = None,
 
-    .. code-block:: python
+                # Will be loaded from `-o` or `--output`.
+                output: pathlib.Path | None = field(default=None, flags=['-p', '--pid'])
+            ):
+                ...
+    :example:
+        In configs:
 
-        @yuio.app.app
-        def main(
-            # Will be loaded from `--input`.
-            input: pathlib.Path | None = None,
+        .. code-block:: python
 
-            # Will be loaded from `-o` or `--output`.
-            output: pathlib.Path | None = field(default=None, flags=['-p', '--pid'])
-        ):
-            ...
-
-    In configs:
-
-    .. code-block:: python
-
-        class AppConfig(Config):
-            model: pathlib.Path | None = field(
-                default=None,
-                help="trained model to execute",
-            )
+            class AppConfig(Config):
+                model: pathlib.Path | None = field(
+                    default=None,
+                    help="trained model to execute",
+                )
 
     """
 
@@ -916,6 +917,10 @@ class Config:
         :param prefix:
             if given, names of all environment variables will be prefixed with
             this string and an underscore.
+        :returns:
+            a parsed config.
+        :raises:
+            :class:`~yuio.parse.ParsingError`.
 
         """
 
@@ -1162,6 +1167,11 @@ class Config:
         :param ignore_missing_file:
             if :data:`True`, silently ignore a missing file error. This is useful
             when loading a config from a home directory.
+        :returns:
+            a parsed config.
+        :raises:
+            :class:`~yuio.parse.ParsingError` if config parsing has failed
+            or if config file doesn't exist.
 
         """
 
@@ -1181,7 +1191,7 @@ class Config:
         """
         Load config from a ``.yaml`` file.
 
-        This requires `PyYaml <https://pypi.org/project/PyYAML/>`_ package
+        This requires `PyYaml <https://pypi.org/project/PyYAML/>`__ package
         to be installed.
 
         :param path:
@@ -1192,6 +1202,12 @@ class Config:
         :param ignore_missing_file:
             if :data:`True`, silently ignore a missing file error. This is useful
             when loading a config from a home directory.
+        :returns:
+            a parsed config.
+        :raises:
+            :class:`~yuio.parse.ParsingError` if config parsing has failed
+            or if config file doesn't exist. Can raise :class:`ImportError`
+            if ``PyYaml`` is not available.
 
         """
 
@@ -1229,6 +1245,12 @@ class Config:
         :param ignore_missing_file:
             if :data:`True`, silently ignore a missing file error. This is useful
             when loading a config from a home directory.
+        :returns:
+            a parsed config.
+        :raises:
+            :class:`~yuio.parse.ParsingError` if config parsing has failed
+            or if config file doesn't exist. Can raise :class:`ImportError`
+            if ``toml`` is not available.
 
         """
 
@@ -1294,6 +1316,10 @@ class Config:
             in config class.
         :param path:
             path of the original file, used for error reporting.
+        :returns:
+            a parsed config.
+        :raises:
+            :class:`~yuio.parse.ParsingError`.
 
         """
 
@@ -1382,6 +1408,9 @@ class Config:
         file, or environment variables. It should check that config is correct,
         and raise :class:`yuio.parse.ParsingError` if it's not.
 
+        :raises:
+            :class:`~yuio.parse.ParsingError`.
+
         """
 
     @classmethod
@@ -1389,7 +1418,7 @@ class Config:
         cls, ctx: yuio.json_schema.JsonSchemaContext
     ) -> yuio.json_schema.JsonSchemaType:
         """
-        Create a Json schema object based on this config.
+        Create a JSON schema object based on this config.
 
         The purpose of this method is to make schemas for use in IDEs, i.e. to provide
         autocompletion or simple error checking. The returned schema is not guaranteed
@@ -1397,6 +1426,8 @@ class Config:
 
         :param ctx:
             context for building a schema.
+        :returns:
+            a JSON schema that describes structure of this config.
 
         """
 
@@ -1410,6 +1441,11 @@ class Config:
 
         :param include_defaults:
             if :data:`False`, default values will be skipped.
+        :returns:
+            a config converted to JSON-serializable representation.
+        :raises:
+            :class:`TypeError` if any of the config fields contain values that can't
+            be converted to JSON by their respective parsers.
 
         """
 

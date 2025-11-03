@@ -6,7 +6,7 @@ def main():
     greeting = yuio.io.edit(
         "# Please, edit the greeting:\n"
         "Hello, world!",
-        comment_marker="#"
+        comment_marker="#",
     )
 
     yuio.io.info("Greeting: `%s`", greeting)

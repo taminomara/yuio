@@ -125,7 +125,15 @@ TAst = _t.TypeVar("TAst", bound="AstBase")
 @_t.final
 class MdFormatter:
     """
-    A simple markdown formatter suitable for displaying reach text in the terminal.
+    A simple markdown formatter suitable for displaying rich text in the terminal.
+
+    :param theme:
+        a theme that's used to colorize rendered markdown.
+    :param width:
+        maximum width for wrapping long paragraphs. If not given, it is inferred
+        via :func:`shutil.get_terminal_size`.
+    :param allow_headings:
+        if set to :data:`False`, headings are rendered as paragraphs.
 
     All CommonMark block markup except tables is supported:
 
@@ -139,7 +147,7 @@ class MdFormatter:
       Yuio has only two levels of headings. Headings past level two will look the same
       as level two headings (you can adjust theme to change this).
 
-      If `allow_headings` is set to false, headings look like paragraphs.
+      If ``allow_headings`` is set to :data:`False`, headings look like paragraphs.
 
     - lists, numbered lists, quotes:
 
@@ -215,15 +223,22 @@ class MdFormatter:
             width = shutil.get_terminal_size().columns
         self.__width = max(width, 20)
 
-    def format(self, s: str, /) -> list[yuio.term.ColorizedString]:
+    def format(self, md: str, /) -> list[yuio.term.ColorizedString]:
         """
         Format a markdown document.
 
+        :param md:
+            markdown to format. Common indentation will be removed from this string,
+            making it suitable to use with triple quote literals.
+        :returns:
+            rendered markdown as a list of individual lines without newline
+            characters at the end.
+
         """
 
-        return self.format_node(self.parse(s))
+        return self.format_node(self.parse(md))
 
-    def parse(self, s: str, /) -> AstBase:
+    def parse(self, md: str, /) -> Document:
         """
         Parse a markdown document and return an AST node.
 
@@ -231,9 +246,15 @@ class MdFormatter:
 
            This is an experimental API which can change within a minor release.
 
+        :param md:
+            markdown to parse. Common indentation will be removed from this string,
+            making it suitable to use with triple quote literals.
+        :returns:
+            parsed AST node.
+
         """
 
-        return _MdParser(self.allow_headings).parse(yuio._dedent(s))
+        return _MdParser(self.allow_headings).parse(yuio._dedent(md))
 
     def format_node(self, node: AstBase, /) -> list[yuio.term.ColorizedString]:
         """
@@ -242,6 +263,12 @@ class MdFormatter:
         .. warning::
 
            This is an experimental API which can change within a minor release.
+
+        :param md:
+            AST node to format.
+        :returns:
+            rendered markdown as a list of individual lines without newline
+            characters at the end.
 
         """
 
@@ -256,7 +283,7 @@ class MdFormatter:
 
     def colorize(
         self,
-        s: str,
+        text: str,
         /,
         *,
         default_color: yuio.term.Color | str = yuio.term.Color.NONE,
@@ -264,12 +291,18 @@ class MdFormatter:
         """
         Parse and colorize contents of a paragraph.
 
-        Apply ``default_color`` to the entire paragraph, and process color tags
-        and backticks within it.
+        This is a shortcut for calling :func:`colorize` with this formatter's theme.
+
+        :param line:
+            text to colorize.
+        :param default_color:
+            color or color tag to apply to the entire text.
+        :returns:
+            a colorized string.
 
         """
 
-        return colorize(self.theme, s, default_color=default_color)
+        return colorize(self.theme, text, default_color=default_color)
 
     @contextlib.contextmanager
     def _indent(
@@ -746,7 +779,7 @@ class _MdParser:
     def _is_blank(s: str) -> bool:
         return not s or s.isspace()
 
-    def parse(self, s: str) -> AstBase:
+    def parse(self, s: str) -> Document:
         s = s.expandtabs(tabsize=4)
         i = 0
         for i, line in enumerate(_LINE_FEED_RE.split(s)):
@@ -1036,9 +1069,6 @@ class SyntaxHighlighter(abc.ABC):
         """
         List of syntax names that should be associated with this highlighter.
 
-        The first name in this list is a canonical syntax name,
-        i.e. it will be used to look up colors in a theme.
-
         """
 
         return []
@@ -1046,7 +1076,8 @@ class SyntaxHighlighter(abc.ABC):
     @property
     def syntax(self) -> str:
         """
-        The primary syntax name for this highlighter.
+        The primary syntax name for this highlighter, defaults to the first element
+        of the :attr:`~SyntaxHighlighter.syntaxes` list.
 
         This name is used to look up colors in a theme.
 
@@ -1060,6 +1091,9 @@ class SyntaxHighlighter(abc.ABC):
         Register a highlighter in a global registry, and allow looking it up
         via the :meth:`~SyntaxHighlighter.get_highlighter` method.
 
+        :param highlighter:
+            a highlighter instance.
+
         """
 
         for syntax in highlighter.syntaxes:
@@ -1069,6 +1103,14 @@ class SyntaxHighlighter(abc.ABC):
     def get_highlighter(cls, syntax: str, /) -> SyntaxHighlighter:
         """
         Look up highlighter by a syntax name.
+
+        :param syntax:
+            name of the syntax highlighter.
+        :returns:
+            a highlighter instance.
+
+            If highlighter with the given name can't be found, returns a dummy
+            highlighter that does nothing.
 
         """
 
@@ -1086,6 +1128,13 @@ class SyntaxHighlighter(abc.ABC):
     ) -> yuio.term.ColorizedString:
         """
         Highlight the given code using the given theme.
+
+        :param theme:
+            theme that will be used to look up color tags.
+        :param code:
+            code to highlight.
+        :param default_color:
+            color or color tag to apply to the entire code.
 
         """
 
@@ -1506,7 +1555,7 @@ __FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
 
 def colorize(
     theme: yuio.theme.Theme,
-    s: str,
+    line: str,
     /,
     *,
     default_color: yuio.term.Color | str = yuio.term.Color.NONE,
@@ -1518,6 +1567,15 @@ def colorize(
     Apply ``default_color`` to the entire paragraph, and process color tags
     and backticks within it.
 
+    :param theme:
+        theme that will be used to look up color tags.
+    :param line:
+        text to colorize.
+    :param default_color:
+        color or color tag to apply to the entire text.
+    :returns:
+        a colorized string.
+
     """
 
     default_color = theme.to_color(default_color)
@@ -1528,8 +1586,8 @@ def colorize(
     stack = [default_color]
 
     last_pos = 0
-    for tag in __TAG_RE.finditer(s):
-        raw.append(s[last_pos : tag.start()])
+    for tag in __TAG_RE.finditer(line):
+        raw.append(line[last_pos : tag.start()])
         last_pos = tag.end()
 
         if name := tag.group("tag_open"):
@@ -1559,7 +1617,7 @@ def colorize(
             stack.pop()
             raw.append(stack[-1])
 
-    raw.append(s[last_pos:])
+    raw.append(line[last_pos:])
 
     raw.append(yuio.term.Color.NONE)
 

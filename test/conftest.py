@@ -501,27 +501,27 @@ class IOMocker:
         of the test, when :meth:`IoMocker.mock` exits. With a mark, you can manually
         trigger assert checks between redraws.
 
-        Example:
+        :example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-           def test_something(io_mocker):
-              # First assert will be checked upon a call to `mark`.
-              io_mocker.expect_screen(...)
-              io_mocker.expect_mark()
+                def test_something(io_mocker):
+                    # First assert will be checked upon a call to `mark`.
+                    io_mocker.expect_screen(...)
+                    io_mocker.expect_mark()
 
-              # Second assert will be checked at the end of the test.
-              io_mocker.expect_screen(...)
+                    # Second assert will be checked at the end of the test.
+                    io_mocker.expect_screen(...)
 
-              with io_mocker.mock():
-                  # Render things
-                  ...
+                    with io_mocker.mock():
+                        # Render things
+                        ...
 
-                  # Emit a mark event; this will check what we've rendered so far.
-                  io_mocker.mark()
+                        # Emit a mark event; this will check what we've rendered so far.
+                        io_mocker.mark()
 
-                  # Render some more things
-                  ...
+                        # Render some more things
+                        ...
 
         """
         self._events.append((self._get_stack_summary(), _ExpectMark(mark)))

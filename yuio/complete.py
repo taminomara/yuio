@@ -62,9 +62,6 @@ its :meth:`~Completer._process` method.
 
    .. automethod:: _process
 
-The core of the completion system, however, is a :class:`CompletionCollector`.
-This is the class that is responsible for generating a final list of completions:
-
 .. autoclass:: CompletionCollector
 
 """
@@ -312,12 +309,16 @@ class CompletionCollector:
     removed if the user types one of :attr:`CompletionCollector.rsymbols`,
     or moves cursor, or alters input in some other way.
 
+    This property is mutable and can be changed by completers.
+
     """
 
     rsymbols: str
     """
     If user types one of the symbols from this string,
     :attr:`~.CompletionCollector.rsuffix` will be removed.
+
+    This property is mutable and can be changed by completers.
 
     """
 
@@ -331,6 +332,8 @@ class CompletionCollector:
     """
     Completions from this set will not be added. This is useful
     when completing lists of unique values.
+
+    This property is mutable and can be changed by completers.
 
     """
 
@@ -491,7 +494,8 @@ class CompletionCollector:
         They will be grouped together, and colored according to the group's color tag.
 
         :param sorted:
-            controls whether completions in the new group should be sorted.
+            controls whether completions in the new group
+            should be sorted lexicographically.
         :param color_tag:
             which color tag should be used to display completions
             and their help messages for this group.
@@ -507,7 +511,7 @@ class CompletionCollector:
     @property
     def num_completions(self) -> int:
         """
-        Number of completions that added so far.
+        Number of completions added so far.
 
         """
 
@@ -518,6 +522,10 @@ class CompletionCollector:
         Move everything up to the last occurrence of ``delim``
         from :attr:`~CompletionCollector.prefix`
         to :attr:`~CompletionCollector.iprefix`.
+
+        :param delim:
+            delimiter to split off; :data:`None` value splits off on any whitespace
+            character, similar to :meth:`str.rsplit`.
 
         """
 
@@ -533,6 +541,10 @@ class CompletionCollector:
         from :attr:`~CompletionCollector.suffix`
         to :attr:`~CompletionCollector.isuffix`.
 
+        :param delim:
+            delimiter to split off; :data:`None` value splits off on any whitespace
+            character, similar to :meth:`str.split`.
+
         """
 
         delim = delim or " "
@@ -546,6 +558,13 @@ class CompletionCollector:
         Finish collecting completions and return everything that was collected.
 
         Do not reuse a collector after it was finalized.
+
+        :returns:
+            list of completions, sorted by their groups and preferred ordering
+            within each group.
+
+            If all completions start with a common prefix, a single completion
+            is returned containing this prefix.
 
         """
 
@@ -752,6 +771,11 @@ class Completer(abc.ABC):
         :param do_corrections:
             if :data:`True` (default), completion system will try to guess
             if there are any misspells in the ``text``, and offer to correct them.
+        :returns:
+            a sorted list of completions.
+
+            If all completions start with a common prefix, a single completion
+            is returned containing this prefix.
 
         """
 

@@ -766,7 +766,7 @@ class DefaultTheme(Theme):
             return
 
         # Gradients look bad in other modes.
-        if term.has_colors_true:
+        if term.supports_colors_true:
             self._set_color_if_not_overridden(
                 "task/progressbar/done/start",
                 yuio.term.Color(fore=term.terminal_colors.blue),
