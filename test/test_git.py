@@ -1,5 +1,4 @@
 import datetime
-import os
 import pathlib
 import subprocess
 import tempfile
@@ -86,7 +85,8 @@ def test_not_a_repo():
             yuio.git.Repo(base)
 
 
-@pytest.mark.skipif(os.name == "nt", reason="windows")
+@pytest.mark.linux
+@pytest.mark.darwin
 def test_git_unavailable(repo_path):
     with pytest.raises(yuio.git.GitUnavailableError, match=r"git executable not found"):
         yuio.git.Repo(repo_path, env={"PATH": ""})

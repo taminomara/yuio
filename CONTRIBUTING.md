@@ -2,22 +2,22 @@
 
 ## Set up your environment
 
-1. Check out the repo:
-
-   ```shell
-   git clone git@github.com:taminomara/yuio.git
-   ```
-
-2. Create a virtual environment with python `3.13` or newer
+1. Create a virtual environment with python `3.13` or newer
    (some of dev tools don't work with older pythons).
 
-3. Install Yuio in development mode, and install dev dependencies:
+2. Make sure your pip is up to date:
 
    ```shell
-   pip install -e .[dev]
+   pip install -U pip
    ```
 
-4. Install pre-commit hooks:
+2. Install Yuio in development mode, and install dev dependencies:
+
+   ```shell
+   pip install -e . --group dev
+   ```
+
+3. Install pre-commit hooks:
 
    ```shell
    pre-commit install
@@ -25,17 +25,10 @@
 
 ## Run tests
 
-To run tests, simply run `pytest` and `pyright`:
+To run tests, simply run `tox`:
 
 ```shell
-pytest  # Run unit tests.
-pyright  # Run type check.
-```
-
-To fix code style, you can manually run pre-commit hooks:
-
-```shell
-pre-commit run -a  # Fix code style.
+tox p
 ```
 
 To generate HTML coverage report
@@ -46,11 +39,16 @@ pytest --cov --cov-report=html  # Generate coverage.
 open ./htmlcov/index.html  # Open the generated page.
 ```
 
-To test across all supported interpreters, run `tox`:
+To run full test suite, enable pytest marker `full` (or rather, disable marker
+filtering by overriding option `-m`):
 
 ```shell
-tox p
+pytest -m ''
+PYTEST_ADDOPTS="-p no:doctest -m=" tox p
 ```
+
+The full test suite requires `tmux`, `bash`, `zsh`, `fish`, and `pwsh`
+installed on your system.
 
 
 ## Build docs

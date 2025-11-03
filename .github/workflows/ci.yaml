@@ -56,6 +56,8 @@ jobs:
       - name: Test package
         if: ${{ matrix.type == 'test' }}
         run: tox --skip-env lint --colored yes run-parallel
+        env:
+          PYTEST_ADDOPTS: "--strict-markers -p no:doctest -m="
       # Lint
       - name: Check code style
         if: ${{ matrix.type == 'code style' }}

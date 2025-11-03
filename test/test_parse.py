@@ -3,7 +3,6 @@ import enum
 import os.path
 import pathlib
 import re
-import sys
 from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
@@ -1796,7 +1795,6 @@ class TestSimpleCollections:
         with pytest.raises(TypeError, match=r"requires an inner parser"):
             parser.parse("asd")
 
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="new typing syntax")
     def test_from_type_hint_annotated(self, test_params):
         parser_cls, ctor = test_params
         parser = yuio.parse.from_type_hint(_t.Annotated[ctor[int], parser_cls()])
@@ -1806,7 +1804,6 @@ class TestSimpleCollections:
         )
         assert parser.parse("1, 2, 3") == ctor([1, 2, 3])
 
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="new typing syntax")
     def test_from_type_hint_annotated_shadows(self, test_params):
         parser_cls, ctor = test_params
         with pytest.raises(
@@ -1817,7 +1814,6 @@ class TestSimpleCollections:
                 _t.Annotated[ctor[int], parser_cls(), parser_cls()]
             )
 
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="new typing syntax")
     def test_from_type_hint_annotated_wrong_type(self, test_params):
         parser_cls, _ = test_params
         with pytest.raises(
@@ -1829,7 +1825,6 @@ class TestSimpleCollections:
         ):
             yuio.parse.from_type_hint(_t.Annotated[int, parser_cls()])
 
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="new typing syntax")
     def test_from_type_hint_annotated_non_partial(self, test_params):
         parser_cls, ctor = test_params
         with pytest.raises(

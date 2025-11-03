@@ -96,7 +96,8 @@ def test_cwd(tmp_path):
     assert result.strip() == str(tmp_path)
 
 
-@pytest.mark.skipif(os.name == "nt", reason="windows")
+@pytest.mark.linux
+@pytest.mark.darwin
 def test_path(tmp_path):
     yuio.exec.exec("ls", pathlib.Path(tmp_path))
 

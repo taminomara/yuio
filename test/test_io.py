@@ -1,5 +1,4 @@
 import io
-import os
 import sys
 import textwrap
 
@@ -931,18 +930,20 @@ class TestDetectEditor:
         monkeypatch.delenv("VISUAL", raising=False)
         yield
 
-    @pytest.mark.skipif(os.name == "nt", reason="windows")
+    @pytest.mark.linux
+    @pytest.mark.darwin
     def test_env_editor(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("EDITOR", "foobar")
         assert yuio.io.detect_editor() == "foobar"
 
-    @pytest.mark.skipif(os.name == "nt", reason="windows")
+    @pytest.mark.linux
+    @pytest.mark.darwin
     def test_env_visual(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("EDITOR", "foobar")
         monkeypatch.setenv("VISUAL", "visual")
         assert yuio.io.detect_editor() == "visual"
 
-    @pytest.mark.skipif(os.name != "nt", reason="unix")
+    @pytest.mark.windows
     def test_env_windows(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("EDITOR", "foobar")
         monkeypatch.setenv("VISUAL", "visual")
@@ -974,7 +975,8 @@ class TestDetectEditor:
         assert seen == ["fallback 1", "fallback 2"]
 
 
-@pytest.mark.skipif(os.name == "nt", reason="windows")
+@pytest.mark.linux
+@pytest.mark.darwin
 class TestEdit:
     _EDITOR = "echo ' edited' >>"
 
@@ -1024,7 +1026,7 @@ class TestEdit:
             yuio.io.edit("foo")
 
 
-@pytest.mark.skipif(os.name != "nt", reason="windows")
+@pytest.mark.windows
 class TestEditWin:
     SCRIPT = textwrap.dedent(
         """
