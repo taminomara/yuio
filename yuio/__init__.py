@@ -118,6 +118,11 @@ def to_dash_case(s: str, /) -> str:
     return _TO_DASH_CASE_RE.sub("-", s).lower()
 
 
+def _dedent(s: str):
+    first, *rest = s.splitlines(keepends=True)
+    return (first.strip() + "\n" + _textwrap.dedent("".join(rest))).strip() + "\n"
+
+
 _COMMENT_RE = _re.compile(r"^\s*#:(.*)\r?\n?$")
 _RST_ROLE_RE = _re.compile(
     r"(?::[\w+.:-]+:|__?)?`((?:[^`\n\\]|\\.)+)`(?::[\w+.:-]+:|__?)?"
