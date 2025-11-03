@@ -82,7 +82,6 @@ import os
 import re
 import shutil
 import string
-import textwrap
 from dataclasses import dataclass
 
 import yuio.term
@@ -234,7 +233,7 @@ class MdFormatter:
 
         """
 
-        return _MdParser(self.allow_headings).parse(self._dedent(s))
+        return _MdParser(self.allow_headings).parse(yuio._dedent(s))
 
     def format_node(self, node: AstBase, /) -> list[yuio.term.ColorizedString]:
         """
@@ -300,11 +299,6 @@ class MdFormatter:
         finally:
             self._first_line_indent = old_first_line_indent
             self._continuation_indent = old_continuation_indent
-
-    @staticmethod
-    def _dedent(s: str, /) -> str:
-        first_line, *rest = s.split("\n", 1)
-        return first_line + ("\n" + textwrap.dedent(rest[0]) if rest else "")
 
     def _line(self, line: yuio.term.ColorizedString, /):
         self._out.append(line)

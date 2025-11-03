@@ -140,8 +140,7 @@ def _rst_repl(match: _re.Match[str]):
 
 
 def _process_docstring(s: str):
-    first, *rest = s.splitlines(keepends=True)
-    value = (first.strip() + "\n" + _textwrap.dedent("".join(rest))).strip()
+    value = _dedent(s).removesuffix("\n")
 
     if (index := value.find("\n\n")) != -1:
         value = value[:index]

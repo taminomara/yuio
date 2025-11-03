@@ -641,7 +641,8 @@ def md(msg: str, /, *args, **kwargs):
     to backticks and color tags. See :mod:`yuio.md` for more info.
 
     :param msg:
-        message to print.
+        message to print. The leading indentation from the message will be removed,
+        so this function can be used with triple quote literals.
     :param args:
         arguments for ``%``\\ -formatting the message.
     :param kwargs:
@@ -666,7 +667,8 @@ def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
     Print highlighted code. See :mod:`yuio.md` for more info.
 
     :param msg:
-        code to highlight.
+        code to highlight. The leading indentation from the code will be removed,
+        so this function can be used with triple quote literals.
     :param args:
         arguments for ``%``\\ -formatting the code.
     :param syntax:

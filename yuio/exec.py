@@ -48,12 +48,12 @@ class ExecError(subprocess.CalledProcessError):
         Return code of the called command.
 
     .. py:data:: cmd
-        :type: tuple[str | pathlib.Path]
+        :type: tuple[str | pathlib.Path, ...]
 
         Initial ``args`` passed to the :func:`exec`.
 
     .. py:data:: output
-                 stderr
+                 stdout
         :type: str | bytes | None
 
         Captured stdout.

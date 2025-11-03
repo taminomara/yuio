@@ -22,3 +22,29 @@ if __name__ == "__main__":
 
     yuio.io.info("This text is <c red bold>rad!</c>")
     yuio.io.warning("File <c code>example.txt</c> does not exist.")
+
+    yuio.io.heading("Markdown")
+
+    yuio.io.md(
+        """
+        - You can use `` `backticks` `` with all functions from `yuio.io`.
+        - You can also use CommonMark block markup with `yuio.io.md`.
+        - For example, check out this fork bomb:
+
+          ```sh
+          :(){ :|:& };:  # <- don't paste this in bash!
+          ```
+    """
+    )
+
+    yuio.io.heading("Code highlighting")
+
+    yuio.io.hl(
+        """
+        {
+            "config": "~/.config.json",
+            "syntax": "json"
+        }
+    """,
+        syntax="json",
+    )

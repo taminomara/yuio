@@ -41,7 +41,7 @@ def setup(
 
     io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=enable_bg_updates)
     monkeypatch.setattr("yuio.io._IO_MANAGER", io_manager)
-    io_manager.formatter.width = width
+    io_manager._rc._width = width
 
     yield
 
@@ -1020,7 +1020,8 @@ class TestEdit:
 
     def test_file_removed(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: "rm")
-        assert yuio.io.edit("foo") == ""
+        with pytest.raises(yuio.io.UserIoError, match=r"can't read back edited file"):
+            yuio.io.edit("foo")
 
 
 @pytest.mark.skipif(os.name != "nt", reason="windows")

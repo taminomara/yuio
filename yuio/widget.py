@@ -734,6 +734,24 @@ class RenderContext:
 
         return self._frame_h
 
+    @property
+    def canvas_width(self) -> int:
+        """
+        Get width of the terminal.
+
+        """
+
+        return self._width
+
+    @property
+    def canvas_height(self) -> int:
+        """
+        Get height of the terminal.
+
+        """
+
+        return self._height
+
     def set_pos(self, x: int, y: int, /):
         """
         Set current cursor position within the frame.

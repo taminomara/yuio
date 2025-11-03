@@ -115,7 +115,6 @@ from __future__ import annotations
 import abc
 import json
 import os
-import textwrap
 from dataclasses import dataclass
 
 import yuio
@@ -813,10 +812,7 @@ class Meta(JsonSchemaType):
         if self.title is not None:
             schema["title"] = self.title
         if self.description is not None:
-            first, *rest = self.description.splitlines(keepends=True)
-            schema["description"] = (
-                first.strip() + "\n" + textwrap.dedent("".join(rest))
-            ).lstrip("\n").rstrip() + "\n"
+            schema["description"] = yuio._dedent(self.description)
         if self.default is not yuio.MISSING:
             schema["default"] = self.default
         return schema

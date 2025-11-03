@@ -1315,7 +1315,7 @@ class _HelpFormatter:
             )
 
         if usage is not None:
-            usage = self._formatter._dedent(usage.strip())
+            usage = yuio._dedent(usage.strip())
             sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
 
             c_usage = sh_usage_highlighter.highlight(
