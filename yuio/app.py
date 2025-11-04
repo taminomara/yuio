@@ -258,6 +258,7 @@ from dataclasses import dataclass
 import yuio
 import yuio.complete
 import yuio.config
+import yuio.dbg.env
 import yuio.io
 import yuio.md
 import yuio.parse
@@ -313,6 +314,7 @@ def app(
     description: str | None = None,
     epilog: str | None = None,
     version: str | None = None,
+    bug_report: yuio.dbg.env.ReportSettings | bool = False,
 ) -> _t.Callable[[C], App[C]]: ...
 
 
@@ -326,6 +328,7 @@ def app(
     description: str | None = None,
     epilog: str | None = None,
     version: str | None = None,
+    bug_report: yuio.dbg.env.ReportSettings | bool = False,
 ) -> App[C]: ...
 
 
@@ -338,6 +341,7 @@ def app(
     description: str | None = None,
     epilog: str | None = None,
     version: str | None = None,
+    bug_report: yuio.dbg.env.ReportSettings | bool = False,
 ) -> _t.Any:
     """
     Create an application.
@@ -357,6 +361,9 @@ def app(
         overrides program's epilog, see :attr:`App.epilog`.
     :param version:
         program's version, will be displayed using the :flag:`--version` flag.
+    :param bug_report:
+        settings for automated bug report generation. If present,
+        adds the :flag:`--bug-report` flag.
     :returns:
         an :class:`App` object that wraps the original function.
 
@@ -370,6 +377,7 @@ def app(
             description=description,
             epilog=epilog,
             version=version,
+            bug_report=bug_report,
         )
 
     if command is None:
@@ -457,6 +465,7 @@ class App(_t.Generic[C]):
         description: str | None = None,
         epilog: str | None = None,
         version: str | None = None,
+        bug_report: yuio.dbg.env.ReportSettings | bool = False,
     ):
         self.prog: str | None = prog
         """
@@ -610,6 +619,15 @@ class App(_t.Generic[C]):
 
         """
 
+        self.bug_report: yuio.dbg.env.ReportSettings | bool = bug_report
+        """
+        If not :data:`False`, add :flag:`--bug-report` flag to the CLI.
+
+        This flag automatically collects data about environment and prints it
+        in a format suitable for adding to a bug report.
+
+        """
+
         self.__sub_apps: dict[str, App._SubApp] = {}
 
         if callable(command):
@@ -756,6 +774,12 @@ class App(_t.Generic[C]):
             yuio.complete._run_custom_completer(
                 self.__get_completions(), args[index + 1], args[index + 2]
             )
+            sys.exit(0)
+
+        if "--yuio-bug-report--" in args:
+            from yuio.dbg.env import print_report
+
+            print_report(settings=self.bug_report, app=self)
             sys.exit(0)
 
         yuio.io.setup(theme=self.theme, wrap_stdio=True)
@@ -956,6 +980,15 @@ class App(_t.Generic[C]):
                 help="show program's version number and exit",
             )
 
+        if main_app.bug_report:
+            aux.add_argument(
+                "--bug-report",
+                action=_BugReportAction,
+                nargs=0,
+                app=main_app,
+                help="show environment data for bug report and exit",
+            )
+
         aux.add_argument(
             "--completions",
             help="generate autocompletion scripts and exit",
@@ -965,7 +998,9 @@ class App(_t.Generic[C]):
 
     def __get_completions(self) -> yuio.complete._CompleterSerializer:
         serializer = yuio.complete._CompleterSerializer(
-            add_help=True, add_version=self.version is not None
+            add_help=True,
+            add_version=self.version is not None,
+            add_bug_report=bool(self.bug_report),
         )
         self.__setup_arg_parser(serializer.as_parser())
         return serializer
@@ -1160,6 +1195,20 @@ class _VersionAction(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         print(self.version)
+        parser.exit()
+
+
+class _BugReportAction(argparse.Action):
+    @staticmethod
+    def get_usage():
+        return False
+
+    def __init__(self, app: App[_t.Any], **kwargs):
+        super().__init__(**kwargs)
+        self.app = app
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        yuio.dbg.env.print_report(settings=self.app.bug_report, app=self.app)
         parser.exit()
 
 
@@ -1454,7 +1503,7 @@ class _HelpFormatter:
             for option_string in action.option_strings:
                 if sep:
                     c_usage += self._usage_punct_color
-                    c_usage += " "
+                    c_usage += "  "
                 c_usage += self._usage_flag_color
                 c_usage += option_string
                 if action.nargs != 0:
@@ -1582,7 +1631,7 @@ class _HelpFormatter:
 
         cur_color = None
         is_punctuation = False
-        for part in re.split(r"((?:[{}()[\]\\;!&|]|\s)+)", metavar):
+        for part in re.split(r"((?:[{}()[\]\\;!&]|\s)+)", metavar):
             if is_punctuation and cur_color is not self._usage_punct_color:
                 cur_color = self._usage_punct_color
                 out += self._usage_punct_color

@@ -1140,6 +1140,7 @@ class _CompleterSerializer:
         self,
         add_help: bool,
         add_version: bool,
+        add_bug_report: bool,
         path: str = "",
         custom_completers: dict[tuple[str, str], list[Completer]] = {},
     ):
@@ -1178,11 +1179,24 @@ class _CompleterSerializer:
                     _CompleterSerializer.Model(),
                 )
             )
+        self._add_bug_report = add_bug_report
+        if add_bug_report:
+            self._flags.append(
+                (
+                    ["--bug-report"],
+                    "show environment data for bug report and exit",
+                    None,
+                    "-",
+                    _CompleterSerializer.Model(),
+                )
+            )
 
     def add_argument(self, *args: str, **kwargs):
         if self._add_help and "--help" in args:
             return
         if self._add_version and "--version" in args:
+            return
+        if self._add_bug_report and "--bug-report" in args:
             return
 
         help = kwargs.get("help") or ""
@@ -1253,6 +1267,7 @@ class _CompleterSerializer:
         serializer = _CompleterSerializer(
             self._add_help,
             self._add_version,
+            self._add_bug_report,
             f"{self._path}/{name}",
             self._custom_completers,
         )

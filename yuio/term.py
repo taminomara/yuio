@@ -385,7 +385,9 @@ class Term:
 
         """
 
-        return self.supports_colors and self.interactive_support >= InteractiveSupport.FULL
+        return (
+            self.supports_colors and self.interactive_support >= InteractiveSupport.FULL
+        )
 
 
 _CI_ENV_VARS = [

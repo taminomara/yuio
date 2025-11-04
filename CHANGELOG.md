@@ -10,7 +10,7 @@ and run `pre-commit run clk` to replace:
 - [removed] ...
 - [performance] ...
 - [fixed] ...
--->x
+-->
 
 ## [Unreleased]
 
@@ -25,6 +25,10 @@ and run `pre-commit run clk` to replace:
 
 - ✨ Json schema for Enums now includes documentation for each member if it can
   be parsed.
+
+### App
+
+- ✨ Added `--bug-report` flag.
 
 ### Config
 
