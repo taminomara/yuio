@@ -65,6 +65,8 @@ and run `pre-commit run clk` to replace:
   Windows Terminal supports true colors, but doesn't set `COLORTERM` by default.
   We use `wslinfo` to detect this situation.
 
+- ✨ Added underline and italic font styles.
+
 - 🔧 Changed detection of terminal capabilities in CI to respect terminal's
   `isatty` output. This will disable colored output in GitHub Actions because
   [GitHub uses pipes instead of TTY emulation]. However, this will prevent

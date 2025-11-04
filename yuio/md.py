@@ -1320,7 +1320,7 @@ SyntaxHighlighter.register_highlighter(
                     esac|coproc|select|function
                   )\b)
                 | (?P<prog>%\(prog\)s)                      # prog
-                | (?P<metavar>(?<=<)[^>]+(?=>))             # metavar
+                | (?P<metavar><[^>]+>)                      # metavar
                 | (?P<str>
                       '(?:[.\n]*?)*'                        # singly-quoted string
                     | "(?:\\.|[^\\"])*")                    # doubly-quoted string

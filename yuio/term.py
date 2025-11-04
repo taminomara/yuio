@@ -1172,12 +1172,26 @@ class Color:
 
     """
 
+    italic: bool | None = None
+    """
+    If true, render text in italic font.
+
+    """
+
+    underline: bool | None = None
+    """
+    If true, render text as underline.
+
+    """
+
     def __or__(self, other: Color, /):
         return Color(
             other.fore if other.fore is not None else self.fore,
             other.back if other.back is not None else self.back,
             other.bold if other.bold is not None else self.bold,
             other.dim if other.dim is not None else self.dim,
+            other.italic if other.italic is not None else self.italic,
+            other.underline if other.underline is not None else self.underline,
         )
 
     def __ior__(self, other: Color, /):
@@ -1325,6 +1339,10 @@ class Color:
             codes.append("1")
         if self.dim:
             codes.append("2")
+        if self.italic:
+            codes.append("3")
+        if self.underline:
+            codes.append("4")
         if codes:
             return "\x1b[;" + ";".join(codes) + "m"
         else:
@@ -1345,6 +1363,18 @@ class Color:
     STYLE_DIM: typing.ClassVar[Color] = dict(dim=True)  # type: ignore
     """
     Dim font style.
+
+    """
+
+    STYLE_ITALIC: typing.ClassVar[Color] = dict(italic=True)  # type: ignore
+    """
+    Underline font style.
+
+    """
+
+    STYLE_UNDERLINE: typing.ClassVar[Color] = dict(underline=True)  # type: ignore
+    """
+    Underline font style.
 
     """
 

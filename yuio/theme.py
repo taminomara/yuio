@@ -230,6 +230,10 @@ class Theme:
         "b": "bold",
         "dim": yuio.term.Color.STYLE_DIM,
         "d": "dim",
+        "italic": yuio.term.Color.STYLE_ITALIC,
+        "i": "italic",
+        "underline": yuio.term.Color.STYLE_UNDERLINE,
+        "u": "underline",
         "normal": yuio.term.Color.FORE_NORMAL,
         "normal_dim": yuio.term.Color.FORE_NORMAL_DIM,
         "red": yuio.term.Color.FORE_RED,
@@ -635,17 +639,19 @@ class DefaultTheme(Theme):
         #
         # Common tags
         # -----------
-        "code": "accent_color",
+        "code": "italic",
         "note": "accent_color_2",
-        "path": "accent_color",
+        "path": "code",
+        "flag": "note",
         #
         # IO messages and text
         # --------------------
         "msg/decoration": "secondary_color",
-        "msg/decoration:heading": "accent_color",
+        "msg/decoration:heading": "msg/text:heading/1",
         "msg/decoration:thematic_break": "secondary_color",
         "msg/text": "primary_color",
         "msg/text:heading": "heading_color",
+        "msg/text:heading/1": "accent_color",
         "msg/text:heading/section": "accent_color",
         "msg/text:question": "heading_color",
         "msg/text:error": "error_color",
@@ -670,6 +676,7 @@ class DefaultTheme(Theme):
         # Tasks and progress bars
         # -----------------------
         "task": "secondary_color",
+        "task/decoration": "msg/decoration:heading",
         "task/decoration:running": "accent_color",
         "task/decoration:done": "success_color",
         "task/decoration:error": "error_color",
@@ -681,27 +688,24 @@ class DefaultTheme(Theme):
         #
         # Syntax highlighting
         # -------------------
-        "hl/kwd": "accent_color",
+        "hl/kwd": "bold",
         "hl/str": "yellow",
         "hl/str:sh-usage": yuio.term.Color.NONE,
-        "hl/str/esc": "accent_color_2",
+        "hl/str/esc": "accent_color",
         "hl/str/esc:sh-usage": yuio.term.Color.NONE,
-        "hl/lit": "accent_color_2",
-        "hl/lit:sh-usage": yuio.term.Color.NONE,
-        "hl/punct": "blue",
-        "hl/punct:sh-usage": "secondary_color",
-        "hl/comment": "secondary_color",
-        "hl/prog": "bold",
-        "hl/flag": "accent_color_2",
+        "hl/punct": "secondary_color",
+        "hl/comment": "green",
+        "hl/prog": ["bold", "underline"],
+        "hl/flag": "flag",
         "hl/meta:diff": "accent_color",
         "hl/added:diff": "green",
         "hl/removed:diff": "red",
         "hl/metavar": "bold",
         "tb/heading": ["bold", "red"],
         "tb/message": "tb/heading",
-        "tb/frame/usr/file/module": "code",
-        "tb/frame/usr/file/line": "code",
-        "tb/frame/usr/file/path": "code",
+        "tb/frame/usr/file/module": "path",
+        "tb/frame/usr/file/line": "path",
+        "tb/frame/usr/file/path": "path",
         "tb/frame/usr/code": yuio.term.Color.NONE,
         "tb/frame/usr/highlight": "low_priority_color_a",
         "tb/frame/lib": "dim",
