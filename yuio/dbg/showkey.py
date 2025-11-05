@@ -5,8 +5,6 @@
 # You're free to copy this file to your project and edit it for your needs,
 # just keep this copyright line please :3
 
-import os
-
 import yuio.app
 import yuio.io
 import yuio.term
@@ -72,9 +70,4 @@ def main(
 
 
 if __name__ == "__main__":
-    if "YUIO_TEST_RUN_WITH_COVERAGE" in os.environ:
-        import coverage
-
-        coverage.process_startup()
-
     main.run()

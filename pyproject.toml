@@ -38,6 +38,7 @@ test = [
     "libtmux==0.47.0",
     "pyright==1.1.407",
     "pytest-cov==7.0.0",
+    "pytest-regressions==2.8.3",
     "pytest==8.4.2",
     "PyYaml==6.0.3",
     "sybil==9.2.0",
@@ -135,5 +136,8 @@ extend_skip_glob = ["docs/source/by_example/*", "yuio/_vendor/*"]
 skip_gitignore = true
 
 [tool.coverage.run]
+patch = ["subprocess"]
+
+[tool.coverage.report]
 include = ["yuio/**/*.py"]
-omit = ["yuio/dbg/*.py", "yuio/_*.py", "yuio/_vendor/**/*.py"]
+omit = ["yuio/_version.py", "yuio/_typing.py", "yuio/_vendor/**/*.py"]

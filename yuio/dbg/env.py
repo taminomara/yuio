@@ -171,7 +171,9 @@ def _system() -> Report:
     return report
 
 
-def _versions(settings: ReportSettings, app: yuio.app.App[_t.Any] | None = None) -> Report:
+def _versions(
+    settings: ReportSettings, app: yuio.app.App[_t.Any] | None = None
+) -> Report:
     report = Report("Versions")
 
     package = settings.package
@@ -247,9 +249,10 @@ def _find_package_version(package: str):
 
 
 def _terminal() -> Report:
+    import subprocess
+
     import yuio.io
     import yuio.term
-    import subprocess
 
     report = Report("Terminal and CLI")
 

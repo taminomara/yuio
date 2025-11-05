@@ -1,0 +1,234 @@
+- cmd: '|'
+  results:
+  - args
+- cmd: -|
+  results:
+  - -h
+  - --help
+  - -V
+  - --version
+  - --bug-report
+  - --force-color
+  - --force-no-color
+  - -v
+  - --verbose
+  - --completions
+- cmd: --|
+  results:
+  - --help
+  - --version
+  - --bug-report
+  - --force-color
+  - --force-no-color
+  - --verbose
+  - --completions
+- cmd: a|
+  results:
+  - args
+- cmd: args |
+  results: []
+- cmd: args -|
+  results:
+  - -h
+  - --help
+  - -V
+  - --version
+  - --bug-report
+  - --bool
+  - --no-bool
+  - --int
+  - --str
+  - --enum
+  - --override
+  - --custom
+  - --one-of
+  - --git-ref
+  - --git-tag
+  - --tuple
+  - --list
+  - --set
+  - --dict
+  - --nested-tuple
+  - --nested-list
+  - --nested-set
+  - --nested-dict
+  - --union
+  - --enum-by-name
+  - --file
+  - --file-bash
+  - --dir
+  - --force-color
+  - --force-no-color
+  - -v
+  - --verbose
+  - --completions
+- cmd: args --bool|
+  results:
+  - --bool
+- cmd: args --bool |
+  results: []
+- cmd: args --no-b|
+  results:
+  - --no-bool
+- cmd: args --int |
+  results: []
+- cmd: args --str |
+  results: []
+- cmd: args --enum |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --enum op|
+  results:
+  - option_1
+  - option_2
+- cmd: args --override |
+  results:
+  - option-1
+  - option-2
+  - with\ space
+  - with-comment
+- cmd: args --override op|
+  results:
+  - option-1
+  - option-2
+- cmd: args --custom |
+  results:
+  - comp_1
+  - comp_2
+  - other_comp
+  - with\ spaces
+  - with_comment
+- cmd: args --custom c|
+  results:
+  - comp_
+- cmd: args --custom comp_|
+  results:
+  - comp_1
+  - comp_2
+- cmd: args --one-of |
+  results:
+  - foo
+  - bar
+  - baz
+- cmd: args --tuple |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --tuple x |
+  results:
+  - option_3
+  - option_4
+- cmd: args --tuple x y |
+  results: []
+- cmd: args --tuple |x y
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x | y
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x --|
+  results:
+  - --help
+  - --version
+  - --bug-report
+  - --bool
+  - --no-bool
+  - --int
+  - --str
+  - --enum
+  - --override
+  - --custom
+  - --one-of
+  - --git-ref
+  - --git-tag
+  - --tuple
+  - --list
+  - --set
+  - --dict
+  - --nested-tuple
+  - --nested-list
+  - --nested-set
+  - --nested-dict
+  - --union
+  - --enum-by-name
+  - --file
+  - --file-bash
+  - --dir
+  - --force-color
+  - --force-no-color
+  - --verbose
+  - --completions
+- cmd: args --list x --one-of |
+  results:
+  - foo
+  - bar
+  - baz
+- cmd: args --list=|
+  results:
+  - --list=option_1
+  - --list=option_2
+  - --list=other_option
+- cmd: args --list=op|
+  results:
+  - --list=option_1
+  - --list=option_2
+- cmd: args --l|ist=op
+  results:
+  - --list
+- cmd: args --list=x |
+  results: []
+- cmd: args --set |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --set option_1 |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --set option_1 o| option_2
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --dict |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --dict opt|
+  results:
+  - option_1
+  - option_2
+- cmd: args --dict oth|
+  results:
+  - 'other_option:'
+- cmd: args --dict x:|
+  results:
+  - option_3
+  - option_4
+- cmd: args --dict opt|:xxx
+  results:
+  - option_1
+  - option_2
+- cmd: args --dict oth|:xxx
+  results:
+  - 'other_option:'

@@ -35,16 +35,16 @@ function __yuio_compl__@prog@__complete {
     local prev              # Previous word.
 
     # Restore compopts to their defaults:
-    compopt +o filenames 2>/dev/null
-    compopt +o noquote 2>/dev/null
-    compopt +o nospace 2>/dev/null
+    compopt +o filenames 2>/dev/null || :
+    compopt +o noquote 2>/dev/null || :
+    compopt +o nospace 2>/dev/null || :
 
     # This will fill variables declared above,
     # and handle things like completing redirections.
     _init_completion -n ':=' || return 0
 
     # We quote everything ourselves, so from now on this should be enabled.
-    compopt -o noquote 2>/dev/null
+    compopt -o noquote 2>/dev/null || :
 
     # Parsing state:
     local word=             # Current word that is being processed.
@@ -54,6 +54,7 @@ function __yuio_compl__@prog@__complete {
     local free_opt=0        # Current free option.
     local free_nargs=0      # How many nargs left to process in the current free option.
     local free_opts_only=   # Set to `1` when we've seen an `--` token.
+    local prefix=           # For options in form `--x=y`, this is the prefix `--x=`.
 
     __yuio_compl__@prog@__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
 
@@ -74,7 +75,7 @@ function __yuio_compl__@prog@__complete {
             fi
         elif [[ -z $opt && $free_nargs == 0 ]]; then
             # We've exhausted current free args.
-            (( free_opt++ ))
+            (( free_opt++ )) || :
             __yuio_compl__@prog@__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
         elif [[ $opt == -* && $nargs == 0 ]]; then
             # We've exhausted nargs for the current option.
@@ -89,13 +90,19 @@ function __yuio_compl__@prog@__complete {
             __yuio_compl__@prog@__load_nargs_by_ref free_nargs "$cmd" "$free_opt"
         fi
 
-        word="${words[$i]}"
+        if (( $i == $cword )); then
+            word="$cur"
+        else
+            word="${words[$i]}"
+        fi
+        prefix=''
 
         if [[ -z $free_opts_only && $word == --*=* ]]; then
             # This is a long option with a value (i.e. `--foo=bar`).
             # In this position, we complete option's value.
             opt="${word%%=*}"
             word="${word#*=}"
+            prefix="$opt="
             nargs=0
         elif [[ -z $free_opts_only && $word == -* ]]; then
             # This is an option without a value (i.e. `-f` or `--foo`).
@@ -121,7 +128,7 @@ function __yuio_compl__@prog@__complete {
         elif [[ $nargs > 0 ]]; then
             # This is a mandatory argument for an option that takes
             # up to `$nargs` arguments.
-            (( nargs-- ))
+            (( nargs-- )) || :
         elif [[ $free_nargs == '+' ]]; then
             # This is a mandatory free argument.
             opt=''
@@ -137,7 +144,7 @@ function __yuio_compl__@prog@__complete {
         elif [[ $free_nargs > 0 ]]; then
             # This is a mandatory free argument.
             opt=''
-            (( free_nargs-- ))
+            (( free_nargs-- )) || :
         else
             # This is not a free argument, this is a subcommand.
             opt='c'
@@ -146,16 +153,17 @@ function __yuio_compl__@prog@__complete {
     done
 
     local needs_quote=1
-    local _dequoted=$( dequote "$cur"__yuio_delim__"${word#"$cur"}" )
+    local _dequoted=$( dequote "$cur"__yuio_delim__"$cur_suffix" )
     if [[ $? != 0 ]]; then
         # Failed to dequote, probably due to unbalanced quotes in the output.
         # We let the user deal with all escapes on their own.
         # This might break list and tuple completions when delimiters contain
         # special characters, but I don't know any better way of doing this.
         needs_quote=
-        _dequoted="$cur"__yuio_delim__"${word#"$cur"}"
+        _dequoted="$cur"__yuio_delim__"$cur_suffix"
     fi
     cur="${_dequoted%%__yuio_delim__*}"
+    cur="${cur#"$prefix"}"
     cur_suffix="${_dequoted##*__yuio_delim__}"
     word="$cur$cur_suffix"
     unset _dequoted
@@ -170,7 +178,7 @@ function __yuio_compl__@prog@__complete {
 
             if [[ ${compspec[4]} =~ [0-9]+ ]] \
                     && [[ $free_nargs =~ [0-9]+ ]]; then
-                ((apos = ${compspec[4]} - $free_nargs))
+                (( apos = ${compspec[4]} - $free_nargs )) || :
             fi
 
             __yuio_compl__@prog@__complete_arg || return
@@ -180,15 +188,17 @@ function __yuio_compl__@prog@__complete {
 
         if [[ ${compspec[4]} =~ [0-9]+ ]] \
                 && [[ $nargs =~ [0-9]+ ]]; then
-            ((apos = ${compspec[4]} - $nargs))
+            (( apos = ${compspec[4]} - $nargs )) || :
         fi
 
         __yuio_compl__@prog@__complete_arg || return
     fi
 
-    __ltrim_colon_completions "$cur"
+    (( ${#COMPREPLY[@]} > 0 )) && COMPREPLY=( "${COMPREPLY[@]/#/"$prefix"}" ) || :
 
-    [[ -n $needs_quote ]] && (( ${#COMPREPLY[@]} > 0 )) && COMPREPLY=( $( printf '\n%q' "${COMPREPLY[@]}" ) )
+    __ltrim_colon_completions "$prefix$cur"
+
+    [[ -n $needs_quote ]] && (( ${#COMPREPLY[@]} > 0 )) && COMPREPLY=( $( printf '\n%q' "${COMPREPLY[@]}" ) ) || :
 }
 
 # Given (sub)command and option name, load option's `nargs`.
@@ -276,7 +286,7 @@ function __yuio_compl__@prog@__complete_arg {
     __yuio_compl__@prog@__assert_int "$FUNCNAME: $opt" "$size" || return
 
     local end_index=0
-    ((end_index = compspec_i + size))
+    (( end_index = compspec_i + size )) || :
 
     while (($#)); do
         case $1 in
@@ -311,7 +321,7 @@ function __yuio_compl__@prog@__complete_arg {
         ;;
         cd)
             # complete choices with descriptions
-            local half_size; (( half_size = $size / 2 ))
+            local half_size; (( half_size = $size / 2 )) || :
             local choices=(); __yuio_compl__@prog@__compspec_pop_n $half_size choices || return
             printf -v choices "%q\n" "${choices[@]}"
             COMPREPLY+=( $(compgen -W "$choices" -- "$cur"))
@@ -342,7 +352,7 @@ function __yuio_compl__@prog@__complete_arg {
         ;;
         l)
             # complete list
-            compopt -o nospace 2>/dev/null
+            compopt -o nospace 2>/dev/null || :
             local delim; __yuio_compl__@prog@__compspec_pop delim || return
             delim="${delim:- }"
 
@@ -367,7 +377,7 @@ function __yuio_compl__@prog@__complete_arg {
                 local i
                 for (( i = 0; i < ${#COMPREPLY[@]}; i++ )); do
                     # Add prefix because bash will substitute this completion.
-                    COMPREPLY[$i]="$prefix${COMPREPLY[$i]}$cur_suffix"
+                    COMPREPLY[$i]="$prefix${COMPREPLY[$i]}"
                 done
             elif (( ${#COMPREPLY[@]} > 0 )); then
                 # Append zero-width space to prevent bash from deriving common prefix
@@ -402,21 +412,21 @@ function __yuio_compl__@prog@__complete_arg {
                     __yuio_compl__@prog@__complete_arg --skip || return
                 done
                 __yuio_compl__@prog@__complete_arg || return
-                if [[ ${#COMPREPLY[@]} -eq 1 ]] && (( $pos + 1 < $len )); then
+                if [[ ${#COMPREPLY[@]} -eq 1 ]] && (( $pos + 1 < $len )) && [[ -z $cur_suffix ]]; then
                     # append delim if we're not at the last tuple element
                     compopt -o nospace 2>/dev/null
                     COMPREPLY=( "$COMPREPLY$delim" )
                 fi
             fi
 
-            local word_prefix_len; ((word_prefix_len=${#word} + 1))
+            local word_prefix_len; ((word_prefix_len=${#cur} + 1))
             local num_word_prefixs=$(printf '%s' "${COMPREPLY[*]}" | cut -c 1-$word_prefix_len | sort | uniq | wc -l)
             if (( ${#COMPREPLY[@]} == 1 || $num_word_prefixs == 1 )); then
                 # COMPREPLY has one element or there is a common prefix that's longer than the current word...
                 local i
                 for (( i = 0; i < ${#COMPREPLY[@]}; i++ )); do
                     # Add prefix because bash will substitute this completion.
-                    COMPREPLY[$i]="$prefix${COMPREPLY[$i]}$cur_suffix"
+                    COMPREPLY[$i]="$prefix${COMPREPLY[$i]}"
                 done
             else
                 # Append zero-width space to prevent bash from deriving common prefix
@@ -474,7 +484,7 @@ function __yuio_compl__@prog@__compspec_pop {
     fi
 
     [[ "$1" ]] && local $1 && __yuio_compl__@prog@__upvars -v $1 "${compspec[$compspec_i]}"
-    ((compspec_i++))
+    (( compspec_i++ )) || :
 }
 
 # Pop arguments from compspec and assign them to the given variable as an array.
@@ -488,7 +498,7 @@ function __yuio_compl__@prog@__compspec_pop_n {
     fi
 
     [[ "$2" ]] && local $2 && __yuio_compl__@prog@__upvars -a$1 $2 "${compspec[@]:$compspec_i:$1}"
-    ((compspec_i+=n))
+    (( compspec_i+=n )) || :
 }
 
 # Set current index of the compspec argument, therefore skipping

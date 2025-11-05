@@ -1143,7 +1143,7 @@ class Color:
     Colors can be combined before printing, though::
 
         >>> Color.STYLE_BOLD | Color.FORE_RED  # Bold red
-        Color(fore=<ColorValue 1>, back=None, bold=True, dim=None)
+        Color(fore=<ColorValue 1>, back=None, bold=True, dim=None, italic=None, underline=None)
 
     Yuio supports true RGB colors. They are automatically converted
     to 256- or 8-bit colors if needed.
@@ -1210,7 +1210,7 @@ class Color:
             ::
 
                 >>> Color.fore_from_rgb(0xA0, 0x1E, 0x9C)
-                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
+                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None, italic=None, underline=None)
 
         """
 
@@ -1225,7 +1225,7 @@ class Color:
             ::
 
                 >>> Color.fore_from_hex('#A01E9C')
-                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
+                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None, italic=None, underline=None)
 
         """
 
@@ -1242,7 +1242,7 @@ class Color:
             ::
 
                 >>> Color.back_from_rgb(0xA0, 0x1E, 0x9C)
-                Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None)
+                Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None, italic=None, underline=None)
 
         """
 
@@ -1257,7 +1257,7 @@ class Color:
             ::
 
                 >>> Color.back_from_hex('#A01E9C')
-                Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None)
+                Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None, italic=None, underline=None)
 
         """
 
@@ -1286,11 +1286,11 @@ class Color:
                 >>> lerp = Color.lerp(a, b)
 
                 >>> lerp(0)
-                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None)
+                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None, italic=None, underline=None)
                 >>> lerp(0.5)
-                Color(fore=<ColorValue #617254>, back=None, bold=None, dim=None)
+                Color(fore=<ColorValue #617254>, back=None, bold=None, dim=None, italic=None, underline=None)
                 >>> lerp(1)
-                Color(fore=<ColorValue #22C60C>, back=None, bold=None, dim=None)
+                Color(fore=<ColorValue #22C60C>, back=None, bold=None, dim=None, italic=None, underline=None)
 
         """
 

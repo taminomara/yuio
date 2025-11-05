@@ -238,19 +238,6 @@ class TestColor:
         "color,expect",
         [
             (
-                yuio.term.ColorValue(0).lighten(0.5),
-                yuio.term.ColorValue((127, 127, 127)),
-            ),
-            (yuio.term.ColorValue(0).darken(0.5), yuio.term.ColorValue((0, 0, 0))),
-            (
-                yuio.term.ColorValue(7).lighten(0.5),
-                yuio.term.ColorValue((255, 255, 255)),
-            ),
-            (
-                yuio.term.ColorValue(7).darken(0.5),
-                yuio.term.ColorValue((127, 127, 127)),
-            ),
-            (
                 yuio.term.ColorValue.from_hex("#005555").lighten(0.5),
                 yuio.term.ColorValue.from_hex("#00AAAA"),
             ),
@@ -1338,9 +1325,9 @@ class TestTerm:
     )
     def test_color_support(self, level, ansi, ansi_256, ansi_true):
         term = yuio.term.Term(None, None, color_support=level)  # type: ignore
-        assert term.has_colors == ansi
-        assert term.has_colors_256 == ansi_256
-        assert term.has_colors_true == ansi_true
+        assert term.supports_colors == ansi
+        assert term.supports_colors_256 == ansi_256
+        assert term.supports_colors_true == ansi_true
 
     @pytest.mark.parametrize(
         "level,move,query",

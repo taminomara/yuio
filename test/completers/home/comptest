@@ -1,0 +1,79 @@
+#! /usr/bin/env python
+
+import pathlib
+import typing
+from enum import Enum
+
+import yuio.app
+import yuio.complete
+import yuio.git
+import yuio.parse
+
+
+class E(Enum):
+    OPTION_1 = "option_1"
+    OPTION_2 = "option_2"
+    OTHER_OPTION = "other_option"
+
+
+class E2(Enum):
+    OPTION_3 = "option_3"
+    OPTION_4 = "option_4"
+
+
+class Completer(yuio.complete.Completer):
+    def _process(self, collector: yuio.complete.CompletionCollector):
+        collector.add("comp_1")
+        collector.add("comp_2")
+        collector.add("other_comp")
+        collector.add("with spaces")
+        collector.add("with_comment", comment="my comment")
+
+
+@yuio.app.app(prog="comptest", version="1.0", bug_report=True)
+def main():
+    pass
+
+
+@main.subcommand()
+def args(
+    bool: bool,
+    int: int,
+    str: str,
+    enum: E,
+    override: typing.Annotated[
+        str,
+        yuio.parse.WithMeta(
+            completer=yuio.complete.Choice(
+                [
+                    yuio.complete.Option("option-1"),
+                    yuio.complete.Option("option-2"),
+                    yuio.complete.Option("with space"),
+                    yuio.complete.Option("with-comment", "my comment"),
+                ]
+            )
+        ),
+    ],
+    custom: typing.Annotated[str, yuio.parse.WithMeta(completer=Completer())],
+    one_of: typing.Annotated[str, yuio.parse.OneOf(["foo", "bar", "baz"])],
+    git_ref: yuio.git.Ref,
+    git_tag: yuio.git.Tag,
+    tuple: tuple[E, E2],
+    list: list[E],
+    set: set[E],
+    dict: dict[E, E2],
+    nested_tuple: list[tuple[E, E2]],
+    nested_list: list[list[E]],
+    nested_set: list[set[E]],
+    nested_dict: list[dict[E, E2]],
+    union: E | E2,
+    enum_by_name: typing.Annotated[E, yuio.parse.Enum(by_name=True, to_dash_case=True)],
+    file: pathlib.Path,
+    file_bash: typing.Annotated[pathlib.Path, yuio.parse.File(extensions=".bash")],
+    dir: typing.Annotated[pathlib.Path, yuio.parse.Dir()],
+):
+    pass
+
+
+if __name__ == "__main__":
+    main.run()

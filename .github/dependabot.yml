@@ -12,6 +12,7 @@ updates:
         - "PyGithub"
         - "pyright"
         - "pytest-cov"
+        - "pytest-regressions"
         - "pytest"
         - "PyYaml"
         - "sphinx_design"

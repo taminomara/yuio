@@ -1,3 +1,4 @@
+import os
 import pathlib
 import sys
 import time
@@ -13,15 +14,12 @@ def python_path():
 
 
 @pytest.fixture()
-def pane(server: Server, tmp_path, cov):
+def pane(server: Server):
     session = server.new_session()
-    if cov is not None:
-        cov_config = cov.config.copy()
-        cov_config.patches = ["_exit"]
-        cov_config.data_file = str(pathlib.Path(cov_config.data_file).absolute())
-        session.set_environment("COVERAGE_PROCESS_CONFIG", cov_config.serialize())
-        session.set_environment("YUIO_TEST_RUN_WITH_COVERAGE", "1")
-    window = session.new_window(start_directory=tmp_path, window_shell="bash")
+    for k, v in os.environ.items():
+        if k.startswith("COV"):
+            session.set_environment(k, v)
+    window = session.new_window(window_shell="bash")
     pane = window.active_pane
     assert pane is not None
     yield pane
@@ -29,8 +27,9 @@ def pane(server: Server, tmp_path, cov):
 
 @pytest.mark.linux
 @pytest.mark.full
-def test_example(pane: Pane, tmp_path, python_path):
+def test_tmux(pane: Pane, tmp_path, python_path):
     output_path = tmp_path / "output.txt"
+    pane.send_keys("pwd")
     pane.send_keys(
         f"{python_path} -m yuio.dbg.showkey --modify-keyboard > {output_path}"
     )
