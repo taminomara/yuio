@@ -112,6 +112,15 @@
   - foo
   - bar
   - baz
+- cmd: args --git-ref |
+  results:
+  - main
+  - v1.0.0
+  - v1.1.0
+- cmd: args --git-tag |
+  results:
+  - v1.0.0
+  - v1.1.0
 - cmd: args --tuple |
   results:
   - option_1
@@ -232,3 +241,136 @@
 - cmd: args --dict oth|:xxx
   results:
   - 'other_option:'
+- cmd: args --nested-tuple |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --nested-tuple opt|
+  results:
+  - option_1
+  - option_2
+- cmd: args --nested-tuple oth|
+  results:
+  - other_option\,
+- cmd: args --nested-tuple x,|
+  results:
+  - x\,option_3
+  - x\,option_4
+- cmd: args --nested-tuple x,opt|
+  results:
+  - x\,option_3
+  - x\,option_4
+- cmd: args --nested-tuple opt|,x
+  results:
+  - option_1
+  - option_2
+- cmd: args --nested-tuple oth|,x
+  results:
+  - other_option\,
+- cmd: args --nested-list |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --nested-list opt|
+  results:
+  - option_1
+  - option_2
+- cmd: args --nested-list oth|
+  results:
+  - other_option
+- cmd: args --nested-list x,|
+  results:
+  - x\,option_1
+  - x\,option_2
+  - x\,other_option
+- cmd: args --nested-list x,|,y
+  results:
+  - x\,option_1
+  - x\,option_2
+  - x\,other_option
+- cmd: args --nested-list x,oth|,y
+  results:
+  - x\,other_option
+- cmd: args --nested-set |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --nested-set opt|
+  results:
+  - option_1
+  - option_2
+- cmd: args --nested-set oth|
+  results:
+  - other_option
+- cmd: args --nested-set x,|
+  results:
+  - x\,option_1
+  - x\,option_2
+  - x\,other_option
+- cmd: args --nested-set x,|,y
+  results:
+  - x\,option_1
+  - x\,option_2
+  - x\,other_option
+- cmd: args --nested-set option_1,|,y
+  results:
+  - option_1\,option_1
+  - option_1\,option_2
+  - option_1\,other_option
+- cmd: args --nested-set x,oth|,y
+  results:
+  - x\,other_option
+- cmd: args --nested-set option_1,y opt|
+  results:
+  - option_1
+  - option_2
+- cmd: args --nested-set option_1,y option_1,opt|
+  results:
+  - option_1\,option_1
+  - option_1\,option_2
+- cmd: args --nested-dict |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --nested-dict oth|
+  results:
+  - 'other_option:'
+- cmd: args --nested-dict x:|
+  results:
+  - option_3
+  - option_4
+- cmd: args --nested-dict x:o|
+  results:
+  - option_3
+  - option_4
+- cmd: args --nested-dict x:y,|
+  results:
+  - y\,option_1
+  - y\,option_2
+  - y\,other_option
+- cmd: args --nested-dict x:y,o|ther:zzz
+  results:
+  - option_1
+  - option_2
+  - other_option
+  - ​
+  - ​
+- cmd: args --union |
+  results:
+  - option_1
+  - option_2
+  - other_option
+  - option_3
+  - option_4
+- cmd: args --union oth|
+  results:
+  - other_option
+- cmd: args --enum-by-name |
+  results:
+  - option-1
+  - option-2
+  - other-option

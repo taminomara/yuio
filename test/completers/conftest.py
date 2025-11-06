@@ -43,6 +43,9 @@ def setup_completions_home(tmp_path: pathlib.Path, monkeypatch):
     subprocess.check_call(
         ["git", "init", ".", "-b", "main", "--template", str(git_template_dir)]
     )
+    subprocess.check_call(["git", "commit", "--allow-empty", "-m", "initial commit"])
+    subprocess.check_call(["git", "tag", "v1.0.0"])
+    subprocess.check_call(["git", "tag", "v1.1.0"])
 
 
 @pytest.fixture
@@ -67,7 +70,8 @@ def test_cases():
         "args --custom c|",
         "args --custom comp_|",
         "args --one-of |",
-        # git
+        "args --git-ref |",
+        "args --git-tag |",
         "args --tuple |",
         "args --tuple x |",
         "args --tuple x y |",
@@ -90,6 +94,37 @@ def test_cases():
         "args --dict x:|",
         "args --dict opt|:xxx",
         "args --dict oth|:xxx",
+        "args --nested-tuple |",
+        "args --nested-tuple opt|",
+        "args --nested-tuple oth|",
+        "args --nested-tuple x,|",
+        "args --nested-tuple x,opt|",
+        "args --nested-tuple opt|,x",
+        "args --nested-tuple oth|,x",
+        "args --nested-list |",
+        "args --nested-list opt|",
+        "args --nested-list oth|",
+        "args --nested-list x,|",
+        "args --nested-list x,|,y",
+        "args --nested-list x,oth|,y",
+        "args --nested-set |",
+        "args --nested-set opt|",
+        "args --nested-set oth|",
+        "args --nested-set x,|",
+        "args --nested-set x,|,y",
+        "args --nested-set option_1,|,y",
+        "args --nested-set x,oth|,y",
+        "args --nested-set option_1,y opt|",
+        "args --nested-set option_1,y option_1,opt|",
+        "args --nested-dict |",
+        "args --nested-dict oth|",
+        "args --nested-dict x:|",
+        "args --nested-dict x:o|",
+        "args --nested-dict x:y,|",
+        "args --nested-dict x:y,o|ther:zzz",
+        "args --union |",
+        "args --union oth|",
+        "args --enum-by-name |",
     ]
 
     return list(map(_prepare_test_case, cases))

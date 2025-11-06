@@ -372,7 +372,7 @@ function __yuio_compl__@prog@__complete_arg {
 
             local word_prefix_len; ((word_prefix_len=${#cur} + 1))
             local num_word_prefixs=$(printf '%s' "${COMPREPLY[*]}" | cut -c 1-$word_prefix_len | sort | uniq | wc -l)
-            if (( ${#COMPREPLY[@]} == 1 || $num_word_prefixs == 1 )); then
+            if (( ${#COMPREPLY[@]} == 1 || $num_word_prefixs == 1 )) || [[ $COMP_TYPE -eq "37" ]]; then
                 # COMPREPLY has one element or there is a common prefix that's longer than the current word...
                 local i
                 for (( i = 0; i < ${#COMPREPLY[@]}; i++ )); do
@@ -412,16 +412,19 @@ function __yuio_compl__@prog@__complete_arg {
                     __yuio_compl__@prog@__complete_arg --skip || return
                 done
                 __yuio_compl__@prog@__complete_arg || return
-                if [[ ${#COMPREPLY[@]} -eq 1 ]] && (( $pos + 1 < $len )) && [[ -z $cur_suffix ]]; then
+                if [[ ${#COMPREPLY[@]} -eq 1 || $COMP_TYPE = "37" ]] && (( $pos + 1 < $len )); then
                     # append delim if we're not at the last tuple element
                     compopt -o nospace 2>/dev/null
-                    COMPREPLY=( "$COMPREPLY$delim" )
+                    if [[ $COMP_TYPE != "37" ]] || [[ ${#COMPREPLY[@]} -eq 1 && ${COMPREPLY[0]} == "$cur" ]]; then
+                        # if we're doing menu completion, only append delim after second tab
+                        COMPREPLY=( "$COMPREPLY$delim" )
+                    fi
                 fi
             fi
 
             local word_prefix_len; ((word_prefix_len=${#cur} + 1))
             local num_word_prefixs=$(printf '%s' "${COMPREPLY[*]}" | cut -c 1-$word_prefix_len | sort | uniq | wc -l)
-            if (( ${#COMPREPLY[@]} == 1 || $num_word_prefixs == 1 )); then
+            if (( ${#COMPREPLY[@]} == 1 || $num_word_prefixs == 1 )) || [[ $COMP_TYPE -eq "37" ]]; then
                 # COMPREPLY has one element or there is a common prefix that's longer than the current word...
                 local i
                 for (( i = 0; i < ${#COMPREPLY[@]}; i++ )); do

@@ -18,7 +18,7 @@ COMP_LINE="${{COMP_WORDS[*]}}"
 @pytest.mark.linux
 @pytest.mark.darwin
 def test_bash(test_cases, data_regression):
-    subprocess.check_call(["comptest", "--completions"])
+    subprocess.check_call(["comptest", "--completions", "bash"])
 
     results = []
     for cword, prefix_len, args, orig in test_cases:
