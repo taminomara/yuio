@@ -32,7 +32,6 @@ def test_width_and_len(text, width, length):
     assert bool(text) is (len(text) > 0)
 
 
-@pytest.mark.skip(reason="TODO")
 @pytest.mark.parametrize(
     "text,args,expect",
     [
@@ -62,6 +61,11 @@ def test_width_and_len(text, width, length):
             ["hello ", "01.50", "!"],
         ),
         (
+            ["hello %0*.*f!"],
+            (5, 2, 1.5),
+            ["hello ", "01.50", "!"],
+        ),
+        (
             ["hello %05.2lf!"],
             1.5,
             ["hello ", "01.50", "!"],
@@ -75,6 +79,26 @@ def test_width_and_len(text, width, length):
             ["hello %s"],
             {"a": "b"},
             ["hello ", "{'a': 'b'}"],
+        ),
+        (
+            ["hello %(a)s!"],
+            {"a": "b"},
+            ["hello ", "b", "!"],
+        ),
+        (
+            ["hello %(a)s %s!"],
+            {"a": "b"},
+            ["hello ", "b", " ", "{'a': 'b'}", "!"],
+        ),
+        (
+            ["hello %(a)d!"],
+            {"a": 10},
+            ["hello ", "10", "!"],
+        ),
+        (
+            ["hello %(a)d %r!"],
+            {"a": 10},
+            ["hello ", "10", " ", "{'a': 10}", "!"],
         ),
         (
             ["%10s"],
@@ -211,6 +235,52 @@ def test_width_and_len(text, width, length):
             yuio.string.ColorizedString(["123", "💥6"]),
             ["123", "💥"],
         ),
+        (
+            ["%.6r"],
+            "1234💥",
+            ["'1234", " "],
+        ),
+        (
+            ["%.6r"],
+            "123💥6",
+            ["'123💥"],
+        ),
+        (
+            [yuio.color.Color.STYLE_BOLD, "x %s y"],
+            yuio.string.ColorizedString(["foo", yuio.color.Color.FORE_RED, "bar"]),
+            [
+                yuio.color.Color.STYLE_BOLD,
+                "x ",
+                "foo",
+                yuio.color.Color.STYLE_BOLD | yuio.color.Color.FORE_RED,
+                "bar",
+                yuio.color.Color.STYLE_BOLD,
+                " y",
+            ],
+        ),
+        (
+            [yuio.color.Color.STYLE_BOLD, "x %.3s y"],
+            yuio.string.ColorizedString(["foo", yuio.color.Color.FORE_RED, "bar"]),
+            [
+                yuio.color.Color.STYLE_BOLD,
+                "x ",
+                "foo",
+                " y",
+            ],
+        ),
+        (
+            [yuio.color.Color.STYLE_BOLD, "x %.5s y"],
+            yuio.string.ColorizedString(["foo", yuio.color.Color.FORE_RED, "bar"]),
+            [
+                yuio.color.Color.STYLE_BOLD,
+                "x ",
+                "foo",
+                yuio.color.Color.STYLE_BOLD | yuio.color.Color.FORE_RED,
+                "ba",
+                yuio.color.Color.STYLE_BOLD,
+                " y",
+            ],
+        ),
     ],
 )
 def test_format(text, args, expect):
@@ -218,6 +288,37 @@ def test_format(text, args, expect):
         args, yuio.theme.Theme()
     )
     assert formatted._parts == expect
+
+
+@pytest.mark.parametrize(
+    "text,args,exc,match",
+    [
+        ("%-%", (), ValueError, r"unsupported format character '%'"),
+        ("%s", (), TypeError, r"not enough arguments for format string"),
+        ("%d", (), TypeError, r"not enough arguments for format string"),
+        ("%s %s", {}, TypeError, r"not enough arguments for format string"),
+        ("%s %d", {}, TypeError, r"not enough arguments for format string"),
+        ("%*s", (), TypeError, r"not enough arguments for format string"),
+        ("%.*s", (), TypeError, r"not enough arguments for format string"),
+        ("%*s", ("a"), TypeError, r"\* wants int"),
+        ("%*s", {}, TypeError, r"\* wants int"),
+        ("%*.*s", ("a", 10), TypeError, r"\* wants int"),
+        ("%*s", ("a", "x"), TypeError, r"\* wants int"),
+        ("%.*s", ("a", "x"), TypeError, r"\* wants int"),
+        ("%.*s", {}, TypeError, r"\* wants int"),
+        ("%(x)s", 10, TypeError, r"format requires a mapping"),
+        (
+            "",
+            ("foo",),
+            TypeError,
+            r"not all arguments converted during string formatting",
+        ),
+        ("", "foo", TypeError, r"not all arguments converted during string formatting"),
+    ],
+)
+def test_format_error(text, args, exc, match):
+    with pytest.raises(exc, match=match):
+        yuio.string.ColorizedString(text).percent_format(args, yuio.theme.Theme())
 
 
 @pytest.mark.parametrize(

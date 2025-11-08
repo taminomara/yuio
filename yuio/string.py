@@ -434,231 +434,211 @@ _S_SYNTAX = re.compile(
 )
 
 
-def _percent_format(s: ColorizedString, args: _t.Any) -> list[yuio.color.Color | str]:
-    if not isinstance(args, (dict, tuple)):
-        args = (args,)
-
-    i = 0
-
-    def repl(m: _t.StrReMatch) -> str:
-        nonlocal i
-        groups = m.groupdict()
-        if groups["format"] == "%":
-            if m.group(0) != "%%":
-                raise ValueError("unsupported format character '%'")
-            return "%"
-
-        if groups["mapping"] is not None:
-            fmt_args = args
-        elif isinstance(args, tuple):
-            begin = i
-            end = i = i + 1 + (m.group("width") == "*") + (m.group("precision") == "*")
-            fmt_args = args[begin:end]
-        elif i == 0:
-            # We've passed a dict, and now want to format it with `%s`.
-            # We allow that once. I.e. `"%s" % {}` is fine, `"%s %s" % {}` is not.
-            fmt_args = args
-            i = 1
-        else:
-            raise TypeError("not enough arguments for format string")
-
-        return m.group(0) % fmt_args
-
-    raw = []
+def _percent_format(s: ColorizedString, args: object) -> list[yuio.color.Color | str]:
+    seen_mapping = False
+    arg_index = 0
+    raw: list[yuio.color.Color | str] = []
+    color: yuio.color.Color | None = None
+    cur_color: yuio.color.Color | None = None
     for part in s:
         if isinstance(part, str):
-            # Note: preserve NoWrap/Esc wrappers.
-            raw.append(part.__class__(_S_SYNTAX.sub(repl, part)))
+            if color != cur_color:
+                if color is not None:
+                    raw.append(color)
+                cur_color = color
+            pos = 0
+            for match in _S_SYNTAX.finditer(part):
+                if pos < match.start():
+                    raw.append(part[pos : match.start()])
+                seen_mapping = seen_mapping or bool(match.group("mapping"))
+                arg_index, replaced = _percent_format_repl(
+                    match, args, arg_index, cur_color or yuio.color.Color()
+                )
+                if isinstance(replaced, str):
+                    raw.append(replaced)
+                else:
+                    raw.extend(replaced)
+                pos = match.end()
+            if pos < len(part):
+                raw.append(part[pos:])
         else:
-            raw.append(part)
+            color = part
 
-    if isinstance(args, tuple) and i < len(args):
+    if (isinstance(args, tuple) and arg_index < len(args)) or (
+        not isinstance(args, tuple)
+        and (
+            not hasattr(args, "__getitem__")
+            or isinstance(args, (str, bytes, bytearray))
+        )
+        and not seen_mapping
+        and not arg_index
+    ):
         raise TypeError("not all arguments converted during string formatting")
 
     return raw
 
 
-# def _percent_format(s: ColorizedString, args: _t.Any) -> list[yuio.color.Color | str]:
-#     if not isinstance(args, tuple):
-#         args = (args,)
+def _percent_format_repl(
+    match: _t.StrReMatch,
+    args: object,
+    arg_index: int,
+    out_color: yuio.color.Color,
+) -> tuple[int, str | ColorizedString]:
+    if match.group("format") == "%":
+        if match.group(0) != "%%":
+            raise ValueError("unsupported format character '%'")
+        return arg_index, "%"
 
-#     arg_index = 0
-#     raw: list[yuio.color.Color | str] = []
-#     color: yuio.color.Color | None = None
-#     cur_color: yuio.color.Color | None = None
-#     for part in s:
-#         if isinstance(part, str):
-#             if color != cur_color:
-#                 if color is not None:
-#                     raw.append(color)
-#                 cur_color = color
-#             pos = 0
-#             for match in _S_SYNTAX.finditer(part):
-#                 if pos < match.start():
-#                     raw.append(part[pos : match.start()])
-#                 arg_index, replaced = _percent_format_repl(
-#                     match, args, arg_index, cur_color
-#                 )
-#                 if isinstance(replaced, str):
-#                     raw.append(replaced)
-#                 else:
-#                     raw.extend(replaced)
-#                 pos = match.end()
-#             if pos < len(part):
-#                 raw.append(part[pos:])
-#         else:
-#             color = part
+    if match.group("format") in "rs":
+        return _percent_format_repl_str(match, args, arg_index, out_color)
 
-#     if isinstance(args, tuple) and arg_index < len(args):
-#         raise TypeError("not all arguments converted during string formatting")
+    if match.group("mapping"):
+        fmt_args = args
+    elif isinstance(args, tuple):
+        begin = arg_index
+        end = arg_index = (
+            arg_index
+            + 1
+            + (match.group("width") == "*")
+            + (match.group("precision") == "*")
+        )
+        fmt_args = args[begin:end]
+    elif arg_index == 0:
+        fmt_args = args
+        arg_index += 1
+    else:
+        raise TypeError("not enough arguments for format string")
 
-#     return raw
+    return arg_index, match.group(0) % fmt_args
 
 
-# def _percent_format_repl(
-#     match: _t.StrReMatch,
-#     args: tuple[_t.Any, ...],
-#     arg_index: int,
-#     out_color: yuio.color.Color,
-# ) -> tuple[int, str | ColorizedString]:
-#     if match.group("mapping"):
-#         raise TypeError("yuio doesn't support %-formatting mappings")
+def _percent_format_repl_str(
+    match: _t.StrReMatch,
+    args: object,
+    arg_index: int,
+    out_color: yuio.color.Color,
+) -> tuple[int, str | ColorizedString]:
+    if width_s := match.group("width"):
+        if width_s == "*":
+            if not isinstance(args, tuple):
+                raise TypeError("* wants int")
+            try:
+                width = args[arg_index]
+                arg_index += 1
+            except (KeyError, IndexError):
+                raise TypeError("not enough arguments for format string")
+            if not isinstance(width, int):
+                raise TypeError("* wants int")
+        else:
+            width = int(width_s)
+    else:
+        width = None
 
-#     if match.group("format") == "%":
-#         if match.group(0) != "%%":
-#             raise ValueError("unsupported format character '%'")
-#         return arg_index, "%"
+    if precision_s := match.group("precision"):
+        if precision_s == "*":
+            if not isinstance(args, tuple):
+                raise TypeError("* wants int")
+            try:
+                precision = args[arg_index]
+                arg_index += 1
+            except (KeyError, IndexError):
+                raise TypeError("not enough arguments for format string")
+            if not isinstance(precision, int):
+                raise TypeError("* wants int")
+        else:
+            precision = int(precision_s)
+    else:
+        precision = None
 
-#     if match.group("format") in "rs" and match.group("flag") != "#":
-#         return _percent_format_repl_str(match, args, arg_index, out_color)
+    if mapping := match.group("mapping"):
+        try:
+            fmt_arg = args[mapping]  # type: ignore
+        except TypeError:
+            raise TypeError("format requires a mapping") from None
+    elif isinstance(args, tuple):
+        try:
+            fmt_arg = args[arg_index]
+            arg_index += 1
+        except IndexError:
+            raise TypeError("not enough arguments for format string") from None
+    elif arg_index == 0:
+        fmt_arg = args
+        arg_index += 1
+    else:
+        raise TypeError("not enough arguments for format string")
 
-#     begin = arg_index
-#     end = (
-#         arg_index
-#         + 1
-#         + (match.group("width") == "*")
-#         + (match.group("precision") == "*")
-#     )
-#     fmt_args = args[begin:end]
+    if match.group("format") == "r":
+        fmt_arg_r = repr(fmt_arg)
+        if width is None and precision is None:
+            return arg_index, fmt_arg_r
+        else:
+            fmt_arg = ColorizedString(fmt_arg_r)
+    elif not isinstance(fmt_arg, ColorizedString):
+        fmt_arg_s = str(fmt_arg)
+        if width is None and precision is None:
+            return arg_index, fmt_arg_s
+        else:
+            fmt_arg = ColorizedString(fmt_arg_s)
 
-#     return end, match.group(0) % fmt_args
+    if precision is not None and fmt_arg.width > precision:
+        raw: list[yuio.color.Color | str] = []
+        color = out_color
+        cur_color = out_color
+        for part in fmt_arg:
+            if precision <= 0:
+                break
+            if isinstance(part, str):
+                if color != cur_color:
+                    raw.append(color)
+                    cur_color = color
 
+                part_width = line_width(part)
+                if part_width <= precision:
+                    raw.append(part)
+                    precision -= part_width
+                elif part.isascii():
+                    raw.append(part[:precision])
+                    break
+                else:
+                    for j, ch in enumerate(part):
+                        precision -= line_width(ch)
+                        if precision == 0:
+                            raw.append(part[: j + 1])
+                            break
+                        elif precision < 0:
+                            raw.append(part[:j])
+                            raw.append(" ")
+                            break
+                    break
+            else:
+                color = out_color | part
+        if cur_color != out_color:
+            raw.append(out_color)
+        fmt_arg = ColorizedString(raw)
+    else:
+        raw: list[yuio.color.Color | str] = []
+        color = out_color
+        cur_color = out_color
+        for part in fmt_arg:
+            if isinstance(part, str):
+                if color != cur_color:
+                    raw.append(color)
+                    cur_color = color
+                raw.append(part)
+            else:
+                color = out_color | part
+        if cur_color != out_color:
+            raw.append(out_color)
+        fmt_arg = ColorizedString(raw)
 
-# def _percent_format_repl_str(
-#     match: _t.StrReMatch,
-#     args: tuple[_t.Any, ...],
-#     arg_index: int,
-#     out_color: yuio.color.Color,
-# ) -> tuple[int, str | ColorizedString]:
-#     if width_s := match.group("width"):
-#         if width_s == "*":
-#             try:
-#                 width = args[arg_index]
-#                 arg_index += 1
-#             except KeyError:
-#                 raise TypeError("not enough arguments for format string")
-#             if not isinstance(width, int):
-#                 raise TypeError("* wants int")
-#         else:
-#             width = int(width_s)
-#     else:
-#         width = None
+    if width is not None:
+        spacing = " " * (abs(width) - fmt_arg.width)
+        if match.group("flag") == "-" or width < 0:
+            fmt_arg = fmt_arg + spacing
+        else:
+            fmt_arg = spacing + fmt_arg
 
-#     if precision_s := match.group("precision"):
-#         if precision_s == "*":
-#             try:
-#                 precision = args[arg_index]
-#                 arg_index += 1
-#             except KeyError:
-#                 raise TypeError("not enough arguments for format string")
-#             if not isinstance(precision, int):
-#                 raise TypeError("* wants int")
-#         else:
-#             precision = int(precision_s)
-#     else:
-#         precision = None
-
-#     try:
-#         fmt_arg = args[arg_index]
-#         arg_index += 1
-#     except KeyError:
-#         raise TypeError("not enough arguments for format string") from None
-
-#     if match.group("format") == "r":
-#         fmt_arg_r = repr(fmt_arg)
-#         if width is None and precision is None:
-#             return arg_index, fmt_arg_r
-#         else:
-#             fmt_arg = ColorizedString(fmt_arg_r)
-#     elif not isinstance(fmt_arg, ColorizedString):
-#         if to_str := getattr(fmt_arg, "", None):
-#             fmt_arg_s = to_str(fmt_arg)
-#         else:
-#             fmt_arg_s = str(fmt_arg)
-#         if width is None and precision is None:
-#             return arg_index, fmt_arg_s
-#         else:
-#             fmt_arg = ColorizedString(fmt_arg_s)
-
-#     if precision is not None and fmt_arg.width > precision:
-#         raw: list[yuio.color.Color | str] = []
-#         color = out_color
-#         cur_color = out_color
-#         for part in fmt_arg:
-#             if precision <= 0:
-#                 break
-#             if isinstance(part, str):
-#                 if color != cur_color:
-#                     raw.append(color)
-#                     cur_color = color
-
-#                 part_width = line_width(part)
-#                 if part_width <= precision:
-#                     raw.append(part)
-#                     precision -= part_width
-#                 elif part.isascii():
-#                     raw.append(part[:precision])
-#                     break
-#                 else:
-#                     for j, ch in enumerate(part):
-#                         precision -= line_width(ch)
-#                         if precision == 0:
-#                             raw.append(part[: j + 1])
-#                             break
-#                         elif precision < 0:
-#                             raw.append(part[:j])
-#                             raw.append(" ")
-#                             break
-#                     break
-#             else:
-#                 color = out_color | part
-#         if cur_color != out_color:
-#             raw.append(out_color)
-#         fmt_arg = ColorizedString(raw)
-#     else:
-#         raw: list[yuio.color.Color | str] = []
-#         color = out_color
-#         cur_color = out_color
-#         for part in fmt_arg:
-#             if isinstance(part, str):
-#                 if color != cur_color:
-#                     raw.append(color)
-#                     cur_color = color
-#                 raw.append(part)
-#             else:
-#                 color = out_color | part
-#         if cur_color != out_color:
-#             raw.append(out_color)
-#         fmt_arg = ColorizedString(raw)
-
-#     if width is not None:
-#         spacing = " " * (abs(width) - fmt_arg.width)
-#         if match.group("flag") == "-" or width < 0:
-#             fmt_arg = fmt_arg + spacing
-#         else:
-#             fmt_arg = spacing + fmt_arg
-
-#     return arg_index, fmt_arg
+    return arg_index, fmt_arg
 
 
 _SPACE_TRANS = str.maketrans("\r\n\t\v\b\f", "      ")
