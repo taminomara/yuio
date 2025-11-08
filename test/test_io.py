@@ -4,8 +4,10 @@ import textwrap
 
 import pytest
 
+import yuio.color
 import yuio.io
 import yuio.parse
+import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
@@ -262,7 +264,7 @@ class TestMessage:
 
     def test_raw(self, ostream: io.StringIO):
         yuio.io.raw(
-            yuio.term.ColorizedString(["foo, ", yuio.term.Color.FORE_RED, "bar"])
+            yuio.string.ColorizedString(["foo, ", yuio.color.Color.FORE_RED, "bar"])
         )
 
         assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
@@ -1917,7 +1919,7 @@ class TestSuspendOutput:
             ),
             (
                 "raw",
-                (yuio.term.ColorizedString("Bar."),),
+                (yuio.string.ColorizedString("Bar."),),
                 [
                     "Bar.                ",
                 ],
@@ -2042,7 +2044,7 @@ class TestSuspendOutput:
             ),
             (
                 "raw",
-                (yuio.term.ColorizedString("Bar.\n"),),
+                (yuio.string.ColorizedString("Bar.\n"),),
                 [
                     "Bar.                ",
                 ],

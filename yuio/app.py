@@ -256,12 +256,14 @@ import types
 from dataclasses import dataclass
 
 import yuio
+import yuio.color
 import yuio.complete
 import yuio.config
 import yuio.dbg.env
 import yuio.io
 import yuio.md
 import yuio.parse
+import yuio.string
 import yuio.term
 import yuio.theme
 from yuio import _typing as _t
@@ -1217,7 +1219,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         s: str,
         /,
         *,
-        default_color: yuio.term.Color | str = yuio.term.Color.NONE,
+        default_color: yuio.color.Color | str = yuio.color.Color.NONE,
     ):
         return yuio.md.colorize(
             self.theme,
@@ -1280,14 +1282,14 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
 
 @dataclass(**yuio._with_slots())
 class _Usage(yuio.md.AstBase):
-    prefix: yuio.term.ColorizedString
-    usage: yuio.term.ColorizedString
+    prefix: yuio.string.ColorizedString
+    usage: yuio.string.ColorizedString
 
 
 @dataclass(**yuio._with_slots())
 class _HelpArg(yuio.md.AstBase):
     indent: str
-    args: yuio.term.ColorizedString
+    args: yuio.string.ColorizedString
     help: yuio.md.AstBase | None
 
 
@@ -1346,7 +1348,7 @@ class _HelpFormatter:
                 default_color="msg/text:heading/section",
             )
         else:
-            c_prefix = yuio.term.ColorizedString(
+            c_prefix = yuio.string.ColorizedString(
                 [self._theme.get_color("msg/text:heading/section"), "usage: "]
             )
 
@@ -1357,12 +1359,12 @@ class _HelpFormatter:
             c_usage = sh_usage_highlighter.highlight(
                 self._theme,
                 usage,
-            ) % {"prog": self._prog}
+            ).percent_format({"prog": self._prog}, self._theme)
         else:
-            c_usage = yuio.term.ColorizedString(
+            c_usage = yuio.string.ColorizedString(
                 [self._usage_prog_color, str(self._prog)]
             )
-            c_usage_elems = yuio.term.ColorizedString()
+            c_usage_elems = yuio.string.ColorizedString()
 
             optionals: list[argparse.Action | argparse._MutuallyExclusiveGroup] = []
             positionals: list[argparse.Action | argparse._MutuallyExclusiveGroup] = []
@@ -1444,7 +1446,7 @@ class _HelpFormatter:
 
             if has_omitted_usages:
                 c_usage_elems_prev = c_usage_elems
-                c_usage_elems = yuio.term.ColorizedString(
+                c_usage_elems = yuio.string.ColorizedString(
                     [
                         self._usage_punct_color,
                         "[",
@@ -1475,7 +1477,7 @@ class _HelpFormatter:
 
     def add_argument(self, action: argparse.Action, indent: str = ""):
         if action.help != argparse.SUPPRESS:
-            c_usage = yuio.term.ColorizedString()
+            c_usage = yuio.string.ColorizedString()
             sep = False
             if not action.option_strings:
                 self._format_action_metavar(action, 0, c_usage)
@@ -1523,19 +1525,19 @@ class _HelpFormatter:
 
     def format_help(self) -> str:
         self._formatter._args_column_width = self._args_column_width
-        res = yuio.term.ColorizedString()
+        res = yuio.string.ColorizedString()
         for line in self._formatter.format_node(
             yuio.md.Document(items=self._nodes, start=0, end=0)
         ):
             res += line
             res += "\n"
-        res += yuio.term.Color()
+        res += yuio.color.Color()
         return "".join(res.process_colors(self._term))
 
     def _format_action_short(
         self,
         action: argparse.Action,
-        out: yuio.term.ColorizedString,
+        out: yuio.string.ColorizedString,
         in_group: bool = False,
     ):
         if not in_group and not action.required:
@@ -1556,7 +1558,7 @@ class _HelpFormatter:
             out += "]"
 
     def _format_action_metavar_expl(
-        self, action: argparse.Action, out: yuio.term.ColorizedString
+        self, action: argparse.Action, out: yuio.string.ColorizedString
     ):
         nargs = action.nargs if action.nargs is not None else 1
 
@@ -1596,7 +1598,7 @@ class _HelpFormatter:
                 sep = True
 
     def _format_action_metavar(
-        self, action: argparse.Action, n: int, out: yuio.term.ColorizedString
+        self, action: argparse.Action, n: int, out: yuio.string.ColorizedString
     ):
         metavar_t = action.metavar
         if not metavar_t and action.option_strings:

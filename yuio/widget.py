@@ -136,15 +136,17 @@ import sys
 import typing
 from dataclasses import dataclass
 
+import yuio.color
 import yuio.complete
 import yuio.md
+import yuio.string
 import yuio.term
 from yuio import _typing as _t
-from yuio.term import Color as _Color
-from yuio.term import ColorizedString as _ColorizedString
-from yuio.term import Esc as _Esc
+from yuio.color import Color as _Color
+from yuio.string import ColorizedString as _ColorizedString
+from yuio.string import Esc as _Esc
+from yuio.string import line_width as _line_width
 from yuio.term import Term as _Term
-from yuio.term import line_width as _line_width
 from yuio.theme import Theme as _Theme
 
 __all__ = [
@@ -542,7 +544,7 @@ class RenderContext:
         self._normal_buffer_term_y: int = 0
 
         # Helpers
-        self._none_color: str = _Color.NONE.as_code(term)
+        self._none_color: str = yuio.term.color_to_code(_Color.NONE, term)
 
         # Used for tests and debug
         self._renders: int = 0
@@ -799,7 +801,9 @@ class RenderContext:
 
         """
 
-        self._frame_cursor_color = self._theme.get_color(path).as_code(self._term)
+        self._frame_cursor_color = yuio.term.color_to_code(
+            self._theme.get_color(path), self._term
+        )
 
     def set_color(self, color: _Color, /):
         """
@@ -807,7 +811,7 @@ class RenderContext:
 
         """
 
-        self._frame_cursor_color = color.as_code(self._term)
+        self._frame_cursor_color = yuio.term.color_to_code(color, self._term)
 
     def reset_color(self):
         """
@@ -817,7 +821,7 @@ class RenderContext:
 
         self._frame_cursor_color = self._none_color
 
-    def write(self, text: yuio.term.AnyString, /, *, max_width: int | None = None):
+    def write(self, text: yuio.string.AnyString, /, *, max_width: int | None = None):
         r"""
         Write string at the current position using the current color.
         Move cursor while printing.
@@ -885,7 +889,7 @@ class RenderContext:
         if not 0 <= y < self._height:
             for s in text:
                 if isinstance(s, _Color):
-                    self._frame_cursor_color = s.as_code(self.term)
+                    self._frame_cursor_color = yuio.term.color_to_code(s, self.term)
             return
 
         ll = self._lines[y]
@@ -893,7 +897,7 @@ class RenderContext:
 
         for s in text:
             if isinstance(s, _Color):
-                self._frame_cursor_color = s.as_code(self._term)
+                self._frame_cursor_color = yuio.term.color_to_code(s, self._term)
                 continue
 
             s = s.translate(_UNPRINTABLE_TRANS)
@@ -969,7 +973,7 @@ class RenderContext:
 
     def write_text(
         self,
-        lines: _t.Iterable[yuio.term.AnyString],
+        lines: _t.Iterable[yuio.string.AnyString],
         /,
         *,
         max_width: int | None = None,
@@ -1157,8 +1161,8 @@ class RenderContext:
             term_x, term_y = self._term_x, self._term_y
             self._move_term_cursor(self._width - len(debug_msg), 0)
             self._out.append(
-                (yuio.term.Color.FORE_BLACK | yuio.term.Color.BACK_CYAN).as_code(
-                    self.term
+                yuio.term.color_to_code(
+                    yuio.color.Color.FORE_BLACK | yuio.color.Color.BACK_CYAN, self.term
                 )
             )
             self._out.append(debug_msg)
@@ -2407,7 +2411,7 @@ class Line(Widget[_t.Never]):
 
     def __init__(
         self,
-        text: yuio.term.AnyString,
+        text: yuio.string.AnyString,
         /,
         *,
         color: _Color | str | None = None,
@@ -2416,7 +2420,7 @@ class Line(Widget[_t.Never]):
         self.__color = color
 
     @property
-    def text(self) -> yuio.term.ColorizedString:
+    def text(self) -> _ColorizedString:
         """
         Currently displayed text.
 
@@ -2424,7 +2428,7 @@ class Line(Widget[_t.Never]):
         return self.__text
 
     @text.setter
-    def text(self, text: yuio.term.AnyString, /):
+    def text(self, text: yuio.string.AnyString, /):
         self.__text = _ColorizedString(text)
 
     @property
@@ -2460,15 +2464,15 @@ class Text(Widget[_t.Never]):
 
     def __init__(
         self,
-        text: yuio.term.AnyString,
+        text: yuio.string.AnyString,
         /,
     ):
         self.__text = _ColorizedString(text)
-        self.__wrapped_text: list[yuio.term.ColorizedString] | None = None
+        self.__wrapped_text: list[_ColorizedString] | None = None
         self.__wrapped_text_width: int = 0
 
     @property
-    def text(self) -> yuio.term.ColorizedString:
+    def text(self) -> _ColorizedString:
         """
         Currently displayed text.
 
@@ -2476,7 +2480,7 @@ class Text(Widget[_t.Never]):
         return self.__text
 
     @text.setter
-    def text(self, text: yuio.term.AnyString, /):
+    def text(self, text: yuio.string.AnyString, /):
         self.__text = _ColorizedString(text)
         self.__wrapped_text = None
         self.__wrapped_text_width = 0
@@ -2701,7 +2705,7 @@ class Input(Widget[str]):
         self.__allow_special_characters: bool = allow_special_characters
 
         self.__wrapped_text_width: int = 0
-        self.__wrapped_text: list[yuio.term.ColorizedString] | None = None
+        self.__wrapped_text: list[_ColorizedString] | None = None
         self.__pos_after_wrap: tuple[int, int] | None = None
 
         # We keep track of edit history by saving input text

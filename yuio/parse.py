@@ -499,7 +499,9 @@ TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
 
 
-class ParsingError(yuio.FormattedExceptionMixin, ValueError, argparse.ArgumentTypeError):
+class ParsingError(
+    yuio.FormattedExceptionMixin, ValueError, argparse.ArgumentTypeError
+):
     """
     Raised when parsing or validation fails.
 
@@ -2174,9 +2176,7 @@ class Fraction(ValueParser[fractions.Fraction]):
                     "Can't parse `%r` as `fraction`, division by zero",
                     value,
                 ) from None
-        raise ParsingError.type_mismatch(
-            value, int, float, str, "a tuple of two ints"
-        )
+        raise ParsingError.type_mismatch(value, int, float, str, "a tuple of two ints")
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /

@@ -17,14 +17,10 @@ and run `pre-commit run clk` to replace:
 ### Io
 
 - ✨ Added `yuio.io.hl` and `yuio.io.out`.
+- ✨ Added underline and italic font styles.
 - 🔧 Changed `yuio.io.edit`'s `comment_marker` parameter now defaults to `None`
   to avoid confusion.
 - 🐛 Fixed quoting when invoking editor command from `$VISUAL` or `$EDITOR`.
-
-### Parse
-
-- ✨ Json schema for Enums now includes documentation for each member if it can
-  be parsed.
 
 ### App
 
@@ -39,22 +35,24 @@ and run `pre-commit run clk` to replace:
 
 ### Exec
 
+- 💥 Removed `yuio.exec.sh`, it's really not going to be portable.
 - ✨ Added `capture_io` and `logger` options to `yuio.io.exec`.
-- 🗑️ Removed `yuio.exec.sh`, it's really not going to be portable.
 - ⚡ Implemented communication with subprocesses using `select` call on unix
   operating systems.
 
 ### Git
 
+- 💥 Removed `skip_checks` parameter from constructor of `yuio.git.Repo`.
 - ✨ Added `GitExecError`, `GitUnavailableError`, `GitUnavailableError`.
 - 🔧 Allowed initializing `yuio.git.RefCompleter` without explicitly providing a
   `Repo` class.
 - 🔧 Re-implemented `yuio.git.Repo.git` using `yuio.exec.exec`; renamed its
   `capture_output` parameter ro `capture_io`.
-- 🗑️ Removed `skip_checks` parameter from constructor of `yuio.git.Repo`.
 
 ### Json Schema
 
+- ✨ Json schema for Enums now includes documentation for each member if it can
+  be parsed.
 - 🔧 Switched from draft-2020 to draft-07 because VSCode still struggles with
   some of 2020's features.
 
@@ -64,12 +62,12 @@ and run `pre-commit run clk` to replace:
 
 ### Term
 
+- 💥 Split `yuio.term` into `yuio.term`, `yuio.color`, and `yuio.string`.
+
 - ✨ Added check for Windows Terminal in WSL.
 
   Windows Terminal supports true colors, but doesn't set `COLORTERM` by default.
   We use `wslinfo` to detect this situation.
-
-- ✨ Added underline and italic font styles.
 
 - 🔧 Changed detection of terminal capabilities in CI to respect terminal's
   `isatty` output. This will disable colored output in GitHub Actions because

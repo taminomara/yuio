@@ -84,7 +84,8 @@ import shutil
 import string
 from dataclasses import dataclass
 
-import yuio.term
+import yuio.color
+import yuio.string
 import yuio.theme
 from yuio import _typing as _t
 
@@ -204,9 +205,9 @@ class MdFormatter:
         self.allow_headings: bool = allow_headings
 
         self._is_first_line: bool
-        self._out: list[yuio.term.ColorizedString]
-        self._first_line_indent: yuio.term.ColorizedString
-        self._continuation_indent: yuio.term.ColorizedString
+        self._out: list[yuio.string.ColorizedString]
+        self._first_line_indent: yuio.string.ColorizedString
+        self._continuation_indent: yuio.string.ColorizedString
 
     @property
     def width(self) -> int:
@@ -223,7 +224,7 @@ class MdFormatter:
             width = shutil.get_terminal_size().columns
         self.__width = max(width, 20)
 
-    def format(self, md: str, /) -> list[yuio.term.ColorizedString]:
+    def format(self, md: str, /) -> list[yuio.string.ColorizedString]:
         """
         Format a markdown document.
 
@@ -256,7 +257,7 @@ class MdFormatter:
 
         return _MdParser(self.allow_headings).parse(yuio.dedent(md))
 
-    def format_node(self, node: AstBase, /) -> list[yuio.term.ColorizedString]:
+    def format_node(self, node: AstBase, /) -> list[yuio.string.ColorizedString]:
         """
         Format a parsed markdown document.
 
@@ -274,8 +275,8 @@ class MdFormatter:
 
         self._is_first_line = True
         self._out = []
-        self._first_line_indent = yuio.term.ColorizedString()
-        self._continuation_indent = yuio.term.ColorizedString()
+        self._first_line_indent = yuio.string.ColorizedString()
+        self._continuation_indent = yuio.string.ColorizedString()
 
         self._format(node)
 
@@ -286,7 +287,7 @@ class MdFormatter:
         text: str,
         /,
         *,
-        default_color: yuio.term.Color | str = yuio.term.Color.NONE,
+        default_color: yuio.color.Color | str = yuio.color.Color.NONE,
     ):
         """
         Parse and colorize contents of a paragraph.
@@ -307,20 +308,20 @@ class MdFormatter:
     @contextlib.contextmanager
     def _indent(
         self,
-        color: yuio.term.Color | str | None,
-        s: yuio.term.AnyString,
+        color: yuio.color.Color | str | None,
+        s: yuio.string.AnyString,
         /,
         *,
         continue_with_spaces: bool = True,
     ):
         color = self.theme.to_color(color)
-        indent = yuio.term.ColorizedString(color) + s
+        indent = yuio.string.ColorizedString(color) + s
 
         old_first_line_indent = self._first_line_indent
         old_continuation_indent = self._continuation_indent
 
         if continue_with_spaces:
-            continuation_indent = yuio.term.ColorizedString(" " * indent.width)
+            continuation_indent = yuio.string.ColorizedString(" " * indent.width)
         else:
             continuation_indent = indent
 
@@ -333,7 +334,7 @@ class MdFormatter:
             self._first_line_indent = old_first_line_indent
             self._continuation_indent = old_continuation_indent
 
-    def _line(self, line: yuio.term.ColorizedString, /):
+    def _line(self, line: yuio.string.ColorizedString, /):
         self._out.append(line)
 
         self._is_first_line = False
@@ -342,7 +343,7 @@ class MdFormatter:
     def _format(self, node: AstBase, /):
         getattr(self, f"_format_{node.__class__.__name__.lstrip('_')}")(node)
 
-    def _format_Text(self, node: Text, /, *, default_color: yuio.term.Color):
+    def _format_Text(self, node: Text, /, *, default_color: yuio.color.Color):
         s = self.colorize(
             "\n".join(node.lines).strip(),
             default_color=default_color,
@@ -393,7 +394,7 @@ class MdFormatter:
         decoration = self.theme.msg_decorations.get("list", "")
         if node.number is not None:
             decoration = f"{node.number:>{min_width}}." + " " * (
-                yuio.term.line_width(decoration) - min_width - 1
+                yuio.string.line_width(decoration) - min_width - 1
             )
         with self._indent("msg/decoration:list", decoration):
             self._format_Container(node)
@@ -1124,8 +1125,8 @@ class SyntaxHighlighter(abc.ABC):
         self,
         theme: yuio.theme.Theme,
         code: str,
-        default_color: yuio.term.Color | str | None = None,
-    ) -> yuio.term.ColorizedString:
+        default_color: yuio.color.Color | str | None = None,
+    ) -> yuio.string.ColorizedString:
         """
         Highlight the given code using the given theme.
 
@@ -1141,8 +1142,8 @@ class SyntaxHighlighter(abc.ABC):
     def _get_default_color(
         self,
         theme: yuio.theme.Theme,
-        default_color: yuio.term.Color | str | None,
-    ) -> yuio.term.Color:
+        default_color: yuio.color.Color | str | None,
+    ) -> yuio.color.Color:
         return theme.to_color(default_color) | theme.get_color(
             f"msg/text:code/{self.syntax}"
         )
@@ -1157,13 +1158,13 @@ class _DummySyntaxHighlighter(SyntaxHighlighter):
         self,
         theme: yuio.theme.Theme,
         code: str,
-        default_color: yuio.term.Color | str | None = None,
-    ) -> yuio.term.ColorizedString:
-        return yuio.term.ColorizedString(
+        default_color: yuio.color.Color | str | None = None,
+    ) -> yuio.string.ColorizedString:
+        return yuio.string.ColorizedString(
             [
                 self._get_default_color(theme, default_color),
                 code,
-                yuio.term.Color.NONE,
+                yuio.color.Color.NONE,
             ]
         )
 
@@ -1190,11 +1191,11 @@ class _ReSyntaxHighlighter(SyntaxHighlighter):
         self,
         theme: yuio.theme.Theme,
         code: str,
-        default_color: yuio.term.Color | str | None = None,
-    ) -> yuio.term.ColorizedString:
+        default_color: yuio.color.Color | str | None = None,
+    ) -> yuio.string.ColorizedString:
         default_color = self._get_default_color(theme, default_color)
 
-        out = yuio.term.ColorizedString()
+        out = yuio.string.ColorizedString()
 
         last_pos = 0
         for code_unit in self._pattern.finditer(code):
@@ -1232,7 +1233,7 @@ class _ReSyntaxHighlighter(SyntaxHighlighter):
             out += default_color
             out += code[last_pos:]
 
-        out += yuio.term.Color.NONE
+        out += yuio.color.Color.NONE
 
         return out
 
@@ -1387,7 +1388,7 @@ class _TbHighlighter(SyntaxHighlighter):
 
     class _StackColors:
         def __init__(
-            self, theme: yuio.theme.Theme, default_color: yuio.term.Color, tag: str
+            self, theme: yuio.theme.Theme, default_color: yuio.color.Color, tag: str
         ):
             self.file_color = default_color | theme.get_color(f"tb/frame/{tag}/file")
             self.file_path_color = default_color | theme.get_color(
@@ -1419,8 +1420,8 @@ class _TbHighlighter(SyntaxHighlighter):
         self,
         theme: yuio.theme.Theme,
         code: str,
-        default_color: yuio.term.Color | str | None = None,
-    ) -> yuio.term.ColorizedString:
+        default_color: yuio.color.Color | str | None = None,
+    ) -> yuio.string.ColorizedString:
         default_color = self._get_default_color(theme, default_color)
 
         py_highlighter = SyntaxHighlighter.get_highlighter("python")
@@ -1432,7 +1433,7 @@ class _TbHighlighter(SyntaxHighlighter):
         stack_lib_colors = self._StackColors(theme, default_color, "lib")
         stack_colors = stack_normal_colors
 
-        res = yuio.term.ColorizedString()
+        res = yuio.string.ColorizedString()
 
         PLAIN_TEXT, STACK, MESSAGE = 1, 2, 3
         state = PLAIN_TEXT
@@ -1451,7 +1452,7 @@ class _TbHighlighter(SyntaxHighlighter):
                         else:
                             stack_colors = stack_normal_colors
 
-                        res += yuio.term.Color.NONE
+                        res += yuio.color.Color.NONE
                         res += stack_indent
                         res += stack_colors.file_color
                         res += "File "
@@ -1471,12 +1472,12 @@ class _TbHighlighter(SyntaxHighlighter):
 
                         res += "\n"
                     elif match := self._TB_LINE_HIGHLIGHT.match(line):
-                        res += yuio.term.Color.NONE
+                        res += yuio.color.Color.NONE
                         res += stack_indent
                         res += stack_colors.highlight_color
                         res += line[len(stack_indent) :]
                     else:
-                        res += yuio.term.Color.NONE
+                        res += yuio.color.Color.NONE
                         res += stack_indent
                         res += py_highlighter.highlight(
                             theme,
@@ -1491,7 +1492,7 @@ class _TbHighlighter(SyntaxHighlighter):
             if state is MESSAGE:
                 if line and line != "\n" and line.startswith(message_indent):
                     # We're still in the message.
-                    res += yuio.term.Color.NONE
+                    res += yuio.color.Color.NONE
                     res += message_indent
                     res += message_color
                     res += line[len(message_indent) :]
@@ -1506,7 +1507,7 @@ class _TbHighlighter(SyntaxHighlighter):
                     message_indent = match.group("indent").replace("+", "|")
                     stack_indent = message_indent + "  "
 
-                    res += yuio.term.Color.NONE
+                    res += yuio.color.Color.NONE
                     res += message_indent
                     res += heading_color
                     res += line[len(message_indent) :]
@@ -1518,7 +1519,7 @@ class _TbHighlighter(SyntaxHighlighter):
                     message_indent = match.group("indent").replace("+", "|")
                     stack_indent = message_indent + "  "
 
-                    res += yuio.term.Color.NONE
+                    res += yuio.color.Color.NONE
                     res += message_indent
                     res += message_color
                     res += line[len(message_indent) :]
@@ -1527,11 +1528,11 @@ class _TbHighlighter(SyntaxHighlighter):
                     continue
                 else:
                     # We're still in plain text.
-                    res += yuio.term.Color.NONE
+                    res += yuio.color.Color.NONE
                     res += line
                     continue
 
-        res += yuio.term.Color.NONE
+        res += yuio.color.Color.NONE
 
         return res
 
@@ -1541,8 +1542,8 @@ SyntaxHighlighter.register_highlighter(_TbHighlighter())
 
 __TAG_RE = re.compile(
     r"""
-          <c (?P<tag_open>[a-z0-9 _/@:-]+)>         # yuio.term.Color tag open.
-        | </c>                                      # yuio.term.Color tag close.
+          <c (?P<tag_open>[a-z0-9 _/@:-]+)>         # yuio.color.Color tag open.
+        | </c>                                      # yuio.color.Color tag close.
         | \\(?P<punct>[%(punct)s])                  # Escape character.
         | (?<!`)(`+)(?!`)(?P<code>.*?)(?<!`)\3(?!`) # Inline code block (backticks).
     """
@@ -1558,9 +1559,9 @@ def colorize(
     line: str,
     /,
     *,
-    default_color: yuio.term.Color | str = yuio.term.Color.NONE,
+    default_color: yuio.color.Color | str = yuio.color.Color.NONE,
     parse_cli_flags_in_backticks: bool = False,
-) -> yuio.term.ColorizedString:
+) -> yuio.string.ColorizedString:
     """
     Parse and colorize contents of a paragraph.
 
@@ -1580,7 +1581,7 @@ def colorize(
 
     default_color = theme.to_color(default_color)
 
-    raw: list[str | yuio.term.Color] = []
+    raw: list[str | yuio.color.Color] = []
     raw.append(default_color)
 
     stack = [default_color]
@@ -1609,7 +1610,7 @@ def colorize(
                 raw.append(stack[-1] | theme.get_color("hl/flag:sh-usage"))
             else:
                 raw.append(stack[-1] | theme.get_color("code"))
-            raw.append(yuio.term.NoWrap(code))
+            raw.append(yuio.string.NoWrap(code))
             raw.append(stack[-1])
         elif punct := tag.group("punct"):
             raw.append(punct)
@@ -1619,9 +1620,9 @@ def colorize(
 
     raw.append(line[last_pos:])
 
-    raw.append(yuio.term.Color.NONE)
+    raw.append(yuio.color.Color.NONE)
 
-    return yuio.term.ColorizedString(raw)
+    return yuio.string.ColorizedString(raw)
 
 
 def strip_color_tags(s: str) -> str:

@@ -1229,7 +1229,9 @@ class TestPath:
             parser.parse("/a/s/d.txt")
             == pathlib.Path("/a/s/d.txt").resolve().absolute()
         )
-        with pytest.raises(ValueError, match=r"should have extension `\.cfg` or `\.txt`"):
+        with pytest.raises(
+            ValueError, match=r"should have extension `\.cfg` or `\.txt`"
+        ):
             parser.parse("file.sql")
 
     def test_from_type_hint(self):
@@ -1328,7 +1330,9 @@ class TestFile:
         )
         with pytest.raises(ValueError, match=r"doesn't exist"):
             parser.parse(tmpdir.join("file.txt").strpath)
-        with pytest.raises(ValueError, match=r"should have extension `\.cfg` or `\.txt`"):
+        with pytest.raises(
+            ValueError, match=r"should have extension `\.cfg` or `\.txt`"
+        ):
             parser.parse(tmpdir.join("file.sql").strpath)
 
     def test_from_type_hint_annotated(self):

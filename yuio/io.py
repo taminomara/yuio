@@ -225,8 +225,10 @@ import traceback
 import types
 from logging import LogRecord
 
+import yuio.color
 import yuio.md
 import yuio.parse
+import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
@@ -295,10 +297,13 @@ def _manager() -> _IoManager:
 def _manager_data() -> tuple[yuio.term.Term, yuio.theme.Theme, int]:
     global _IO_MANAGER
 
-    with _IO_LOCK:
+    try:
+        _IO_LOCK.acquire()
         if _IO_MANAGER is None:
             _IO_MANAGER = _IoManager()
         return _IO_MANAGER._term, _IO_MANAGER._theme, _IO_MANAGER._rc.canvas_width
+    finally:
+        _IO_LOCK.release()
 
 
 class UserIoError(IOError):
@@ -687,12 +692,12 @@ def md(msg: str, /, *args, **kwargs):
     msg, args = yuio._to_msg(msg, args)
     _term, theme, width = _manager_data()
     formatter = yuio.md.MdFormatter(theme, width=width)
-    res = yuio.term.ColorizedString()
+    res = yuio.string.ColorizedString()
     for line in formatter.format(msg):
         res += line
         res += "\n"
     if args:
-        res %= args
+        res = res.percent_format(args, theme)
 
     raw(res, **kwargs)
 
@@ -722,25 +727,26 @@ def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
 
     """
 
+    _term, theme, _width = _manager_data()
     msg, args = yuio._to_msg(msg, args)
     if isinstance(syntax, str):
         syntax = yuio.md.SyntaxHighlighter.get_highlighter(syntax)
-    highlighted = syntax.highlight(get_theme(), yuio.dedent(msg))
+    highlighted = syntax.highlight(theme, yuio.dedent(msg))
     if args:
-        highlighted %= args
+        highlighted = highlighted.percent_format(args, theme)
     raw(highlighted, **kwargs)
 
 
-def raw(msg: yuio.term.ColorizedString, /, **kwargs):
-    """raw(msg: yuio.term.ColorizedString, /)
+def raw(msg: yuio.string.ColorizedString, /, **kwargs):
+    """raw(msg: yuio.string.ColorizedString, /)
 
-    Print a :class:`~yuio.term.ColorizedString`.
+    Print a :class:`~yuio.string.ColorizedString`.
 
     This is a bridge between :mod:`yuio.io` and lower-level
     modules like :mod:`yuio.term`.
 
     In most cases, you won't need this function. The only exception
-    is when you need to build a :class:`~yuio.term.ColorizedString`
+    is when you need to build a :class:`~yuio.string.ColorizedString`
     yourself.
 
     :param msg:
@@ -780,7 +786,7 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
     _layout: yuio.widget.VerticalLayout[T]
 
     def __init__(
-        self, prompt: yuio.term.ColorizedString, widget: yuio.widget.Widget[T]
+        self, prompt: yuio.string.ColorizedString, widget: yuio.widget.Widget[T]
     ):
         self._prompt = yuio.widget.Text(prompt)
         self._error_msg: str | None = None
@@ -812,9 +818,9 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
                 default_color="msg/text:error",
             )
             if self._error_msg_args:
-                error_msg %= self._error_msg_args
+                error_msg = error_msg.percent_format(self._error_msg_args, rc.theme)
             error_text = (
-                yuio.term.ColorizedString(
+                yuio.string.ColorizedString(
                     [
                         rc.theme.get_color("msg/decoration:error"),
                         rc.theme.msg_decorations.get("error", "▲ "),
@@ -960,7 +966,7 @@ def _ask(
 
     prompt = yuio.md.colorize(theme, msg, default_color="msg/text:question")
     if args:
-        prompt = prompt % args
+        prompt = prompt.percent_format(args, theme)
 
     if not input_description:
         input_description = parser.describe()
@@ -997,7 +1003,9 @@ def _ask(
             except TypeError:
                 result_desc = str(result)
 
-            confirmation = prompt + (yuio.md.colorize(theme, " `%s`\n") % result_desc)
+            confirmation = prompt + yuio.md.colorize(theme, " `%s`\n").percent_format(
+                result_desc, theme
+            )
 
             s.raw(confirmation)
             return result
@@ -1005,15 +1013,13 @@ def _ask(
         # Use raw input.
 
         if input_description:
-            prompt += (
-                yuio.md.colorize(theme, " (%s)", default_color="msg/text:question")
-                % input_description
-            )
+            prompt += yuio.md.colorize(
+                theme, " (%s)", default_color="msg/text:question"
+            ).percent_format(input_description, theme)
         if default_description:
-            prompt += (
-                yuio.md.colorize(theme, " [`%s`]", default_color="msg/text:question")
-                % default_description
-            )
+            prompt += yuio.md.colorize(
+                theme, " [`%s`]", default_color="msg/text:question"
+            ).percent_format(default_description, theme)
         prompt += yuio.md.colorize(
             theme, ": " if needs_colon else " ", default_color="msg/text:question"
         )
@@ -1036,7 +1042,7 @@ def _ask(
 
 
 class _WaitForUserWidget(yuio.widget.Widget[None]):
-    def __init__(self, prompt: yuio.term.ColorizedString):
+    def __init__(self, prompt: yuio.string.ColorizedString):
         self._prompt = yuio.widget.Text(prompt)
 
     def layout(self, rc: yuio.widget.RenderContext, /) -> tuple[int, int]:
@@ -1082,7 +1088,7 @@ def wait_for_user(
 
     prompt = yuio.md.colorize(theme, msg, default_color="msg/text:question")
     if args:
-        prompt %= args
+        prompt = prompt.percent_format(args, theme)
 
     with SuspendOutput() as s:
         try:
@@ -1434,8 +1440,8 @@ class SuspendOutput:
         hl(msg, *args, syntax=syntax, **kwargs)
 
     @staticmethod
-    def raw(msg: yuio.term.ColorizedString, **kwargs):
-        """raw(msg: yuio.term.ColorizedString, /)
+    def raw(msg: yuio.string.ColorizedString, **kwargs):
+        """raw(msg: yuio.string.ColorizedString, /)
 
         Log a :func:`raw` message, ignore suspended status.
 
@@ -1548,8 +1554,8 @@ class Task:
         self._progress_total: str | None = None
         self._subtasks: list[Task] = []
 
-        self._cached_msg: yuio.term.ColorizedString | None = None
-        self._cached_comment: yuio.term.ColorizedString | None = None
+        self._cached_msg: yuio.string.ColorizedString | None = None
+        self._cached_comment: yuio.string.ColorizedString | None = None
 
         if _parent is None:
             _manager().start_task(self)
@@ -2024,7 +2030,7 @@ class _IoManager(abc.ABC):
 
     def print_raw(
         self,
-        msg: yuio.term.ColorizedString,
+        msg: yuio.string.ColorizedString,
         /,
         *,
         ignore_suspended: bool = False,
@@ -2273,10 +2279,10 @@ class _IoManager(abc.ABC):
         *,
         exc_info: _ExcInfo | bool | None = None,
         heading: bool = False,
-    ) -> yuio.term.ColorizedString:
+    ) -> yuio.string.ColorizedString:
         decoration = self._theme.msg_decorations.get(tag, "")
         if decoration:
-            first_line_indent = yuio.term.ColorizedString(
+            first_line_indent = yuio.string.ColorizedString(
                 [self._theme.get_color(f"msg/decoration:{tag}"), decoration]
             )
             continuation_indent = " " * first_line_indent.width
@@ -2284,14 +2290,14 @@ class _IoManager(abc.ABC):
             first_line_indent = ""
             continuation_indent = ""
 
-        res = yuio.term.ColorizedString()
+        res = yuio.string.ColorizedString()
 
         if heading and self._printed_some_lines:
             res += "\n"
 
         col_msg = yuio.md.colorize(self._theme, msg, default_color=f"msg/text:{tag}")
         if args:
-            col_msg %= args
+            col_msg = col_msg.percent_format(args, self._theme)
         for line in col_msg.wrap(
             self._rc.canvas_width,
             first_line_indent=first_line_indent,
@@ -2315,12 +2321,12 @@ class _IoManager(abc.ABC):
         if heading:
             res += "\n"
 
-        res += yuio.term.Color.NONE
+        res += yuio.color.Color.NONE
 
         return res
 
-    def _format_rec(self, record: logging.LogRecord) -> yuio.term.ColorizedString:
-        res = yuio.term.ColorizedString()
+    def _format_rec(self, record: logging.LogRecord) -> yuio.string.ColorizedString:
+        res = yuio.string.ColorizedString()
 
         asctime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
 
@@ -2353,16 +2359,16 @@ class _IoManager(abc.ABC):
         if record.stack_info:
             res += self._format_tb(record.stack_info, "  ")
 
-        res += yuio.term.Color.NONE
+        res += yuio.color.Color.NONE
 
         return res
 
-    def _format_tb(self, tb: str, indent: str) -> yuio.term.ColorizedString:
+    def _format_tb(self, tb: str, indent: str) -> yuio.string.ColorizedString:
         highlighter = yuio.md.SyntaxHighlighter.get_highlighter("python-traceback")
         return highlighter.highlight(self._theme, tb).indent(indent, indent)
 
-    def _format_task(self, task: Task) -> yuio.term.ColorizedString:
-        res = yuio.term.ColorizedString()
+    def _format_task(self, task: Task) -> yuio.string.ColorizedString:
+        res = yuio.string.ColorizedString()
 
         ctx = task._status.value
 
@@ -2378,11 +2384,11 @@ class _IoManager(abc.ABC):
         res += self._theme.get_color(f"task:{ctx}")
         res += "\n"
 
-        res += yuio.term.Color.NONE
+        res += yuio.color.Color.NONE
 
         return res
 
-    def _format_task_msg(self, task: Task) -> yuio.term.ColorizedString:
+    def _format_task_msg(self, task: Task) -> yuio.string.ColorizedString:
         if task._cached_msg is None:
             msg = yuio.md.colorize(
                 self._theme,
@@ -2390,11 +2396,11 @@ class _IoManager(abc.ABC):
                 default_color=f"task/heading:{task._status.value}",
             )
             if task._args:
-                msg %= task._args
+                msg = msg.percent_format(task._args, self._theme)
             task._cached_msg = msg
         return task._cached_msg
 
-    def _format_task_comment(self, task: Task) -> yuio.term.ColorizedString | None:
+    def _format_task_comment(self, task: Task) -> yuio.string.ColorizedString | None:
         if task._status is not Task._Status.RUNNING:
             return None
         if task._cached_comment is None and task._comment is not None:
@@ -2404,7 +2410,7 @@ class _IoManager(abc.ABC):
                 default_color=f"task/comment:{task._status.value}",
             )
             if task._comment_args:
-                comment %= task._comment_args
+                comment = comment.percent_format(task._comment_args, self._theme)
             task._cached_comment = comment
         return task._cached_comment
 
@@ -2466,7 +2472,7 @@ class _IoManager(abc.ABC):
             self._rc.set_color_path(f"task/progressbar:{task._status.value}")
             self._rc.write(self._theme.progress_bar_start_symbol)
 
-            done_color = yuio.term.Color.lerp(
+            done_color = yuio.color.Color.lerp(
                 self._theme.get_color("task/progressbar/done/start"),
                 self._theme.get_color("task/progressbar/done/end"),
             )
@@ -2475,7 +2481,7 @@ class _IoManager(abc.ABC):
                 self._rc.set_color(done_color(i / (total_width - 1)))
                 self._rc.write(self._theme.progress_bar_done_symbol)
 
-            pending_color = yuio.term.Color.lerp(
+            pending_color = yuio.color.Color.lerp(
                 self._theme.get_color("task/progressbar/pending/start"),
                 self._theme.get_color("task/progressbar/pending/end"),
             )

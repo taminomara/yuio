@@ -1,7 +1,7 @@
 from typing import NoReturn
 
 import yuio.io
-import yuio.term
+import yuio.string
 import yuio.widget
 from yuio.widget import KeyboardEvent, RenderContext, VerticalLayout, Widget
 
@@ -30,7 +30,7 @@ class InputWithHeading(Widget[str]):
         self._layout = VerticalLayout(self._heading, self._input)
 
         # ...and the third one will only show if entered text is long enough.
-        if yuio.term.line_width(self._input.text) > 15:
+        if yuio.string.line_width(self._input.text) > 15:
             self._layout.append(yuio.widget.Line("Wow that's long!", color="blue"))
 
         return self._layout.layout(rc)

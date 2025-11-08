@@ -67,6 +67,7 @@ import functools
 import os
 from dataclasses import dataclass
 
+import yuio.color
 import yuio.term
 from yuio import _typing as _t
 
@@ -223,31 +224,31 @@ class Theme:
 
     """
 
-    colors: _t.Mapping[str, str | yuio.term.Color | list[str | yuio.term.Color]] = {
+    colors: _t.Mapping[str, str | yuio.color.Color | list[str | yuio.color.Color]] = {
         "code": "magenta",
         "note": "green",
-        "bold": yuio.term.Color.STYLE_BOLD,
+        "bold": yuio.color.Color.STYLE_BOLD,
         "b": "bold",
-        "dim": yuio.term.Color.STYLE_DIM,
+        "dim": yuio.color.Color.STYLE_DIM,
         "d": "dim",
-        "italic": yuio.term.Color.STYLE_ITALIC,
+        "italic": yuio.color.Color.STYLE_ITALIC,
         "i": "italic",
-        "underline": yuio.term.Color.STYLE_UNDERLINE,
+        "underline": yuio.color.Color.STYLE_UNDERLINE,
         "u": "underline",
-        "normal": yuio.term.Color.FORE_NORMAL,
-        "normal_dim": yuio.term.Color.FORE_NORMAL_DIM,
-        "red": yuio.term.Color.FORE_RED,
-        "green": yuio.term.Color.FORE_GREEN,
-        "yellow": yuio.term.Color.FORE_YELLOW,
-        "blue": yuio.term.Color.FORE_BLUE,
-        "magenta": yuio.term.Color.FORE_MAGENTA,
-        "cyan": yuio.term.Color.FORE_CYAN,
+        "normal": yuio.color.Color.FORE_NORMAL,
+        "normal_dim": yuio.color.Color.FORE_NORMAL_DIM,
+        "red": yuio.color.Color.FORE_RED,
+        "green": yuio.color.Color.FORE_GREEN,
+        "yellow": yuio.color.Color.FORE_YELLOW,
+        "blue": yuio.color.Color.FORE_BLUE,
+        "magenta": yuio.color.Color.FORE_MAGENTA,
+        "cyan": yuio.color.Color.FORE_CYAN,
     }
     """
     Mapping of color paths to actual colors.
 
     Themes use color paths to describe styles and colors for different
-    parts of an application. yuio.term.Color paths are similar to file paths,
+    parts of an application. yuio.color.Color paths are similar to file paths,
     they use snake case identifiers separated by slashes, and consist of
     two parts separated by a colon.
 
@@ -266,9 +267,9 @@ class Theme:
     the final color will be bold green.
 
     Each color path can be associated with either an instance
-    of :class:`~yuio.term.Color`, another path, or a list of colors and paths.
+    of :class:`~yuio.color.Color`, another path, or a list of colors and paths.
 
-    If path is mapped to a :class:`~yuio.term.Color`, then the path is associated
+    If path is mapped to a :class:`~yuio.color.Color`, then the path is associated
     with that particular color.
 
     If path is mapped to another path, then the path is associated with
@@ -280,8 +281,8 @@ class Theme:
     For example::
 
         colors = {
-            'heading_color': yuio.term.Color.BOLD,
-            'error_color': yuio.term.Color.RED,
+            'heading_color': yuio.color.Color.BOLD,
+            'error_color': yuio.color.Color.RED,
             'tb/heading': ['heading_color', 'error_color'],
         }
 
@@ -302,7 +303,7 @@ class Theme:
 
     """
 
-    __colors: dict[str, str | yuio.term.Color | list[str | yuio.term.Color]]
+    __colors: dict[str, str | yuio.color.Color | list[str | yuio.color.Color]]
     """
     An actual mutable version of :attr:`~Theme.colors`
     is kept here, because `__init_subclass__` will replace
@@ -434,7 +435,7 @@ class Theme:
     def _set_color_if_not_overridden(
         self,
         path: str,
-        color: str | yuio.term.Color | list[str | yuio.term.Color],
+        color: str | yuio.color.Color | list[str | yuio.color.Color],
         /,
     ):
         """
@@ -459,7 +460,7 @@ class Theme:
     def set_color(
         self,
         path: str,
-        color: str | yuio.term.Color | list[str | yuio.term.Color],
+        color: str | yuio.color.Color | list[str | yuio.color.Color],
         /,
     ):
         """
@@ -483,8 +484,8 @@ class Theme:
 
         """
 
-        colors: str | yuio.term.Color | list[str | yuio.term.Color] = (
-            yuio.term.Color.NONE
+        colors: str | yuio.color.Color | list[str | yuio.color.Color] = (
+            yuio.color.Color.NONE
         )
         """
         Colors in this node.
@@ -537,7 +538,7 @@ class Theme:
 
     @_t.final
     @functools.cache
-    def get_color(self, path: str, /) -> yuio.term.Color:
+    def get_color(self, path: str, /) -> yuio.color.Color:
         """
         Lookup a color by path.
 
@@ -549,7 +550,7 @@ class Theme:
     def __get_color_in_loc(
         self, node: Theme.__ColorTree, loc: list[str], ctx: list[str]
     ):
-        color = yuio.term.Color.NONE
+        color = yuio.color.Color.NONE
 
         for part in loc:
             if part not in node.loc:
@@ -560,7 +561,7 @@ class Theme:
         return color | self.__get_color_in_ctx(node, ctx)
 
     def __get_color_in_ctx(self, node: Theme.__ColorTree, ctx: list[str]):
-        color = yuio.term.Color.NONE
+        color = yuio.color.Color.NONE
 
         for part in ctx:
             if part not in node.ctx:
@@ -570,8 +571,8 @@ class Theme:
 
         return color | self.__get_color_in_node(node)
 
-    def __get_color_in_node(self, node: Theme.__ColorTree) -> yuio.term.Color:
-        color = yuio.term.Color.NONE
+    def __get_color_in_node(self, node: Theme.__ColorTree) -> yuio.color.Color:
+        color = yuio.color.Color.NONE
 
         if isinstance(node.colors, str):
             color |= self.get_color(node.colors)
@@ -583,15 +584,17 @@ class Theme:
 
         return color
 
-    def to_color(self, color_or_path: yuio.term.Color | str | None) -> yuio.term.Color:
+    def to_color(
+        self, color_or_path: yuio.color.Color | str | None
+    ) -> yuio.color.Color:
         """
         Convert color or color path to color.
 
         """
 
         if color_or_path is None:
-            return yuio.term.Color.NONE
-        elif isinstance(color_or_path, yuio.term.Color):
+            return yuio.color.Color.NONE
+        elif isinstance(color_or_path, yuio.color.Color):
             return color_or_path
         else:
             return self.get_color(color_or_path)
@@ -690,9 +693,9 @@ class DefaultTheme(Theme):
         # -------------------
         "hl/kwd": "bold",
         "hl/str": "yellow",
-        "hl/str:sh-usage": yuio.term.Color.NONE,
+        "hl/str:sh-usage": yuio.color.Color.NONE,
         "hl/str/esc": "accent_color",
-        "hl/str/esc:sh-usage": yuio.term.Color.NONE,
+        "hl/str/esc:sh-usage": yuio.color.Color.NONE,
         "hl/punct": "secondary_color",
         "hl/comment": "green",
         "hl/prog": ["bold", "underline"],
@@ -706,7 +709,7 @@ class DefaultTheme(Theme):
         "tb/frame/usr/file/module": "accent_color",
         "tb/frame/usr/file/line": "accent_color",
         "tb/frame/usr/file/path": "accent_color",
-        "tb/frame/usr/code": yuio.term.Color.NONE,
+        "tb/frame/usr/code": yuio.color.Color.NONE,
         "tb/frame/usr/highlight": "low_priority_color_a",
         "tb/frame/lib": "dim",
         "tb/frame/lib/file/module": "tb/frame/usr/file/module",
@@ -773,11 +776,11 @@ class DefaultTheme(Theme):
         if term.supports_colors_true:
             self._set_color_if_not_overridden(
                 "task/progressbar/done/start",
-                yuio.term.Color(fore=term.terminal_colors.blue),
+                yuio.color.Color(fore=term.terminal_colors.blue),
             )
             self._set_color_if_not_overridden(
                 "task/progressbar/done/end",
-                yuio.term.Color(fore=term.terminal_colors.magenta),
+                yuio.color.Color(fore=term.terminal_colors.magenta),
             )
 
         if term.terminal_colors.lightness == yuio.term.Lightness.UNKNOWN:
@@ -789,26 +792,26 @@ class DefaultTheme(Theme):
         if term.terminal_colors.lightness is term.terminal_colors.lightness.DARK:
             self._set_color_if_not_overridden(
                 "low_priority_color_a",
-                yuio.term.Color(
+                yuio.color.Color(
                     fore=foreground.match_luminosity(background.lighten(0.30))
                 ),
             )
             self._set_color_if_not_overridden(
                 "low_priority_color_b",
-                yuio.term.Color(
+                yuio.color.Color(
                     fore=foreground.match_luminosity(background.lighten(0.25))
                 ),
             )
         else:
             self._set_color_if_not_overridden(
                 "low_priority_color_a",
-                yuio.term.Color(
+                yuio.color.Color(
                     fore=foreground.match_luminosity(background.darken(0.30))
                 ),
             )
             self._set_color_if_not_overridden(
                 "low_priority_color_b",
-                yuio.term.Color(
+                yuio.color.Color(
                     fore=foreground.match_luminosity(background.darken(0.25))
                 ),
             )
@@ -820,8 +823,6 @@ def load(term: yuio.term.Term, /) -> Theme:
 
     """
 
-    import yuio.term
-
     # NOTE: loading themes from json is beta, don't use it yet.
 
     theme = DefaultTheme(term)
@@ -829,6 +830,7 @@ def load(term: yuio.term.Term, /) -> Theme:
     if not (path := os.environ.get("YUIO_THEME_PATH")):
         return theme
 
+    import yuio.color
     import yuio.config
 
     class ThemeData(yuio.config.Config):
@@ -871,7 +873,7 @@ def load(term: yuio.term.Term, /) -> Theme:
 
         for k, v in theme_data.colors.items():
             v = [
-                yuio.term.Color.fore_from_hex(c) if c.startswith("#") else c
+                yuio.color.Color.fore_from_hex(c) if c.startswith("#") else c
                 for c in v.split()
             ]
             theme.set_color(k, v[0] if len(v) == 1 else v)

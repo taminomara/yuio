@@ -309,12 +309,12 @@ class TestRenderContext:
 
     def test_set_color(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.write("foo")
-        rc.set_color(yuio.term.Color.FORE_RED)
+        rc.set_color(yuio.color.Color.FORE_RED)
         rc.write("bar")
-        rc.set_color(yuio.term.Color.FORE_GREEN)
+        rc.set_color(yuio.color.Color.FORE_GREEN)
         rc.set_pos(0, 1)
         rc.write("baz")
-        rc.set_color(yuio.term.Color.FORE_YELLOW)
+        rc.set_color(yuio.color.Color.FORE_YELLOW)
         rc.move_pos(2, 0)
         rc.write("qux")
         rc.render()
@@ -339,9 +339,9 @@ class TestRenderContext:
     def test_write_colorized_string(
         self, ostream: io.StringIO, rc: yuio.widget.RenderContext
     ):
-        rc.write(["a", yuio.term.Color.FORE_RED, "b"])
+        rc.write(["a", yuio.color.Color.FORE_RED, "b"])
         rc.new_line()
-        rc.write(["c", yuio.term.Color.FORE_GREEN, "d"])
+        rc.write(["c", yuio.color.Color.FORE_GREEN, "d"])
         rc.render()
 
         assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
@@ -403,7 +403,7 @@ class TestRenderContext:
 
     def test_frame_write(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         rc.set_pos(1, 1)
-        rc.set_color(yuio.term.Color.FORE_BLACK)
+        rc.set_color(yuio.color.Color.FORE_BLACK)
         with rc.frame(4, 1, width=5, height=2):
             assert rc._frame_cursor_x == 0
             assert rc._frame_cursor_y == 0
@@ -529,7 +529,7 @@ class TestRenderContext:
     ):
         rc.set_pos(1, 1)
         rc.set_color_path("green")
-        rc.write_text([["Hello", yuio.term.Color.FORE_RED, ","], "world!"])
+        rc.write_text([["Hello", yuio.color.Color.FORE_RED, ","], "world!"])
         rc.write("+")
         rc.render()
 
@@ -621,7 +621,7 @@ class TestLine:
         widget_checker.expect_widget_to_continue()
 
         widget_checker.check(
-            yuio.widget.Line(["Text ", yuio.term.Color.FORE_BLUE, "blue"], color="red")
+            yuio.widget.Line(["Text ", yuio.color.Color.FORE_BLUE, "blue"], color="red")
         )
 
 
@@ -688,7 +688,7 @@ class TestText:
         widget_checker.expect_widget_to_continue()
 
         widget_checker.check(
-            yuio.widget.Text(["Text ", yuio.term.Color.FORE_BLUE, "blue"])
+            yuio.widget.Text(["Text ", yuio.color.Color.FORE_BLUE, "blue"])
         )
 
 

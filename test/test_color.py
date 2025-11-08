@@ -1,0 +1,207 @@
+import pytest
+
+import yuio.color
+
+
+@pytest.mark.parametrize(
+    "color,expect",
+    [
+        (yuio.color.Color.NONE | yuio.color.Color.NONE, yuio.color.Color.NONE),
+        (yuio.color.Color.NONE | yuio.color.Color.FORE_RED, yuio.color.Color.FORE_RED),
+        (yuio.color.Color.NONE | yuio.color.Color.BACK_RED, yuio.color.Color.BACK_RED),
+        (
+            yuio.color.Color.FORE_BLUE | yuio.color.Color.FORE_RED,
+            yuio.color.Color.FORE_RED,
+        ),
+        (
+            yuio.color.Color.BACK_BLUE | yuio.color.Color.BACK_RED,
+            yuio.color.Color.BACK_RED,
+        ),
+        (
+            yuio.color.Color.FORE_RED | yuio.color.Color.BACK_BLUE,
+            yuio.color.Color(
+                fore=yuio.color.ColorValue(1), back=yuio.color.ColorValue(4)
+            ),
+        ),
+        (
+            yuio.color.Color.FORE_RED | yuio.color.Color.STYLE_BOLD,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=True),
+        ),
+        (
+            yuio.color.Color.STYLE_BOLD | yuio.color.Color.FORE_RED,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=True),
+        ),
+        (
+            yuio.color.Color.FORE_RED | yuio.color.Color.STYLE_DIM,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), dim=True),
+        ),
+        (
+            yuio.color.Color.STYLE_DIM | yuio.color.Color.FORE_RED,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), dim=True),
+        ),
+        (
+            yuio.color.Color.FORE_RED
+            | yuio.color.Color.STYLE_BOLD
+            | yuio.color.Color.STYLE_DIM,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=True, dim=True),
+        ),
+        (
+            yuio.color.Color.FORE_RED
+            | yuio.color.Color.STYLE_BOLD
+            | yuio.color.Color.STYLE_NORMAL,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=False, dim=False),
+        ),
+        (
+            yuio.color.Color.FORE_RED
+            | yuio.color.Color.STYLE_DIM
+            | yuio.color.Color.STYLE_NORMAL,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=False, dim=False),
+        ),
+        (
+            yuio.color.Color.FORE_RED
+            | yuio.color.Color.STYLE_DIM
+            | yuio.color.Color.STYLE_NORMAL
+            | yuio.color.Color.STYLE_DIM,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=False, dim=True),
+        ),
+        (
+            yuio.color.Color.FORE_RED
+            | yuio.color.Color.STYLE_DIM
+            | yuio.color.Color.STYLE_NORMAL
+            | yuio.color.Color.STYLE_BOLD,
+            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=True, dim=False),
+        ),
+    ],
+)
+def test_combine(color, expect):
+    assert color == expect
+
+
+@pytest.mark.parametrize(
+    "colors,coeffs,expect",
+    [
+        (
+            [yuio.color.Color.FORE_RED, yuio.color.Color.FORE_GREEN],
+            [i / 4 for i in range(5)],
+            [yuio.color.Color.FORE_RED] * 5,
+        ),
+        (
+            [yuio.color.Color.FORE_RED, yuio.color.Color.fore_from_hex("#AA0000")],
+            [i / 4 for i in range(5)],
+            [yuio.color.Color.FORE_RED] * 5,
+        ),
+        (
+            [yuio.color.Color.fore_from_hex("#AA0000"), yuio.color.Color.FORE_RED],
+            [i / 4 for i in range(5)],
+            [yuio.color.Color.fore_from_hex("#AA0000")] * 5,
+        ),
+        (
+            [
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#00AA00"),
+            ],
+            [i / 4 for i in range(5)],
+            [
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#7F2A00"),
+                yuio.color.Color.fore_from_hex("#555500"),
+                yuio.color.Color.fore_from_hex("#2A7F00"),
+                yuio.color.Color.fore_from_hex("#00AA00"),
+            ],
+        ),
+        (
+            [
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#00AA00"),
+                yuio.color.Color.fore_from_hex("#0000AA"),
+            ],
+            [i / 8 for i in range(9)],
+            [
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#7F2A00"),
+                yuio.color.Color.fore_from_hex("#555500"),
+                yuio.color.Color.fore_from_hex("#2A7F00"),
+                yuio.color.Color.fore_from_hex("#00AA00"),
+                yuio.color.Color.fore_from_hex("#007F2A"),
+                yuio.color.Color.fore_from_hex("#005555"),
+                yuio.color.Color.fore_from_hex("#002A7F"),
+                yuio.color.Color.fore_from_hex("#0000AA"),
+            ],
+        ),
+        (
+            [
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#00AA00"),
+            ],
+            [0, 0.5, 1],
+            [
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#555500"),
+                yuio.color.Color.fore_from_hex("#00AA00"),
+            ],
+        ),
+        (
+            [
+                yuio.color.Color.back_from_hex("#0000AA"),
+                yuio.color.Color.back_from_hex("#00AA00"),
+            ],
+            [0, 0.5, 1],
+            [
+                yuio.color.Color.back_from_hex("#0000AA"),
+                yuio.color.Color.back_from_hex("#005555"),
+                yuio.color.Color.back_from_hex("#00AA00"),
+            ],
+        ),
+        (
+            [
+                yuio.color.Color.fore_from_hex("#AA0000")
+                | yuio.color.Color.back_from_hex("#0000AA"),
+                yuio.color.Color.fore_from_hex("#00AA00")
+                | yuio.color.Color.back_from_hex("#00AA00"),
+            ],
+            [0, 0.5, 1],
+            [
+                yuio.color.Color.fore_from_hex("#AA0000")
+                | yuio.color.Color.back_from_hex("#0000AA"),
+                yuio.color.Color.fore_from_hex("#555500")
+                | yuio.color.Color.back_from_hex("#005555"),
+                yuio.color.Color.fore_from_hex("#00AA00")
+                | yuio.color.Color.back_from_hex("#00AA00"),
+            ],
+        ),
+    ],
+)
+def test_lerp(colors, coeffs, expect):
+    lerp = yuio.color.Color.lerp(*colors)
+    result = [lerp(c) for c in coeffs]
+    assert result == expect
+
+
+@pytest.mark.parametrize(
+    "color,expect",
+    [
+        (
+            yuio.color.ColorValue.from_hex("#005555").lighten(0.5),
+            yuio.color.ColorValue.from_hex("#00AAAA"),
+        ),
+        (
+            yuio.color.ColorValue.from_hex("#005555").darken(0.5),
+            yuio.color.ColorValue.from_hex("#002A2A"),
+        ),
+        (yuio.color.ColorValue("0").darken(0.5), yuio.color.ColorValue("0")),
+        (
+            yuio.color.ColorValue.from_hex("#005555").match_luminosity(
+                yuio.color.ColorValue.from_hex("#002A2A")
+            ),
+            yuio.color.ColorValue.from_hex("#002A2A"),
+        ),
+        (
+            yuio.color.ColorValue.from_hex("#005555").match_luminosity(
+                yuio.color.ColorValue.from_hex("#AA4700")
+            ),
+            yuio.color.ColorValue.from_hex("#00AAAA"),
+        ),
+    ],
+)
+def test_color_operations(color, expect):
+    assert color == expect

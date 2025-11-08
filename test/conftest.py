@@ -13,6 +13,7 @@ import pytest
 
 import yuio
 import yuio.io
+import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
@@ -906,22 +907,22 @@ class RcCompare:
 
         screen_width = None
         if self.screen:
-            screen_width = yuio.term.line_width(self.screen[0])
+            screen_width = yuio.string.line_width(self.screen[0])
             for i, line in enumerate(self.screen):
-                if yuio.term.line_width(line) != screen_width:
+                if yuio.string.line_width(line) != screen_width:
                     raise RuntimeError(
                         f"width of screen line {i + 1} is not equal to the width of screen line 1: "
-                        f"({yuio.term.line_width(self.screen[i])} != {screen_width})"
+                        f"({yuio.string.line_width(self.screen[i])} != {screen_width})"
                     )
 
         colors_width = None
         if self.colors:
-            colors_width = yuio.term.line_width(self.colors[0])
+            colors_width = yuio.string.line_width(self.colors[0])
             for i, line in enumerate(self.colors):
-                if yuio.term.line_width(line) != colors_width:
+                if yuio.string.line_width(line) != colors_width:
                     raise RuntimeError(
                         f"width of colors line {i + 1} is not equal to the width of colors line 1: "
-                        f"({yuio.term.line_width(self.colors[i])} != {colors_width})"
+                        f"({yuio.string.line_width(self.colors[i])} != {colors_width})"
                     )
 
         if screen_width is not None and colors_width is not None:
@@ -1070,7 +1071,7 @@ def _render_screen(commands: str, width: int) -> tuple[list[str], list[str], int
                     x = 0
                     y += 1
                 else:
-                    cw = yuio.term.line_width(c)
+                    cw = yuio.string.line_width(c)
                     if cw == 0:
                         raise RuntimeError("this checker can't handle zero-width chars")
 
