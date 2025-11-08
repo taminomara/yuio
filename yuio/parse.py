@@ -414,7 +414,6 @@ import functools
 import json
 import pathlib
 import re
-import textwrap
 import threading
 import traceback
 import types
@@ -500,15 +499,52 @@ TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
 
 
-class ParsingError(ValueError, argparse.ArgumentTypeError):
+class ParsingError(yuio.FormattedExceptionMixin, ValueError, argparse.ArgumentTypeError):
     """
     Raised when parsing or validation fails.
 
-    This exception is derived from both :class:`ValueError`
-    and :class:`argparse.ArgumentTypeError` to ensure that error messages
-    are displayed nicely with argparse, and handled correctly in other places.
-
     """
+
+    @classmethod
+    def type_mismatch(cls, value: _t.Any, /, *expected: type | str):
+        """
+        Make an error with a standard message "expected type X, got type Y".
+
+        :param value:
+            value of an unexpected type.
+        :param expected:
+            expected types. Each argument can be a type or a string that describes
+            a type.
+        :example:
+            ::
+
+                >>> raise ParsingError.type_mismatch(10, str)
+                Traceback (most recent call last):
+                ...
+                yuio.parse.ParsingError: Expected `str`, got `int`: `10`
+
+        """
+
+        return cls(
+            "Expected " + " or ".join(["`%s`"] * len(expected)) + ", got `%s`: `%r`",
+            *map(_TypeRepr, expected),
+            _TypeRepr(type(value)),
+            value,
+        )
+
+
+class _TypeRepr:
+    def __init__(self, value: type | str):
+        self.value = value
+
+    def __repr__(self) -> str:
+        return f"_TypeRepr({self})"
+
+    def __str__(self) -> str:
+        if isinstance(self.value, str):
+            return self.value
+        else:
+            return _t.type_repr(self.value)
 
 
 class PartialParser(abc.ABC):
@@ -980,7 +1016,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
 
                 def parse_config(self, value: object, /) -> MyType:
                     if not isinstance(value, str):
-                        raise ParsingError(f'expected a string, got {value!r}')
+                        raise ParsingError.type_mismatch(value, str)
                     return MyType(value)
 
                 def to_json_schema(
@@ -1400,8 +1436,6 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
 def Lower(inner: Parser[str], /) -> Parser[str]: ...
 @_t.overload
 def Lower() -> PartialParser: ...
-
-
 def Lower(*args) -> _t.Any:
     """Lower(inner: Parser[str], /)
 
@@ -1419,8 +1453,6 @@ def Lower(*args) -> _t.Any:
 def Upper(inner: Parser[str], /) -> Parser[str]: ...
 @_t.overload
 def Upper() -> PartialParser: ...
-
-
 def Upper(*args) -> _t.Any:
     """Upper(inner: Parser[str], /)
 
@@ -1438,8 +1470,6 @@ def Upper(*args) -> _t.Any:
 def CaseFold(inner: Parser[str], /) -> Parser[str]: ...
 @_t.overload
 def CaseFold() -> PartialParser: ...
-
-
 def CaseFold(*args) -> _t.Any:
     """CaseFold(inner: Parser[str], /)
 
@@ -1457,8 +1487,6 @@ def CaseFold(*args) -> _t.Any:
 def Strip(inner: Parser[str], /) -> Parser[str]: ...
 @_t.overload
 def Strip() -> PartialParser: ...
-
-
 def Strip(*args) -> _t.Any:
     """Strip(inner: Parser[str], /)
 
@@ -1484,8 +1512,6 @@ def Regex(
 def Regex(
     regex: str | _t.StrRePattern, /, *, group: int | str = 0
 ) -> PartialParser: ...
-
-
 def Regex(*args, group: int | str = 0) -> _t.Any:
     """Regex(inner: Parser[str], regex: str | re.Pattern[str], /, *, group: int | str = 0)
 
@@ -1517,7 +1543,9 @@ def Regex(*args, group: int | str = 0) -> _t.Any:
 
     def mapper(value: str) -> str:
         if (match := compiled.match(value)) is None:
-            raise ParsingError(f"value should match regex '{compiled.pattern}'")
+            raise ParsingError(
+                "value doesn't match regex `%s`: `%r`", compiled.pattern, value
+            )
         return match.group(group)
 
     return Map(inner, mapper)  # type: ignore
@@ -1635,14 +1663,14 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
             class IsLower(ValidatingParser[str]):
                 def _validate(self, value: str, /):
                     if not value.islower():
-                        raise ParsingError('value should be lowercase')
+                        raise ParsingError("value should be lowercase: `%r`", value)
 
         ::
 
-            >>> IsLower(Str()).parse('Not lowercase!')
+            >>> IsLower(Str()).parse("Not lowercase!")
             Traceback (most recent call last):
             ...
-            yuio.parse.ParsingError: value should be lowercase
+            yuio.parse.ParsingError: value should be lowercase: `'Not lowercase!'`
 
     """
 
@@ -1686,7 +1714,7 @@ class Str(ValueParser[str]):
 
     def parse_config(self, value: object, /) -> str:
         if not isinstance(value, str):
-            raise ParsingError(f"expected string, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, str)
         return value
 
     def to_json_schema(
@@ -1712,15 +1740,15 @@ class Int(ValueParser[int]):
         try:
             return int(value.strip())
         except ValueError:
-            raise ParsingError(f"can't parse {value!r} as an int") from None
+            raise ParsingError("Can't parse `%r` as `int`", value) from None
 
     def parse_config(self, value: object, /) -> int:
         if isinstance(value, float):
             if value != int(value):  # pyright: ignore[reportUnnecessaryComparison]
-                raise ParsingError("expected int, got float")
+                raise ParsingError.type_mismatch(value, int)
             value = int(value)
         if not isinstance(value, int):
-            raise ParsingError(f"expected int, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, int)
         return value
 
     def to_json_schema(
@@ -1746,11 +1774,11 @@ class Float(ValueParser[float]):
         try:
             return float(value.strip())
         except ValueError:
-            raise ParsingError(f"can't parse {value!r} as a float") from None
+            raise ParsingError("Can't parse `%r` as `float`", value) from None
 
     def parse_config(self, value: object, /) -> float:
         if not isinstance(value, (float, int)):
-            raise ParsingError(f"expected float, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, float)
         return value
 
     def to_json_schema(
@@ -1780,17 +1808,20 @@ class Bool(ValueParser[bool]):
         elif value in ("n", "no", "false", "0"):
             return False
         else:
-            raise ParsingError(f"can't parse {value!r}, enter either 'yes' or 'no'")
+            raise ParsingError(
+                "Can't parse `%r` as `bool`, should be one of `'yes'`, `'no'`", value
+            )
 
     def parse_config(self, value: object, /) -> bool:
         if not isinstance(value, bool):
-            raise ParsingError(f"expected bool, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, bool)
         return value
 
     def describe(self) -> str | None:
         return "{yes|no}"
 
     def describe_value(self, value: object, /) -> str | None:
+        assert self.assert_type(value)
         return "yes" if value else "no"
 
     def completer(self) -> yuio.complete.Completer | None:
@@ -1927,31 +1958,36 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         if len(candidates) == 1:
             return candidates[0]
         elif len(candidates) > 1:
-            enum_values = ", ".join(self.__getter(e) for e in candidates)
+            enum_values = tuple(self.__getter(e) for e in candidates)
             raise ParsingError(
-                f"can't parse {value!r}"
-                f" as {self._inner.__name__},"
-                f" possible candidates are {enum_values}"
+                "Can't parse `%r` as `%s`, possible candidates are "
+                + ", ".join(["`%s`"] * len(enum_values)),
+                value,
+                self._inner.__name__,
+                *enum_values,
             )
         else:
-            enum_values = ", ".join(self.__getter(e) for e in self._inner)
+            enum_values = tuple(self.__getter(e) for e in self._inner)
             raise ParsingError(
-                f"can't parse {value!r}"
-                f" as {self._inner.__name__},"
-                f" should be one of {enum_values}"
+                "Can't parse `%r` as `%s`, should be one of "
+                + ", ".join(["`%s`"] * len(enum_values)),
+                value,
+                self._inner.__name__,
+                *enum_values,
             )
 
     def parse_config(self, value: object, /) -> E:
         if not isinstance(value, str):
-            raise ParsingError(f"expected string, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, str)
 
         result = self.parse(value)
 
         if self.__getter(result) != value:
             raise ParsingError(
-                f"can't parse {value!r}"
-                f" as {self._inner.__name__},"
-                f" did you mean {self.__getter(result)}?"
+                "Can't parse `%r` as `%s`, did you mean `%s`?",
+                value,
+                self._inner.__name__,
+                self.__getter(result),
             )
 
         return result
@@ -2064,13 +2100,11 @@ class Decimal(ValueParser[decimal.Decimal]):
 
     def parse_config(self, value: object, /) -> decimal.Decimal:
         if not isinstance(value, (int, float, str, decimal.Decimal)):
-            raise ParsingError(
-                f"expected int or float or string, got {_t.type_repr(type(value))}"
-            )
+            raise ParsingError.type_mismatch(value, int, float, str)
         try:
             return decimal.Decimal(value)
         except (ArithmeticError, ValueError, TypeError):
-            raise ParsingError(f"can't parse {value!r} as a decimal number") from None
+            raise ParsingError("Can't parse `%r` as `decimal`", value) from None
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2117,18 +2151,31 @@ class Fraction(ValueParser[fractions.Fraction]):
         ):
             try:
                 return fractions.Fraction(*value)
-            except (ValueError, ZeroDivisionError):
+            except ValueError:
                 raise ParsingError(
-                    f"can't parse value {value[0]}/{value[1]} as a fraction"
+                    "Can't parse `%s/%s` as `fraction`", value[0], value[1]
+                ) from None
+            except ZeroDivisionError:
+                raise ParsingError(
+                    "Can't parse `%s/%s` as `fraction`, division by zero",
+                    value[0],
+                    value[1],
                 ) from None
         if isinstance(value, (int, float, str, decimal.Decimal, fractions.Fraction)):
             try:
                 return fractions.Fraction(value)
-            except (ValueError, ZeroDivisionError):
-                raise ParsingError(f"can't parse {value!r} as a fraction") from None
-        raise ParsingError(
-            "expected int or float or fraction string "
-            f"or a tuple of two ints, got {_t.type_repr(type(value))} instead"
+            except ValueError:
+                raise ParsingError(
+                    "Can't parse `%r` as `fraction`",
+                    value,
+                ) from None
+            except ZeroDivisionError:
+                raise ParsingError(
+                    "Can't parse `%r` as `fraction`, division by zero",
+                    value,
+                ) from None
+        raise ParsingError.type_mismatch(
+            value, int, float, str, "a tuple of two ints"
         )
 
     def to_json_schema(
@@ -2199,7 +2246,7 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
             config_value = json.loads(value)
         except json.JSONDecodeError as e:
             raise ParsingError(
-                f"unable to decode JSON:\n" + textwrap.indent(str(e), "  ")
+                "Can't parse `%r` as `JsonValue`: %s", value, e
             ) from None
         return self.parse_config(config_value)
 
@@ -2249,7 +2296,7 @@ class DateTime(ValueParser[datetime.datetime]):
         try:
             return datetime.datetime.fromisoformat(value)
         except ValueError:
-            raise ParsingError(f"can't parse {value!r} as a datetime") from None
+            raise ParsingError("Can't parse `%r` as `datetime`", value) from None
 
     def parse_config(self, value: object, /) -> datetime.datetime:
         if isinstance(value, datetime.datetime):
@@ -2257,7 +2304,7 @@ class DateTime(ValueParser[datetime.datetime]):
         elif isinstance(value, str):
             return self.parse(value)
         else:
-            raise ParsingError(f"expected str, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, str)
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2306,7 +2353,7 @@ class Date(ValueParser[datetime.date]):
         try:
             return datetime.date.fromisoformat(value)
         except ValueError:
-            raise ParsingError(f"can't parse {value!r} as a date") from None
+            raise ParsingError("Can't parse `%r` as `date`", value) from None
 
     def parse_config(self, value: object, /) -> datetime.date:
         if isinstance(value, datetime.datetime):
@@ -2316,7 +2363,7 @@ class Date(ValueParser[datetime.date]):
         elif isinstance(value, str):
             return self.parse(value)
         else:
-            raise ParsingError(f"expected str, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, str)
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2360,7 +2407,7 @@ class Time(ValueParser[datetime.time]):
         try:
             return datetime.time.fromisoformat(value)
         except ValueError:
-            raise ParsingError(f"can't parse {value!r} as a time value") from None
+            raise ParsingError("Can't parse `%r` as `time`", value) from None
 
     def parse_config(self, value: object, /) -> datetime.time:
         if isinstance(value, datetime.datetime):
@@ -2370,7 +2417,7 @@ class Time(ValueParser[datetime.time]):
         elif isinstance(value, str):
             return self.parse(value)
         else:
-            raise ParsingError(f"expected str, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, str)
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2437,14 +2484,14 @@ class TimeDelta(ValueParser[datetime.timedelta]):
         value = value.strip()
 
         if not value:
-            raise ParsingError("got an empty timedelta")
+            raise ParsingError("Got an empty `timedelta`")
         if value.endswith(","):
             raise ParsingError(
-                f"can't parse {value!r} as a timedelta: trailing coma is not allowed"
+                "Can't parse `%r` as `timedelta`, trailing coma is not allowed", value
             )
         if value.startswith(","):
             raise ParsingError(
-                f"can't parse {value!r} as a timedelta: leading coma is not allowed"
+                "Can't parse `%r` as `timedelta`, leading coma is not allowed", value
             )
 
         if match := _TIMEDELTA_RE.match(value):
@@ -2459,7 +2506,7 @@ class TimeDelta(ValueParser[datetime.timedelta]):
                 microsecond,
             ) = match.groups()
         else:
-            raise ParsingError(f"can't parse {value!r} as a timedelta")
+            raise ParsingError("Can't parse `%r` as `timedelta`", value)
 
         c_sign_s = -1 if c_sign_s == "-" else 1
         t_sign_s = -1 if t_sign_s == "-" else 1
@@ -2472,8 +2519,9 @@ class TimeDelta(ValueParser[datetime.timedelta]):
                     kwargs[unit_key] += int(num)
                 else:
                     raise ParsingError(
-                        f"can't parse {value!r} as a timedelta: "
-                        f"unknown unit {unit!r}"
+                        "Can't parse `%r` as `timedelta`, unknown unit `%r`",
+                        value,
+                        unit,
                     )
 
         timedelta = c_sign_s * datetime.timedelta(**kwargs)
@@ -2494,7 +2542,7 @@ class TimeDelta(ValueParser[datetime.timedelta]):
         elif isinstance(value, str):
             return self.parse(value)
         else:
-            raise ParsingError(f"expected str, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, str)
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2553,7 +2601,7 @@ class Path(ValueParser[pathlib.Path]):
 
     def parse_config(self, value: object, /) -> pathlib.Path:
         if not isinstance(value, str):
-            raise ParsingError(f"expected string, got {_t.type_repr(type(value))}")
+            raise ParsingError.type_mismatch(value, str)
         return self.parse(value)
 
     def describe(self) -> str | None:
@@ -2568,8 +2616,12 @@ class Path(ValueParser[pathlib.Path]):
     def _validate(self, value: pathlib.Path, /):
         if self.__extensions is not None:
             if not any(value.name.endswith(ext) for ext in self.__extensions):
-                exts = ", ".join(self.__extensions)
-                raise ParsingError(f"{value} should have extension {exts}")
+                raise ParsingError(
+                    "<c path>%s</c> should have extension "
+                    + " or ".join(["`%s`"] * len(self.__extensions)),
+                    value,
+                    *self.__extensions,
+                )
 
     def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.File(extensions=self.__extensions)
@@ -2597,7 +2649,7 @@ class NonExistentPath(Path):
         super()._validate(value)
 
         if value.exists():
-            raise ParsingError(f"{value} already exists")
+            raise ParsingError("<c path>%s</c> already exists", value)
 
 
 class ExistingPath(Path):
@@ -2613,7 +2665,7 @@ class ExistingPath(Path):
         super()._validate(value)
 
         if not value.exists():
-            raise ParsingError(f"{value} doesn't exist")
+            raise ParsingError("<c path>%s</c> doesn't exist", value)
 
 
 class File(ExistingPath):
@@ -2629,7 +2681,7 @@ class File(ExistingPath):
         super()._validate(value)
 
         if not value.is_file():
-            raise ParsingError(f"{value} is not a file")
+            raise ParsingError("<c path>%s</c> is not a file", value)
 
 
 class Dir(ExistingPath):
@@ -2646,7 +2698,7 @@ class Dir(ExistingPath):
         super()._validate(value)
 
         if not value.is_dir():
-            raise ParsingError(f"{value} is not a directory")
+            raise ParsingError("<c path>%s</c> is not a directory", value)
 
     def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Dir()
@@ -2665,7 +2717,7 @@ class GitRepo(Dir):
         super()._validate(value)
 
         if not value.joinpath(".git").is_dir():
-            raise ParsingError(f"{value} is not a git repository")
+            raise ParsingError("<c path>%s</c> is not a git repository root", value)
 
 
 class CollectionParser(
@@ -2772,11 +2824,10 @@ class CollectionParser(
 
     def parse_config(self, value: object, /) -> C:
         if not isinstance(value, self._config_type):
-            if isinstance(self._config_type, tuple):
-                expected = " or ".join(ty.__name__ for ty in self._config_type)
-            else:
-                expected = self._config_type.__name__
-            raise ParsingError(f"expected {expected}, got {_t.type_repr(type(value))}")
+            expected = self._config_type
+            if not isinstance(expected, tuple):
+                expected = (expected,)
+            raise ParsingError.type_mismatch(value, *expected)
 
         return self._ctor(
             self._inner.parse_config(item) for item in self._config_type_iter(value)
@@ -3329,8 +3380,11 @@ class Tuple(
     def parse_many(self, value: _t.Sequence[str], /) -> TU:
         if len(value) != len(self._inner):
             raise ParsingError(
-                f"expected {len(self._inner)} "
-                f"element{'' if len(self._inner) == 1 else 's'}, got {len(value)}"
+                "Expected %s element%s, got %s: `%r`",
+                len(self._inner),
+                "" if len(self._inner) == 1 else "s",
+                len(value),
+                value,
             )
 
         return _t.cast(
@@ -3340,13 +3394,14 @@ class Tuple(
 
     def parse_config(self, value: object, /) -> TU:
         if not isinstance(value, (list, tuple)):
-            raise ParsingError(
-                f"expected list or tuple, got {_t.type_repr(type(value))}"
-            )
+            raise ParsingError.type_mismatch(value, list, tuple)
         elif len(value) != len(self._inner):
             raise ParsingError(
-                f"expected {len(self._inner)} "
-                f"element{'' if len(self._inner) == 1 else 's'}, got {len(value)}"
+                "Expected %s element%s, got %s: `%r`",
+                len(self._inner),
+                "" if len(self._inner) == 1 else "s",
+                len(value),
+                value,
             )
 
         return _t.cast(
@@ -3711,33 +3766,41 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
         return result
 
     def parse(self, value: str, /) -> T:
-        errors = []
+        errors: list[tuple[Parser[object], ParsingError]] = []
         for parser in self._inner:
             try:
                 return parser.parse(value)
             except ParsingError as e:
                 errors.append((parser, e))
-        raise ParsingError(
-            "\n".join(
-                f"trying as {parser.describe_or_def()}:\n"
-                + textwrap.indent(str(e), "  ")
-                for parser, e in errors
-            )
+
+        # Note: all exceptions have formatting args, so we don't need `yuio._join` here.
+        msg = []
+        args = ()
+        for parser, error in errors:
+            error = error.with_prefix("Trying as `%s`:", parser.describe_or_def())
+            msg.append(error.msg)
+            args += error.args
+        raise ParsingError("\n".join(msg), *args).with_prefix(
+            "Can't parse `%r`:", value
         )
 
     def parse_config(self, value: object, /) -> T:
-        errors = []
+        errors: list[tuple[Parser[object], ParsingError]] = []
         for parser in self._inner:
             try:
                 return parser.parse_config(value)
             except ParsingError as e:
                 errors.append((parser, e))
-        raise ParsingError(
-            "\n".join(
-                f"trying as {parser.describe_or_def()}:\n"
-                + textwrap.indent(str(e), "  ")
-                for parser, e in errors
-            )
+
+        # Note: all exceptions have formatting args, so we don't need `yuio._join` here.
+        msg = []
+        args = ()
+        for parser, error in errors:
+            error = error.with_prefix("Trying as `%s`:", parser.describe_or_def())
+            msg.append(error.msg)
+            args += error.args
+        raise ParsingError("\n".join(msg), *args).with_prefix(
+            "Can't parse `%r`:", value
         )
 
     def check_type(self, value: object) -> _t.TypeGuard[T]:
@@ -3747,9 +3810,21 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
         return self.describe_or_def()
 
     def describe_or_def(self) -> str:
-        desc = f"|".join(parser.describe_or_def() for parser in self._inner)
         if len(self._inner) > 1:
+
+            def strip_curly_brackets(desc: str):
+                if desc.startswith("{") and desc.endswith("}") and "|" in desc:
+                    s = desc[1:-1]
+                    if "{" not in s and "}" not in s:
+                        return s
+                return desc
+
+            desc = f"|".join(
+                strip_curly_brackets(parser.describe_or_def()) for parser in self._inner
+            )
             desc = f"{{{desc}}}"
+        else:
+            desc = f"|".join(parser.describe_or_def() for parser in self._inner)
         return desc
 
     def describe_value(self, value: object) -> str | None:
@@ -3871,25 +3946,33 @@ class _BoundImpl(ValidatingParser[T], _t.Generic[T, Cmp]):
         if self._lower_bound is not None:
             if self._lower_bound_is_inclusive and mapped < self._lower_bound:
                 raise ParsingError(
-                    f"{self.__desc} should be greater or equal to {self._lower_bound},"
-                    f" got {value} instead"
+                    "%s should be greater than or equal to `%s`: `%r`",
+                    self.__desc,
+                    self._lower_bound,
+                    value,
                 )
             elif not self._lower_bound_is_inclusive and not self._lower_bound < mapped:
                 raise ParsingError(
-                    f"{self.__desc} should be greater than {self._lower_bound},"
-                    f" got {value} instead"
+                    "%s should be greater than `%s`: `%r`",
+                    self.__desc,
+                    self._lower_bound,
+                    value,
                 )
 
         if self._upper_bound is not None:
             if self._upper_bound_is_inclusive and self._upper_bound < mapped:
                 raise ParsingError(
-                    f"{self.__desc} should be lesser or equal to {self._upper_bound},"
-                    f" got {value} instead"
+                    "%s should be lesser than or equal to `%s`: `%r`",
+                    self.__desc,
+                    self._upper_bound,
+                    value,
                 )
             elif not self._upper_bound_is_inclusive and not mapped < self._upper_bound:
                 raise ParsingError(
-                    f"{self.__desc} should be lesser than {self._upper_bound},"
-                    f" got {value} instead"
+                    "%s should be lesser than `%s`: `%r`",
+                    self.__desc,
+                    self._upper_bound,
+                    value,
                 )
 
     def __repr__(self):
@@ -3979,7 +4062,7 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
             upper=upper,
             upper_inclusive=upper_inclusive,
             mapper=lambda x: x,
-            desc="value",
+            desc="Value",
         )
 
     def to_json_schema(
@@ -4006,8 +4089,6 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
 def Gt(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
 def Gt(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
-
-
 def Gt(*args) -> _t.Any:
     """Gt(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4032,8 +4113,6 @@ def Gt(*args) -> _t.Any:
 def Ge(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
 def Ge(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
-
-
 def Ge(*args) -> _t.Any:
     """Ge(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4058,8 +4137,6 @@ def Ge(*args) -> _t.Any:
 def Lt(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
 def Lt(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
-
-
 def Lt(*args) -> _t.Any:
     """Lt(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4084,8 +4161,6 @@ def Lt(*args) -> _t.Any:
 def Le(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
 def Le(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
-
-
 def Le(*args) -> _t.Any:
     """Le(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4180,7 +4255,7 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             upper=upper,
             upper_inclusive=upper_inclusive,
             mapper=len,
-            desc="length of a value",
+            desc="Length of value",
         )
 
     def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
@@ -4195,7 +4270,7 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
         if upper is not None and not self._upper_bound_is_inclusive:
             upper -= 1
 
-        if lower == upper:
+        if lower == upper and lower is not None:
             return lower
         elif lower is not None and lower > 0:
             return "+"
@@ -4228,8 +4303,6 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
 def LenGt(inner: Parser[Sz], bound: int, /) -> LenBound[Sz]: ...
 @_t.overload
 def LenGt(bound: int, /) -> PartialParser: ...
-
-
 def LenGt(*args) -> _t.Any:
     """LenGt(inner: Parser[Sz], bound: int, /)
 
@@ -4254,8 +4327,6 @@ def LenGt(*args) -> _t.Any:
 def LenGe(inner: Parser[Sz], bound: int, /) -> LenBound[Sz]: ...
 @_t.overload
 def LenGe(bound: int, /) -> PartialParser: ...
-
-
 def LenGe(*args) -> _t.Any:
     """LenGe(inner: Parser[Sz], bound: int, /)
 
@@ -4280,8 +4351,6 @@ def LenGe(*args) -> _t.Any:
 def LenLt(inner: Parser[Sz], bound: int, /) -> LenBound[Sz]: ...
 @_t.overload
 def LenLt(bound: int, /) -> PartialParser: ...
-
-
 def LenLt(*args) -> _t.Any:
     """LenLt(inner: Parser[Sz], bound: int, /)
 
@@ -4306,8 +4375,6 @@ def LenLt(*args) -> _t.Any:
 def LenLe(inner: Parser[Sz], bound: int, /) -> LenBound[Sz]: ...
 @_t.overload
 def LenLe(bound: int, /) -> PartialParser: ...
-
-
 def LenLe(*args) -> _t.Any:
     """LenLe(inner: Parser[Sz], bound: int, /)
 
@@ -4372,8 +4439,12 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
     def _validate(self, value: T, /):
         if value not in self.__allowed_values:
-            values = ", ".join(map(repr, self.__allowed_values))
-            raise ParsingError(f"can't parse {value!r}, should be one of {values}")
+            raise ParsingError(
+                "Can't parse `%r`, should be one of "
+                + ", ".join(["`%s`"] * len(self.__allowed_values)),
+                value,
+                *self.__allowed_values,
+            )
 
     def describe(self) -> str | None:
         desc = "|".join(self.describe_value_or_def(e) for e in self.__allowed_values)
@@ -4552,7 +4623,7 @@ class _WidgetResultMapper(yuio.widget.Map[T | yuio.Missing, str]):
         if not s and self._default is not yuio.MISSING:
             return yuio.MISSING
         elif not s:
-            raise ParsingError("input is required")
+            raise ParsingError("Input is required")
         else:
             return self._parser.parse(s)
 
@@ -4592,12 +4663,8 @@ _FROM_TYPE_HINT_DEPTH: _FromTypeHintDepth = _FromTypeHintDepth()
 
 @_t.overload
 def from_type_hint(ty: type[T], /) -> Parser[T]: ...
-
-
 @_t.overload
 def from_type_hint(ty: object, /) -> Parser[object]: ...
-
-
 def from_type_hint(ty: _t.Any, /) -> Parser[object]:
     """from_type_hint(ty: type[T], /) -> Parser[T]
 
@@ -4674,15 +4741,11 @@ def register_type_hint_conversion(
     *,
     uses_delim: bool = False,
 ) -> _FromTypeHintCallback: ...
-
-
 @_t.overload
 def register_type_hint_conversion(
     *,
     uses_delim: bool = False,
 ) -> _t.Callable[[_FromTypeHintCallback], _FromTypeHintCallback]: ...
-
-
 def register_type_hint_conversion(
     cb: _FromTypeHintCallback | None = None,
     /,

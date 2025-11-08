@@ -471,8 +471,13 @@ def orig_stdout() -> _t.TextIO:
     return _ORIG_STDOUT or sys.stdout
 
 
-def info(msg: str, /, *args, **kwargs):
+@_t.overload
+def info(msg: str, /, *args, **kwargs): ...
+@_t.overload
+def info(err: Exception, /, **kwargs): ...
+def info(msg: str | Exception, /, *args, **kwargs):
     """info(msg: str, /, *args)
+    info(err: Exception, /)
 
     Print an info message.
 
@@ -480,15 +485,24 @@ def info(msg: str, /, *args, **kwargs):
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
+    :param err:
+        you can pass an error object to this function,
+        in which case it will print an error message.
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("tag", "info")
     _manager().print_msg(msg, args, **kwargs)
 
 
-def warning(msg: str, /, *args, **kwargs):
+@_t.overload
+def warning(msg: str, /, *args, **kwargs): ...
+@_t.overload
+def warning(err: Exception, /, **kwargs): ...
+def warning(msg: str | Exception, /, *args, **kwargs):
     """warning(msg: str, /, *args)
+    warning(err: Exception, /)
 
     Print a warning message.
 
@@ -496,15 +510,24 @@ def warning(msg: str, /, *args, **kwargs):
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
+    :param err:
+        you can pass an error object to this function,
+        in which case it will print an error message.
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("tag", "warning")
     _manager().print_msg(msg, args, **kwargs)
 
 
-def success(msg: str, /, *args, **kwargs):
+@_t.overload
+def success(msg: str, /, *args, **kwargs): ...
+@_t.overload
+def success(err: Exception, /, **kwargs): ...
+def success(msg: str | Exception, /, *args, **kwargs):
     """success(msg: str, /, *args)
+    success(err: Exception, /)
 
     Print a success message.
 
@@ -512,15 +535,24 @@ def success(msg: str, /, *args, **kwargs):
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
+    :param err:
+        you can pass an error object to this function,
+        in which case it will print an error message.
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("tag", "success")
     _manager().print_msg(msg, args, **kwargs)
 
 
-def error(msg: str, /, *args, **kwargs):
+@_t.overload
+def error(msg: str, /, *args, **kwargs): ...
+@_t.overload
+def error(err: Exception, /, **kwargs): ...
+def error(msg: str | Exception, /, *args, **kwargs):
     """error(msg: str, /, *args)
+    error(err: Exception, /)
 
     Print an error message.
 
@@ -528,9 +560,13 @@ def error(msg: str, /, *args, **kwargs):
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
+    :param err:
+        you can pass an error object to this function,
+        in which case it will print an error message.
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("tag", "error")
     _manager().print_msg(msg, args, **kwargs)
 
@@ -557,12 +593,18 @@ def error_with_tb(
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("tag", "error")
     _manager().print_msg(msg, args, exc_info=exc_info, **kwargs)
 
 
-def failure(msg: str, /, *args, **kwargs):
+@_t.overload
+def failure(msg: str, /, *args, **kwargs): ...
+@_t.overload
+def failure(err: Exception, /, **kwargs): ...
+def failure(msg: str | Exception, /, *args, **kwargs):
     """failure(msg: str, /, *args)
+    failure(err: Exception, /)
 
     Print a failure message.
 
@@ -570,9 +612,13 @@ def failure(msg: str, /, *args, **kwargs):
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
+    :param err:
+        you can pass an error object to this function,
+        in which case it will print an error message.
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("tag", "failure")
     _manager().print_msg(msg, args, **kwargs)
 
@@ -599,6 +645,7 @@ def failure_with_tb(
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("tag", "failure")
     _manager().print_msg(msg, args, exc_info=exc_info, **kwargs)
 
@@ -615,6 +662,7 @@ def heading(msg: str, /, *args, **kwargs):
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("heading", True)
     kwargs.setdefault("tag", "heading/1")
     _manager().print_msg(msg, args, **kwargs)
@@ -636,6 +684,7 @@ def md(msg: str, /, *args, **kwargs):
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     _term, theme, width = _manager_data()
     formatter = yuio.md.MdFormatter(theme, width=width)
     res = yuio.term.ColorizedString()
@@ -673,9 +722,10 @@ def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     if isinstance(syntax, str):
         syntax = yuio.md.SyntaxHighlighter.get_highlighter(syntax)
-    highlighted = syntax.highlight(get_theme(), yuio._dedent(msg))
+    highlighted = syntax.highlight(get_theme(), yuio.dedent(msg))
     if args:
         highlighted %= args
     raw(highlighted, **kwargs)
@@ -701,8 +751,13 @@ def raw(msg: yuio.term.ColorizedString, /, **kwargs):
     _manager().print_raw(msg, **kwargs)
 
 
-def out(msg: str, /, *args, **kwargs):
+@_t.overload
+def out(msg: str, /, *args, **kwargs): ...
+@_t.overload
+def out(err: Exception, /, **kwargs): ...
+def out(msg: str | Exception, /, *args, **kwargs):
     """out(msg: str, /, *args)
+    out(err: Exception, /)
 
     Like :func:`info`, but sends output to ``stdout`` instead of ``stderr``.
 
@@ -710,9 +765,13 @@ def out(msg: str, /, *args, **kwargs):
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
+    :param err:
+        you can pass an error object to this function,
+        in which case it will print an error message.
 
     """
 
+    msg, args = yuio._to_msg(msg, args)
     kwargs.setdefault("to_stdout", True)
     info(msg, *args, **kwargs)
 
@@ -725,15 +784,18 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
     ):
         self._prompt = yuio.widget.Text(prompt)
         self._error_msg: str | None = None
+        self._error_msg_args: tuple[_t.Any] | None = None
         self._inner = widget
 
     def event(self, e: yuio.widget.KeyboardEvent, /) -> yuio.widget.Result[T] | None:
         try:
             result = self._inner.event(e)
         except yuio.parse.ParsingError as err:
-            self._error_msg = f"Error: {err}."
+            self._error_msg = err.msg
+            self._error_msg_args = err.args
         else:
             self._error_msg = None
+            self._error_msg_args = None
             return result
 
     def layout(self, rc: yuio.widget.RenderContext, /) -> tuple[int, int]:
@@ -744,14 +806,21 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
         )
         if self._error_msg is not None:
             rc.bell()
-            error_text = yuio.term.ColorizedString(
-                [
-                    rc.theme.get_color("msg/decoration:error"),
-                    rc.theme.msg_decorations.get("error", "▲ "),
-                    rc.theme.get_color("msg/text:error"),
-                    self._error_msg,
-                    yuio.term.Color.NONE,
-                ]
+            error_msg = yuio.md.colorize(
+                rc.theme,
+                self._error_msg.replace("\n", "\n  "),
+                default_color="msg/text:error",
+            )
+            if self._error_msg_args:
+                error_msg %= self._error_msg_args
+            error_text = (
+                yuio.term.ColorizedString(
+                    [
+                        rc.theme.get_color("msg/decoration:error"),
+                        rc.theme.msg_decorations.get("error", "▲ "),
+                    ]
+                )
+                + error_msg
             )
             builder = builder.add(yuio.widget.Text(error_text))
 
@@ -963,7 +1032,7 @@ def _ask(
                     try:
                         return parser.parse(answer)
                     except yuio.parse.ParsingError as e:
-                        s.error(f"Error: %s.", e)
+                        s.error("Error: " + e.msg, *e.args)
 
 
 class _WaitForUserWidget(yuio.widget.Widget[None]):
@@ -1110,7 +1179,7 @@ def edit(
     """
 
     if dedent:
-        text = yuio._dedent(text)
+        text = yuio.dedent(text)
 
     term, _, _ = _manager_data()
 
@@ -1208,9 +1277,17 @@ class SuspendOutput:
             _manager().resume()
             self._resumed = True
 
+    @_t.overload
     @staticmethod
-    def info(msg: str, /, *args, **kwargs):
+    def info(msg: str, /, *args, **kwargs): ...
+    @_t.overload
+    @staticmethod
+    def info(err: Exception, /, **kwargs): ...
+    @staticmethod
+    def info(msg: str | Exception, /, *args, **kwargs):
         """info(msg: str, /, *args)
+        info(err: Exception, /)
+
         Log an :func:`info` message, ignore suspended status.
 
         """
@@ -1218,9 +1295,17 @@ class SuspendOutput:
         kwargs.setdefault("ignore_suspended", True)
         info(msg, *args, **kwargs)
 
+    @_t.overload
     @staticmethod
-    def warning(msg: str, /, *args, **kwargs):
+    def warning(msg: str, /, *args, **kwargs): ...
+    @_t.overload
+    @staticmethod
+    def warning(err: Exception, /, **kwargs): ...
+    @staticmethod
+    def warning(msg: str | Exception, /, *args, **kwargs):
         """warning(msg: str, /, *args)
+        warning(err: Exception, /)
+
         Log a :func:`warning` message, ignore suspended status.
 
         """
@@ -1228,9 +1313,17 @@ class SuspendOutput:
         kwargs.setdefault("ignore_suspended", True)
         warning(msg, *args, **kwargs)
 
+    @_t.overload
     @staticmethod
-    def success(msg: str, /, *args, **kwargs):
+    def success(msg: str, /, *args, **kwargs): ...
+    @_t.overload
+    @staticmethod
+    def success(err: Exception, /, **kwargs): ...
+    @staticmethod
+    def success(msg: str | Exception, /, *args, **kwargs):
         """success(msg: str, /, *args)
+        success(err: Exception, /)
+
         Log a :func:`success` message, ignore suspended status.
 
         """
@@ -1238,9 +1331,17 @@ class SuspendOutput:
         kwargs.setdefault("ignore_suspended", True)
         success(msg, *args, **kwargs)
 
+    @_t.overload
     @staticmethod
-    def error(msg: str, /, *args, **kwargs):
+    def error(msg: str, /, *args, **kwargs): ...
+    @_t.overload
+    @staticmethod
+    def error(err: Exception, /, **kwargs): ...
+    @staticmethod
+    def error(msg: str | Exception, /, *args, **kwargs):
         """error(msg: str, /, *args)
+        error(err: Exception, /)
+
         Log an :func:`error` message, ignore suspended status.
 
         """
@@ -1251,6 +1352,7 @@ class SuspendOutput:
     @staticmethod
     def error_with_tb(msg: str, /, *args, **kwargs):
         """error_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
+
         Log an :func:`error_with_tb` message, ignore suspended status.
 
         """
@@ -1258,9 +1360,17 @@ class SuspendOutput:
         kwargs.setdefault("ignore_suspended", True)
         error_with_tb(msg, *args, **kwargs)
 
+    @_t.overload
     @staticmethod
-    def failure(msg: str, /, *args, **kwargs):
+    def failure(msg: str, /, *args, **kwargs): ...
+    @_t.overload
+    @staticmethod
+    def failure(err: Exception, /, **kwargs): ...
+    @staticmethod
+    def failure(msg: str | Exception, /, *args, **kwargs):
         """failure(msg: str, /, *args)
+        failure(err: Exception, /)
+
         Log a :func:`failure` message, ignore suspended status.
 
         """
@@ -1271,6 +1381,7 @@ class SuspendOutput:
     @staticmethod
     def failure_with_tb(msg: str, /, *args, **kwargs):
         """failure_with_tb(msg: str, /, *args, exc_info: tuple[type[BaseException] | None, BaseException | None, ~types.TracebackType | None] | bool | None = True)
+
         Log a :func:`failure_with_tb` message, ignore suspended status.
 
         """
@@ -1281,6 +1392,7 @@ class SuspendOutput:
     @staticmethod
     def heading(msg: str, /, *args, **kwargs):
         """heading(msg: str, /, *args)
+
         Log a :func:`heading` message, ignore suspended status.
 
         """
@@ -1291,6 +1403,7 @@ class SuspendOutput:
     @staticmethod
     def md(msg: str, /, *args, **kwargs):
         """md(msg: str, /, *args)
+
         Log an :func:`md` message, ignore suspended status.
 
         """
@@ -1301,6 +1414,7 @@ class SuspendOutput:
     @staticmethod
     def br(**kwargs):
         """br()
+
         Log a :func:`br` message, ignore suspended status.
 
         """
@@ -1311,6 +1425,7 @@ class SuspendOutput:
     @staticmethod
     def hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter, **kwargs):
         """hl(msg: str, /, *args, syntax: str | yuio.md.SyntaxHighlighter)
+
         Log an :func:`md` message, ignore suspended status.
 
         """
@@ -1321,6 +1436,7 @@ class SuspendOutput:
     @staticmethod
     def raw(msg: yuio.term.ColorizedString, **kwargs):
         """raw(msg: yuio.term.ColorizedString, /)
+
         Log a :func:`raw` message, ignore suspended status.
 
         """
@@ -1328,15 +1444,23 @@ class SuspendOutput:
         kwargs.setdefault("ignore_suspended", True)
         raw(msg, **kwargs)
 
+    @_t.overload
     @staticmethod
-    def out(msg: str, **kwargs):
+    def out(msg: str, /, *args, **kwargs): ...
+    @_t.overload
+    @staticmethod
+    def out(err: Exception, /, **kwargs): ...
+    @staticmethod
+    def out(msg: str | Exception, /, *args, **kwargs):
         """out(msg: str, /, *args)
+        out(err: Exception, /)
+
         Log an :func:`out` message, ignore suspended status.
 
         """
 
         kwargs.setdefault("ignore_suspended", True)
-        out(msg, **kwargs)
+        out(msg, *args, **kwargs)
 
     def __enter__(self):
         return self

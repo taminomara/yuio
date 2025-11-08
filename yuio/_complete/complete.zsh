@@ -43,7 +43,6 @@ function __yuio_compl__@prog@__handle_subcommand {
   local cmd=$1
   local args=()
   local subcmd_argspec subcmd_desc
-  local seen_trailing_opt=0
 
   # Modify `$curcontext` to reflect the current subcommand.
   acurcontext[2]=$prog${cmd//[\/:]/-}
@@ -117,20 +116,16 @@ function __yuio_compl__@prog@__handle_subcommand {
           args+=$arg
         ;;
         c)
-          (( seen_trailing_opt )) && continue
           subcmd_argspec=$argspec
           subcmd_desc=$desc
           args+='*::: :->subcmd'
-          seen_trailing_opt=1
         ;;
         *)
           local arg=":${desc:- }:$argspec"
           if [[ $nargs == - ]]; then
             args+=$arg
           elif [[ $nargs == [+*] ]]; then
-            (( seen_trailing_opt )) && continue
             args+='*'$arg
-            seen_trailing_opt=1
           elif [[ $nargs == '?' ]]; then
             args+=':'$arg
           else

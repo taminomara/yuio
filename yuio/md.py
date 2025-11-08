@@ -254,7 +254,7 @@ class MdFormatter:
 
         """
 
-        return _MdParser(self.allow_headings).parse(yuio._dedent(md))
+        return _MdParser(self.allow_headings).parse(yuio.dedent(md))
 
     def format_node(self, node: AstBase, /) -> list[yuio.term.ColorizedString]:
         """

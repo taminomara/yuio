@@ -42,7 +42,7 @@ autodoc_type_aliases = {
     "yuio.Disabled": "~yuio.DISABLED",
     "yuio.Missing": "~yuio.MISSING",
     "yuio.Positional": "~yuio.POSITIONAL",
-    "yuio.Omit": "~yuio.OMIT",
+    "yuio.Group": "~yuio.GROUP",
     **{
         name: path
         for path in [

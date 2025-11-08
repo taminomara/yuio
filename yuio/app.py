@@ -5,7 +5,7 @@
 # You're free to copy this file to your project and edit it for your needs,
 # just keep this copyright line please :3
 
-'''
+"""
 This module provides base functionality to build CLI interfaces.
 
 Creating and running an app
@@ -24,7 +24,7 @@ with the :func:`app` decorator, and use :meth:`App.run` method to start it:
         #: help message for `--flag`
         flag: int = 0
     ):
-        """this command does a thing"""
+        \"\"\"this command does a thing\"\"\"
         yuio.io.info("flag=%r, arg=%r", flag, arg)
 
     if __name__ == "__main__":
@@ -90,7 +90,7 @@ arguments. You can use the :func:`field` function to override them:
 
 .. autodata:: yuio.POSITIONAL
 
-.. autodata:: yuio.OMIT
+.. autodata:: yuio.GROUP
 
 .. autofunction:: inline
 
@@ -239,7 +239,7 @@ from the main function:
 .. autoclass:: CommandInfo
    :members:
 
-'''
+"""
 
 from __future__ import annotations
 
@@ -282,28 +282,12 @@ C = _t.TypeVar("C", bound=_t.Callable[..., None])
 C2 = _t.TypeVar("C2", bound=_t.Callable[..., None])
 
 
-class AppError(Exception):
+class AppError(yuio.FormattedExceptionMixin, Exception):
     """
     An error that you can throw from an app to finish its execution without printing
-    a traceback. If ``msg`` is given, it will be printed using :func:`yuio.io.failure`;
-    otherwise, the app quietly exits with code ``1``.
-
-    :param msg:
-        error message, will be passed to :func:`yuio.io.failure`.
-    :param args:
-        formatting arguments for the error message.
+    a traceback.
 
     """
-
-    def __init__(self, msg: str | None = None, *args: _t.Any):
-        self.msg: str | None = msg
-        self.args: tuple[_t.Any, ...] = args
-
-    def __str__(self) -> str:
-        msg = self.msg
-        if msg and self.args:
-            msg %= self.args
-        return msg or super().__str__()
 
 
 @_t.overload
@@ -316,8 +300,6 @@ def app(
     version: str | None = None,
     bug_report: yuio.dbg.env.ReportSettings | bool = False,
 ) -> _t.Callable[[C], App[C]]: ...
-
-
 @_t.overload
 def app(
     command: C,
@@ -330,8 +312,6 @@ def app(
     version: str | None = None,
     bug_report: yuio.dbg.env.ReportSettings | bool = False,
 ) -> App[C]: ...
-
-
 def app(
     command: _t.Callable[..., None] | None = None,
     /,
@@ -798,8 +778,7 @@ class App(_t.Generic[C]):
             command()
             sys.exit(0)
         except AppError as e:
-            if e.msg:
-                yuio.io.failure(e.msg, *e.args)
+            yuio.io.failure(e)
             sys.exit(1)
         except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
             # Make sure we print subcommand's usage, not the main one.
@@ -1372,7 +1351,7 @@ class _HelpFormatter:
             )
 
         if usage is not None:
-            usage = yuio._dedent(usage.strip())
+            usage = yuio.dedent(usage.strip())
             sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
 
             c_usage = sh_usage_highlighter.highlight(
@@ -1411,7 +1390,7 @@ class _HelpFormatter:
                 for elem in arr:
                     if isinstance(elem, argparse.Action):
                         usage_settings = getattr(elem, "get_usage", lambda: True)()
-                        if usage_settings is yuio.OMIT:
+                        if usage_settings is yuio.GROUP:
                             has_omitted_usages = True
                             continue
                         if (
@@ -1431,7 +1410,7 @@ class _HelpFormatter:
                             usage_settings = getattr(
                                 action, "get_usage", lambda: True
                             )()
-                            if usage_settings is yuio.OMIT:
+                            if usage_settings is yuio.GROUP:
                                 has_omitted_usages = True
                             elif (
                                 usage_settings

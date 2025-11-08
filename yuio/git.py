@@ -714,7 +714,7 @@ class Repo:
                     line = line[1:] + "\n"
                     if match := _LOG_TRAILER_KEY_RE.match(line):
                         if current_key:
-                            current_value = yuio._dedent(current_value)
+                            current_value = yuio.dedent(current_value)
                             trailers.append((current_key, current_value))
                         current_key = match.group("key")
                         current_value = line[match.end() :]
@@ -723,7 +723,7 @@ class Repo:
                 else:
                     break
             if current_key:
-                current_value = yuio._dedent(current_value)
+                current_value = yuio.dedent(current_value)
                 trailers.append((current_key, current_value))
 
             return CommitTrailers(commit, trailers)
@@ -1324,7 +1324,7 @@ def CommitParser(*, repo: Repo) -> yuio.parse.Parser[Commit]:
     def map(value: str, /) -> Commit:
         commit = repo.show(value)
         if commit is None:
-            raise yuio.parse.ParsingError("invalid git ref")
+            raise yuio.parse.ParsingError("invalid git ref `%s`", value)
         return commit
 
     def rev(value: Commit | object) -> str:

@@ -302,7 +302,7 @@ class _FieldSettings:
     required: bool = False
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None
     group: MutuallyExclusiveGroup | None = None
-    usage: yuio.Omit | bool | None = None
+    usage: yuio.Group | bool | None = None
 
     def _update_defaults(
         self,
@@ -465,7 +465,7 @@ class _Field:
     required: bool
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
     group: MutuallyExclusiveGroup | None
-    usage: yuio.Omit | bool | None = None
+    usage: yuio.Group | bool | None = None
 
 
 @_t.overload
@@ -477,10 +477,8 @@ def field(
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     group: MutuallyExclusiveGroup | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> _t.Any: ...
-
-
 @_t.overload
 def field(
     *,
@@ -493,10 +491,8 @@ def field(
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     group: MutuallyExclusiveGroup | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> T | None: ...
-
-
 @_t.overload
 def field(
     *,
@@ -509,10 +505,8 @@ def field(
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     group: MutuallyExclusiveGroup | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> T: ...
-
-
 def field(
     *,
     default: _t.Any = yuio.MISSING,
@@ -524,7 +518,7 @@ def field(
     metavar: str | None = None,
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None,
     group: MutuallyExclusiveGroup | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> _t.Any:
     """
     Field descriptor, used for additional configuration of CLI arguments
@@ -574,7 +568,7 @@ def field(
         should be mutually exclusive.
     :param usage:
         controls how this field renders in CLI usage section. Passing :data:`False`
-        removes this field from usage, and passing :class:`yuio.OMIT` replaces all
+        removes this field from usage, and passing :class:`yuio.GROUP` replaces all
         omitted fields with a single string ``"<options>"``.
     :returns:
         a magic object that will be replaced with field's default value once a new
@@ -626,7 +620,7 @@ def field(
 
 def inline(
     help: str | yuio.Disabled | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> _t.Any:
     """
     A shortcut for inlining nested configs.
@@ -646,10 +640,8 @@ def positional(
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> _t.Any: ...
-
-
 @_t.overload
 def positional(
     *,
@@ -659,10 +651,8 @@ def positional(
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> T | None: ...
-
-
 @_t.overload
 def positional(
     *,
@@ -672,10 +662,8 @@ def positional(
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> T: ...
-
-
 def positional(
     *,
     default: _t.Any = yuio.MISSING,
@@ -684,7 +672,7 @@ def positional(
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
-    usage: yuio.Omit | bool | None = None,
+    usage: yuio.Group | bool | None = None,
 ) -> _t.Any:
     """
     A shortcut for adding a positional argument.
@@ -707,7 +695,7 @@ def positional(
 
 def _action(
     field: _Field,
-    usage: yuio.Omit | bool,
+    usage: yuio.Group | bool,
     parse_many: bool = False,
     const: _t.Any = yuio.MISSING,
 ):
@@ -929,9 +917,8 @@ class Config:
             result.validate_config()
             return result
         except yuio.parse.ParsingError as e:
-            raise yuio.parse.ParsingError(
-                f"failed to load config from environment variables:\n"
-                + textwrap.indent(str(e), "  ")
+            raise e.with_prefix(
+                "Failed to load config from environment variables:"
             ) from None
 
     @classmethod
@@ -1008,7 +995,7 @@ class Config:
         dest_prefix: str,
         suppress_help: bool,
         depth: int,
-        usage: yuio.Omit | bool,
+        usage: yuio.Group | bool,
     ):
         if prefix:
             prefix += "-"
@@ -1277,13 +1264,8 @@ class Config:
         if ignore_missing_file and not os.path.exists(path):
             return cls()
 
-        try:
-            with open(path) as file:
-                loaded = file_parser(file.read())
-        except Exception as e:
-            raise yuio.parse.ParsingError(
-                f"invalid config {path}:\n" + textwrap.indent(str(e), "  ")
-            ) from None
+        with open(path) as file:
+            loaded = file_parser(file.read())
 
         return cls.load_from_parsed_file(
             loaded, ignore_unknown_fields=ignore_unknown_fields, path=path
@@ -1331,9 +1313,7 @@ class Config:
             if path is None:
                 raise
             else:
-                raise yuio.parse.ParsingError(
-                    f"invalid config {path}:\n" + textwrap.indent(str(e), "  ")
-                ) from None
+                raise e.with_prefix("Invalid config <c path>%s</c>:", path)
 
     @classmethod
     def __load_from_parsed_file(
@@ -1350,7 +1330,9 @@ class Config:
         if not ignore_unknown_fields:
             for name in parsed:
                 if name not in cls.__get_fields() and name != "$schema":
-                    raise yuio.parse.ParsingError(f"unknown field {field_prefix}{name}")
+                    raise yuio.parse.ParsingError(
+                        "Unknown field `%s`", f"{field_prefix}{name}"
+                    )
 
         for name, field in cls.__get_fields().items():
             if name in parsed:
@@ -1363,9 +1345,8 @@ class Config:
                     try:
                         value = field.parser.parse_config(parsed[name])
                     except yuio.parse.ParsingError as e:
-                        raise yuio.parse.ParsingError(
-                            f"can't parse {field_prefix}{name}:\n"
-                            + textwrap.indent(str(e), "  ")
+                        raise e.with_prefix(
+                            f"Can't parse field `%s%s`:", field_prefix, name
                         ) from None
                     fields[name] = value
 

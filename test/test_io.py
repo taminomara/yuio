@@ -307,9 +307,9 @@ class TestAsk:
             [
                 "Hello?              ",
                 ">                   ",
-                "▲ Error: input is   ",
-                "required.           ",
+                "▲ Input is required ",
                 "f1 help             ",
+                "                    ",
             ],
         )
         io_mocker.text("123")
@@ -703,10 +703,10 @@ class TestAskNonInteractive:
             [
                 "Are you there? ({yes",
                 "|no}) what?         ",
-                "Error: can't parse  ",
-                "'what?', enter      ",
-                "either 'yes' or     ",
-                "'no'.               ",
+                "Error: Can't parse  ",
+                "'what?' as bool,    ",
+                "should be one of    ",
+                "'yes', 'no'         ",
                 "Are you there? ({yes",
                 "|no})               ",
             ],
@@ -728,10 +728,10 @@ class TestAskNonInteractive:
             [
                 "Are you there? ({yes",
                 "|no}) what?         ",
-                "Error: can't parse  ",
-                "'what?', enter      ",
-                "either 'yes' or     ",
-                "'no'.               ",
+                "Error: Can't parse  ",
+                "'what?' as bool,    ",
+                "should be one of    ",
+                "'yes', 'no'         ",
                 "Are you there? ({yes",
                 "|no})               ",
             ],

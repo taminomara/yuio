@@ -825,7 +825,7 @@ class Meta(JsonSchemaType):
         if self.title is not None:
             schema["title"] = self.title
         if self.description is not None:
-            schema["description"] = yuio._dedent(self.description)
+            schema["description"] = yuio.dedent(self.description)
         if self.default is not yuio.MISSING:
             schema["default"] = self.default
         return schema

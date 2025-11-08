@@ -247,7 +247,7 @@ class TestBasics:
         class MyConfig1(yuio.config.Config):
             x: int
 
-        with pytest.raises(yuio.parse.ParsingError, match=r"expected int"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected `int`"):
             assert MyConfig1.load_from_parsed_file(dict(x=None))
 
         class MyConfig2(yuio.config.Config):
@@ -349,7 +349,7 @@ class TestEnv:
         assert c.s == "x"
 
         monkeypatch.setenv("S", "z")
-        with pytest.raises(ValueError, match=r"one of 'x', 'y'"):
+        with pytest.raises(ValueError, match=r"one of `x`, `y`"):
             _ = MyConfig1.load_from_env()
 
         class E(enum.Enum):
@@ -530,7 +530,7 @@ class TestArgs:
 
         with pytest.raises(SystemExit):
             self.load_from_args(MyConfig, "--s z")
-        assert "one of 'x', 'y'" in capsys.readouterr().err
+        assert "one of `x`, `y`" in capsys.readouterr().err
 
     def test_collection_parsers(self):
         class MyConfig(yuio.config.Config):
@@ -747,7 +747,7 @@ class TestLoadFromFile:
             b: int
             c: int = 5
 
-        with pytest.raises(ValueError, match=r"unknown field x"):
+        with pytest.raises(ValueError, match=r"Unknown field `x`"):
             MyConfig.load_from_parsed_file(dict(a="abc", b=10, x=11))
 
     def test_load_from_parsed_file_unknown_fields_ignored(self):
@@ -766,7 +766,7 @@ class TestLoadFromFile:
         class MyConfig(yuio.config.Config):
             a: str
 
-        with pytest.raises(yuio.parse.ParsingError, match=r"expected string"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected `str`"):
             MyConfig.load_from_parsed_file(dict(a=10))
 
     def test_load_from_parsed_file_subconfig(self):
@@ -781,7 +781,7 @@ class TestLoadFromFile:
         assert c.b == "abc"
         assert c.c.a == "cde"
 
-        with pytest.raises(ValueError, match=r"unknown field c\.x"):
+        with pytest.raises(ValueError, match=r"Unknown field `c\.x`"):
             MyConfig.load_from_parsed_file(dict(b="abc", c=dict(x="cde")))
 
     def test_load_from_json_file(self, tmp_path):
@@ -810,7 +810,7 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match=r"unknown field x"):
+        with pytest.raises(ValueError, match=r"Unknown field `x`"):
             MyConfig.load_from_json_file(data_path_2)
 
         c = MyConfig.load_from_json_file(
@@ -848,7 +848,7 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match=r"unknown field x"):
+        with pytest.raises(ValueError, match=r"Unknown field `x`"):
             MyConfig.load_from_yaml_file(data_path_2)
 
         c = MyConfig.load_from_yaml_file(
@@ -886,7 +886,7 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match=r"unknown field x"):
+        with pytest.raises(ValueError, match=r"Unknown field `x`"):
             MyConfig.load_from_toml_file(data_path_2)
 
         c = MyConfig.load_from_toml_file(

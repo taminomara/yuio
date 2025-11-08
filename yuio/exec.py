@@ -85,8 +85,6 @@ def exec(
     level: int = logging.DEBUG,
     text: _t.Literal[True] = True,
 ) -> str: ...
-
-
 @_t.overload
 def exec(
     *args: str | pathlib.Path,
@@ -98,8 +96,6 @@ def exec(
     level: int = logging.DEBUG,
     text: _t.Literal[False],
 ) -> bytes: ...
-
-
 @_t.overload
 def exec(
     *args: str | pathlib.Path,
@@ -109,8 +105,6 @@ def exec(
     capture_io: _t.Literal[False],
     text: _t.Literal[True] = True,
 ) -> None: ...
-
-
 @_t.overload
 def exec(
     *args: str | pathlib.Path,
@@ -120,8 +114,6 @@ def exec(
     capture_io: _t.Literal[False],
     text: _t.Literal[False],
 ) -> None: ...
-
-
 @_t.overload
 def exec(
     *args: str | pathlib.Path,
@@ -133,8 +125,6 @@ def exec(
     level: int | None = None,
     text: bool = False,
 ) -> str | bytes | None: ...
-
-
 def exec(
     *args: str | pathlib.Path,
     cwd: None | str | pathlib.Path = None,
