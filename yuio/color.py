@@ -281,7 +281,7 @@ class Color:
 
     This class only contains data about the color. It doesn't know anything about
     how to apply it to a terminal, or whether a terminal supports colors at all.
-    These decisions are thus deferred to a the terminal API
+    These decisions are thus deferred to the terminal API
     (see :func:`yuio.term.color_to_code`).
 
     When converted to an ANSI code and printed, a color completely overwrites a previous
@@ -331,7 +331,7 @@ class Color:
 
     underline: bool | None = None
     """
-    If true, render text as underline.
+    If true, render underline the text.
 
     """
 
@@ -491,7 +491,7 @@ class Color:
 
     STYLE_ITALIC: typing.ClassVar[Color] = dict(italic=True)  # type: ignore
     """
-    Underline font style.
+    Italic font style.
 
     """
 
@@ -501,9 +501,9 @@ class Color:
 
     """
 
-    STYLE_NORMAL: typing.ClassVar[Color] = dict(bold=False, dim=False)  # type: ignore
+    STYLE_NORMAL: typing.ClassVar[Color] = dict(bold=False, dim=False, underline=False, italic=False)  # type: ignore
     """
-    Not bold nor dim.
+    Not bold nor dim not italic nor underline.
 
     """
 
@@ -573,8 +573,10 @@ class Color:
     """
     White foreground color.
 
-    Avoid using it, in some terminals, notably in the Mac OS default terminal,
-    it is unreadable.
+    .. warning::
+
+        Avoid using it. In some terminals, notably in the Mac OS default terminal,
+        it is unreadable.
 
     """
 

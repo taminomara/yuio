@@ -49,27 +49,51 @@ import yuio.color
             yuio.color.Color.FORE_RED
             | yuio.color.Color.STYLE_BOLD
             | yuio.color.Color.STYLE_NORMAL,
-            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=False, dim=False),
+            yuio.color.Color(
+                fore=yuio.color.ColorValue(1),
+                bold=False,
+                dim=False,
+                italic=False,
+                underline=False,
+            ),
         ),
         (
             yuio.color.Color.FORE_RED
             | yuio.color.Color.STYLE_DIM
             | yuio.color.Color.STYLE_NORMAL,
-            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=False, dim=False),
+            yuio.color.Color(
+                fore=yuio.color.ColorValue(1),
+                bold=False,
+                dim=False,
+                italic=False,
+                underline=False,
+            ),
         ),
         (
             yuio.color.Color.FORE_RED
             | yuio.color.Color.STYLE_DIM
             | yuio.color.Color.STYLE_NORMAL
             | yuio.color.Color.STYLE_DIM,
-            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=False, dim=True),
+            yuio.color.Color(
+                fore=yuio.color.ColorValue(1),
+                bold=False,
+                dim=True,
+                italic=False,
+                underline=False,
+            ),
         ),
         (
             yuio.color.Color.FORE_RED
             | yuio.color.Color.STYLE_DIM
             | yuio.color.Color.STYLE_NORMAL
             | yuio.color.Color.STYLE_BOLD,
-            yuio.color.Color(fore=yuio.color.ColorValue(1), bold=True, dim=False),
+            yuio.color.Color(
+                fore=yuio.color.ColorValue(1),
+                bold=True,
+                dim=False,
+                italic=False,
+                underline=False,
+            ),
         ),
     ],
 )
