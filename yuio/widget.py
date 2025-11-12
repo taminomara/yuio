@@ -653,8 +653,7 @@ class RenderContext:
                 def __init__(self):
                     # This is the text we'll print.
                     self._nested_widget = Text(
-                        "very long paragraph which "
-                        "potentially can span multiple lines"
+                        "very long paragraph which potentially can span multiple lines"
                     )
 
                 def layout(self, rc: RenderContext) -> tuple[int, int]:
@@ -4162,11 +4161,17 @@ class Map(Widget[T], _t.Generic[T, U]):
 
     ..
         >>> class Input(Widget):
-        ...     def event(self, e): return Result("10")
-        ...     def layout(self, rc): return 0, 0
-        ...     def draw(self, rc): pass
+        ...     def event(self, e):
+        ...         return Result("10")
+        ...
+        ...     def layout(self, rc):
+        ...         return 0, 0
+        ...
+        ...     def draw(self, rc):
+        ...         pass
         >>> class Map(Map):
-        ...     def run(self, term, theme): return self.event(None).value
+        ...     def run(self, term, theme):
+        ...         return self.event(None).value
         >>> term, theme = None, None
 
     Example::
@@ -4203,11 +4208,17 @@ class Apply(Map[T, T], _t.Generic[T]):
 
     ..
         >>> class Input(Widget):
-        ...     def event(self, e): return Result("foobar!")
-        ...     def layout(self, rc): return 0, 0
-        ...     def draw(self, rc): pass
+        ...     def event(self, e):
+        ...         return Result("foobar!")
+        ...
+        ...     def layout(self, rc):
+        ...         return 0, 0
+        ...
+        ...     def draw(self, rc):
+        ...         pass
         >>> class Apply(Apply):
-        ...     def run(self, term, theme): return self.event(None).value
+        ...     def run(self, term, theme):
+        ...         return self.event(None).value
         >>> term, theme = None, None
 
     Example::

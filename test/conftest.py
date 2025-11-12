@@ -661,17 +661,17 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
     .. code-block:: python
 
        def test_something(ostream, term, theme, width, height):
-          # We know that we're testing an `Input` widget...
-          checker = (
-              WidgetChecker[yuio.widget.Input](ostream, term, theme, width, height)
-                  # ...therefore we can write asserts that check specific properties
-                  # of the `Input` widget.
-                  .expect_widget_eq(lambda widget: widget.text, "foo bar!")
-                  .expect_widget_to_continue()
-          )
+           # We know that we're testing an `Input` widget...
+           checker = (
+               WidgetChecker[yuio.widget.Input](ostream, term, theme, width, height)
+               # ...therefore we can write asserts that check specific properties
+               # of the `Input` widget.
+               .expect_widget_eq(lambda widget: widget.text, "foo bar!")
+               .expect_widget_to_continue()
+           )
 
-          # Now we can run tests for a widget.
-          checker.check(yuio.widget.Input(text="foo bar!"))
+           # Now we can run tests for a widget.
+           checker.check(yuio.widget.Input(text="foo bar!"))
 
     .. invisible-code-block: python
 

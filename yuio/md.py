@@ -169,10 +169,7 @@ class MdFormatter:
 
          ```python
          for i in range(5, 8):
-             print(
-                f"Hello, world! "
-                "This is {i}th day past the apocalypse."
-            )
+             print(f"Hello, world! This is {{i}}th day past the apocalypse.")
          ```
 
       Yuio supports ``python``, ``traceback``, ``bash``, ``diff``,

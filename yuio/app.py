@@ -59,11 +59,9 @@ are handled to provide better CLI experience:
         # Since default is `False`, `--no-verbose` will be hidden from help
         # to reduce clutter.
         verbose: bool = False,
-
         # Will create a flag with `nargs=*`: `--inputs path1 path2 ...`
         inputs: list[pathlib.Path] = [],
-    ):
-        ...
+    ): ...
 
 .. autofunction:: app
 
@@ -114,20 +112,18 @@ with :func:`field` or :func:`inline`:
         signal: int
 
         # Will be loaded from `-p` or `--pid`.
-        pid: int = field(flags=['-p', '--pid'])
+        pid: int = field(flags=["-p", "--pid"])
+
 
     @app
     def main(
         # `kill_cmd.signal` will be loaded from `--kill-cmd-signal`.
         kill_cmd: KillCmdConfig,
-
         # `copy_cmd_2.signal` will be loaded from `--kill-signal`.
-        kill_cmd_2: KillCmdConfig = field(flags='--kill'),
-
+        kill_cmd_2: KillCmdConfig = field(flags="--kill"),
         # `kill_cmd_3.signal` will be loaded from `--signal`.
-        kill_cmd_3: KillCmdConfig = field(flags=''),
-    ):
-        ...
+        kill_cmd_3: KillCmdConfig = field(flags=""),
+    ): ...
 
 .. note::
 
@@ -170,12 +166,11 @@ using the :meth:`App.subcommand` method:
 .. code-block:: python
 
     @app
-    def main():
-        ...
+    def main(): ...
+
 
     @main.subcommand
-    def do_stuff():
-        ...
+    def do_stuff(): ...
 
 There is no limit to how deep you can nest subcommands, but for usability reasons
 we suggest not exceeding level of sub-sub-commands (``git stash push``, anyone?)

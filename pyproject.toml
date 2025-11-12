@@ -161,6 +161,9 @@ ignore = [
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
 
+[tool.ruff.format]
+docstring-code-format = true
+
 [tool.coverage.run]
 patch = ["subprocess"]
 

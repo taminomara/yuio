@@ -279,10 +279,10 @@ def _with_slots() -> dict[_t.Literal["slots"], bool]:
 
             from dataclasses import dataclass
 
+
             # Will have `__slots__` in python>=3.11.
             @dataclass(**_with_slots())
-            class Example:
-                ...
+            class Example: ...
 
     """
 

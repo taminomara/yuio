@@ -187,9 +187,11 @@ to type hints:
 
     from typing import Annotated
 
+
     class AppConfig(Config):
         max_line_width: (
-            Annotated[int, Gt(0)] | Annotated[str, OneOf(["default", "unlimited", "keep"])]
+            Annotated[int, Gt(0)]
+            | Annotated[str, OneOf(["default", "unlimited", "keep"])]
         ) = "default"
 
 .. invisible-code-block: python
@@ -1026,9 +1028,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
                 ) -> yuio.json_schema.JsonSchemaType:
                     return yuio.json_schema.String()
 
-                def to_json_value(
-                    self, value: object, /
-                ) -> yuio.json_schema.JsonValue:
+                def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
                     assert self.assert_type(value)
                     return value.data
 

@@ -81,20 +81,20 @@ By default, all messages are colored according to their level.
 
 If you need inline colors, you can use special tags in your log messages::
 
-    info('Using the <c code>code</c> tag.')
+    info("Using the <c code>code</c> tag.")
 
 You can combine multiple colors in the same tag::
 
-    info('<c bold green>Success!</c>')
+    info("<c bold green>Success!</c>")
 
 Only tags that appear in the message itself are processed::
 
-    info('Tags in this message --> %s are printed as-is', '<c color>')
+    info("Tags in this message --> %s are printed as-is", "<c color>")
 
 For highlighting inline code, Yuio supports parsing CommonMark's backticks::
 
-    info('Using the `backticks`.')
-    info('Using the `` nested `backticks` ``, like they do on GitHub!')
+    info("Using the `backticks`.")
+    info("Using the `` nested `backticks` ``, like they do on GitHub!")
 
 List of all tags that are available by default:
 
@@ -926,11 +926,12 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
         .. code-block:: python
 
             class Level(enum.Enum):
-                WARNING = "Warning",
-                INFO = "Info",
-                DEBUG = "Debug",
+                WARNING = ("Warning",)
+                INFO = ("Info",)
+                DEBUG = ("Debug",)
 
-            answer = ask[Level]('Choose a logging level', default=Level.INFO)
+
+            answer = ask[Level]("Choose a logging level", default=Level.INFO)
 
     """
 
@@ -1519,7 +1520,7 @@ class Task:
 
     This class can be used as a context manager::
 
-        with Task('Processing input') as t:
+        with Task("Processing input") as t:
             ...
             t.progress(0.3)
             ...
@@ -1735,7 +1736,7 @@ class Task:
             .. code-block:: python
 
                 with Task("Charging a capacitor") as task:
-                    task.progress_scale(889.25E-3, 1, unit="V")
+                    task.progress_scale(889.25e-3, 1, unit="V")
 
             This will print:
 
@@ -1799,7 +1800,7 @@ class Task:
 
             .. code-block:: python
 
-                with Task('Fetching data') as t:
+                with Task("Fetching data") as t:
                     for url in t.iter(urls):
                         ...
 
@@ -1830,7 +1831,7 @@ class Task:
 
             .. code-block:: python
 
-                with Task('Fetching data') as t:
+                with Task("Fetching data") as t:
                     for url in urls:
                         t.comment(url)
                         ...

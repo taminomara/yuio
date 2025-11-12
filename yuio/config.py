@@ -73,6 +73,7 @@ You can nest configs to achieve modularity:
         #: enable or disable gpu
         use_gpu: bool = True
 
+
     class AppConfig(Config):
         #: executor parameters
         executor: ExecutorConfig
@@ -87,7 +88,7 @@ or a dict with its variables to the config's constructor:
 
     # The following lines are equivalent:
     config = AppConfig(executor=ExecutorConfig(threads=16))
-    config = AppConfig(executor={'threads': 16})
+    config = AppConfig(executor={"threads": 16})
     # ...although type checkers will complain about dict =(
 
 
@@ -106,7 +107,7 @@ Use the :func:`yuio.app.field` function to override them:
         signal: int
 
         # Will be loaded from `PROCESS_ID`.
-        pid: int = field(env='PROCESS_ID')
+        pid: int = field(env="PROCESS_ID")
 
 In nested configs, environment variable names are prefixed with name
 of a field that contains the nested config:
@@ -118,10 +119,10 @@ of a field that contains the nested config:
         kill_cmd: KillCmdConfig
 
         # `kill_cmd_2.signal` will be loaded from `KILL_SIGNAL`.
-        kill_cmd_2: KillCmdConfig = field(env='KILL')
+        kill_cmd_2: KillCmdConfig = field(env="KILL")
 
         # `kill_cmd_3.signal` will be loaded from `SIGNAL`.
-        kill_cmd_3: KillCmdConfig = field(env='')
+        kill_cmd_3: KillCmdConfig = field(env="")
 
 You can also disable loading a field from an environment altogether:
 
@@ -138,7 +139,7 @@ to the :meth:`~Config.load_from_env` function:
 
     # config.kill_cmd.field will be loaded
     # from `MY_APP_KILL_CMD_SIGNAL`
-    config = BigConfig.load_from_env('MY_APP')
+    config = BigConfig.load_from_env("MY_APP")
 
 
 Parsing config files
@@ -155,11 +156,13 @@ such as `json`, `yaml` or `toml`:
         threads: int
         use_gpu: bool = True
 
+
     class AppConfig(Config):
         executor: ExecutorConfig
         model: pathlib.Path
 
-    config = AppConfig.load_from_json_file('~/.my_app_cfg.json')
+
+    config = AppConfig.load_from_json_file("~/.my_app_cfg.json")
 
 In this example, contents of the above config would be:
 
@@ -1288,7 +1291,7 @@ class Config:
 
         For example::
 
-            with open('conf.yaml') as file:
+            with open("conf.yaml") as file:
                 config = Config.load_from_parsed_file(yaml.load(file))
 
         :param parsed:
