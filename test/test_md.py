@@ -19,7 +19,7 @@ class TestParser:
         return yuio.md._MdParser()
 
     @pytest.mark.parametrize(
-        "md,expected",
+        ("md", "expected"),
         [
             (
                 """
@@ -105,15 +105,6 @@ class TestParser:
                         (List
                           (ListItem None
                             (Paragraph 'baz')))))))
-                """,
-            ),
-            (
-                """
-                    foo
-                \tbar
-                """,
-                """
-                (Code '' 'foo' 'bar')
                 """,
             ),
             (

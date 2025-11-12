@@ -51,8 +51,7 @@ doc = [
     "sybil==9.2.0",
 ]
 lint = [
-    "black==25.9.0",
-    "isort==7.0.0",
+    "ruff==0.14.4",
     "pre-commit==4.3.0",
 ]
 ci = [
@@ -127,13 +126,40 @@ reportConstantRedefinition = "none"
 reportRedeclaration = "none"
 deprecateTypingAliases = true
 
-[tool.black]
-force-exclude = '^(/docs/source/by_example/.*|/yuio/_version.py|/yuio/_vendor/.*)'
+[tool.ruff]
+exclude = ["docs/source/by_example/*", "yuio/_vendor/*"]
+target-version = "py310"
 
-[tool.isort]
-profile = "black"
-extend_skip_glob = ["docs/source/by_example/*", "yuio/_vendor/*"]
-skip_gitignore = true
+[tool.ruff.lint]
+typing-modules = ["yuio._typing"]
+extend-select = ["I", "INP", "T20", "PT", "RET", "SIM", "SLOT"]
+ignore = [
+    "E402", # Module level import not at top of file
+    "E722", # Do not use bare `except`
+    "E741", # Ambiguous variable name
+    "E731", # Do not assign a `lambda` expression, use a `def`
+    "PT015", # Assertion is always `False`
+    "PT011", # Too broad error type
+    "PT012", # `pytest.raises()` block should contain a single simple statement
+    "PT017", # Found assertion on exception `e` in `except` block
+    "RET505", # Unnecessary `else` after `return` statement
+    "RET506", # Unnecessary `else` after `raise` statement
+    "RET507", # Unnecessary `else` after `continue` statement
+    "RET508", # Unnecessary `else` after `break` statement
+    "SIM103", # Return the negated condition directly
+    "SIM105", # Use `contextlib.suppress` instead of `try`-`except`-`pass`
+    "SIM108", # Use ternary operator instead of `if`-`else`-block
+    "SIM114", # Combine `if` branches using logical `or` operator
+    "SIM118", # Use `key in dict` instead of `key in dict.keys()`
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/**/*" = ["T20", "I002", "SIM102", "SIM117"]
+"examples/**/*" = ["T20", "I002", "INP001"]
+"docs/**/*" = ["T20", "I002", "INP001"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
 
 [tool.coverage.run]
 patch = ["subprocess"]

@@ -117,6 +117,8 @@ class NoWrap(str):
 
     """
 
+    __slots__ = ()
+
 
 class Esc(NoWrap):
     """
@@ -125,6 +127,8 @@ class Esc(NoWrap):
     This string is not wrapped even if ``break_long_nowrap_words`` is :data:`True`.
 
     """
+
+    __slots__ = ()
 
 
 @_t.final

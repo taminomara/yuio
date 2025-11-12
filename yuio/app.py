@@ -909,9 +909,7 @@ class App(_t.Generic[C]):
         if main_app.__config_type is not self.__config_type:
             main_app.__config_type._setup_arg_parser(
                 parser,
-                group=parser.add_argument_group(
-                    "global options"
-                ),  # pyright: ignore[reportArgumentType]
+                group=parser.add_argument_group("global options"),  # pyright: ignore[reportArgumentType]
                 ns_prefix="app",
             )
 
@@ -1107,7 +1105,7 @@ class _Namespace(argparse.Namespace):
         ) is not None:
             # Flag was specified in main command and in a subcommand, merge the values.
             value = merge(prev, value)
-        return super().__setattr__(name, value)
+        super().__setattr__(name, value)
 
 
 def _make_completions_action(app: App[_t.Any]):
@@ -1175,7 +1173,7 @@ class _VersionAction(argparse.Action):
         self.version = version
 
     def __call__(self, parser, namespace, values, option_string=None):
-        print(self.version)
+        print(self.version)  # noqa: T201
         parser.exit()
 
 
@@ -1236,7 +1234,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         with self._indent("msg/decoration:heading/section", decoration):
             self._format_Text(
                 node,
-                default_color=self.theme.get_color(f"msg/text:heading/section"),
+                default_color=self.theme.get_color("msg/text:heading/section"),
             )
 
         if node.level == 1:

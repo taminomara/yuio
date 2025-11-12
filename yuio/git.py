@@ -291,7 +291,7 @@ class Repo:
         try:
             version = self.git("--version")
         except GitExecError:
-            raise GitUnavailableError(f"git executable is not available")
+            raise GitUnavailableError("git executable is not available")
 
         _logger.debug("%s", version.decode(errors="replace").strip())
 
@@ -370,7 +370,7 @@ class Repo:
             )
         except yuio.exec.ExecError as e:
             raise GitExecError(e.returncode, e.cmd, e.output, e.stderr)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             raise GitUnavailableError("git executable not found")
 
     def status(
@@ -1332,8 +1332,7 @@ def CommitParser(*, repo: Repo) -> yuio.parse.Parser[Commit]:
             return str(value)
         else:
             raise TypeError(
-                f"parser Commit can't handle value "
-                f"of type {_t.type_repr(type(value))}"
+                f"parser Commit can't handle value of type {_t.type_repr(type(value))}"
             )
 
     return yuio.parse.WithMeta(

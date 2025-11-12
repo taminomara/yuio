@@ -26,4 +26,4 @@ if __name__ == "__main__":
 
     yuio.io.heading("Choose what you'd like for breakfast")
     result = widget.run(term, theme)
-    yuio.io.success(f"You've entered `%r`", result)
+    yuio.io.success("You've entered `%r`", result)

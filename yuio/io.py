@@ -962,7 +962,7 @@ def _ask(
         needs_colon = True
         msg = msg[:-1]
     else:
-        needs_colon = msg and not msg[-1] in string.punctuation
+        needs_colon = msg and msg[-1] not in string.punctuation
 
     prompt = yuio.md.colorize(theme, msg, default_color="msg/text:question")
     if args:
@@ -1028,7 +1028,7 @@ def _ask(
                 try:
                     s.raw(prompt)
                     answer = term.istream.readline().strip()
-                except (OSError, EOFError) as e:
+                except (OSError, EOFError):
                     raise UserIoError("unexpected end of input") from None
                 if not answer and default is not yuio.MISSING:
                     return default
@@ -1121,7 +1121,7 @@ def detect_editor(fallbacks: list[str] | None = None) -> str | None:
     if os.name != "nt":
         if editor := os.environ.get("VISUAL"):
             return editor
-        elif editor := os.environ.get("EDITOR"):
+        if editor := os.environ.get("EDITOR"):
             return editor
 
     if fallbacks is None:
@@ -1235,7 +1235,7 @@ def edit(
                 )
 
             if not os.path.exists(filepath):
-                raise UserIoError(f"editing failed: can't read back edited file")
+                raise UserIoError("editing failed: can't read back edited file")
             else:
                 with open(filepath) as file:
                     text = file.read()

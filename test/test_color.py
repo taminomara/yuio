@@ -4,7 +4,7 @@ import yuio.color
 
 
 @pytest.mark.parametrize(
-    "color,expect",
+    ("color", "expect"),
     [
         (yuio.color.Color.NONE | yuio.color.Color.NONE, yuio.color.Color.NONE),
         (yuio.color.Color.NONE | yuio.color.Color.FORE_RED, yuio.color.Color.FORE_RED),
@@ -102,7 +102,7 @@ def test_combine(color, expect):
 
 
 @pytest.mark.parametrize(
-    "colors,coeffs,expect",
+    ("colors", "coeffs", "expect"),
     [
         (
             [yuio.color.Color.FORE_RED, yuio.color.Color.FORE_GREEN],
@@ -202,7 +202,7 @@ def test_lerp(colors, coeffs, expect):
 
 
 @pytest.mark.parametrize(
-    "color,expect",
+    ("color", "expect"),
     [
         (
             yuio.color.ColorValue.from_hex("#005555").lighten(0.5),

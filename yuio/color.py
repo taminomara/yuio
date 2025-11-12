@@ -262,7 +262,9 @@ class ColorValue:
                     return colors[l]
                 else:
                     a, b = colors[i].data, colors[i + 1].data
-                    return ColorValue(tuple(int(ca + f * (cb - ca)) for ca, cb in zip(a, b)))  # type: ignore
+                    return ColorValue(
+                        tuple(int(ca + f * (cb - ca)) for ca, cb in zip(a, b))  # type: ignore
+                    )
 
             return lerp
 
@@ -463,7 +465,11 @@ class Color:
                 back = ColorValue.lerp(*(color.back for color in colors))  # type: ignore
 
             if fore_lerp and back_lerp:
-                return lambda f: dataclasses.replace(colors[0], fore=fore(f), back=back(f))  # type: ignore
+                return lambda f: dataclasses.replace(
+                    colors[0],
+                    fore=fore(f),  # type: ignore
+                    back=back(f),  # type: ignore
+                )
             elif fore_lerp:
                 return lambda f: dataclasses.replace(colors[0], fore=fore(f))  # type: ignore
             elif back_lerp:
@@ -501,7 +507,9 @@ class Color:
 
     """
 
-    STYLE_NORMAL: typing.ClassVar[Color] = dict(bold=False, dim=False, underline=False, italic=False)  # type: ignore
+    STYLE_NORMAL: typing.ClassVar[Color] = dict(
+        bold=False, dim=False, underline=False, italic=False
+    )  # type: ignore
     """
     Not bold nor dim not italic nor underline.
 

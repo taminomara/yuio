@@ -51,13 +51,13 @@ if __name__ == "__main__":
         # `task.iter` will update progress as we iterate over packages.
         for package in task.iter(packages):
             # Set task's comment.
-            task.comment(f"downloading %s", package)
+            task.comment("downloading %s", package)
 
             # Some heavy work.
             download(package)
 
             # Update task's comment.
-            task.comment(f"installing %s", package)
+            task.comment("installing %s", package)
 
             # More heavy work.
             install(package)

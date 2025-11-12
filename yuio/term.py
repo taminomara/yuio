@@ -782,17 +782,14 @@ elif os.name == "nt":
                 return False
 
             handle = msvcrt.get_osfhandle(ostream.fileno())
-            if not bool(
+            return bool(
                 _SetConsoleMode(
                     handle,
                     _ENABLE_PROCESSED_OUTPUT
                     | _ENABLE_WRAP_AT_EOL_OUTPUT
                     | _ENABLE_VIRTUAL_TERMINAL_PROCESSING,
                 )
-            ):
-                return False
-
-            return True
+            )
         except Exception:
             return False
 

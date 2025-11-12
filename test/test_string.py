@@ -6,7 +6,7 @@ import yuio.theme
 
 
 @pytest.mark.parametrize(
-    "text,width,length",
+    ("text", "width", "length"),
     [
         (yuio.string.ColorizedString(), 0, 0),
         (yuio.string.ColorizedString([]), 0, 0),
@@ -33,7 +33,7 @@ def test_width_and_len(text, width, length):
 
 
 @pytest.mark.parametrize(
-    "text,args,expect",
+    ("text", "args", "expect"),
     [
         (
             [""],
@@ -291,7 +291,7 @@ def test_format(text, args, expect):
 
 
 @pytest.mark.parametrize(
-    "text,args,exc,match",
+    ("text", "args", "exc", "match"),
     [
         ("%-%", (), ValueError, r"unsupported format character '%'"),
         ("%s", (), TypeError, r"not enough arguments for format string"),
@@ -322,7 +322,7 @@ def test_format_error(text, args, exc, match):
 
 
 @pytest.mark.parametrize(
-    "text,width,kwargs,expect",
+    ("text", "width", "kwargs", "expect"),
     [
         (
             ["hello world!"],
@@ -932,7 +932,7 @@ def test_wrap(text, width, kwargs, expect):
 
 
 @pytest.mark.parametrize(
-    "text,first_line_indent,continuation_indent,expect",
+    ("text", "first_line_indent", "continuation_indent", "expect"),
     [
         (
             yuio.string.ColorizedString(),

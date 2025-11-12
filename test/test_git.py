@@ -33,7 +33,7 @@ def git_env(monkeypatch):
     pass
 
 
-@pytest.fixture()
+@pytest.fixture
 def repo_base():
     with tempfile.TemporaryDirectory() as base_s:
         base = pathlib.Path(base_s).resolve()
@@ -44,7 +44,7 @@ def repo_base():
         yield base
 
 
-@pytest.fixture()
+@pytest.fixture
 def repo_path(repo_base):
     repo = repo_base / "repo"
     repo.mkdir()
@@ -54,10 +54,10 @@ def repo_path(repo_base):
         cwd=repo,
     )
 
-    yield repo
+    return repo
 
 
-@pytest.fixture()
+@pytest.fixture
 def remote_repo_path(repo_base):
     repo = repo_base / "repo_remote"
     repo.mkdir()
@@ -71,18 +71,20 @@ def remote_repo_path(repo_base):
         cwd=repo,
     )
 
-    yield repo
+    return repo
 
 
-@pytest.fixture()
+@pytest.fixture
 def repo(repo_path):
     return yuio.git.Repo(repo_path)
 
 
 def test_not_a_repo():
-    with tempfile.TemporaryDirectory() as base:
-        with pytest.raises(yuio.git.NotARepositoryError, match=r"not a git repository"):
-            yuio.git.Repo(base)
+    with (
+        tempfile.TemporaryDirectory() as base,
+        pytest.raises(yuio.git.NotARepositoryError, match=r"not a git repository"),
+    ):
+        yuio.git.Repo(base)
 
 
 @pytest.mark.linux
@@ -716,7 +718,7 @@ class TestCommitParser:
     def test_basics(self, repo):
         parser = yuio.git.CommitParser(repo=repo)
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["HEAD"])
         assert parser.describe() == "<commit>"
@@ -748,7 +750,7 @@ class TestCommitParser:
 
 class TestRefParser:
     @pytest.mark.parametrize(
-        "parser,name,modes",
+        ("parser", "name", "modes"),
         [
             (
                 yuio.git.RefParser(),
@@ -784,7 +786,7 @@ class TestRefParser:
     )
     def test_basics(self, parser, name, modes):
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["HEAD"])
         assert parser.describe() == name

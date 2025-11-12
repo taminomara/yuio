@@ -8,12 +8,12 @@ from libtmux.pane import Pane
 from libtmux.server import Server
 
 
-@pytest.fixture()
+@pytest.fixture
 def python_path():
     return pathlib.Path(sys.executable)
 
 
-@pytest.fixture()
+@pytest.fixture
 def pane(server: Server):
     session = server.new_session()
     for k, v in os.environ.items():
@@ -22,7 +22,7 @@ def pane(server: Server):
     window = session.new_window(window_shell="bash")
     pane = window.active_pane
     assert pane is not None
-    yield pane
+    return pane
 
 
 @pytest.mark.linux

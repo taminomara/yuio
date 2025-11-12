@@ -402,7 +402,7 @@ class Theme:
 
         if self.__expected_source is None:
             raise RuntimeError(
-                f"_set_msg_decoration_if_not_overridden should only be called from __init__"
+                "_set_msg_decoration_if_not_overridden should only be called from __init__"
             )
         source = self.__msg_decoration_sources.get(name, Theme)
         # The class that's `__init__` is currently running should be a parent
@@ -449,7 +449,7 @@ class Theme:
 
         if self.__expected_source is None:
             raise RuntimeError(
-                f"_set_color_if_not_overridden should only be called from __init__"
+                "_set_color_if_not_overridden should only be called from __init__"
             )
         source = self.__color_sources.get(path, Theme)
         # The class who's `__init__` is currently running should be a parent

@@ -484,7 +484,7 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinReadline(result)))
         return self
 
-    def expect_istream_read(self, result: list[str]) -> _t.Self:
+    def expect_istream_readlines(self, result: list[str]) -> _t.Self:
         """
         Expect a call to `istream.readlines()` and return the given result from it.
 
@@ -886,6 +886,7 @@ def pytest_assertrepr_compare(op, left, right):
         elif not isinstance(right, RcCompare):
             return None
         return _rc_diff(left, right)
+    return None
 
 
 @dataclass
@@ -1115,9 +1116,9 @@ def _render_screen(commands: str, width: int) -> tuple[list[str], list[str], int
                         elif 30 <= int_code <= 37:
                             color = _COLOR_NAMES[int_code - 30]
                         else:
-                            assert (
-                                False
-                            ), f"don't use non-standard colors with this assertion: {int_code}"
+                            assert False, (
+                                f"don't use non-standard colors with this assertion: {int_code}"
+                            )
                     if bold:
                         color = "#" if color == " " else color.upper()
             elif fn == "J":

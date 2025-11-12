@@ -121,6 +121,8 @@ Pre-defined widgets
 
 """
 
+# ruff: noqa: RET503
+
 from __future__ import annotations
 
 import abc
@@ -2372,8 +2374,7 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
         """
 
         assert len(self._widgets) == len(self.__layouts), (
-            "you need to call `VerticalLayout.layout()` "
-            "before `VerticalLayout.draw()`"
+            "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
         )
 
         if rc.height <= self.__min_h:

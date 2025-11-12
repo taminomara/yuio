@@ -287,7 +287,7 @@ def _process_io_threads(
     stdout_thread = threading.Thread(
         target=read_stdout,
         args=(process.stdout,),
-        name=f"yuio stdout handler for sub-process",
+        name="yuio stdout handler for sub-process",
     )
     stdout_thread.daemon = True
     stdout_thread.start()
@@ -296,7 +296,7 @@ def _process_io_threads(
     stderr_thread = threading.Thread(
         target=read_stderr,
         args=(process.stderr,),
-        name=f"yuio stderr handler for sub-process",
+        name="yuio stderr handler for sub-process",
     )
     stderr_thread.daemon = True
     stderr_thread.start()

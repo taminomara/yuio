@@ -7,7 +7,7 @@ import yuio.complete
 
 
 @pytest.mark.parametrize(
-    "strings,expected",
+    ("strings", "expected"),
     [
         (["ax", "bx"], ""),
         (["abc", "aby"], "ab"),
@@ -19,7 +19,7 @@ def test_commonprefix(strings, expected):
 
 
 @pytest.mark.parametrize(
-    "a,b,expected",
+    ("a", "b", "expected"),
     [
         ("", "", 0),
         ("foo", "FOO", 0),
@@ -36,7 +36,7 @@ def test_corrections(a, b, expected):
 
 class TestCollector:
     @pytest.mark.parametrize(
-        "text,pos,expected_prefix,expected_suffix",
+        ("text", "pos", "expected_prefix", "expected_suffix"),
         [
             ("foobar", 0, "", "foobar"),
             ("foobar", 3, "foo", "bar"),
@@ -52,7 +52,7 @@ class TestCollector:
         assert collector.isuffix == ""
 
     @pytest.mark.parametrize(
-        "iprefix,prefix,suffix,isuffix,completions",
+        ("iprefix", "prefix", "suffix", "isuffix", "completions"),
         [
             (
                 "",
@@ -150,7 +150,7 @@ class TestCollector:
         assert result == expected
 
     @pytest.mark.parametrize(
-        "iprefix,prefix,suffix,isuffix,completions,expected",
+        ("iprefix", "prefix", "suffix", "isuffix", "completions", "expected"),
         [
             ("", "", "", "", ["bar", "baz"], ("", "ba", "")),
             ("", "b", "", "", ["foo", "bar", "baz"], ("", "ba", "")),
@@ -248,7 +248,7 @@ class TestCollector:
 
 class TestCorrectingCollector:
     @pytest.mark.parametrize(
-        "text,pos,expected_prefix,expected_suffix",
+        ("text", "pos", "expected_prefix", "expected_suffix"),
         [
             ("foobar", 0, "", "foobar"),
             ("foobar", 3, "foo", "bar"),
@@ -264,7 +264,7 @@ class TestCorrectingCollector:
         assert collector.isuffix == ""
 
     @pytest.mark.parametrize(
-        "iprefix,prefix,suffix,isuffix,completions",
+        ("iprefix", "prefix", "suffix", "isuffix", "completions"),
         [
             (
                 "",

@@ -40,7 +40,7 @@ import textwrap as _textwrap
 from yuio import _typing as _t
 
 try:
-    from yuio._version import *
+    from yuio._version import *  # noqa: F403
 except ImportError:  # pragma: no cover
     raise ImportError(
         "yuio._version not found. if you are developing locally, "

@@ -60,8 +60,7 @@ class MockOStream(io.StringIO):
             if not self.__should_query_osc:
                 raise RuntimeError("terminal is not supposed to query OSC")
             self._add_to_out(self.__osc_response or self._OSC_R)
-        ret = super().write(s)
-        return ret
+        return super().write(s)
 
     def writelines(self, lines):
         for line in lines:
@@ -177,7 +176,7 @@ term_colors = yuio.term.TerminalColors(
 
 
 @pytest.mark.parametrize(
-    "level,ansi,ansi_256,ansi_true",
+    ("level", "ansi", "ansi_256", "ansi_true"),
     [
         (yuio.term.ColorSupport.ANSI, True, False, False),
         (yuio.term.ColorSupport.ANSI_256, True, True, False),
@@ -192,7 +191,7 @@ def test_color_support(level, ansi, ansi_256, ansi_true):
 
 
 @pytest.mark.parametrize(
-    "level,move,query",
+    ("level", "move", "query"),
     [
         (yuio.term.InteractiveSupport.NONE, False, False),
         (yuio.term.InteractiveSupport.MOVE_CURSOR, True, False),
@@ -200,22 +199,29 @@ def test_color_support(level, ansi, ansi_256, ansi_true):
     ],
 )
 def test_interactive_support(level, move, query):
-    term = yuio.term.Term(None, None, color_support=yuio.term.ColorSupport.ANSI, interactive_support=level)  # type: ignore
+    term = yuio.term.Term(
+        None,  # type: ignore
+        None,  # type: ignore
+        color_support=yuio.term.ColorSupport.ANSI,
+        interactive_support=level,
+    )
     assert term.can_move_cursor == move
     assert term.can_query_terminal == term.is_fully_interactive == query
-    term = yuio.term.Term(None, None, color_support=yuio.term.ColorSupport.NONE, interactive_support=level)  # type: ignore
-    assert (
-        term.can_move_cursor
-        == term.can_query_terminal
-        == term.is_fully_interactive
-        == False
+    term = yuio.term.Term(
+        None,  # type: ignore
+        None,  # type: ignore
+        color_support=yuio.term.ColorSupport.NONE,
+        interactive_support=level,
     )
+    assert not term.can_move_cursor
+    assert not term.can_query_terminal
+    assert not term.is_fully_interactive
 
 
 @pytest.mark.linux
 @pytest.mark.darwin
 @pytest.mark.parametrize(
-    "kwargs,expected_term",
+    ("kwargs", "expected_term"),
     [
         (
             {},
@@ -350,20 +356,6 @@ def test_interactive_support(level, move, query):
                 "o_tty": True,
                 "is_foreground": True,
                 "should_query_osc": True,
-            },
-            {
-                "color_support": yuio.term.ColorSupport.ANSI_256,
-                "interactive_support": yuio.term.InteractiveSupport.FULL,
-                "terminal_colors": None,  # kbhit responds, but no OSC result
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "yes"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "should_query_osc": True,
                 "osc_response": "\x1b[?c",
             },
             {
@@ -444,7 +436,7 @@ def test_capabilities_estimation(kwargs, expected_term):
 
 @pytest.mark.windows
 @pytest.mark.parametrize(
-    "kwargs,expected_term",
+    ("kwargs", "expected_term"),
     [
         (
             {},
@@ -573,20 +565,6 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "is_foreground": True,
                 "enable_vt_processing": True,
                 "should_query_osc": True,
-            },
-            {
-                "color_support": yuio.term.ColorSupport.ANSI_TRUE,
-                "interactive_support": yuio.term.InteractiveSupport.FULL,
-                "terminal_colors": None,  # kbhit responds, but no OSC result
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-                "should_query_osc": True,
                 "osc_response": "\x1b[?c",
             },
             {
@@ -667,7 +645,7 @@ def test_capabilities_estimation_windows(kwargs, expected_term):
 
 
 @pytest.mark.parametrize(
-    "color,cap,expect",
+    ("color", "cap", "expect"),
     [
         (yuio.color.Color.NONE, yuio.term.ColorSupport.NONE, ""),
         (yuio.color.Color.NONE, yuio.term.ColorSupport.ANSI, "\x1b[m"),

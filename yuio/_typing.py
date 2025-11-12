@@ -6,6 +6,7 @@
 # just keep this copyright line please :3
 
 # pyright: reportDeprecated=false
+# ruff: noqa: F403, F405, I002
 
 import re as _re
 import sys as _sys
@@ -32,7 +33,7 @@ assert _typing.Annotated is _typing_extensions.Annotated
 # Note: dataclass doesn't always recognize class vars
 # if they're re-exported from typing.
 # See https://github.com/python/cpython/issues/133956.
-del ClassVar
+del ClassVar  # noqa: F821
 
 
 def is_union(origin):

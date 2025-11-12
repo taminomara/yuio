@@ -23,7 +23,7 @@ def make_script(exitcode=0, as_shell=False):
 
 
 @pytest.mark.parametrize(
-    "logger,logger_name",
+    ("logger", "logger_name"),
     [
         (None, "yuio.exec"),
         ("custom.logger", "custom.logger"),

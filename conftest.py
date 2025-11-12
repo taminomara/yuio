@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import platform
 
@@ -6,8 +8,6 @@ from sybil import Sybil
 from sybil.parsers.codeblock import PythonCodeBlockParser
 from sybil.parsers.doctest import DocTestParser
 from sybil.parsers.rest import SkipParser
-
-# Examples use the new typing syntax.
 
 
 def _setup(*_args, **_kwargs):

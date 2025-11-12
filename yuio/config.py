@@ -721,7 +721,8 @@ def _action(
                 elif parse_many:
                     if values is yuio.MISSING:
                         values = []
-                    assert values is not None and not isinstance(values, str)
+                    assert values is not None
+                    assert not isinstance(values, str)
                     assert field.parser
                     parsed = field.parser.parse_many(values)
                 else:
@@ -923,7 +924,6 @@ class Config:
 
     @classmethod
     def __load_from_env(cls, prefix: str = "") -> _t.Self:
-
         fields = {}
 
         for name, field in cls.__get_fields().items():
@@ -1112,7 +1112,7 @@ class Config:
                         elif neg_help:
                             help = neg_help
                         else:
-                            help = f'disable <c hl/flag:sh-usage>{(prefix or "--") + flag[2:]}</c>'
+                            help = f"disable <c hl/flag:sh-usage>{(prefix or '--') + flag[2:]}</c>"
                         mutex_group.add_argument(
                             flag_neg,
                             default=yuio.MISSING,
@@ -1346,7 +1346,7 @@ class Config:
                         value = field.parser.parse_config(parsed[name])
                     except yuio.parse.ParsingError as e:
                         raise e.with_prefix(
-                            f"Can't parse field `%s%s`:", field_prefix, name
+                            "Can't parse field `%s%s`:", field_prefix, name
                         ) from None
                     fields[name] = value
 

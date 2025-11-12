@@ -378,6 +378,8 @@ Roles
 
 """
 
+# ruff: noqa: RET503
+
 from __future__ import annotations
 
 import enum
@@ -791,7 +793,7 @@ class FieldDocumenter(AttributeDocumenter):
             "\n".join(functools.reduce(operator.iadd, doc, []))
         )
         if "hide-value" in metadata:
-            return True
+            return
 
         if "type" in metadata:
             self.add_line("   :type: " + metadata["type"], sourcename)

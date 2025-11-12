@@ -3,11 +3,12 @@ import string
 
 import pytest
 
+import yuio.color
 import yuio.complete
 import yuio.term
 import yuio.theme
 import yuio.widget
-from yuio import _t
+from yuio import _typing as _t
 
 from .conftest import RcCompare, WidgetChecker
 
@@ -966,7 +967,7 @@ class TestInput:
         widget_checker.check(yuio.widget.Input(text="xxxxxxxxxxxxxxxxxxxx"))
 
     @pytest.mark.parametrize(
-        "text,pos,cursor_pos,events",
+        ("text", "pos", "cursor_pos", "events"),
         [
             (
                 "foo bar qux duo",
@@ -1639,7 +1640,7 @@ class TestInput:
 
     @pytest.mark.parametrize("undo_method", ["undo", "yank"])
     @pytest.mark.parametrize(
-        "text,pos,cursor_pos,event,end_text,end_pos,end_cursor_pos",
+        ("text", "pos", "cursor_pos", "event", "end_text", "end_pos", "end_cursor_pos"),
         [
             (
                 "foobar",
@@ -1766,7 +1767,7 @@ class TestInput:
         widget_checker.check(widget)
 
     @pytest.mark.parametrize(
-        "text,pos,widget_checker",
+        ("text", "pos", "widget_checker"),
         [
             # Undo single char
             (
@@ -2264,7 +2265,7 @@ class TestGrid:
         assert grid.get_option() is b
 
     @pytest.mark.parametrize(
-        "index,events",
+        ("index", "events"),
         [
             (
                 0,
@@ -2529,19 +2530,6 @@ class TestGrid:
                 ],
             ),
             (
-                2,
-                [
-                    (
-                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
-                        10,
-                    ),
-                    (
-                        yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP),
-                        5,
-                    ),
-                ],
-            ),
-            (
                 10,
                 [
                     (
@@ -2707,7 +2695,7 @@ class TestGrid:
         widget_checker.check(widget)
 
     @pytest.mark.parametrize(
-        "index,events",
+        ("index", "events"),
         [
             (
                 0,
@@ -2769,7 +2757,7 @@ class TestGrid:
         widget_checker.check(widget)
 
     @pytest.mark.parametrize(
-        "key,index",
+        ("key", "index"),
         [
             *((k, i) for i, k in enumerate(string.digits)),
             *((k, i + 10) for i, k in enumerate(string.ascii_lowercase)),

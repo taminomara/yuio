@@ -2614,14 +2614,15 @@ class Path(ValueParser[pathlib.Path]):
             return None
 
     def _validate(self, value: pathlib.Path, /):
-        if self.__extensions is not None:
-            if not any(value.name.endswith(ext) for ext in self.__extensions):
-                raise ParsingError(
-                    "<c path>%s</c> should have extension "
-                    + " or ".join(["`%s`"] * len(self.__extensions)),
-                    value,
-                    *self.__extensions,
-                )
+        if self.__extensions is not None and not any(
+            value.name.endswith(ext) for ext in self.__extensions
+        ):
+            raise ParsingError(
+                "<c path>%s</c> should have extension "
+                + " or ".join(["`%s`"] * len(self.__extensions)),
+                value,
+                *self.__extensions,
+            )
 
     def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.File(extensions=self.__extensions)
@@ -3819,12 +3820,12 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
                         return s
                 return desc
 
-            desc = f"|".join(
+            desc = "|".join(
                 strip_curly_brackets(parser.describe_or_def()) for parser in self._inner
             )
             desc = f"{{{desc}}}"
         else:
-            desc = f"|".join(parser.describe_or_def() for parser in self._inner)
+            desc = "|".join(parser.describe_or_def() for parser in self._inner)
         return desc
 
     def describe_value(self, value: object) -> str | None:
@@ -4694,7 +4695,7 @@ def from_type_hint(ty: _t.Any, /) -> Parser[object]:
 
 
 def _from_type_hint(ty: _t.Any, /) -> Parser[object]:
-    if isinstance(ty, str) or isinstance(ty, _t.ForwardRef):
+    if isinstance(ty, (str, _t.ForwardRef)):
         raise TypeError(f"forward references are not supported here: {ty}")
 
     origin = _t.get_origin(ty)

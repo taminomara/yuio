@@ -1324,7 +1324,7 @@ class _CompleterSerializer:
                 " ".join(
                     re.sub(
                         r"[\\ ]",
-                        lambda s: "\\S" if s.group() == " " else f"\\L",
+                        lambda s: "\\S" if s.group() == " " else "\\L",
                         str(m),
                     )
                     or ""
@@ -1348,10 +1348,7 @@ class _CompleterSerializer:
     def _collect_nested_item(self, item: object):
         if isinstance(item, _CompleterSerializer.Model):
             item.collect(self)
-        elif isinstance(item, list):
-            for sub_item in item:
-                self._collect_nested_item(sub_item)
-        elif isinstance(item, tuple):
+        elif isinstance(item, (list, tuple)):
             for sub_item in item:
                 self._collect_nested_item(sub_item)
 

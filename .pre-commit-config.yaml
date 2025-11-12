@@ -1,16 +1,16 @@
 repos:
   - repo: local
     hooks:
-      - id: black
-        name: black
+      - id: ruff-check
+        name: ruff check
         language: system
-        entry: black
+        entry: ruff check --force-exclude
         types_or: [python, pyi]
         require_serial: true
-      - id: isort
-        name: isort
+      - id: ruff-format
+        name: ruff format
         language: system
-        entry: isort --filter-files
+        entry: ruff format --force-exclude
         types_or: [python, pyi]
         require_serial: true
       - id: check-preamble

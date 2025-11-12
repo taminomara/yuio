@@ -16,7 +16,7 @@ from yuio import _t
 from .conftest import IOMocker, RcCompare
 
 
-@pytest.fixture()
+@pytest.fixture
 def enable_bg_updates() -> bool:
     return False
 
@@ -536,7 +536,8 @@ class TestAsk:
 
         with io_mocker.mock():
             assert yuio.io.ask[bool](
-                "Enter some numbers", parser=yuio.parse.List(yuio.parse.Int())  # type: ignore
+                "Enter some numbers",
+                parser=yuio.parse.List(yuio.parse.Int()),  # type: ignore
             ) == [123, 456]
 
 
@@ -755,7 +756,8 @@ class TestAskNonInteractive:
 
         with io_mocker.mock():
             assert yuio.io.ask[bool](
-                "Enter some numbers", parser=yuio.parse.List(yuio.parse.Int())  # type: ignore
+                "Enter some numbers",
+                parser=yuio.parse.List(yuio.parse.Int()),  # type: ignore
             ) == [123, 456]
 
 
@@ -930,7 +932,7 @@ class TestDetectEditor:
     def setup_env(self, monkeypatch):
         monkeypatch.delenv("EDITOR", raising=False)
         monkeypatch.delenv("VISUAL", raising=False)
-        yield
+        return
 
     @pytest.mark.linux
     @pytest.mark.darwin
@@ -1046,7 +1048,7 @@ class TestEditWin:
 
 
 class TestTask:
-    @pytest.fixture()
+    @pytest.fixture
     def width(self):
         return 40
 
@@ -1269,7 +1271,7 @@ class TestTask:
                 io_mocker.mark()
 
     @pytest.mark.parametrize(
-        "args,kwargs,comment,expected",
+        ("args", "kwargs", "comment", "expected"),
         [
             (
                 (0.3,),
@@ -1428,7 +1430,7 @@ class TestTask:
                 io_mocker.mark()
 
     @pytest.mark.parametrize(
-        "args,kwargs,expected",
+        ("args", "kwargs", "expected"),
         [
             (
                 (50, 100),
@@ -1519,7 +1521,7 @@ class TestTask:
                 io_mocker.mark()
 
     @pytest.mark.parametrize(
-        "args,kwargs,expected",
+        ("args", "kwargs", "expected"),
         [
             (
                 (50, 100),
@@ -1624,7 +1626,7 @@ class TestTask:
                 io_mocker.mark()
 
     @pytest.mark.parametrize(
-        "kwargs,expected_format",
+        ("kwargs", "expected_format"),
         [
             ({}, "{}/{}"),
             ({"ndigits": 2}, "{}.00/{}.00"),
@@ -1677,7 +1679,7 @@ class TestTask:
         io_mocker.expect_mark()
         io_mocker.expect_screen(
             [
-                f"> task - done                           ",
+                "> task - done                           ",
             ]
         )
 
@@ -1852,12 +1854,12 @@ class TestTask:
 
 
 class TestSuspendOutput:
-    @pytest.fixture()
+    @pytest.fixture
     def wrap_streams(self) -> bool:
         return True
 
     @pytest.mark.parametrize(
-        "meth,args,expected",
+        ("meth", "args", "expected"),
         [
             (
                 "info",
@@ -1989,7 +1991,7 @@ class TestSuspendOutput:
                 io_mocker.mark()
 
     @pytest.mark.parametrize(
-        "meth,args,expected",
+        ("meth", "args", "expected"),
         [
             (
                 "warning",

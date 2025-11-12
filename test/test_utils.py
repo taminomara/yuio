@@ -4,7 +4,7 @@ import yuio
 
 
 @pytest.mark.parametrize(
-    "given,expected",
+    ("given", "expected"),
     [
         ("", ""),
         ("foo", "foo"),

@@ -5,6 +5,8 @@
 # You're free to copy this file to your project and edit it for your needs,
 # just keep this copyright line please :3
 
+from __future__ import annotations
+
 import yuio.app
 import yuio.io
 import yuio.term

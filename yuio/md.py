@@ -873,7 +873,7 @@ class _MdParser:
         self._state = self.Default()
 
     def _handle_line_Code(self, line: str):
-        assert type(self._state) == self.Code
+        assert type(self._state) is self.Code
         if self._is_blank(line) or line.startswith("    "):
             self._state.end = self._cur
             self._state.lines.append(line[4:])
@@ -882,11 +882,11 @@ class _MdParser:
             self._handle_line_Default(line)
 
     def _handle_lazy_line_Code(self, line: str) -> bool:
-        assert type(self._state) == self.Code
+        assert type(self._state) is self.Code
         return False  # No lazy continuations for code!
 
     def _flush_Code(self):
-        assert type(self._state) == self.Code
+        assert type(self._state) is self.Code
         while self._state.lines and self._is_blank(self._state.lines[-1]):
             self._state.lines.pop()
         self._nodes.append(
@@ -900,7 +900,7 @@ class _MdParser:
         self._state = self.Default()
 
     def _handle_line_FencedCode(self, line: str):
-        assert type(self._state) == self.FencedCode
+        assert type(self._state) is self.FencedCode
         if (
             (match := _CODE_FENCE_END_RE.match(line))
             and match.group("fence")[0] == self._state.fence_symbol
@@ -918,11 +918,11 @@ class _MdParser:
             self._state.lines.append(line)
 
     def _handle_lazy_line_FencedCode(self, line: str) -> bool:
-        assert type(self._state) == self.FencedCode
+        assert type(self._state) is self.FencedCode
         return False
 
     def _flush_FencedCode(self):
-        assert type(self._state) == self.FencedCode
+        assert type(self._state) is self.FencedCode
         self._nodes.append(
             Code(
                 lines=self._state.lines,
@@ -934,7 +934,7 @@ class _MdParser:
         self._state = self.Default()
 
     def _handle_line_Paragraph(self, line: str):
-        assert type(self._state) == self.Paragraph
+        assert type(self._state) is self.Paragraph
         if match := _SETEXT_HEADING_RE.match(line):
             level = 1 if match.group("level") == "=" else 2
             self._nodes.append(
@@ -963,7 +963,7 @@ class _MdParser:
             self._state.lines.append(line)
 
     def _handle_lazy_line_Paragraph(self, line: str) -> bool:
-        assert type(self._state) == self.Paragraph
+        assert type(self._state) is self.Paragraph
         if (
             self._is_blank(line)
             or _THEMATIC_BREAK_RE.match(line)
@@ -982,7 +982,7 @@ class _MdParser:
             return True
 
     def _flush_Paragraph(self):
-        assert type(self._state) == self.Paragraph
+        assert type(self._state) is self.Paragraph
         self._nodes.append(
             Paragraph(
                 lines=self._state.lines, start=self._state.start, end=self._state.end
@@ -991,7 +991,7 @@ class _MdParser:
         self._state = self.Default()
 
     def _handle_line_Default(self, line: str):
-        assert type(self._state) == self.Default
+        assert type(self._state) is self.Default
         if self._is_blank(line):
             pass  # do nothing
         elif _THEMATIC_BREAK_RE.match(line):
@@ -1042,11 +1042,11 @@ class _MdParser:
             self._state = self.Paragraph(self._cur, self._cur, [line])
 
     def _handle_lazy_line_Default(self, line: str) -> bool:
-        assert type(self._state) == self.Default
+        assert type(self._state) is self.Default
         return False
 
     def _flush_Default(self):
-        assert type(self._state) == self.Default
+        assert type(self._state) is self.Default
 
     def _finalize(self) -> list[AstBase]:
         self._flush()

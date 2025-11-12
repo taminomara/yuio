@@ -19,14 +19,14 @@ class TestStr:
     def test_basics(self):
         parser = yuio.parse.Str()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<str>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<str>"
-        assert parser.describe_value("foo") == None
+        assert parser.describe_value("foo") is None
         assert parser.describe_value_or_def("foo") == "foo"
 
     def test_json_schema(self):
@@ -44,9 +44,6 @@ class TestStr:
         assert parser.parse_config("Test") == "Test"
         with pytest.raises(ValueError, match=r"Expected `str`"):
             parser.parse_config(10)
-
-    def test_from_type_hint(self):
-        assert isinstance(yuio.parse.from_type_hint(str), yuio.parse.Str)
 
     def test_lower(self):
         parser = yuio.parse.Lower(yuio.parse.Str())
@@ -139,14 +136,14 @@ class TestInt:
     def test_basics(self):
         parser = yuio.parse.Int()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<int>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(10) == None
+        assert parser.describe_value(10) is None
         assert parser.describe_value_or_def(10) == "10"
 
     def test_json_schema(self):
@@ -201,14 +198,14 @@ class TestFloat:
     def test_basics(self):
         parser = yuio.parse.Float()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<float>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<float>"
-        assert parser.describe_value(10.5) == None
+        assert parser.describe_value(10.5) is None
         assert parser.describe_value_or_def(10.5) == "10.5"
 
     def test_json_schema(self):
@@ -262,7 +259,7 @@ class TestBool:
     def test_basics(self):
         parser = yuio.parse.Bool()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() == "{yes|no}"
@@ -280,7 +277,7 @@ class TestBool:
             parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
             == yuio.json_schema.Boolean()
         )
-        assert parser.to_json_value(True) == True
+        assert parser.to_json_value(True)
 
     def test_parse(self):
         parser = yuio.parse.Bool()
@@ -290,7 +287,7 @@ class TestBool:
         assert parser.parse("n") is False
         assert parser.parse("no") is False
         assert parser.parse("nO") is False
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"'yes' or 'no'"):
             parser.parse("Meh")
         assert parser.parse_config(True) is True
         assert parser.parse_config(False) is False
@@ -341,27 +338,27 @@ class TestEnum:
     def test_basics_by_value(self):
         parser = yuio.parse.Enum(self.Cuteness)
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "{Cats|Dogs|:3}"
         assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "{Cats|Dogs|:3}"
-        assert parser.describe_value(self.Cuteness.BLAHAJ) == None
+        assert parser.describe_value(self.Cuteness.BLAHAJ) is None
         assert parser.describe_value_or_def(self.Cuteness.BLAHAJ) == ":3"
 
     def test_basics_by_name(self):
         parser = yuio.parse.Enum(self.Cuteness, by_name=True)
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "{CATS|DOGS|BLAHAJ}"
         assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "{CATS|DOGS|BLAHAJ}"
-        assert parser.describe_value(self.Cuteness.BLAHAJ) == None
+        assert parser.describe_value(self.Cuteness.BLAHAJ) is None
         assert parser.describe_value_or_def(self.Cuteness.BLAHAJ) == "BLAHAJ"
 
     def test_json_schema_by_value(self):
@@ -462,9 +459,9 @@ class TestEnum:
         with pytest.raises(ValueError, match=r"Expected `str`"):
             parser.parse_config(10)
 
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "{RED|GREEN|BLUE}"
-        assert parser.describe_value(self.Colors.RED) == None
+        assert parser.describe_value(self.Colors.RED) is None
         assert parser.describe_value_or_def(self.Colors.RED) == "RED"
 
     def test_to_dash_case(self):
@@ -546,14 +543,14 @@ class TestDecimal:
     def test_basics(self):
         parser = yuio.parse.Decimal()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<decimal>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<decimal>"
-        assert parser.describe_value(Decimal(10)) == None
+        assert parser.describe_value(Decimal(10)) is None
         assert parser.describe_value_or_def(Decimal(10)) == "10"
 
     def test_json_schema(self):
@@ -616,14 +613,14 @@ class TestFraction:
     def test_basics(self):
         parser = yuio.parse.Fraction()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<fraction>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<fraction>"
-        assert parser.describe_value(Fraction(10)) == None
+        assert parser.describe_value(Fraction(10)) is None
         assert parser.describe_value_or_def(Fraction(10)) == "10"
 
     def test_json_schema(self):
@@ -695,14 +692,14 @@ class TestJson:
     def test_basics(self):
         parser = yuio.parse.Json()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<json>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<json>"
-        assert parser.describe_value(dict(a=0)) == None
+        assert parser.describe_value(dict(a=0)) is None
         assert parser.describe_value_or_def(dict(a=0)) == "{'a': 0}"
 
     def test_unstructured(self):
@@ -781,14 +778,14 @@ class TestDateTime:
     def test_basics(self):
         parser = yuio.parse.DateTime()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<date-time>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<date-time>"
-        assert parser.describe_value(datetime.datetime(2025, 1, 1)) == None
+        assert parser.describe_value(datetime.datetime(2025, 1, 1)) is None
         assert (
             parser.describe_value_or_def(datetime.datetime(2025, 1, 1))
             == "2025-01-01 00:00:00"
@@ -874,14 +871,14 @@ class TestDate:
     def test_basics(self):
         parser = yuio.parse.Date()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<date>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<date>"
-        assert parser.describe_value(datetime.date(2025, 1, 1)) == None
+        assert parser.describe_value(datetime.date(2025, 1, 1)) is None
         assert parser.describe_value_or_def(datetime.date(2025, 1, 1)) == "2025-01-01"
 
     def test_json_schema(self):
@@ -953,14 +950,14 @@ class TestTime:
     def test_basics(self):
         parser = yuio.parse.Time()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<time>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<time>"
-        assert parser.describe_value(datetime.time()) == None
+        assert parser.describe_value(datetime.time()) is None
         assert parser.describe_value_or_def(datetime.time()) == "00:00:00"
 
     def test_json_schema(self):
@@ -1030,14 +1027,14 @@ class TestTimeDelta:
     def test_basics(self):
         parser = yuio.parse.TimeDelta()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<time-delta>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<time-delta>"
-        assert parser.describe_value(datetime.timedelta(hours=10)) == None
+        assert parser.describe_value(datetime.timedelta(hours=10)) is None
         assert parser.describe_value_or_def(datetime.timedelta(hours=10)) == "10:00:00"
 
     def test_json_schema(self):
@@ -1170,14 +1167,14 @@ class TestPath:
     def test_basics(self):
         parser = yuio.parse.Path()
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<path>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<path>"
-        assert parser.describe_value(pathlib.Path("/")) == None
+        assert parser.describe_value(pathlib.Path("/")) is None
         assert parser.describe_value_or_def(pathlib.Path("/")) == os.path.sep
 
     def test_json_schema(self):
@@ -1487,7 +1484,9 @@ class TestBound:
         with pytest.raises(ValueError, match=r"should be greater than `0`"):
             parser.parse("0")
         with pytest.raises(TypeError):
-            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Gt(yuio.parse.Int(), 0, 0)])  # type: ignore
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Gt(yuio.parse.Int(), 0, 0)]  # type: ignore
+            )
 
     def test_ge_annotated(self):
         parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Ge(0)])
@@ -1496,7 +1495,9 @@ class TestBound:
         with pytest.raises(ValueError, match=r"should be greater than or equal to `0`"):
             parser.parse("-1")
         with pytest.raises(TypeError):
-            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Ge(yuio.parse.Int(), 0, 0)])  # type: ignore
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Ge(yuio.parse.Int(), 0, 0)]  # type: ignore
+            )
 
     def test_lt_annotated(self):
         parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Lt(10)])
@@ -1506,7 +1507,9 @@ class TestBound:
         with pytest.raises(ValueError, match=r"should be lesser than `10`"):
             parser.parse("11")
         with pytest.raises(TypeError):
-            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Lt(yuio.parse.Int(), 10, 0)])  # type: ignore
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Lt(yuio.parse.Int(), 10, 0)]  # type: ignore
+            )
 
     def test_le_annotated(self):
         parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Le(10)])
@@ -1515,7 +1518,9 @@ class TestBound:
         with pytest.raises(ValueError, match=r"should be lesser than or equal to `10`"):
             parser.parse("11")
         with pytest.raises(TypeError):
-            yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Le(yuio.parse.Int(), 10, 0)])  # type: ignore
+            yuio.parse.from_type_hint(
+                _t.Annotated[int, yuio.parse.Le(yuio.parse.Int(), 10, 0)]  # type: ignore
+            )
 
 
 class TestOneOf:
@@ -1585,14 +1590,14 @@ class TestMap:
             yuio.parse.Int(), TestMap.Wrapper, lambda wrapped: wrapped.value
         )
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<int>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(TestMap.Wrapper(10)) == None
+        assert parser.describe_value(TestMap.Wrapper(10)) is None
         assert parser.describe_value_or_def(TestMap.Wrapper(10)) == "10"
 
     def test_basics_collection(self):
@@ -1606,18 +1611,18 @@ class TestMap:
         assert parser.parse_many(["1", "2", "3"]) == TestMap.Wrapper([1, 2, 3])
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
         assert parser.describe_value(TestMap.Wrapper([])) == ""
         assert parser.describe_value_or_def(TestMap.Wrapper([])) == ""
 
     def test_same_type(self):
         parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2)
-        assert parser.describe_value(20) == None
+        assert parser.describe_value(20) is None
         assert parser.describe_value_or_def(20) == "20"
 
         parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2, lambda x: x // 2)
-        assert parser.describe_value(20) == None
+        assert parser.describe_value(20) is None
         assert parser.describe_value_or_def(20) == "10"
 
     def test_json_schema(self):
@@ -1626,7 +1631,7 @@ class TestMap:
             parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
             == yuio.json_schema.Boolean()
         )
-        assert parser.to_json_value(True) == False
+        assert not parser.to_json_value(True)
 
     def test_parse(self):
         parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2)
@@ -1661,14 +1666,14 @@ class TestApply:
     def test_basics(self):
         parser = yuio.parse.Apply(yuio.parse.Int(), lambda x: None)
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<int>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(10) == None
+        assert parser.describe_value(10) is None
         assert parser.describe_value_or_def(10) == "10"
 
     def test_basics_collection(self):
@@ -1678,7 +1683,7 @@ class TestApply:
         assert parser.parse_many(["1", "2", "3"]) == [1, 2, 3]
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
         assert parser.describe_value([]) == ""
         assert parser.describe_value_or_def([]) == ""
@@ -1758,7 +1763,7 @@ class TestSimpleCollections:
         assert parser.parse_many(["1", "2", "3"]) == ctor([1, 2, 3])
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
         assert parser.describe_value(ctor([1, 2, 3])) == "1 2 3"
         assert parser.describe_value_or_def(ctor([1, 2, 3])) == "1 2 3"
@@ -1787,7 +1792,7 @@ class TestSimpleCollections:
         assert parser.parse_many(["1", "2", "3"]) == ctor([1, 2, 3])
         assert parser.describe() == "<int>[,<int>[,...]]"
         assert parser.describe_or_def() == "<int>[,<int>[,...]]"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
         assert parser.describe_value(ctor([1, 2, 3])) == "1,2,3"
         assert parser.describe_value_or_def(ctor([1, 2, 3])) == "1,2,3"
@@ -2078,14 +2083,14 @@ class TestOptional:
     def test_basics(self):
         parser = yuio.parse.Optional(yuio.parse.Int())
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() == None
+        assert parser.describe() is None
         assert parser.describe_or_def() == "<int>"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(10) == None
+        assert parser.describe_value(10) is None
         assert parser.describe_value_or_def(10) == "10"
         assert parser.describe_value(None) == "<none>"
         assert parser.describe_value_or_def(None) == "<none>"
@@ -2107,7 +2112,7 @@ class TestOptional:
         assert parser.parse_many(["1", "2", "3"]) == [1, 2, 3]
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
-        assert parser.describe_many() == None
+        assert parser.describe_many() is None
         assert parser.describe_many_or_def() == "<int>"
         assert parser.describe_value([]) == ""
         assert parser.describe_value_or_def([]) == ""
@@ -2118,7 +2123,7 @@ class TestOptional:
         parser = yuio.parse.Optional(yuio.parse.Int())
         assert parser.parse("1") == 1
         assert parser.parse_config(1) == 1
-        assert parser.parse_config(None) == None
+        assert parser.parse_config(None) is None
         assert parser.supports_parse_many() is False
 
     def test_partial(self):
@@ -2130,7 +2135,7 @@ class TestOptional:
         parser = yuio.parse.from_type_hint(
             _t.Annotated[list[int], yuio.parse.Optional()]
         )
-        assert parser.parse_config(None) == None
+        assert parser.parse_config(None) is None
         assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
 
     def test_from_type_hint_annotated_non_partial(self):
@@ -2147,14 +2152,14 @@ class TestUnion:
     def test_basics(self):
         parser = yuio.parse.Union(yuio.parse.Int(), yuio.parse.Str())
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() == "{<int>|<str>}"
         assert parser.describe_or_def() == "{<int>|<str>}"
         assert parser.describe_many() == "{<int>|<str>}"
         assert parser.describe_many_or_def() == "{<int>|<str>}"
-        assert parser.describe_value(10) == None
+        assert parser.describe_value(10) is None
         assert parser.describe_value_or_def(10) == "10"
 
     def test_json_schema(self):
@@ -2228,14 +2233,14 @@ class TestWithMeta:
     def test_basics(self):
         parser = yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() == None
+        assert parser.get_nargs() is None
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() == "desc"
         assert parser.describe_or_def() == "desc"
         assert parser.describe_many() == "desc"
         assert parser.describe_many_or_def() == "desc"
-        assert parser.describe_value(10) == None
+        assert parser.describe_value(10) is None
         assert parser.describe_value_or_def(10) == "10"
 
     def test_json_schema(self):
