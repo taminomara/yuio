@@ -39,7 +39,7 @@ test = [
     "pyright==1.1.407",
     "pytest-cov==7.0.0",
     "pytest-regressions==2.8.3",
-    "pytest==8.4.2",
+    "pytest==9.0.1",
     "PyYaml==6.0.3",
     "sybil==9.2.0",
     "toml==0.10.2",
