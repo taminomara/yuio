@@ -52,7 +52,7 @@ doc = [
 ]
 lint = [
     "ruff==0.14.4",
-    "pre-commit==4.3.0",
+    "pre-commit==4.4.0",
 ]
 ci = [
     "PyGithub==2.8.1",
