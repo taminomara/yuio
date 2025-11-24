@@ -45,7 +45,7 @@ test = [
 doc = [
     "furo==2025.9.25",
     "sphinx_design==0.6.1",
-    "sphinx-vhs==1.2.0",
+    "sphinx-vhs==1.3.0",
     "sybil==9.2.0",
 ]
 lint = ["ruff==0.14.6", "pre-commit==4.5.0"]
