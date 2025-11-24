@@ -25,6 +25,5 @@ updates:
         - "virtualenv-pyenv"
       style:
         patterns:
-        - "black"
-        - "isort"
+        - "ruff"
         - "pre-commit"
