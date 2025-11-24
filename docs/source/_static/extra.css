@@ -1,10 +1,54 @@
+@import url("https://fonts.googleapis.com/css2?family=Cascadia+Mono:ital,wght@0,200..700;1,200..700&display=swap");
+
 .sig + .sig {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
-  padding-top: .05rem;
+  padding-top: 0.05rem;
 }
-.sig:has(+.sig) {
+.sig:has(+ .sig) {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-  padding-bottom: .05rem;
+  padding-bottom: 0.05rem;
+}
+
+body {
+  --font-stack--monospace: "Cascadia Mono", "SFMono-Regular", Menlo, Consolas,
+    Monaco, "Liberation Mono", "Lucida Console", monospace;
+}
+
+.sig:not(.sig-inline) {
+  font-weight: 700;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-weight: 350;
+}
+
+pre.ascii-graphics {
+  line-height: 1.3 !important;
+}
+
+.samp em::before {
+  content: "{";
+  font-style: normal;
+  color: var(--color-foreground-muted);
+}
+
+.samp em::after {
+  content: "}";
+  font-style: normal;
+  color: var(--color-foreground-muted);
+}
+
+.toc-tree a.reference code {
+  white-space: nowrap;
+}
+
+.toc-scroll li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-toc-item-text);
 }

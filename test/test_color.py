@@ -55,6 +55,8 @@ import yuio.color
                 dim=False,
                 italic=False,
                 underline=False,
+                inverse=False,
+                blink=False,
             ),
         ),
         (
@@ -67,6 +69,8 @@ import yuio.color
                 dim=False,
                 italic=False,
                 underline=False,
+                inverse=False,
+                blink=False,
             ),
         ),
         (
@@ -80,6 +84,8 @@ import yuio.color
                 dim=True,
                 italic=False,
                 underline=False,
+                inverse=False,
+                blink=False,
             ),
         ),
         (
@@ -93,6 +99,8 @@ import yuio.color
                 dim=False,
                 italic=False,
                 underline=False,
+                inverse=False,
+                blink=False,
             ),
         ),
     ],

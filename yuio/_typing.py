@@ -44,8 +44,6 @@ if TYPE_CHECKING:
     StrRePattern: TypeAlias = _re.Pattern[str]
     StrReMatch: TypeAlias = _re.Match[str]
 
-    def type_repr(ty: Any) -> str: ...
-
 else:
     try:
         StrRePattern = _re.Pattern[str]
@@ -54,15 +52,22 @@ else:
         StrRePattern = _re.Pattern
         StrReMatch = _re.Match
 
-    if "type_repr" not in globals():
 
-        def type_repr(ty: Any) -> str:
-            if isinstance(
-                value, (type, _types.FunctionType, _types.BuiltinFunctionType)
-            ):
-                if value.__module__ == "builtins":
-                    return value.__qualname__
-                return f"{value.__module__}.{value.__qualname__}"
-            if value is ...:
-                return "..."
-            return repr(value)
+if _sys.version_info < (3, 11):
+
+    def type_repr(obj: Any) -> str:
+        # Better `type_repr` for older pythons.
+        if origin := get_origin(obj):
+            return type_repr(origin) + type_repr(get_args(obj))
+        if isinstance(obj, (type, _types.FunctionType, _types.BuiltinFunctionType)):
+            if obj.__module__ == "builtins":
+                return obj.__qualname__
+            return f"{obj.__module__}.{obj.__qualname__}"
+        if obj is ...:
+            return "..."
+        if isinstance(obj, _types.FunctionType):
+            return obj.__name__
+        if isinstance(obj, tuple):
+            # Special case for `repr` of types with `ParamSpec`:
+            return "[" + ", ".join(type_repr(t) for t in obj) + "]"
+        return repr(obj)

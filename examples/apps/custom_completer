@@ -16,7 +16,7 @@ class Completer(yuio.complete.Completer):
 def main(
     args: list[str] = yuio.app.positional(completer=Completer()),
 ):
-    yuio.io.info("args = `%r`", args)
+    yuio.io.info("args = `%#r`", args)
 
 
 if __name__ == "__main__":

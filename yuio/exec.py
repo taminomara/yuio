@@ -35,7 +35,7 @@ __all__ = [
     "exec",
 ]
 
-_LOGGER = logging.getLogger("yuio.exec")
+_logger = logging.getLogger(__name__)
 
 
 class ExecError(subprocess.CalledProcessError):
@@ -148,7 +148,7 @@ def exec(
         define the environment variables for the command.
     :param input:
         string with command's stdin. If ``text`` is set to :data:`False`, this should
-        be :class:`bytes`, otherwise it should be a :data:`str`.
+        be :class:`bytes`, otherwise it should be a :class:`str`.
     :param capture_io:
         if set to :data:`False`, process' stdout and stderr are not captured;
         ``logger`` and ``level`` arguments can't be given in this case, and this
@@ -180,7 +180,7 @@ def exec(
     level = level if level is not None else logging.DEBUG
 
     if logger is None:
-        logger = _LOGGER
+        logger = _logger
     elif isinstance(logger, str):
         logger = logging.getLogger(logger)
 

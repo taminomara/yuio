@@ -36,43 +36,33 @@ import os as _os
 import re as _re
 import sys as _sys
 import textwrap as _textwrap
+import warnings
 
 from yuio import _typing as _t
 
 try:
     from yuio._version import *  # noqa: F403
-except ImportError:  # pragma: no cover
+except ImportError:
     raise ImportError(
         "yuio._version not found. if you are developing locally, "
         "run `pip install -e .` to generate it"
     )
 
 __all__ = [
-    "SupportsLt",
-    "to_dash_case",
-    "Disabled",
     "DISABLED",
-    "Missing",
+    "GROUP",
     "MISSING",
-    "Positional",
     "POSITIONAL",
+    "Disabled",
+    "Group",
+    "Missing",
+    "Positional",
+    "SupportsLt",
+    "YuioWarning",
+    "dedent",
+    "enable_internal_logging",
+    "to_dash_case",
 ]
-
-_logger = _logging.getLogger("yuio.internal")
-_logger.setLevel("DEBUG")  # handlers will do all the filtering
-_logger.propagate = False
-
-_debug = "YUIO_DEBUG" in _os.environ
-if _debug:  # pragma: no cover
-    __level = _os.environ.get("YUIO_DEBUG_LEVEL", "DEBUG")
-    __file = _os.environ.get("YUIO_DEBUG_FILE") or "yuio.log"
-    __file_handler = _logging.FileHandler(__file, delay=True)
-    __file_handler.setLevel(__level)
-    _logger.addHandler(__file_handler)
-
-__stderr_handler = _logging.StreamHandler(_sys.__stderr__)
-__stderr_handler.setLevel("CRITICAL")
-_logger.addHandler(__stderr_handler)
 
 
 _T_contra = _t.TypeVar("_T_contra", contravariant=True)
@@ -147,10 +137,10 @@ def dedent(msg: str, /):
         ::
 
             >>> def foo():
-            ...     \"\"\"Documentation for function ``foo``.
+            ...     \"""Documentation for function ``foo``.
             ...
             ...     Leading indent is stripped.
-            ...     \"\"\"
+            ...     \"""
             ...
             ...     ...
 
@@ -159,15 +149,53 @@ def dedent(msg: str, /):
 
     """
 
+    if not msg:
+        return msg
+
     first, *rest = msg.splitlines(keepends=True)
-    return (first.strip() + "\n" + _textwrap.dedent("".join(rest))).strip() + "\n"
+    return (first.rstrip() + "\n" + _textwrap.dedent("".join(rest))).strip() + "\n"
 
 
 _COMMENT_RE = _re.compile(r"^\s*#:(.*)\r?\n?$")
 _RST_ROLE_RE = _re.compile(
-    r"(?::[\w+.:-]+:|__?)?`((?:[^`\n\\]|\\.)+)`(?::[\w+.:-]+:|__?)?"
+    r"(?::[\w+.:-]+:|__?)?`((?:[^`\n\\]|\\.)+)`(?::[\w+.:-]+:|__?)?", _re.DOTALL
 )
-_RST_ROLE_TITLE_RE = _re.compile(r"^((?:[^`\n\\]|\\.)*) <(?:[^`\n\\]|\\.)*>$")
+_RST_ROLE_TITLE_RE = _re.compile(
+    r"^((?:[^`\n\\]|\\.)*) <(?:[^`\n\\]|\\.)*>$", _re.DOTALL
+)
+_ESC_RE = _re.compile(r"\\(.)", _re.DOTALL)
+
+
+def _rst_esc_repl(match: _re.Match[str]):
+    symbol = match.group(1)
+    if symbol in "\n\r\t\v\b":
+        return " "
+    return symbol
+
+
+def _rst_repl(match: _re.Match[str]):
+    full: str = match.group(0)
+    text: str = match.group(1)
+    if full.startswith(":") or full.endswith(":"):
+        if title_match := _RST_ROLE_TITLE_RE.match(text):
+            text = title_match.group(1)
+        elif text.startswith("~"):
+            text = text.rsplit(".", maxsplit=1)[-1]
+    text = _ESC_RE.sub(_rst_esc_repl, text)
+    n_backticks = 0
+    cur_n_backticks = 0
+    for ch in text:
+        if ch == "`":
+            cur_n_backticks += 1
+        else:
+            n_backticks = max(cur_n_backticks, n_backticks)
+            cur_n_backticks = 0
+    n_backticks = max(cur_n_backticks, n_backticks)
+    if not n_backticks:
+        return f"`{text}`"
+    else:
+        bt = "`" * (n_backticks + 1)
+        return f"{bt} {text} {bt}"
 
 
 def _process_docstring(msg: str, /):
@@ -175,14 +203,6 @@ def _process_docstring(msg: str, /):
 
     if (index := value.find("\n\n")) != -1:
         value = value[:index]
-
-    def _rst_repl(match: _re.Match[str]):
-        text: str = match.group(1)
-        if title_match := _RST_ROLE_TITLE_RE.match(text):
-            text = title_match.group(1)
-        elif text.startswith("~"):
-            text = text.rsplit(".", maxsplit=1)[-1]
-        return f"`{text}`"
 
     value = _RST_ROLE_RE.sub(_rst_repl, value)
 
@@ -214,11 +234,18 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
     import inspect
     import itertools
 
-    if "<locals>" in obj.__qualname__:
+    if (qualname := getattr(obj, "__qualname__", None)) is None:
+        # Not a known object.
+        return {}
+
+    if "<locals>" in qualname:
         # This will not work as expected!
         return {}
 
-    sourcelines, _ = inspect.getsourcelines(obj)
+    try:
+        sourcelines, _ = inspect.getsourcelines(obj)
+    except TypeError:
+        return {}
 
     docs: dict[str, str] = {}
 
@@ -253,7 +280,7 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
             (field.lineno, field.arg)
             for field in itertools.chain(cdef.args.args, cdef.args.kwonlyargs)
         ]
-    else:
+    else:  # pragma: no cover
         return {}
 
     for pos, name in fields:
@@ -289,180 +316,6 @@ def _with_slots() -> dict[_t.Literal["slots"], bool]:
     return {} if _sys.version_info < (3, 11) else {"slots": True}
 
 
-@staticmethod
-def _join(
-    l_msg: str,
-    l_args: tuple[_t.Any, ...],
-    r_msg: str,
-    r_args: tuple[_t.Any, ...],
-    /,
-) -> tuple[str, tuple[_t.Any, ...]]:
-    """
-    Join two possibly ``%``-formatted strings without formatting them.
-
-    This function joins two strings and their format args while ensuring that
-    ``%``-formatting doesn't break.
-
-    Yuio follows behavior of :mod:`logging` when it comes to ``%``-formatting:
-    it only formats the message if it got non-empty ``args`` tuple. This means
-    that to join two strings we need to escape ``%`` symbols in one of them
-    if one of the ``args`` tuples is empty.
-
-    :param l_msg:
-        left message.
-    :param l_args:
-        arguments for ``%``-formatting the left message.
-    :param r_msg:
-        right message.
-    :param r_args:
-        arguments for ``%``-formatting the right message.
-    :returns:
-        concatenation of left and right messages and new formatting arguments.
-
-    """
-
-    if l_args and not r_args:
-        r_msg = r_msg.replace("%", "%%")
-    elif not l_args and r_args:
-        l_msg = l_msg.replace("%", "%%")
-    return l_msg + r_msg, l_args + r_args
-
-
-def _to_msg(
-    msg: str | Exception, args: tuple[_t.Any, ...] | None = None
-) -> tuple[str, tuple[_t.Any, ...]]:
-    """
-    Helper for converting io/error params to ``msg, args`` tuple.
-
-    """
-
-    if isinstance(msg, FormattedExceptionMixin):
-        if args:
-            raise ValueError("exception can't have format arguments")
-        return msg.msg, msg.args
-    elif isinstance(msg, Exception):
-        if args:
-            raise ValueError("exception can't have format arguments")
-        return "%s", (msg,)
-    elif args is None:
-        return msg, ()
-    else:
-        return msg, args
-
-
-class FormattedExceptionMixin:
-    """FormattedExceptionMixin(msg: str, /, *args: _t.Any)
-    FormattedExceptionMixin(err: Exception, /)
-
-    Mixin for exceptions with markdown-formatted messages.
-
-    ..warning::
-
-        This mixin should appear before :class:`Exception` in method resolution
-        order. Put it first in the list of base classes (see example below).
-
-    :param msg:
-        error message.
-    :param args:
-        arguments for ``%``-formatting the error message.
-    :param err:
-        you can pass an error object to constructor,
-        in which case new error will take message from the given one.
-    :example:
-        .. code-block:: python
-
-            class MyError(FormattedExceptionMixin, Exception):
-                pass
-
-    """
-
-    @_t.overload
-    def __init__(self, msg: str, /, *args: _t.Any): ...
-    @_t.overload
-    def __init__(self, err: Exception, /): ...
-    def __init__(self, msg: str | Exception, /, *args: _t.Any):
-        msg, args = _to_msg(msg, args)
-
-        self.msg: str = msg
-        """
-        Error message.
-
-        """
-
-        self.args: tuple[_t.Any, ...] = args
-        """
-        Arguments for ``%``-formatting the error message.
-
-        """
-
-    def __repr__(self) -> str:
-        args = ", ".join(map(repr, self.args))
-        return f"{self.__class__.__name__}({self.msg!r}, {args})"
-
-    def __str__(self) -> str:
-        msg = self.msg
-        if msg and self.args:
-            msg %= self.args
-        return msg or super().__str__()
-
-    @_t.overload
-    def with_prefix(self, msg: str, /, *args: _t.Any): ...
-    @_t.overload
-    def with_prefix(self, err: Exception, /): ...
-    def with_prefix(self, msg: str | Exception, /, *args: _t.Any) -> _t.Self:
-        """with_prefix(msg: str, /, *args: _t.Any) -> typing.Self
-        with_prefix(err: Exception, /) -> typing.Self
-
-        Indent existing message and add a prefix before it.
-
-        :param msg:
-            prefix message.
-        :param args:
-            arguments for ``%``-formatting the prefix message.
-        :returns:
-            new exception with new message.
-        :example:
-            .. skip: next
-
-            ::
-
-                >>> try:
-                ...     result = parser.parse("-5")
-                ... except yuio.parse.ParsingError as e:
-                ...     yuio.io.error(e.with_prefix("Can't parse `config.threads`:"))
-                Can't parse `config.threads`:
-                  Value `-5` should be greater than 0
-
-        """
-
-        msg, args = _to_msg(msg, args)
-        msg, args = _join(msg + "\n", args, _textwrap.indent(self.msg, "  "), self.args)
-        return self.__class__(msg, *args)
-
-    @_t.overload
-    def with_suffix(self, msg: str, /, *args: _t.Any): ...
-    @_t.overload
-    def with_suffix(self, err: Exception, /): ...
-    def with_suffix(self, msg: str | Exception, /, *args: _t.Any) -> _t.Self:
-        """with_suffix(msg: str, /, *args: _t.Any) -> typing.Self
-        with_suffix(err: Exception, /) -> typing.Self
-
-        Indent a suffix and append it to the error message.
-
-        :param msg:
-            suffix message.
-        :param args:
-            arguments for ``%``-formatting the suffix message.
-        :returns:
-            new exception with new message.
-
-        """
-
-        msg, args = _to_msg(msg, args)
-        msg, args = _join(self.msg + "\n", self.args, _textwrap.indent(msg, "  "), args)
-        return self.__class__(msg, *args)
-
-
 class _Placeholders(_enum.Enum):
     DISABLED = "<disabled>"
     MISSING = "<missing>"
@@ -470,13 +323,13 @@ class _Placeholders(_enum.Enum):
     GROUP = "<group>"
 
     def __bool__(self) -> _t.Literal[False]:
-        return False
+        return False  # pragma: no cover
 
     def __repr__(self):
-        return f"yuio.{self.name}"
+        return f"yuio.{self.name}"  # pragma: no cover
 
     def __str__(self) -> str:
-        return self.value
+        return self.value  # pragma: no cover
 
 
 Disabled: _t.TypeAlias = _t.Literal[_Placeholders.DISABLED]
@@ -529,3 +382,68 @@ GROUP: Group = _Placeholders.GROUP
 Used with :func:`yuio.app.field` to omit arguments from CLI usage.
 
 """
+
+
+class YuioWarning(RuntimeWarning):
+    """
+    Base class for all runtime warnings.
+
+    """
+
+
+_logger = _logging.getLogger("yuio.internal")
+_logger.propagate = False
+
+__stderr_handler = _logging.StreamHandler(_sys.__stderr__)
+__stderr_handler.setLevel("CRITICAL")
+_logger.addHandler(__stderr_handler)
+
+
+def enable_internal_logging(
+    path: str | None = None, level: str | int | None = None, propagate=None
+):  # pragma: no cover
+    """
+    Enable Yuio's internal logging.
+
+    This function enables :func:`logging.captureWarnings`, and enables printing
+    of :class:`YuioWarning` messages, and sets up logging channels ``yuio.internal``
+    and ``py.warning``.
+
+    :param path:
+        if given, adds handlers that output internal log messages to the given file.
+    :param level:
+        configures logging level for file handler. Default is ``DEBUG``.
+    :param propagate:
+        if given, enables or disables log message propagation from ``yuio.internal``
+        and ``py.warning`` to the root logger.
+
+    """
+
+    if path:
+        if level is None:
+            level = _os.environ.get("YUIO_DEBUG", "").strip().upper() or "DEBUG"
+        if level in ["1", "Y", "YES", "TRUE"]:
+            level = "DEBUG"
+        file_handler = _logging.FileHandler(path, delay=True)
+        file_handler.setFormatter(
+            _logging.Formatter("%(filename)s:%(lineno)d: %(levelname)s: %(message)s")
+        )
+        file_handler.setLevel(level)
+        _logger.addHandler(file_handler)
+        _logging.getLogger("py.warnings").addHandler(file_handler)
+
+    _logging.captureWarnings(True)
+    warnings.simplefilter("default", category=YuioWarning)
+
+    if propagate is not None:
+        _logging.getLogger("py.warnings").propagate = propagate
+        _logger.propagate = propagate
+
+
+_debug = "YUIO_DEBUG" in _os.environ or "YUIO_DEBUG_FILE" in _os.environ
+if _debug:  # pragma: no cover
+    enable_internal_logging(
+        path=_os.environ.get("YUIO_DEBUG_FILE") or "yuio.log", propagate=False
+    )
+else:
+    warnings.simplefilter("ignore", category=YuioWarning, append=True)

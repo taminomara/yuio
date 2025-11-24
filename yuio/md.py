@@ -16,8 +16,8 @@ Formatting markdown
 .. autoclass:: MdFormatter
    :members:
 
-.. autofunction:: colorize
 
+.. _highlighting-code:
 
 Highlighting code
 -----------------
@@ -81,7 +81,6 @@ import math
 import os
 import re
 import shutil
-import string
 from dataclasses import dataclass
 
 import yuio.color
@@ -90,33 +89,30 @@ import yuio.theme
 from yuio import _typing as _t
 
 __all__ = [
-    "MdFormatter",
     "AstBase",
-    "Text",
+    "AstBase",
+    "Code",
+    "Code",
+    "Container",
     "Container",
     "Document",
-    "ThematicBreak",
-    "Heading",
-    "Paragraph",
-    "Quote",
-    "Code",
-    "ListItem",
-    "List",
-    "MdFormatter",
-    "AstBase",
-    "Text",
-    "Container",
     "Document",
-    "ThematicBreak",
     "Heading",
+    "Heading",
+    "List",
+    "List",
+    "ListItem",
+    "ListItem",
+    "MdFormatter",
+    "Paragraph",
     "Paragraph",
     "Quote",
-    "Code",
-    "ListItem",
-    "List",
+    "Quote",
     "SyntaxHighlighter",
-    "colorize",
-    "strip_color_tags",
+    "Text",
+    "Text",
+    "ThematicBreak",
+    "ThematicBreak",
 ]
 
 T = _t.TypeVar("T")
@@ -203,7 +199,7 @@ class MdFormatter:
 
         self._is_first_line: bool
         self._out: list[yuio.string.ColorizedString]
-        self._first_line_indent: yuio.string.ColorizedString
+        self._indent: yuio.string.ColorizedString
         self._continuation_indent: yuio.string.ColorizedString
 
     @property
@@ -219,24 +215,28 @@ class MdFormatter:
     def width(self, width: int | None):
         if width is None:
             width = shutil.get_terminal_size().columns
-        self.__width = max(width, 20)
+        self.__width = max(width, 0)
 
-    def format(self, md: str, /) -> list[yuio.string.ColorizedString]:
+    def format(
+        self, md: str, *, dedent: bool = True
+    ) -> list[yuio.string.ColorizedString]:
         """
         Format a markdown document.
 
         :param md:
             markdown to format. Common indentation will be removed from this string,
             making it suitable to use with triple quote literals.
+        :param dedent:
+            remove lading indent from markdown.
         :returns:
             rendered markdown as a list of individual lines without newline
             characters at the end.
 
         """
 
-        return self.format_node(self.parse(md))
+        return self.format_node(self.parse(md, dedent=dedent))
 
-    def parse(self, md: str, /) -> Document:
+    def parse(self, md: str, /, *, dedent: bool = True) -> Document:
         """
         Parse a markdown document and return an AST node.
 
@@ -247,12 +247,17 @@ class MdFormatter:
         :param md:
             markdown to parse. Common indentation will be removed from this string,
             making it suitable to use with triple quote literals.
+        :param dedent:
+            remove lading indent from markdown.
         :returns:
             parsed AST node.
 
         """
 
-        return _MdParser(self.allow_headings).parse(yuio.dedent(md))
+        if dedent:
+            md = yuio.dedent(md)
+
+        return _MdParser(self.allow_headings).parse(md)
 
     def format_node(self, node: AstBase, /) -> list[yuio.string.ColorizedString]:
         """
@@ -272,7 +277,7 @@ class MdFormatter:
 
         self._is_first_line = True
         self._out = []
-        self._first_line_indent = yuio.string.ColorizedString()
+        self._indent = yuio.string.ColorizedString()
         self._continuation_indent = yuio.string.ColorizedString()
 
         self._format(node)
@@ -300,10 +305,10 @@ class MdFormatter:
 
         """
 
-        return colorize(self.theme, text, default_color=default_color)
+        return yuio.string.colorize(text, default_color=default_color, ctx=self.theme)
 
     @contextlib.contextmanager
-    def _indent(
+    def _with_indent(
         self,
         color: yuio.color.Color | str | None,
         s: yuio.string.AnyString,
@@ -312,9 +317,10 @@ class MdFormatter:
         continue_with_spaces: bool = True,
     ):
         color = self.theme.to_color(color)
-        indent = yuio.string.ColorizedString(color) + s
+        indent = yuio.string.ColorizedString(color)
+        indent += s
 
-        old_first_line_indent = self._first_line_indent
+        old_indent = self._indent
         old_continuation_indent = self._continuation_indent
 
         if continue_with_spaces:
@@ -322,20 +328,20 @@ class MdFormatter:
         else:
             continuation_indent = indent
 
-        self._first_line_indent = self._first_line_indent + indent
+        self._indent = self._indent + indent
         self._continuation_indent = self._continuation_indent + continuation_indent
 
         try:
             yield
         finally:
-            self._first_line_indent = old_first_line_indent
+            self._indent = old_indent
             self._continuation_indent = old_continuation_indent
 
     def _line(self, line: yuio.string.ColorizedString, /):
         self._out.append(line)
 
         self._is_first_line = False
-        self._first_line_indent = self._continuation_indent
+        self._indent = self._continuation_indent
 
     def _format(self, node: AstBase, /):
         getattr(self, f"_format_{node.__class__.__name__.lstrip('_')}")(node)
@@ -348,7 +354,7 @@ class MdFormatter:
 
         for line in s.wrap(
             self.width,
-            first_line_indent=self._first_line_indent,
+            indent=self._indent,
             continuation_indent=self._continuation_indent,
             preserve_newlines=False,
         ):
@@ -358,7 +364,7 @@ class MdFormatter:
         self._is_first_line = True
         for item in node.items:
             if not self._is_first_line:
-                self._line(self._first_line_indent)
+                self._line(self._indent)
             self._format(item)
 
     def _format_Document(self, node: Document, /):
@@ -366,20 +372,20 @@ class MdFormatter:
 
     def _format_ThematicBreak(self, _: ThematicBreak):
         decoration = self.theme.msg_decorations.get("thematic_break", "")
-        self._line(self._first_line_indent + decoration)
+        self._line(self._indent + decoration)
 
     def _format_Heading(self, node: Heading, /):
         if not self._is_first_line:
-            self._line(self._first_line_indent)
+            self._line(self._indent)
 
         decoration = self.theme.msg_decorations.get(f"heading/{node.level}", "")
-        with self._indent(f"msg/decoration:heading/{node.level}", decoration):
+        with self._with_indent(f"msg/decoration:heading/{node.level}", decoration):
             self._format_Text(
                 node,
                 default_color=self.theme.get_color(f"msg/text:heading/{node.level}"),
             )
 
-        self._line(self._first_line_indent)
+        self._line(self._indent)
         self._is_first_line = True
 
     def _format_Paragraph(self, node: Paragraph, /):
@@ -393,12 +399,12 @@ class MdFormatter:
             decoration = f"{node.number:>{min_width}}." + " " * (
                 yuio.string.line_width(decoration) - min_width - 1
             )
-        with self._indent("msg/decoration:list", decoration):
+        with self._with_indent("msg/decoration:list", decoration):
             self._format_Container(node)
 
     def _format_Quote(self, node: Quote, /):
         decoration = self.theme.msg_decorations.get("quote", "")
-        with self._indent(
+        with self._with_indent(
             "msg/decoration:quote", decoration, continue_with_spaces=False
         ):
             self._format_Container(node)
@@ -410,10 +416,10 @@ class MdFormatter:
         )
 
         decoration = self.theme.msg_decorations.get("code", "")
-        with self._indent("msg/decoration:code", decoration):
+        with self._with_indent("msg/decoration:code", decoration):
             self._line(
                 s.indent(
-                    first_line_indent=self._first_line_indent,
+                    indent=self._indent,
                     continuation_indent=self._continuation_indent,
                 )
             )
@@ -424,7 +430,7 @@ class MdFormatter:
         self._is_first_line = True
         for item in node.items:
             if not self._is_first_line:
-                self._line(self._first_line_indent)
+                self._line(self._indent)
             self._format_ListItem(item, min_width=min_width)
 
 
@@ -1136,6 +1142,8 @@ class SyntaxHighlighter(abc.ABC):
 
         """
 
+        raise NotImplementedError()
+
     def _get_default_color(
         self,
         theme: yuio.theme.Theme,
@@ -1192,13 +1200,13 @@ class _ReSyntaxHighlighter(SyntaxHighlighter):
     ) -> yuio.string.ColorizedString:
         default_color = self._get_default_color(theme, default_color)
 
-        out = yuio.string.ColorizedString()
+        raw = yuio.string.ColorizedString()
 
         last_pos = 0
         for code_unit in self._pattern.finditer(code):
             if last_pos < code_unit.start():
-                out += default_color
-                out += code[last_pos : code_unit.start()]
+                raw += default_color
+                raw += code[last_pos : code_unit.start()]
             last_pos = code_unit.end()
 
             for name, text in sorted(code_unit.groupdict().items()):
@@ -1213,69 +1221,92 @@ class _ReSyntaxHighlighter(SyntaxHighlighter):
                     last_escape_pos = 0
                     for escape_unit in self._str_esc_pattern.finditer(text):
                         if last_escape_pos < escape_unit.start():
-                            out += str_color
-                            out += text[last_escape_pos : escape_unit.start()]
+                            raw += str_color
+                            raw += text[last_escape_pos : escape_unit.start()]
                         last_escape_pos = escape_unit.end()
                         if escape := text[escape_unit.start() : escape_unit.end()]:
-                            out += esc_color
-                            out += escape
+                            raw += esc_color
+                            raw += escape
                     if last_escape_pos < len(text):
-                        out += str_color
-                        out += text[last_escape_pos:]
+                        raw += str_color
+                        raw += text[last_escape_pos:]
                 else:
-                    out += default_color | theme.get_color(f"hl/{name}:{self.syntax}")
-                    out += text
+                    raw += default_color | theme.get_color(f"hl/{name}:{self.syntax}")
+                    raw += text
 
         if last_pos < len(code):
-            out += default_color
-            out += code[last_pos:]
+            raw += default_color
+            raw += code[last_pos:]
 
-        out += yuio.color.Color.NONE
+        return raw
 
-        return out
+
+_PY_SYNTAX = re.compile(
+    r"""
+        (?P<kwd>
+            \b(?:                                   # keyword
+                and|as|assert|async|await|break|class|continue|def|del|elif|else|
+                except|finally|for|from|global|if|import|in|is|lambda|
+                nonlocal|not|or|pass|raise|return|try|while|with|yield
+            )\b)
+        | (?P<str>
+            [rfut]*(                                # string prefix
+                '(?:\\.|[^\\'])*(?:'|\n)            # singly-quoted string
+                | "(?:\\.|[^\\"])*(?:"|\n)          # doubly-quoted string
+                | \"""(\\.|[^\\]|\n)*?\"""          # long singly-quoted string
+                | '''(\\.|[^\\]|\n)*?'''))          # long doubly-quoted string
+        | (?P<lit>
+                \d+(?:\.\d*(?:e[+-]?\d+)?)?         # int or float
+            | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
+            | 0x[0-9a-fA-F]+                        # hex
+            | 0b[01]+                               # bin
+            | \b(?!<\.)(?:None|True|False)\b)       # bool or none
+        | (?P<type>
+            \b(?:                                   # type
+                str|int|float|complex|list|tuple|range|dict|set|frozenset|bool|
+                bytes|bytearray|memoryview|(?:[A-Z](?:[a-z]\w*)?)
+            )\b)
+        | (?P<punct>[{}()\[\]\\;|!&,])              # punctuation
+        | (?P<comment>\#.*$)                        # comment
+    """,
+    re.MULTILINE | re.VERBOSE,
+)
+_PY_ESC_PATTERN = re.compile(
+    r"""
+        \\(
+            \n                                      # escaped newline
+            | [\\'"abfnrtv]                         # normal escape
+            | [0-7]{3}                              # octal escape
+            | x[0-9a-fA-F]{2}                       # hex escape
+            | u[0-9a-fA-F]{4}                       # short unicode escape
+            | U[0-9a-fA-F]{8}                       # long unicode escape
+            | N\{[^}\n]+\}                          # unicode character names
+            | [{}]                                  # template
+            | %                                     # percent formatting
+              (?:\([^)]*\))?                        # mapping key
+              [#0\-+ ]*                             # conversion Flag
+              (?:\*|\d+)?                           # field width
+              (?:\.(?:\*|\d*))?                     # precision
+              [hlL]?                                # unused length modifier
+              .                                     # conversion type
+        )
+    """,
+    re.VERBOSE,
+)
 
 
 SyntaxHighlighter.register_highlighter(
     _ReSyntaxHighlighter(
         ["py", "py3", "py-3", "python", "python3", "python-3"],
-        re.compile(
-            r"""
-                (?P<kwd>
-                    \b(?:                                   # keyword
-                      and|as|assert|async|await|break|class|continue|def|del|elif|else|
-                      except|False|finally|for|from|global|if|import|in|is|lambda|None|
-                      nonlocal|not|or|pass|raise|return|True|try|while|with|yield
-                    )\b)
-                | (?P<str>
-                    [rfu]*(                                 # string prefix
-                        '(?:\\.|[^\\'])*(?:'|\n)            # singly-quoted string
-                      | "(?:\\.|[^\\"])*(?:"|\n)            # doubly-quoted string
-                      | \"""(\\.|[^\\]|\n)*?\"""            # long singly-quoted string
-                      | \'''(\\.|[^\\]|\n)*?\'''))          # long doubly-quoted string
-                | (?P<lit>
-                      \d+(?:\.\d*(?:e[+-]?\d+)?)?           # int or float
-                    | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
-                    | 0x[0-9a-fA-F]+                        # hex
-                    | 0b[01]+)                              # bin
-                | (?P<punct>[{}()\[\]\\;|!&])               # punctuation
-                | (?P<comment>\#.*$)                        # comment
-            """,
-            re.MULTILINE | re.VERBOSE,
-        ),
-        str_esc_pattern=re.compile(
-            r"""
-                \\(
-                    \n
-                    | [\\'"abfnrtv]
-                    | [0-7]{3}
-                    | x[0-9a-fA-F]{2}
-                    | u[0-9a-fA-F]{4}
-                    | U[0-9a-fA-F]{8}
-                    | N\{[^}\n]+\}
-                )
-            """,
-            re.VERBOSE,
-        ),
+        _PY_SYNTAX,
+        str_esc_pattern=_PY_ESC_PATTERN,
+    )
+)
+SyntaxHighlighter.register_highlighter(
+    _ReSyntaxHighlighter(
+        ["repr"],
+        _PY_SYNTAX,
+        str_esc_pattern=_PY_ESC_PATTERN,
     )
 )
 SyntaxHighlighter.register_highlighter(
@@ -1351,7 +1382,7 @@ SyntaxHighlighter.register_highlighter(
         ["json"],
         re.compile(
             r"""
-                (?P<kwd>\b(?:true|false|null)\b)            # keyword
+                (?P<lit>\b(?:true|false|null)\b)            # keyword
                 | (?P<str>"(?:\\.|[^\\"])*(?:"|\n))         # doubly-quoted string
                 | (?P<punct>[{}\[\],:])                     # punctuation
             """,
@@ -1378,9 +1409,17 @@ class _TbHighlighter(SyntaxHighlighter):
             "tb",
             "traceback",
             "py-tb",
+            "py3-tb",
+            "py-3-tb",
             "py-traceback",
+            "py3-traceback",
+            "py-3-traceback",
             "python-tb",
+            "python3-tb",
+            "python-3-tb",
             "python-traceback",
+            "python3-traceback",
+            "python-3-traceback",
         ]
 
     class _StackColors:
@@ -1529,120 +1568,7 @@ class _TbHighlighter(SyntaxHighlighter):
                     res += line
                     continue
 
-        res += yuio.color.Color.NONE
-
         return res
 
 
 SyntaxHighlighter.register_highlighter(_TbHighlighter())
-
-
-__TAG_RE = re.compile(
-    r"""
-          <c (?P<tag_open>[a-z0-9 _/@:-]+)>         # yuio.color.Color tag open.
-        | </c>                                      # yuio.color.Color tag close.
-        | \\(?P<punct>[%(punct)s])                  # Escape character.
-        | (?<!`)(`+)(?!`)(?P<code>.*?)(?<!`)\3(?!`) # Inline code block (backticks).
-    """
-    % {"punct": re.escape(string.punctuation)},
-    re.VERBOSE | re.MULTILINE,
-)
-__NEG_NUM_RE = re.compile(r"^-(0x[0-9a-fA-F]+|0b[01]+|\d+(e[+-]?\d+)?)$")
-__FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
-
-
-def colorize(
-    theme: yuio.theme.Theme,
-    line: str,
-    /,
-    *,
-    default_color: yuio.color.Color | str = yuio.color.Color.NONE,
-    parse_cli_flags_in_backticks: bool = False,
-) -> yuio.string.ColorizedString:
-    """
-    Parse and colorize contents of a paragraph.
-
-    Apply ``default_color`` to the entire paragraph, and process color tags
-    and backticks within it.
-
-    :param theme:
-        theme that will be used to look up color tags.
-    :param line:
-        text to colorize.
-    :param default_color:
-        color or color tag to apply to the entire text.
-    :returns:
-        a colorized string.
-
-    """
-
-    default_color = theme.to_color(default_color)
-
-    raw: list[str | yuio.color.Color] = []
-    raw.append(default_color)
-
-    stack = [default_color]
-
-    last_pos = 0
-    for tag in __TAG_RE.finditer(line):
-        raw.append(line[last_pos : tag.start()])
-        last_pos = tag.end()
-
-        if name := tag.group("tag_open"):
-            color = stack[-1]
-            for sub_name in name.split():
-                sub_name = sub_name.strip()
-                color = color | theme.get_color(sub_name)
-            raw.append(color)
-            stack.append(color)
-        elif code := tag.group("code"):
-            code = code.replace("\n", " ")
-            if code.startswith(" ") and code.endswith(" ") and not code.isspace():
-                code = code[1:-1]
-            if (
-                parse_cli_flags_in_backticks
-                and __FLAG_RE.match(code)
-                and not __NEG_NUM_RE.match(code)
-            ):
-                raw.append(stack[-1] | theme.get_color("hl/flag:sh-usage"))
-            else:
-                raw.append(stack[-1] | theme.get_color("code"))
-            raw.append(yuio.string.NoWrap(code))
-            raw.append(stack[-1])
-        elif punct := tag.group("punct"):
-            raw.append(punct)
-        elif len(stack) > 1:
-            stack.pop()
-            raw.append(stack[-1])
-
-    raw.append(line[last_pos:])
-
-    raw.append(yuio.color.Color.NONE)
-
-    return yuio.string.ColorizedString(raw)
-
-
-def strip_color_tags(s: str) -> str:
-    """
-    Remove all color tags from a string.
-
-    """
-
-    raw: list[str] = []
-
-    last_pos = 0
-    for tag in __TAG_RE.finditer(s):
-        raw.append(s[last_pos : tag.start()])
-        last_pos = tag.end()
-
-        if code := tag.group("code"):
-            code = code.replace("\n", " ")
-            if code.startswith(" ") and code.endswith(" ") and not code.isspace():
-                code = code[1:-1]
-            raw.append(code)
-        elif punct := tag.group("punct"):
-            raw.append(punct)
-
-    raw.append(s[last_pos:])
-
-    return "".join(raw)

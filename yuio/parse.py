@@ -424,64 +424,65 @@ import typing
 import yuio
 import yuio.complete
 import yuio.json_schema
+import yuio.string
 import yuio.widget
 from yuio import _typing as _t
 from yuio.json_schema import JsonValue
 
 __all__ = [
-    "JsonValue",
-    "ParsingError",
-    "PartialParser",
-    "Parser",
-    "ValueParser",
-    "WrappingParser",
-    "MappingParser",
-    "Map",
     "Apply",
-    "ValidatingParser",
-    "Str",
-    "Int",
-    "Float",
     "Bool",
-    "Enum",
-    "Decimal",
-    "Fraction",
-    "Json",
-    "DateTime",
+    "Bound",
+    "CaseFold",
+    "CollectionParser",
     "Date",
-    "Time",
-    "TimeDelta",
-    "Path",
-    "NonExistentPath",
+    "DateTime",
+    "Decimal",
+    "Dict",
+    "Dir",
+    "Enum",
     "ExistingPath",
     "File",
-    "Dir",
-    "GitRepo",
-    "CollectionParser",
-    "List",
-    "Set",
+    "Float",
+    "Fraction",
     "FrozenSet",
-    "Dict",
-    "Tuple",
-    "Optional",
-    "Union",
-    "Bound",
-    "LenBound",
-    "OneOf",
-    "WithMeta",
-    "Lower",
-    "Upper",
-    "CaseFold",
-    "Strip",
-    "Regex",
-    "Gt",
     "Ge",
-    "Lt",
+    "GitRepo",
+    "Gt",
+    "Int",
+    "Json",
+    "JsonValue",
     "Le",
-    "LenGt",
+    "LenBound",
     "LenGe",
-    "LenLt",
+    "LenGt",
     "LenLe",
+    "LenLt",
+    "List",
+    "Lower",
+    "Lt",
+    "Map",
+    "MappingParser",
+    "NonExistentPath",
+    "OneOf",
+    "Optional",
+    "Parser",
+    "ParsingError",
+    "PartialParser",
+    "Path",
+    "Regex",
+    "Set",
+    "Str",
+    "Strip",
+    "Time",
+    "TimeDelta",
+    "Tuple",
+    "Union",
+    "Upper",
+    "ValidatingParser",
+    "ValueParser",
+    "WithMeta",
+    "WrappingParser",
     "from_type_hint",
     "register_type_hint_conversion",
     "suggest_delim_for_type_hint_conversion",
@@ -501,9 +502,7 @@ TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
 
 
-class ParsingError(
-    yuio.FormattedExceptionMixin, ValueError, argparse.ArgumentTypeError
-):
+class ParsingError(yuio.string.ColorableBase, ValueError, argparse.ArgumentTypeError):
     """
     Raised when parsing or validation fails.
 
@@ -525,30 +524,16 @@ class ParsingError(
                 >>> raise ParsingError.type_mismatch(10, str)
                 Traceback (most recent call last):
                 ...
-                yuio.parse.ParsingError: Expected `str`, got `int`: `10`
+                yuio.parse.ParsingError: Expected str, got int: 10
 
         """
 
         return cls(
-            "Expected " + " or ".join(["`%s`"] * len(expected)) + ", got `%s`: `%r`",
-            *map(_TypeRepr, expected),
-            _TypeRepr(type(value)),
+            "Expected %s, got `%s`: `%r`",
+            yuio.string.JoinStr.or_(map(yuio.string.TypeRepr, expected)),
+            yuio.string.TypeRepr(type(value)),
             value,
         )
-
-
-class _TypeRepr:
-    def __init__(self, value: type | str):
-        self.value = value
-
-    def __repr__(self) -> str:
-        return f"_TypeRepr({self})"
-
-    def __str__(self) -> str:
-        if isinstance(self.value, str):
-            return self.value
-        else:
-            return _t.type_repr(self.value)
 
 
 class PartialParser(abc.ABC):
@@ -627,6 +612,8 @@ class PartialParser(abc.ABC):
 
         """
 
+        raise NotImplementedError()
+
 
 class Parser(PartialParser, _t.Generic[T_co]):
     """
@@ -658,6 +645,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def parse_many(self, value: _t.Sequence[str], /) -> T_co:
         """
@@ -687,6 +676,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def supports_parse_many(self) -> bool:
         """
@@ -697,6 +688,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
             :data:`True` if :meth:`~Parser.parse_many` is safe to call.
 
         """
+
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def parse_config(self, value: object, /) -> T_co:
@@ -728,6 +721,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
         """
@@ -739,6 +734,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
             or an integer. Otherwise, value should be :data:`None`.
 
         """
+
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def check_type(self, value: object, /) -> _t.TypeGuard[T_co]:
@@ -754,6 +751,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
             :data:`True` if the value matches the type of this parser.
 
         """
+
+        raise NotImplementedError()
 
     def assert_type(self, value: object, /) -> _t.TypeGuard[T_co]:
         """
@@ -792,6 +791,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def describe_or_def(self) -> str:
         """
@@ -803,6 +804,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
             human-readable description of an expected input.
 
         """
+
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def describe_many(self) -> str | tuple[str, ...] | None:
@@ -822,6 +825,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def describe_many_or_def(self) -> str | tuple[str, ...]:
         """
@@ -839,6 +844,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
             that doesn't supports parsing collections of objects.
 
         """
+
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def describe_value(self, value: object, /) -> str | None:
@@ -862,6 +869,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def describe_value_or_def(self, value: object, /) -> str:
         """
@@ -884,6 +893,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def options(self) -> _t.Collection[yuio.widget.Option[T_co]] | None:
         """
@@ -902,6 +913,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def completer(self) -> yuio.complete.Completer | None:
         """
@@ -914,6 +927,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
             a completer that will be used with CLI arguments or widgets.
 
         """
+
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def widget(
@@ -951,6 +966,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -970,6 +987,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
         """
@@ -986,6 +1005,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
             that this parser produces.
 
         """
+
+        raise NotImplementedError()
 
     def __repr__(self):
         return self.__class__.__name__
@@ -1672,7 +1693,7 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
             >>> IsLower(Str()).parse("Not lowercase!")
             Traceback (most recent call last):
             ...
-            yuio.parse.ParsingError: value should be lowercase: `'Not lowercase!'`
+            yuio.parse.ParsingError: value should be lowercase: 'Not lowercase!'
 
     """
 
@@ -1700,6 +1721,8 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
             should raise :class:`ParsingError` if validation fails.
 
         """
+
+        raise NotImplementedError()
 
 
 class Str(ValueParser[str]):
@@ -1962,20 +1985,18 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         elif len(candidates) > 1:
             enum_values = tuple(self.__getter(e) for e in candidates)
             raise ParsingError(
-                "Can't parse `%r` as `%s`, possible candidates are "
-                + ", ".join(["`%s`"] * len(enum_values)),
+                "Can't parse `%r` as `%s`, possible candidates are %s",
                 value,
                 self._inner.__name__,
-                *enum_values,
+                yuio.string.JoinStr.or_(enum_values),
             )
         else:
             enum_values = tuple(self.__getter(e) for e in self._inner)
             raise ParsingError(
-                "Can't parse `%r` as `%s`, should be one of "
-                + ", ".join(["`%s`"] * len(enum_values)),
+                "Can't parse `%r` as `%s`, should be %s",
                 value,
                 self._inner.__name__,
-                *enum_values,
+                yuio.string.JoinStr.or_(enum_values),
             )
 
     def parse_config(self, value: object, /) -> E:
@@ -1994,7 +2015,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
         return result
 
-    def describe_or_def(self) -> str:
+    def describe(self) -> str:
         desc = "|".join(self.__getter(e) for e in self._inner)
         if len(self._inner) > 1:
             desc = f"{{{desc}}}"
@@ -2004,10 +2025,6 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         return self.describe_or_def()
 
     def describe_value(self, value: object) -> str | None:
-        assert self.assert_type(value)
-        return super().describe_value(value)
-
-    def describe_value_or_def(self, value: object, /) -> str:
         assert self.assert_type(value)
         return str(self.__getter(value))
 
@@ -2618,10 +2635,9 @@ class Path(ValueParser[pathlib.Path]):
             value.name.endswith(ext) for ext in self.__extensions
         ):
             raise ParsingError(
-                "<c path>%s</c> should have extension "
-                + " or ".join(["`%s`"] * len(self.__extensions)),
+                "<c path>%s</c> should have extension %s",
                 value,
-                *self.__extensions,
+                yuio.string.JoinStr.or_(self.__extensions),
             )
 
     def completer(self) -> yuio.complete.Completer | None:
@@ -3774,15 +3790,17 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
             except ParsingError as e:
                 errors.append((parser, e))
 
-        # Note: all exceptions have formatting args, so we don't need `yuio._join` here.
-        msg = []
-        args = ()
+        msgs = []
         for parser, error in errors:
-            error = error.with_prefix("Trying as `%s`:", parser.describe_or_def())
-            msg.append(error.msg)
-            args += error.args
-        raise ParsingError("\n".join(msg), *args).with_prefix(
-            "Can't parse `%r`:", value
+            msgs.append(
+                yuio.string.Format(
+                    "  Trying as `%s`:\n%s",
+                    parser.describe_or_def(),
+                    yuio.string.Indent(error, indent=4),
+                )
+            )
+        raise ParsingError(
+            "Can't parse `%r`:\n%s", value, yuio.string.JoinStr(msgs, sep="\n")
         )
 
     def parse_config(self, value: object, /) -> T:
@@ -3793,15 +3811,17 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
             except ParsingError as e:
                 errors.append((parser, e))
 
-        # Note: all exceptions have formatting args, so we don't need `yuio._join` here.
-        msg = []
-        args = ()
+        msgs = []
         for parser, error in errors:
-            error = error.with_prefix("Trying as `%s`:", parser.describe_or_def())
-            msg.append(error.msg)
-            args += error.args
-        raise ParsingError("\n".join(msg), *args).with_prefix(
-            "Can't parse `%r`:", value
+            msgs.append(
+                yuio.string.Format(
+                    "  Trying as `%s`:\n%s",
+                    parser.describe_or_def(),
+                    yuio.string.Indent(error, indent=4),
+                )
+            )
+        raise ParsingError(
+            "Can't parse `%r`:\n%s", value, yuio.string.JoinStr(msgs, sep="\n")
         )
 
     def check_type(self, value: object) -> _t.TypeGuard[T]:
@@ -4441,10 +4461,9 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
     def _validate(self, value: T, /):
         if value not in self.__allowed_values:
             raise ParsingError(
-                "Can't parse `%r`, should be one of "
-                + ", ".join(["`%s`"] * len(self.__allowed_values)),
+                "Can't parse `%r`, should be %s",
                 value,
-                *self.__allowed_values,
+                yuio.string.JoinRepr.or_(self.__allowed_values),
             )
 
     def describe(self) -> str | None:

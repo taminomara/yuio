@@ -14,15 +14,15 @@ if __name__ == "__main__":
     yuio.io.heading("Yuio's interactive editing showcase")
 
     yuio.io.info(
-        "This functionality is similar to what GIT does when you commit something:"
+        "This functionality is similar to what GIT does when you commit something: "
+        "it opens your default editor and lets you edit a commit message."
     )
-    yuio.io.info("it opens your default editor and lets you edit a commit message.")
 
     yuio.io.br()
 
     yuio.io.wait_for_user()
 
-    result = yuio.io.edit(TEXT)
+    result = yuio.io.edit(TEXT, comment_marker="#")
 
     yuio.io.br()
 
@@ -34,6 +34,4 @@ if __name__ == "__main__":
     if result:
         yuio.io.info(result)
     else:
-        yuio.io.info("...")
-        yuio.io.br()
-        yuio.io.info("... nothing! You've deleted it! How could you 〈◕﹏◕〉")
+        yuio.io.info("...\n\n... nothing! You've deleted it! How could you 〈◕﹏◕〉")

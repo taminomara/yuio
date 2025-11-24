@@ -33,8 +33,8 @@ import yuio
 from yuio import _typing as _t
 
 __all__ = [
-    "ColorValue",
     "Color",
+    "ColorValue",
 ]
 
 
@@ -73,6 +73,8 @@ class ColorValue:
     __ https://en.wikipedia.org/wiki/ANSI_escape_code#Select_Graphic_Rendition_parameters
 
     """
+
+    _NAMES = ["BLACK", "RED", "GREEN", "YELLOW", "BLUE", "MAGENTA", "CYAN", "WHITE"]
 
     @classmethod
     def from_rgb(cls, r: int, g: int, b: int, /) -> ColorValue:
@@ -271,8 +273,13 @@ class ColorValue:
     def __repr__(self) -> str:
         if isinstance(self.data, tuple):
             return f"<ColorValue {self.to_hex()}>"
+        elif isinstance(self.data, int):
+            if 0 <= self.data < len(self._NAMES):
+                return f"<{self._NAMES[self.data]}>"
+            else:
+                return f"<ColorValue {self.data}>"
         else:
-            return f"<ColorValue {self.data}>"
+            return f"<ColorValue {self.data!r}>"
 
 
 @dataclass(frozen=True)
@@ -294,7 +301,7 @@ class Color:
     Colors can be combined before printing, though::
 
         >>> Color.STYLE_BOLD | Color.FORE_RED  # Bold red
-        Color(fore=<ColorValue 1>, back=None, bold=True, dim=None, italic=None, underline=None)
+        <Color fore=<RED> bold=True>
 
     Yuio supports true RGB colors. They are automatically converted
     to 256- or 8-bit colors if needed.
@@ -337,6 +344,18 @@ class Color:
 
     """
 
+    inverse: bool | None = None
+    """
+    If true, swap foreground and background.
+
+    """
+
+    blink: bool | None = None
+    """
+    If true, render blinking text.
+
+    """
+
     def __or__(self, other: Color, /):
         return Color(
             other.fore if other.fore is not None else self.fore,
@@ -345,13 +364,15 @@ class Color:
             other.dim if other.dim is not None else self.dim,
             other.italic if other.italic is not None else self.italic,
             other.underline if other.underline is not None else self.underline,
+            other.inverse if other.inverse is not None else self.inverse,
+            other.blink if other.blink is not None else self.blink,
         )
 
     def __ior__(self, other: Color, /):
         return self | other
 
     @classmethod
-    def fore_from_rgb(cls, r: int, g: int, b: int) -> Color:
+    def fore_from_rgb(cls, r: int, g: int, b: int, **kwargs) -> Color:
         """
         Create a foreground color value from rgb components.
 
@@ -361,14 +382,14 @@ class Color:
             ::
 
                 >>> Color.fore_from_rgb(0xA0, 0x1E, 0x9C)
-                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None, italic=None, underline=None)
+                <Color fore=<ColorValue #A01E9C>>
 
         """
 
-        return cls(fore=ColorValue.from_rgb(r, g, b))
+        return cls(fore=ColorValue.from_rgb(r, g, b), **kwargs)
 
     @classmethod
-    def fore_from_hex(cls, h: str) -> Color:
+    def fore_from_hex(cls, h: str, **kwargs) -> Color:
         """
         Create a foreground color value from a hex string.
 
@@ -376,14 +397,14 @@ class Color:
             ::
 
                 >>> Color.fore_from_hex('#A01E9C')
-                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None, italic=None, underline=None)
+                <Color fore=<ColorValue #A01E9C>>
 
         """
 
-        return cls(fore=ColorValue.from_hex(h))
+        return cls(fore=ColorValue.from_hex(h), **kwargs)
 
     @classmethod
-    def back_from_rgb(cls, r: int, g: int, b: int) -> Color:
+    def back_from_rgb(cls, r: int, g: int, b: int, **kwargs) -> Color:
         """
         Create a background color value from rgb components.
 
@@ -393,14 +414,14 @@ class Color:
             ::
 
                 >>> Color.back_from_rgb(0xA0, 0x1E, 0x9C)
-                Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None, italic=None, underline=None)
+                <Color back=<ColorValue #A01E9C>>
 
         """
 
-        return cls(back=ColorValue.from_rgb(r, g, b))
+        return cls(back=ColorValue.from_rgb(r, g, b), **kwargs)
 
     @classmethod
-    def back_from_hex(cls, h: str) -> Color:
+    def back_from_hex(cls, h: str, **kwargs) -> Color:
         """
         Create a background color value from a hex string.
 
@@ -408,11 +429,11 @@ class Color:
             ::
 
                 >>> Color.back_from_hex('#A01E9C')
-                Color(fore=None, back=<ColorValue #A01E9C>, bold=None, dim=None, italic=None, underline=None)
+                <Color back=<ColorValue #A01E9C>>
 
         """
 
-        return cls(back=ColorValue.from_hex(h))
+        return cls(back=ColorValue.from_hex(h), **kwargs)
 
     @staticmethod
     def lerp(*colors: Color) -> _t.Callable[[float], Color]:
@@ -437,11 +458,11 @@ class Color:
                 >>> lerp = Color.lerp(a, b)
 
                 >>> lerp(0)
-                Color(fore=<ColorValue #A01E9C>, back=None, bold=None, dim=None, italic=None, underline=None)
+                <Color fore=<ColorValue #A01E9C>>
                 >>> lerp(0.5)
-                Color(fore=<ColorValue #617254>, back=None, bold=None, dim=None, italic=None, underline=None)
+                <Color fore=<ColorValue #617254>>
                 >>> lerp(1)
-                Color(fore=<ColorValue #22C60C>, back=None, bold=None, dim=None, italic=None, underline=None)
+                <Color fore=<ColorValue #22C60C>>
 
         """
 
@@ -477,6 +498,14 @@ class Color:
             else:
                 return lambda f, /: colors[0]
 
+    def __repr__(self):
+        res = "<Color"
+        for field in dataclasses.fields(self):
+            if (value := getattr(self, field.name)) is not None:
+                res += f" {field.name}={value!r}"
+        res += ">"
+        return res
+
     NONE: typing.ClassVar[Color] = dict()  # type: ignore
     """
     No color.
@@ -507,11 +536,28 @@ class Color:
 
     """
 
+    STYLE_INVERSE: typing.ClassVar[Color] = dict(inverse=True)  # type: ignore
+    """
+    Swaps foreground and background colors.
+
+    """
+
+    STYLE_BLINK: typing.ClassVar[Color] = dict(blink=True)  # type: ignore
+    """
+    Makes the text blink.
+
+    """
+
     STYLE_NORMAL: typing.ClassVar[Color] = dict(
-        bold=False, dim=False, underline=False, italic=False
+        bold=False,
+        dim=False,
+        underline=False,
+        italic=False,
+        inverse=False,
+        blink=False,
     )  # type: ignore
     """
-    Not bold nor dim not italic nor underline.
+    Normal style.
 
     """
 

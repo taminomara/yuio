@@ -25,7 +25,7 @@ in your ``conf.py``:
     ]
 
 You'll get four new directives in Python domain: :rst:dir:`py:config`,
-:rst:dir:`py:field`, :rst:dir:`py:autoconfig`, :rst:dir:`py:autofield`,
+:rst:dir:`py:field`, :rst:dir:`autoconfig`, :rst:dir:`autofield`,
 that work with Python Autodoc. You'll also get a new role :rst:role:`flag`
 for rendering CLI arguments.
 

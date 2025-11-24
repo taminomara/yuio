@@ -28,7 +28,7 @@ However, you can get a :class:`Term` object by using :func:`get_term_from_stream
 .. autoclass:: Term
    :members:
 
-.. autoclass:: TerminalColors
+.. autoclass:: TerminalTheme
    :members:
 
 .. autoclass:: Lightness
@@ -44,6 +44,8 @@ However, you can get a :class:`Term` object by using :func:`get_term_from_stream
 Utilities
 ---------
 
+.. autofunction:: color_to_code
+
 .. autofunction:: detect_ci
 
 .. autofunction:: detect_ci_color_support
@@ -54,6 +56,7 @@ from __future__ import annotations
 
 import contextlib
 import enum
+import locale
 import os
 import re
 import shutil
@@ -65,15 +68,15 @@ import yuio.color
 from yuio import _typing as _t
 
 __all__ = [
-    "Lightness",
     "ColorSupport",
     "InteractiveSupport",
-    "TerminalColors",
+    "Lightness",
     "Term",
-    "get_term_from_stream",
+    "TerminalTheme",
+    "color_to_code",
     "detect_ci",
     "detect_ci_color_support",
-    "color_to_code",
+    "get_term_from_stream",
 ]
 
 T = _t.TypeVar("T")
@@ -125,8 +128,11 @@ class ColorSupport(enum.IntEnum):
 
     """
 
-    #: 256-encoded colors are supported.
     ANSI_256 = 2
+    """
+    256-encoded colors are supported.
+
+    """
 
     ANSI_TRUE = 3
     """
@@ -161,7 +167,7 @@ class InteractiveSupport(enum.IntEnum):
 
 
 @dataclass(frozen=True)
-class TerminalColors:
+class TerminalTheme:
     """
     Colors and theme of the attached terminal.
 
@@ -181,49 +187,49 @@ class TerminalColors:
 
     black: yuio.color.ColorValue
     """
-    yuio.color.Color value for the default "black" color.
+    Color value for the default "black" color.
 
     """
 
     red: yuio.color.ColorValue
     """
-    yuio.color.Color value for the default "red" color.
+    Color value for the default "red" color.
 
     """
 
     green: yuio.color.ColorValue
     """
-    yuio.color.Color value for the default "green" color.
+    Color value for the default "green" color.
 
     """
 
     yellow: yuio.color.ColorValue
     """
-    yuio.color.Color value for the default "yellow" color.
+    Color value for the default "yellow" color.
 
     """
 
     blue: yuio.color.ColorValue
     """
-    yuio.color.Color value for the default "blue" color.
+    Color value for the default "blue" color.
 
     """
 
     magenta: yuio.color.ColorValue
     """
-    yuio.color.Color value for the default "magenta" color.
+    Color value for the default "magenta" color.
 
     """
 
     cyan: yuio.color.ColorValue
     """
-    yuio.color.Color value for the default "cyan" color.
+    Color value for the default "cyan" color.
 
     """
 
     white: yuio.color.ColorValue
     """
-    yuio.color.Color value for the default "white" color.
+    Color value for the default "white" color.
 
     """
 
@@ -267,7 +273,7 @@ class Term:
 
     """
 
-    terminal_colors: TerminalColors | None = None
+    terminal_theme: TerminalTheme | None = None
     """
     Terminal's default foreground, background, and text colors.
 
@@ -334,6 +340,13 @@ class Term:
             self.supports_colors and self.interactive_support >= InteractiveSupport.FULL
         )
 
+    @property
+    def is_unicode(self) -> bool:
+        encoding = (
+            getattr(self.ostream, "encoding", None) or locale.getpreferredencoding()
+        )
+        return "utf" in encoding or "unicode" in encoding
+
 
 _CI_ENV_VARS = [
     "TRAVIS",
@@ -348,7 +361,7 @@ _CI_ENV_VARS = [
 
 
 def get_term_from_stream(
-    ostream: _t.TextIO, istream: _t.TextIO, /, *, query_terminal_colors: bool = True
+    ostream: _t.TextIO, istream: _t.TextIO, /, *, query_terminal_theme: bool = True
 ) -> Term:
     """
     Query info about a terminal attached to the given stream.
@@ -357,7 +370,7 @@ def get_term_from_stream(
         output stream.
     :param istream:
         input stream.
-    :param query_terminal_colors:
+    :param query_terminal_theme:
         By default, this function queries background, foreground, and text colors
         of the terminal if ``ostream`` and ``istream`` are connected to a TTY.
 
@@ -365,14 +378,14 @@ def get_term_from_stream(
 
     """
 
-    if "__YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ:
+    if "__YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ:  # pragma: no cover
         # For building docs in github
         return Term(
             ostream=ostream,
             istream=istream,
             color_support=ColorSupport.ANSI_TRUE,
             interactive_support=InteractiveSupport.FULL,
-            terminal_colors=_get_standard_colors(ostream),
+            terminal_theme=_get_standard_colors(ostream),
         )
 
     # Note: we don't rely on argparse to parse out flags and send them to us
@@ -428,7 +441,7 @@ def get_term_from_stream(
         if has_interactive_output and has_interactive_input:
             interactive_support = InteractiveSupport.FULL
             if (
-                query_terminal_colors
+                query_terminal_theme
                 and color_support >= ColorSupport.ANSI_256
                 and "YUIO_DISABLE_OSC_QUERIES" not in os.environ
             ):
@@ -441,7 +454,7 @@ def get_term_from_stream(
         istream=istream,
         color_support=color_support,
         interactive_support=interactive_support,
-        terminal_colors=theme,
+        terminal_theme=theme,
     )
 
 
@@ -471,7 +484,7 @@ def detect_ci_color_support() -> ColorSupport:
         return ColorSupport.NONE
 
 
-def _get_standard_colors(stream: _t.TextIO) -> TerminalColors | None:
+def _get_standard_colors(stream: _t.TextIO) -> TerminalTheme | None:
     try:
         query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join(
             [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
@@ -487,7 +500,7 @@ def _get_standard_colors(stream: _t.TextIO) -> TerminalColors | None:
             response,
             re.IGNORECASE,
         )
-        if match is None:
+        if match is None:  # pragma: no cover
             return None
 
         r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups())
@@ -502,7 +515,7 @@ def _get_standard_colors(stream: _t.TextIO) -> TerminalColors | None:
             response,
             re.IGNORECASE,
         )
-        if match is None:
+        if match is None:  # pragma: no cover
             return None
 
         r, g, b = (int(v, 16) // 16 ** (len(v) - 2) for v in match.groups())
@@ -528,7 +541,7 @@ def _get_standard_colors(stream: _t.TextIO) -> TerminalColors | None:
                 response,
                 re.IGNORECASE,
             )
-            if match is None:
+            if match is None:  # pragma: no cover
                 return None
 
             c = int(match.group(1))
@@ -537,11 +550,11 @@ def _get_standard_colors(stream: _t.TextIO) -> TerminalColors | None:
 
             response = response[match.end() :]
 
-        if set(colors.keys()) != {0, 1, 2, 3, 4, 5, 6, 7}:
+        if set(colors.keys()) != {0, 1, 2, 3, 4, 5, 6, 7}:  # pragma: no cover
             return None
 
         # return colors
-        return TerminalColors(
+        return TerminalTheme(
             background=background,
             foreground=foreground,
             black=colors[0],
@@ -555,7 +568,7 @@ def _get_standard_colors(stream: _t.TextIO) -> TerminalColors | None:
             lightness=lightness,
         )
 
-    except Exception:
+    except Exception:  # pragma: no cover
         return None
 
 
@@ -576,7 +589,7 @@ def _query_term(stream: _t.TextIO, query: str) -> str | None:
 
                 buf = _read_keycode()
                 if not buf.startswith("\x1b"):
-                    yuio._logger.debug("_query_term invalid response")
+                    yuio._logger.warning("_query_term invalid response: %r", buf)
                     return None
 
                 # Read till we find a DA1 response.
@@ -590,15 +603,15 @@ def _query_term(stream: _t.TextIO, query: str) -> str | None:
                 # Release the keyboard.
                 stream.write("\x1b[2i")
                 stream.flush()
-    except Exception:
-        yuio._logger.debug("_query_term error", exc_info=True)
+    except Exception:  # pragma: no cover
+        yuio._logger.warning("_query_term error", exc_info=True)
         return None
 
 
 def _is_tty(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and stream.isatty()
-    except Exception:
+    except Exception:  # pragma: no cover
         return False
 
 
@@ -607,7 +620,7 @@ if os.name == "posix":
     def _is_foreground(stream: _t.TextIO | None) -> bool:
         try:
             return stream is not None and os.getpgrp() == os.tcgetpgrp(stream.fileno())
-        except Exception:
+        except Exception:  # pragma: no cover
             return False
 
 elif os.name == "nt":
@@ -624,14 +637,14 @@ else:
 def _is_interactive_input(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.readable()
-    except Exception:
+    except Exception:  # pragma: no cover
         return False
 
 
 def _is_interactive_output(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.writable()
-    except Exception:
+    except Exception:  # pragma: no cover
         return False
 
 
@@ -790,7 +803,7 @@ elif os.name == "nt":
                     | _ENABLE_VIRTUAL_TERMINAL_PROCESSING,
                 )
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             return False
 
 else:
@@ -842,6 +855,10 @@ def color_to_code(color: yuio.color.Color, term: Term) -> str:
         codes.append("3")
     if color.underline:
         codes.append("4")
+    if color.blink:
+        codes.append("5")
+    if color.inverse:
+        codes.append("7")
     if codes:
         return "\x1b[;" + ";".join(codes) + "m"
     else:

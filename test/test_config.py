@@ -100,9 +100,9 @@ class TestBasics:
             f1: str = "1"
             f2: str
 
-        assert repr(MyConfig()) == "MyConfig(\n  f1='1',\n  f2=yuio.MISSING\n)"
-        assert repr(MyConfig(f1="x")) == "MyConfig(\n  f1='x',\n  f2=yuio.MISSING\n)"
-        assert repr(MyConfig(f2="y")) == "MyConfig(\n  f1='1',\n  f2='y'\n)"
+        assert repr(MyConfig()) == "MyConfig(f1='1', f2=yuio.MISSING)"
+        assert repr(MyConfig(f1="x")) == "MyConfig(f1='x', f2=yuio.MISSING)"
+        assert repr(MyConfig(f2="y")) == "MyConfig(f1='1', f2='y')"
 
     def test_inheritance(self):
         class Parent(yuio.config.Config):
@@ -165,22 +165,12 @@ class TestBasics:
             x: int
 
         assert (
-            repr(MyConfig()) == "MyConfig(\n"
-            "  sub=SubConfig(\n"
-            "    a='a',\n"
-            "    b=yuio.MISSING\n"
-            "  ),\n"
-            "  x=yuio.MISSING\n"
-            ")"
+            repr(MyConfig())
+            == "MyConfig(sub=SubConfig(a='a', b=yuio.MISSING), x=yuio.MISSING)"
         )
         assert (
-            repr(MyConfig(sub=SubConfig(b="2"))) == "MyConfig(\n"
-            "  sub=SubConfig(\n"
-            "    a='a',\n"
-            "    b='2'\n"
-            "  ),\n"
-            "  x=yuio.MISSING\n"
-            ")"
+            repr(MyConfig(sub=SubConfig(b="2")))
+            == "MyConfig(sub=SubConfig(a='a', b='2'), x=yuio.MISSING)"
         )
 
     def test_update(self):
@@ -247,7 +237,7 @@ class TestBasics:
         class MyConfig1(yuio.config.Config):
             x: int
 
-        with pytest.raises(yuio.parse.ParsingError, match=r"Expected `int`"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected int"):
             assert MyConfig1.load_from_parsed_file(dict(x=None))
 
         class MyConfig2(yuio.config.Config):
@@ -349,7 +339,7 @@ class TestEnv:
         assert c.s == "x"
 
         monkeypatch.setenv("S", "z")
-        with pytest.raises(ValueError, match=r"one of `x`, `y`"):
+        with pytest.raises(ValueError, match=r"should be 'x' or 'y'"):
             _ = MyConfig1.load_from_env()
 
         class E(enum.Enum):
@@ -459,6 +449,10 @@ class TestEnv:
 class TestArgs:
     C = _t.TypeVar("C", bound=yuio.config.Config)
 
+    @pytest.fixture
+    def width(self):
+        return 500
+
     @staticmethod
     def load_from_args(confg: type[C], args: str) -> C:
         parser = argparse.ArgumentParser()
@@ -530,7 +524,7 @@ class TestArgs:
 
         with pytest.raises(SystemExit):
             self.load_from_args(MyConfig, "--s z")
-        assert "one of `x`, `y`" in capsys.readouterr().err
+        assert "should be 'x' or 'y'" in capsys.readouterr().err
 
     def test_collection_parsers(self):
         class MyConfig(yuio.config.Config):
@@ -747,7 +741,7 @@ class TestLoadFromFile:
             b: int
             c: int = 5
 
-        with pytest.raises(ValueError, match=r"Unknown field `x`"):
+        with pytest.raises(ValueError, match=r"Unknown field x"):
             MyConfig.load_from_parsed_file(dict(a="abc", b=10, x=11))
 
     def test_load_from_parsed_file_unknown_fields_ignored(self):
@@ -766,7 +760,7 @@ class TestLoadFromFile:
         class MyConfig(yuio.config.Config):
             a: str
 
-        with pytest.raises(yuio.parse.ParsingError, match=r"Expected `str`"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             MyConfig.load_from_parsed_file(dict(a=10))
 
     def test_load_from_parsed_file_subconfig(self):
@@ -781,7 +775,7 @@ class TestLoadFromFile:
         assert c.b == "abc"
         assert c.c.a == "cde"
 
-        with pytest.raises(ValueError, match=r"Unknown field `c\.x`"):
+        with pytest.raises(ValueError, match=r"Unknown field c\.x"):
             MyConfig.load_from_parsed_file(dict(b="abc", c=dict(x="cde")))
 
     def test_load_from_json_file(self, tmp_path):
@@ -810,7 +804,7 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match=r"Unknown field `x`"):
+        with pytest.raises(ValueError, match=r"Unknown field x"):
             MyConfig.load_from_json_file(data_path_2)
 
         c = MyConfig.load_from_json_file(
@@ -848,7 +842,7 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match=r"Unknown field `x`"):
+        with pytest.raises(ValueError, match=r"Unknown field x"):
             MyConfig.load_from_yaml_file(data_path_2)
 
         c = MyConfig.load_from_yaml_file(
@@ -886,7 +880,7 @@ class TestLoadFromFile:
         assert c.b == 10
         assert c.c == 5
 
-        with pytest.raises(ValueError, match=r"Unknown field `x`"):
+        with pytest.raises(ValueError, match=r"Unknown field x"):
             MyConfig.load_from_toml_file(data_path_2)
 
         c = MyConfig.load_from_toml_file(

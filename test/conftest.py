@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import io
+import os
 import pathlib
 import re
 import sys
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 import pytest
 
 import yuio
+import yuio.color
 import yuio.io
 import yuio.string
 import yuio.term
@@ -21,6 +23,46 @@ from yuio import _typing as _t
 
 T = _t.TypeVar("T")
 W = _t.TypeVar("W", bound=yuio.widget.Widget[object])
+
+
+class TestTheme(yuio.theme.Theme):
+    progress_bar_width = 5
+    msg_decorations = {
+        **yuio.theme._MSG_DECORATIONS_UNICODE,
+        "spinner/pattern": "⣿",
+    }
+    colors = {
+        "code": "magenta",
+        "note": "cyan",
+        "path": "code",
+        "flag": "note",
+        "bold": yuio.color.Color.STYLE_BOLD,
+        "b": "bold",
+        "dim": yuio.color.Color.STYLE_DIM,
+        "d": "dim",
+        "italic": yuio.color.Color.STYLE_ITALIC,
+        "i": "italic",
+        "underline": yuio.color.Color.STYLE_UNDERLINE,
+        "u": "underline",
+        "inverse": yuio.color.Color.STYLE_INVERSE,
+        "normal": yuio.color.Color.FORE_NORMAL,
+        "normal_dim": yuio.color.Color.FORE_NORMAL_DIM,
+        "black": yuio.color.Color.FORE_BLACK,
+        "red": yuio.color.Color.FORE_RED,
+        "green": yuio.color.Color.FORE_GREEN,
+        "yellow": yuio.color.Color.FORE_YELLOW,
+        "blue": yuio.color.Color.FORE_BLUE,
+        "magenta": yuio.color.Color.FORE_MAGENTA,
+        "cyan": yuio.color.Color.FORE_CYAN,
+        "white": yuio.color.Color.FORE_WHITE,
+        "msg/decoration": "magenta",
+        "msg/text:heading": "bold",
+        "msg/text:question": "blue",
+        "msg/text:error": "red",
+        "msg/text:warning": "yellow",
+        "msg/text:success": "green",
+        "msg/text:info": "cyan",
+    }
 
 
 _WIDTH = 20
@@ -53,7 +95,7 @@ def istream() -> _t.TextIO:
 
 @pytest.fixture
 def theme() -> yuio.theme.Theme:
-    return yuio.theme.Theme()
+    return TestTheme()
 
 
 @pytest.fixture
@@ -116,6 +158,32 @@ def widget_checker(
     widget_checker_factory,
 ) -> WidgetChecker[yuio.widget.Widget[object]]:
     return widget_checker_factory()
+
+
+@pytest.fixture
+def enable_bg_updates() -> bool:
+    return False
+
+
+@pytest.fixture(autouse=True)
+def setup_io(
+    term: yuio.term.Term,
+    theme: yuio.theme.Theme,
+    monkeypatch: pytest.MonkeyPatch,
+    enable_bg_updates: bool,
+    width: int,
+    height: int,
+):
+    monkeypatch.setattr(
+        "shutil.get_terminal_size", lambda *_, **__: os.terminal_size((width, height))
+    )
+
+    io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=enable_bg_updates)
+    monkeypatch.setattr("yuio.io._IO_MANAGER", io_manager)
+
+    yield
+
+    io_manager.stop()
 
 
 @dataclass
@@ -1111,8 +1179,8 @@ def _render_screen(commands: str, width: int) -> tuple[list[str], list[str], int
                         int_code = int(code)
                         if int_code == 1:
                             bold = True
-                        elif int_code == 2:
-                            pass  # dim
+                        elif int_code < 10:
+                            pass  # dim, italic, etc.
                         elif 30 <= int_code <= 37:
                             color = _COLOR_NAMES[int_code - 30]
                         else:

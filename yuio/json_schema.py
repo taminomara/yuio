@@ -121,27 +121,27 @@ import yuio
 from yuio import _typing as _t
 
 __all__ = [
-    "JsonValue",
+    "AllOf",
+    "Any",
+    "AnyOf",
+    "Array",
+    "Boolean",
+    "Dict",
+    "Enum",
+    "Integer",
     "JsonSchemaContext",
     "JsonSchemaType",
-    "Ref",
-    "Array",
-    "Tuple",
-    "Dict",
-    "Null",
-    "Boolean",
-    "Number",
-    "Integer",
-    "String",
-    "Any",
-    "Never",
-    "OneOf",
-    "AllOf",
-    "AnyOf",
-    "Enum",
-    "Object",
-    "Opaque",
+    "JsonValue",
     "Meta",
+    "Never",
+    "Null",
+    "Number",
+    "Object",
+    "OneOf",
+    "Opaque",
+    "Ref",
+    "String",
+    "Tuple",
 ]
 
 T = _t.TypeVar("T")
@@ -156,7 +156,7 @@ if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:
         | _t.Mapping[str, "JsonValue"]
     )
 
-else:
+else:  # pragma: no cover
 
     def _JsonValue(arg: T) -> T:
         """
@@ -182,7 +182,7 @@ class JsonSchemaContext:
     def add_type(
         self, key: _t.Any, /, name: str, make_schema: _t.Callable[[], JsonSchemaType]
     ) -> Ref:
-        r"""
+        """
         Add a new type to the ``$defs`` section.
 
         :param key:
@@ -190,7 +190,7 @@ class JsonSchemaContext:
             will be used as a unique key in the ``$defs`` section.
         :param name:
             name of the type, will be used in the ``$defs`` section. If there are
-            two types with different ``ty``\ s and the same ``name``, their names
+            two types with different ``ty``\\ s and the same ``name``, their names
             will be deduplicated.
         :param make_schema:
             a lambda that will be called if ``ty`` wasn't added to this context before.
@@ -267,6 +267,8 @@ class JsonSchemaType(abc.ABC):
 
         """
 
+        raise NotImplementedError()
+
     def remove_opaque(self) -> JsonSchemaType | None:
         """
         Return a new type with all instances of :class:`Opaque` removed from it.
@@ -283,6 +285,8 @@ class JsonSchemaType(abc.ABC):
         Pretty-print this type using TypeScript syntax.
 
         """
+
+        raise NotImplementedError()
 
     def __str__(self) -> str:
         return self.pprint()

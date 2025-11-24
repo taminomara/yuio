@@ -11,11 +11,11 @@ def install_package(package: str, task: yuio.io.Task):
         # Set task's comment.
         pkg_task.comment("downloading")
 
-        for i in range(25):
+        for i in range(101):
             # Set progress as percentage, just for demonstration.
-            pkg_task.progress(i / 24)
+            pkg_task.progress(i / 100)
 
-            time.sleep(0.2)
+            time.sleep(0.05)
 
         # Clear progress, update task's comment.
         pkg_task.progress(None)
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         "node",
         "rust",
         "ruby",
-        "cpp@20",
+        "cpp",
     ]
 
     yuio.io.heading("Yuio's tasks showcase")

@@ -78,10 +78,7 @@ to merge configs in such a way::
     >>> # Here, `config_1.b` is not overridden, even though it has default.
     >>> config_1.update(Config(a="custom a 2"))
     >>> config_1
-    Config(
-      a='custom a 2',
-      b='custom b'
-    )
+    Config(a='custom a 2', b='custom b')
 
 
 Adding verification

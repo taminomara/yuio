@@ -18,3 +18,4 @@ A simple step-by-step guide that will walk you through Yuio's essentials.
     parsers
     configs
     cli
+    themes

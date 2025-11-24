@@ -4,7 +4,6 @@ import textwrap
 
 import pytest
 
-import yuio.color
 import yuio.io
 import yuio.parse
 import yuio.string
@@ -14,39 +13,6 @@ import yuio.widget
 from yuio import _t
 
 from .conftest import IOMocker, RcCompare
-
-
-@pytest.fixture
-def enable_bg_updates() -> bool:
-    return False
-
-
-@pytest.fixture(autouse=True)
-def setup(
-    term: yuio.term.Term,
-    theme: yuio.theme.Theme,
-    monkeypatch: pytest.MonkeyPatch,
-    enable_bg_updates: bool,
-    width: int,
-):
-    theme.spinner_pattern = "⣿"
-    theme.set_color("code", "magenta")
-    theme.set_color("msg/decoration", "magenta")
-    theme.set_color("msg/text:heading", "bold")
-    theme.set_color("msg/text:question", "blue")
-    theme.set_color("msg/text:error", "red")
-    theme.set_color("msg/text:warning", "yellow")
-    theme.set_color("msg/text:success", "green")
-    theme.set_color("msg/text:info", "cyan")
-    theme.progress_bar_width = 5
-
-    io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=enable_bg_updates)
-    monkeypatch.setattr("yuio.io._IO_MANAGER", io_manager)
-    io_manager._rc._width = width
-
-    yield
-
-    io_manager.stop()
 
 
 class TestSetup:
@@ -237,11 +203,11 @@ class TestMessage:
                 "•   baz             ",
             ],
             [
-                "mm####              ",
+                "mmCCCC              ",
                 "                    ",
-                "mmmm                ",
+                "mmmmccc             ",
                 "                    ",
-                "mmmm                ",
+                "mmmmccc             ",
             ],
         )
 
@@ -259,20 +225,6 @@ class TestMessage:
                 "ccc                 ",
                 "                    ",
                 "ccc                 ",
-            ],
-        )
-
-    def test_raw(self, ostream: io.StringIO):
-        yuio.io.raw(
-            yuio.string.ColorizedString(["foo, ", yuio.color.Color.FORE_RED, "bar"])
-        )
-
-        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
-            [
-                "foo, bar            ",
-            ],
-            [
-                "     rrr            ",
             ],
         )
 
@@ -554,7 +506,7 @@ class TestAskNonInteractive:
     def test_simple(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Hello?              ",
+                "> Hello?            ",
             ],
         )
         io_mocker.expect_istream_readline("Hii~")
@@ -565,15 +517,15 @@ class TestAskNonInteractive:
     def test_empty(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Hello?              ",
+                "> Hello?            ",
             ],
         )
         io_mocker.expect_istream_readline("\n")
         io_mocker.expect_screen(
             [
-                "Hello?              ",
+                "> Hello?            ",
                 "Input is required.  ",
-                "Hello?              ",
+                "> Hello?            ",
             ],
         )
         io_mocker.expect_istream_readline("Hii~\n")
@@ -584,7 +536,7 @@ class TestAskNonInteractive:
     def test_format(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "What's your deal?   ",
+                "> What's your deal? ",
             ],
         )
         io_mocker.expect_istream_readline("meow =^..^=\n")
@@ -595,7 +547,7 @@ class TestAskNonInteractive:
     def test_add_colon(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Enter something:    ",
+                "> Enter something:  ",
             ],
         )
         io_mocker.expect_istream_readline("123\n")
@@ -606,7 +558,7 @@ class TestAskNonInteractive:
     def test_dont_add_colon(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Enter something:    ",
+                "> Enter something:  ",
             ],
         )
         io_mocker.expect_istream_readline("123\n")
@@ -617,7 +569,7 @@ class TestAskNonInteractive:
     def test_default(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Q? [{default}]      ",
+                "> Q? [{default}]    ",
             ],
         )
         io_mocker.expect_istream_readline("\n")
@@ -628,7 +580,7 @@ class TestAskNonInteractive:
     def test_default_overridden(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Q? [{default}]      ",
+                "> Q? [{default}]    ",
             ],
         )
         io_mocker.expect_istream_readline("foo!\n")
@@ -639,7 +591,7 @@ class TestAskNonInteractive:
     def test_default_optional(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Q? [<none>]         ",
+                "> Q? [<none>]       ",
             ],
         )
         io_mocker.expect_istream_readline("\n")
@@ -650,7 +602,7 @@ class TestAskNonInteractive:
     def test_default_add_colon(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Q [{default}]:      ",
+                "> Q [{default}]:    ",
             ],
         )
         io_mocker.expect_istream_readline("\n")
@@ -661,7 +613,7 @@ class TestAskNonInteractive:
     def test_default_dont_add_colon(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Q [{default}]:      ",
+                "> Q [{default}]:    ",
             ],
         )
         io_mocker.expect_istream_readline("\n")
@@ -672,7 +624,7 @@ class TestAskNonInteractive:
     def test_input_description(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Q (<text>):         ",
+                "> Q (<text>):       ",
             ],
         )
         io_mocker.expect_istream_readline("123\n")
@@ -683,7 +635,7 @@ class TestAskNonInteractive:
     def test_default_description(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Q [<default>]:      ",
+                "> Q [<default>]:    ",
             ],
         )
         io_mocker.expect_istream_readline("\n")
@@ -697,21 +649,20 @@ class TestAskNonInteractive:
     def test_parser(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Are you there? ({yes",
-                "|no})               ",
+                "> Are you there? (  ",
+                "  {yes|no})         ",
             ],
         )
         io_mocker.expect_istream_readline("what?\n")
         io_mocker.expect_screen(
             [
-                "Are you there? ({yes",
-                "|no}) what?         ",
-                "Error: Can't parse  ",
-                "'what?' as bool,    ",
-                "should be one of    ",
-                "'yes', 'no'         ",
-                "Are you there? ({yes",
-                "|no})               ",
+                "> Are you there? (  ",
+                "  {yes|no}) what?   ",
+                "Can't parse 'what?' ",
+                "as bool, should be  ",
+                "one of 'yes', 'no'  ",
+                "> Are you there? (  ",
+                "  {yes|no})         ",
             ],
         )
         io_mocker.expect_istream_readline("y\n")
@@ -722,21 +673,20 @@ class TestAskNonInteractive:
     def test_parser_hint(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Are you there? ({yes",
-                "|no})               ",
+                "> Are you there? (  ",
+                "  {yes|no})         ",
             ],
         )
         io_mocker.expect_istream_readline("what?\n")
         io_mocker.expect_screen(
             [
-                "Are you there? ({yes",
-                "|no}) what?         ",
-                "Error: Can't parse  ",
-                "'what?' as bool,    ",
-                "should be one of    ",
-                "'yes', 'no'         ",
-                "Are you there? ({yes",
-                "|no})               ",
+                "> Are you there? (  ",
+                "  {yes|no}) what?   ",
+                "Can't parse 'what?' ",
+                "as bool, should be  ",
+                "one of 'yes', 'no'  ",
+                "> Are you there? (  ",
+                "  {yes|no})         ",
             ],
         )
         io_mocker.expect_istream_readline("y\n")
@@ -747,9 +697,9 @@ class TestAskNonInteractive:
     def test_type_hint_and_parser(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Enter some numbers (",
-                "<int>[ <int>[ ...]])",
-                ":                   ",
+                "> Enter some numbers",
+                "  (<int>[ <int>[    ",
+                "  ...]]):           ",
             ],
         )
         io_mocker.expect_istream_readline("123 456\n")
@@ -842,8 +792,8 @@ class TestWaitForUserNonInteractive:
     def test_simple(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Press enter to conti",
-                "nue                 ",
+                "> Press enter to    ",
+                "  continue          ",
             ]
         )
         io_mocker.expect_istream_readline("\n")
@@ -854,42 +804,42 @@ class TestWaitForUserNonInteractive:
     def test_add_space(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Press enter to conti",
-                "nue                 ",
+                "> Press enter to    ",
+                "  continue          ",
             ]
         )
         io_mocker.expect_istream_readline(".\n")
         io_mocker.expect_screen(
             [
-                "Press enter to conti",
-                "nue .               ",
+                "> Press enter to    ",
+                "  continue .        ",
             ]
         )
 
         with io_mocker.mock():
             yuio.io.wait_for_user()
 
-    def test_dont_add_space(self, io_mocker: IOMocker):
+    def test_strip_end(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Ends with space     ",
+                "> Ends with spaces  ",
             ]
         )
         io_mocker.expect_istream_readline(".\n")
         io_mocker.expect_screen(
             [
-                "Ends with space .   ",
+                "> Ends with spaces .",
             ]
         )
 
         with io_mocker.mock():
-            yuio.io.wait_for_user("Ends with space ")
+            yuio.io.wait_for_user("Ends with spaces   ")
 
     def test_msg(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Slam that Enter butt",
-                "on!                 ",
+                "> Slam that Enter   ",
+                "  button!           ",
             ]
         )
         io_mocker.expect_istream_readline("\n")
@@ -900,8 +850,8 @@ class TestWaitForUserNonInteractive:
     def test_msg_format(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
-                "Slam that Enter butt",
-                "on!                 ",
+                "> Slam that Enter   ",
+                "  button!           ",
             ]
         )
         io_mocker.expect_istream_readline("\n")
@@ -994,12 +944,12 @@ class TestEdit:
 
     def test_editor_error(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: "exit 1; cat")
-        with pytest.raises(yuio.io.UserIoError, match=r"editing failed"):
+        with pytest.raises(yuio.io.UserIoError, match=r"Editing failed"):
             assert yuio.io.edit("foobar")
 
     def test_no_editor(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: None)
-        with pytest.raises(yuio.io.UserIoError, match=r"can't detect an editor"):
+        with pytest.raises(yuio.io.UserIoError, match=r"Can't find a usable editor"):
             assert yuio.io.edit("foobar")
 
     def test_comments(self, monkeypatch: pytest.MonkeyPatch):
@@ -1036,7 +986,7 @@ class TestEditWin:
         """
         @echo off
         echo Edited content> %1
-    """
+        """
     )
 
     def test_edit(self, tmp_path, monkeypatch):
@@ -1569,14 +1519,14 @@ class TestTask:
                 (0.00050, 0.001001),
                 {"unit": "V"},
                 [
-                    "■■□□□ task - 500.00µV/1.00mV            ",
+                    "■■□□□ task - 500.00uV/1.00mV            ",
                 ],
             ),
             (
                 (0.00050, 0.001001),
                 {"ndigits": 4},
                 [
-                    "■■□□□ task - 500.0000µ/1.0010m          ",
+                    "■■□□□ task - 500.0000u/1.0010m          ",
                 ],
             ),
         ],
@@ -1835,21 +1785,93 @@ class TestTask:
             yuio.io.info("bar")
 
     def test_progressbar_decoration(self, theme: yuio.theme.Theme, io_mocker: IOMocker):
-        theme.progress_bar_start_symbol = "["
-        theme.progress_bar_end_symbol = "]"
-        theme.progress_bar_done_symbol = ">"
-        theme.progress_bar_pending_symbol = "."
+        theme.set_msg_decoration("progress_bar/start_symbol", "[")
+        theme.set_msg_decoration("progress_bar/end_symbol", "]")
+        theme.set_msg_decoration("progress_bar/done_symbol", ">")
+        theme.set_msg_decoration("progress_bar/pending_symbol", ".")
+        theme.set_msg_decoration("progress_bar/transition_pattern", "")
+        theme.progress_bar_width = 17
 
         io_mocker.expect_screen(
             [
-                "[>>...] Task - 2/5                      ",
+                "[>>>>>>.........] Task - 40.00%         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "[>>>>>>.........] Task - 41.00%         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "[>>>>>>>........] Task - 45.00%         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "[>>>>>>>>.......] Task - 50.00%         ",
             ]
         )
         io_mocker.expect_mark()
 
         with io_mocker.mock():
             with yuio.io.Task("Task") as task:
-                task.progress(2, 5)
+                task.progress(0.40)
+                io_mocker.mark()
+                task.progress(0.41)
+                io_mocker.mark()
+                task.progress(0.45)
+                io_mocker.mark()
+                task.progress(0.50)
+                io_mocker.mark()
+
+    def test_progressbar_decoration_transition(
+        self, theme: yuio.theme.Theme, io_mocker: IOMocker
+    ):
+        theme.set_msg_decoration("progress_bar/start_symbol", "[")
+        theme.set_msg_decoration("progress_bar/end_symbol", "]")
+        theme.set_msg_decoration("progress_bar/done_symbol", ">")
+        theme.set_msg_decoration("progress_bar/pending_symbol", ".")
+        theme.set_msg_decoration("progress_bar/transition_pattern", "9876543210")
+        theme.progress_bar_width = 17
+
+        io_mocker.expect_screen(
+            [
+                "[>>>>>>0........] Task - 40.00%         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "[>>>>>>2........] Task - 41.00%         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "[>>>>>>8........] Task - 45.00%         ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "[>>>>>>>5.......] Task - 50.00%         ",
+            ]
+        )
+        io_mocker.expect_mark()
+
+        with io_mocker.mock():
+            with yuio.io.Task("Task") as task:
+                task.progress(0.40)
+                io_mocker.mark()
+                task.progress(0.41)
+                io_mocker.mark()
+                task.progress(0.45)
+                io_mocker.mark()
+                task.progress(0.50)
                 io_mocker.mark()
 
 
@@ -2206,7 +2228,7 @@ class TestLog:
 
         self.logger.removeHandler(handler)
 
-    def test_log(self, ostream: io.StringIO):
+    def test_simple(self, ostream: io.StringIO):
         self.logger.debug("debug")
         self.logger.info("info")
         self.logger.warning("warning")
@@ -2220,7 +2242,7 @@ class TestLog:
         assert "yuio.test.test_log ERROR error" in value
         assert "yuio.test.test_log CRITICAL critical" in value
 
-    def test_log_tb(self, ostream: io.StringIO):
+    def test_tb(self, ostream: io.StringIO):
         self.logger.debug("debug")
         try:
             raise RuntimeError("oh no!")
@@ -2231,9 +2253,47 @@ class TestLog:
         assert "something went wrong" in value
         assert "oh no!" in value
 
-    def test_log_stack(self, ostream: io.StringIO):
+    def test_stack(self, ostream: io.StringIO):
         self.logger.info("hi there!", stack_info=True)
 
         value = ostream.getvalue()
         assert "hi there!" in value
         assert 'self.logger.info("hi there!", stack_info=True)' in value
+
+    def test_colors(self, theme: yuio.theme.Theme, io_mocker: IOMocker):
+        self.logger.handlers[0].setFormatter(
+            yuio.io.Formatter(
+                "%(name)s %(levelname)s %(add_data)d %(add_data_2)s %(colMessage)s",
+                defaults={
+                    "add_data": 10,
+                    "add_data_2": "asd",
+                },
+            )
+        )
+        theme.set_color("log", "yellow")
+        theme.set_color("log:info", "cyan")
+        theme.set_color("log/add_data:info", "red")
+        theme.set_color("log/name:info", "green")
+        theme.set_color("log/levelname:info", "blue")
+        theme.set_color("log/colMessage:info", "magenta")
+
+        io_mocker.expect_screen(
+            [
+                "yuio.test.test_log I",
+                "NFO 10 asd msg arg  ",
+                "yuio.test.test_log E",
+                "RROR 10 asd m2 `arg`",
+            ],
+            [
+                "ggggggggggggggggggcb",
+                "bbbcrrcccccmmmmmmm  ",
+                "yyyyyyyyyyyyyyyyyyyy",
+                "yyyyyyyyyyyyyyyyYYYy",
+            ],
+        )
+
+        with io_mocker.mock():
+            self.logger.info("msg %s", "arg")
+            self.logger.error(
+                "m2 `%s`", yuio.io.WithBaseColor("arg", base_color="bold")
+            )

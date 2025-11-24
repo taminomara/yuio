@@ -288,12 +288,13 @@ For example, let's make a parser that checks if the input is even:
         :sync: parsers
 
         .. code-block:: python
-            :emphasize-lines: 7
+            :emphasize-lines: 8
 
             def assert_is_even(value: int):
                 if value % 2 != 0:
                     raise yuio.parse.ParsingError(
-                        f"expected an even value, got {value}"
+                        "expected an even value: `%r`",
+                        value,
                     )
 
             parser = yuio.parse.Apply(yuio.parse.Int(), assert_is_even)
@@ -302,10 +303,14 @@ For example, let's make a parser that checks if the input is even:
         :sync: annotations
 
         .. code-block:: python
+            :emphasize-lines: 9
 
             def assert_is_even(value: int):
                 if value % 2 != 0:
-                    raise yuio.parse.ParsingError("expected an even value")
+                    raise yuio.parse.ParsingError(
+                        "expected an even value: `%r`",
+                        value,
+                    )
 
             parser = yuio.parse.from_type_hint(
                 Annotated[int, yuio.parse.Apply(assert_is_even)]
@@ -318,7 +323,7 @@ The parser will apply our ``assert_is_even`` to all values that it returns::
     >>> parser.parse("3")
     Traceback (most recent call last):
     ...
-    yuio.parse.ParsingError: expected an even value
+    yuio.parse.ParsingError: expected an even value: 3
 
 
 Mutating parsers
@@ -352,8 +357,9 @@ In addition to validation, you can mutate the input. For example:
 You can also use :class:`yuio.parse.Map` to implement a custom mutation.
 
 Note that parsers need to convert parsed values back to their original form
-when printing them, building documentation, or converting to JSON. For this reason,
-:class:`~yuio.parse.Map` allows specifying a function to undo the change:
+when printing them, rendering examples for documentation, or converting to JSON.
+For this reason, :class:`~yuio.parse.Map` allows specifying a function
+to undo the change:
 
 .. invisible-code-block: python
 

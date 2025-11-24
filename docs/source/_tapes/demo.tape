@@ -7,6 +7,7 @@ Type "import yuio.io"
 Enter
 Type "yuio.io.setup()"
 Enter
+Wait />>>$/
 Ctrl+L
 Show
 
@@ -61,7 +62,7 @@ Show
 Sleep 1s
 Type "python examples/tasks_multithreaded.py"
 Enter
-Sleep 12s
+Wait
 Sleep 4s
 
 Hide

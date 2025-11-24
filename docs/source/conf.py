@@ -46,12 +46,19 @@ autodoc_type_aliases = {
     **{
         name: path
         for path in [
+            "~yuio.io.ExcInfo",
             "~yuio.widget.ActionKey",
             "~yuio.widget.ActionKeys",
             "~yuio.widget.Action",
-            "~yuio.term.RawString",
-            "~yuio.term.AnyString",
+            "~yuio.string.Colorable",
+            "~yuio.string.RawString",
+            "~yuio.string.AnyString",
+            "~yuio.string.NoWrapStart",
+            "~yuio.string.NoWrapEnd",
+            "~yuio.string.NoWrapMarker",
             "~yuio.json_schema.JsonValue",
+            "~yuio.dbg.env.EnvCollector",
+            "~yuio.cli.NArgs",
         ]
         for name in [
             path.rsplit(".", maxsplit=1)[-1].removeprefix("~"),
@@ -62,6 +69,8 @@ autodoc_type_aliases = {
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
 vhs_min_version = "0.7.2"
+
+toc_object_entries_show_parents = "hide"
 
 # -- Options for HTML output -------------------------------------------------
 

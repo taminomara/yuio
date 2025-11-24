@@ -67,7 +67,7 @@ class Report:
         return self.__class__.__name__
 
 
-EnvCollector: _t.TypeAlias = _t.Callable[[], Report] | Report
+EnvCollector: _t.TypeAlias = _t.Callable[[], Report]
 """
 A callable that collects a report.
 
@@ -117,7 +117,6 @@ def _load_env_collectors():
 
     collectors: list[tuple[str, EnvCollector | Report]] = []
 
-    # project.entry-points."yuio.env_collector"
     for plugin in importlib.metadata.entry_points(group="yuio.env_collector"):
         try:
             collectors.append((plugin.name, plugin.load()))
@@ -259,7 +258,7 @@ def _terminal() -> Report:
     term = yuio.io.get_term()
     report.items.append(("interactive support", term.interactive_support.name))
     report.items.append(("terminal colors", term.color_support.name))
-    report.items.append(("detected colors", str(term.terminal_colors is not None)))
+    report.items.append(("detected colors", str(term.terminal_theme is not None)))
     report.items.append(("term", os.environ.get("TERM", "")))
     report.items.append(("colorterm", os.environ.get("COLORTERM", "")))
     report.items.append(("shell", os.environ.get("SHELL", "")))
@@ -306,7 +305,7 @@ def print_report(
     if settings is None or isinstance(settings, bool):
         settings = ReportSettings()
 
-    all_collectors: list[tuple[str | None, EnvCollector]] = [
+    all_collectors: list[tuple[str | None, EnvCollector | Report]] = [
         ("System", _system),
         ("Versions", lambda: _versions(settings, app)),
         ("Terminal and CLI", _terminal),

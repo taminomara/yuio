@@ -47,7 +47,7 @@ def main(
 
             def read_keycode():
                 keycode = _read_keycode()
-                yuio.io.out("<c d>Read: %r</c>", keycode)
+                yuio.io.info("<c d>Read: %r</c>", keycode, to_stdout=True)
                 return keycode
 
             yuio.term._read_keycode = read_keycode
@@ -66,7 +66,7 @@ def main(
                 p = f" {event.paste_str!r}"
             else:
                 p = ""
-            yuio.io.out("Key: <c b>%s</c>`%s`", r, p)
+            yuio.io.info("Key: <c b>%s</c>`%s`", r, p, to_stdout=True)
             if event == yuio.widget.KeyboardEvent("c", ctrl=True):
                 raise KeyboardInterrupt()
 

@@ -615,7 +615,7 @@ def test_remotes(repo, remote_repo_path):
 
 class TestRefCompleter:
     @pytest.fixture(autouse=True)
-    def setup_repo(self, repo, remote_repo_path):
+    def setup(self, repo, remote_repo_path):
         repo.git("commit", "--allow-empty", "--message", "message")
         repo.git("tag", "tag1")
         repo.git("tag", "tag2")
@@ -712,7 +712,7 @@ class TestRefCompleter:
 
 class TestCommitParser:
     @pytest.fixture(autouse=True)
-    def setup_repo(self, repo):
+    def setup(self, repo):
         repo.git("commit", "--allow-empty", "--message", "message")
 
     def test_basics(self, repo):

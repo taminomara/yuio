@@ -1,6 +1,6 @@
 [project]
 name = "yuio"
-authors = [{name = "Tamika Nomara", email = "taminomara@gmail.com"}]
+authors = [{ name = "Tamika Nomara", email = "taminomara@gmail.com" }]
 description = "Lite and user-friendly CLI library"
 dynamic = ["version"]
 readme = "README.md"
@@ -21,17 +21,15 @@ classifiers = [
     "Environment :: Console",
     "Typing :: Typed",
 ]
-dependencies = [
-    "typing-extensions>=4.13,<5",
-]
+dependencies = ["typing-extensions>=4.13,<5"]
 
 [dependency-groups]
 dev = [
     "sphinx-autobuild==2025.8.25",
-    {include-group = "ci"},
-    {include-group = "doc"},
-    {include-group = "lint"},
-    {include-group = "test"},
+    { include-group = "ci" },
+    { include-group = "doc" },
+    { include-group = "lint" },
+    { include-group = "test" },
 ]
 test = [
     "jsonschema==4.25.1",
@@ -50,15 +48,8 @@ doc = [
     "sphinx-vhs==1.2.0",
     "sybil==9.2.0",
 ]
-lint = [
-    "ruff==0.14.4",
-    "pre-commit==4.3.0",
-]
-ci = [
-    "PyGithub==2.8.1",
-    "tox==4.32.0",
-    "virtualenv-pyenv==0.5.0",
-]
+lint = ["ruff==0.14.4", "pre-commit==4.3.0"]
+ci = ["PyGithub==2.8.1", "tox==4.32.0", "virtualenv-pyenv==0.5.0"]
 
 [project.urls]
 Documentation = "https://yuio.readthedocs.io/"
@@ -107,7 +98,12 @@ markers = [
 
 [tool.pyright]
 include = ["yuio", "examples"]
-exclude = ["**/__pycache__", "yuio/_version.py", "yuio/ext/sphinx.py", "yuio/_vendor/*"]
+exclude = [
+    "**/__pycache__",
+    "yuio/_version.py",
+    "yuio/ext/sphinx.py",
+    "yuio/_vendor/*",
+]
 typeCheckingMode = "strict"
 pythonVersion = "3.10"
 pythonPlatform = "All"
@@ -132,16 +128,16 @@ target-version = "py310"
 
 [tool.ruff.lint]
 typing-modules = ["yuio._typing"]
-extend-select = ["I", "INP", "T20", "PT", "RET", "SIM", "SLOT"]
+extend-select = ["I", "INP", "T20", "PT", "RET", "SIM", "SLOT", "RUF022"]
 ignore = [
-    "E402", # Module level import not at top of file
-    "E722", # Do not use bare `except`
-    "E741", # Ambiguous variable name
-    "E731", # Do not assign a `lambda` expression, use a `def`
-    "PT015", # Assertion is always `False`
-    "PT011", # Too broad error type
-    "PT012", # `pytest.raises()` block should contain a single simple statement
-    "PT017", # Found assertion on exception `e` in `except` block
+    "E402",   # Module level import not at top of file
+    "E722",   # Do not use bare `except`
+    "E741",   # Ambiguous variable name
+    "E731",   # Do not assign a `lambda` expression, use a `def`
+    "PT015",  # Assertion is always `False`
+    "PT011",  # Too broad error type
+    "PT012",  # `pytest.raises()` block should contain a single simple statement
+    "PT017",  # Found assertion on exception `e` in `except` block
     "RET505", # Unnecessary `else` after `return` statement
     "RET506", # Unnecessary `else` after `raise` statement
     "RET507", # Unnecessary `else` after `continue` statement
@@ -152,6 +148,7 @@ ignore = [
     "SIM114", # Combine `if` branches using logical `or` operator
     "SIM118", # Use `key in dict` instead of `key in dict.keys()`
 ]
+future-annotations = true
 
 [tool.ruff.lint.per-file-ignores]
 "test/**/*" = ["T20", "I002", "SIM102", "SIM117"]
@@ -169,4 +166,20 @@ patch = ["subprocess"]
 
 [tool.coverage.report]
 include = ["yuio/**/*.py"]
-omit = ["yuio/_version.py", "yuio/_typing.py", "yuio/_vendor/**/*.py"]
+omit = [
+    "yuio/_version.py",
+    "yuio/_typing.py",
+    "yuio/_vendor/**/*.py",
+    "test/**/*.py",
+]
+exclude_also = [
+    "def __repr__",
+    "def __rich_repr__",
+    "if yuio._debug:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if _t.TYPE_CHECKING:",
+    "@(abc.)?abstractmethod",
+    "except ImportError:",
+    "assert False",
+]

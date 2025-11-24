@@ -1,4 +1,7 @@
 import dataclasses
+import pathlib
+import textwrap
+import warnings
 
 import pytest
 
@@ -8,30 +11,41 @@ import yuio.theme
 
 
 class TestColors:
-    def test_get_color(self):
-        t = yuio.theme.Theme()
+    def test_get_color(self, theme):
+        assert theme.get_color("code") == yuio.color.Color.FORE_MAGENTA
+        assert theme.get_color("note") == yuio.color.Color.FORE_CYAN
+        assert theme.get_color("bold") == yuio.color.Color.STYLE_BOLD
+        assert theme.get_color("b") == yuio.color.Color.STYLE_BOLD
+        assert theme.get_color("dim") == yuio.color.Color.STYLE_DIM
+        assert theme.get_color("d") == yuio.color.Color.STYLE_DIM
+        assert theme.get_color("normal") == yuio.color.Color.FORE_NORMAL
+        assert theme.get_color("red") == yuio.color.Color.FORE_RED
+        assert theme.get_color("green") == yuio.color.Color.FORE_GREEN
+        assert theme.get_color("yellow") == yuio.color.Color.FORE_YELLOW
+        assert theme.get_color("blue") == yuio.color.Color.FORE_BLUE
+        assert theme.get_color("magenta") == yuio.color.Color.FORE_MAGENTA
+        assert theme.get_color("cyan") == yuio.color.Color.FORE_CYAN
+        assert theme.get_color("#ff0000") == yuio.color.Color(
+            fore=yuio.color.ColorValue.from_rgb(0xFF, 0x00, 0x00)
+        )
+        assert theme.get_color("bg#ff0000") == yuio.color.Color(
+            back=yuio.color.ColorValue.from_rgb(0xFF, 0x00, 0x00)
+        )
+        assert theme.get_color("#00ff00 bg#ff0000") == yuio.color.Color(
+            fore=yuio.color.ColorValue.from_rgb(0x00, 0xFF, 0x00),
+            back=yuio.color.ColorValue.from_rgb(0xFF, 0x00, 0x00),
+        )
+        with pytest.warns(yuio.theme.ThemeWarning, match=r"#ffxxyy"):
+            assert theme.get_color("#ffxxyy") == yuio.color.Color.NONE
+        with pytest.warns(yuio.theme.ThemeWarning, match=r"bg#ffxxyy"):
+            assert theme.get_color("bg#ffxxyy") == yuio.color.Color.NONE
 
-        assert t.get_color("code") == yuio.color.Color.FORE_MAGENTA
-        assert t.get_color("note") == yuio.color.Color.FORE_GREEN
-        assert t.get_color("bold") == yuio.color.Color.STYLE_BOLD
-        assert t.get_color("b") == yuio.color.Color.STYLE_BOLD
-        assert t.get_color("dim") == yuio.color.Color.STYLE_DIM
-        assert t.get_color("d") == yuio.color.Color.STYLE_DIM
-        assert t.get_color("normal") == yuio.color.Color.FORE_NORMAL
-        assert t.get_color("red") == yuio.color.Color.FORE_RED
-        assert t.get_color("green") == yuio.color.Color.FORE_GREEN
-        assert t.get_color("yellow") == yuio.color.Color.FORE_YELLOW
-        assert t.get_color("blue") == yuio.color.Color.FORE_BLUE
-        assert t.get_color("magenta") == yuio.color.Color.FORE_MAGENTA
-        assert t.get_color("cyan") == yuio.color.Color.FORE_CYAN
-
-    def test_to_color(self):
-        t = yuio.theme.Theme()
-
-        assert t.to_color(None) == yuio.color.Color.NONE
-        assert t.to_color("blue") == yuio.color.Color.FORE_BLUE
+    def test_to_color(self, theme):
+        assert theme.to_color(None) == yuio.color.Color.NONE
+        assert theme.to_color("blue") == yuio.color.Color.FORE_BLUE
         assert (
-            t.to_color(yuio.color.Color.FORE_MAGENTA) == yuio.color.Color.FORE_MAGENTA
+            theme.to_color(yuio.color.Color.FORE_MAGENTA)
+            == yuio.color.Color.FORE_MAGENTA
         )
 
     def test_color_paths(self):
@@ -63,11 +77,12 @@ class TestColors:
                 "t_g": yuio.color.Color.FORE_GREEN,
                 "t_b": yuio.color.Color.STYLE_BOLD,
                 "t_d": yuio.color.Color.STYLE_DIM,
+                "b": yuio.color.Color.BACK_CYAN,
                 "x": "t_b",
                 "x/y": "t_r",
                 "y": "t_d",
                 "y/y": "x/y",
-                "z": ["x/y", "y/y", yuio.color.Color.BACK_CYAN],
+                "z": "x/y y/y b",
             }
 
         a = A()
@@ -244,6 +259,57 @@ class TestInheritance:
         assert b.msg_decorations["t_b_2"] == "a2"
 
 
+class TestBrokenTheme:
+    class RecursiveTheme(yuio.theme.Theme):
+        colors = {
+            "a": "b",
+            "b": "c",
+            "c": "a",
+        }
+
+    class ThemeEmptyKey(yuio.theme.Theme):
+        colors = {
+            "": "bold",
+        }
+
+    class ThemeEmptyValue(yuio.theme.Theme):
+        colors = {
+            "bold": "",
+        }
+
+    def test_recursion(self):
+        theme = self.RecursiveTheme()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", yuio.theme.RecursiveThemeWarning)
+            assert theme.get_color("a") == yuio.color.Color.NONE
+
+    def test_warnings(self):
+        theme = self.RecursiveTheme()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", yuio.theme.RecursiveThemeWarning)
+            with pytest.raises(yuio.theme.RecursiveThemeWarning):
+                theme.get_color("a")
+
+    def test_check(self):
+        theme = self.RecursiveTheme()
+        with pytest.raises(yuio.theme.RecursiveThemeWarning):
+            theme.check()
+
+    def test_empty_key(self):
+        theme = self.ThemeEmptyKey()
+        with pytest.warns(
+            yuio.theme.ThemeWarning, match=r"colors map contains an empty key"
+        ):
+            theme.check()
+
+    def test_empty_value(self):
+        theme = self.ThemeEmptyValue()
+        with pytest.warns(
+            yuio.theme.ThemeWarning, match=r"color value for path 'bold' is empty"
+        ):
+            theme.check()
+
+
 class TestSetAttrs:
     def test_set_color(self):
         class A(yuio.theme.Theme):
@@ -301,7 +367,7 @@ class TestSetAttrs:
             a._set_msg_decoration_if_not_overridden("x", "b")
 
 
-terminal_colors_dark = yuio.term.TerminalColors(
+terminal_theme_dark = yuio.term.TerminalTheme(
     background=yuio.color.ColorValue.from_hex("#00240A"),
     foreground=yuio.color.ColorValue.from_hex("#FFCFCF"),
     black=yuio.color.ColorValue.from_hex("#000000"),
@@ -315,15 +381,15 @@ terminal_colors_dark = yuio.term.TerminalColors(
     lightness=yuio.term.Lightness.DARK,
 )
 
-terminal_colors_light = dataclasses.replace(
-    terminal_colors_dark,
+terminal_theme_light = dataclasses.replace(
+    terminal_theme_dark,
     background=yuio.color.ColorValue.from_hex("#FFCFCF"),
     foreground=yuio.color.ColorValue.from_hex("#00240A"),
     lightness=yuio.term.Lightness.LIGHT,
 )
 
-terminal_colors_unknown = dataclasses.replace(
-    terminal_colors_dark,
+terminal_theme_unknown = dataclasses.replace(
+    terminal_theme_dark,
     lightness=yuio.term.Lightness.UNKNOWN,
 )
 
@@ -344,7 +410,7 @@ class TestDefaultTheme:
             None,  # type: ignore
             None,  # type: ignore
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            terminal_colors=terminal_colors_unknown,
+            terminal_theme=terminal_theme_unknown,
         )
         theme = yuio.theme.DefaultTheme(term)
         assert (
@@ -355,7 +421,7 @@ class TestDefaultTheme:
         )
         assert theme.get_color(
             "task/progressbar/done/start"
-        ) == yuio.color.Color.fore_from_hex("#0000FF")
+        ) == yuio.color.Color.fore_from_hex("#00FFFF")
         assert theme.get_color(
             "task/progressbar/done/end"
         ) == yuio.color.Color.fore_from_hex("#FF00FF")
@@ -365,7 +431,7 @@ class TestDefaultTheme:
             None,  # type: ignore
             None,  # type: ignore
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            terminal_colors=terminal_colors_dark,
+            terminal_theme=terminal_theme_dark,
         )
         theme = yuio.theme.DefaultTheme(term)
         assert theme.get_color(
@@ -376,7 +442,7 @@ class TestDefaultTheme:
         ) == yuio.color.Color.fore_from_hex("#5A4949")
         assert theme.get_color(
             "task/progressbar/done/start"
-        ) == yuio.color.Color.fore_from_hex("#0000FF")
+        ) == yuio.color.Color.fore_from_hex("#00FFFF")
         assert theme.get_color(
             "task/progressbar/done/end"
         ) == yuio.color.Color.fore_from_hex("#FF00FF")
@@ -386,7 +452,7 @@ class TestDefaultTheme:
             None,  # type: ignore
             None,  # type: ignore
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            terminal_colors=terminal_colors_light,
+            terminal_theme=terminal_theme_light,
         )
         theme = yuio.theme.DefaultTheme(term)
         assert theme.get_color(
@@ -397,7 +463,113 @@ class TestDefaultTheme:
         ) == yuio.color.Color.fore_from_hex("#00BF35")
         assert theme.get_color(
             "task/progressbar/done/start"
-        ) == yuio.color.Color.fore_from_hex("#0000FF")
+        ) == yuio.color.Color.fore_from_hex("#00FFFF")
         assert theme.get_color(
             "task/progressbar/done/end"
         ) == yuio.color.Color.fore_from_hex("#FF00FF")
+
+    def test_check(self):
+        theme = yuio.theme.DefaultTheme(
+            yuio.term.Term(
+                None,  # type: ignore
+                None,  # type: ignore
+            )
+        )
+
+        theme.check()
+
+
+class TestLoad:
+    @pytest.fixture(autouse=True)
+    def setup_theme_file(self, tmp_path: pathlib.Path):
+        self.ok = tmp_path / "ok.json"
+        self.ok.write_text(
+            textwrap.dedent("""
+            {
+                "progress_bar_width": 25,
+                "spinner_update_rate_ms": 100,
+                "colors": {
+                    "red": "#ff5555",
+                    "green": "#55ff55",
+                    "bold_red": "bold red"
+                },
+                "msg_decorations": {
+                    "heading/1": "=> "
+                }
+            }
+        """)
+        )
+
+        self.include = tmp_path / "include.json"
+        self.include.write_text(
+            textwrap.dedent("""
+            {
+                "include": "ok.json",
+                "colors": {
+                    "red": "#ff0000"
+                }
+            }
+        """)
+        )
+
+        self.invalid = tmp_path / "invalid.json"
+        self.invalid.write_text(
+            textwrap.dedent("""
+            {
+                "progress_bar_width": -1
+            }
+        """)
+        )
+
+        self.broken = tmp_path / "broken.json"
+        self.broken.write_text(
+            textwrap.dedent("""
+            broken json
+        """)
+        )
+
+    def test_ok(self, term, monkeypatch):
+        monkeypatch.setenv("YUIO_THEME_PATH", str(self.ok))
+        theme = yuio.theme.load(term)
+
+        assert theme.progress_bar_width == 25
+        assert theme.spinner_update_rate_ms == 100
+        assert theme.get_color("red") == yuio.color.Color.fore_from_rgb(
+            0xFF, 0x55, 0x55
+        )
+        assert theme.get_color("green") == yuio.color.Color.fore_from_rgb(
+            0x55, 0xFF, 0x55
+        )
+        assert theme.get_color("bold_red") == yuio.color.Color.fore_from_rgb(
+            0xFF, 0x55, 0x55, bold=True
+        )
+        assert theme.msg_decorations["heading/1"] == "=> "
+
+    def test_include(self, term, monkeypatch):
+        monkeypatch.setenv("YUIO_THEME_PATH", str(self.include))
+        theme = yuio.theme.load(term)
+
+        assert theme.progress_bar_width == 25
+        assert theme.spinner_update_rate_ms == 100
+        assert theme.get_color("red") == yuio.color.Color.fore_from_rgb(
+            0xFF, 0x00, 0x00
+        )
+        assert theme.get_color("green") == yuio.color.Color.fore_from_rgb(
+            0x55, 0xFF, 0x55
+        )
+        assert theme.get_color("bold_red") == yuio.color.Color.fore_from_rgb(
+            0xFF, 0x00, 0x00, bold=True
+        )
+        assert theme.msg_decorations["heading/1"] == "=> "
+
+    def test_invalid(self, term, monkeypatch):
+        monkeypatch.setenv("YUIO_THEME_PATH", str(self.invalid))
+        with pytest.warns(yuio.theme.ThemeWarning):
+            theme = yuio.theme.load(term)
+        assert theme.progress_bar_width == 15
+
+    def test_broken(self, term, monkeypatch):
+        monkeypatch.setenv("YUIO_THEME_PATH", str(self.invalid))
+        with pytest.warns(yuio.theme.ThemeWarning):
+            theme = yuio.theme.load(term)
+        assert theme.progress_bar_width == 15

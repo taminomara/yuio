@@ -87,21 +87,21 @@ import typing
 from dataclasses import dataclass
 
 import yuio
-import yuio.md
+import yuio.string
 from yuio import _typing as _t
 
 __all__ = [
+    "Alternative",
+    "Choice",
+    "Completer",
     "Completion",
     "CompletionCollector",
-    "Completer",
-    "Empty",
-    "Option",
-    "Choice",
-    "Alternative",
-    "List",
-    "Tuple",
-    "File",
     "Dir",
+    "Empty",
+    "File",
+    "List",
+    "Option",
+    "Tuple",
 ]
 
 
@@ -809,6 +809,8 @@ class Completer(abc.ABC):
 
         """
 
+        raise NotImplementedError()
+
     def _get_completion_model(
         self, *, is_many: bool = False
     ) -> _CompleterSerializer.Model:
@@ -1091,7 +1093,9 @@ class File(Completer):
                             color_tag = "symlink"
                             dsuffix = "@"
                         elif path.is_file():
-                            if os.name != "nt" and os.access(path, os.X_OK):
+                            if (os.name != "nt" and os.access(path, os.X_OK)) or (
+                                os.name == "nt" and path.suffix == ".exe"
+                            ):
                                 color_tag = "exec"
                                 dsuffix = "*"
                             else:
@@ -1204,7 +1208,7 @@ class _CompleterSerializer:
         if help == argparse.SUPPRESS:
             return
 
-        help = yuio.md.strip_color_tags(help)
+        help = yuio.string.strip_color_tags(help)
 
         if all(not arg.startswith("-") for arg in args):
             args = (str(self._positional),)
@@ -1263,7 +1267,7 @@ class _CompleterSerializer:
         **kwargs,
     ):
         if help != argparse.SUPPRESS:
-            help = yuio.md.strip_color_tags(str(help or ""))
+            help = yuio.string.strip_color_tags(str(help or ""))
         serializer = _CompleterSerializer(
             self._add_help,
             self._add_version,
@@ -1421,7 +1425,7 @@ class _CompleterSerializer:
                 self.tag,
                 str(len(self.choices) * 2),
                 *[c[0] for c in self.choices],
-                *[yuio.md.strip_color_tags(c[1]) for c in self.choices],
+                *[yuio.string.strip_color_tags(c[1]) for c in self.choices],
             ]
 
     @dataclass()
@@ -1650,7 +1654,7 @@ def _write_bash_script(
             "-lc",
             'echo -n "${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions/"',
         ).splitlines()[-1]
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, IndexError):
         bash_completions_home = data_home / "bash-completion/completions/"
     bash_completions_home = pathlib.Path(bash_completions_home)
     script_dest = bash_completions_home / true_prog
@@ -1706,7 +1710,7 @@ def _write_zsh_script(
             .splitlines()[-1]
             .split(":")
         )
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, IndexError):
         fpath = []
 
     try:
@@ -1715,7 +1719,7 @@ def _write_zsh_script(
             "-lc",
             "echo -n ${ZDOTDIR:-$HOME}",
         ).splitlines()[-1]
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, IndexError):
         zhome = pathlib.Path.home()
 
     zhome = pathlib.Path(zhome)
@@ -1828,7 +1832,7 @@ def _write_pwsh_script(
             .splitlines()[-1]
             .strip()
         )
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, IndexError) as e:
         yuio.io.warning(
             "Skipped <c note>PowerShell</c>: failed to get powershell `$PROFILE` path: %s",
             e,

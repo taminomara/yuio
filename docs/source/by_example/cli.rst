@@ -39,11 +39,11 @@ We can run the app with method :meth:`~yuio.app.App.run`:
 :meth:`~yuio.app.App.run` sets up Yuio and logging, parses CLI arguments, and invokes
 the main function.
 
-We can invoke the original main function using :meth:`~yuio.app.App.command`:
+We can invoke the original main function using :meth:`~yuio.app.App.wrapped`:
 
 .. code-block:: python
 
-    main.command(greeting="sunshine")
+    main.wrapped(greeting="sunshine")
 
 
 Positional arguments
@@ -169,10 +169,13 @@ into specific files. Just run your app with ``--completions`` flag:
     Wait
     Sleep 6s
     Hide
+    Type "clear"
+    Enter
     Type "zsh -li"
     Enter
     Type "clear"
     Enter
+    Wait
     Show
     Type "./app --"
     Sleep 250ms

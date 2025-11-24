@@ -33,13 +33,13 @@ Features
 
         @yuio.app.app
         def main(
-              #: input files for the program.
-              inputs: list[pathlib.Path] = yuio.app.positional(),
+            #: input files for the program.
+            inputs: list[pathlib.Path] = yuio.app.positional(),
         ):
-              ...
+            ...
 
         if __name__ == "__main__":
-              main.run()
+            main.run()
 
 -   Colored output with inline tags and markdown:
 
@@ -56,8 +56,8 @@ Features
     .. code-block:: python
 
         with yuio.io.Task('Loading sources') as task:
-              for source in task.iter(sources):
-                   ...
+            for source in task.iter(sources):
+                ...
 
 -   User interactions, input parsing and simple widgets:
 

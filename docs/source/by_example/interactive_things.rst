@@ -7,7 +7,7 @@ Interacting with user
 Printing messages
 -----------------
 
-Yuio offers a logging-like functions to print messages:
+Yuio offers a :mod:`logging`-like functions to print messages:
 
 .. literalinclude:: interactive_things_code/printing.py
     :language: python
@@ -19,6 +19,59 @@ Yuio offers a logging-like functions to print messages:
     Type "python -m interactive_things_code.printing"
     Enter
     Sleep 6s
+
+
+Pretty-printing Python objects
+------------------------------
+
+Yuio supports `rich repr protocol`__, which enables you to pretty-print
+Python objects. Pretty-printing is controlled through format flags for ``%r``
+and ``%s``:
+
+__ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
+
+- ``#`` enables colors in repr (i.e. ``%#r``);
+- ``+`` splits repr into multiple lines (i.e. ``%+r``, ``%#+r``).
+
+.. literalinclude:: interactive_things_code/repr.py
+    :language: python
+    :emphasize-lines: 13
+
+.. vhs-inline::
+    :scale: 40%
+
+    Source "docs/source/_tapes/_config_by_example.tape"
+    Type "python -m interactive_things_code.repr"
+    Enter
+    Sleep 6s
+
+
+``", ".join(map(repr, values))``
+--------------------------------
+
+You often need to print lists joined by some separator. Yuio provides
+:class:`yuio.string.JoinStr` and :class:`yuio.string.JoinRepr`
+(also available from ``yuio.io.JoinStr`` and ``yuio.io.JoinRepr``) to help
+with this task:
+
+.. literalinclude:: interactive_things_code/join.py
+    :language: python
+    :lines: 6-11
+    :dedent:
+
+.. vhs-inline::
+    :scale: 40%
+
+    Source "docs/source/_tapes/_config_by_example.tape"
+    Type "python -m interactive_things_code.join"
+    Enter
+    Sleep 6s
+
+:class:`~yuio.string.JoinStr` will call :class:`str() <str>`
+(:class:`~yuio.string.JoinRepr` calls :func:`repr`)
+on collection values, then join them with the given separator.
+No only that, it will also highlight joined values (but not separators!) using
+the given color tag (``code`` by default).
 
 
 Markdown and inline markup
@@ -37,6 +90,25 @@ formatted markdown:
 
     Source "docs/source/_tapes/_config_by_example.tape"
     Type "python -m interactive_things_code.markdown"
+    Enter
+    Sleep 6s
+
+
+Highlighting code
+-----------------
+
+Yuio supports simple :ref:`code highlighting <highlighting-code>`:
+
+.. literalinclude:: interactive_things_code/hl.py
+    :language: python
+    :lines: 6-12
+    :dedent:
+
+.. vhs-inline::
+    :scale: 40%
+
+    Source "docs/source/_tapes/_config_by_example.tape"
+    Type "python -m interactive_things_code.hl"
     Enter
     Sleep 6s
 

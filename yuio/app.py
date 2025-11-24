@@ -24,7 +24,7 @@ with the :func:`app` decorator, and use :meth:`App.run` method to start it:
         #: help message for `--flag`
         flag: int = 0
     ):
-        \"\"\"this command does a thing\"\"\"
+        \"""this command does a thing\"""
         yuio.io.info("flag=%r, arg=%r", flag, arg)
 
     if __name__ == "__main__":
@@ -69,7 +69,7 @@ are handled to provide better CLI experience:
 
     .. automethod:: run
 
-    .. method:: command(...)
+    .. method:: wrapped(...)
 
         The original callable what was wrapped by :func:`app`.
 
@@ -156,6 +156,8 @@ help formatting using its arguments:
 
     .. autoattribute:: setup_logging
 
+    .. autoattribute:: theme
+
 
 Creating sub-commands
 ---------------------
@@ -182,7 +184,7 @@ will cause ``main()`` to be called first, then ``push()``.
 This behavior is useful when you have some global configuration flags
 attached to the ``main()`` command. See the `example app`_ for details.
 
-.. _example app: https://github.com/taminomara/yuio/blob/main/examples/app
+.. _example app: https://github.com/taminomara/yuio/blob/main/examples/apps/app
 
 .. class:: App
     :noindex:
@@ -265,21 +267,21 @@ from yuio import _typing as _t
 from yuio.config import MutuallyExclusiveGroup, field, inline, positional
 
 __all__ = [
+    "App",
+    "AppError",
+    "CommandInfo",
+    "MutuallyExclusiveGroup",
+    "app",
     "field",
     "inline",
     "positional",
-    "MutuallyExclusiveGroup",
-    "AppError",
-    "CommandInfo",
-    "app",
-    "App",
 ]
 
 C = _t.TypeVar("C", bound=_t.Callable[..., None])
 C2 = _t.TypeVar("C2", bound=_t.Callable[..., None])
 
 
-class AppError(yuio.FormattedExceptionMixin, Exception):
+class AppError(yuio.string.ColorableBase, Exception):
     """
     An error that you can throw from an app to finish its execution without printing
     a traceback.
@@ -296,6 +298,7 @@ def app(
     epilog: str | None = None,
     version: str | None = None,
     bug_report: yuio.dbg.env.ReportSettings | bool = False,
+    is_dev_mode: bool | None = None,
 ) -> _t.Callable[[C], App[C]]: ...
 @_t.overload
 def app(
@@ -308,6 +311,7 @@ def app(
     epilog: str | None = None,
     version: str | None = None,
     bug_report: yuio.dbg.env.ReportSettings | bool = False,
+    is_dev_mode: bool | None = None,
 ) -> App[C]: ...
 def app(
     command: _t.Callable[..., None] | None = None,
@@ -319,6 +323,7 @@ def app(
     epilog: str | None = None,
     version: str | None = None,
     bug_report: yuio.dbg.env.ReportSettings | bool = False,
+    is_dev_mode: bool | None = None,
 ) -> _t.Any:
     """
     Create an application.
@@ -341,6 +346,8 @@ def app(
     :param bug_report:
         settings for automated bug report generation. If present,
         adds the :flag:`--bug-report` flag.
+    :param is_dev_mode:
+        enables additional logging, see :attr:`App.is_dev_mode`.
     :returns:
         an :class:`App` object that wraps the original function.
 
@@ -355,6 +362,7 @@ def app(
             epilog=epilog,
             version=version,
             bug_report=bug_report,
+            is_dev_mode=is_dev_mode,
         )
 
     if command is None:
@@ -443,6 +451,7 @@ class App(_t.Generic[C]):
         epilog: str | None = None,
         version: str | None = None,
         bug_report: yuio.dbg.env.ReportSettings | bool = False,
+        is_dev_mode: bool | None = None,
     ):
         self.prog: str | None = prog
         """
@@ -467,12 +476,12 @@ class App(_t.Generic[C]):
             @app
             def main(): ...
 
-            main.usage = \"\"\"
+            main.usage = \"""
             %(prog)s [-q] [-f] [-m] [<branch>]
             %(prog)s [-q] [-f] [-m] --detach [<branch>]
             %(prog)s [-q] [-f] [-m] [--detach] <commit>
             ...
-            \"\"\"
+            \"""
 
         By default, usage is generated from CLI flags.
 
@@ -496,7 +505,7 @@ class App(_t.Generic[C]):
            @app
            def main(): ...
 
-           main.description = \"\"\"
+           main.description = \"""
            this command does a thing.
 
            # different ways to do a thing
@@ -513,7 +522,7 @@ class App(_t.Generic[C]):
            By default, the best algorithm is determined automatically.
            However, you can hint a preferred algorithm via the `--hint-algo` flag.
 
-           \"\"\"
+           \"""
 
         By default, inferred from command's docstring.
 
@@ -605,6 +614,24 @@ class App(_t.Generic[C]):
 
         """
 
+        self.is_dev_mode: bool | None = is_dev_mode
+        """
+        If :data:`True`, this will enable :func:`logging.captureWarnings`
+        and configure internal Yuio logging to show warnings.
+
+        By default, dev mode is detected by checking if :attr:`~App.version`
+        contains substring ``"dev"``.
+
+        .. note::
+
+            You can always enable full debug logging by setting environment
+            variable ``YUIO_DEBUG``.
+
+            If enabled, full log will be saved to ``YUIO_DEBUG_FILE``
+            (default is ``./yuio.log``).
+
+        """
+
         self.__sub_apps: dict[str, App._SubApp] = {}
 
         if callable(command):
@@ -636,7 +663,7 @@ class App(_t.Generic[C]):
                     kwargs[name] = arg
             return CommandInfo("__raw__", None, self.__config_type(**kwargs), False)()
 
-        self.command: C = wrapped_command  # type: ignore
+        self.wrapped: C = wrapped_command  # type: ignore
         """
         The original callable what was wrapped by :func:`app`.
 
@@ -763,6 +790,13 @@ class App(_t.Generic[C]):
 
         parser, subparsers_map = self.__setup_arg_parser()
         namespace = parser.parse_args(args)
+
+        if self.is_dev_mode is None:
+            self.is_dev_mode = (
+                self.version is not None and "dev" in self.version.lower()
+            )
+        if self.is_dev_mode:
+            yuio.enable_internal_logging(propagate=True)
 
         if self.setup_logging:
             logging_level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}.get(
@@ -999,8 +1033,9 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> type[yuio.config.Confi
     try:
         docs = yuio._find_docs(cb)
     except Exception:
-        yuio._logger.exception(
-            "Unable to get documentation for %s",
+        yuio._logger.warning(
+            "unable to get documentation for %s.%s",
+            cb.__module__,
             cb.__qualname__,
         )
         docs = {}
@@ -1214,11 +1249,11 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         *,
         default_color: yuio.color.Color | str = yuio.color.Color.NONE,
     ):
-        return yuio.md.colorize(
-            self.theme,
+        return yuio.string.colorize(
             s,
             default_color=default_color,
             parse_cli_flags_in_backticks=True,
+            ctx=self.theme,
         )
 
     def _format_Heading(self, node: yuio.md.Heading):
@@ -1226,38 +1261,38 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             self._heading_indent.close()
 
         decoration = self.theme.msg_decorations.get("heading/section", "")
-        with self._indent("msg/decoration:heading/section", decoration):
+        with self._with_indent("msg/decoration:heading/section", decoration):
             self._format_Text(
                 node,
                 default_color=self.theme.get_color("msg/text:heading/section"),
             )
 
         if node.level == 1:
-            self._heading_indent.enter_context(self._indent(None, "  "))
+            self._heading_indent.enter_context(self._with_indent(None, "  "))
         else:
-            self._line(self._first_line_indent)
+            self._line(self._indent)
 
         self._is_first_line = True
 
     def _format_Usage(self, node: "_Usage"):
-        with self._indent(None, node.prefix):
+        with self._with_indent(None, node.prefix):
             self._line(
                 node.usage.indent(
-                    first_line_indent=self._first_line_indent,
+                    indent=self._indent,
                     continuation_indent=self._continuation_indent,
                 )
             )
 
     def _format_HelpArg(self, node: _HelpArg):
         if node.help is None:
-            self._line(self._first_line_indent + node.args)
+            self._line(self._indent + node.args)
             return
 
         if node.args.width + 2 > self._args_column_width:
-            self._line(self._first_line_indent + node.indent + node.args)
-            indent_ctx = self._indent(None, " " * self._args_column_width)
+            self._line(self._indent + node.indent + node.args)
+            indent_ctx = self._with_indent(None, " " * self._args_column_width)
         else:
-            indent_ctx = self._indent(
+            indent_ctx = self._with_indent(
                 None,
                 node.indent
                 + node.args

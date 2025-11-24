@@ -46,10 +46,11 @@ We want colors, so it's time to switch from bare :func:`print` to :mod:`yuio.io`
 Tada, now our greeting is ✨colorful✨! Yuio parses :ref:`color tags <color-tags>`
 and backticks in messages. Here's the list of color tags available from the box:
 
--  ``code``, ``note``, ``path``: highlights,
--  ``bold``, ``b``, ``dim``, ``d``: font style,
--  ``normal``, ``black``, ``red``, ``green``, ``yellow``, ``blue``,
-   ``magenta``, ``cyan``, ``white``: colors.
+-   ``code``, ``note``, ``path``: highlights,
+-   ``bold``, ``b``, ``dim``, ``d``, ``italic``, ``i``,
+    ``underline``, ``u``, ``inverse``: font style,
+-   ``normal``, ``red``, ``green``, ``yellow``, ``blue``,
+    ``magenta``, ``cyan``: colors.
 
 You can add more with :doc:`themes </internals/theme>`.
 

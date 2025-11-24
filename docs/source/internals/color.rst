@@ -1,0 +1,4 @@
+Color
+=====
+
+.. automodule:: yuio.color

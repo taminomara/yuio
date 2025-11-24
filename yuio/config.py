@@ -263,14 +263,15 @@ import yuio
 import yuio.complete
 import yuio.json_schema
 import yuio.parse
+import yuio.string
 from yuio import _typing as _t
 
 __all__ = [
+    "Config",
     "MutuallyExclusiveGroup",
     "field",
     "inline",
     "positional",
-    "Config",
 ]
 
 T = _t.TypeVar("T")
@@ -787,14 +788,18 @@ class Config:
         if cls.__fields is not None:
             return cls.__fields
 
-        try:
-            docs = yuio._find_docs(cls)
-        except Exception:
-            yuio._logger.exception(
-                "unable to get documentation for class %s",
-                cls.__qualname__,
-            )
+        if cls.__allow_positionals:
             docs = {}
+        else:
+            try:
+                docs = yuio._find_docs(cls)
+            except Exception:
+                yuio._logger.warning(
+                    "unable to get documentation for class %s.%s",
+                    cls.__module__,
+                    cls.__qualname__,
+                )
+                docs = {}
 
         fields = {}
 
@@ -921,8 +926,9 @@ class Config:
             result.validate_config()
             return result
         except yuio.parse.ParsingError as e:
-            raise e.with_prefix(
-                "Failed to load config from environment variables:"
+            raise yuio.parse.ParsingError(
+                "Failed to load config from environment variables:\n%s",
+                yuio.string.Indent(e),
             ) from None
 
     @classmethod
@@ -1264,11 +1270,19 @@ class Config:
         ignore_unknown_fields: bool = False,
         ignore_missing_file: bool = False,
     ) -> _t.Self:
-        if ignore_missing_file and not os.path.exists(path):
+        path = pathlib.Path(path)
+
+        if ignore_missing_file and (not path.exists() or not path.is_file()):
             return cls()
 
-        with open(path) as file:
-            loaded = file_parser(file.read())
+        try:
+            loaded = file_parser(path.read_text())
+        except Exception as e:
+            raise yuio.parse.ParsingError(
+                "Invalid config <c path>%s</c>:\n%s",
+                path,
+                yuio.string.Indent(e),
+            ) from None
 
         return cls.load_from_parsed_file(
             loaded, ignore_unknown_fields=ignore_unknown_fields, path=path
@@ -1316,7 +1330,11 @@ class Config:
             if path is None:
                 raise
             else:
-                raise e.with_prefix("Invalid config <c path>%s</c>:", path)
+                raise yuio.parse.ParsingError(
+                    "Invalid config <c path>%s</c>:\n%s",
+                    path,
+                    yuio.string.Indent(e),
+                ) from None
 
     @classmethod
     def __load_from_parsed_file(
@@ -1348,8 +1366,11 @@ class Config:
                     try:
                         value = field.parser.parse_config(parsed[name])
                     except yuio.parse.ParsingError as e:
-                        raise e.with_prefix(
-                            "Can't parse field `%s%s`:", field_prefix, name
+                        raise yuio.parse.ParsingError(
+                            "Can't parse field `%s%s`:\n%s",
+                            field_prefix,
+                            name,
+                            yuio.string.Indent(e),
                         ) from None
                     fields[name] = value
 
@@ -1366,23 +1387,15 @@ class Config:
     locals()["__getattribute__"] = __getattribute
 
     def __repr__(self):
-        return self.__repr(0)
+        field_reprs = ", ".join(
+            f"{name}={getattr(self, name, yuio.MISSING)!r}"
+            for name in self.__get_fields()
+        )
+        return f"{self.__class__.__name__}({field_reprs})"
 
-    def __repr(self, indent):
-        field_reprs = []
-        prefix = " " * indent
+    def __rich_repr__(self):
         for name in self.__get_fields():
-            value = getattr(self, name, yuio.MISSING)
-            if isinstance(value, Config):
-                value_repr = value.__repr(indent + 2)
-            else:
-                value_repr = repr(value)
-            field_reprs.append(f"{prefix}  {name}={value_repr}")
-        if field_reprs:
-            field_desc = ",\n".join(field_reprs)
-            return f"{self.__class__.__name__}(\n{field_desc}\n{prefix})"
-        else:
-            return f"{self.__class__.__name__}()"
+            yield name, getattr(self, name, yuio.MISSING)
 
     def validate_config(self):
         """

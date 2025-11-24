@@ -14,17 +14,30 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+Large refactoring around lower-level APIs, making them more flexible.
+
 ### Io
 
-- ✨ Added `yuio.io.hl` and `yuio.io.out`.
-- ✨ Added underline and italic font styles.
+- ✨ Added `yuio.io.hl`, `yuio.io.hr`.
+- ✨ Added underline, italic, inverse and blink text styles.
+- ✨ Supported colorized multiline repr.
+- ✨ Supported colorized string interpolation in `%` formatting.
+- ✨ Added formatting utilities like `yuio.string.Format` and others.
+- ✨ Added colorized log formatter (`yuio.io.Formatter`) that allows tweaking
+  logs appearance.
 - 🔧 Changed `yuio.io.edit`'s `comment_marker` parameter now defaults to `None`
   to avoid confusion.
+- ⚡ Moved message formatting outside of IO lock, now `yuio.io.raw` and
+  `yuio.io.Format` handle all formatting and wrapping.
 - 🐛 Fixed quoting when invoking editor command from `$VISUAL` or `$EDITOR`.
 
 ### App
 
+- 💥 Renamed `App.command` to `App.wrapped` to avoid confusion between
+  `App.command` and `App.subcommand`.
 - ✨ Added `--bug-report` flag.
+- ✨ Added `is_dev_mode` setting, exposed function to configure Yuio's internal
+  logging.
 
 ### Config
 
@@ -32,6 +45,7 @@ and run `pre-commit run clk` to replace:
 - ✨ Added `yuio.config.Config.to_json_value`.
 - 🔧 Field markers are now replaced with defaults upon config class creation, not
   lazily like it was before.
+- 🔧 Improved error messages when loading configs from files.
 
 ### Exec
 
@@ -56,18 +70,29 @@ and run `pre-commit run clk` to replace:
 - 🔧 Switched from draft-2020 to draft-07 because VSCode still struggles with
   some of 2020's features.
 
-### Md
-
-- 🐛 Fixed highlighting of escape sequences in strings.
-
 ### Term
 
 - 💥 Split `yuio.term` into `yuio.term`, `yuio.color`, and `yuio.string`.
+
+- 💥 Renamed `Term.terminal_colors` to `Term.terminal_theme`. Rename also affects
+  keyword arguments of `get_term_from_stream`
+
+- ✨ Markdown formatter and code highlighters will remove common indentation from
+  source markdown by default. This can be disabled by setting flag
+  `dedent=False`.
 
 - ✨ Added check for Windows Terminal in WSL.
 
   Windows Terminal supports true colors, but doesn't set `COLORTERM` by default.
   We use `wslinfo` to detect this situation.
+
+- ✨ Added `kwargs` to `Color.fore_from_*` and `Color.back_from_*`, allowing
+  users to set text styles with these functions.
+
+- ✨ Supported trimming long lines while wrapping text and replacing their tails
+  with ellipsis.
+
+- ✨ Added `Term.is_unicode` flag.
 
 - 🔧 Changed detection of terminal capabilities in CI to respect terminal's
   `isatty` output. This will disable colored output in GitHub Actions because
@@ -77,10 +102,23 @@ and run `pre-commit run clk` to replace:
   To enable colors in GitHub, use `--force-colors` flag or set environment
   variable `FORCE_COLORS`.
 
+- 🔧 Improved `ColorizedString` to support no-wrap sequences and to avoid adding
+  unnecessary color changes.
+
+- 🐛 Fixed highlighting of escape sequences in strings.
+
 - 🐛 Fixed a bug when pressing enter during Yuio initialization would cause
   remnants of OSC response to appear on screen.
 
-- 🐛 Improved parsing of ANSI escape codes that come from terminals
+- 🐛 Improved parsing of ANSI escape codes that come from terminals.
+
+### Theme
+
+- ✨ Added warnings for recursive color definitions in a theme.
+- ✨ Added `Theme.check` that checks theme for consistency.
+- 🔧 Documented available message decorations and color paths.
+- 🐛 Improved loading themes from files, bringing this functionality closer to
+  being stable.
 
 ## [2.0.0-rc0] - 2025-10-28
 

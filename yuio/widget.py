@@ -152,29 +152,29 @@ from yuio.term import Term as _Term
 from yuio.theme import Theme as _Theme
 
 __all__ = [
-    "Key",
-    "KeyboardEvent",
-    "RenderContext",
-    "Result",
-    "Widget",
-    "bind",
-    "help",
+    "Action",
     "ActionKey",
     "ActionKeys",
-    "Action",
-    "WidgetHelp",
-    "VerticalLayoutBuilder",
-    "VerticalLayout",
-    "Line",
-    "Text",
-    "Input",
-    "Option",
-    "Grid",
-    "Choice",
-    "Multiselect",
-    "InputWithCompletion",
-    "Map",
     "Apply",
+    "Choice",
+    "Grid",
+    "Input",
+    "InputWithCompletion",
+    "Key",
+    "KeyboardEvent",
+    "Line",
+    "Map",
+    "Multiselect",
+    "Option",
+    "RenderContext",
+    "Result",
+    "Text",
+    "VerticalLayout",
+    "VerticalLayoutBuilder",
+    "Widget",
+    "WidgetHelp",
+    "bind",
+    "help",
 ]
 
 _SPACE_BETWEEN_COLUMNS = 2
@@ -369,9 +369,6 @@ class KeyboardEvent:
     """
     A single keyboard event.
 
-    Note that we don't have separate flag for when :kbd:`Shift` was pressed with
-    keystroke because that results in :attr:`~KeyboardEvent.key` being a capital letter.
-
     .. warning::
 
         Protocol for interacting with terminals is quite old, and not all terminals
@@ -395,8 +392,7 @@ class KeyboardEvent:
 
     For letter keys modified with control, the letter is always lowercase; if terminal
     supports reporting :kbd:`Shift` being pressed, the :attr:`~KeyboardEvent.shift`
-    attribute will be set when this happens. This does not affect
-    punctuation keys, though:
+    attribute will be set. This does not affect punctuation keys, though:
 
     .. skip-next:
 
@@ -823,7 +819,7 @@ class RenderContext:
         self._frame_cursor_color = self._none_color
 
     def write(self, text: yuio.string.AnyString, /, *, max_width: int | None = None):
-        r"""
+        """
         Write string at the current position using the current color.
         Move cursor while printing.
 
@@ -835,7 +831,7 @@ class RenderContext:
 
         All whitespace characters in the text, including tabs and newlines,
         will be treated as single spaces. If you need to print multiline text,
-        use :meth:`yuio.term.ColorizedString.wrap` and :meth:`~RenderContext.write_text`.
+        use :meth:`yuio.string.ColorizedString.wrap` and :meth:`~RenderContext.write_text`.
 
         ..
             >>> term = _Term(sys.stdout, sys.stdin)
@@ -850,7 +846,7 @@ class RenderContext:
 
             >>> rc.write("Hello, world!")
             >>> rc.new_line()
-            >>> rc.write("Hello,\nworld!")
+            >>> rc.write("Hello,\\nworld!")
             >>> rc.new_line()
             >>> rc.write(
             ...     "Hello, 🌍!<this text will be clipped>",
@@ -869,13 +865,13 @@ class RenderContext:
             Hello, 🌍!<
             <BLANKLINE>
 
-        Notice that ``"\n"`` on the second line was replaced with a space.
+        Notice that ``"\\n"`` on the second line was replaced with a space.
         Notice also that the last line wasn't properly clipped.
 
         """
 
         if not isinstance(text, _ColorizedString):
-            text = _ColorizedString(text)
+            text = _ColorizedString(text, _isolate_colors=False)
 
         x = self._frame_x + self._frame_cursor_x
         y = self._frame_y + self._frame_cursor_y
@@ -899,6 +895,8 @@ class RenderContext:
         for s in text:
             if isinstance(s, _Color):
                 self._frame_cursor_color = yuio.term.color_to_code(s, self._term)
+                continue
+            elif s in (yuio.string.NO_WRAP_START, yuio.string.NO_WRAP_END):
                 continue
 
             s = s.translate(_UNPRINTABLE_TRANS)
@@ -984,7 +982,7 @@ class RenderContext:
 
         Each line is printed using :meth:`~RenderContext.write`,
         so newline characters and tabs within each line are replaced with spaces.
-        Use :meth:`yuio.term.ColorizedString.wrap` to properly handle them.
+        Use :meth:`yuio.string.ColorizedString.wrap` to properly handle them.
 
         After each line, the cursor is moved one line down,
         and back to its original horizontal position.
@@ -1163,7 +1161,8 @@ class RenderContext:
             self._move_term_cursor(self._width - len(debug_msg), 0)
             self._out.append(
                 yuio.term.color_to_code(
-                    yuio.color.Color.FORE_BLACK | yuio.color.Color.BACK_CYAN, self.term
+                    yuio.color.Color.STYLE_INVERSE | yuio.color.Color.FORE_CYAN,
+                    self.term,
                 )
             )
             self._out.append(debug_msg)
@@ -1351,6 +1350,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         """
 
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def draw(self, rc: RenderContext, /):
         """
@@ -1361,6 +1362,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         to :meth:`~Widget.layout`.
 
         """
+
+        raise NotImplementedError()
 
     @_t.final
     def run(self, term: _Term, theme: _Theme, /) -> T_co:
@@ -1669,8 +1672,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                 title_color = "menu/text/help_msg:help"
             else:
                 title_color = "menu/text/help_info:help"
-            colorized_title = yuio.md.colorize(
-                rc.theme, title, default_color=title_color
+            colorized_title = yuio.string.colorize(
+                title, default_color=title_color, ctx=rc.theme
             )
             self.__colorized_inline_help.append((keys, colorized_title, key_width))
 
@@ -1768,12 +1771,12 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             )
             .with_action(
                 "C-...",
-                group="Terminology",
+                group="Legend",
                 long_msg="means `Ctrl+...`",
             )
             .with_action(
                 "M-...",
-                group="Terminology",
+                group="Legend",
                 long_msg=(
                     "means `Option+...`"
                     if sys.platform == "darwin"
@@ -1782,17 +1785,17 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             )
             .with_action(
                 "S-...",
-                group="Terminology",
+                group="Legend",
                 long_msg="means `Shift+...`",
             )
             .with_action(
                 "ret",
-                group="Terminology",
+                group="Legend",
                 long_msg="means `Return` or `Enter`",
             )
             .with_action(
                 "bsp",
-                group="Terminology",
+                group="Legend",
                 long_msg="means `Backspace`",
             )
         )
@@ -1821,8 +1824,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         # Make sure other actions go last.
         if "Other Actions" in groups:
             groups["Other Actions"] = groups.pop("Other Actions")
-        if "Terminology" in groups:
-            groups["Terminology"] = groups.pop("Terminology")
+        if "Legend" in groups:
+            groups["Legend"] = groups.pop("Legend")
 
         return groups
 
@@ -1999,13 +2002,13 @@ def help(
             @bind(Key.TAB)
             @help(group=NAVIGATE)
             def tab(self):
-                \"\"\"next item\"\"\"
+                \"""next item\"""
                 ...
 
             @bind(Key.TAB, shift=True)
             @help(group=NAVIGATE)
             def shift_tab(self):
-                \"\"\"previous item\"\"\"
+                \"""previous item\"""
                 ...
 
     """
@@ -2417,6 +2420,7 @@ class Line(Widget[_t.Never]):
         color: _Color | str | None = None,
     ):
         self.__text = _ColorizedString(text)
+        self.__colorized_text = None
         self.__color = color
 
     @property
@@ -2447,13 +2451,14 @@ class Line(Widget[_t.Never]):
         return 1, 1
 
     def draw(self, rc: RenderContext, /):
-        if self.__color is not None:
-            if isinstance(self.__color, str):
-                rc.set_color_path(self.__color)
+        if self.__colorized_text is None:
+            if self.__color is None:
+                self.__colorized_text = self.__text
             else:
-                rc.set_color(self.__color)
+                color = rc.theme.to_color(self.__color)
+                self.__colorized_text = self.__text.with_base_color(color)
 
-        rc.write(self.__text)
+        rc.write(self.__colorized_text)
 
 
 class Text(Widget[_t.Never]):
@@ -2573,18 +2578,18 @@ _ESC_RE = re.compile(r"([" + re.escape("".join(map(str, _CHAR_NAMES))) + "])")
 
 
 def _replace_special_symbols(text: str, esc_color: _Color, n_color: _Color):
-    res: list[_Color | str] = [n_color]
+    raw: list[_Color | str] = [n_color]
     i = 0
     for match in _ESC_RE.finditer(text):
         if s := text[i : match.start()]:
-            res.append(s)
-        res.append(esc_color)
-        res.append(_Esc(_CHAR_NAMES[match.group(1)]))
-        res.append(n_color)
+            raw.append(s)
+        raw.append(esc_color)
+        raw.append(_Esc(_CHAR_NAMES[match.group(1)]))
+        raw.append(n_color)
         i = match.end()
     if i < len(text):
-        res.append(text[i:])
-    return res
+        raw.append(text[i:])
+    return raw
 
 
 def _find_cursor_pos(text: list[_ColorizedString], text_width: int, offset: int):
@@ -2617,7 +2622,7 @@ def _find_cursor_pos(text: list[_ColorizedString], text_width: int, offset: int)
         total_len += len(line.explicit_newline)
         if total_len >= offset:
             return (0, y + 1)
-    assert False  # pragma: no cover
+    assert False
 
 
 class Input(Widget[str]):
@@ -3031,9 +3036,7 @@ class Input(Widget[str]):
         else:
             self._bell()
 
-    # M-y alternative because C-y sends
     @bind("y", ctrl=True)
-    @bind("y", alt=True)
     @help(group=_MODIFY)
     def yank(self):
         """yank (paste the last deleted text)"""
@@ -3109,6 +3112,8 @@ class Input(Widget[str]):
         if self.__wrapped_text is None or self.__wrapped_text_width != text_width:
             self.__wrapped_text_width = text_width
 
+            # Note: don't use wrap with overflow here
+            # or we won't be able to find the cursor position!
             if self.__text:
                 self.__wrapped_text = _ColorizedString(
                     _replace_special_symbols(
@@ -3124,7 +3129,10 @@ class Input(Widget[str]):
                 self.__pos_after_wrap = None
             else:
                 self.__wrapped_text = _ColorizedString(
-                    [rc.theme.get_color("menu/placeholder:input"), self.__placeholder]
+                    [
+                        rc.theme.get_color("menu/text/placeholder:input"),
+                        self.__placeholder,
+                    ]
                 ).wrap(
                     text_width,
                     preserve_newlines=False,
@@ -3180,6 +3188,10 @@ class Option(_t.Generic[T_co]):
 
     """
 
+    def __post_init__(self):
+        if self.color_tag is None:
+            object.__setattr__(self, "color_tag", "none")
+
     value: T_co
     """
     Option's value that will be returned from widget.
@@ -3216,7 +3228,7 @@ class Option(_t.Generic[T_co]):
 
     This color tag will be used to display option.
     Specifically, color for the option will be looked up py path
-    ``"menu/choice/{status}/{element}/{color_tag}"``.
+    :samp:``menu/{element}:choice/{status}/{color_tag}``.
 
     """
 
@@ -3615,7 +3627,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
         if right:
             rc.set_color_path(
-                f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}"
+                f"menu/decoration/comment:choice/{status_tag}/{option.color_tag}"
             )
             rc.write(" [")
             rc.set_color_path(
@@ -3623,7 +3635,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             )
             rc.write(right, max_width=right_width)
             rc.set_color_path(
-                f"menu/text/comment/decoration:choice/{status_tag}/{option.color_tag}"
+                f"menu/decoration/comment:choice/{status_tag}/{option.color_tag}"
             )
             rc.write("]")
 

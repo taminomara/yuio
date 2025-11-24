@@ -10,9 +10,9 @@ import yuio.parse
 
 
 class Config(yuio.config.Config):
-    """global options
+    """Global options.
 
-    global options are loaded from `./app_config.json`,
+    global options are loaded from ``./app_config.json``,
     from environment variables, and from CLI arguments.
 
     """
@@ -28,7 +28,11 @@ class Config(yuio.config.Config):
 CONFIG = Config()
 
 
-@yuio.app.app
+@yuio.app.app(
+    version="1.0.0",  # Adds `--version`.
+    bug_report=True,  # Adds `--bug-report`.
+    is_dev_mode=True,  # Prints warnings from Yuio.
+)
 def main(
     config: Config = yuio.config.inline(),
 ):
