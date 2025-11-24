@@ -48,7 +48,7 @@ doc = [
     "sphinx-vhs==1.2.0",
     "sybil==9.2.0",
 ]
-lint = ["ruff==0.14.4", "pre-commit==4.3.0"]
+lint = ["ruff==0.14.6", "pre-commit==4.3.0"]
 ci = ["PyGithub==2.8.1", "tox==4.32.0", "virtualenv-pyenv==0.5.0"]
 
 [project.urls]
