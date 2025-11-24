@@ -16,7 +16,6 @@ COMP_LINE="${{COMP_WORDS[*]}}"
 
 @pytest.mark.full
 @pytest.mark.linux
-@pytest.mark.darwin
 def test_bash(test_cases, data_regression):
     subprocess.check_call(["comptest", "--completions", "bash"])
 

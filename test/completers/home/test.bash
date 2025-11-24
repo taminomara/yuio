@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 set -eo pipefail
-set -m
 
 . ${XDG_DATA_HOME}/bash-completion/completions/comptest comptest
 
