@@ -55,7 +55,7 @@ jobs:
             3.14
       - name: Test package
         if: ${{ matrix.type == 'test' }}
-        run: tox --skip-env 'lint|coverage-report' --colored yes run-parallel
+        run: tox --skip-env 'lint' --colored yes run-parallel
         env:
           COVERAGE_FILE: .coverage.${{ matrix.os }}
       - name: Upload coverage artifact

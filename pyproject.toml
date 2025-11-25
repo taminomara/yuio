@@ -80,7 +80,7 @@ env_list = [
     "type",
     "lint",
     "coverage-clean",
-    "coverage-report",
+    "coverage-combine",
 ]
 depends = []
 
@@ -91,6 +91,7 @@ commands = [["pytest", "--color=yes", "--cov", "--cov-append", "-m="]]
 pass_env = ["PYTEST*", "COVERAGE*"]
 depends = ["coverage-clean"]
 usedevelop = true
+set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}.{envname}" }
 
 [tool.tox.env.type]
 description = "Run type check"
@@ -111,13 +112,15 @@ dependency_groups = ["test"]
 skip_install = true
 commands = [["coverage", "erase"]]
 depends = []
+set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}" }
 
-[tool.tox.env.coverage-report]
-description = "Build coverage report"
+[tool.tox.env.coverage-combine]
+description = "Combine coverage data"
 skip_install = true
 dependency_groups = ["test"]
-commands = [["coverage", "report"], ["coverage", "html"]]
+commands = [["coverage", "combine"]]
 depends = ["3.14", "3.13", "3.12", "3.11", "3.10"]
+set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}" }
 
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -218,3 +221,6 @@ exclude_also = [
     "except ImportError:",
     "assert False",
 ]
+
+[tool.coverage.html]
+title = "Yuio Coverage Report"
