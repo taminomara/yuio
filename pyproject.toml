@@ -90,6 +90,7 @@ dependency_groups = ["test"]
 commands = [["pytest", "--color=yes", "--cov", "--cov-append", "-m="]]
 pass_env = ["PYTEST*", "COVERAGE*"]
 depends = ["coverage-clean"]
+usedevelop = true
 
 [tool.tox.env.type]
 description = "Run type check"
@@ -196,6 +197,7 @@ docstring-code-format = true
 
 [tool.coverage.run]
 patch = ["subprocess"]
+relative_files = true
 
 [tool.coverage.report]
 include = ["yuio/**/*.py"]
