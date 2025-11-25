@@ -55,7 +55,7 @@ jobs:
             3.14
       - name: Test package
         if: ${{ matrix.type == 'test' }}
-        run: tox --skip-env 'lint|coverage-report' --colored yes run-parallel && ls -la
+        run: tox --skip-env 'lint|coverage-report' --colored yes run-parallel
         env:
           COVERAGE_FILE: .coverage.${{ matrix.os }}
       - name: Upload coverage artifact
@@ -64,6 +64,7 @@ jobs:
         with:
           name: coverage-${{ matrix.os }}
           path: .coverage.${{ matrix.os }}
+          include-hidden-files: true
       # Lint
       - name: Check code style
         if: ${{ matrix.type == 'code style' }}
