@@ -1,5 +1,7 @@
 # Yuio
 
+[![test](https://github.com/taminomara/yuio/actions/workflows/ci.yaml/badge.svg)](https://github.com/taminomara/yuio/actions/workflows/ci.yaml) [![coverage](https://taminomara.github.io/yuio/coverage.svg)](https://taminomara.github.io/yuio/)
+
 Yuio is everything you'll ever need to write a good CLI, deps-free.
 
 Forget searching for *that one progressbar library*,
