@@ -113,6 +113,7 @@ jobs:
           coverage xml
           coverage html
           genbadge coverage --local -i coverage.xml -o htmlcov/coverage.svg
+          echo $'User-agent: *\nDisallow: /' > htmlcov/robots.txt
           touch htmlcov/.nojekyll
       - name: Upload coverage report
         uses: actions/upload-pages-artifact@v3
