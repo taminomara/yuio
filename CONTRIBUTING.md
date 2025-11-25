@@ -25,10 +25,10 @@
 
 ## Run tests
 
-To run tests, simply run `tox`:
+To run tests, simply run `pytest`:
 
 ```shell
-tox p
+pytest
 ```
 
 To generate HTML coverage report
@@ -43,12 +43,19 @@ To run full test suite, enable pytest marker `full` (or rather, disable marker
 filtering by overriding option `-m`):
 
 ```shell
-pytest -m ''
-PYTEST_ADDOPTS="-p no:doctest -m=" tox p
+pytest -m=
 ```
 
 The full test suite requires `tmux`, `bash`, `zsh`, `fish`, and `pwsh`
 installed on your system.
+
+To run full test suite across all supported interpreters, run `tox`:
+
+```shell
+tox p
+```
+
+This will reproduce build that we run in CI.
 
 
 ## Build docs
