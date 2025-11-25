@@ -69,6 +69,7 @@ autodoc_type_aliases = {
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
 vhs_min_version = "0.7.2"
+vhs_n_jobs_read_the_docs = 4
 
 toc_object_entries_show_parents = "hide"
 
