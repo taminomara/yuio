@@ -39,9 +39,12 @@ jobs:
         with:
           python-version: 3.13
       - name: Install dependencies
-        run: python -m pip install --upgrade pip && python -m pip install . --group ci
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . --group ci
       - name: Output stats
-        run: scripts/output_stats
+        run: |
+          scripts/output_stats
       # Tests
       - name: Set up pythons
         if: ${{ matrix.type == 'test' }}
@@ -55,7 +58,8 @@ jobs:
             3.14
       - name: Test package
         if: ${{ matrix.type == 'test' }}
-        run: tox --skip-env 'lint' --colored yes run-parallel
+        run: |
+          tox --skip-env 'lint' --colored yes run-parallel
         env:
           COVERAGE_FILE: .coverage.${{ matrix.os }}
       - name: Upload coverage artifact
@@ -68,7 +72,8 @@ jobs:
       # Lint
       - name: Check code style
         if: ${{ matrix.type == 'code style' }}
-        run: tox -e lint --colored yes
+        run: |
+          tox -e lint --colored yes
 
   upload_coverage:
     name: Upload coverage report to GitHub Pages
@@ -92,17 +97,23 @@ jobs:
         with:
           python-version: 3.13
       - name: Install dependencies
-        run: python -m pip install --upgrade pip && python -m pip install . --group ci
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . --group ci
       - name: Download coverage data
         uses: actions/download-artifact@v5
         with:
           path: .
           pattern: coverage-*
           merge-multiple: true
-      - name: Combine coverage data
-        run: coverage combine
       - name: Make coverage report
-        run: coverage report && coverage html && touch htmlcov/.nojekyll
+        run: |
+          coverage combine
+          coverage report
+          coverage xml
+          coverage html
+          genbadge coverage --local -i coverage.xml -o htmlcov/coverage.svg
+          touch htmlcov/.nojekyll
       - name: Upload coverage report
         uses: actions/upload-pages-artifact@v3
         with:

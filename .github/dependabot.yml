@@ -8,6 +8,7 @@ updates:
       dev:
         patterns:
         - "furo"
+        - "genbadge"
         - "libtmux"
         - "PyGithub"
         - "pyright"
@@ -25,5 +26,5 @@ updates:
         - "virtualenv-pyenv"
       style:
         patterns:
-        - "ruff"
         - "pre-commit"
+        - "ruff"
