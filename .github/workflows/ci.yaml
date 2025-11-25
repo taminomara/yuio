@@ -73,6 +73,8 @@ jobs:
     name: Upload coverage report to GitHub Pages
     if: ${{ github.event_name == 'push' && github.event.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    needs:
+      - test
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
