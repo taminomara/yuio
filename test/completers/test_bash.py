@@ -25,13 +25,13 @@ def test_bash(test_cases, data_regression):
             result = subprocess.check_output(
                 [
                     "bash",
-                    "-lic",
+                    "-lc",
                     SCRIPT.format(
                         cword=cword + 1,
                         prefix_len=prefix_len + 9,
                         args=" ".join(map(shlex.quote, args)),
                     ),
-                ]
+                ],
             ).decode()
         except subprocess.CalledProcessError as e:
             results.append(dict(cmd=orig, err=str(e)))

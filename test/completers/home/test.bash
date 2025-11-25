@@ -2,6 +2,7 @@
 
 set -eo pipefail
 
+. /usr/share/bash-completion/bash_completion
 . ${XDG_DATA_HOME}/bash-completion/completions/comptest comptest
 
 COMP_TYPE=9

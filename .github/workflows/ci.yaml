@@ -55,13 +55,45 @@ jobs:
             3.14
       - name: Test package
         if: ${{ matrix.type == 'test' }}
-        run: tox --skip-env lint --colored yes run-parallel
+        run: tox --skip-env 'lint|coverage-report' --colored yes run-parallel
         env:
-          PYTEST_ADDOPTS: "--strict-markers -p no:doctest -m="
+          COVERAGE_FILE: .coverage.${{ matrix.os }}
+      - name: Upload coverage artifact
+        if: ${{ matrix.type == 'test' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: .coverage.${{ matrix.os }}
       # Lint
       - name: Check code style
         if: ${{ matrix.type == 'code style' }}
         run: tox -e lint --colored yes
+
+  upload_coverage:
+    name: Upload coverage report to GitHub Pages
+    if: ${{ github.event_name == 'push' && github.event.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.13
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install . --group ci
+      - name: Download coverage data
+        uses: actions/download-artifact@v5
+        with:
+          path: .
+          pattern: coverage-*
+          merge-multiple: true
+      - name: Combine coverage data
+        run: coverage combine
+      - name: Make coverage report
+        run: coverage report
 
   # Builds python packages.
   #
@@ -127,7 +159,7 @@ jobs:
       id-token: write
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: python-package-distributions
           path: dist/

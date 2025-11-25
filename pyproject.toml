@@ -49,7 +49,12 @@ doc = [
     "sybil==9.2.0",
 ]
 lint = ["ruff==0.14.6", "pre-commit==4.5.0"]
-ci = ["PyGithub==2.8.1", "tox==4.32.0", "virtualenv-pyenv==0.6.0"]
+ci = [
+    "PyGithub==2.8.1",
+    "tox==4.32.0",
+    "virtualenv-pyenv==0.6.0",
+    "pytest-cov==7.0.0",
+]
 
 [project.urls]
 Documentation = "https://yuio.readthedocs.io/"
@@ -65,13 +70,26 @@ write_to = "yuio/_version.py"
 
 [tool.tox]
 requires = ["tox>=4"]
-env_list = ["3.14t", "3.14", "3.13", "3.12", "3.11", "3.10", "type", "lint"]
+env_list = [
+    "3.14t",
+    "3.14",
+    "3.13",
+    "3.12",
+    "3.11",
+    "3.10",
+    "type",
+    "lint",
+    "coverage-clean",
+    "coverage-report",
+]
+depends = []
 
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"
 dependency_groups = ["test"]
-commands = [["pytest", "--color=yes"]]
-pass_env = ["PYTEST*"]
+commands = [["pytest", "--color=yes", "--cov", "--cov-append", "-m="]]
+pass_env = ["PYTEST*", "COVERAGE*"]
+depends = ["coverage-clean"]
 
 [tool.tox.env.type]
 description = "Run type check"
@@ -79,11 +97,28 @@ skip_install = true
 dependency_groups = ["test"]
 commands = [["pyright"]]
 base_python = ["3.10"]
+depends = []
 
 [tool.tox.env.lint]
 description = "Run pre-commit hooks"
+skip_install = true
 dependency_groups = ["lint"]
 commands = [["pre-commit", "run", "--all", "--color=always"]]
+depends = []
+
+[tool.tox.env.coverage-clean]
+description = "Delete coverage data"
+dependency_groups = ["test"]
+skip_install = true
+commands = [["coverage", "erase"]]
+depends = []
+
+[tool.tox.env.coverage-report]
+description = "Build coverage report"
+skip_install = true
+dependency_groups = ["test"]
+commands = [["coverage", "report"], ["coverage", "html"]]
+depends = ["3.14", "3.13", "3.12", "3.11", "3.10"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
