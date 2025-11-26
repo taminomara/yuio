@@ -1,16 +1,30 @@
 Lower-level Details
 ===================
 
-Interfaces that you'll need if you're building something complicated.
+APIs for advanced use-cases.
 
-.. toctree::
-   :maxdepth: 1
+.. nice-toc::
 
    color
+      Working with colors.
+
    complete
+      Building custom autocompleters.
+
    json_schema
+      Building JSON schemas for configs.
+
    md
+      Simple Markdown parser and renderer.
+
    string
+      Colorized strings and formatting utilities.
+
    term
+      Querying terminal capabilities.
+
    theme
+      Controlling Yuio appearance.
+
    widget
+      Interactive widgets.

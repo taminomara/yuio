@@ -88,10 +88,25 @@ depends = []
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"
 dependency_groups = ["test"]
-commands = [["pytest", "--color=yes", "--cov", "--cov-append", "-m="]]
+commands = [
+    [
+        "pip",
+        "install",
+        "--force-reinstall",
+        "--no-deps",
+        "./test/dbg_hooks",
+    ],
+    [
+        "pytest",
+        "--color=yes",
+        "--cov",
+        "--cov-append",
+        "-m not flaky",
+    ],
+]
 pass_env = ["PYTEST*", "COVERAGE*"]
 depends = ["coverage-clean"]
-usedevelop = true
+package = "editable"
 set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}.{envname}" }
 
 [tool.tox.env.type]
@@ -132,6 +147,7 @@ markers = [
     "linux: test runs only on linux runners",
     "darwin: test runs only on darwin runners",
     "full: long test or test with special requirements, only runs in CI",
+    "flaky: tests with tmux tend to be flaky, so we run them manually",
 ]
 
 [tool.pyright]

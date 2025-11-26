@@ -1186,7 +1186,7 @@ class DefaultTheme(Theme):
         "task/decoration:done": "success_color",
         "task/decoration:error": "error_color",
         "task/progressbar/done": "accent_color",
-        "task/progressbar/done/start": "accent_color_2",
+        "task/progressbar/done/start": "blue",
         "task/progressbar/done/end": "accent_color",
         "task/progressbar/pending": "secondary_color",
         "task/heading": "heading_color",

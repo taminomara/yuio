@@ -421,7 +421,7 @@ class TestDefaultTheme:
         )
         assert theme.get_color(
             "task/progressbar/done/start"
-        ) == yuio.color.Color.fore_from_hex("#00FFFF")
+        ) == yuio.color.Color.fore_from_hex("#0000FF")
         assert theme.get_color(
             "task/progressbar/done/end"
         ) == yuio.color.Color.fore_from_hex("#FF00FF")
@@ -442,7 +442,7 @@ class TestDefaultTheme:
         ) == yuio.color.Color.fore_from_hex("#5A4949")
         assert theme.get_color(
             "task/progressbar/done/start"
-        ) == yuio.color.Color.fore_from_hex("#00FFFF")
+        ) == yuio.color.Color.fore_from_hex("#0000FF")
         assert theme.get_color(
             "task/progressbar/done/end"
         ) == yuio.color.Color.fore_from_hex("#FF00FF")
@@ -463,7 +463,7 @@ class TestDefaultTheme:
         ) == yuio.color.Color.fore_from_hex("#00BF35")
         assert theme.get_color(
             "task/progressbar/done/start"
-        ) == yuio.color.Color.fore_from_hex("#00FFFF")
+        ) == yuio.color.Color.fore_from_hex("#0000FF")
         assert theme.get_color(
             "task/progressbar/done/end"
         ) == yuio.color.Color.fore_from_hex("#FF00FF")

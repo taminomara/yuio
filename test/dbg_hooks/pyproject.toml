@@ -1,0 +1,9 @@
+[project]
+name = "yuio_test_hooks"
+authors = [{ name = "Tamika Nomara", email = "taminomara@gmail.com" }]
+version = "0.0.0"
+dependencies = ["yuio"]
+
+[project.entry-points."yuio.dbg.env_collector"]
+collect_env_ok = "yuio_test_hooks:collect_env_ok"
+collect_env_err = "yuio_test_hooks:collect_env_err"

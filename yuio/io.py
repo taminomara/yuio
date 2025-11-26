@@ -135,12 +135,13 @@ List of all tags that are available by default:
     ``magenta``, ``cyan``: colors.
 
 
-Customizing colors and using themes
------------------------------------
+Formatting utilities
+--------------------
 
-The :func:`setup` function accepts a :class:`~yuio.theme.Theme` class.
-You can subclass it and supply custom colors, see :mod:`yuio.theme`
-for more info.
+There are several :ref:`formatting utilities <formatting-utilities>` defined
+in :mod:`yuio.string` and re-exported in :mod:`yuio.io`. These utilities
+perform various formatting tasks when converted to strings, allowing you to lazily
+build more complex messages.
 
 
 Indicating progress
@@ -183,7 +184,7 @@ You can also prompt the user to edit something with the :func:`edit` function:
 
 .. autofunction:: detect_editor
 
-All of these functions throw a error if something goes wrong:
+All of these functions throw an error if something goes wrong:
 
 .. autoclass:: UserIoError
 
@@ -276,6 +277,7 @@ import yuio.theme
 import yuio.widget
 from yuio import _typing as _t
 from yuio.string import (
+    And,
     ColorizedString,
     Format,
     Hl,
@@ -284,6 +286,7 @@ from yuio.string import (
     JoinRepr,
     JoinStr,
     Md,
+    Or,
     Repr,
     Stack,
     TypeRepr,
@@ -292,6 +295,7 @@ from yuio.string import (
 )
 
 __all__ = [
+    "And",
     "ColorizedString",
     "ExcInfo",
     "Format",
@@ -303,6 +307,7 @@ __all__ = [
     "JoinRepr",
     "JoinStr",
     "Md",
+    "Or",
     "Repr",
     "Stack",
     "SuspendOutput",

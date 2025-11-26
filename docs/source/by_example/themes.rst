@@ -28,7 +28,7 @@ pass theme to :func:`yuio.io.setup`:
 
             @yuio.app.app
             def main():
-                pass
+                ...
 
             main.theme = Theme
 

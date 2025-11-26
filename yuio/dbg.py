@@ -7,7 +7,12 @@
 
 """
 This module provides functionality for collecting data about environment for including
-it to bug reports.
+it to bug reports. It's inspired by scooby__ package (check it out if functionality
+of this module is not enough).
+
+__ https://github.com/banesullivan/scooby/
+
+Set :attr:`App.bug_report <yuio.app.App.bug_report>` to enable this functionality.
 
 .. autofunction:: print_report
 
@@ -42,6 +47,14 @@ from yuio import _typing as _t
 
 if _t.TYPE_CHECKING:
     import yuio.app
+
+__all__ = [
+    "EnvCollector",
+    "Report",
+    "ReportSettings",
+    "print_report",
+    "report_exc",
+]
 
 
 @dataclass
@@ -96,7 +109,7 @@ class ReportSettings:
 
     """
 
-    collectors: list[tuple[str, EnvCollector | Report]] | None = None
+    collectors: list[EnvCollector | Report] | None = None
     """
     List of additional env collectors to run.
 
@@ -117,11 +130,11 @@ def _load_env_collectors():
 
     collectors: list[tuple[str, EnvCollector | Report]] = []
 
-    for plugin in importlib.metadata.entry_points(group="yuio.env_collector"):
+    for plugin in importlib.metadata.entry_points(group="yuio.dbg.env_collector"):
         try:
             collectors.append((plugin.name, plugin.load()))
         except Exception:
-            msg = "Error when loading cnv collector:\n" + traceback.format_exc()
+            msg = "Error when loading env collector:\n" + traceback.format_exc()
             collectors.append((plugin.name, Report(plugin.name, [msg])))
 
     return collectors
@@ -275,6 +288,15 @@ def _terminal() -> Report:
     return report
 
 
+def _collector_name(collector: Report | EnvCollector):
+    if isinstance(collector, Report):
+        return collector.title
+    else:
+        qualname = getattr(collector, "__qualname__", "unknown")
+        module = getattr(collector, "__module__", "unknown")
+        return f"{module}.{qualname}"
+
+
 def print_report(
     *,
     dest: _t.TextIO | None = None,
@@ -310,8 +332,13 @@ def print_report(
         ("Versions", lambda: _versions(settings, app)),
         ("Terminal and CLI", _terminal),
     ]
-    all_collectors.extend(settings.collectors or [])
-    all_collectors.extend(_load_env_collectors())
+    all_collectors.extend(
+        (
+            (_collector_name(collector), collector)
+            for collector in settings.collectors or []
+        )
+    )
+    all_collectors.extend(_get_env_collectors())
 
     START = 0
     AFTER_TITLE = 1
@@ -363,7 +390,7 @@ def print_report(
             if not printed_title:
                 if position in [AFTER_ITEM, AFTER_LONG_ITEM]:
                     print("\n", file=dest)
-                print(indent + name + "\n", file=dest)
+                print(indent + name, file=dest)
                 print(indent + "~" * len(name) + "\n", file=dest)
                 position = AFTER_TITLE
             if position in [AFTER_ITEM, AFTER_LONG_ITEM]:

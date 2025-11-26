@@ -1,7 +1,7 @@
 Command line interfaces
 ========================
 
-    Exploring Yuio apps deeper.
+    Exploring Yuio apps and CLI interfaces.
 
 
 Creating and using apps
@@ -161,7 +161,7 @@ into specific files. Just run your app with ``--completions`` flag:
 
     Source "docs/source/_tapes/_config.tape"
     Hide
-    Type "cd examples && mkdir -p ./.vhs_tmp && export XDG_DATA_HOME=./.vhs_tmp/.local/share/ XDG_CACHE_HOME=./.vhs_tmp/.cache/ XDG_CONFIG_HOME=./.vhs_tmp/.config/ ZDOTDIR=./.vhs_tmp/ && clear"
+    Type "cd examples/apps && mkdir -p ./.vhs_tmp && export XDG_DATA_HOME=./.vhs_tmp/.local/share/ XDG_CACHE_HOME=./.vhs_tmp/.cache/ XDG_CONFIG_HOME=./.vhs_tmp/.config/ ZDOTDIR=./.vhs_tmp/ && touch ./.vhs_tmp/.zshrc && clear"
     Enter
     Show
     Type "./app --completions"

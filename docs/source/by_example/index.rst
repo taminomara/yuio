@@ -10,12 +10,25 @@ A simple step-by-step guide that will walk you through Yuio's essentials.
 
     __ https://github.com/taminomara/yuio/issues
 
-.. toctree::
-    :maxdepth: 1
+.. nice-toc::
 
     hello_world
+        Basics of CLI apps and printing things to output.
+
     interactive_things
+        Everything about ``yuio.io`` and Yuio's interactive capabilities.
+
     parsers
+        Introduction to parsers and ``yuio.parse``.
+
     configs
+        Working with configuration files.
+
     cli
+        Exploring Yuio apps and CLI interfaces.
+
     themes
+        Customizing Yuio's appearance.
+
+    dbg
+        Automated environment collection for bug reports.

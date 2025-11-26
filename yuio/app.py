@@ -158,6 +158,12 @@ help formatting using its arguments:
 
     .. autoattribute:: theme
 
+    .. autoattribute:: version
+
+    .. autoattribute:: bug_report
+
+    .. autoattribute:: is_dev_mode
+
 
 Creating sub-commands
 ---------------------
@@ -256,7 +262,7 @@ import yuio
 import yuio.color
 import yuio.complete
 import yuio.config
-import yuio.dbg.env
+import yuio.dbg
 import yuio.io
 import yuio.md
 import yuio.parse
@@ -297,7 +303,7 @@ def app(
     description: str | None = None,
     epilog: str | None = None,
     version: str | None = None,
-    bug_report: yuio.dbg.env.ReportSettings | bool = False,
+    bug_report: yuio.dbg.ReportSettings | bool = False,
     is_dev_mode: bool | None = None,
 ) -> _t.Callable[[C], App[C]]: ...
 @_t.overload
@@ -310,7 +316,7 @@ def app(
     description: str | None = None,
     epilog: str | None = None,
     version: str | None = None,
-    bug_report: yuio.dbg.env.ReportSettings | bool = False,
+    bug_report: yuio.dbg.ReportSettings | bool = False,
     is_dev_mode: bool | None = None,
 ) -> App[C]: ...
 def app(
@@ -322,7 +328,7 @@ def app(
     description: str | None = None,
     epilog: str | None = None,
     version: str | None = None,
-    bug_report: yuio.dbg.env.ReportSettings | bool = False,
+    bug_report: yuio.dbg.ReportSettings | bool = False,
     is_dev_mode: bool | None = None,
 ) -> _t.Any:
     """
@@ -450,7 +456,7 @@ class App(_t.Generic[C]):
         description: str | None = None,
         epilog: str | None = None,
         version: str | None = None,
-        bug_report: yuio.dbg.env.ReportSettings | bool = False,
+        bug_report: yuio.dbg.ReportSettings | bool = False,
         is_dev_mode: bool | None = None,
     ):
         self.prog: str | None = prog
@@ -605,7 +611,7 @@ class App(_t.Generic[C]):
 
         """
 
-        self.bug_report: yuio.dbg.env.ReportSettings | bool = bug_report
+        self.bug_report: yuio.dbg.ReportSettings | bool = bug_report
         """
         If not :data:`False`, add :flag:`--bug-report` flag to the CLI.
 
@@ -781,7 +787,7 @@ class App(_t.Generic[C]):
             sys.exit(0)
 
         if "--yuio-bug-report--" in args:
-            from yuio.dbg.env import print_report
+            from yuio.dbg import print_report
 
             print_report(settings=self.bug_report, app=self)
             sys.exit(0)
@@ -1217,7 +1223,7 @@ class _BugReportAction(argparse.Action):
         self.app = app
 
     def __call__(self, parser, namespace, values, option_string=None):
-        yuio.dbg.env.print_report(settings=self.app.bug_report, app=self.app)
+        yuio.dbg.print_report(settings=self.app.bug_report, app=self.app)
         parser.exit()
 
 

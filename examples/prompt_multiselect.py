@@ -18,6 +18,4 @@ if __name__ == "__main__":
     if len(consoles) == len(Console):
         yuio.io.info("You have all of them!")
     else:
-        yuio.io.info(
-            "You have %s", yuio.io.JoinStr.and_(consoles, fallback="...nothing?")
-        )
+        yuio.io.info("You have %s", yuio.io.And(consoles, fallback="...nothing?"))

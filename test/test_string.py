@@ -4818,32 +4818,32 @@ class TestJoinStr:
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
     def test_and(self, theme):
-        r = yuio.string.JoinStr.and_("", color=None)
+        r = yuio.string.And("", color=None)
         assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == []
 
-        r = yuio.string.JoinStr.and_("12", color=None)
+        r = yuio.string.And("12", color=None)
         assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
             Color.NONE,
             "1 and 2",
         ]
 
-        r = yuio.string.JoinStr.and_("123", color=None)
+        r = yuio.string.And("123", color=None)
         assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
             Color.NONE,
             "1, 2, and 3",
         ]
 
     def test_or(self, theme):
-        r = yuio.string.JoinStr.or_("", color=None)
+        r = yuio.string.Or("", color=None)
         assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == []
 
-        r = yuio.string.JoinStr.or_("12", color=None)
+        r = yuio.string.Or("12", color=None)
         assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
             Color.NONE,
             "1 or 2",
         ]
 
-        r = yuio.string.JoinStr.or_("123", color=None)
+        r = yuio.string.Or("123", color=None)
         assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
             Color.NONE,
             "1, 2, or 3",

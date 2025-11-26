@@ -5,6 +5,7 @@ import sys
 
 os.environ["__YUIO_SPHINX_BUILD"] = "1"
 sys.path.append(str(pathlib.Path(__file__).parent / "_code"))
+sys.path.append(str(pathlib.Path(__file__).parent / "_extensions"))
 
 import yuio
 
@@ -25,6 +26,8 @@ extensions = [
     "yuio.ext.sphinx",
     "sphinx_design",
     "sphinx_vhs",
+    "nice_toc",
+    "api_ref",
 ]
 
 intersphinx_mapping = {
@@ -57,7 +60,7 @@ autodoc_type_aliases = {
             "~yuio.string.NoWrapEnd",
             "~yuio.string.NoWrapMarker",
             "~yuio.json_schema.JsonValue",
-            "~yuio.dbg.env.EnvCollector",
+            "~yuio.dbg.EnvCollector",
             "~yuio.cli.NArgs",
         ]
         for name in [

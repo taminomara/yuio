@@ -142,6 +142,8 @@ Yuio searches for special methods on your objects when rendering them.
 .. autofunction:: repr_from_rich
 
 
+.. _formatting-utilities:
+
 Formatting utilities
 --------------------
 
@@ -161,6 +163,10 @@ Formatting utilities
 .. autoclass:: JoinRepr
     :members:
     :inherited-members:
+
+.. autofunction:: And
+
+.. autofunction:: Or
 
 .. autoclass:: Stack
     :members:
@@ -238,6 +244,7 @@ if _t.TYPE_CHECKING:
 __all__ = [
     "NO_WRAP_END",
     "NO_WRAP_START",
+    "And",
     "AnyString",
     "Colorable",
     "ColorableBase",
@@ -255,6 +262,7 @@ __all__ = [
     "NoWrapEnd",
     "NoWrapMarker",
     "NoWrapStart",
+    "Or",
     "Printable",
     "Repr",
     "ReprContext",
@@ -1037,7 +1045,7 @@ class ColorizedString:
 
         needs_indent = True
         for part in self._parts:
-            if not isinstance(part, str):
+            if not isinstance(part, str) or isinstance(part, Esc):
                 res += part
                 continue
 
@@ -2723,7 +2731,7 @@ class _JoinBase(_StrBase):
         :example:
             ::
 
-                >>> print(JoinStr.or_([1, 2, 3]))
+                >>> print(yuio.string.JoinStr.or_([1, 2, 3]))
                 1, 2, or 3
 
         """
@@ -2747,7 +2755,7 @@ class _JoinBase(_StrBase):
         :example:
             ::
 
-                >>> print(JoinStr.and_([1, 2, 3]))
+                >>> print(yuio.string.JoinStr.and_([1, 2, 3]))
                 1, 2, and 3
 
         """
@@ -2866,6 +2874,20 @@ class JoinRepr(_JoinBase):
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
         return self._render(ctx._theme, ctx.repr)
+
+
+And = JoinStr.and_
+"""
+Shortcut for :meth:`JoinStr.and_`.
+
+"""
+
+
+Or = JoinStr.or_
+"""
+Shortcut for :meth:`JoinStr.or_`.
+
+"""
 
 
 @_t.final

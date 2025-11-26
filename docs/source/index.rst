@@ -92,33 +92,25 @@ Features
 -   And many more!
 
 
-Requirements
-------------
-
-The only requirement is ``python >= 3.10``.
-
-
-Installation
-------------
-
-Install ``yuio`` with pip:
-
-.. code-block:: console
-
-    $ pip install yuio
-
-Or just copy-paste the ``yuio`` directory to somewhere in the ``PYTHONPATH`` of your project.
-
-
 Contents
 --------
 
-.. toctree::
-    :maxdepth: 1
+.. nice-toc::
+
+    installation
+        Installation options.
 
     by_example/index
-    main_features/index
+        A simple step-by-step guide that will walk you through Yuio's essentials.
+
+    main_api/index
+        The primary interface.
+
     internals/index
+        For advanced use-cases.
+
+    api
+        Full Yuio API at a glance.
 
 .. toctree::
     :hidden:

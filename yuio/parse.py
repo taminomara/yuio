@@ -530,7 +530,7 @@ class ParsingError(yuio.string.ColorableBase, ValueError, argparse.ArgumentTypeE
 
         return cls(
             "Expected %s, got `%s`: `%r`",
-            yuio.string.JoinStr.or_(map(yuio.string.TypeRepr, expected)),
+            yuio.string.Or(map(yuio.string.TypeRepr, expected)),
             yuio.string.TypeRepr(type(value)),
             value,
         )
@@ -1988,7 +1988,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
                 "Can't parse `%r` as `%s`, possible candidates are %s",
                 value,
                 self._inner.__name__,
-                yuio.string.JoinStr.or_(enum_values),
+                yuio.string.Or(enum_values),
             )
         else:
             enum_values = tuple(self.__getter(e) for e in self._inner)
@@ -1996,7 +1996,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
                 "Can't parse `%r` as `%s`, should be %s",
                 value,
                 self._inner.__name__,
-                yuio.string.JoinStr.or_(enum_values),
+                yuio.string.Or(enum_values),
             )
 
     def parse_config(self, value: object, /) -> E:
@@ -2637,7 +2637,7 @@ class Path(ValueParser[pathlib.Path]):
             raise ParsingError(
                 "<c path>%s</c> should have extension %s",
                 value,
-                yuio.string.JoinStr.or_(self.__extensions),
+                yuio.string.Or(self.__extensions),
             )
 
     def completer(self) -> yuio.complete.Completer | None:

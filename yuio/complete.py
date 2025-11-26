@@ -1920,8 +1920,7 @@ def _write_script(
     true_prog: str,
     compdata_path: pathlib.Path,
 ):
-    script_template_path = pathlib.Path(__file__).parent / "_complete" / script_name
-    script_template = script_template_path.read_text()
+    script_template = _read_script(script_name)
     script = (
         (script_template)
         .replace("@prog@", prog)
@@ -1932,6 +1931,20 @@ def _write_script(
 
     path.parent.mkdir(exist_ok=True, parents=True)
     path.write_text(script)
+
+
+def _read_script(script_name: str):
+    import zipfile
+    import zipimport
+
+    if isinstance(__loader__, zipimport.zipimporter):
+        # Yuio is imported directly from a wheel.
+        with zipfile.ZipFile(__loader__.archive) as archive:
+            script_template = archive.read("yuio/_complete/" + script_name)
+            return script_template.decode()
+    else:
+        script_template_path = pathlib.Path(__file__).parent / "_complete" / script_name
+        return script_template_path.read_text()
 
 
 def _write_pwsh_loader(loader_path: pathlib.Path, data_dir: pathlib.Path):

@@ -116,21 +116,14 @@ Yuio supports simple :ref:`code highlighting <highlighting-code>`:
 Querying user input
 -------------------
 
-Last time we've built a simple CLI app that greets the user.
-Now, let's make it interactive.
-
-We'll start by querying the user's name, and if they want
-a formal or an informal greeting:
+You can use :func:`yuio.io.ask` to get data from the user. It's like :func:`input`,
+but automatically parses the user input, and can use different widgets based
+on the expected value's type:
 
 .. literalinclude:: interactive_things_code/querying.py
     :language: python
     :lines: 1-16
     :emphasize-lines: 5,11-15
-
-We've used :func:`yuio.io.ask` to get data from the user. It's like :func:`input`,
-but automatically parses the user input, and can use different widgets based
-on the expected value's type. That's why we've used :class:`~enum.Enum` instead
-of a simple string:
 
 .. vhs-inline::
     :scale: 40%
@@ -170,7 +163,7 @@ And if the job can report its progress, we can even show a progressbar:
     :emphasize-lines: 1,3-4
 
 :class:`~yuio.io.Task` has lots of helper methods on it. For example, the above code
-can be simplified using :meth:`yuio.io.Task.iter`: a function that automatically
+can be simplified using :meth:`Task.iter() <yuio.io.Task.iter>`: a function that automatically
 updates progress as you iterate over a collection.
 
 .. vhs-inline::

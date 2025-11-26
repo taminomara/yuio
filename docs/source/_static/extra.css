@@ -52,3 +52,12 @@ pre.ascii-graphics {
   text-overflow: ellipsis;
   color: var(--color-toc-item-text);
 }
+
+.no-link-decorations a {
+  color: var(--sd-color-card-text);
+  text-decoration: none;
+}
+
+.api-ref-prefix {
+  color: var(--color-foreground-muted);
+}
