@@ -37,7 +37,9 @@ class NiceTocDirective(TocTree):
 
         for title, docname in toctree["entries"]:
             preview_lines = self.previews.get(docname, [])
-            preview = textwrap.indent(textwrap.dedent("\n".join(preview_lines)), "        ")
+            preview = textwrap.indent(
+                textwrap.dedent("\n".join(preview_lines)), "        "
+            )
             lines.extend(
                 [
                     f"    .. grid-item-card:: :doc:`/{docname}`",
