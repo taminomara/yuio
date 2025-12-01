@@ -33,7 +33,7 @@ dev = [
 ]
 test = [
     "jsonschema==4.25.1",
-    "libtmux==0.47.0",
+    "libtmux==0.50.0",
     "pyright==1.1.407",
     "pytest-cov==7.0.0",
     "pytest-regressions==2.8.3",
