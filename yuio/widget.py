@@ -542,7 +542,7 @@ class RenderContext:
         self._normal_buffer_term_y: int = 0
 
         # Helpers
-        self._none_color: str = yuio.term.color_to_code(_Color.NONE, term)
+        self._none_color: str = _Color.NONE.as_code(term.color_support)
 
         # Used for tests and debug
         self._renders: int = 0
@@ -798,8 +798,8 @@ class RenderContext:
 
         """
 
-        self._frame_cursor_color = yuio.term.color_to_code(
-            self._theme.get_color(path), self._term
+        self._frame_cursor_color = self._theme.get_color(path).as_code(
+            self._term.color_support
         )
 
     def set_color(self, color: _Color, /):
@@ -808,7 +808,7 @@ class RenderContext:
 
         """
 
-        self._frame_cursor_color = yuio.term.color_to_code(color, self._term)
+        self._frame_cursor_color = color.as_code(self._term.color_support)
 
     def reset_color(self):
         """
@@ -886,7 +886,7 @@ class RenderContext:
         if not 0 <= y < self._height:
             for s in text:
                 if isinstance(s, _Color):
-                    self._frame_cursor_color = yuio.term.color_to_code(s, self.term)
+                    self._frame_cursor_color = s.as_code(self._term.color_support)
             return
 
         ll = self._lines[y]
@@ -894,7 +894,7 @@ class RenderContext:
 
         for s in text:
             if isinstance(s, _Color):
-                self._frame_cursor_color = yuio.term.color_to_code(s, self._term)
+                self._frame_cursor_color = s.as_code(self._term.color_support)
                 continue
             elif s in (yuio.string.NO_WRAP_START, yuio.string.NO_WRAP_END):
                 continue
@@ -1159,12 +1159,8 @@ class RenderContext:
             debug_msg = f"n={self._renders:>04},r={self._bytes_rendered:>04},t={self._total_bytes_rendered:>04}"
             term_x, term_y = self._term_x, self._term_y
             self._move_term_cursor(self._width - len(debug_msg), 0)
-            self._out.append(
-                yuio.term.color_to_code(
-                    yuio.color.Color.STYLE_INVERSE | yuio.color.Color.FORE_CYAN,
-                    self.term,
-                )
-            )
+            color = yuio.color.Color.STYLE_INVERSE | yuio.color.Color.FORE_CYAN
+            self._out.append(color.as_code(self._term.color_support))
             self._out.append(debug_msg)
             self._out.append(self._term_color)
             self._move_term_cursor(term_x, term_y)

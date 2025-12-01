@@ -1566,7 +1566,7 @@ class _HelpFormatter:
             res += line
             res += "\n"
         res += yuio.color.Color()
-        return "".join(res.process_colors(self._term))
+        return "".join(res.process_colors(self._term.color_support))
 
     def _format_action_short(
         self,

@@ -233,7 +233,6 @@ from enum import Enum
 
 import yuio
 import yuio.color
-import yuio.term
 import yuio.theme
 from yuio import _typing as _t
 from yuio.color import Color as _Color
@@ -910,7 +909,7 @@ class ColorizedString:
 
         return res
 
-    def process_colors(self, term: yuio.term.Term, /) -> list[str]:
+    def process_colors(self, color_support: yuio.color.ColorSupport, /) -> list[str]:
         """
         Convert colors in this string to ANSI escape sequences.
 
@@ -922,7 +921,7 @@ class ColorizedString:
 
         """
 
-        if not term.supports_colors:
+        if color_support == yuio.color.ColorSupport.NONE:
             return [part for part in self._parts if isinstance(part, str)]
         else:
             parts = [

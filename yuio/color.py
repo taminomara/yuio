@@ -13,10 +13,13 @@ for every aspect of text presentation.
 This is a low-level module upon which :mod:`yuio.io` builds
 its higher-level abstraction.
 
-.. autoclass:: yuio.color.Color
+.. autoclass:: Color
    :members:
 
-.. autoclass:: yuio.color.ColorValue
+.. autoclass:: ColorValue
+   :members:
+
+.. autoclass:: ColorSupport
    :members:
 
 """
@@ -25,6 +28,7 @@ from __future__ import annotations
 
 import colorsys
 import dataclasses
+import enum
 import re
 import typing
 from dataclasses import dataclass
@@ -34,6 +38,7 @@ from yuio import _typing as _t
 
 __all__ = [
     "Color",
+    "ColorSupport",
     "ColorValue",
 ]
 
@@ -270,6 +275,26 @@ class ColorValue:
 
             return lerp
 
+    def _as_fore(self, color_support: ColorSupport, /) -> str:
+        return self._as_code(color_support, fg_bg_prefix="3")
+
+    def _as_back(self, color_support: ColorSupport, /) -> str:
+        return self._as_code(color_support, fg_bg_prefix="4")
+
+    def _as_code(self, color_support: ColorSupport, /, fg_bg_prefix: str) -> str:
+        if color_support == ColorSupport.NONE:
+            return ""
+        elif isinstance(self.data, int):
+            return f"{fg_bg_prefix}{self.data}"
+        elif isinstance(self.data, str):
+            return self.data
+        elif color_support == ColorSupport.ANSI_TRUE:
+            return f"{fg_bg_prefix}8;2;{self.data[0]};{self.data[1]};{self.data[2]}"
+        elif color_support == ColorSupport.ANSI_256:
+            return f"{fg_bg_prefix}8;5;{_rgb_to_256(*self.data)}"
+        else:
+            return f"{fg_bg_prefix}{_rgb_to_8(*self.data)}"
+
     def __repr__(self) -> str:
         if isinstance(self.data, tuple):
             return f"<ColorValue {self.to_hex()}>"
@@ -287,11 +312,6 @@ class Color:
     """
     Data about terminal output style. Contains
     foreground and background color, as well as text styles.
-
-    This class only contains data about the color. It doesn't know anything about
-    how to apply it to a terminal, or whether a terminal supports colors at all.
-    These decisions are thus deferred to the terminal API
-    (see :func:`yuio.term.color_to_code`).
 
     When converted to an ANSI code and printed, a color completely overwrites a previous
     color that was used by a terminal. This behavior prevents different colors and styles
@@ -498,6 +518,43 @@ class Color:
             else:
                 return lambda f, /: colors[0]
 
+    def as_code(self, color_support: ColorSupport) -> str:
+        """
+        Convert this color into an ANSI escape code with respect to the given
+        terminal capabilities.
+
+        :param color_support:
+            level of color support of a terminal.
+        :returns:
+            either ANSI escape code for this color or an empty string.
+
+        """
+
+        if color_support == ColorSupport.NONE:
+            return ""
+
+        codes = []
+        if self.fore:
+            codes.append(self.fore._as_fore(color_support))
+        if self.back:
+            codes.append(self.back._as_back(color_support))
+        if self.bold:
+            codes.append("1")
+        if self.dim:
+            codes.append("2")
+        if self.italic:
+            codes.append("3")
+        if self.underline:
+            codes.append("4")
+        if self.blink:
+            codes.append("5")
+        if self.inverse:
+            codes.append("7")
+        if codes:
+            return "\x1b[;" + ";".join(codes) + "m"
+        else:
+            return "\x1b[m"
+
     def __repr__(self):
         res = "<Color"
         for field in dataclasses.fields(self):
@@ -699,3 +756,56 @@ def _parse_hex(h: str) -> tuple[int, int, int]:
     if not re.match(r"^#[0-9a-fA-F]{6}$", h):
         raise ValueError(f"invalid hex string {h!r}")
     return tuple(int(h[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore
+
+
+class ColorSupport(enum.IntEnum):
+    """
+    Terminal's capability for coloring output.
+
+    """
+
+    NONE = 0
+    """
+    yuio.color.Color codes are not supported.
+
+    """
+
+    ANSI = 1
+    """
+    Only simple 8-bit color codes are supported.
+
+    """
+
+    ANSI_256 = 2
+    """
+    256-encoded colors are supported.
+
+    """
+
+    ANSI_TRUE = 3
+    """
+    True colors are supported.
+
+    """
+
+
+def _rgb_to_256(r: int, g: int, b: int) -> int:
+    closest_idx = lambda x, vals: min((abs(x - v), i) for i, v in enumerate(vals))[1]
+    color_components = [0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF]
+
+    if r == g == b:
+        i = closest_idx(r, color_components + [0x08 + 10 * i for i in range(24)])
+        if i >= len(color_components):
+            return 232 + i - len(color_components)
+        r, g, b = i, i, i
+    else:
+        r, g, b = (closest_idx(x, color_components) for x in (r, g, b))
+    return r * 36 + g * 6 + b + 16
+
+
+def _rgb_to_8(r: int, g: int, b: int) -> int:
+    return (
+        (1 if r >= 128 else 0)
+        | (1 if g >= 128 else 0) << 1
+        | (1 if b >= 128 else 0) << 2
+    )

@@ -34,17 +34,12 @@ However, you can get a :class:`Term` object by using :func:`get_term_from_stream
 .. autoclass:: Lightness
    :members:
 
-.. autoclass:: ColorSupport
-   :members:
-
 .. autoclass:: InteractiveSupport
    :members:
 
 
 Utilities
 ---------
-
-.. autofunction:: color_to_code
 
 .. autofunction:: detect_ci
 
@@ -66,6 +61,7 @@ from dataclasses import dataclass
 import yuio
 import yuio.color
 from yuio import _typing as _t
+from yuio.color import ColorSupport
 
 __all__ = [
     "ColorSupport",
@@ -73,7 +69,6 @@ __all__ = [
     "Lightness",
     "Term",
     "TerminalTheme",
-    "color_to_code",
     "detect_ci",
     "detect_ci_color_support",
     "get_term_from_stream",
@@ -106,37 +101,6 @@ class Lightness(enum.Enum):
     LIGHT = enum.auto()
     """
     Terminal background is light.
-
-    """
-
-
-class ColorSupport(enum.IntEnum):
-    """
-    Terminal's capability for coloring output.
-
-    """
-
-    NONE = 0
-    """
-    yuio.color.Color codes are not supported.
-
-    """
-
-    ANSI = 1
-    """
-    Only simple 8-bit color codes are supported.
-
-    """
-
-    ANSI_256 = 2
-    """
-    256-encoded colors are supported.
-
-    """
-
-    ANSI_TRUE = 3
-    """
-    True colors are supported.
 
     """
 
@@ -823,88 +787,3 @@ else:
 
     def _enable_vt_processing(ostream: _t.TextIO) -> bool:
         raise OSError("not supported")
-
-
-def color_to_code(color: yuio.color.Color, term: Term) -> str:
-    """
-    Convert color into an ANSI escape code
-    with respect to the given terminal capabilities.
-
-    :param color:
-        color to convert.
-    :param term:
-        terminal which will be used to display this color.
-    :returns:
-        either ANSI escape code for this color or an empty string.
-
-    """
-
-    if not term.supports_colors:
-        return ""
-
-    codes = []
-    if color.fore:
-        codes.append(_as_fore(color.fore, term))
-    if color.back:
-        codes.append(_as_back(color.back, term))
-    if color.bold:
-        codes.append("1")
-    if color.dim:
-        codes.append("2")
-    if color.italic:
-        codes.append("3")
-    if color.underline:
-        codes.append("4")
-    if color.blink:
-        codes.append("5")
-    if color.inverse:
-        codes.append("7")
-    if codes:
-        return "\x1b[;" + ";".join(codes) + "m"
-    else:
-        return "\x1b[m"
-
-
-def _as_fore(value: yuio.color.ColorValue, term: Term, /) -> str:
-    return _as_code(value, term, fg_bg_prefix="3")
-
-
-def _as_back(value: yuio.color.ColorValue, term: Term, /) -> str:
-    return _as_code(value, term, fg_bg_prefix="4")
-
-
-def _as_code(v: yuio.color.ColorValue, term: Term, /, fg_bg_prefix: str) -> str:
-    if not term.supports_colors:
-        return ""
-    elif isinstance(v.data, int):
-        return f"{fg_bg_prefix}{v.data}"
-    elif isinstance(v.data, str):
-        return v.data
-    elif term.supports_colors_true:
-        return f"{fg_bg_prefix}8;2;{v.data[0]};{v.data[1]};{v.data[2]}"
-    elif term.supports_colors_256:
-        return f"{fg_bg_prefix}8;5;{_rgb_to_256(*v.data)}"
-    else:
-        return f"{fg_bg_prefix}{_rgb_to_8(*v.data)}"
-
-
-def _rgb_to_256(r: int, g: int, b: int) -> int:
-    closest_idx = lambda x, vals: min((abs(x - v), i) for i, v in enumerate(vals))[1]
-    color_components = [0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF]
-
-    if r == g == b:
-        i = closest_idx(r, color_components + [0x08 + 10 * i for i in range(24)])
-        if i >= len(color_components):
-            return 232 + i - len(color_components)
-        r, g, b = i, i, i
-    else:
-        r, g, b = (closest_idx(x, color_components) for x in (r, g, b))
-    return r * 36 + g * 6 + b + 16
-
-
-def _rgb_to_8(r: int, g: int, b: int) -> int:
-    return (
-        (1 if r >= 128 else 0)
-        | (1 if g >= 128 else 0) << 1
-        | (1 if b >= 128 else 0) << 2
-    )
