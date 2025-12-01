@@ -1,0 +1,10 @@
+[project]
+name = "dbg_hooks"
+authors = [{ name = "Tamika Nomara", email = "taminomara@gmail.com" }]
+version = "1.2.3"
+dependencies = ["yuio", "dbg-dep[opt]"]
+
+[project.entry-points."yuio.dbg.env_collector"]
+collect_env_ok = "dbg_hooks:collect_env_ok"
+collect_env_err = "dbg_hooks:collect_env_err"
+collect_env_missing = "dbg_hooks:collect_env_missing"

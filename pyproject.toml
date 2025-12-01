@@ -94,7 +94,8 @@ commands = [
         "install",
         "--force-reinstall",
         "--no-deps",
-        "./test/dbg_hooks",
+        "./test/test_deps/dbg_hooks",
+        "./test/test_deps/dbg_dep",
     ],
     [
         "pytest",

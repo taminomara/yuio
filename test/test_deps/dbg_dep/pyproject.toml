@@ -1,0 +1,7 @@
+[project]
+name = "dbg-dep"
+authors = [{ name = "Tamika Nomara", email = "taminomara@gmail.com" }]
+version = "3.2.1"
+dependencies = ["yuio"]
+[project.optional-dependencies]
+opt = ["pytest"]

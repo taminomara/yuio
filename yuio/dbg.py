@@ -23,7 +23,7 @@ Set :attr:`App.bug_report <yuio.app.App.bug_report>` to enable this functionalit
     :members:
 
 .. type:: EnvCollector
-    :canonical: typing.Callable[[], Report] | Report
+    :canonical: typing.Callable[[], Report]
 
     Type alias for report collector.
 
@@ -75,9 +75,6 @@ class Report:
     Report items. Each item can be a string or a key-value pair of strings.
 
     """
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
 
 
 EnvCollector: _t.TypeAlias = _t.Callable[[], Report]
@@ -145,11 +142,10 @@ def report_exc(report: Report, key: str | None):
     try:
         yield
     except Exception as e:
-        msg = f"Can't collect this data: {e}"
         if key is not None:
-            report.items.append((key, msg))
+            report.items.append((key, f"can't collect this item: {e}"))
         else:
-            report.items.append(msg)
+            report.items.append(f"Can't collect this item: {e}")
 
 
 def _system() -> Report:
@@ -170,7 +166,7 @@ def _system() -> Report:
             report.items.append(("os", " ".join(platform.win32_ver())))
         elif os == "Darwin":
             report.items.append(("os", platform.mac_ver()[0]))
-        else:
+        else:  # pragma: no cover
             report.items.append(("os", os))
     with report_exc(report, "python"):
         report.items.append(
@@ -190,59 +186,71 @@ def _versions(
 
     package = settings.package
     if app and app.version:
-        report.items.append(("app", str(app.version)))
+        report.items.append(("__app__", str(app.version)))
     if app and package is None:
         package = app._command.__module__
 
-    packages = _get_requires(package)
-    for package in settings.dependencies or []:
-        if not isinstance(package, (str, types.ModuleType)):
-            raise TypeError(
-                f"expected str or ModuleType, got {_t.type_repr(type(package))}: {package!r}"
-            )
-        if isinstance(package, types.ModuleType):
-            package = package.__name__
-        packages.add(package)
-    packages.add("yuio")
+    dependencies: set[str]
+    if package is None:
+        dependencies = set()
+    elif isinstance(package, (str, types.ModuleType)):
+        dependencies = _get_dependencies(package)
+    else:
+        report.items.append(
+            "TypeError: expected str or ModuleType, "
+            f"got {_t.type_repr(type(package))}: {package!r}"
+        )
+        dependencies = set()
 
-    for package in packages:
-        with report_exc(report, package):
-            report.items.append((package, _find_package_version(package)))
+    for dependency in settings.dependencies or []:
+        if isinstance(dependency, types.ModuleType):
+            dependencies.add(dependency.__name__)
+        elif isinstance(dependency, str):
+            dependencies.add(dependency)
+        else:
+            report.items.append(
+                "TypeError: expected str or ModuleType, "
+                f"got {_t.type_repr(type(dependency))}: {dependency!r}"
+            )
+    dependencies.add("yuio")
+
+    for dependency in dependencies:
+        with report_exc(report, dependency):
+            report.items.append((dependency, _find_package_version(dependency)))
 
     return report
 
 
-def _get_requires(package: str | types.ModuleType | None) -> set[str]:
+def _get_dependencies(package: str | types.ModuleType) -> set[str]:
     import importlib.metadata
-
-    if package is None:
-        return set()
-
-    if not isinstance(package, (str, types.ModuleType)):
-        raise TypeError(
-            f"expected str or ModuleType, got {_t.type_repr(type(package))}: {package!r}"
-        )
 
     if isinstance(package, types.ModuleType):
         package = package.__name__
-    if "." in package:
-        package = package.split(".")[0]
-    if package == "__main__":
-        return set()
 
-    distribution = importlib.metadata.distribution(package)
+    if "[" in package:
+        package = package.split("[", maxsplit=1)[0]
+    package = package.strip()
+
+    dependencies = {package}
+    try:
+        distribution = importlib.metadata.distribution(package)
+    except importlib.metadata.PackageNotFoundError:
+        return dependencies
     requires = distribution.requires
-    packages = {package}
     if not requires:
-        return packages
+        return dependencies
     for requirement in requires:
         if match := re.match(r"^\s*([\w-]+)\s*(\[[\w,\s-]*\])?", requirement):
-            packages.add(match.group(0))
-    return packages
+            dependencies.add(match.group(0))
+    return dependencies
 
 
 def _find_package_version(package: str):
     import importlib.metadata
+
+    if "[" in package:
+        package = package.split("[", maxsplit=1)[0]
+    package = package.strip()
 
     try:
         return importlib.metadata.version(package)
@@ -253,9 +261,15 @@ def _find_package_version(package: str):
 
     for v_string in ("__version__", "version"):
         try:
-            return getattr(module, v_string)
+            version = getattr(module, v_string)
         except AttributeError:
-            pass
+            continue
+        if not version:
+            continue
+        if isinstance(version, str):
+            return version
+        elif isinstance(version, tuple):
+            return ".".join(map(str, version))
 
     return "unknown"
 
@@ -277,7 +291,7 @@ def _terminal() -> Report:
     report.items.append(("shell", os.environ.get("SHELL", "")))
     report.items.append(("ci", str(yuio.term.detect_ci())))
 
-    if os.name != "nt":
+    if os.name != "nt":  # pragma: no cover
         with report_exc(report, "wsl"):
             try:
                 wslinfo = subprocess.getoutput("wslinfo --version")
@@ -327,7 +341,7 @@ def print_report(
     if settings is None or isinstance(settings, bool):
         settings = ReportSettings()
 
-    all_collectors: list[tuple[str | None, EnvCollector | Report]] = [
+    all_collectors: list[tuple[str, EnvCollector | Report]] = [
         ("System", _system),
         ("Versions", lambda: _versions(settings, app)),
         ("Terminal and CLI", _terminal),
@@ -353,10 +367,6 @@ def print_report(
     indent = " " * (col_width + 2)
     for name, collector in all_collectors:
         printed_title = False
-        try:
-            name = name or str(collector)
-        except:
-            name = "Unknown category"
         try:
             if isinstance(collector, Report):
                 report = collector
