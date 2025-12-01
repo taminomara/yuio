@@ -1,6 +1,7 @@
 import pytest
 
 import yuio
+import yuio.util
 
 
 @pytest.mark.parametrize(
@@ -29,7 +30,7 @@ import yuio
     ],
 )
 def test_to_dash_case(given, expected):
-    assert yuio.to_dash_case(given) == expected
+    assert yuio.util.to_dash_case(given) == expected
 
 
 class EmptyCls:
@@ -137,7 +138,7 @@ def local_cls():
     ],
 )
 def test_find_docs(obj, expected):
-    assert yuio._find_docs(obj) == expected
+    assert yuio.util._find_docs(obj) == expected
 
 
 @pytest.mark.parametrize(
@@ -164,7 +165,7 @@ def test_find_docs(obj, expected):
     ],
 )
 def test_process_docstring(doc, expected):
-    assert yuio._process_docstring(doc) == expected
+    assert yuio.util._process_docstring(doc) == expected
 
 
 @pytest.mark.parametrize(
@@ -178,4 +179,4 @@ def test_process_docstring(doc, expected):
     ],
 )
 def test_dedent(doc, expected):
-    assert yuio.dedent(doc) == expected
+    assert yuio.util.dedent(doc) == expected

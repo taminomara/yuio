@@ -842,7 +842,7 @@ class Theme:
         self.__color_cache.clear()
         self.__dict__.pop("_Theme__color_tree", None)
 
-    @dataclass(**yuio._with_slots())
+    @dataclass(kw_only=True, slots=True)
     class __ColorTree:
         """
         Prefix-like tree that contains all of the theme's colors.

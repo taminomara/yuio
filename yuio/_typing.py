@@ -8,6 +8,7 @@
 # pyright: reportDeprecated=false
 # ruff: noqa: F403, F405, I002
 
+import abc as _abc
 import re as _re
 import sys as _sys
 import types as _types
@@ -71,3 +72,16 @@ if _sys.version_info < (3, 11):
             # Special case for `repr` of types with `ParamSpec`:
             return "[" + ", ".join(type_repr(t) for t in obj) + "]"
         return repr(obj)
+
+
+_T_contra = TypeVar("_T_contra", contravariant=True)
+
+
+class SupportsLt(Protocol[_T_contra]):
+    """
+    Protocol for objects that can be compared to each other.
+
+    """
+
+    @_abc.abstractmethod
+    def __lt__(self, other: _T_contra, /) -> bool: ...

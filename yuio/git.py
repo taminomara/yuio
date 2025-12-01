@@ -159,6 +159,7 @@ import yuio.complete
 import yuio.exec
 import yuio.parse
 from yuio import _typing as _t
+from yuio.util import dedent as _dedent
 
 __all__ = [
     "Branch",
@@ -684,16 +685,16 @@ class Repo:
                 body += "\n"
 
             return Commit(
-                commit,
-                tags,
-                author,
-                author_email,
-                author_datetime,
-                committer,
-                committer_email,
-                committer_datetime,
-                title,
-                body,
+                hash=commit,
+                tags=tags,
+                author=author,
+                author_email=author_email,
+                author_datetime=author_datetime,
+                committer=committer,
+                committer_email=committer_email,
+                committer_datetime=committer_datetime,
+                title=title,
+                body=body,
             )
         except StopIteration:
             return None
@@ -714,7 +715,7 @@ class Repo:
                     line = line[1:] + "\n"
                     if match := _LOG_TRAILER_KEY_RE.match(line):
                         if current_key:
-                            current_value = yuio.dedent(current_value)
+                            current_value = _dedent(current_value)
                             trailers.append((current_key, current_value))
                         current_key = match.group("key")
                         current_value = line[match.end() :]
@@ -723,10 +724,10 @@ class Repo:
                 else:
                     break
             if current_key:
-                current_value = yuio.dedent(current_value)
+                current_value = _dedent(current_value)
                 trailers.append((current_key, current_value))
 
-            return CommitTrailers(commit, trailers)
+            return CommitTrailers(hash=commit, trailers=trailers)
         except StopIteration:
             return None
 
@@ -789,7 +790,7 @@ class Repo:
         ]
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class Commit:
     """
     Commit description.
@@ -882,7 +883,7 @@ class Commit:
             return self.short_hash
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class CommitTrailers:
     """
     Commit trailers.
@@ -975,7 +976,7 @@ class Modification(enum.Enum):
     """
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class PathStatus:
     """
     Status of a changed path.
@@ -989,7 +990,7 @@ class PathStatus:
     """
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class FileStatus(PathStatus):
     """
     Status of a changed file.
@@ -1015,7 +1016,7 @@ class FileStatus(PathStatus):
     """
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class SubmoduleStatus(FileStatus):
     """
     Status of a submodule.
@@ -1041,7 +1042,7 @@ class SubmoduleStatus(FileStatus):
     """
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class UnmergedFileStatus(PathStatus):
     """
     Status of an unmerged file.
@@ -1061,7 +1062,7 @@ class UnmergedFileStatus(PathStatus):
     """
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class UnmergedSubmoduleStatus(UnmergedFileStatus):
     """
     Status of an unmerged submodule.
@@ -1087,7 +1088,7 @@ class UnmergedSubmoduleStatus(UnmergedFileStatus):
     """
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class Status:
     """
     Status of a working copy.

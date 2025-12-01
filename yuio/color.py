@@ -33,7 +33,6 @@ import re
 import typing
 from dataclasses import dataclass
 
-import yuio
 from yuio import _typing as _t
 
 __all__ = [
@@ -43,7 +42,7 @@ __all__ = [
 ]
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class ColorValue:
     """
     Data about a single color.
@@ -307,7 +306,7 @@ class ColorValue:
             return f"<ColorValue {self.data!r}>"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Color:
     """
     Data about terminal output style. Contains

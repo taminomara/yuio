@@ -428,6 +428,8 @@ import yuio.string
 import yuio.widget
 from yuio import _typing as _t
 from yuio.json_schema import JsonValue
+from yuio.util import _find_docs
+from yuio.util import to_dash_case as _to_dash_case
 
 __all__ = [
     "Apply",
@@ -496,7 +498,7 @@ V = _t.TypeVar("V")
 C = _t.TypeVar("C", bound=_t.Collection[object])
 C2 = _t.TypeVar("C2", bound=_t.Collection[object])
 Sz = _t.TypeVar("Sz", bound=_t.Sized)
-Cmp = _t.TypeVar("Cmp", bound=yuio.SupportsLt[_t.Any])
+Cmp = _t.TypeVar("Cmp", bound=_t.SupportsLt[_t.Any])
 E = _t.TypeVar("E", bound=enum.Enum)
 TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
@@ -1118,13 +1120,13 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
         return None
 
     def describe_or_def(self) -> str:
-        return self.describe() or f"<{yuio.to_dash_case(self.__class__.__name__)}>"
+        return self.describe() or f"<{_to_dash_case(self.__class__.__name__)}>"
 
     def describe_many(self) -> str | tuple[str, ...] | None:
         return self.describe()
 
     def describe_many_or_def(self) -> str | tuple[str, ...]:
-        return self.describe_many() or f"<{yuio.to_dash_case(self.__class__.__name__)}>"
+        return self.describe_many() or f"<{_to_dash_case(self.__class__.__name__)}>"
 
     def describe_value(self, value: object, /) -> str | None:
         assert self.assert_type(value)
@@ -1962,13 +1964,13 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
             else:
                 name = str(e.value)
             if self.__to_dash_case:
-                name = yuio.to_dash_case(name)
+                name = _to_dash_case(name)
             items[e] = name
         return lambda e: items[e]
 
     @functools.cached_property
     def __docs(self) -> dict[str, str]:
-        return yuio._find_docs(self._inner)
+        return _find_docs(self._inner)
 
     def parse(self, value: str, /) -> E:
         cf_value = value.strip().casefold()
@@ -2098,7 +2100,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         else:
             return self.__class__.__name__
 
-    @dataclasses.dataclass(**yuio._with_slots(), unsafe_hash=True)
+    @dataclasses.dataclass(unsafe_hash=True, match_args=False, slots=True)
     class _TyWrapper:
         inner: type
         by_name: bool
@@ -4109,7 +4111,7 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
 @_t.overload
 def Gt(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
-def Gt(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
+def Gt(bound: _t.SupportsLt[_t.Any], /) -> PartialParser: ...
 def Gt(*args) -> _t.Any:
     """Gt(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4133,7 +4135,7 @@ def Gt(*args) -> _t.Any:
 @_t.overload
 def Ge(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
-def Ge(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
+def Ge(bound: _t.SupportsLt[_t.Any], /) -> PartialParser: ...
 def Ge(*args) -> _t.Any:
     """Ge(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4157,7 +4159,7 @@ def Ge(*args) -> _t.Any:
 @_t.overload
 def Lt(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
-def Lt(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
+def Lt(bound: _t.SupportsLt[_t.Any], /) -> PartialParser: ...
 def Lt(*args) -> _t.Any:
     """Lt(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4181,7 +4183,7 @@ def Lt(*args) -> _t.Any:
 @_t.overload
 def Le(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
-def Le(bound: yuio.SupportsLt[_t.Any], /) -> PartialParser: ...
+def Le(bound: _t.SupportsLt[_t.Any], /) -> PartialParser: ...
 def Le(*args) -> _t.Any:
     """Le(inner: Parser[Cmp], bound: Cmp, /)
 

@@ -364,7 +364,7 @@ class Key(enum.Enum):
         return self.name.replace("_", " ").title()
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class KeyboardEvent:
     """
     A single keyboard event.
@@ -440,7 +440,7 @@ class KeyboardEvent:
 
     """
 
-    paste_str: str | None = dataclasses.field(default=None, compare=False)
+    paste_str: str | None = dataclasses.field(default=None, compare=False, kw_only=True)
     """
     If ``key`` is :attr:`Key.PASTE`, this attribute will contain pasted string.
 
@@ -1223,7 +1223,7 @@ class RenderContext:
         self._out.clear()
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Result(_t.Generic[T_co]):
     """
     Result of a widget run.
@@ -1883,7 +1883,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 Widget.__init_subclass__()
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class _Binding:
     event: KeyboardEvent
     show_in_inline_help: bool
@@ -1940,7 +1940,7 @@ def bind(
     return _Binding(e, show_in_inline_help, show_in_detailed_help)
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class _Help:
     group: str = "Actions"
     inline_msg: str | None = None
@@ -2043,7 +2043,7 @@ An action itself, i.e. a set of hotkeys and a description for them.
 """
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class WidgetHelp:
     """
     Data for automatic help generation.
@@ -3177,7 +3177,7 @@ class Input(Widget[str]):
             return super().help_data
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(slots=True)
 class Option(_t.Generic[T_co]):
     """
     An option for the :class:`Grid` and :class:`Choice` widgets.
@@ -3200,25 +3200,25 @@ class Option(_t.Generic[T_co]):
 
     """
 
-    display_text_prefix: str = ""
+    display_text_prefix: str = dataclasses.field(default="", kw_only=True)
     """
     Prefix that will be displayed before :attr:`~Option.display_text`.
 
     """
 
-    display_text_suffix: str = ""
+    display_text_suffix: str = dataclasses.field(default="", kw_only=True)
     """
     Suffix that will be displayed after :attr:`~Option.display_text`.
 
     """
 
-    comment: str | None = None
+    comment: str | None = dataclasses.field(default=None, kw_only=True)
     """
     Option's short comment.
 
     """
 
-    color_tag: str | None = None
+    color_tag: str | None = dataclasses.field(default=None, kw_only=True)
     """
     Option's color tag.
 
@@ -4031,10 +4031,10 @@ class InputWithCompletion(Widget[str]):
                     Option(
                         c,
                         c.completion,
-                        c.dprefix,
-                        c.dsuffix,
-                        c.comment,
-                        c.group_color_tag,
+                        display_text_prefix=c.dprefix,
+                        display_text_suffix=c.dsuffix,
+                        comment=c.comment,
+                        color_tag=c.group_color_tag,
                     )
                     for c in completion
                 ],
@@ -4248,7 +4248,7 @@ class Apply(Map[T, T], _t.Generic[T]):
         super().__init__(inner, mapper)
 
 
-@dataclass
+@dataclass(slots=True)
 class _EventStreamState:
     key: str = ""
     index: int = 0

@@ -293,6 +293,7 @@ from yuio.string import (
     WithBaseColor,
     Wrap,
 )
+from yuio.util import dedent as _dedent
 
 __all__ = [
     "And",
@@ -1014,7 +1015,7 @@ def raw(
         msg += highlighter.highlight(theme, tb).indent()
 
     manager.print(
-        msg.process_colors(term),
+        msg.process_colors(term.color_support),
         term,
         ignore_suspended=ignore_suspended,
         heading=heading,
@@ -1423,7 +1424,7 @@ def edit(
     """
 
     if dedent:
-        text = yuio.dedent(text)
+        text = _dedent(text)
 
     manager = _manager()
     term = manager.term
@@ -2267,7 +2268,7 @@ class Formatter(logging.Formatter):
                 self._fmt or self.default_format, default_color=f"log:{level}", ctx=ctx
             )
             .percent_format(data, ctx)
-            .process_colors(term)
+            .process_colors(term.color_support)
         )
 
     def formatException(self, ei):
@@ -2280,7 +2281,9 @@ class Formatter(logging.Formatter):
         term = manager.term
         highlighter = yuio.md.SyntaxHighlighter.get_highlighter("python-traceback")
         return "".join(
-            highlighter.highlight(theme, stack_info).indent().process_colors(term)
+            highlighter.highlight(theme, stack_info)
+            .indent()
+            .process_colors(term.color_support)
         )
 
 
@@ -2543,14 +2546,18 @@ class _IoManager(abc.ABC):
             self._tasks.append(task)
             self._update_tasks()
         else:
-            self._emit_lines(self._format_task(task).process_colors(self._term))
+            self._emit_lines(
+                self._format_task(task).process_colors(self._term.color_support)
+            )
 
     def _start_subtask(self, parent: Task, task: Task):
         if self._term.can_move_cursor:
             parent._subtasks.append(task)
             self._update_tasks()
         else:
-            self._emit_lines(self._format_task(task).process_colors(self._term))
+            self._emit_lines(
+                self._format_task(task).process_colors(self._term.color_support)
+            )
 
     def _finish_task(self, task: Task, status: Task._Status):
         if task._status != Task._Status.RUNNING:
@@ -2565,11 +2572,15 @@ class _IoManager(abc.ABC):
         if self._term.can_move_cursor:
             if task in self._tasks:
                 self._tasks.remove(task)
-                self._emit_lines(self._format_task(task).process_colors(self._term))
+                self._emit_lines(
+                    self._format_task(task).process_colors(self._term.color_support)
+                )
             else:
                 self._update_tasks()
         else:
-            self._emit_lines(self._format_task(task).process_colors(self._term))
+            self._emit_lines(
+                self._format_task(task).process_colors(self._term.color_support)
+            )
 
     def _clear_tasks(self):
         if self._term.can_move_cursor and self._tasks_printed:

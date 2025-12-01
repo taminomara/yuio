@@ -130,7 +130,7 @@ class InteractiveSupport(enum.IntEnum):
     """
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TerminalTheme:
     """
     Colors and theme of the attached terminal.
@@ -204,7 +204,7 @@ class TerminalTheme:
     """
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Term:
     """
     This class contains all info about what kinds of things the terminal

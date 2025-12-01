@@ -57,7 +57,7 @@ __all__ = [
 ]
 
 
-@dataclass
+@dataclass(slots=True)
 class Report:
     """
     An environment report.
@@ -87,7 +87,7 @@ _LOCK = threading.Lock()
 _ENV_COLLECTORS: list[tuple[str, EnvCollector | Report]] | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class ReportSettings:
     """
     Settings for collecting debug data.

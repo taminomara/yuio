@@ -63,7 +63,7 @@ Yuio searches for special methods on your objects when rendering them.
             def __init__(self, value):
                 self.value = value
 
-            def __colorized_repr__(self, ctx: yuio.string.ReprContext):
+            def __colorized_str__(self, ctx: yuio.string.ReprContext):
                 result = yuio.string.ColorizedString()
                 result += ctx.theme.get_color("magenta")
                 result += "MyObject"
@@ -236,6 +236,8 @@ import yuio.color
 import yuio.theme
 from yuio import _typing as _t
 from yuio.color import Color as _Color
+from yuio.util import UserString as _UserString
+from yuio.util import dedent as _dedent
 
 if _t.TYPE_CHECKING:
     import yuio.md
@@ -1498,7 +1500,7 @@ def strip_color_tags(s: str) -> str:
     return "".join(raw)
 
 
-class Esc(str):
+class Esc(_UserString):
     """
     A string that can't be broken during word wrapping even
     if ``break_long_nowrap_words`` is :data:`True`.
@@ -3162,7 +3164,7 @@ class Hl(_StrBase):
         )
         code = self._code
         if self._dedent:
-            code = yuio.dedent(code)
+            code = _dedent(code)
         code = code.rstrip()
 
         res = ColorizedString()

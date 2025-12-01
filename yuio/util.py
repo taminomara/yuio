@@ -1,0 +1,441 @@
+# Yuio project, MIT license.
+#
+# https://github.com/taminomara/yuio/
+#
+# You're free to copy this file to your project and edit it for your needs,
+# just keep this copyright line please :3
+
+"""
+Utility functions and types.
+
+"""
+
+from __future__ import annotations
+
+import re as _re
+import textwrap as _textwrap
+from dataclasses import dataclass
+
+from yuio import _typing as _t
+
+__all__ = [
+    "UserString",
+    "dedent",
+    "to_dash_case",
+]
+
+_TO_DASH_CASE_RE = _re.compile(
+    r"""
+      # We will add a dash (bear with me here):
+      [_\s]                             # 1. instead of underscore or space,
+      | (                               # 2. OR in the following case:
+        (?<!^)                          #   - not at the beginning of the string,
+        (                               #   - AND EITHER:
+            (?<=[A-Z])(?=[A-Z][a-z])    #     - before case gets lower (`XMLTag` -> `XML-Tag`),
+          | (?<=[a-zA-Z])(?![a-zA-Z_])  #     - between a letter and a non-letter (`HTTP20` -> `HTTP-20`),
+          | (?<![A-Z_])(?=[A-Z])        #     - between non-uppercase and uppercase letter (`TagXML` -> `Tag-XML`),
+        )                               #   - AND ALSO:
+        (?!$)                           #     - not at the end of the string.
+      )
+    """,
+    _re.VERBOSE | _re.MULTILINE,
+)
+
+
+def to_dash_case(msg: str, /) -> str:
+    """
+    Convert ``CamelCase`` or ``snake_case`` identifier to a ``dash-case`` one.
+
+    This function assumes ASCII input, and will not work correctly
+    with non-ASCII characters.
+
+    :param msg:
+        identifier to convert.
+    :returns:
+        identifier in ``dash-case``.
+    :example:
+        ::
+
+            >>> to_dash_case("SomeClass")
+            'some-class'
+            >>> to_dash_case("HTTP20XMLUberParser")
+            'http-20-xml-uber-parser'
+
+    """
+
+    return _TO_DASH_CASE_RE.sub("-", msg).lower()
+
+
+def dedent(msg: str, /):
+    """
+    Remove leading indentation from a message and normalize trailing newlines.
+
+    This function is intended to be used with triple-quote string literals,
+    such as docstrings. It will remove common indentation from second
+    and subsequent lines, then it will strip any leading and trailing whitespaces
+    and add a new line at the end.
+
+    :param msg:
+        message to dedent.
+    :returns:
+        normalized message.
+    :example:
+        ::
+
+            >>> def foo():
+            ...     \"""Documentation for function ``foo``.
+            ...
+            ...     Leading indent is stripped.
+            ...     \"""
+            ...
+            ...     ...
+
+            >>> dedent(foo.__doc__)
+            'Documentation for function ``foo``.\\n\\nLeading indent is stripped.\\n'
+
+    """
+
+    if not msg:
+        return msg
+
+    first, *rest = msg.splitlines(keepends=True)
+    return (first.rstrip() + "\n" + _textwrap.dedent("".join(rest))).strip() + "\n"
+
+
+_COMMENT_RE = _re.compile(r"^\s*#:(.*)\r?\n?$")
+_RST_ROLE_RE = _re.compile(
+    r"(?::[\w+.:-]+:|__?)?`((?:[^`\n\\]|\\.)+)`(?::[\w+.:-]+:|__?)?", _re.DOTALL
+)
+_RST_ROLE_TITLE_RE = _re.compile(
+    r"^((?:[^`\n\\]|\\.)*) <(?:[^`\n\\]|\\.)*>$", _re.DOTALL
+)
+_ESC_RE = _re.compile(r"\\(.)", _re.DOTALL)
+
+
+def _rst_esc_repl(match: _re.Match[str]):
+    symbol = match.group(1)
+    if symbol in "\n\r\t\v\b":
+        return " "
+    return symbol
+
+
+def _rst_repl(match: _re.Match[str]):
+    full: str = match.group(0)
+    text: str = match.group(1)
+    if full.startswith(":") or full.endswith(":"):
+        if title_match := _RST_ROLE_TITLE_RE.match(text):
+            text = title_match.group(1)
+        elif text.startswith("~"):
+            text = text.rsplit(".", maxsplit=1)[-1]
+    text = _ESC_RE.sub(_rst_esc_repl, text)
+    n_backticks = 0
+    cur_n_backticks = 0
+    for ch in text:
+        if ch == "`":
+            cur_n_backticks += 1
+        else:
+            n_backticks = max(cur_n_backticks, n_backticks)
+            cur_n_backticks = 0
+    n_backticks = max(cur_n_backticks, n_backticks)
+    if not n_backticks:
+        return f"`{text}`"
+    else:
+        bt = "`" * (n_backticks + 1)
+        return f"{bt} {text} {bt}"
+
+
+def _process_docstring(msg: str, /):
+    value = dedent(msg).removesuffix("\n")
+
+    if (index := value.find("\n\n")) != -1:
+        value = value[:index]
+
+    value = _RST_ROLE_RE.sub(_rst_repl, value)
+
+    if (
+        len(value) > 2
+        and value[0].isupper()
+        and (value[1].islower() or value[1].isspace())
+    ):
+        value = value[0].lower() + value[1:]
+    if value.endswith(".") and not value.endswith(".."):
+        value = value[:-1]
+    return value
+
+
+def _find_docs(obj: _t.Any, /) -> dict[str, str]:
+    """
+    Find documentation for fields of a class.
+
+    Inspects source code of a class and finds docstrings and doc comments (``#:``)
+    for variables in its body. Doesn't inspect ``__init``, doesn't return documentation
+    for class methods. Returns first paragraph from each docstring, formatted for use
+    in CLI help messages.
+
+    """
+
+    # based on code from Sphinx
+
+    import ast
+    import inspect
+    import itertools
+
+    if (qualname := getattr(obj, "__qualname__", None)) is None:
+        # Not a known object.
+        return {}
+
+    if "<locals>" in qualname:
+        # This will not work as expected!
+        return {}
+
+    try:
+        sourcelines, _ = inspect.getsourcelines(obj)
+    except TypeError:
+        return {}
+
+    docs: dict[str, str] = {}
+
+    node = ast.parse(_textwrap.dedent("".join(sourcelines)))
+    assert isinstance(node, ast.Module)
+    assert len(node.body) == 1
+    cdef = node.body[0]
+
+    if isinstance(cdef, ast.ClassDef):
+        fields: list[tuple[int, str]] = []
+        last_field: str | None = None
+        for stmt in cdef.body:
+            if (
+                last_field
+                and isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Constant)
+                and isinstance(stmt.value.value, str)
+            ):
+                docs[last_field] = _process_docstring(stmt.value.value)
+            last_field = None
+            if isinstance(stmt, ast.AnnAssign):
+                target = stmt.target
+            elif isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+                target = stmt.targets[0]
+            else:
+                continue
+            if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                fields.append((stmt.lineno, target.id))
+                last_field = target.id
+    elif isinstance(cdef, ast.FunctionDef):
+        fields = [
+            (field.lineno, field.arg)
+            for field in itertools.chain(cdef.args.args, cdef.args.kwonlyargs)
+        ]
+    else:  # pragma: no cover
+        return {}
+
+    for pos, name in fields:
+        comment_lines: list[str] = []
+        for before_line in sourcelines[pos - 2 :: -1]:
+            if match := _COMMENT_RE.match(before_line):
+                comment_lines.append(match.group(1))
+            else:
+                break
+
+        if comment_lines:
+            docs[name] = _process_docstring("\n".join(reversed(comment_lines)))
+
+    return docs
+
+
+if _t.TYPE_CHECKING:
+
+    class _FormatMapMapping(_t.Protocol):
+        def __getitem__(self, key: str, /) -> _t.Any: ...
+
+    class _TranslateTable(_t.Protocol):
+        def __getitem__(self, key: int, /) -> str | int | None: ...
+
+
+class UserString(str):
+    """
+    Base class for user string.
+
+    This class is similar to :class:`collections.UserString`, but actually derived
+    from string, with customizable wrapping semantics, and returns custom string
+    instances from all string methods (:class:`collections.UserString` doesn't
+    wrap strings returned from :meth:`str.split` and similar).
+
+    .. tip::
+
+        When deriving from this class, add ``__slots__`` to avoid making a string
+        with a ``__dict__`` property.
+
+    .. seealso::
+
+        See implementation of :class:`yuio.string.Link` for an example of handling user
+        strings with internal state.
+
+    """
+
+    __slots__ = ()
+
+    def _wrap(self, data: str) -> _t.Self:
+        """
+        Wrap raw string that resulted from an operation on this instance into another
+        instance of :class:`UserString`.
+
+        Override this method if you need to preserve some internal state during
+        operations.
+
+        By default, this simply creates an instance of ``self.__class__`` with the
+        given string.
+
+        """
+
+        return self.__class__(data)
+
+    def __add__(self, value: str, /) -> _t.Self:
+        return self._wrap(super().__add__(value))
+
+    def __format__(self, format_spec: str, /) -> _t.Self:
+        return self._wrap(super().__format__(format_spec))
+
+    def __getitem__(self, key: _t.SupportsIndex | slice, /) -> _t.Self:
+        return self._wrap(super().__getitem__(key))
+
+    def __mod__(self, value: _t.Any, /) -> _t.Self:
+        return self._wrap(super().__mod__(value))
+
+    def __mul__(self, value: _t.SupportsIndex, /) -> _t.Self:
+        return self._wrap(super().__mul__(value))
+
+    def __rmul__(self, value: _t.SupportsIndex, /) -> _t.Self:
+        return self._wrap(super().__rmul__(value))
+
+    def capitalize(self) -> _t.Self:
+        return self._wrap(super().capitalize())
+
+    def casefold(self) -> _t.Self:
+        return self._wrap(super().casefold())
+
+    def center(self, width: _t.SupportsIndex, fillchar: str = " ", /) -> _t.Self:
+        return self._wrap(super().center(width))
+
+    def expandtabs(self, tabsize: _t.SupportsIndex = 8) -> _t.Self:
+        return self._wrap(super().expandtabs(tabsize))
+
+    def format_map(self, mapping: _FormatMapMapping, /) -> _t.Self:
+        return self._wrap(super().format_map(mapping))
+
+    def format(self, *args: object, **kwargs: object) -> _t.Self:
+        return self._wrap(super().format(*args, **kwargs))
+
+    def join(self, iterable: _t.Iterable[str], /) -> _t.Self:
+        return self._wrap(super().join(iterable))
+
+    def ljust(self, width: _t.SupportsIndex, fillchar: str = " ", /) -> _t.Self:
+        return self._wrap(super().ljust(width, fillchar))
+
+    def lower(self) -> _t.Self:
+        return self._wrap(super().lower())
+
+    def lstrip(self, chars: str | None = None, /) -> _t.Self:
+        return self._wrap(super().lstrip(chars))
+
+    def partition(self, sep: str, /) -> tuple[_t.Self, _t.Self, _t.Self]:
+        l, c, r = super().partition(sep)
+        return self._wrap(l), self._wrap(c), self._wrap(r)
+
+    def removeprefix(self, prefix: str, /) -> _t.Self:
+        return self._wrap(super().removeprefix(prefix))
+
+    def removesuffix(self, suffix: str, /) -> _t.Self:
+        return self._wrap(super().removesuffix(suffix))
+
+    def replace(self, old: str, new: str, count: _t.SupportsIndex = -1, /) -> _t.Self:
+        return self._wrap(super().replace(old, new, count))
+
+    def rjust(self, width: _t.SupportsIndex, fillchar: str = " ", /) -> _t.Self:
+        return self._wrap(super().rjust(width, fillchar))
+
+    def rpartition(self, sep: str, /) -> tuple[_t.Self, _t.Self, _t.Self]:
+        l, c, r = super().rpartition(sep)
+        return self._wrap(l), self._wrap(c), self._wrap(r)
+
+    def rsplit(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, sep: str | None = None, maxsplit: _t.SupportsIndex = -1
+    ) -> list[_t.Self]:
+        return [self._wrap(part) for part in super().rsplit(sep, maxsplit)]
+
+    def rstrip(self, chars: str | None = None, /) -> _t.Self:
+        return self._wrap(super().rstrip(chars))
+
+    def split(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, sep: str | None = None, maxsplit: _t.SupportsIndex = -1
+    ) -> list[_t.Self]:
+        return [self._wrap(part) for part in super().split(sep, maxsplit)]
+
+    def splitlines(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, keepends: bool = False
+    ) -> list[_t.Self]:
+        return [self._wrap(part) for part in super().splitlines(keepends)]
+
+    def strip(self, chars: str | None = None, /) -> _t.Self:
+        return self._wrap(super().strip(chars))
+
+    def swapcase(self) -> _t.Self:
+        return self._wrap(super().swapcase())
+
+    def title(self) -> _t.Self:
+        return self._wrap(super().title())
+
+    def translate(self, table: _TranslateTable, /) -> _t.Self:
+        return self._wrap(super().translate(table))
+
+    def upper(self) -> _t.Self:
+        return self._wrap(super().upper())
+
+    def zfill(self, width: _t.SupportsIndex, /) -> _t.Self:
+        return self._wrap(super().zfill(width))
+
+
+T = _t.TypeVar("T", covariant=True)
+
+
+@dataclass(frozen=True, unsafe_hash=True, slots=True)
+class SecretBase(_t.Generic[T]):
+    """
+    A simple wrapper that prevents inner value from accidentally leaking to logs
+    or messages: it returns ``"***"`` when converted to string via
+    :class:`str() <str>` or :func:`repr`.
+
+    """
+
+    data: T
+    """
+    Secret data.
+
+    """
+
+    def _str(self) -> str:
+        return self._repr()
+
+    def __str__(self) -> str:
+        return self._str()
+
+    def _repr(self) -> str:
+        return "***"
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self._repr()})"
+
+
+@dataclass(frozen=True, unsafe_hash=True, slots=True)
+class SecretString(SecretBase[str]):
+    def _str(self) -> str:
+        return "***"
+
+    def _repr(self) -> str:
+        return "'***'"
+
+
+@dataclass(frozen=True, unsafe_hash=True, slots=True)
+class SecretBytes(SecretBase[str]):
+    def _repr(self) -> str:
+        return "b'***'"

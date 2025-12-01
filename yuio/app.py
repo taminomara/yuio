@@ -271,6 +271,9 @@ import yuio.term
 import yuio.theme
 from yuio import _typing as _t
 from yuio.config import MutuallyExclusiveGroup, field, inline, positional
+from yuio.util import _find_docs
+from yuio.util import dedent as _dedent
+from yuio.util import to_dash_case as _to_dash_case
 
 __all__ = [
     "App",
@@ -377,7 +380,8 @@ def app(
         return registrar(command)
 
 
-@dataclass(frozen=True, eq=False, match_args=False)
+@_t.final
+@dataclass(frozen=True, eq=False, match_args=False, slots=True)
 class CommandInfo:
     """
     Data about the invoked command.
@@ -438,7 +442,7 @@ class App(_t.Generic[C]):
 
     """
 
-    @dataclass(frozen=True)
+    @dataclass(frozen=True, eq=False, match_args=False, slots=True)
     class _SubApp:
         app: App[_t.Any]
         name: str
@@ -748,7 +752,7 @@ class App(_t.Generic[C]):
 
             app.allow_abbrev = self.allow_abbrev
 
-            main_name = name or yuio.to_dash_case(cb.__name__)
+            main_name = name or _to_dash_case(cb.__name__)
             self.__sub_apps[main_name] = App._SubApp(
                 app, main_name, aliases, is_primary=True
             )
@@ -1037,7 +1041,7 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> type[yuio.config.Confi
     accepts_command_info = False
 
     try:
-        docs = yuio._find_docs(cb)
+        docs = _find_docs(cb)
     except Exception:
         yuio._logger.warning(
             "unable to get documentation for %s.%s",
@@ -1314,20 +1318,20 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             self._format(item)
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(eq=False, match_args=False, slots=True)
 class _Usage(yuio.md.AstBase):
     prefix: yuio.string.ColorizedString
     usage: yuio.string.ColorizedString
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(eq=False, match_args=False, slots=True)
 class _HelpArg(yuio.md.AstBase):
     indent: str
     args: yuio.string.ColorizedString
     help: yuio.md.AstBase | None
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(eq=False, match_args=False, slots=True)
 class _HelpArgGroup(yuio.md.Container[_HelpArg]):
     pass
 
@@ -1358,9 +1362,7 @@ class _HelpFormatter:
         if heading:
             if not heading.endswith(":"):
                 heading += ":"
-            self._nodes.append(
-                yuio.md.Heading(lines=[heading], level=1, start=0, end=0)
-            )
+            self._nodes.append(yuio.md.Heading(lines=[heading], level=1))
 
     def end_section(self):
         if self._nodes and isinstance(self._nodes[-1], yuio.md.Heading):
@@ -1387,7 +1389,7 @@ class _HelpFormatter:
             )
 
         if usage is not None:
-            usage = yuio.dedent(usage.strip())
+            usage = _dedent(usage.strip())
             sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
 
             c_usage = sh_usage_highlighter.highlight(
@@ -1502,8 +1504,6 @@ class _HelpFormatter:
 
         self._nodes.append(
             _Usage(
-                start=0,
-                end=0,
                 prefix=c_prefix,
                 usage=c_usage,
             )
@@ -1530,12 +1530,10 @@ class _HelpFormatter:
             if self._nodes and isinstance(self._nodes[-1], _HelpArgGroup):
                 group = self._nodes[-1]
             else:
-                group = _HelpArgGroup(items=[], start=0, end=0)
+                group = _HelpArgGroup(items=[])
                 self._nodes.append(group)
             group.items.append(
                 _HelpArg(
-                    start=0,
-                    end=0,
                     indent=indent,
                     args=c_usage,
                     help=self._formatter.parse(action.help) if action.help else None,
@@ -1560,9 +1558,7 @@ class _HelpFormatter:
     def format_help(self) -> str:
         self._formatter._args_column_width = self._args_column_width
         res = yuio.string.ColorizedString()
-        for line in self._formatter.format_node(
-            yuio.md.Document(items=self._nodes, start=0, end=0)
-        ):
+        for line in self._formatter.format_node(yuio.md.Document(items=self._nodes)):
             res += line
             res += "\n"
         res += yuio.color.Color()

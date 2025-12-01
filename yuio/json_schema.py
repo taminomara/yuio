@@ -115,10 +115,12 @@ from __future__ import annotations
 import abc
 import json
 import os
+import typing
 from dataclasses import dataclass
 
 import yuio
 from yuio import _typing as _t
+from yuio.util import dedent as _dedent
 
 __all__ = [
     "AllOf",
@@ -248,13 +250,14 @@ class JsonSchemaContext:
         return schema
 
 
+@dataclass(frozen=True, slots=True)
 class JsonSchemaType(abc.ABC):
     """
     Base class for JSON schema representation.
 
     """
 
-    precedence: int = 3
+    precedence: typing.ClassVar[int] = 3
     """
     Precedence, used for pretty-printing types.
 
@@ -292,7 +295,7 @@ class JsonSchemaType(abc.ABC):
         return self.pprint()
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Ref(JsonSchemaType):
     """
     A reference to a sub-schema.
@@ -320,7 +323,7 @@ class Ref(JsonSchemaType):
         return self.name or self.ref.removeprefix("#/$defs/")
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Array(JsonSchemaType):
     """
     An array or a set of values.
@@ -356,7 +359,7 @@ class Array(JsonSchemaType):
             return f"({self.item.pprint()})[]"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Tuple(JsonSchemaType):
     """
     A tuple.
@@ -389,7 +392,7 @@ class Tuple(JsonSchemaType):
         return f"[{', '.join(item.pprint() for item in self.items)}]"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Dict(JsonSchemaType):
     """
     A dict. If key is string, this is represented as an object; if key is not a string,
@@ -429,7 +432,7 @@ class Dict(JsonSchemaType):
         return f"{{[{self.key.pprint()}]: {self.value.pprint()}}}"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Null(JsonSchemaType):
     """
     A ``null`` value.
@@ -443,7 +446,7 @@ class Null(JsonSchemaType):
         return "null"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Boolean(JsonSchemaType):
     """
     A boolean value.
@@ -457,7 +460,7 @@ class Boolean(JsonSchemaType):
         return "boolean"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Number(JsonSchemaType):
     """
     A numeric value.
@@ -471,7 +474,7 @@ class Number(JsonSchemaType):
         return "number"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Integer(Number):
     """
     An integer value.
@@ -485,7 +488,7 @@ class Integer(Number):
         return "integer"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class String(JsonSchemaType):
     """
     A string value, possibly with pattern.
@@ -508,7 +511,7 @@ class String(JsonSchemaType):
         return "string"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Any(JsonSchemaType):
     """
     A value that always type checks, equivalent to schema ``true``.
@@ -522,7 +525,7 @@ class Any(JsonSchemaType):
         return "any"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Never(JsonSchemaType):
     """
     A value that never type checks, equivalent to schema ``false``.
@@ -536,7 +539,7 @@ class Never(JsonSchemaType):
         return "never"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OneOf(JsonSchemaType):
     """
     A union of possible values, equivalent to ``oneOf`` schema.
@@ -564,7 +567,7 @@ class OneOf(JsonSchemaType):
             return Never()
         elif len(flatten) == 1:
             return flatten[0]
-        return super().__new__(cls)
+        return super(OneOf, cls).__new__(cls)
 
     def render(self) -> dict[str, JsonValue]:
         return {"oneOf": [item.render() for item in self.items]}
@@ -585,7 +588,7 @@ class OneOf(JsonSchemaType):
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AllOf(JsonSchemaType):
     """
     An intersection of possible values, equivalent to ``allOf`` schema.
@@ -613,7 +616,7 @@ class AllOf(JsonSchemaType):
             return Never()
         elif len(flatten) == 1:
             return flatten[0]
-        return super().__new__(cls)
+        return super(AllOf, cls).__new__(cls)
 
     def render(self) -> dict[str, JsonValue]:
         return {"allOf": [item.render() for item in self.items]}
@@ -634,7 +637,7 @@ class AllOf(JsonSchemaType):
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AnyOf(JsonSchemaType):
     """
     A union of possible values, equivalent to ``anyOf`` schema.
@@ -662,7 +665,7 @@ class AnyOf(JsonSchemaType):
             return Never()
         elif len(flatten) == 1:
             return flatten[0]
-        return super().__new__(cls)
+        return super(AnyOf, cls).__new__(cls)
 
     def render(self) -> dict[str, JsonValue]:
         return {"anyOf": [item.render() for item in self.items]}
@@ -683,7 +686,7 @@ class AnyOf(JsonSchemaType):
         )
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Enum(JsonSchemaType):
     """
     An enum of primitive constants.
@@ -724,7 +727,7 @@ class Enum(JsonSchemaType):
         return " | ".join(f"{json.dumps(item)}" for item in self.constants)
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Object(JsonSchemaType):
     """
     An object, usually represents a :class:`~yuio.config.Config`.
@@ -764,7 +767,7 @@ class Object(JsonSchemaType):
         return f"{{{items}}}"
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Opaque(JsonSchemaType):
     """
     Can contain arbitrary schema, for cases when these classes
@@ -789,7 +792,7 @@ class Opaque(JsonSchemaType):
         return "..."
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Meta(JsonSchemaType):
     """
     Adds title, description and defaults to the wrapped schema.
@@ -829,7 +832,7 @@ class Meta(JsonSchemaType):
         if self.title is not None:
             schema["title"] = self.title
         if self.description is not None:
-            schema["description"] = yuio.dedent(self.description)
+            schema["description"] = _dedent(self.description)
         if self.default is not yuio.MISSING:
             schema["default"] = self.default
         return schema

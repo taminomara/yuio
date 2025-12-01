@@ -105,7 +105,7 @@ __all__ = [
 ]
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 @functools.total_ordering
 class Completion:
     """
@@ -163,7 +163,7 @@ class Completion:
 
     """
 
-    group_id: yuio.SupportsLt[_t.Any] = dataclasses.field(repr=False)
+    group_id: _t.SupportsLt[_t.Any] = dataclasses.field(repr=False)
     """
     Group id, used to sort completions.
 
@@ -190,12 +190,7 @@ class Completion:
         )
 
 
-@dataclass(
-    init=False,
-    eq=False,
-    repr=False,
-    **({} if sys.version_info < (3, 10, 0) else {"match_args": False}),
-)
+@dataclass(init=False, eq=False, repr=False, match_args=False)
 class CompletionCollector:
     """
     A class that collects completions as completers are running.
@@ -837,7 +832,7 @@ class Empty(Completer):
         return _CompleterSerializer.Model()
 
 
-@dataclass(frozen=True, **yuio._with_slots())
+@dataclass(frozen=True, slots=True)
 class Option:
     """
     A single completion option for the :class:`Choice` completer.
@@ -1383,14 +1378,14 @@ class _CompleterSerializer:
 
         return contents
 
+    @dataclass(slots=True)
     class ModelBase:
         tag: typing.ClassVar[str] = "-"
 
-        def __init_subclass__(cls, tag: str = "-", **kwargs):
-            super().__init_subclass__(**kwargs)
+        def __init_subclass__(cls, tag: str = "-"):
             cls.tag = tag
 
-    @dataclass()
+    @dataclass(slots=True)
     class Model(ModelBase):
         def collect(self, s: _CompleterSerializer):
             compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
@@ -1401,22 +1396,22 @@ class _CompleterSerializer:
             contents = _CompleterSerializer._dump_nested(compspec)
             return [self.tag, str(len(contents)), *contents]
 
-    @dataclass()
+    @dataclass(slots=True)
     class File(Model, tag="f"):
         ext: str
 
-    @dataclass()
+    @dataclass(slots=True)
     class Dir(Model, tag="d"):
         pass
 
-    @dataclass()
+    @dataclass(slots=True)
     class Choice(Model, tag="c"):
         choices: list[str]
 
         def dump(self) -> list[str]:
             return [self.tag, str(len(self.choices)), *self.choices]
 
-    @dataclass()
+    @dataclass(slots=True)
     class ChoiceWithDesc(Model, tag="cd"):
         choices: list[tuple[str, str]]
 
@@ -1428,7 +1423,7 @@ class _CompleterSerializer:
                 *[yuio.string.strip_color_tags(c[1]) for c in self.choices],
             ]
 
-    @dataclass()
+    @dataclass(slots=True)
     class Git(Model, tag="g"):
         class Mode(enum.Enum):
             Branch = "b"
@@ -1447,36 +1442,38 @@ class _CompleterSerializer:
         def dump(self) -> list[str]:
             return [self.tag, "1", "".join(mode.value for mode in self.modes)]
 
-    @dataclass()
+    @dataclass(slots=True)
     class List(Model, tag="l"):
         delim: str
         inner: _CompleterSerializer.Model
 
-    @dataclass()
+    @dataclass(slots=True)
     class ListMany(List, tag="lm"):
         pass
 
-    @dataclass()
+    @dataclass(slots=True)
     class Tuple(Model, tag="t"):
         delim: str
         inner: list[_CompleterSerializer.Model]
 
-    @dataclass()
+    @dataclass(slots=True)
     class TupleMany(Tuple, tag="tm"):
         pass
 
-    @dataclass()
+    @dataclass(slots=True)
     class Alternative(Model, tag="a"):
         alternatives: list[tuple[str, _CompleterSerializer.Model]]
 
-    @dataclass()
+    @dataclass(slots=True)
     class CustomCompleter(Model, tag="cc"):
         completer: Completer
+        _data: str | None = None
 
         def collect(self, s: _CompleterSerializer):
             self._data = s.register_custom_completer(self.completer)
 
         def dump(self) -> list[str]:
+            assert self._data is not None
             return [
                 self.tag,
                 "1",

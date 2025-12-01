@@ -87,6 +87,7 @@ import yuio.color
 import yuio.string
 import yuio.theme
 from yuio import _typing as _t
+from yuio.util import dedent as _dedent
 
 __all__ = [
     "AstBase",
@@ -255,7 +256,7 @@ class MdFormatter:
         """
 
         if dedent:
-            md = yuio.dedent(md)
+            md = _dedent(md)
 
         return _MdParser(self.allow_headings).parse(md)
 
@@ -434,28 +435,16 @@ class MdFormatter:
             self._format_ListItem(item, min_width=min_width)
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class AstBase(abc.ABC):
     """
     Base class for all AST nodes that represent parsed markdown document.
 
     """
 
-    start: int
-    """
-    Start line, 0-based.
-
-    """
-
-    end: int
-    """
-    End line, 0-based.
-
-    """
-
     def _dump_params(self) -> str:
         s = self.__class__.__name__.lstrip("_")
-        for field in dataclasses.fields(self)[2:]:
+        for field in dataclasses.fields(self):
             if field.repr:
                 s += f" {getattr(self, field.name)!r}"
         return s
@@ -469,7 +458,7 @@ class AstBase(abc.ABC):
         return f"{indent}({self._dump_params()})"
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class Text(AstBase):
     """
     Base class for all text-based AST nodes, i.e. paragraphs.
@@ -492,7 +481,7 @@ class Text(AstBase):
         return s
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class Container(AstBase, _t.Generic[TAst]):
     """
     Base class for all container-based AST nodes, i.e. list items or quotes.
@@ -518,7 +507,7 @@ class Container(AstBase, _t.Generic[TAst]):
         return s
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class Document(Container[AstBase]):
     """
     Root node that contains the entire markdown document.
@@ -526,7 +515,7 @@ class Document(Container[AstBase]):
     """
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class ThematicBreak(AstBase):
     """
     Represents a visual break in text, a.k.a. an asterism.
@@ -534,7 +523,7 @@ class ThematicBreak(AstBase):
     """
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class Heading(Text):
     """
     Represents a heading.
@@ -548,7 +537,7 @@ class Heading(Text):
     """
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class Paragraph(Text):
     """
     Represents a regular paragraph.
@@ -556,7 +545,7 @@ class Paragraph(Text):
     """
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class Quote(Container[AstBase]):
     """
     Represents a quotation block.
@@ -564,7 +553,7 @@ class Quote(Container[AstBase]):
     """
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class Code(Text):
     """
     Represents a highlighted block of code.
@@ -578,7 +567,7 @@ class Code(Text):
     """
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class ListItem(Container[AstBase]):
     """
     A possibly numbered element of a list.
@@ -592,7 +581,7 @@ class ListItem(Container[AstBase]):
     """
 
 
-@dataclass(**yuio._with_slots())
+@dataclass(kw_only=True, slots=True)
 class List(Container[ListItem]):
     """
     A collection of list items.
@@ -726,46 +715,36 @@ _LINE_FEED_RE = re.compile(r"\r\n|\r|\n")
 
 
 class _MdParser:
-    @dataclass(**yuio._with_slots())
+    @dataclass(kw_only=True, slots=True)
     class Default:
         pass
 
-    @dataclass(**yuio._with_slots())
+    @dataclass(kw_only=True, slots=True)
     class List:
-        item_start: int
-        item_end: int
         type: str
         marker_len: int
         list: List
         parser: _MdParser
         number: int | None = None
 
-    @dataclass(**yuio._with_slots())
+    @dataclass(kw_only=True, slots=True)
     class Quote:
-        start: int
-        end: int
         parser: _MdParser
 
-    @dataclass(**yuio._with_slots())
+    @dataclass(kw_only=True, slots=True)
     class Code:
-        start: int
-        end: int
         lines: list[str]
 
-    @dataclass(**yuio._with_slots())
+    @dataclass(kw_only=True, slots=True)
     class FencedCode:
-        start: int
-        end: int
         indent: int
         fence_symbol: str
         fence_length: int
         syntax: str
         lines: list[str]
 
-    @dataclass(**yuio._with_slots())
+    @dataclass(kw_only=True, slots=True)
     class Paragraph:
-        start: int
-        end: int
         lines: list[str]
 
     State: _t.TypeAlias = Default | List | Quote | Code | FencedCode | Paragraph
@@ -774,7 +753,6 @@ class _MdParser:
         self._allow_headings = allow_headings
         self._nodes: list[AstBase] = []
         self._state: _MdParser.State = self.Default()
-        self._cur: int = 0
 
     def _parser(self) -> _MdParser:
         return _MdParser(self._allow_headings)
@@ -785,13 +763,11 @@ class _MdParser:
 
     def parse(self, s: str) -> Document:
         s = s.expandtabs(tabsize=4)
-        i = 0
-        for i, line in enumerate(_LINE_FEED_RE.split(s)):
-            self._handle_line(i, line)
-        return Document(items=self._finalize(), start=0, end=i)
+        for line in _LINE_FEED_RE.split(s):
+            self._handle_line(line)
+        return Document(items=self._finalize())
 
-    def _handle_line(self, i: int, line: str):
-        self._cur = i
+    def _handle_line(self, line: str):
         getattr(self, f"_handle_line_{self._state.__class__.__name__}")(line)
 
     def _handle_lazy_line(self, line: str) -> bool:
@@ -805,22 +781,17 @@ class _MdParser:
     def _handle_line_List(self, line: str):
         assert type(self._state) is self.List
         if not line or line[: self._state.marker_len].isspace():
-            self._state.item_end = self._cur
-            self._state.parser._handle_line(self._cur, line[self._state.marker_len :])
+            self._state.parser._handle_line(line[self._state.marker_len :])
         elif (
             (match := _LIST_RE.match(line)) or (match := _NUMBERED_LIST_RE.match(line))
         ) and match.group("type") == self._state.type:
             item = ListItem(
                 items=self._state.parser._finalize(),
                 number=self._state.number,
-                start=self._state.item_start,
-                end=self._state.item_end,
             )
             self._state.list.items.append(item)
-            self._state.list.end = item.end
-            self._state.item_start = self._state.item_end = self._cur
             self._state.marker_len = len(match.group("marker"))
-            self._state.parser._handle_line(self._cur, match.group("text"))
+            self._state.parser._handle_line(match.group("text"))
             if self._state.number is not None:
                 self._state.number += 1
         elif not self._state.parser._handle_lazy_line(line):
@@ -830,7 +801,6 @@ class _MdParser:
     def _handle_lazy_line_List(self, line: str) -> bool:
         assert type(self._state) is self.List
         if self._state.parser._handle_lazy_line(line):
-            self._state.item_end = self._cur
             return True
         return False
 
@@ -839,19 +809,15 @@ class _MdParser:
         item = ListItem(
             items=self._state.parser._finalize(),
             number=self._state.number,
-            start=self._state.item_start,
-            end=self._state.item_end,
         )
         self._state.list.items.append(item)
-        self._state.list.end = item.end
         self._nodes.append(self._state.list)
         self._state = self.Default()
 
     def _handle_line_Quote(self, line: str):
         assert type(self._state) is self.Quote
         if match := _QUOTE_RE.match(line):
-            self._state.end = self._cur
-            self._state.parser._handle_line(self._cur, match.group("text"))
+            self._state.parser._handle_line(match.group("text"))
         elif self._is_blank(line) or not self._state.parser._handle_lazy_line(line):
             self._flush_Quote()
             self._handle_line_Default(line)
@@ -859,26 +825,18 @@ class _MdParser:
     def _handle_lazy_line_Quote(self, line: str) -> bool:
         assert type(self._state) is self.Quote
         if self._state.parser._handle_lazy_line(line):
-            self._state.end = self._cur
             return True
         else:
             return False
 
     def _flush_Quote(self):
         assert type(self._state) is self.Quote
-        self._nodes.append(
-            Quote(
-                items=self._state.parser._finalize(),
-                start=self._state.start,
-                end=self._state.end,
-            )
-        )
+        self._nodes.append(Quote(items=self._state.parser._finalize()))
         self._state = self.Default()
 
     def _handle_line_Code(self, line: str):
         assert type(self._state) is self.Code
         if self._is_blank(line) or line.startswith("    "):
-            self._state.end = self._cur
             self._state.lines.append(line[4:])
         else:
             self._flush_Code()
@@ -896,8 +854,6 @@ class _MdParser:
             Code(
                 lines=self._state.lines,
                 syntax="",
-                start=self._state.start,
-                end=self._state.end,
             )
         )
         self._state = self.Default()
@@ -917,7 +873,6 @@ class _MdParser:
                 line = line[self._state.indent :]
             else:
                 line = line.lstrip()
-            self._state.end = self._cur
             self._state.lines.append(line)
 
     def _handle_lazy_line_FencedCode(self, line: str) -> bool:
@@ -930,8 +885,6 @@ class _MdParser:
             Code(
                 lines=self._state.lines,
                 syntax=self._state.syntax,
-                start=self._state.start,
-                end=self._state.end,
             )
         )
         self._state = self.Default()
@@ -944,8 +897,6 @@ class _MdParser:
                 Heading(
                     lines=self._state.lines,
                     level=level,
-                    start=self._state.start,
-                    end=self._cur,
                 )
             )
             self._state = self.Default()
@@ -962,7 +913,6 @@ class _MdParser:
             self._flush_Paragraph()
             self._handle_line_Default(line)
         else:
-            self._state.end = self._cur
             self._state.lines.append(line)
 
     def _handle_lazy_line_Paragraph(self, line: str) -> bool:
@@ -980,17 +930,12 @@ class _MdParser:
             self._flush_Paragraph()
             return False
         else:
-            self._state.end = self._cur
             self._state.lines.append(line)
             return True
 
     def _flush_Paragraph(self):
         assert type(self._state) is self.Paragraph
-        self._nodes.append(
-            Paragraph(
-                lines=self._state.lines, start=self._state.start, end=self._state.end
-            )
-        )
+        self._nodes.append(Paragraph(lines=self._state.lines))
         self._state = self.Default()
 
     def _handle_line_Default(self, line: str):
@@ -998,15 +943,13 @@ class _MdParser:
         if self._is_blank(line):
             pass  # do nothing
         elif _THEMATIC_BREAK_RE.match(line):
-            self._nodes.append(ThematicBreak(start=self._cur, end=self._cur))
+            self._nodes.append(ThematicBreak())
         elif self._allow_headings and (match := _HEADING_RE.match(line)):
             level = len(match.group("marker"))
             self._nodes.append(
                 Heading(
                     lines=[match.group("text").strip()],
                     level=level,
-                    start=self._cur,
-                    end=self._cur,
                 )
             )
         elif (match := _CODE_BACKTICK_RE.match(line)) or (
@@ -1017,10 +960,14 @@ class _MdParser:
             fence_symbol = match.group("fence")[0]
             fence_length = len(match.group("fence"))
             self._state = self.FencedCode(
-                self._cur, self._cur, indent, fence_symbol, fence_length, syntax, []
+                indent=indent,
+                fence_symbol=fence_symbol,
+                fence_length=fence_length,
+                syntax=syntax,
+                lines=[],
             )
         elif match := _CODE_RE.match(line):
-            self._state = self.Code(self._cur, self._cur, [match.group("text")])
+            self._state = self.Code(lines=[match.group("text")])
         elif (match := _LIST_RE.match(line)) or (
             match := _NUMBERED_LIST_RE.match(line)
         ):
@@ -1029,20 +976,18 @@ class _MdParser:
             number_str = match.groupdict().get("number", None)
             number = int(number_str) if number_str else None
             self._state = self.List(
-                self._cur,
-                self._cur,
-                list_type,
-                indent,
-                List(items=[], start=self._cur, end=self._cur),
-                self._parser(),
-                number,
+                type=list_type,
+                marker_len=indent,
+                list=List(items=[]),
+                parser=self._parser(),
+                number=number,
             )
-            self._state.parser._handle_line(self._cur, match.group("text"))
+            self._state.parser._handle_line(match.group("text"))
         elif match := _QUOTE_RE.match(line):
-            self._state = self.Quote(self._cur, self._cur, self._parser())
-            self._state.parser._handle_line(self._cur, match.group("text"))
+            self._state = self.Quote(parser=self._parser())
+            self._state.parser._handle_line(match.group("text"))
         else:
-            self._state = self.Paragraph(self._cur, self._cur, [line])
+            self._state = self.Paragraph(lines=[line])
 
     def _handle_lazy_line_Default(self, line: str) -> bool:
         assert type(self._state) is self.Default
@@ -1055,7 +1000,6 @@ class _MdParser:
         self._flush()
         result = self._nodes
         self._nodes = []
-        self._cur = 0
         return result
 
 

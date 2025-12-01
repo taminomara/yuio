@@ -265,6 +265,7 @@ import yuio.json_schema
 import yuio.parse
 import yuio.string
 from yuio import _typing as _t
+from yuio.util import _find_docs
 
 __all__ = [
     "Config",
@@ -294,7 +295,7 @@ class MutuallyExclusiveGroup:
     """
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _FieldSettings:
     default: _t.Any
     parser: yuio.parse.Parser[_t.Any] | None = None
@@ -457,7 +458,7 @@ class _FieldSettings:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Field:
     default: _t.Any
     parser: yuio.parse.Parser[_t.Any] | None
@@ -792,7 +793,7 @@ class Config:
             docs = {}
         else:
             try:
-                docs = yuio._find_docs(cls)
+                docs = _find_docs(cls)
             except Exception:
                 yuio._logger.warning(
                     "unable to get documentation for class %s.%s",
