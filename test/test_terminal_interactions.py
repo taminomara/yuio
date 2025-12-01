@@ -32,7 +32,7 @@ def test_tmux(pane: Pane, tmp_path, python_path):
     output_path = tmp_path / "output.txt"
     pane.send_keys("pwd")
     pane.send_keys(
-        f"{python_path} -m yuio.util.showkey --modify-keyboard > {output_path}"
+        f"{python_path} -m yuio.scripts.showkey --modify-keyboard > {output_path}"
     )
     time.sleep(2)
     pane.send_keys("abc")

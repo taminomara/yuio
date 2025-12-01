@@ -374,7 +374,7 @@ class KeyboardEvent:
         Protocol for interacting with terminals is quite old, and not all terminals
         support all keystroke combinations.
 
-        Use ``python -m yuio.util.showkey`` to check how your terminal reports
+        Use ``python -m yuio.scripts.showkey`` to check how your terminal reports
         keystrokes, and how Yuio interprets them.
 
     """
