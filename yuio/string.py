@@ -16,6 +16,9 @@ its higher-level abstraction.
 .. autoclass:: ColorizedString
    :members:
 
+.. autoclass:: Link
+   :members:
+
 
 Parsing color tags
 ------------------
@@ -259,6 +262,7 @@ __all__ = [
     "Indent",
     "JoinRepr",
     "JoinStr",
+    "Link",
     "Md",
     "NoWrapEnd",
     "NoWrapMarker",
@@ -926,13 +930,29 @@ class ColorizedString:
         if color_support == yuio.color.ColorSupport.NONE:
             return [part for part in self._parts if isinstance(part, str)]
         else:
-            parts = [
-                part if isinstance(part, str) else yuio.term.color_to_code(part, term)
-                for part in self._parts
-                if part not in (NO_WRAP_START, NO_WRAP_END)
-            ]
+            parts: list[str] = []
+            cur_link: Link | None = None
+            for part in self:
+                if isinstance(part, Link):
+                    if not cur_link:
+                        cur_link = part
+                    elif cur_link.href == part.href:
+                        cur_link += part
+                    else:
+                        parts.append(cur_link.as_code(color_support))
+                        cur_link = part
+                    continue
+                elif cur_link:
+                    parts.append(cur_link.as_code(color_support))
+                cur_link = None
+                if isinstance(part, _Color):
+                    parts.append(part.as_code(color_support))
+                elif isinstance(part, str):
+                    parts.append(part)
+            if cur_link:
+                parts.append(cur_link)
             if self._last_color != _Color.NONE:
-                parts.append(yuio.term.color_to_code(_Color.NONE, term))
+                parts.append(_Color.NONE.as_code(color_support))
             return parts
 
     def wrap(
@@ -1050,7 +1070,7 @@ class ColorizedString:
                 res += part
                 continue
 
-            for line in _WORDSEP_NL_RE.split(part):
+            for line in _split_keep_link(part, _WORDSEP_NL_RE):
                 if not line:
                     continue
                 if needs_indent:
@@ -1510,6 +1530,64 @@ class Esc(_UserString):
     __slots__ = ()
 
 
+class Link(_UserString):
+    """
+    A :class:`str` wrapper with an attached hyperlink.
+
+    """
+
+    __slots__ = ("__href",)
+
+    def __new__(cls, *args, href: str, **kwargs):
+        res = super().__new__(cls, *args, **kwargs)
+        res.__href = href
+        return res
+
+    @property
+    def href(self):
+        """
+        Target link.
+
+        """
+
+        return self.__href
+
+    def as_code(self, color_support: yuio.color.ColorSupport):
+        """
+        Convert this link into an ANSI escape code with respect to the given
+        terminal capabilities.
+
+        :param color_support:
+            level of color support of a terminal.
+        :returns:
+            either ANSI escape code for this color or an empty string.
+
+        """
+
+        if color_support < yuio.color.ColorSupport.ANSI_TRUE:
+            return ""
+        else:
+            return f"\x1b]8;;{self.__href}\x1b\\{self}\x1b]8;;\x1b\\"
+
+    def _wrap(self, data: str):
+        return self.__class__(data, href=self.__href)
+
+    def __repr__(self) -> str:
+        return f"Link({super().__repr__()}, href={self.href!r})"
+
+    def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
+        return ColorizedString(self)
+
+
+def _split_keep_link(s: str, r: _t.StrRePattern):
+    if isinstance(s, Link):
+        href = s.href
+        ctor = lambda x: Link(x, href=href)
+    else:
+        ctor = s.__class__
+    return [ctor(part) for part in r.split(s)]
+
+
 _SPACE_TRANS = str.maketrans("\r\n\t\v\b\f", "      ")
 
 _WORD_PUNCT = r'[\w!"\'&.,?]'
@@ -1582,7 +1660,8 @@ class _TextWrapper:
         self.current_line_width: int = self.indent.width
         self.at_line_start: bool = True
         self.has_ellipsis: bool = False
-        self.need_space_before_word = False
+        self.needs_space_before_word = False
+        self.space_before_word_href = None
 
         self.nowrap_start_index = None
         self.nowrap_start_width = 0
@@ -1603,7 +1682,8 @@ class _TextWrapper:
         self.nowrap_start_index = None
         self.nowrap_start_width = 0
         self.nowrap_start_added_space = False
-        self.need_space_before_word = False
+        self.needs_space_before_word = False
+        self.space_before_word_href = None
 
     def _flush_line_part(self):
         assert self.nowrap_start_index is not None
@@ -1654,6 +1734,15 @@ class _TextWrapper:
             self.has_ellipsis = False
             self.at_line_start = False
 
+    def _append_space(self):
+        if self.needs_space_before_word:
+            word = " "
+            if self.space_before_word_href:
+                word = Link(word, href=self.space_before_word_href)
+            self._append_word(word, 1)
+            self.needs_space_before_word = False
+            self.space_before_word_href = None
+
     def _add_ellipsis(self):
         if self.has_ellipsis:
             # Already has an ellipsis.
@@ -1671,7 +1760,7 @@ class _TextWrapper:
             for i in range(len(parts) - 1, -1, -1):
                 part = parts[i]
                 if isinstance(part, str):
-                    if not isinstance(part, Esc):
+                    if not isinstance(part, (Esc, Link)):
                         parts[i] = f"{part[:-1]}{self.overflow}"
                         self.has_ellipsis = True
                     return
@@ -1710,33 +1799,35 @@ class _TextWrapper:
         for part in text:
             if isinstance(part, _Color):
                 if (
-                    self.need_space_before_word
-                    and self.current_line_width + self.need_space_before_word
+                    self.needs_space_before_word
+                    and self.current_line_width + self.needs_space_before_word
                     < self.width
                 ):
                     # Make sure any whitespace that was added before color
                     # is flushed. If it doesn't fit, we just forget it: the line
                     # will be wrapped soon anyways.
-                    self._append_word(" ", 1)
-                self.need_space_before_word = False
+                    self._append_space()
+                self.needs_space_before_word = False
+                self.space_before_word_href = None
                 self.current_line.append_color(part)
                 continue
             elif part is NO_WRAP_START:
                 if nowrap:  # pragma: no cover
                     continue
                 if (
-                    self.need_space_before_word
-                    and self.current_line_width + self.need_space_before_word
+                    self.needs_space_before_word
+                    and self.current_line_width + self.needs_space_before_word
                     < self.width
                 ):
                     # Make sure any whitespace that was added before no-wrap
                     # is flushed. If it doesn't fit, we just forget it: the line
                     # will be wrapped soon anyways.
-                    self._append_word(" ", 1)
+                    self._append_space()
                     self.nowrap_start_added_space = True
                 else:
                     self.nowrap_start_added_space = False
-                self.need_space_before_word = False
+                self.needs_space_before_word = False
+                self.space_before_word_href = None
                 if self.at_line_start:
                     self.nowrap_start_index = None
                     self.nowrap_start_width = 0
@@ -1757,9 +1848,9 @@ class _TextWrapper:
                 words = [Esc(part.translate(_SPACE_TRANS))]
                 esc = True
             elif nowrap:
-                words = _WORDSEP_NL_RE.split(part)
+                words = _split_keep_link(part, _WORDSEP_NL_RE)
             else:
-                words = _WORDSEP_RE.split(part)
+                words = _split_keep_link(part, _WORDSEP_RE)
 
             for word in words:
                 if not word:
@@ -1793,7 +1884,10 @@ class _TextWrapper:
                     ):
                         word = word.translate(_SPACE_TRANS)
                     else:
-                        self.need_space_before_word = True
+                        self.needs_space_before_word = True
+                        self.space_before_word_href = (
+                            word.href if isinstance(word, Link) else None
+                        )
                         continue
 
                 word_width = line_width(word)
@@ -1837,7 +1931,9 @@ class _TextWrapper:
                         and self.continuation_indent.width + word_width > self.width
                         and (
                             self.has_ellipsis
-                            or self.current_line_width + self.need_space_before_word + 1
+                            or self.current_line_width
+                            + self.needs_space_before_word
+                            + 1
                             <= self.width
                         )
                     )
@@ -1866,12 +1962,10 @@ class _TextWrapper:
 
     def _try_fit_word(self, word: str, word_width: int):
         if (
-            self.current_line_width + word_width + self.need_space_before_word
+            self.current_line_width + word_width + self.needs_space_before_word
             <= self.width
         ):
-            if self.need_space_before_word:
-                self._append_word(" ", 1)
-                self.need_space_before_word = False
+            self._append_space()
             self._append_word(word, word_width)
             return True
         else:

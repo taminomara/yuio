@@ -19,6 +19,9 @@ from dataclasses import dataclass
 from yuio import _typing as _t
 
 __all__ = [
+    "SecretBase",
+    "SecretBytes",
+    "SecretString",
     "UserString",
     "dedent",
     "to_dash_case",
