@@ -1261,7 +1261,7 @@ def _ask(
                 result = default
 
             try:
-                result_desc = parser.describe_value_or_def(result)
+                result_desc = parser.describe_value(result)
             except TypeError:
                 result_desc = str(result)
 
@@ -1345,6 +1345,8 @@ if os.name == "posix":
             try:
                 termios.tcsetattr(fd, tcsetattr_flags, new_mode)
                 result = term.istream.readline().rstrip("\r\n")
+                term.ostream.write("\n")
+                term.ostream.flush()
             finally:
                 termios.tcsetattr(fd, tcsetattr_flags, prev_mode)
         except termios.error:

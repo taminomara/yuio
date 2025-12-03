@@ -240,11 +240,7 @@ However, you can still use them in case you need to.
 
     .. automethod:: describe_many
 
-    .. automethod:: describe_many_or_def
-
     .. automethod:: describe_value
-
-    .. automethod:: describe_value_or_def
 
     .. automethod:: options
 
@@ -796,7 +792,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
         Used to describe expected input in widgets.
 
         :returns:
-            human-readable description of an expected input. Van return :data:`None`
+            human-readable description of an expected input. Can return :data:`None`
             for simple values that don't need a special description.
 
         """
@@ -818,29 +814,9 @@ class Parser(PartialParser, _t.Generic[T_co]):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def describe_many(self) -> str | tuple[str, ...] | None:
+    def describe_many(self) -> str | tuple[str, ...]:
         """
         Return a human-readable description of a container element.
-
-        Used with :meth:`~Parser.parse_many`.
-
-        :returns:
-            human-readable description of expected inputs. If the value is a string,
-            then it describes an individual member of a collection. The the value
-            is a tuple, then each of the tuple's element describes an expected value
-            at the corresponding position.
-        :raises:
-            :class:`RuntimeError` if trying to call this method on a parser
-            that doesn't supports parsing collections of objects.
-
-        """
-
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def describe_many_or_def(self) -> str | tuple[str, ...]:
-        """
-        Like :py:meth:`~Parser.describe_many`, but guaranteed to return something.
 
         Used to describe expected input in CLI help.
 
@@ -858,33 +834,9 @@ class Parser(PartialParser, _t.Generic[T_co]):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def describe_value(self, value: object, /) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         """
         Return a human-readable description of the given value.
-
-        Used to describe default input in widgets.
-
-        Note that, since parser's type parameter is covariant, this function is not
-        guaranteed to receive a value of the same type that this parser produces.
-        Call :meth:`~Parser.assert_type` to check for this case.
-
-        :param value:
-            value that needs a description.
-        :returns:
-            description of a value in the format that this parser would expect to see
-            in a CLI argument or an environment variable.
-        :raises:
-            :class:`TypeError` if the given value is not of type
-            that this parser produces.
-
-        """
-
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def describe_value_or_def(self, value: object, /) -> str:
-        """
-        Like :py:meth:`~Parser.describe_value`, but guaranteed to return something.
 
         Used in error messages, and to describe returned input in widgets.
 
@@ -1131,7 +1083,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
     def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
         return None
 
-    def check_type(self, value: object) -> _t.TypeGuard[T]:
+    def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         return isinstance(value, self._value_type)
 
     def describe(self) -> str | None:
@@ -1140,19 +1092,12 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
     def describe_or_def(self) -> str:
         return self.describe() or f"<{_to_dash_case(self.__class__.__name__)}>"
 
-    def describe_many(self) -> str | tuple[str, ...] | None:
-        return self.describe()
+    def describe_many(self) -> str | tuple[str, ...]:
+        return self.describe_or_def()
 
-    def describe_many_or_def(self) -> str | tuple[str, ...]:
-        return self.describe_many() or f"<{_to_dash_case(self.__class__.__name__)}>"
-
-    def describe_value(self, value: object, /) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         assert self.assert_type(value)
-        return None
-
-    def describe_value_or_def(self, value: object, /) -> str:
-        assert self.assert_type(value)
-        return self.describe_value(value) or str(value) or "<empty>"
+        return str(value) or "<empty>"
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return None
@@ -1282,7 +1227,7 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
     Forwards all calls to the inner parser, except for :meth:`~Parser.parse`,
     :meth:`~Parser.parse_many`, :meth:`~Parser.parse_config`,
     :meth:`~Parser.options`, :meth:`~Parser.check_type`,
-    :meth:`~Parser.describe_value`, :meth:`~Parser.describe_value_or_def`,
+    :meth:`~Parser.describe_value`, :meth:`~Parser.describe_value`,
     :meth:`~Parser.widget`, and :meth:`~Parser.to_json_value`.
 
     :param inner:
@@ -1319,11 +1264,8 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
     def describe_or_def(self) -> str:
         return self._inner.describe_or_def()
 
-    def describe_many(self) -> str | tuple[str, ...] | None:
+    def describe_many(self) -> str | tuple[str, ...]:
         return self._inner.describe_many()
-
-    def describe_many_or_def(self) -> str | tuple[str, ...]:
-        return self._inner.describe_many_or_def()
 
     def completer(self) -> yuio.complete.Completer | None:
         return self._inner.completer()
@@ -1376,7 +1318,7 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
             ... )
             >>> parser.parse("10")
             1024
-            >>> parser.describe_value_or_def(1024)
+            >>> parser.describe_value(1024)
             '10'
 
     """
@@ -1435,20 +1377,15 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
     def parse_config(self, value: object, /) -> T:
         return self.__fn(self._inner.parse_config(value))
 
-    def check_type(self, value: object) -> _t.TypeGuard[T]:
+    def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         if self.__rev:
             value = self.__rev(value)
         return self._inner.check_type(value)
 
-    def describe_value(self, value: object, /) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         if self.__rev:
             value = self.__rev(value)
         return self._inner.describe_value(value)
-
-    def describe_value_or_def(self, value: object, /) -> str:
-        if self.__rev:
-            value = self.__rev(value)
-        return self._inner.describe_value_or_def(value)
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         options = self._inner.options()
@@ -1661,14 +1598,11 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
         self.__fn(result)
         return result
 
-    def check_type(self, value: object) -> _t.TypeGuard[T]:
+    def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         return self._inner.check_type(value)
 
-    def describe_value(self, value: object, /) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         return self._inner.describe_value(value)
-
-    def describe_value_or_def(self, value: object, /) -> str:
-        return self._inner.describe_value_or_def(value)
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return self._inner.options()
@@ -1871,7 +1805,7 @@ class Bool(ValueParser[bool]):
     def describe(self) -> str | None:
         return "{yes|no}"
 
-    def describe_value(self, value: object, /) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         assert self.assert_type(value)
         return "yes" if value else "no"
 
@@ -2041,16 +1975,16 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
         return result
 
-    def describe(self) -> str:
+    def describe(self) -> str | None:
         desc = "|".join(self.__getter(e) for e in self._inner)
         if len(self._inner) > 1:
             desc = f"{{{desc}}}"
         return desc
 
-    def describe_many_or_def(self) -> str | tuple[str, ...]:
+    def describe_many(self) -> str | tuple[str, ...]:
         return self.describe_or_def()
 
-    def describe_value(self, value: object) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         assert self.assert_type(value)
         return str(self.__getter(value))
 
@@ -2299,7 +2233,7 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
         else:
             return _t.cast(T, value)
 
-    def check_type(self, value: object) -> _t.TypeGuard[T]:
+    def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         if self._inner_raw is not None:
             return self._inner_raw.check_type(value)
         else:
@@ -2348,6 +2282,9 @@ class DateTime(ValueParser[datetime.datetime]):
             return self.parse(value)
         else:
             raise ParsingError.type_mismatch(value, str)
+
+    def describe(self) -> str | None:
+        return "YYYY-MM-DD[ HH:MM:SS]"
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2408,6 +2345,9 @@ class Date(ValueParser[datetime.date]):
         else:
             raise ParsingError.type_mismatch(value, str)
 
+    def describe(self) -> str | None:
+        return "YYYY-MM-DD"
+
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
@@ -2462,6 +2402,9 @@ class Time(ValueParser[datetime.time]):
         else:
             raise ParsingError.type_mismatch(value, str)
 
+    def describe(self) -> str | None:
+        return "HH:MM:SS"
+
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
@@ -2505,7 +2448,7 @@ _TIMEDELTA_RE = re.compile(
         ^
         (?:([+-]?)\s*((?:\d+\s*[a-z]+\s*)+))?
         (?:,\s*)?
-        (?:([+-]?)\s*(\d?\d):(\d?\d)(?::(\d?\d)(?:\.(?:(\d\d\d)(\d\d\d)?))?)?)?
+        (?:([+-]?)\s*(\d+):(\d?\d)(?::(\d?\d)(?:\.(?:(\d\d\d)(\d\d\d)?))?)?)?
         $
     """,
     re.VERBOSE | re.IGNORECASE,
@@ -2587,6 +2530,9 @@ class TimeDelta(ValueParser[datetime.timedelta]):
         else:
             raise ParsingError.type_mismatch(value, str)
 
+    def describe(self) -> str | None:
+        return "[+|-]HH:MM:SS"
+
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
@@ -2601,8 +2547,8 @@ class TimeDelta(ValueParser[datetime.timedelta]):
                         r"|us|u|micro|micros|microsecond|microseconds|ms|l|milli|"
                         r"millis|millisecond|milliseconds|m|min|mins|minute|minutes"
                         r"|h|hr|hrs|hour|hours|w|week|weeks)\s*)+)(,\s*)?"
-                        r"([+-]?\s*\d?\d:\d?\d(:\d?\d(\.\d\d\d(\d\d\d)?)?)?)"
-                        r"|([+-]?\s*\d?\d:\d?\d(:\d?\d(\.\d\d\d(\d\d\d)?)?)?)"
+                        r"([+-]?\s*\d+:\d?\d(:\d?\d(\.\d\d\d(\d\d\d)?)?)?)"
+                        r"|([+-]?\s*\d+:\d?\d(:\d?\d(\.\d\d\d(\d\d\d)?)?)?)"
                         r"|([+-]?\s*(\d+\s*(d|day|days|s|sec|secs|second|seconds"
                         r"|us|u|micro|micros|microsecond|microseconds|ms|l|milli"
                         r"|millis|millisecond|milliseconds|m|min|mins|minute|minutes"
@@ -2654,7 +2600,7 @@ class Path(ValueParser[pathlib.Path]):
                 desc = f"{{{desc}}}"
             return desc
         else:
-            return None
+            return super().describe()
 
     def _validate(self, value: pathlib.Path, /):
         if self.__extensions is not None and not any(
@@ -2804,10 +2750,7 @@ class Secret(Map[SecretValue[T], T], _t.Generic[T]):
             # Error messages can contain secret value, hide them.
             raise ParsingError("Error when parsing secret data")
 
-    def describe_value(self, value: object) -> str | None:
-        return "***"
-
-    def describe_value_or_def(self, value: object) -> str:
+    def describe_value(self, value: object, /) -> str:
         return "***"
 
     def widget(
@@ -2940,28 +2883,19 @@ class CollectionParser(
         return "*"
 
     def describe(self) -> str | None:
-        return self.describe_or_def()
-
-    def describe_or_def(self) -> str:
         delimiter = self._delimiter or " "
         value = self._inner.describe_or_def()
 
         return f"{value}[{delimiter}{value}[{delimiter}...]]"
 
-    def describe_many(self) -> str | tuple[str, ...] | None:
-        return self._inner.describe()
-
-    def describe_many_or_def(self) -> str | tuple[str, ...]:
+    def describe_many(self) -> str | tuple[str, ...]:
         return self._inner.describe_or_def()
 
-    def describe_value(self, value: object, /) -> str | None:
-        return self.describe_value_or_def(value)
-
-    def describe_value_or_def(self, value: object, /) -> str:
+    def describe_value(self, value: object, /) -> str:
         assert self.assert_type(value)
 
         return (self._delimiter or " ").join(
-            self._inner.describe_value_or_def(item) for item in self._iter(value)
+            self._inner.describe_value(item) for item in self._iter(value)
         )
 
     def options(self) -> _t.Collection[yuio.widget.Option[C]] | None:
@@ -3524,28 +3458,19 @@ class Tuple(
         return len(self._inner)
 
     def describe(self) -> str | None:
-        return self.describe_or_def()
-
-    def describe_or_def(self) -> str:
         delimiter = self.__delimiter or " "
         desc = [parser.describe_or_def() for parser in self._inner]
         return delimiter.join(desc)
 
-    def describe_many(self) -> str | tuple[str, ...] | None:
-        return self.describe_many_or_def()
-
-    def describe_many_or_def(self) -> str | tuple[str, ...]:
+    def describe_many(self) -> str | tuple[str, ...]:
         return tuple(parser.describe_or_def() for parser in self._inner)
 
-    def describe_value(self, value: object, /) -> str | None:
-        return self.describe_value_or_def(value)
-
-    def describe_value_or_def(self, value: object, /) -> str:
+    def describe_value(self, value: object, /) -> str:
         assert self.assert_type(value)
 
         delimiter = self.__delimiter or " "
         desc = [
-            parser.describe_value_or_def(item)
+            parser.describe_value(item)
             for parser, item in zip(self._inner, value)
         ]
 
@@ -3643,20 +3568,15 @@ class Optional(MappingParser[T | None, T], _t.Generic[T]):
             return None
         return self._inner.parse_config(value)
 
-    def check_type(self, value: object) -> _t.TypeGuard[T | None]:
+    def check_type(self, value: object, /) -> _t.TypeGuard[T | None]:
         if value is None:
             return True
         return self._inner.check_type(value)
 
-    def describe_value(self, value: object, /) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         if value is None:
             return "<none>"
         return self._inner.describe_value(value)
-
-    def describe_value_or_def(self, value: object, /) -> str:
-        if value is None:
-            return "<none>"
-        return self._inner.describe_value_or_def(value)
 
     def options(self) -> _t.Collection[yuio.widget.Option[T | None]] | None:
         return self._inner.options()
@@ -3908,7 +3828,7 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
             msgs.append(
                 yuio.string.Format(
                     "  Trying as `%s`:\n%s",
-                    parser.describe_or_def(),
+                    parser.describe(),
                     yuio.string.Indent(error, indent=4),
                 )
             )
@@ -3916,13 +3836,10 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
             "Can't parse `%r`:\n%s", value, yuio.string.JoinStr(msgs, sep="\n")
         )
 
-    def check_type(self, value: object) -> _t.TypeGuard[T]:
+    def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         return any(parser.check_type(value) for parser in self._inner)
 
     def describe(self) -> str | None:
-        return self.describe_or_def()
-
-    def describe_or_def(self) -> str:
         if len(self._inner) > 1:
 
             def strip_curly_brackets(desc: str):
@@ -3940,21 +3857,10 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
             desc = "|".join(parser.describe_or_def() for parser in self._inner)
         return desc
 
-    def describe_value(self, value: object) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         for parser in self._inner:
             try:
                 return parser.describe_value(value)
-            except TypeError:
-                pass
-
-        raise TypeError(
-            f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
-        )
-
-    def describe_value_or_def(self, value: object) -> str:
-        for parser in self._inner:
-            try:
-                return parser.describe_value_or_def(value)
             except TypeError:
                 pass
 
@@ -3978,7 +3884,7 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
         completers = []
         for parser in self._inner:
             if completer := parser.completer():
-                completers.append((parser.describe_or_def(), completer))
+                completers.append((parser.describe(), completer))
         if not completers:
             return None
         elif len(completers) == 1:
@@ -4562,7 +4468,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
             )
 
     def describe(self) -> str | None:
-        desc = "|".join(self.describe_value_or_def(e) for e in self.__allowed_values)
+        desc = "|".join(self.describe_value(e) for e in self.__allowed_values)
         if len(desc) < 80:
             if len(self.__allowed_values) > 1:
                 desc = f"{{{desc}}}"
@@ -4571,18 +4477,24 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
             return super().describe()
 
     def describe_or_def(self) -> str:
-        return self.describe() or super().describe_or_def()
+        desc = "|".join(self.describe_value(e) for e in self.__allowed_values)
+        if len(desc) < 80:
+            if len(self.__allowed_values) > 1:
+                desc = f"{{{desc}}}"
+            return desc
+        else:
+            return super().describe_or_def()
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return [
-            yuio.widget.Option(e, self.describe_value_or_def(e))
+            yuio.widget.Option(e, self.describe_value(e))
             for e in self.__allowed_values
         ]
 
     def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Choice(
             [
-                yuio.complete.Option(self.describe_value_or_def(e))
+                yuio.complete.Option(self.describe_value(e))
                 for e in self.__allowed_values
             ]
         )
@@ -4669,7 +4581,7 @@ class WithMeta(MappingParser[T, T], _t.Generic[T]):
         self.__completer = completer
         super().__init__(inner)
 
-    def check_type(self, value: object) -> _t.TypeGuard[T]:
+    def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         return self._inner.check_type(value)
 
     def describe(self) -> str | None:
@@ -4678,17 +4590,11 @@ class WithMeta(MappingParser[T, T], _t.Generic[T]):
     def describe_or_def(self) -> str:
         return self.__desc or self._inner.describe_or_def()
 
-    def describe_many(self) -> str | tuple[str, ...] | None:
+    def describe_many(self) -> str | tuple[str, ...]:
         return self.__desc or self._inner.describe_many()
 
-    def describe_many_or_def(self) -> str | tuple[str, ...]:
-        return self.__desc or self._inner.describe_many_or_def()
-
-    def describe_value(self, value: object) -> str | None:
+    def describe_value(self, value: object, /) -> str:
         return self._inner.describe_value(value)
-
-    def describe_value_or_def(self, value: object) -> str:
-        return self._inner.describe_value_or_def(value)
 
     def parse(self, value: str, /) -> T:
         return self._inner.parse(value)

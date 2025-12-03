@@ -1158,9 +1158,7 @@ class _ReSyntaxHighlighter(SyntaxHighlighter):
                     continue
                 name = name.split("__", maxsplit=1)[-1]
                 if self._str_esc_pattern is not None and name == "str":
-                    str_color = default_color | theme.get_color(
-                        f"hl/str:{self.syntax}"
-                    )
+                    str_color = default_color | theme.get_color(f"hl/str:{self.syntax}")
                     esc_color = default_color | theme.get_color(
                         f"hl/str/esc:{self.syntax}"
                     )

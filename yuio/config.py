@@ -1060,7 +1060,7 @@ class Config:
             if flags is yuio.POSITIONAL:
                 metavar = f"<{name.replace('_', '-')}>"
             elif parse_many:
-                metavar = field.parser.describe_many_or_def()
+                metavar = field.parser.describe_many()
             else:
                 metavar = field.parser.describe_or_def()
 

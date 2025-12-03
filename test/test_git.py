@@ -724,9 +724,7 @@ class TestCommitParser:
         assert parser.describe() == "<commit>"
         assert parser.describe_or_def() == "<commit>"
         assert parser.describe_many() == "<commit>"
-        assert parser.describe_many_or_def() == "<commit>"
-        assert parser.describe_value(repo.show("HEAD")) is None
-        assert parser.describe_value_or_def(repo.show("HEAD")) == "HEAD"
+        assert parser.describe_value(repo.show("HEAD")) == "HEAD"
 
     def test_json_schema(self, repo):
         parser = yuio.git.CommitParser(repo=repo)
@@ -792,9 +790,7 @@ class TestRefParser:
         assert parser.describe() == name
         assert parser.describe_or_def() == name
         assert parser.describe_many() == name
-        assert parser.describe_many_or_def() == name
-        assert parser.describe_value("HEAD") is None
-        assert parser.describe_value_or_def("HEAD") == "HEAD"
+        assert parser.describe_value("HEAD") == "HEAD"
 
         completer = parser.completer()
         assert isinstance(completer, yuio.git.RefCompleter)

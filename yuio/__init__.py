@@ -45,6 +45,7 @@ __all__ = [
     "enable_internal_logging",
 ]
 
+
 class _Placeholders(_enum.Enum):
     DISABLED = "<disabled>"
     MISSING = "<missing>"

@@ -1357,10 +1357,7 @@ class _RefParserImpl(yuio.parse.Str, _t.Generic[T]):
     def describe_or_def(self) -> str:
         return self._description
 
-    def describe_many(self) -> str | tuple[str, ...] | None:
-        return self._description
-
-    def describe_many_or_def(self) -> str | tuple[str, ...]:
+    def describe_many(self) -> str | tuple[str, ...]:
         return self._description
 
 

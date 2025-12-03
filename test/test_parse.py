@@ -26,10 +26,8 @@ class TestStr:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<str>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<str>"
-        assert parser.describe_value("foo") is None
-        assert parser.describe_value_or_def("foo") == "foo"
+        assert parser.describe_many() == "<str>"
+        assert parser.describe_value("foo") == "foo"
 
     def test_json_schema(self):
         parser = yuio.parse.Str()
@@ -144,10 +142,8 @@ class TestInt:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<int>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(10) is None
-        assert parser.describe_value_or_def(10) == "10"
+        assert parser.describe_many() == "<int>"
+        assert parser.describe_value(10) == "10"
 
     def test_json_schema(self):
         parser = yuio.parse.Int()
@@ -207,10 +203,8 @@ class TestFloat:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<float>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<float>"
-        assert parser.describe_value(10.5) is None
-        assert parser.describe_value_or_def(10.5) == "10.5"
+        assert parser.describe_many() == "<float>"
+        assert parser.describe_value(10.5) == "10.5"
 
     def test_json_schema(self):
         parser = yuio.parse.Float()
@@ -270,11 +264,8 @@ class TestBool:
         assert parser.describe() == "{yes|no}"
         assert parser.describe_or_def() == "{yes|no}"
         assert parser.describe_many() == "{yes|no}"
-        assert parser.describe_many_or_def() == "{yes|no}"
         assert parser.describe_value(True) == "yes"
         assert parser.describe_value(False) == "no"
-        assert parser.describe_value_or_def(True) == "yes"
-        assert parser.describe_value_or_def(False) == "no"
 
     def test_json_schema(self):
         parser = yuio.parse.Bool()
@@ -350,9 +341,7 @@ class TestEnum:
         assert parser.describe() == "{Cats|Dogs|:3}"
         assert parser.describe_or_def() == "{Cats|Dogs|:3}"
         assert parser.describe_many() == "{Cats|Dogs|:3}"
-        assert parser.describe_many_or_def() == "{Cats|Dogs|:3}"
         assert parser.describe_value(self.Cuteness.BLAHAJ) == ":3"
-        assert parser.describe_value_or_def(self.Cuteness.BLAHAJ) == ":3"
 
     def test_basics_by_name(self):
         parser = yuio.parse.Enum(self.Cuteness, by_name=True)
@@ -364,9 +353,7 @@ class TestEnum:
         assert parser.describe() == "{CATS|DOGS|BLAHAJ}"
         assert parser.describe_or_def() == "{CATS|DOGS|BLAHAJ}"
         assert parser.describe_many() == "{CATS|DOGS|BLAHAJ}"
-        assert parser.describe_many_or_def() == "{CATS|DOGS|BLAHAJ}"
         assert parser.describe_value(self.Cuteness.BLAHAJ) == "BLAHAJ"
-        assert parser.describe_value_or_def(self.Cuteness.BLAHAJ) == "BLAHAJ"
 
     def test_json_schema_by_value(self):
         parser = yuio.parse.Enum(self.Cuteness)
@@ -469,7 +456,6 @@ class TestEnum:
         assert parser.describe() == "{RED|GREEN|BLUE}"
         assert parser.describe_or_def() == "{RED|GREEN|BLUE}"
         assert parser.describe_value(self.Colors.RED) == "RED"
-        assert parser.describe_value_or_def(self.Colors.RED) == "RED"
 
     def test_to_dash_case(self):
         class Colors(enum.Enum):
@@ -556,10 +542,8 @@ class TestDecimal:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<decimal>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<decimal>"
-        assert parser.describe_value(Decimal(10)) is None
-        assert parser.describe_value_or_def(Decimal(10)) == "10"
+        assert parser.describe_many() == "<decimal>"
+        assert parser.describe_value(Decimal(10)) == "10"
 
     def test_json_schema(self):
         parser = yuio.parse.Decimal()
@@ -627,10 +611,8 @@ class TestFraction:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<fraction>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<fraction>"
-        assert parser.describe_value(Fraction(10)) is None
-        assert parser.describe_value_or_def(Fraction(10)) == "10"
+        assert parser.describe_many() == "<fraction>"
+        assert parser.describe_value(Fraction(10)) == "10"
 
     def test_json_schema(self):
         parser = yuio.parse.Fraction()
@@ -707,10 +689,8 @@ class TestJson:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<json>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<json>"
-        assert parser.describe_value(dict(a=0)) is None
-        assert parser.describe_value_or_def(dict(a=0)) == "{'a': 0}"
+        assert parser.describe_many() == "<json>"
+        assert parser.describe_value(dict(a=0)) == "{'a': 0}"
 
     def test_unstructured(self):
         parser = yuio.parse.Json()
@@ -792,13 +772,11 @@ class TestDateTime:
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() is None
-        assert parser.describe_or_def() == "<date-time>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<date-time>"
-        assert parser.describe_value(datetime.datetime(2025, 1, 1)) is None
+        assert parser.describe() == "YYYY-MM-DD[ HH:MM:SS]"
+        assert parser.describe_or_def() == "YYYY-MM-DD[ HH:MM:SS]"
+        assert parser.describe_many() == "YYYY-MM-DD[ HH:MM:SS]"
         assert (
-            parser.describe_value_or_def(datetime.datetime(2025, 1, 1))
+            parser.describe_value(datetime.datetime(2025, 1, 1))
             == "2025-01-01 00:00:00"
         )
 
@@ -886,12 +864,10 @@ class TestDate:
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() is None
-        assert parser.describe_or_def() == "<date>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<date>"
-        assert parser.describe_value(datetime.date(2025, 1, 1)) is None
-        assert parser.describe_value_or_def(datetime.date(2025, 1, 1)) == "2025-01-01"
+        assert parser.describe() == "YYYY-MM-DD"
+        assert parser.describe_or_def() == "YYYY-MM-DD"
+        assert parser.describe_many() == "YYYY-MM-DD"
+        assert parser.describe_value(datetime.date(2025, 1, 1)) == "2025-01-01"
 
     def test_json_schema(self):
         parser = yuio.parse.Date()
@@ -966,12 +942,10 @@ class TestTime:
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() is None
-        assert parser.describe_or_def() == "<time>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<time>"
-        assert parser.describe_value(datetime.time()) is None
-        assert parser.describe_value_or_def(datetime.time()) == "00:00:00"
+        assert parser.describe() == "HH:MM:SS"
+        assert parser.describe_or_def() == "HH:MM:SS"
+        assert parser.describe_many() == "HH:MM:SS"
+        assert parser.describe_value(datetime.time()) == "00:00:00"
 
     def test_json_schema(self):
         parser = yuio.parse.Time()
@@ -1044,12 +1018,10 @@ class TestTimeDelta:
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
-        assert parser.describe() is None
-        assert parser.describe_or_def() == "<time-delta>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<time-delta>"
-        assert parser.describe_value(datetime.timedelta(hours=10)) is None
-        assert parser.describe_value_or_def(datetime.timedelta(hours=10)) == "10:00:00"
+        assert parser.describe() == "[+|-]HH:MM:SS"
+        assert parser.describe_or_def() == "[+|-]HH:MM:SS"
+        assert parser.describe_many() == "[+|-]HH:MM:SS"
+        assert parser.describe_value(datetime.timedelta(hours=10)) == "10:00:00"
 
     def test_json_schema(self):
         parser = yuio.parse.TimeDelta()
@@ -1187,10 +1159,8 @@ class TestPath:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<path>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<path>"
-        assert parser.describe_value(pathlib.Path("/")) is None
-        assert parser.describe_value_or_def(pathlib.Path("/")) == os.path.sep
+        assert parser.describe_many() == "<path>"
+        assert parser.describe_value(pathlib.Path("/")) == os.path.sep
 
     def test_json_schema(self):
         parser = yuio.parse.Path()
@@ -1607,10 +1577,8 @@ class TestMap:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<int>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(TestMap.Wrapper(10)) is None
-        assert parser.describe_value_or_def(TestMap.Wrapper(10)) == "10"
+        assert parser.describe_many() == "<int>"
+        assert parser.describe_value(TestMap.Wrapper(10)) == "10"
 
     def test_secret(self):
         parser = yuio.parse.Map(yuio.parse.Secret(yuio.parse.Str()), lambda x: x)
@@ -1627,19 +1595,15 @@ class TestMap:
         assert parser.parse_many(["1", "2", "3"]) == TestMap.Wrapper([1, 2, 3])
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_many() == "<int>"
         assert parser.describe_value(TestMap.Wrapper([])) == ""
-        assert parser.describe_value_or_def(TestMap.Wrapper([])) == ""
 
     def test_same_type(self):
         parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2)
-        assert parser.describe_value(20) is None
-        assert parser.describe_value_or_def(20) == "20"
+        assert parser.describe_value(20) == "20"
 
         parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2, lambda x: x // 2)
-        assert parser.describe_value(20) is None
-        assert parser.describe_value_or_def(20) == "10"
+        assert parser.describe_value(20) == "10"
 
     def test_json_schema(self):
         parser = yuio.parse.Map(yuio.parse.Bool(), lambda x: not x, lambda x: not x)
@@ -1688,10 +1652,8 @@ class TestApply:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<int>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(10) is None
-        assert parser.describe_value_or_def(10) == "10"
+        assert parser.describe_many() == "<int>"
+        assert parser.describe_value(10) == "10"
 
     def test_secret(self):
         parser = yuio.parse.Apply(yuio.parse.Secret(yuio.parse.Str()), lambda x: None)
@@ -1704,10 +1666,8 @@ class TestApply:
         assert parser.parse_many(["1", "2", "3"]) == [1, 2, 3]
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_many() == "<int>"
         assert parser.describe_value([]) == ""
-        assert parser.describe_value_or_def([]) == ""
 
     def test_json_schema(self):
         parser = yuio.parse.Apply(yuio.parse.Int(), lambda x: None)
@@ -1785,10 +1745,8 @@ class TestSimpleCollections:
         assert parser.parse_many(["1", "2", "3"]) == ctor([1, 2, 3])
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_many() == "<int>"
         assert parser.describe_value(ctor([1, 2, 3])) == "1 2 3"
-        assert parser.describe_value_or_def(ctor([1, 2, 3])) == "1 2 3"
 
         with pytest.raises(yuio.parse.ParsingError, match=r"Expected .*?, got int"):
             parser.parse_config(123)
@@ -1820,10 +1778,8 @@ class TestSimpleCollections:
         assert parser.parse_many(["1", "2", "3"]) == ctor([1, 2, 3])
         assert parser.describe() == "<int>[,<int>[,...]]"
         assert parser.describe_or_def() == "<int>[,<int>[,...]]"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_many() == "<int>"
         assert parser.describe_value(ctor([1, 2, 3])) == "1,2,3"
-        assert parser.describe_value_or_def(ctor([1, 2, 3])) == "1,2,3"
 
     def test_partial(self, test_params):
         parser_cls, _ = test_params
@@ -1916,9 +1872,7 @@ class TestDict:
         assert parser.describe() == "<int>:<str>[ <int>:<str>[ ...]]"
         assert parser.describe_or_def() == "<int>:<str>[ <int>:<str>[ ...]]"
         assert parser.describe_many() == "<int>:<str>"
-        assert parser.describe_many_or_def() == "<int>:<str>"
         assert parser.describe_value({1: "a", 2: "b"}) == "1:a 2:b"
-        assert parser.describe_value_or_def({1: "a", 2: "b"}) == "1:a 2:b"
 
         with pytest.raises(
             yuio.parse.ParsingError, match=r"Expected dict or list, got int"
@@ -1938,9 +1892,7 @@ class TestDict:
         assert parser.describe() == "<int>-<str>[,<int>-<str>[,...]]"
         assert parser.describe_or_def() == "<int>-<str>[,<int>-<str>[,...]]"
         assert parser.describe_many() == "<int>-<str>"
-        assert parser.describe_many_or_def() == "<int>-<str>"
         assert parser.describe_value({1: "a", 2: "b"}) == "1-a,2-b"
-        assert parser.describe_value_or_def({1: "a", 2: "b"}) == "1-a,2-b"
 
     def test_partial(self):
         parser = yuio.parse.Dict()
@@ -2017,9 +1969,7 @@ class TestTuple:
         assert parser.describe() == "<int>"
         assert parser.describe_or_def() == "<int>"
         assert parser.describe_many() == ("<int>",)
-        assert parser.describe_many_or_def() == ("<int>",)
         assert parser.describe_value((10,)) == "10"
-        assert parser.describe_value_or_def((10,)) == "10"
 
         parser = yuio.parse.Tuple(yuio.parse.Int(), yuio.parse.Str())
         assert parser.supports_parse_many()
@@ -2028,9 +1978,7 @@ class TestTuple:
         assert parser.describe() == "<int> <str>"
         assert parser.describe_or_def() == "<int> <str>"
         assert parser.describe_many() == ("<int>", "<str>")
-        assert parser.describe_many_or_def() == ("<int>", "<str>")
         assert parser.describe_value((10, "x")) == "10 x"
-        assert parser.describe_value_or_def((10, "x")) == "10 x"
 
         parser = yuio.parse.Tuple(yuio.parse.Int(), yuio.parse.Str(), yuio.parse.Bool())
         assert parser.supports_parse_many()
@@ -2039,9 +1987,7 @@ class TestTuple:
         assert parser.describe() == "<int> <str> {yes|no}"
         assert parser.describe_or_def() == "<int> <str> {yes|no}"
         assert parser.describe_many() == ("<int>", "<str>", "{yes|no}")
-        assert parser.describe_many_or_def() == ("<int>", "<str>", "{yes|no}")
-        assert parser.describe_value((10, "x", True)) == "10 x yes"
-        assert parser.describe_value_or_def((10, "x", False)) == "10 x no"
+        assert parser.describe_value((10, "x", False)) == "10 x no"
 
     def test_secret(self):
         parser = yuio.parse.Tuple(yuio.parse.Secret(yuio.parse.Str()))
@@ -2140,12 +2086,9 @@ class TestOptional:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<int>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
-        assert parser.describe_value(10) is None
-        assert parser.describe_value_or_def(10) == "10"
+        assert parser.describe_many() == "<int>"
+        assert parser.describe_value(10) == "10"
         assert parser.describe_value(None) == "<none>"
-        assert parser.describe_value_or_def(None) == "<none>"
 
     def test_secret(self):
         parser = yuio.parse.Optional(yuio.parse.Secret(yuio.parse.Str()))
@@ -2168,12 +2111,9 @@ class TestOptional:
         assert parser.parse_many(["1", "2", "3"]) == [1, 2, 3]
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<int>"
+        assert parser.describe_many() == "<int>"
         assert parser.describe_value([]) == ""
-        assert parser.describe_value_or_def([]) == ""
         assert parser.describe_value(None) == "<none>"
-        assert parser.describe_value_or_def(None) == "<none>"
 
     def test_parse(self):
         parser = yuio.parse.Optional(yuio.parse.Int())
@@ -2214,9 +2154,7 @@ class TestUnion:
         assert parser.describe() == "{<int>|<str>}"
         assert parser.describe_or_def() == "{<int>|<str>}"
         assert parser.describe_many() == "{<int>|<str>}"
-        assert parser.describe_many_or_def() == "{<int>|<str>}"
-        assert parser.describe_value(10) is None
-        assert parser.describe_value_or_def(10) == "10"
+        assert parser.describe_value(10) == "10"
 
     def test_secret(self):
         parser = yuio.parse.Union(
@@ -2312,9 +2250,7 @@ class TestWithMeta:
         assert parser.describe() == "desc"
         assert parser.describe_or_def() == "desc"
         assert parser.describe_many() == "desc"
-        assert parser.describe_many_or_def() == "desc"
-        assert parser.describe_value(10) is None
-        assert parser.describe_value_or_def(10) == "10"
+        assert parser.describe_value(10) == "10"
 
     def test_secret(self):
         parser = yuio.parse.WithMeta(yuio.parse.Secret(yuio.parse.Str()), desc="...")
@@ -2361,10 +2297,8 @@ class TestSecret:
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
         assert parser.describe_or_def() == "<str>"
-        assert parser.describe_many() is None
-        assert parser.describe_many_or_def() == "<str>"
+        assert parser.describe_many() == "<str>"
         assert parser.describe_value(10) == "***"
-        assert parser.describe_value_or_def(10) == "***"
 
     def test_parse(self):
         parser = yuio.parse.Secret(yuio.parse.Int())

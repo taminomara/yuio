@@ -380,7 +380,7 @@ to undo the change:
             ... )
             >>> parser.parse("10")
             1024
-            >>> parser.describe_value_or_def(1024)
+            >>> parser.describe_value(1024)
             '10'
 
     .. tab-item:: Annotations
@@ -394,7 +394,7 @@ to undo the change:
             ... ])
             >>> parser.parse("10")
             1024
-            >>> parser.describe_value_or_def(1024)
+            >>> parser.describe_value(1024)
             '10'
 
 
