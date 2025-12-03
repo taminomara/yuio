@@ -143,6 +143,8 @@ Auxiliary parsers
 
 .. autoclass:: WithMeta
 
+.. autoclass:: Secret
+
 
 Deriving parsers from type hints
 --------------------------------
@@ -253,6 +255,8 @@ However, you can still use them in case you need to.
     .. automethod:: to_json_schema
 
     .. automethod:: to_json_value
+
+    .. automethod:: is_secret
 
 
 Building your own parser
@@ -428,6 +432,7 @@ import yuio.string
 import yuio.widget
 from yuio import _typing as _t
 from yuio.json_schema import JsonValue
+from yuio.secret import SecretString, SecretValue
 from yuio.util import _find_docs
 from yuio.util import to_dash_case as _to_dash_case
 
@@ -473,6 +478,9 @@ __all__ = [
     "PartialParser",
     "Path",
     "Regex",
+    "Secret",
+    "SecretString",
+    "SecretValue",
     "Set",
     "Str",
     "Strip",
@@ -504,7 +512,7 @@ TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
 
 
-class ParsingError(yuio.string.ColorableBase, ValueError, argparse.ArgumentTypeError):
+class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError):
     """
     Raised when parsing or validation fails.
 
@@ -1010,6 +1018,16 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def is_secret(self) -> bool:
+        """
+        Indicates that input functions should use secret input,
+        i.e. :func:`~getpass.getpass` or :class:`yuio.widget.SecretInput`.
+
+        """
+
+        raise NotImplementedError()
+
     def __repr__(self):
         return self.__class__.__name__
 
@@ -1166,6 +1184,9 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
             ),
         )
 
+    def is_secret(self) -> bool:
+        return False
+
 
 class WrappingParser(Parser[T], _t.Generic[T, U]):
     """
@@ -1311,6 +1332,9 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
         return self._inner.to_json_schema(ctx)
+
+    def is_secret(self) -> bool:
+        return self._inner.is_secret()
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._inner_raw!r})"
@@ -2739,6 +2763,66 @@ class GitRepo(Dir):
             raise ParsingError("<c path>%s</c> is not a git repository root", value)
 
 
+class Secret(Map[SecretValue[T], T], _t.Generic[T]):
+    """
+    Wraps result of the inner parser into :class:`~yuio.secret.SecretValue`
+    and ensures that :func:`yuio.io.ask` doesn't show value as user enters it.
+
+    """
+
+    if _t.TYPE_CHECKING:
+
+        @_t.overload
+        def __new__(cls, inner: Parser[T], /) -> Secret[T]: ...
+
+        @_t.overload
+        def __new__(cls, /) -> PartialParser: ...
+
+        def __new__(cls, *args, **kwargs) -> _t.Any: ...
+
+    def __init__(self, inner: Parser[U] | None = None, /):
+        super().__init__(inner, SecretValue, lambda x: x.data)
+
+    def parse(self, value: str) -> SecretValue[T]:
+        try:
+            return super().parse(value)
+        except ParsingError:
+            # Error messages can contain secret value, hide them.
+            raise ParsingError("Error when parsing secret data")
+
+    def parse_many(self, value: _t.Sequence[str]) -> SecretValue[T]:
+        try:
+            return super().parse_many(value)
+        except ParsingError:
+            # Error messages can contain secret value, hide them.
+            raise ParsingError("Error when parsing secret data")
+
+    def parse_config(self, value: object) -> SecretValue[T]:
+        try:
+            return super().parse_config(value)
+        except ParsingError:
+            # Error messages can contain secret value, hide them.
+            raise ParsingError("Error when parsing secret data")
+
+    def describe_value(self, value: object) -> str | None:
+        return "***"
+
+    def describe_value_or_def(self, value: object) -> str:
+        return "***"
+
+    def widget(
+        self,
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
+        /,
+    ) -> yuio.widget.Widget[SecretValue[T] | yuio.Missing]:
+        return _secret_widget(self, default, input_description, default_description)
+
+    def is_secret(self) -> bool:
+        return True
+
+
 class CollectionParser(
     WrappingParser[C, Parser[T]], ValueParser[C], PartialParser, _t.Generic[C, T]
 ):
@@ -2918,6 +3002,9 @@ class CollectionParser(
                 )
             ),
         )
+
+    def is_secret(self) -> bool:
+        return self._inner.is_secret()
 
     def __repr__(self):
         if self._inner_raw is not None:
@@ -3509,6 +3596,9 @@ class Tuple(
         assert self.assert_type(value)
         return [parser.to_json_value(item) for parser, item in zip(self._inner, value)]
 
+    def is_secret(self) -> bool:
+        return any(parser.is_secret() for parser in self._inner)
+
     def __repr__(self):
         if self._inner_raw is not None:
             return f"{self.__class__.__name__}{self._inner_raw!r}"
@@ -3913,6 +4003,9 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
         raise TypeError(
             f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
         )
+
+    def is_secret(self) -> bool:
+        return any(parser.is_secret() for parser in self._inner)
 
     def __repr__(self):
         return f"{self.__class__.__name__}{self._inner_raw!r}"
@@ -4659,6 +4752,25 @@ class _WidgetResultMapper(yuio.widget.Map[T | yuio.Missing, str]):
         )
 
 
+def _secret_widget(
+    parser: Parser[T],
+    default: object | yuio.Missing,
+    input_description: str | None,
+    default_description: str | None,
+    /,
+) -> yuio.widget.Widget[T | yuio.Missing]:
+    return _WidgetResultMapper(
+        parser,
+        input_description,
+        default,
+        (
+            yuio.widget.SecretInput(
+                placeholder=default_description or "",
+            )
+        ),
+    )
+
+
 _FromTypeHintCallback: _t.TypeAlias = _t.Callable[
     [type, type | None, tuple[object, ...]], Parser[object] | None
 ]
@@ -4983,6 +5095,20 @@ register_type_hint_conversion(
 register_type_hint_conversion(
     lambda ty, origin, args: TimeDelta() if ty is datetime.timedelta else None
 )
+
+
+@register_type_hint_conversion
+def __secret(ty, origin, args):
+    if ty is SecretValue:
+        raise TypeError("yuio.secret.SecretValue requires type arguments")
+    if origin is SecretValue:
+        if len(args) == 1:
+            return Secret(from_type_hint(args[0]))
+        else:
+            raise TypeError(
+                f"yuio.secret.SecretValue requires 1 type argument, got {len(args)}"
+            )
+    return None
 
 
 def _is_optional_parser(parser: Parser[_t.Any] | None, /) -> bool:

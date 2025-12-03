@@ -39,6 +39,7 @@ def main(
     )
     with yuio.term._enter_raw_mode(
         term.ostream,
+        term.istream,
         bracketed_paste=bracketed_paste,
         modify_keyboard=modify_keyboard,
     ):
@@ -46,12 +47,12 @@ def main(
             _read_keycode = yuio.term._read_keycode
 
             def read_keycode():
-                keycode = _read_keycode()
+                keycode = _read_keycode(term.ostream, term.istream)
                 yuio.io.info("<c d>Read: %r</c>", keycode, to_stdout=True)
                 return keycode
 
             yuio.term._read_keycode = read_keycode
-        for event in yuio.widget._event_stream():
+        for event in yuio.widget._event_stream(term.ostream, term.istream):
             if isinstance(event.key, str):
                 r = repr(event.key)
             else:

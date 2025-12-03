@@ -12,6 +12,7 @@ import pytest
 
 import yuio.json_schema
 import yuio.parse
+import yuio.secret
 from yuio import _typing as _t
 
 
@@ -20,6 +21,7 @@ class TestStr:
         parser = yuio.parse.Str()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -137,6 +139,7 @@ class TestInt:
         parser = yuio.parse.Int()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -199,6 +202,7 @@ class TestFloat:
         parser = yuio.parse.Float()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -260,6 +264,7 @@ class TestBool:
         parser = yuio.parse.Bool()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() == "{yes|no}"
@@ -339,6 +344,7 @@ class TestEnum:
         parser = yuio.parse.Enum(self.Cuteness)
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() == "{Cats|Dogs|:3}"
@@ -352,6 +358,7 @@ class TestEnum:
         parser = yuio.parse.Enum(self.Cuteness, by_name=True)
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() == "{CATS|DOGS|BLAHAJ}"
@@ -544,6 +551,7 @@ class TestDecimal:
         parser = yuio.parse.Decimal()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -614,6 +622,7 @@ class TestFraction:
         parser = yuio.parse.Fraction()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -693,6 +702,7 @@ class TestJson:
         parser = yuio.parse.Json()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -779,6 +789,7 @@ class TestDateTime:
         parser = yuio.parse.DateTime()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -872,6 +883,7 @@ class TestDate:
         parser = yuio.parse.Date()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -951,6 +963,7 @@ class TestTime:
         parser = yuio.parse.Time()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -1028,6 +1041,7 @@ class TestTimeDelta:
         parser = yuio.parse.TimeDelta()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -1168,6 +1182,7 @@ class TestPath:
         parser = yuio.parse.Path()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -1587,6 +1602,7 @@ class TestMap:
         )
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -1595,6 +1611,10 @@ class TestMap:
         assert parser.describe_many_or_def() == "<int>"
         assert parser.describe_value(TestMap.Wrapper(10)) is None
         assert parser.describe_value_or_def(TestMap.Wrapper(10)) == "10"
+
+    def test_secret(self):
+        parser = yuio.parse.Map(yuio.parse.Secret(yuio.parse.Str()), lambda x: x)
+        assert parser.is_secret()
 
     def test_basics_collection(self):
         parser = yuio.parse.Map(
@@ -1663,6 +1683,7 @@ class TestApply:
         parser = yuio.parse.Apply(yuio.parse.Int(), lambda x: None)
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -1671,6 +1692,10 @@ class TestApply:
         assert parser.describe_many_or_def() == "<int>"
         assert parser.describe_value(10) is None
         assert parser.describe_value_or_def(10) == "10"
+
+    def test_secret(self):
+        parser = yuio.parse.Apply(yuio.parse.Secret(yuio.parse.Str()), lambda x: None)
+        assert parser.is_secret()
 
     def test_basics_collection(self):
         parser = yuio.parse.Apply(yuio.parse.List(yuio.parse.Int()), lambda x: None)
@@ -1754,6 +1779,7 @@ class TestSimpleCollections:
         parser = parser_cls(yuio.parse.Int())
         assert parser.supports_parse_many()
         assert parser.get_nargs() == "*"
+        assert not parser.is_secret()
         assert parser.parse("1 2 3") == ctor([1, 2, 3])
         assert parser.parse_config([1, 2, 3]) == ctor([1, 2, 3])
         assert parser.parse_many(["1", "2", "3"]) == ctor([1, 2, 3])
@@ -1766,6 +1792,12 @@ class TestSimpleCollections:
 
         with pytest.raises(yuio.parse.ParsingError, match=r"Expected .*?, got int"):
             parser.parse_config(123)
+
+    def test_secret(self, test_params):
+        parser_cls, _ = test_params
+
+        parser = parser_cls(yuio.parse.Secret(yuio.parse.Int()))
+        assert parser.is_secret()
 
     def test_json_schema(self, test_params):
         parser_cls, ctor = test_params
@@ -1859,10 +1891,24 @@ class TestDict:
         )
         assert parser.to_json_value({1: "x"}) == [[1, "x"]]
 
+    def test_secret(self):
+        parser = yuio.parse.Dict(
+            yuio.parse.Secret(yuio.parse.Str()),
+            yuio.parse.Str(),
+        )
+        assert parser.is_secret()
+
+        parser = yuio.parse.Dict(
+            yuio.parse.Str(),
+            yuio.parse.Secret(yuio.parse.Str()),
+        )
+        assert parser.is_secret()
+
     def test_parse(self):
         parser = yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Str())
         assert parser.supports_parse_many()
         assert parser.get_nargs() == "*"
+        assert not parser.is_secret()
         assert parser.parse("1:a 2:b") == {1: "a", 2: "b"}
         assert parser.parse_config({1: "a", 2: "b"}) == {1: "a", 2: "b"}
         assert parser.parse_config([(1, "a"), (2, "b")]) == {1: "a", 2: "b"}
@@ -1966,6 +2012,7 @@ class TestTuple:
         parser = yuio.parse.Tuple(yuio.parse.Int())
         assert parser.supports_parse_many()
         assert parser.get_nargs() == 1
+        assert not parser.is_secret()
         assert parser.parse_many(["1"]) == (1,)
         assert parser.describe() == "<int>"
         assert parser.describe_or_def() == "<int>"
@@ -1995,6 +2042,14 @@ class TestTuple:
         assert parser.describe_many_or_def() == ("<int>", "<str>", "{yes|no}")
         assert parser.describe_value((10, "x", True)) == "10 x yes"
         assert parser.describe_value_or_def((10, "x", False)) == "10 x no"
+
+    def test_secret(self):
+        parser = yuio.parse.Tuple(yuio.parse.Secret(yuio.parse.Str()))
+        assert parser.is_secret()
+        parser = yuio.parse.Tuple(
+            yuio.parse.Int(), yuio.parse.Str(), yuio.parse.Secret(yuio.parse.Str())
+        )
+        assert parser.is_secret()
 
     def test_parse(self):
         parser = yuio.parse.Tuple(yuio.parse.Int())
@@ -2080,6 +2135,7 @@ class TestOptional:
         parser = yuio.parse.Optional(yuio.parse.Int())
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() is None
@@ -2090,6 +2146,10 @@ class TestOptional:
         assert parser.describe_value_or_def(10) == "10"
         assert parser.describe_value(None) == "<none>"
         assert parser.describe_value_or_def(None) == "<none>"
+
+    def test_secret(self):
+        parser = yuio.parse.Optional(yuio.parse.Secret(yuio.parse.Str()))
+        assert parser.is_secret()
 
     def test_json_schema(self):
         parser = yuio.parse.Optional(yuio.parse.Int())
@@ -2157,6 +2217,22 @@ class TestUnion:
         assert parser.describe_many_or_def() == "{<int>|<str>}"
         assert parser.describe_value(10) is None
         assert parser.describe_value_or_def(10) == "10"
+
+    def test_secret(self):
+        parser = yuio.parse.Union(
+            yuio.parse.Secret(yuio.parse.Str()),
+        )
+        assert parser.is_secret()
+        parser = yuio.parse.Union(
+            yuio.parse.Secret(yuio.parse.Str()),
+            yuio.parse.Int(),
+        )
+        assert parser.is_secret()
+        parser = yuio.parse.Union(
+            yuio.parse.Int(),
+            yuio.parse.Secret(yuio.parse.Str()),
+        )
+        assert parser.is_secret()
 
     def test_json_schema(self):
         parser = yuio.parse.Union(
@@ -2230,6 +2306,7 @@ class TestWithMeta:
         parser = yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
         assert parser.describe() == "desc"
@@ -2238,6 +2315,10 @@ class TestWithMeta:
         assert parser.describe_many_or_def() == "desc"
         assert parser.describe_value(10) is None
         assert parser.describe_value_or_def(10) == "10"
+
+    def test_secret(self):
+        parser = yuio.parse.WithMeta(yuio.parse.Secret(yuio.parse.Str()), desc="...")
+        assert parser.is_secret()
 
     def test_json_schema(self):
         parser = yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")
@@ -2268,3 +2349,51 @@ class TestWithMeta:
             yuio.parse.from_type_hint(
                 _t.Annotated[str, yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")]
             )
+
+
+class TestSecret:
+    def test_basics(self):
+        parser = yuio.parse.Secret(yuio.parse.Str())
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() is None
+        assert parser.is_secret()
+        with pytest.raises(RuntimeError):
+            assert parser.parse_many(["1", "2", "3"])
+        assert parser.describe() is None
+        assert parser.describe_or_def() == "<str>"
+        assert parser.describe_many() is None
+        assert parser.describe_many_or_def() == "<str>"
+        assert parser.describe_value(10) == "***"
+        assert parser.describe_value_or_def(10) == "***"
+
+    def test_parse(self):
+        parser = yuio.parse.Secret(yuio.parse.Int())
+
+        assert parser.parse("10") == yuio.secret.SecretValue(10)
+        with pytest.raises(
+            yuio.parse.ParsingError, check=lambda e: "xxx" not in str(e)
+        ):
+            parser.parse("xxx")
+
+        assert parser.parse_config(10) == yuio.secret.SecretValue(10)
+        with pytest.raises(
+            yuio.parse.ParsingError, check=lambda e: "xxx" not in str(e)
+        ):
+            parser.parse_config("xxx")
+
+    def test_parse_many(self):
+        parser = yuio.parse.Secret(yuio.parse.List(yuio.parse.Int()))
+
+        assert parser.parse("10 11 12") == yuio.secret.SecretValue([10, 11, 12])
+        with pytest.raises(
+            yuio.parse.ParsingError, check=lambda e: "xxx" not in str(e)
+        ):
+            parser.parse("xxx")
+
+        assert parser.parse_many(["10", "11", "12"]) == yuio.secret.SecretValue(
+            [10, 11, 12]
+        )
+        with pytest.raises(
+            yuio.parse.ParsingError, check=lambda e: "xxx" not in str(e)
+        ):
+            parser.parse_many(["10", "xxx", "12"])

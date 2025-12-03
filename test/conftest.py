@@ -683,7 +683,7 @@ class IOMocker:
 
         old_event_stream, yuio.widget._event_stream = (
             yuio.widget._event_stream,
-            lambda: _CURRENT_IOSTREAM_MOCK,
+            lambda *_, **__: _CURRENT_IOSTREAM_MOCK,
         )
         old_enter_raw_mode, yuio.term._enter_raw_mode = (
             yuio.term._enter_raw_mode,
@@ -981,7 +981,8 @@ class RcCompare:
                 if yuio.string.line_width(line) != screen_width:
                     raise RuntimeError(
                         f"width of screen line {i + 1} is not equal to the width of screen line 1: "
-                        f"({yuio.string.line_width(self.screen[i])} != {screen_width})"
+                        f"({yuio.string.line_width(self.screen[i])} != {screen_width})\n"
+                        f"line: {line!r}"
                     )
 
         colors_width = None

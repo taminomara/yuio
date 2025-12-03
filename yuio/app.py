@@ -190,7 +190,7 @@ will cause ``main()`` to be called first, then ``push()``.
 This behavior is useful when you have some global configuration flags
 attached to the ``main()`` command. See the `example app`_ for details.
 
-.. _example app: https://github.com/taminomara/yuio/blob/main/examples/apps/app
+.. _example app: https://github.com/taminomara/yuio/blob/main/examples/app
 
 .. class:: App
     :noindex:
@@ -290,7 +290,7 @@ C = _t.TypeVar("C", bound=_t.Callable[..., None])
 C2 = _t.TypeVar("C2", bound=_t.Callable[..., None])
 
 
-class AppError(yuio.string.ColorableBase, Exception):
+class AppError(yuio.PrettyException, Exception):
     """
     An error that you can throw from an app to finish its execution without printing
     a traceback.

@@ -1,7 +1,7 @@
 Source "docs/source/_tapes/_config.tape"
 
 Sleep 1s
-Type "python examples/prompt.py"
+Type "python examples/io_prompt.py"
 Enter
 Sleep 1s
 Up@500ms 2

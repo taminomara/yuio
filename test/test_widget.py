@@ -884,22 +884,12 @@ class TestInput:
                 "                    ",
             ]
         )
-        widget_checker.key(yuio.widget.Key.ENTER)
+        widget_checker.text(" world")
         widget_checker.expect_screen(
             [
-                "> hello,            ",
-                "                    ",
+                "> hello, world      ",
                 "f1 help             ",
                 "                    ",
-                "                    ",
-            ]
-        )
-        widget_checker.text("world")
-        widget_checker.expect_screen(
-            [
-                "> hello,            ",
-                "  world             ",
-                "f1 help             ",
                 "                    ",
                 "                    ",
             ]
@@ -908,19 +898,19 @@ class TestInput:
         widget_checker.paste("\t\a:D\n:P")
         widget_checker.expect_screen(
             [
-                "> hello,            ",
-                "  world\\t\\t\\a:D     ",
-                "  :P                ",
+                "> hello, world\\t\\t\\a",
+                "  :D :P             ",
                 "f1 help             ",
+                "                    ",
                 "                    ",
             ]
         )
-        widget_checker.key(yuio.widget.Key.ENTER, alt=True)
+        widget_checker.key(yuio.widget.Key.ENTER)
 
         result = widget_checker.check(
             yuio.widget.Input(text="hello", allow_special_characters=True)
         )
-        assert result == "hello,\nworld\t\t\a:D\n:P"
+        assert result == "hello, world\t\t\a:D :P"
 
     def test_long_word_break(self, widget_checker: WidgetChecker[yuio.widget.Input]):
         widget_checker.expect_screen(

@@ -192,9 +192,6 @@ Formatting utilities
 .. autoclass:: Hr
     :members:
 
-.. autoclass:: ColorableBase
-    :members:
-
 
 Helper types
 ------------
@@ -251,7 +248,6 @@ __all__ = [
     "And",
     "AnyString",
     "Colorable",
-    "ColorableBase",
     "ColorizedReprProtocol",
     "ColorizedStrProtocol",
     "ColorizedString",
@@ -3672,65 +3668,3 @@ def _make_right(
     w -= middle_times * middle_w
     middle *= middle_times
     return " " * w + start + middle + end
-
-
-@repr_from_rich
-class ColorableBase:
-    """ColorableBase(msg: typing.LiteralString, /, *args: typing.Any)
-    ColorableBase(msg: str, /)
-
-    Base class for colorable object utilities.
-
-    This is a base for classes that wrap other colorables and alter behavior of their
-    ``__str__`` and ``__colorized_str__`` methods.
-
-    .. tip::
-
-        You can use this base as a mixin for your errors, making them pretty-printable
-        with Yuio:
-
-        .. code-block:: python
-
-            class MyError(yuio.string.ColorableBase, Exception):
-                pass
-
-
-            try:
-                ...
-                raise MyError("A formatted <c b>error message</c>")
-                ...
-            except MyError as e:
-                yuio.io.error_with_tb(e)
-
-    :param msg:
-        message to format. Can be a literal string or any other colorable object.
-
-        If it's given as a literal string, additional arguments for ``%``-formatting
-        may be given. Otherwise, giving additional arguments will cause
-        a :class:`TypeError`.
-    :param args:
-        arguments for ``%``-formatting the message.
-    :raises:
-        :class:`TypeError` if ``args`` are given with a non-string ``msg``.
-
-    """
-
-    @_t.overload
-    def __init__(self, msg: _t.LiteralString, /, *args): ...
-    @_t.overload
-    def __init__(self, msg: Colorable, /): ...
-    def __init__(self, msg: _t.Any, /, *args):
-        self.msg: Colorable = _to_colorable(msg, args)
-        """
-        Colorable message.
-
-        """
-
-    def __rich_repr__(self) -> RichReprResult:
-        yield None, self.msg
-
-    def __str__(self) -> str:
-        return str(self.msg)
-
-    def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
-        return ctx.str(self.msg)

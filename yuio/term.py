@@ -349,7 +349,6 @@ def get_term_from_stream(
             istream=istream,
             color_support=ColorSupport.ANSI_TRUE,
             interactive_support=InteractiveSupport.FULL,
-            terminal_theme=_get_standard_colors(ostream),
         )
 
     # Note: we don't rely on argparse to parse out flags and send them to us
@@ -383,7 +382,7 @@ def get_term_from_stream(
         if in_ci:
             color_support = detect_ci_color_support()
         elif os.name == "nt":
-            if _enable_vt_processing(ostream):
+            if _enable_vt_processing(ostream, istream):
                 color_support = ColorSupport.ANSI_TRUE
         elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
             color_support = ColorSupport.ANSI_TRUE
@@ -409,7 +408,7 @@ def get_term_from_stream(
                 and color_support >= ColorSupport.ANSI_256
                 and "YUIO_DISABLE_OSC_QUERIES" not in os.environ
             ):
-                theme = _get_standard_colors(ostream)
+                theme = _get_standard_colors(ostream, istream)
         else:
             interactive_support = InteractiveSupport.MOVE_CURSOR
 
@@ -448,12 +447,14 @@ def detect_ci_color_support() -> ColorSupport:
         return ColorSupport.NONE
 
 
-def _get_standard_colors(stream: _t.TextIO) -> TerminalTheme | None:
+def _get_standard_colors(
+    ostream: _t.TextIO, istream: _t.TextIO
+) -> TerminalTheme | None:
     try:
         query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join(
             [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
         )
-        response = _query_term(stream, query)
+        response = _query_term(ostream, istream, query)
         if not response:
             return None
 
@@ -536,37 +537,37 @@ def _get_standard_colors(stream: _t.TextIO) -> TerminalTheme | None:
         return None
 
 
-def _query_term(stream: _t.TextIO, query: str) -> str | None:
+def _query_term(ostream: _t.TextIO, istream: _t.TextIO, query: str) -> str | None:
     try:
-        with _enter_raw_mode(stream):
+        with _enter_raw_mode(ostream, istream):
             # Lock the keyboard.
-            stream.write("\x1b[2h")
-            stream.flush()
-            _flush_input_buffer()
+            ostream.write("\x1b[2h")
+            ostream.flush()
+            _flush_input_buffer(ostream, istream)
 
             # It is important that we unlock keyboard before exiting `cbreak`,
             # hence the nested `try`.
             try:
                 # Append a DA1 query, as virtually all terminals support it.
-                stream.write(query + "\x1b[c")
-                stream.flush()
+                ostream.write(query + "\x1b[c")
+                ostream.flush()
 
-                buf = _read_keycode()
+                buf = _read_keycode(ostream, istream)
                 if not buf.startswith("\x1b"):
                     yuio._logger.warning("_query_term invalid response: %r", buf)
                     return None
 
                 # Read till we find a DA1 response.
                 while not re.search(r"\x1b\[\?.*?c", buf):
-                    buf += _read_keycode()
+                    buf += _read_keycode(ostream, istream)
 
                 return buf[: buf.index("\x1b[?")]
             finally:
-                _flush_input_buffer()
+                _flush_input_buffer(ostream, istream)
 
                 # Release the keyboard.
-                stream.write("\x1b[2i")
-                stream.flush()
+                ostream.write("\x1b[2i")
+                ostream.flush()
     except Exception:  # pragma: no cover
         yuio._logger.warning("_query_term error", exc_info=True)
         return None
@@ -620,12 +621,13 @@ if os.name == "posix":
 
     @contextlib.contextmanager
     def _enter_raw_mode(
-        stream: _t.TextIO, bracketed_paste: bool = False, modify_keyboard: bool = False
+        ostream: _t.TextIO,
+        istream: _t.TextIO,
+        bracketed_paste: bool = False,
+        modify_keyboard: bool = False,
     ):
-        assert sys.__stdin__ is not None
-
-        prev_mode = termios.tcgetattr(sys.__stdin__)
-        tty.setcbreak(sys.__stdin__, termios.TCSANOW)
+        prev_mode = termios.tcgetattr(istream)
+        tty.setcbreak(istream, termios.TCSANOW)
 
         prologue = []
         if bracketed_paste:
@@ -633,8 +635,8 @@ if os.name == "posix":
         if modify_keyboard:
             prologue.append("\033[>4;2m")
         if prologue:
-            stream.write("".join(prologue))
-            stream.flush()
+            ostream.write("".join(prologue))
+            ostream.flush()
 
         try:
             yield
@@ -645,26 +647,22 @@ if os.name == "posix":
             if modify_keyboard:
                 epilogue.append("\033[>4m")
             if epilogue:
-                stream.write("".join(epilogue))
-                stream.flush()
-            termios.tcsetattr(sys.__stdin__, termios.TCSAFLUSH, prev_mode)
+                ostream.write("".join(epilogue))
+                ostream.flush()
+            termios.tcsetattr(istream, termios.TCSAFLUSH, prev_mode)
 
-    def _read_keycode() -> str:
-        assert sys.__stdin__ is not None
+    def _read_keycode(ostream: _t.TextIO, istream: _t.TextIO) -> str:
+        key = os.read(istream.fileno(), 128)
+        while bool(select.select([istream], [], [], 0)[0]):
+            key += os.read(istream.fileno(), 128)
 
-        key = os.read(sys.__stdin__.fileno(), 128)
-        while bool(select.select([sys.__stdin__], [], [], 0)[0]):
-            key += os.read(sys.__stdin__.fileno(), 128)
+        return key.decode(istream.encoding, errors="replace")
 
-        return key.decode(sys.__stdin__.encoding, errors="replace")
+    def _flush_input_buffer(ostream: _t.TextIO, istream: _t.TextIO):
+        while bool(select.select([istream], [], [], 0.001)[0]):
+            os.read(istream.fileno(), 1)
 
-    def _flush_input_buffer():
-        assert sys.__stdin__ is not None
-
-        while bool(select.select([sys.__stdin__], [], [], 0.001)[0]):
-            os.read(sys.__stdin__.fileno(), 1)
-
-    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
+    def _enable_vt_processing(ostream: _t.TextIO, istream: _t.TextIO) -> bool:
         return False  # This is a windows functionality
 
 elif os.name == "nt":
@@ -706,7 +704,10 @@ elif os.name == "nt":
 
     @contextlib.contextmanager
     def _enter_raw_mode(
-        stream: _t.TextIO, bracketed_paste: bool = False, modify_keyboard: bool = False
+        ostream: _t.TextIO,
+        istream: _t.TextIO,
+        bracketed_paste: bool = False,
+        modify_keyboard: bool = False,
     ):
         assert _ISTREAM_HANDLE is not None
 
@@ -725,7 +726,7 @@ elif os.name == "nt":
             if not success:
                 raise ctypes.WinError()
 
-    def _read_keycode() -> str:
+    def _read_keycode(ostream: _t.TextIO, istream: _t.TextIO) -> str:
         assert _ISTREAM_HANDLE is not None
 
         CHAR16 = ctypes.wintypes.WCHAR * 16
@@ -745,14 +746,14 @@ elif os.name == "nt":
 
         return buffer.value
 
-    def _flush_input_buffer():
+    def _flush_input_buffer(ostream: _t.TextIO, istream: _t.TextIO):
         assert _ISTREAM_HANDLE is not None
 
         success = _FlushConsoleInputBuffer(_ISTREAM_HANDLE)
         if not success:
             raise ctypes.WinError()
 
-    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
+    def _enable_vt_processing(ostream: _t.TextIO, istream: _t.TextIO) -> bool:
         try:
             version = sys.getwindowsversion()
             if version.major < 10 or version.build < 14931:
@@ -774,16 +775,19 @@ else:
 
     @contextlib.contextmanager
     def _enter_raw_mode(
-        stream: _t.TextIO, bracketed_paste: bool = False, modify_keyboard: bool = False
+        ostream: _t.TextIO,
+        istream: _t.TextIO,
+        bracketed_paste: bool = False,
+        modify_keyboard: bool = False,
     ):
         raise OSError("not supported")
         yield
 
-    def _read_keycode() -> str:
+    def _read_keycode(ostream: _t.TextIO, istream: _t.TextIO) -> str:
         raise OSError("not supported")
 
-    def _flush_input_buffer():
+    def _flush_input_buffer(ostream: _t.TextIO, istream: _t.TextIO):
         raise OSError("not supported")
 
-    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
+    def _enable_vt_processing(ostream: _t.TextIO, istream: _t.TextIO) -> bool:
         raise OSError("not supported")

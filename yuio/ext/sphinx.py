@@ -405,6 +405,7 @@ import yuio
 import yuio.config
 import yuio.json_schema
 import yuio.parse
+import yuio.util
 
 _TYPE_PARSE_RE = re.compile(
     r"""
@@ -846,7 +847,7 @@ class FieldDocumenter(AttributeDocumenter):
         else:
             name = str(enumerator.value)
         if enum_to_dash_case:
-            name = yuio.to_dash_case(name)
+            name = yuio.util.to_dash_case(name)
         self.add_line("   :display-name: " + name, self.get_sourcename())
 
 

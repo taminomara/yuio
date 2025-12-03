@@ -14,14 +14,10 @@ from __future__ import annotations
 
 import re as _re
 import textwrap as _textwrap
-from dataclasses import dataclass
 
 from yuio import _typing as _t
 
 __all__ = [
-    "SecretBase",
-    "SecretBytes",
-    "SecretString",
     "UserString",
     "dedent",
     "to_dash_case",
@@ -399,46 +395,3 @@ class UserString(str):
 
 
 T = _t.TypeVar("T", covariant=True)
-
-
-@dataclass(frozen=True, unsafe_hash=True, slots=True)
-class SecretBase(_t.Generic[T]):
-    """
-    A simple wrapper that prevents inner value from accidentally leaking to logs
-    or messages: it returns ``"***"`` when converted to string via
-    :class:`str() <str>` or :func:`repr`.
-
-    """
-
-    data: T
-    """
-    Secret data.
-
-    """
-
-    def _str(self) -> str:
-        return self._repr()
-
-    def __str__(self) -> str:
-        return self._str()
-
-    def _repr(self) -> str:
-        return "***"
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self._repr()})"
-
-
-@dataclass(frozen=True, unsafe_hash=True, slots=True)
-class SecretString(SecretBase[str]):
-    def _str(self) -> str:
-        return "***"
-
-    def _repr(self) -> str:
-        return "'***'"
-
-
-@dataclass(frozen=True, unsafe_hash=True, slots=True)
-class SecretBytes(SecretBase[str]):
-    def _repr(self) -> str:
-        return "b'***'"

@@ -104,6 +104,8 @@ Pre-defined widgets
 
 .. autoclass:: Input
 
+.. autoclass:: SecretInput
+
 .. autoclass:: Grid
 
 .. autoclass:: Option
@@ -168,6 +170,7 @@ __all__ = [
     "Option",
     "RenderContext",
     "Result",
+    "SecretInput",
     "Text",
     "VerticalLayout",
     "VerticalLayoutBuilder",
@@ -180,11 +183,10 @@ __all__ = [
 _SPACE_BETWEEN_COLUMNS = 2
 _MIN_COLUMN_WIDTH = 10
 
-_UNPRINTABLE_TRANS = str.maketrans(
-    "".join(chr(i) for i in range(32)) + "\x7f", " " * 33
-)
-_UNPRINTABLE_TRANS_NL = _UNPRINTABLE_TRANS.copy()
-del _UNPRINTABLE_TRANS_NL[ord("\n")]
+_UNPRINTABLE = "".join([chr(i) for i in range(32)]) + "\x7f"
+_UNPRINTABLE_TRANS = str.maketrans(_UNPRINTABLE, " " * len(_UNPRINTABLE))
+_UNPRINTABLE_RE = r"[" + re.escape(_UNPRINTABLE) + "]"
+_UNPRINTABLE_RE_WITHOUT_NL = r"[" + re.escape(_UNPRINTABLE.replace("\n", "")) + "]"
 
 
 T = _t.TypeVar("T")
@@ -1372,11 +1374,11 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             raise RuntimeError("terminal doesn't support rendering widgets")
 
         with yuio.term._enter_raw_mode(
-            term.ostream, bracketed_paste=True, modify_keyboard=True
+            term.ostream, term.istream, bracketed_paste=True, modify_keyboard=True
         ):
             rc = RenderContext(term, theme)
 
-            events = _event_stream()
+            events = _event_stream(term.ostream, term.istream)
 
             try:
                 while True:
@@ -2650,13 +2652,17 @@ class Input(Widget[str]):
         In this mode, newlines in pasted text are also preserved.
     :param allow_special_characters:
         If `True`, special characters like tabs or escape symbols are preserved
-        and not replaced with whitespaces. Implies ``allow_multiline``.
+        and not replaced with whitespaces.
 
     """
 
     # Characters that count as word separators, used when navigating input text
     # via hotkeys.
     _WORD_SEPARATORS = string.punctuation + string.whitespace
+
+    # Character that replaces newlines and unprintable characters when
+    # `allow_multiline`/`allow_special_characters` is `False`.
+    _UNPRINTABLE_SUBSTITUTOR = " "
 
     class _CheckpointType(enum.Enum):
         """
@@ -2702,7 +2708,7 @@ class Input(Widget[str]):
         self.__pos: int = len(text) if pos is None else max(0, min(pos, len(text)))
         self.__placeholder: str = placeholder
         self.__decoration: str = decoration
-        self.__allow_multiline: bool = allow_multiline or allow_special_characters
+        self.__allow_multiline: bool = allow_multiline
         self.__allow_special_characters: bool = allow_special_characters
 
         self.__wrapped_text_width: int = 0
@@ -3060,22 +3066,27 @@ class Input(Widget[str]):
         if e.key is Key.PASTE:
             self.__require_checkpoint = True
             s = e.paste_str or ""
-            if self.__allow_special_characters:
+            if self.__allow_special_characters and self.__allow_multiline:
                 pass
             elif self.__allow_multiline:
-                s = s.translate(_UNPRINTABLE_TRANS_NL)
+                s = re.sub(_UNPRINTABLE_RE_WITHOUT_NL, self._UNPRINTABLE_SUBSTITUTOR, s)
+            elif self.__allow_special_characters:
+                s = s.replace("\n", self._UNPRINTABLE_SUBSTITUTOR)
             else:
-                s = s.translate(_UNPRINTABLE_TRANS)
+                s = re.sub(_UNPRINTABLE_RE, self._UNPRINTABLE_SUBSTITUTOR, s)
             self.insert(s)
         elif e.key is Key.TAB:
             if self.__allow_special_characters:
                 self.insert("\t")
             else:
-                self.insert(" ")
+                self.insert(self._UNPRINTABLE_SUBSTITUTOR)
         elif isinstance(e.key, str) and not e.alt and not e.ctrl:
             self.insert(e.key)
 
     def insert(self, s: str):
+        if not s:
+            return
+
         self._internal_checkpoint(
             (
                 Input._CheckpointType.SEP
@@ -3111,12 +3122,10 @@ class Input(Widget[str]):
             # Note: don't use wrap with overflow here
             # or we won't be able to find the cursor position!
             if self.__text:
-                self.__wrapped_text = _ColorizedString(
-                    _replace_special_symbols(
-                        self.__text,
-                        rc.theme.get_color("menu/text/esc:input"),
-                        rc.theme.get_color("menu/text:input"),
-                    )
+                self.__wrapped_text = self._prepare_display_text(
+                    self.__text,
+                    rc.theme.get_color("menu/text/esc:input"),
+                    rc.theme.get_color("menu/text:input"),
                 ).wrap(
                     text_width,
                     preserve_spaces=True,
@@ -3155,6 +3164,11 @@ class Input(Widget[str]):
         if self.__pos_after_wrap is not None:
             rc.set_final_pos(*self.__pos_after_wrap)
 
+    def _prepare_display_text(
+        self, text: str, esc_color: _Color, n_color: _Color
+    ) -> _ColorizedString:
+        return _ColorizedString(_replace_special_symbols(text, esc_color, n_color))
+
     @property
     def help_data(self) -> WidgetHelp:
         if self.__allow_multiline:
@@ -3175,6 +3189,48 @@ class Input(Widget[str]):
             )
         else:
             return super().help_data
+
+
+class SecretInput(Input):
+    """
+    An input box that shows stars instead of entered symbols.
+
+    :param text:
+        initial text.
+    :param pos:
+        initial cursor position, calculated as an offset from beginning of the text.
+        Should be ``0 <= pos <= len(text)``.
+    :param placeholder:
+        placeholder text, shown when input is empty.
+    :param decoration:
+        decoration printed before the input box.
+
+    """
+
+    _WORD_SEPARATORS = ""
+    _UNPRINTABLE_SUBSTITUTOR = ""
+
+    def __init__(
+        self,
+        *,
+        text: str = "",
+        pos: int | None = None,
+        placeholder: str = "",
+        decoration: str = ">",
+    ):
+        super().__init__(
+            text=text,
+            pos=pos,
+            placeholder=placeholder,
+            decoration=decoration,
+            allow_multiline=False,
+            allow_special_characters=False,
+        )
+
+    def _prepare_display_text(
+        self, text: str, esc_color: _Color, n_color: _Color
+    ) -> _ColorizedString:
+        return _ColorizedString("*" * len(text))
 
 
 @dataclass(slots=True)
@@ -4250,11 +4306,13 @@ class Apply(Map[T, T], _t.Generic[T]):
 
 @dataclass(slots=True)
 class _EventStreamState:
+    ostream: _t.TextIO
+    istream: _t.TextIO
     key: str = ""
     index: int = 0
 
     def load(self):
-        self.key = yuio.term._read_keycode()
+        self.key = yuio.term._read_keycode(self.ostream, self.istream)
         self.index = 0
 
     def next(self):
@@ -4272,10 +4330,10 @@ class _EventStreamState:
         return self.key[self.index :]
 
 
-def _event_stream() -> _t.Iterator[KeyboardEvent]:
+def _event_stream(ostream: _t.TextIO, istream: _t.TextIO) -> _t.Iterator[KeyboardEvent]:
     # Implementation is heavily inspired by libtermkey by Paul Evans, MIT license.
 
-    state = _EventStreamState()
+    state = _EventStreamState(ostream, istream)
     while True:
         ch = state.next()
         if not ch:

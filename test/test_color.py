@@ -237,3 +237,56 @@ def test_lerp(colors, coeffs, expect):
 )
 def test_color_operations(color, expect):
     assert color == expect
+
+
+@pytest.mark.parametrize(
+    ("color", "cap", "expect"),
+    [
+        (yuio.color.Color.NONE, yuio.color.ColorSupport.NONE, ""),
+        (yuio.color.Color.NONE, yuio.color.ColorSupport.ANSI, "\x1b[m"),
+        (yuio.color.Color.NONE, yuio.color.ColorSupport.ANSI_256, "\x1b[m"),
+        (yuio.color.Color.NONE, yuio.color.ColorSupport.ANSI_TRUE, "\x1b[m"),
+        (yuio.color.Color.FORE_RED, yuio.color.ColorSupport.NONE, ""),
+        (yuio.color.Color.FORE_RED, yuio.color.ColorSupport.ANSI, "\x1b[;31m"),
+        (yuio.color.Color.FORE_RED, yuio.color.ColorSupport.ANSI_256, "\x1b[;31m"),
+        (yuio.color.Color.FORE_RED, yuio.color.ColorSupport.ANSI_TRUE, "\x1b[;31m"),
+        (yuio.color.Color.BACK_RED, yuio.color.ColorSupport.NONE, ""),
+        (yuio.color.Color.BACK_RED, yuio.color.ColorSupport.ANSI, "\x1b[;41m"),
+        (yuio.color.Color.BACK_RED, yuio.color.ColorSupport.ANSI_256, "\x1b[;41m"),
+        (yuio.color.Color.BACK_RED, yuio.color.ColorSupport.ANSI_TRUE, "\x1b[;41m"),
+        (yuio.color.Color.fore_from_hex("#338F15"), yuio.color.ColorSupport.NONE, ""),
+        (
+            yuio.color.Color.fore_from_hex("#338F15"),
+            yuio.color.ColorSupport.ANSI,
+            "\x1b[;32m",
+        ),
+        (
+            yuio.color.Color.fore_from_hex("#338F15"),
+            yuio.color.ColorSupport.ANSI_256,
+            "\x1b[;38;5;64m",
+        ),
+        (
+            yuio.color.Color.fore_from_hex("#338F15"),
+            yuio.color.ColorSupport.ANSI_TRUE,
+            "\x1b[;38;2;51;143;21m",
+        ),
+        (yuio.color.Color.back_from_hex("#338F15"), yuio.color.ColorSupport.NONE, ""),
+        (
+            yuio.color.Color.back_from_hex("#338F15"),
+            yuio.color.ColorSupport.ANSI,
+            "\x1b[;42m",
+        ),
+        (
+            yuio.color.Color.back_from_hex("#338F15"),
+            yuio.color.ColorSupport.ANSI_256,
+            "\x1b[;48;5;64m",
+        ),
+        (
+            yuio.color.Color.back_from_hex("#338F15"),
+            yuio.color.ColorSupport.ANSI_TRUE,
+            "\x1b[;48;2;51;143;21m",
+        ),
+    ],
+)
+def color_to_code(self, color: yuio.color.Color, cap, expect):
+    assert color.as_code(cap) == expect

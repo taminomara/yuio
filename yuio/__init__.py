@@ -28,6 +28,9 @@ except ImportError:
         "run `pip install -e .` to generate it"
     )
 
+if _t.TYPE_CHECKING:
+    import yuio.string
+
 __all__ = [
     "DISABLED",
     "GROUP",
@@ -37,10 +40,10 @@ __all__ = [
     "Group",
     "Missing",
     "Positional",
+    "PrettyException",
     "YuioWarning",
     "enable_internal_logging",
 ]
-
 
 class _Placeholders(_enum.Enum):
     DISABLED = "<disabled>"
@@ -115,6 +118,73 @@ class YuioWarning(RuntimeWarning):
     Base class for all runtime warnings.
 
     """
+
+
+class PrettyException(Exception):
+    """PrettyException(msg: typing.LiteralString, /, *args: typing.Any)
+    PrettyException(msg: str, /)
+
+    Base class for pretty-printable exceptions.
+
+    :param msg:
+        message to format. Can be a literal string or any other colorable object.
+
+        If it's given as a literal string, additional arguments for ``%``-formatting
+        may be given. Otherwise, giving additional arguments will cause
+        a :class:`TypeError`.
+    :param args:
+        arguments for ``%``-formatting the message.
+    :raises:
+        :class:`TypeError` if ``args`` are given with a non-string ``msg``.
+    :example:
+        .. code-block:: python
+
+        class MyError(yuio.PrettyException):
+            pass
+
+
+        try:
+            ...
+            raise MyError("A formatted <c b>error message</c>")
+            ...
+        except MyError as e:
+            yuio.io.error_with_tb(e)
+
+    """
+
+    @_t.overload
+    def __init__(self, msg: _t.LiteralString, /, *args): ...
+    @_t.overload
+    def __init__(self, msg: yuio.string.Colorable | None = None, /): ...
+    def __init__(self, *args):
+        self.args = args
+
+    def __rich_repr__(self) -> yuio.string.RichReprResult:
+        yield from ((None, arg) for arg in self.args)
+
+    def __str__(self) -> str:
+        return str(self.to_colorable())
+
+    def __colorized_str__(
+        self, ctx: yuio.string.ReprContext
+    ) -> yuio.string.ColorizedString:
+        return ctx.str(self.to_colorable())
+
+    def to_colorable(self) -> yuio.string.Colorable:
+        """
+        Return a colorable object with this exception's message.
+
+        """
+
+        if not self.args:
+            return ""
+        msg, *args = self.args
+        if isinstance(msg, str):
+            import yuio.string
+
+            return yuio.string.Format(_t.cast(_t.LiteralString, msg), *(args or ()))
+        else:
+            return msg
 
 
 _logger = _logging.getLogger("yuio.internal")

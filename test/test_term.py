@@ -94,7 +94,7 @@ class MockIStream(io.StringIO):
     def readlines(self, hint=-1):
         raise RuntimeError("term not supposed to use stream.readlines")
 
-    def read_keycode(self):
+    def read_keycode(self, *_, **__):
         return super().read()
 
 
@@ -125,11 +125,11 @@ def mock_term_io(
     )
     old_is_foreground, yuio.term._is_foreground = (
         yuio.term._is_foreground,
-        lambda _: is_foreground,
+        lambda *_, **__: is_foreground,
     )
     old_is_interactive_input, yuio.term._is_interactive_input = (
         yuio.term._is_interactive_input,
-        lambda _: i_tty,
+        lambda *_, **__: i_tty,
     )
     old_enter_raw_mode, yuio.term._enter_raw_mode = (
         yuio.term._enter_raw_mode,
@@ -137,11 +137,11 @@ def mock_term_io(
     )
     old_enable_vt_processing, yuio.term._enable_vt_processing = (
         yuio.term._enable_vt_processing,
-        lambda ostream: enable_vt_processing,
+        lambda *_, **__: enable_vt_processing,
     )
     old_flush_input_buffer, yuio.term._flush_input_buffer = (
         yuio.term._flush_input_buffer,
-        lambda: None,
+        lambda *_, **__: None,
     )
 
     try:
@@ -642,57 +642,3 @@ def test_capabilities_estimation_windows(kwargs, expected_term):
         term = yuio.term.get_term_from_stream(ostream, istream)
         expected = yuio.term.Term(ostream, istream, **expected_term)
         assert term == expected
-
-
-@pytest.mark.parametrize(
-    ("color", "cap", "expect"),
-    [
-        (yuio.color.Color.NONE, yuio.term.ColorSupport.NONE, ""),
-        (yuio.color.Color.NONE, yuio.term.ColorSupport.ANSI, "\x1b[m"),
-        (yuio.color.Color.NONE, yuio.term.ColorSupport.ANSI_256, "\x1b[m"),
-        (yuio.color.Color.NONE, yuio.term.ColorSupport.ANSI_TRUE, "\x1b[m"),
-        (yuio.color.Color.FORE_RED, yuio.term.ColorSupport.NONE, ""),
-        (yuio.color.Color.FORE_RED, yuio.term.ColorSupport.ANSI, "\x1b[;31m"),
-        (yuio.color.Color.FORE_RED, yuio.term.ColorSupport.ANSI_256, "\x1b[;31m"),
-        (yuio.color.Color.FORE_RED, yuio.term.ColorSupport.ANSI_TRUE, "\x1b[;31m"),
-        (yuio.color.Color.BACK_RED, yuio.term.ColorSupport.NONE, ""),
-        (yuio.color.Color.BACK_RED, yuio.term.ColorSupport.ANSI, "\x1b[;41m"),
-        (yuio.color.Color.BACK_RED, yuio.term.ColorSupport.ANSI_256, "\x1b[;41m"),
-        (yuio.color.Color.BACK_RED, yuio.term.ColorSupport.ANSI_TRUE, "\x1b[;41m"),
-        (yuio.color.Color.fore_from_hex("#338F15"), yuio.term.ColorSupport.NONE, ""),
-        (
-            yuio.color.Color.fore_from_hex("#338F15"),
-            yuio.term.ColorSupport.ANSI,
-            "\x1b[;32m",
-        ),
-        (
-            yuio.color.Color.fore_from_hex("#338F15"),
-            yuio.term.ColorSupport.ANSI_256,
-            "\x1b[;38;5;64m",
-        ),
-        (
-            yuio.color.Color.fore_from_hex("#338F15"),
-            yuio.term.ColorSupport.ANSI_TRUE,
-            "\x1b[;38;2;51;143;21m",
-        ),
-        (yuio.color.Color.back_from_hex("#338F15"), yuio.term.ColorSupport.NONE, ""),
-        (
-            yuio.color.Color.back_from_hex("#338F15"),
-            yuio.term.ColorSupport.ANSI,
-            "\x1b[;42m",
-        ),
-        (
-            yuio.color.Color.back_from_hex("#338F15"),
-            yuio.term.ColorSupport.ANSI_256,
-            "\x1b[;48;5;64m",
-        ),
-        (
-            yuio.color.Color.back_from_hex("#338F15"),
-            yuio.term.ColorSupport.ANSI_TRUE,
-            "\x1b[;48;2;51;143;21m",
-        ),
-    ],
-)
-def color_to_code(self, color: yuio.color.Color, cap, expect):
-    term = yuio.term.Term(None, None, color_support=cap)  # type: ignore
-    assert yuio.term.color_to_code(color, term) == expect

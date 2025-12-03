@@ -378,7 +378,7 @@ def _manager() -> _IoManager:
     return _IO_MANAGER
 
 
-class UserIoError(yuio.string.ColorableBase, IOError):
+class UserIoError(yuio.PrettyException, IOError):
     """
     Raised when interaction with user fails.
 
@@ -492,6 +492,7 @@ def wrap_streams():
 
     if _STREAMS_WRAPPED:
         return
+
     with _IO_LOCK:
         if _STREAMS_WRAPPED:
             return
@@ -518,6 +519,9 @@ def restore_streams():
 
     global _STREAMS_WRAPPED
 
+    if not _STREAMS_WRAPPED:
+        return
+
     with _IO_LOCK:
         if not _STREAMS_WRAPPED:
             return
@@ -539,8 +543,7 @@ def streams_wrapped() -> bool:
 
     """
 
-    with _IO_LOCK:
-        return _STREAMS_WRAPPED
+    return _STREAMS_WRAPPED
 
 
 def orig_stderr() -> _t.TextIO:
@@ -918,6 +921,7 @@ def raw(
     *,
     term: yuio.term.Term | None = None,
     to_stdout: bool = False,
+    to_stderr: bool = False,
     ignore_suspended: bool = False,
     tag: str | None = None,
     exc_info: ExcInfo | bool | None = None,
@@ -934,11 +938,12 @@ def raw(
     :param msg:
         message to print.
     :param term:
-        terminal where to print this message. If not given, ``stdout`` or ``stderr``
-        terminal is used depending on value of ``to_stdout``.
+        terminal where to print this message. If not given, terminal from
+        :func:`get_term` is used.
     :param to_stdout:
-        if ``term`` is not given, and this parameter is :data:`True`, message will be
-        printed to ``stdout``.
+        shortcut for setting ``term`` to ``stdout``.
+    :param to_stderr:
+        shortcut for setting ``term`` to ``stderr``.
     :param ignore_suspended:
         whether to ignore :class:`SuspendOutput` context.
     :param tag:
@@ -964,10 +969,19 @@ def raw(
 
     """
 
+    if (term is not None) + to_stdout + to_stderr > 1:
+        raise TypeError("term, to_stdout, to_stderr can't be given together")
+
     manager = _manager()
 
     theme = manager.theme
-    term = term or (manager.out_term if to_stdout else manager.term)
+    if term is None:
+        if to_stdout:
+            term = manager.out_term
+        elif to_stderr:
+            term = manager.err_term
+        else:
+            term = manager.term
     ctx = yuio.string.ReprContext(theme=theme, max_width=manager.rc.canvas_width)
 
     if tag and (decoration := theme.msg_decorations.get(tag, "")):
@@ -1220,16 +1234,23 @@ def _ask(
         if default_description is None:
             default_description = str(default)
 
-    if get_term().is_fully_interactive:
+    if term.is_fully_interactive:
         # Use widget.
 
         if needs_colon:
             prompt.append_color(base_color)
             prompt.append_str(":")
 
-        widget = _AskWidget(
-            prompt, parser.widget(default, input_description, default_description)
-        )
+        if parser.is_secret():
+            inner_widget = yuio.parse._secret_widget(
+                parser, default, input_description, default_description
+            )
+        else:
+            inner_widget = parser.widget(
+                default, input_description, default_description
+            )
+
+        widget = _AskWidget(prompt, inner_widget)
         with SuspendOutput() as s:
             try:
                 result = widget.run(term, theme)
@@ -1249,10 +1270,11 @@ def _ask(
             prompt.append_color(base_color | theme.get_color("code"))
             prompt.append_str(result_desc)
 
-            s.info(prompt, tag="question")
+            s.info(prompt, tag="question", term=term)
             return result
     else:
         # Use raw input.
+
         prompt += base_color
         if input_description:
             prompt += " ("
@@ -1265,22 +1287,107 @@ def _ask(
             prompt += base_color
             prompt += "]"
         prompt += yuio.string.Esc(": " if needs_colon else " ")
+        if parser.is_secret():
+            do_input = _getpass
+        else:
+            do_input = _read
         with SuspendOutput() as s:
             while True:
                 try:
-                    s.info(prompt, add_newline=False, tag="question")
-                    answer = term.istream.readline().rstrip("\r\n")
+                    answer = do_input(term, prompt)
                 except (OSError, EOFError):
                     raise UserIoError("Unexpected end of input") from None
                 if not answer and default is not yuio.MISSING:
                     return default
                 elif not answer:
-                    s.error("Input is required.")
+                    s.error("Input is required.", term=term)
                 else:
                     try:
                         return parser.parse(answer)
                     except yuio.parse.ParsingError as e:
-                        s.error(e)
+                        s.error(e, term=term)
+
+
+def _read(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+    info(prompt, add_newline=False, tag="question", term=term, ignore_suspended=True)
+    return term.istream.readline().rstrip("\r\n")
+
+
+def _getpass_fallback(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+    warning("Warning: Password input may be echoed.", term=term, ignore_suspended=True)
+    return _read(term, prompt)
+
+
+if os.name == "posix":
+    # Getpass implementation is based on the standard `getpass` module, with a few
+    # Yuio-specific modifications.
+
+    def _getpass(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+        import termios
+
+        try:
+            fd = term.istream.fileno()
+        except (AttributeError, ValueError):
+            # We can't control the tty or stdin. Give up and use normal IO.
+            return _getpass_fallback(term, prompt)
+
+        result: str | None = None
+
+        info(
+            prompt, add_newline=False, tag="question", term=term, ignore_suspended=True
+        )
+
+        try:
+            prev_mode = termios.tcgetattr(fd)
+            new_mode = prev_mode.copy()
+            new_mode[3] &= ~termios.ECHO
+            tcsetattr_flags = termios.TCSAFLUSH | getattr(termios, "TCSASOFT", 0)
+            try:
+                termios.tcsetattr(fd, tcsetattr_flags, new_mode)
+                result = term.istream.readline().rstrip("\r\n")
+            finally:
+                termios.tcsetattr(fd, tcsetattr_flags, prev_mode)
+        except termios.error:
+            if result is not None:
+                # `readline` succeeded, the final `tcsetattr` failed. Reraise instead
+                # of leaving the terminal in an unknown state.
+                raise
+            else:
+                # We can't control the tty or stdin. Give up and use normal IO.
+                return _getpass_fallback(term, prompt)
+
+        assert result is not None
+        return result
+
+elif os.name == "nt":
+
+    def _getpass(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+        import msvcrt
+
+        info(
+            prompt, add_newline=False, tag="question", term=term, ignore_suspended=True
+        )
+
+        result = ""
+        while 1:
+            c = msvcrt.getwch()
+            if c == "\r" or c == "\n":
+                break
+            if c == "\003":
+                raise KeyboardInterrupt
+            if c == "\b":
+                result = result[:-1]
+            else:
+                result = result + c
+        msvcrt.putwch("\r")
+        msvcrt.putwch("\n")
+
+        return result
+
+else:
+
+    def _getpass(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+        return _getpass_fallback(term, prompt)
 
 
 class _WaitForUserWidget(yuio.widget.Widget[None]):
@@ -1323,8 +1430,6 @@ def wait_for_user(
 
     if not term.istream.readable():
         return
-
-    term = get_term()
 
     prompt = yuio.string.colorize(
         msg.rstrip(), *args, default_color="msg/text:question", ctx=theme
@@ -2316,7 +2421,13 @@ class _IoManager(abc.ABC):
         self._out_term = yuio.term.get_term_from_stream(
             orig_stdout(), sys.stdin, query_terminal_theme=False
         )
+        self._err_term = yuio.term.get_term_from_stream(
+            orig_stderr(), sys.stdin, query_terminal_theme=False
+        )
+
         self._term = term or yuio.term.get_term_from_stream(orig_stderr(), sys.stdin)
+
+        self._theme_ctor = theme
         if isinstance(theme, yuio.theme.Theme):
             self._theme = theme
         else:
@@ -2358,6 +2469,10 @@ class _IoManager(abc.ABC):
         return self._out_term
 
     @property
+    def err_term(self):
+        return self._err_term
+
+    @property
     def theme(self):
         return self._theme
 
@@ -2377,7 +2492,11 @@ class _IoManager(abc.ABC):
 
             if term is not None:
                 self._term = term
+                if theme is not None:
+                    # Refresh theme to reflect changed terminal capabilities.
+                    theme = self._theme_ctor
             if theme is not None:
+                self._theme_ctor = theme
                 if isinstance(theme, yuio.theme.Theme):
                     self._theme = theme
                 else:

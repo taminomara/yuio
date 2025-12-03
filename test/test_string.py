@@ -5755,22 +5755,3 @@ class TestHr:
             [NO_WRAP_START, Color.FORE_MAGENTA, "────────────────────", NO_WRAP_END]
         )
         assert str(r) == "────────────────────"
-
-
-class TestColorableBase:
-    def test_simple(self):
-        a = yuio.string.ColorableBase("foo %r bar", "xyz")
-        assert yuio.string.colorized_str(a)._parts == [
-            Color.NONE,
-            "foo ",
-            "'xyz'",
-            " bar",
-        ]
-        assert str(a) == "foo 'xyz' bar"
-        assert repr(a) == "ColorableBase(Format('foo %r bar', 'xyz'))"
-
-    def test_unexpected_args(self):
-        with pytest.raises(
-            TypeError, match=r"non-string type .*? can't have format arguments"
-        ):
-            yuio.string.ColorableBase(yuio.string.Repr("foo"), 1, 2, 3)  # type: ignore

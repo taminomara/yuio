@@ -23,6 +23,9 @@ The primary interface.
    git
       Querying GIT status.
 
+   secret
+      Working with sensitive data.
+
    dbg
       Automated environment collection for bug reports.
 
