@@ -1378,14 +1378,15 @@ class _CompleterSerializer:
 
         return contents
 
-    @dataclass(slots=True)
+    @dataclass
     class ModelBase:
         tag: typing.ClassVar[str] = "-"
 
-        def __init_subclass__(cls, tag: str = "-"):
+        def __init_subclass__(cls, tag: str = "-", **kwargs):
+            super().__init_subclass__(**kwargs)
             cls.tag = tag
 
-    @dataclass(slots=True)
+    @dataclass
     class Model(ModelBase):
         def collect(self, s: _CompleterSerializer):
             compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
@@ -1396,22 +1397,22 @@ class _CompleterSerializer:
             contents = _CompleterSerializer._dump_nested(compspec)
             return [self.tag, str(len(contents)), *contents]
 
-    @dataclass(slots=True)
+    @dataclass
     class File(Model, tag="f"):
         ext: str
 
-    @dataclass(slots=True)
+    @dataclass
     class Dir(Model, tag="d"):
         pass
 
-    @dataclass(slots=True)
+    @dataclass
     class Choice(Model, tag="c"):
         choices: list[str]
 
         def dump(self) -> list[str]:
             return [self.tag, str(len(self.choices)), *self.choices]
 
-    @dataclass(slots=True)
+    @dataclass
     class ChoiceWithDesc(Model, tag="cd"):
         choices: list[tuple[str, str]]
 
@@ -1423,7 +1424,7 @@ class _CompleterSerializer:
                 *[yuio.string.strip_color_tags(c[1]) for c in self.choices],
             ]
 
-    @dataclass(slots=True)
+    @dataclass
     class Git(Model, tag="g"):
         class Mode(enum.Enum):
             Branch = "b"
@@ -1442,29 +1443,29 @@ class _CompleterSerializer:
         def dump(self) -> list[str]:
             return [self.tag, "1", "".join(mode.value for mode in self.modes)]
 
-    @dataclass(slots=True)
+    @dataclass
     class List(Model, tag="l"):
         delim: str
         inner: _CompleterSerializer.Model
 
-    @dataclass(slots=True)
+    @dataclass
     class ListMany(List, tag="lm"):
         pass
 
-    @dataclass(slots=True)
+    @dataclass
     class Tuple(Model, tag="t"):
         delim: str
         inner: list[_CompleterSerializer.Model]
 
-    @dataclass(slots=True)
+    @dataclass
     class TupleMany(Tuple, tag="tm"):
         pass
 
-    @dataclass(slots=True)
+    @dataclass
     class Alternative(Model, tag="a"):
         alternatives: list[tuple[str, _CompleterSerializer.Model]]
 
-    @dataclass(slots=True)
+    @dataclass
     class CustomCompleter(Model, tag="cc"):
         completer: Completer
         _data: str | None = None
