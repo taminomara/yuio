@@ -3469,10 +3469,7 @@ class Tuple(
         assert self.assert_type(value)
 
         delimiter = self.__delimiter or " "
-        desc = [
-            parser.describe_value(item)
-            for parser, item in zip(self._inner, value)
-        ]
+        desc = [parser.describe_value(item) for parser, item in zip(self._inner, value)]
 
         return delimiter.join(desc)
 
@@ -4487,8 +4484,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return [
-            yuio.widget.Option(e, self.describe_value(e))
-            for e in self.__allowed_values
+            yuio.widget.Option(e, self.describe_value(e)) for e in self.__allowed_values
         ]
 
     def completer(self) -> yuio.complete.Completer | None:

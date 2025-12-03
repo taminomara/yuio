@@ -209,6 +209,7 @@ _ExpectStdinRead.__name__ = """<call to stdin.read>"""
 @dataclass
 class _ExpectStdinReadline:
     result: str
+    echo: bool = True
 
     def __str__(self):
         return self.__class__.__name__
@@ -339,7 +340,8 @@ class _KeyboardEventStream:
             _, event = self._next(expected_event_kind=_ExpectStdinReadline)
         except StopIteration:
             raise AssertionError("unexpected call to istream.readline()") from None
-        self.ostream.write(event.result)
+        if event.echo:
+            self.ostream.write(event.result)
         return event.result
 
     def readlines(self, hint: int = -1) -> list[str]:
@@ -544,12 +546,14 @@ class IOMocker:
         self._events.append((self._get_stack_summary(), _ExpectStdinRead(result)))
         return self
 
-    def expect_istream_readline(self, result: str) -> _t.Self:
+    def expect_istream_readline(self, result: str, echo: bool = True) -> _t.Self:
         """
         Expect a call to `istream.readline()` and return the given result from it.
 
         """
-        self._events.append((self._get_stack_summary(), _ExpectStdinReadline(result)))
+        self._events.append(
+            (self._get_stack_summary(), _ExpectStdinReadline(result, echo))
+        )
         return self
 
     def expect_istream_readlines(self, result: list[str]) -> _t.Self:

@@ -1333,10 +1333,6 @@ if os.name == "posix":
 
         result: str | None = None
 
-        info(
-            prompt, add_newline=False, tag="question", term=term, ignore_suspended=True
-        )
-
         try:
             prev_mode = termios.tcgetattr(fd)
             new_mode = prev_mode.copy()
@@ -1344,6 +1340,13 @@ if os.name == "posix":
             tcsetattr_flags = termios.TCSAFLUSH | getattr(termios, "TCSASOFT", 0)
             try:
                 termios.tcsetattr(fd, tcsetattr_flags, new_mode)
+                info(
+                    prompt,
+                    add_newline=False,
+                    tag="question",
+                    term=term,
+                    ignore_suspended=True,
+                )
                 result = term.istream.readline().rstrip("\r\n")
                 term.ostream.write("\n")
                 term.ostream.flush()
@@ -1373,23 +1376,30 @@ elif os.name == "nt":
         result = ""
         while 1:
             c = msvcrt.getwch()
+            if c == "\0" or c == "\xe0":
+                # Read key scan code and ignore it.
+                msvcrt.getwch()
+                continue
             if c == "\r" or c == "\n":
                 break
             if c == "\003":
                 raise KeyboardInterrupt
             if c == "\b":
-                result = result[:-1]
+                if result:
+                    msvcrt.putwch("\b")
+                    msvcrt.putwch(" ")
+                    msvcrt.putwch("\b")
+                    result = result[:-1]
             else:
                 result = result + c
+                msvcrt.putwch("*")
         msvcrt.putwch("\r")
         msvcrt.putwch("\n")
 
         return result
 
 else:
-
-    def _getpass(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
-        return _getpass_fallback(term, prompt)
+    _getpass = _getpass_fallback  # pragma: no cover
 
 
 class _WaitForUserWidget(yuio.widget.Widget[None]):

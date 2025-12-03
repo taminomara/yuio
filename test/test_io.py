@@ -492,6 +492,33 @@ class TestAsk:
                 parser=yuio.parse.List(yuio.parse.Int()),  # type: ignore
             ) == [123, 456]
 
+    def test_secret(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "Enter password:     ",
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.text("123 456")
+        io_mocker.expect_screen(
+            [
+                "Enter password:     ",
+                "> *******           ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.key(yuio.widget.Key.ENTER)
+
+        with io_mocker.mock():
+            assert (
+                yuio.io.ask[yuio.parse.SecretString]("Enter password").data == "123 456"
+            )
+
 
 class TestAskNonInteractive:
     @pytest.fixture
@@ -709,6 +736,204 @@ class TestAskNonInteractive:
                 "Enter some numbers",
                 parser=yuio.parse.List(yuio.parse.Int()),  # type: ignore
             ) == [123, 456]
+
+    @pytest.mark.linux
+    @pytest.mark.darwin
+    def test_secret_fallback(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "Warning: Password   ",
+                "input may be echoed.",
+                "> Enter password:   ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.expect_istream_readline("123 456\n")
+
+        with io_mocker.mock():
+            assert (
+                yuio.io.ask[yuio.parse.SecretString]("Enter password").data == "123 456"
+            )
+
+    @pytest.mark.linux
+    @pytest.mark.darwin
+    def test_secret_unix(
+        self, io_mocker: IOMocker, istream, monkeypatch: pytest.MonkeyPatch
+    ):
+        import termios
+
+        def fileno():
+            return 123
+
+        mode = orig_mode = [0, 0, termios.ECHO, 0, 0, 0, []]
+
+        def tcgetattr(fd):
+            assert fd == 123
+            return mode[:]
+
+        def tcsetattr(fd, flags, new_mode):
+            assert fd == 123
+            nonlocal mode
+            mode = new_mode[:]
+
+        monkeypatch.setattr(istream, "fileno", fileno)
+        monkeypatch.setattr(termios, "tcgetattr", tcgetattr)
+        monkeypatch.setattr(termios, "tcsetattr", tcsetattr)
+
+        io_mocker.expect_screen(
+            [
+                "> Enter password:   ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.expect_eq(lambda: mode[3], 0)
+        io_mocker.expect_istream_readline("123 456\n", echo=False)
+        io_mocker.expect_mark()
+        io_mocker.expect_eq(lambda: mode, orig_mode)
+        io_mocker.expect_screen(
+            [
+                "> Enter password:   ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+
+        with io_mocker.mock():
+            assert (
+                yuio.io.ask[yuio.parse.SecretString]("Enter password").data == "123 456"
+            )
+            io_mocker.mark()
+
+    @pytest.mark.linux
+    @pytest.mark.darwin
+    def test_secret_unix_fallback_if_termios_throws(
+        self, io_mocker: IOMocker, istream, monkeypatch: pytest.MonkeyPatch
+    ):
+        import termios
+
+        def fileno():
+            return 123
+
+        def tcgetattr(fd):
+            assert fd == 123
+            return [0, 0, termios.ECHO, 0, 0, 0, []]
+
+        def tcsetattr(fd, flags, new_mode):
+            assert fd == 123
+            raise termios.error("error")
+
+        monkeypatch.setattr(istream, "fileno", fileno)
+        monkeypatch.setattr(termios, "tcgetattr", tcgetattr)
+        monkeypatch.setattr(termios, "tcsetattr", tcsetattr)
+
+        io_mocker.expect_screen(
+            [
+                "Warning: Password   ",
+                "input may be echoed.",
+                "> Enter password:   ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.expect_istream_readline("123 456\n", echo=False)
+
+        with io_mocker.mock():
+            assert (
+                yuio.io.ask[yuio.parse.SecretString]("Enter password").data == "123 456"
+            )
+
+    @pytest.mark.linux
+    @pytest.mark.darwin
+    def test_secret_unix_raise_if_termios_throws_after_readline(
+        self, io_mocker: IOMocker, istream, monkeypatch: pytest.MonkeyPatch
+    ):
+        import termios
+
+        def fileno():
+            return 123
+
+        mode = orig_mode = [0, 0, termios.ECHO, 0, 0, 0, []]
+        n_calls = 0
+
+        def tcgetattr(fd):
+            assert fd == 123
+            return mode[:]
+
+        def tcsetattr(fd, flags, new_mode):
+            assert fd == 123
+            nonlocal mode, n_calls
+            mode = new_mode[:]
+            if n_calls == 1:
+                raise termios.error("error")
+            n_calls += 1
+
+        monkeypatch.setattr(istream, "fileno", fileno)
+        monkeypatch.setattr(termios, "tcgetattr", tcgetattr)
+        monkeypatch.setattr(termios, "tcsetattr", tcsetattr)
+
+        io_mocker.expect_screen(
+            [
+                "> Enter password:   ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.expect_eq(lambda: mode[3], 0)
+        io_mocker.expect_istream_readline("123 456\n", echo=False)
+
+        with io_mocker.mock(), pytest.raises(termios.error, match=r"^error$"):
+            assert (
+                yuio.io.ask[yuio.parse.SecretString]("Enter password").data == "123 456"
+            )
+
+        assert mode == orig_mode
+
+    @pytest.mark.windows
+    def test_secret_windows(self, io_mocker: IOMocker, monkeypatch: pytest.MonkeyPatch):
+        import msvcrt
+
+        input_str = "X\b\b\basX\bd\0\0dsa\r\n"
+        output_str = ""
+        input_index = 0
+
+        def getwch():
+            nonlocal input_index
+            assert input_index < len(input_str)
+            c = input_str[input_index]
+            input_index += 1
+            return c
+
+        def putwch(c):
+            nonlocal output_str
+            output_str += c
+
+        monkeypatch.setattr(msvcrt, "getwch", getwch)
+        monkeypatch.setattr(msvcrt, "putwch", putwch)
+
+        io_mocker.expect_screen(
+            [
+                "> Enter password:   ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+
+        with io_mocker.mock():
+            assert (
+                yuio.io.ask[yuio.parse.SecretString]("Enter password").data == "asddsa"
+            )
+
+        assert output_str == "*\b \b***\b \b****\r\n"
 
 
 class TestAskUnreadable:

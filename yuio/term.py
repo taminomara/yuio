@@ -627,7 +627,7 @@ if os.name == "posix":
         modify_keyboard: bool = False,
     ):
         prev_mode = termios.tcgetattr(istream)
-        tty.setcbreak(istream, termios.TCSANOW)
+        tty.setcbreak(istream, termios.TCSAFLUSH)
 
         prologue = []
         if bracketed_paste:
@@ -659,8 +659,7 @@ if os.name == "posix":
         return key.decode(istream.encoding, errors="replace")
 
     def _flush_input_buffer(ostream: _t.TextIO, istream: _t.TextIO):
-        while bool(select.select([istream], [], [], 0.001)[0]):
-            os.read(istream.fileno(), 1)
+        pass
 
     def _enable_vt_processing(ostream: _t.TextIO, istream: _t.TextIO) -> bool:
         return False  # This is a windows functionality
