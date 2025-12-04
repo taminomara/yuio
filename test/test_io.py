@@ -1443,7 +1443,7 @@ class TestDetectEditor:
 
 @pytest.mark.linux
 @pytest.mark.darwin
-class TestEdit:
+class TestEditUnix:
     _EDITOR = "echo ' edited' >>"
 
     def test_simple(self, monkeypatch: pytest.MonkeyPatch):
@@ -1462,12 +1462,6 @@ class TestEdit:
     def test_editor_signal(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: "kill -9 $$; cat")
         with pytest.raises(yuio.io.UserIoError, match=r"died with SIGKILL"):
-            assert yuio.io.edit("foobar")
-
-    @pytest.mark.linux
-    def test_editor_unknown_signal(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io.detect_editor", lambda _: "kill -60 $$; cat")
-        with pytest.raises(yuio.io.UserIoError, match=r"died with unknown signal -60"):
             assert yuio.io.edit("foobar")
 
     def test_no_editor(self, monkeypatch: pytest.MonkeyPatch):
@@ -1503,8 +1497,16 @@ class TestEdit:
             yuio.io.edit("foo")
 
 
+@pytest.mark.linux
+class TestEditLinux:
+    def test_editor_unknown_signal(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: "kill -60 $$; cat")
+        with pytest.raises(yuio.io.UserIoError, match=r"died with unknown signal -60"):
+            assert yuio.io.edit("foobar")
+
+
 @pytest.mark.windows
-class TestEditWin:
+class TestEditWindows:
     SCRIPT = textwrap.dedent(
         """
         @echo off
@@ -1514,7 +1516,7 @@ class TestEditWin:
 
     def test_edit(self, tmp_path, monkeypatch):
         script = tmp_path / "edit.bat"
-        script.write_text(TestEditWin.SCRIPT)
+        script.write_text(self.SCRIPT)
 
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: str(script))
         assert yuio.io.edit("foo").strip() == "Edited content"

@@ -479,6 +479,7 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "enable_vt_processing": True,
             },
             {
+                "istream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
@@ -489,6 +490,7 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "o_tty": True,
             },
             {
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
@@ -500,6 +502,7 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "enable_vt_processing": True,
             },
             {
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
@@ -511,6 +514,8 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "o_tty": True,
             },
             {
+                "istream_is_tty": True,
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
@@ -523,6 +528,8 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "enable_vt_processing": True,
             },
             {
+                "istream_is_tty": True,
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
@@ -546,6 +553,7 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "enable_vt_processing": True,
             },
             {
+                "istream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
@@ -558,6 +566,7 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "enable_vt_processing": True,
             },
             {
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.MOVE_CURSOR,
                 "terminal_theme": None,
@@ -572,6 +581,8 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "should_query_osc": True,
             },
             {
+                "istream_is_tty": True,
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": None,  # OSC query got no response
@@ -587,6 +598,8 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "osc_response": "\x1b[?c",
             },
             {
+                "istream_is_tty": True,
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": None,  # kbhit responds, but OSC is not properly supported
@@ -602,6 +615,8 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "osc_response": None,  # default response
             },
             {
+                "istream_is_tty": True,
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": term_colors,  # Got the response!
@@ -616,6 +631,8 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "args": ["--no-color"],
             },
             {
+                "istream_is_tty": True,
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
@@ -630,6 +647,8 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "enable_vt_processing": True,
             },
             {
+                "istream_is_tty": True,
+                "ostream_is_tty": True,
                 "color_support": yuio.term.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
