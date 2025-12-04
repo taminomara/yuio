@@ -19,38 +19,124 @@ class TestSetup:
     @pytest.fixture(autouse=True)
     def setup(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io._IO_MANAGER", None)
+        monkeypatch.setattr("yuio.io._STREAMS_WRAPPED", False)
+        monkeypatch.setattr("yuio.io._ORIG_STDERR", None)
+        monkeypatch.setattr("yuio.io._ORIG_STDOUT", None)
 
-    @pytest.mark.skip(reason="TODO")
-    def test_simple(self):
-        pass
+    def test_implicit(self, monkeypatch: pytest.MonkeyPatch):
+        stdout = io.StringIO()
+        monkeypatch.setattr("sys.stdout", stdout)
 
-    @pytest.mark.skip(reason="TODO")
-    def test_term(self):
-        pass
+        stderr = io.StringIO()
+        monkeypatch.setattr("sys.stderr", stderr)
 
-    @pytest.mark.skip(reason="TODO")
-    def test_theme(self):
-        pass
+        stdin = io.StringIO()
+        monkeypatch.setattr("sys.stdin", stdin)
 
-    @pytest.mark.skip(reason="TODO")
-    def test_theme_callable(self):
-        pass
+        assert yuio.io.get_term().ostream is stderr
+        assert yuio.io.get_term().istream is stdin
 
-    @pytest.mark.skip(reason="TODO")
-    def test_term_theme(self):
-        pass
+        assert yuio.io.orig_stderr() is stderr
+        assert sys.stderr is stderr
+        assert sys.stdin is stdin
+        assert not yuio.io.streams_wrapped()
 
-    @pytest.mark.skip(reason="TODO")
-    def test_term_theme_callable(self):
-        pass
+        yuio.io.info("Foo bar!")
 
-    @pytest.mark.skip(reason="TODO")
-    def test_wrap_streams(self):
-        pass
+        assert stderr.getvalue() == "Foo bar!\n"
 
-    @pytest.mark.skip(reason="TODO")
-    def test_wrap_streams_non_interactive(self):
-        pass
+    def test_term(self, term):
+        yuio.io.setup(term=term)
+        assert yuio.io.get_term() is term
+        assert isinstance(yuio.io.get_theme(), yuio.theme.DefaultTheme)
+
+    def test_theme(self, term):
+        theme = yuio.theme.DefaultTheme(term)
+        yuio.io.setup(theme=theme)
+        assert yuio.io.get_theme() is theme
+
+    def test_theme_callable(self, term):
+        n_called = 0
+        current_theme = None
+        current_term = None
+
+        def theme(term):
+            nonlocal n_called, current_theme, current_term
+            n_called += 1
+            current_theme = yuio.theme.Theme()
+            current_term = term
+            return current_theme
+
+        yuio.io.setup(theme=theme)
+        assert n_called == 1
+        assert yuio.io.get_theme() is current_theme
+        assert yuio.io.get_term() is current_term
+
+        yuio.io.setup(theme=theme)
+        assert n_called == 2
+        assert yuio.io.get_theme() is current_theme
+        assert yuio.io.get_term() is current_term
+
+        yuio.io.setup(term=term)
+        assert n_called == 3
+        assert current_term is term
+        assert yuio.io.get_theme() is current_theme
+        assert yuio.io.get_term() is current_term
+
+    def test_wrap_streams(self, monkeypatch: pytest.MonkeyPatch, ostream):
+        monkeypatch.setattr("sys.stdout", ostream)
+        monkeypatch.setattr("sys.stderr", ostream)
+
+        yuio.io.setup(wrap_stdio=True)
+
+        assert yuio.io.streams_wrapped()
+        assert sys.stdout is not ostream
+        assert getattr(sys.stdout, "_WrappedOutput__wrapped") is ostream
+        assert yuio.io.orig_stderr() is ostream
+        assert sys.stderr is not ostream
+        assert getattr(sys.stderr, "_WrappedOutput__wrapped") is ostream
+        assert yuio.io.orig_stdout() is ostream
+
+        yuio.io.restore_streams()
+        assert not yuio.io.streams_wrapped()
+        assert sys.stdout is ostream
+        assert sys.stderr is ostream
+        assert yuio.io.orig_stdout() is ostream
+        assert yuio.io.orig_stderr() is ostream
+
+        yuio.io.restore_streams()
+        assert not yuio.io.streams_wrapped()
+        assert sys.stdout is ostream
+        assert sys.stderr is ostream
+        assert yuio.io.orig_stdout() is ostream
+        assert yuio.io.orig_stderr() is ostream
+
+    def test_wrap_streams_not_tty(self, monkeypatch: pytest.MonkeyPatch, ostream):
+        monkeypatch.setattr(ostream, "isatty", lambda: False)
+        monkeypatch.setattr("sys.stdout", ostream)
+        monkeypatch.setattr("sys.stderr", ostream)
+
+        yuio.io.setup(wrap_stdio=True)
+
+        assert yuio.io.streams_wrapped()
+        assert sys.stdout is ostream
+        assert yuio.io.orig_stderr() is ostream
+        assert sys.stderr is ostream
+        assert yuio.io.orig_stdout() is ostream
+
+        yuio.io.restore_streams()
+        assert not yuio.io.streams_wrapped()
+        assert sys.stdout is ostream
+        assert sys.stderr is ostream
+        assert yuio.io.orig_stdout() is ostream
+        assert yuio.io.orig_stderr() is ostream
+
+        yuio.io.restore_streams()
+        assert not yuio.io.streams_wrapped()
+        assert sys.stdout is ostream
+        assert sys.stderr is ostream
+        assert yuio.io.orig_stdout() is ostream
+        assert yuio.io.orig_stderr() is ostream
 
 
 class TestMessage:
@@ -170,6 +256,91 @@ class TestMessage:
             ],
         )
 
+    def test_failure(self, ostream: io.StringIO):
+        yuio.io.failure("foo bar!")
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
+            [
+                "foo bar!            ",
+            ],
+            [
+                "RRRRRRRR            ",
+            ],
+        )
+
+    def test_failure_with_tb(
+        self, ostream: io.StringIO, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(
+            "traceback.format_exception", lambda ty, val, tb: [f"{ty.__name__}: {val}"]
+        )
+
+        try:
+            raise RuntimeError("something happened")
+        except RuntimeError:
+            yuio.io.failure_with_tb("foo bar!")
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
+            [
+                "foo bar!            ",
+                "  RuntimeError: some",
+                "thing happened      ",
+            ],
+            [
+                "RRRRRRRR            ",
+                "                    ",
+                "                    ",
+            ],
+        )
+
+    def test_failure_with_tb_manual(
+        self, ostream: io.StringIO, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(
+            "traceback.format_exception", lambda ty, val, tb: [f"{ty.__name__}: {val}"]
+        )
+
+        try:
+            raise RuntimeError("something happened")
+        except RuntimeError as e:
+            yuio.io.failure_with_tb(
+                "foo bar!", exc_info=(TypeError, e, e.__traceback__)
+            )
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
+            [
+                "foo bar!            ",
+                "  TypeError: somethi",
+                "ng happened         ",
+            ],
+            [
+                "RRRRRRRR            ",
+                "                    ",
+                "                    ",
+            ],
+        )
+
+    def test_failure_with_tb_manual_2(
+        self, ostream: io.StringIO, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(
+            "traceback.format_exception", lambda ty, val, tb: [f"{ty.__name__}: {val}"]
+        )
+
+        try:
+            raise RuntimeError("something happened")
+        except RuntimeError as e:
+            yuio.io.failure_with_tb("foo bar!", exc_info=e)
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
+            [
+                "foo bar!            ",
+                "  RuntimeError: some",
+                "thing happened      ",
+            ],
+            [
+                "RRRRRRRR            ",
+                "                    ",
+                "                    ",
+            ],
+        )
+
     def test_success(self, ostream: io.StringIO):
         yuio.io.success("foo bar!")
         assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
@@ -183,12 +354,24 @@ class TestMessage:
 
     def test_heading(self, ostream: io.StringIO):
         yuio.io.heading("foo bar!")
+        yuio.io.heading("foo bar 2!")
+        yuio.io.heading("foo bar 3!", wrap=False)
         assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
             [
                 "⣿ foo bar!          ",
+                "                    ",
+                "⣿ foo bar 2!        ",
+                "                    ",
+                "⣿ foo bar 3!        ",
+                "                    ",
             ],
             [
                 "mm########          ",
+                "                    ",
+                "mm##########        ",
+                "                    ",
+                "mm##########        ",
+                "                    ",
             ],
         )
 
@@ -227,6 +410,43 @@ class TestMessage:
                 "ccc                 ",
             ],
         )
+
+    def test_hr(self, ostream: io.StringIO):
+        yuio.io.hr()
+        yuio.io.hr(weight=2)
+        yuio.io.hr("foo")
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
+            [
+                "────────────────────",
+                "━━━━━━━━━━━━━━━━━━━━",
+                "───────╴foo╶────────",
+            ],
+            [
+                "mmmmmmmmmmmmmmmmmmmm",
+                "mmmmmmmmmmmmmmmmmmmm",
+                "mmmmmmmmcccmmmmmmmmm",
+            ],
+        )
+
+    def test_hl(self, ostream):
+        yuio.io.hl('{"foo": true}', syntax="json")
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
+            [
+                '{"foo": true}       ',
+            ],
+            [
+                "ccccccccccccc       ",
+            ],
+        )
+
+    def test_raw_err(self):
+        with pytest.raises(
+            TypeError, match=r"term, to_stdout, to_stderr can't be given together"
+        ):
+            yuio.io.raw("asd", to_stdout=True, to_stderr=True)
+
+        with pytest.raises(ValueError, match=r"invalid exc_info"):
+            yuio.io.raw("asd", exc_info=(1, 2, 3, 4))  # type: ignore
 
 
 class TestAsk:
@@ -365,6 +585,21 @@ class TestAsk:
 
         with io_mocker.mock():
             assert yuio.io.ask("Q?", default=None) is None
+
+    def test_default_other_type(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "Q?                  ",
+                "> 10                ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.key(yuio.widget.Key.ENTER)
+
+        with io_mocker.mock():
+            assert yuio.io.ask("Q?", default=10) == 10
 
     def test_default_add_colon(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
@@ -625,6 +860,17 @@ class TestAskNonInteractive:
 
         with io_mocker.mock():
             assert yuio.io.ask("Q?", default=None) is None
+
+    def test_default_other_type(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "> Q? [10]           ",
+            ],
+        )
+        io_mocker.expect_istream_readline("\n")
+
+        with io_mocker.mock():
+            assert yuio.io.ask("Q?", default=10) == 10
 
     def test_default_add_colon(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
@@ -935,6 +1181,47 @@ class TestAskNonInteractive:
 
         assert output_str == "*\b \b***\b \b****\r\n"
 
+    @pytest.mark.windows
+    def test_secret_windows_keyboard_interrupt(
+        self, io_mocker: IOMocker, monkeypatch: pytest.MonkeyPatch
+    ):
+        import msvcrt
+
+        input_str = "abc\003"
+        output_str = ""
+        input_index = 0
+
+        def getwch():
+            nonlocal input_index
+            assert input_index < len(input_str)
+            c = input_str[input_index]
+            input_index += 1
+            return c
+
+        def putwch(c):
+            nonlocal output_str
+            output_str += c
+
+        monkeypatch.setattr(msvcrt, "getwch", getwch)
+        monkeypatch.setattr(msvcrt, "putwch", putwch)
+
+        io_mocker.expect_screen(
+            [
+                "> Enter password:   ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+
+        with io_mocker.mock(), pytest.raises(KeyboardInterrupt):
+            assert (
+                yuio.io.ask[yuio.parse.SecretString]("Enter password").data == "asddsa"
+            )
+
+        assert output_str == "***"
+
 
 class TestAskUnreadable:
     @pytest.fixture
@@ -1169,7 +1456,18 @@ class TestEdit:
 
     def test_editor_error(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: "exit 1; cat")
-        with pytest.raises(yuio.io.UserIoError, match=r"Editing failed"):
+        with pytest.raises(yuio.io.UserIoError, match=r"returned exit code 1"):
+            assert yuio.io.edit("foobar")
+
+    def test_editor_signal(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: "kill -9 $$; cat")
+        with pytest.raises(yuio.io.UserIoError, match=r"died with SIGKILL"):
+            assert yuio.io.edit("foobar")
+
+    @pytest.mark.linux
+    def test_editor_unknown_signal(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: "kill -60 $$; cat")
+        with pytest.raises(yuio.io.UserIoError, match=r"died with unknown signal -60"):
             assert yuio.io.edit("foobar")
 
     def test_no_editor(self, monkeypatch: pytest.MonkeyPatch):
@@ -1185,7 +1483,7 @@ class TestEdit:
         )
         assert yuio.io.edit("foo\n#", comment_marker="#") == "foo\n"
 
-    def test_comments_custom_marker(self, monkeypatch: pytest.MonkeyPatch):
+    def test_comments_long_marker(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: self._EDITOR)
         assert (
             yuio.io.edit("// foo\n  # bar\nbaz //", comment_marker="//")
@@ -1193,7 +1491,7 @@ class TestEdit:
         )
         assert yuio.io.edit("foo\n//", comment_marker="//") == "foo\n"
 
-    def test_comments_custom_marker_special_symbols(
+    def test_comments_long_marker_special_symbols(
         self, monkeypatch: pytest.MonkeyPatch
     ):
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: self._EDITOR)
@@ -1220,6 +1518,15 @@ class TestEditWin:
 
         monkeypatch.setattr("yuio.io.detect_editor", lambda _: str(script))
         assert yuio.io.edit("foo").strip() == "Edited content"
+
+    def test_no_editor(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("yuio.io.detect_editor", lambda _: None)
+        with pytest.raises(yuio.io.UserIoError, match=r"Can't find a usable editor"):
+            assert yuio.io.edit("foobar")
+
+    def test_editor_not_found(self):
+        with pytest.raises(yuio.io.UserIoError, match=r"no such file or directory"):
+            yuio.io.edit("foo", editor="/foo/bar")
 
 
 class TestTask:
@@ -2266,15 +2573,6 @@ class TestSuspendOutput:
                 ("Bar.",),
                 [
                     "Bar.                ",
-                ],
-            ),
-            (
-                "heading",
-                ("Bar.",),
-                [
-                    "                    ",
-                    "⣿ Bar.              ",
-                    "                    ",
                 ],
             ),
             (

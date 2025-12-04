@@ -59,6 +59,7 @@ class TestTheme(yuio.theme.Theme):
         "msg/text:heading": "bold",
         "msg/text:question": "blue",
         "msg/text:error": "red",
+        "msg/text:failure": "bold red",
         "msg/text:warning": "yellow",
         "msg/text:success": "green",
         "msg/text:info": "cyan",
@@ -103,6 +104,8 @@ def term(ostream: io.StringIO, istream: _t.TextIO) -> yuio.term.Term:
     return yuio.term.Term(
         ostream,
         istream,
+        ostream_is_tty=True,
+        istream_is_tty=True,
         color_support=yuio.term.ColorSupport.ANSI_TRUE,
         interactive_support=yuio.term.InteractiveSupport.FULL,
     )

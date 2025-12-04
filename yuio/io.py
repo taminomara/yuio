@@ -494,7 +494,7 @@ def wrap_streams():
         return
 
     with _IO_LOCK:
-        if _STREAMS_WRAPPED:
+        if _STREAMS_WRAPPED:  # pragma: no cover
             return
 
         if yuio.term._is_interactive_output(sys.stdout):
@@ -523,7 +523,7 @@ def restore_streams():
         return
 
     with _IO_LOCK:
-        if not _STREAMS_WRAPPED:
+        if not _STREAMS_WRAPPED:  # pragma: no cover
             return
 
         if _ORIG_STDOUT is not None:
@@ -1225,13 +1225,10 @@ def _ask(
     if not input_description:
         input_description = parser.describe()
 
-    if default is not yuio.MISSING:
-        if default_description is None:
-            try:
-                default_description = parser.describe_value(default)
-            except TypeError:
-                pass
-        if default_description is None:
+    if default is not yuio.MISSING and default_description is None:
+        try:
+            default_description = parser.describe_value(default)
+        except TypeError:
             default_description = str(default)
 
     if term.is_fully_interactive:
@@ -1254,7 +1251,7 @@ def _ask(
         with SuspendOutput() as s:
             try:
                 result = widget.run(term, theme)
-            except (OSError, EOFError) as e:
+            except (OSError, EOFError) as e:  # pragma: no cover
                 raise UserIoError("Unexpected end of input") from e
 
             if result is yuio.MISSING:
@@ -1295,8 +1292,8 @@ def _ask(
             while True:
                 try:
                     answer = do_input(term, prompt)
-                except (OSError, EOFError):
-                    raise UserIoError("Unexpected end of input") from None
+                except (OSError, EOFError) as e:  # pragma: no cover
+                    raise UserIoError("Unexpected end of input") from e
                 if not answer and default is not yuio.MISSING:
                     return default
                 elif not answer:
@@ -1455,7 +1452,7 @@ def wait_for_user(
             else:
                 s.info(prompt, add_newline=False, tag="question")
                 term.istream.readline()
-        except (OSError, EOFError):
+        except (OSError, EOFError):  # pragma: no cover
             return
 
 
@@ -1518,7 +1515,10 @@ def edit(
     :param comment_marker:
         lines starting with this marker will be removed from the output after edit.
     :param editor:
-        overrides shell command for editor.
+        overrides editor.
+
+        On unix, this should be a shell command, file path will be appended to it;
+        on windows, this should be an executable path.
     :param file_ext:
         extension for the temporary file, can be used to enable syntax highlighting
         in editors that support it.
@@ -1585,16 +1585,28 @@ def edit(
                     res = subprocess.run(args, shell=shell)
             except FileNotFoundError:
                 raise UserIoError(
-                    "Can't use editor `%r`, ensure that the `$VISUAL` and `$EDITOR` "
-                    "environment variables contain correct shell commands",
+                    "Can't use editor `%r`: no such file or directory",
                     editor,
                 )
 
             if res.returncode != 0:
+                if res.returncode < 0:
+                    import signal
+
+                    try:
+                        action = "died with"
+                        code = signal.Signals(-res.returncode).name
+                    except ValueError:
+                        action = "died with unknown signal"
+                        code = res.returncode
+                else:
+                    action = "returned exit code"
+                    code = res.returncode
                 raise UserIoError(
-                    "Editing failed: editor `%r` returned exit code `%s`",
+                    "Editing failed: editor `%r` %s `%s`",
                     editor,
-                    res.returncode,
+                    action,
+                    code,
                 )
 
             if not os.path.exists(filepath):
@@ -2504,7 +2516,7 @@ class _IoManager(abc.ABC):
 
             if term is not None:
                 self._term = term
-                if theme is not None:
+                if theme is None:
                     # Refresh theme to reflect changed terminal capabilities.
                     theme = self._theme_ctor
             if theme is not None:
@@ -2561,7 +2573,12 @@ class _IoManager(abc.ABC):
                 msg.insert(0, "\n")
             if heading:
                 msg.append("\n")
-            self._emit_lines(msg, term.ostream, ignore_suspended)
+            if term.ostream_is_tty:
+                self._emit_lines(msg, term.ostream, ignore_suspended)
+            else:
+                term.ostream.writelines(msg)
+            if heading:
+                self._printed_some_lines = False
 
     def print_direct(
         self,

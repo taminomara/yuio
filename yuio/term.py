@@ -50,6 +50,7 @@ Utilities
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import enum
 import locale
 import os
@@ -225,19 +226,41 @@ class Term:
 
     """
 
-    color_support: ColorSupport = ColorSupport.NONE
+    ostream_is_tty: bool = dataclasses.field(default=False, kw_only=True)
+    """
+    Output stream is connected to a TTY device, meaning that is goes to a user.
+
+    Output stream being a TTY doesn't necessarily mean that it's interactive.
+    For example, the process can run in background, but still be attached
+    to a terminal.
+
+    Use :attr:`~Term.interactive_support` to check for interactivity level.
+
+    """
+
+    istream_is_tty: bool = dataclasses.field(default=False, kw_only=True)
+    """
+    Input stream is connected to a TTY device, meaning that is goes to a user.
+
+    """
+
+    color_support: ColorSupport = dataclasses.field(
+        default=ColorSupport.NONE, kw_only=True
+    )
     """
     Terminal's capability for coloring output.
 
     """
 
-    interactive_support: InteractiveSupport = InteractiveSupport.NONE
+    interactive_support: InteractiveSupport = dataclasses.field(
+        default=InteractiveSupport.NONE, kw_only=True
+    )
     """
     Terminal's capability for rendering interactive widgets.
 
     """
 
-    terminal_theme: TerminalTheme | None = None
+    terminal_theme: TerminalTheme | None = dataclasses.field(default=None, kw_only=True)
     """
     Terminal's default foreground, background, and text colors.
 
@@ -347,9 +370,14 @@ def get_term_from_stream(
         return Term(
             ostream=ostream,
             istream=istream,
+            ostream_is_tty=True,
+            istream_is_tty=True,
             color_support=ColorSupport.ANSI_TRUE,
             interactive_support=InteractiveSupport.FULL,
         )
+
+    has_interactive_output = _is_interactive_output(ostream)
+    has_interactive_input = _is_interactive_input(istream)
 
     # Note: we don't rely on argparse to parse out flags and send them to us
     # because these functions can be called before parsing arguments.
@@ -358,16 +386,19 @@ def get_term_from_stream(
         or "--no-colors" in sys.argv
         or "--force-no-color" in sys.argv
         or "--force-no-colors" in sys.argv
+        or "NO_COLOR" in os.environ
         or "FORCE_NO_COLOR" in os.environ
         or "FORCE_NO_COLORS" in os.environ
     ):
-        return Term(ostream, istream)
+        return Term(
+            ostream,
+            istream,
+            ostream_is_tty=has_interactive_output,
+            istream_is_tty=has_interactive_input,
+        )
 
     term = os.environ.get("TERM", "").lower()
     colorterm = os.environ.get("COLORTERM", "").lower()
-
-    has_interactive_output = _is_interactive_output(ostream)
-    has_interactive_input = _is_interactive_input(istream)
     is_foreground = _is_foreground(ostream) and _is_foreground(istream)
     in_ci = detect_ci()
     color_support = ColorSupport.NONE
@@ -415,6 +446,8 @@ def get_term_from_stream(
     return Term(
         ostream=ostream,
         istream=istream,
+        ostream_is_tty=has_interactive_output,
+        istream_is_tty=has_interactive_input,
         color_support=color_support,
         interactive_support=interactive_support,
         terminal_theme=theme,
