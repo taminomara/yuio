@@ -1200,17 +1200,17 @@ _PY_SYNTAX = re.compile(
                 | \"""(\\.|[^\\]|\n)*?\"""          # long singly-quoted string
                 | '''(\\.|[^\\]|\n)*?'''))          # long doubly-quoted string
         | (?P<lit>
-                \d+(?:\.\d*(?:e[+-]?\d+)?)?         # int or float
-            | \.\d+(?:e[+-]?\d+)?                   # float that starts with dot
-            | 0x[0-9a-fA-F]+                        # hex
-            | 0b[01]+                               # bin
+              [+-]?\d+(?:\.\d*(?:e[+-]?\d+)?)?      # int or float
+            | [+-]?\.\d+(?:e[+-]?\d+)?              # float that starts with dot
+            | [+-]?0x[0-9a-fA-F]+                   # hex
+            | [+-]?0b[01]+                          # bin
             | \b(?!<\.)(?:None|True|False)\b)       # bool or none
         | (?P<type>
             \b(?:                                   # type
                 str|int|float|complex|list|tuple|range|dict|set|frozenset|bool|
                 bytes|bytearray|memoryview|(?:[A-Z](?:[a-z]\w*)?)
             )\b)
-        | (?P<punct>[{}()\[\]\\;|!&,])              # punctuation
+        | (?P<punct>[{}()\[\]\\;,])                 # punctuation
         | (?P<comment>\#.*$)                        # comment
     """,
     re.MULTILINE | re.VERBOSE,
@@ -1267,10 +1267,10 @@ SyntaxHighlighter.register_highlighter(
                   | \]\])
                 | (?P<a0__punct>(?:^|\|\|?|&&|\$\())        # chaining operator: pipe or logic
                   (?P<a1__>\s*)
-                  (?P<a2__prog>([\w.@/-]|\\.)+)             # prog
+                  (?P<a2__prog>[\w./~]([\w.@/-]|\\.)+)      # prog
                 | (?P<str>
-                    '(?:[.\n]*?)*'                          # singly-quoted string
-                  | "(?:\\.|[^\\"])*")                      # doubly-quoted string
+                      '[^']*'                               # singly-quoted string
+                    | "(?:\\.|[^\\"])*")                    # doubly-quoted string
                 | (?P<punct>
                       [{}()\[\]\\;!&|]                      # punctuation
                     | <{1,3}                                # input redirect
@@ -1293,9 +1293,12 @@ SyntaxHighlighter.register_highlighter(
                     esac|coproc|select|function
                   )\b)
                 | (?P<prog>%\(prog\)s)                      # prog
+                | (?P<a0__punct>(?:^|\|\|?|&&|\$\())        # chaining operator: pipe or logic
+                  (?P<a1__>\s*)
+                  (?P<a2__prog>[\w./~]([\w.@/-]|\\.)+)      # prog
                 | (?P<metavar><[^>]+>)                      # metavar
                 | (?P<str>
-                      '(?:[.\n]*?)*'                        # singly-quoted string
+                      '[^']*'                               # singly-quoted string
                     | "(?:\\.|[^\\"])*")                    # doubly-quoted string
                 | (?P<comment>\#.*$)                        # comment
                 | (?P<flag>(?<![\w-])

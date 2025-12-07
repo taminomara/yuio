@@ -152,6 +152,7 @@ from yuio.string import Esc as _Esc
 from yuio.string import line_width as _line_width
 from yuio.term import Term as _Term
 from yuio.theme import Theme as _Theme
+from yuio.util import _UNPRINTABLE_RE, _UNPRINTABLE_RE_WITHOUT_NL, _UNPRINTABLE_TRANS
 
 __all__ = [
     "Action",
@@ -182,11 +183,6 @@ __all__ = [
 
 _SPACE_BETWEEN_COLUMNS = 2
 _MIN_COLUMN_WIDTH = 10
-
-_UNPRINTABLE = "".join([chr(i) for i in range(32)]) + "\x7f"
-_UNPRINTABLE_TRANS = str.maketrans(_UNPRINTABLE, " " * len(_UNPRINTABLE))
-_UNPRINTABLE_RE = r"[" + re.escape(_UNPRINTABLE) + "]"
-_UNPRINTABLE_RE_WITHOUT_NL = r"[" + re.escape(_UNPRINTABLE.replace("\n", "")) + "]"
 
 
 T = _t.TypeVar("T")
@@ -1799,7 +1795,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         )
 
         # Make sure unsorted actions go first.
-        groups = {"Actions": []}
+        groups = {"Input Format": [], "Actions": []}
 
         groups.update(
             {
@@ -1816,6 +1812,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             }
         )
 
+        if not groups["Input Format"]:
+            del groups["Input Format"]
         if not groups["Actions"]:
             del groups["Actions"]
 
@@ -2373,9 +2371,9 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
         """
 
-        assert len(self._widgets) == len(self.__layouts), (
-            "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
-        )
+        assert len(self._widgets) == len(
+            self.__layouts
+        ), "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
 
         if rc.height <= self.__min_h:
             scale = 0.0
@@ -2734,6 +2732,8 @@ class Input(Widget[str]):
         # text at the position of the cursor.
         self.__yanked_text: str = ""
 
+        self.__err_region: tuple[int, int] | None = None
+
     @property
     def text(self) -> str:
         """
@@ -2748,6 +2748,7 @@ class Input(Widget[str]):
         self.__wrapped_text = None
         if self.pos > len(text):
             self.pos = len(text)
+        self.__err_region = None
 
     @property
     def pos(self) -> int:
@@ -2764,6 +2765,15 @@ class Input(Widget[str]):
     def pos(self, pos: int, /):
         self.__pos = max(0, min(pos, len(self.__text)))
         self.__pos_after_wrap = None
+
+    @property
+    def err_region(self) -> tuple[int, int] | None:
+        return self.__err_region
+
+    @err_region.setter
+    def err_region(self, err_region: tuple[int, int] | None, /):
+        self.__err_region = err_region
+        self.__wrapped_text = None
 
     def checkpoint(self):
         """
@@ -2954,6 +2964,16 @@ class Input(Widget[str]):
             self.pos = next_nl
         self.__require_checkpoint |= checkpoint
 
+    @bind("g", ctrl=True)
+    def go_to_err(self, /, *, checkpoint: bool = True):
+        if not self.__err_region:
+            return
+        if self.pos == self.__err_region[0]:
+            self.pos = self.__err_region[1]
+        else:
+            self.pos = self.__err_region[0]
+        self.__require_checkpoint |= checkpoint
+
     _MODIFY = "Modify"
 
     @bind(Key.BACKSPACE)
@@ -3126,6 +3146,7 @@ class Input(Widget[str]):
                     self.__text,
                     rc.theme.get_color("menu/text/esc:input"),
                     rc.theme.get_color("menu/text:input"),
+                    rc.theme.get_color("menu/text/error:input"),
                 ).wrap(
                     text_width,
                     preserve_spaces=True,
@@ -3165,30 +3186,44 @@ class Input(Widget[str]):
             rc.set_final_pos(*self.__pos_after_wrap)
 
     def _prepare_display_text(
-        self, text: str, esc_color: _Color, n_color: _Color
+        self, text: str, esc_color: _Color, n_color: _Color, err_color: _Color
     ) -> _ColorizedString:
-        return _ColorizedString(_replace_special_symbols(text, esc_color, n_color))
+        res = _ColorizedString()
+        if self.__err_region:
+            start, end = self.__err_region
+            res += _replace_special_symbols(text[:start], esc_color, n_color)
+            res += _replace_special_symbols(text[start:end], esc_color, err_color)
+            res += _replace_special_symbols(text[end:], esc_color, n_color)
+        else:
+            res += _replace_special_symbols(text, esc_color, n_color)
+        return res
 
     @property
     def help_data(self) -> WidgetHelp:
+        help_data = super().help_data
+
         if self.__allow_multiline:
-            return (
-                super()
-                .help_data.with_action(
-                    KeyboardEvent(Key.ENTER, alt=True),
-                    KeyboardEvent("d", ctrl=True),
-                    msg="accept",
-                    prepend=True,
-                )
-                .with_action(
-                    KeyboardEvent(Key.ENTER),
-                    group=self._MODIFY,
-                    long_msg="new line",
-                    prepend=True,
-                )
+            help_data = help_data.with_action(
+                KeyboardEvent(Key.ENTER, alt=True),
+                KeyboardEvent("d", ctrl=True),
+                msg="accept",
+                prepend=True,
+            ).with_action(
+                KeyboardEvent(Key.ENTER),
+                group=self._MODIFY,
+                long_msg="new line",
+                prepend=True,
             )
-        else:
-            return super().help_data
+
+        if self.__err_region:
+            help_data = help_data.with_action(
+                KeyboardEvent("g", ctrl=True),
+                group=self._NAVIGATE,
+                msg="go to error",
+                prepend=True,
+            )
+
+        return help_data
 
 
 class SecretInput(Input):
@@ -3228,7 +3263,7 @@ class SecretInput(Input):
         )
 
     def _prepare_display_text(
-        self, text: str, esc_color: _Color, n_color: _Color
+        self, text: str, esc_color: _Color, n_color: _Color, err_color: _Color
     ) -> _ColorizedString:
         return _ColorizedString("*" * len(text))
 
@@ -4055,6 +4090,35 @@ class InputWithCompletion(Widget[str]):
         self.__layout: VerticalLayout[_t.Never]
         self.__rsuffix: yuio.complete.Completion | None = None
 
+    @property
+    def text(self) -> str:
+        """
+        Current text in the input box.
+
+        """
+
+        return self.__input.text
+
+    @property
+    def pos(self) -> int:
+        """
+        Current cursor position, measured in code points before the cursor.
+
+        That is, if the text is `"quick brown fox"` with cursor right before the word
+        "brown", then :attr:`~Input.pos` is equal to `len("quick ")`.
+
+        """
+
+        return self.__input.pos
+
+    @property
+    def err_region(self) -> tuple[int, int] | None:
+        return self.__input.err_region
+
+    @err_region.setter
+    def err_region(self, err_region: tuple[int, int] | None, /):
+        self.__input.err_region = err_region
+
     @bind(Key.ENTER)
     @bind("d", ctrl=True)
     @help(inline_msg="accept")
@@ -4248,22 +4312,22 @@ class Map(Widget[T], _t.Generic[T, U]):
     """
 
     def __init__(self, inner: Widget[U], fn: _t.Callable[[U], T], /):
-        self.__inner = inner
-        self.__fn = fn
+        self._inner = inner
+        self._fn = fn
 
     def event(self, e: KeyboardEvent, /) -> Result[T] | None:
-        if result := self.__inner.event(e):
-            return Result(self.__fn(result.value))
+        if result := self._inner.event(e):
+            return Result(self._fn(result.value))
 
     def layout(self, rc: RenderContext, /) -> tuple[int, int]:
-        return self.__inner.layout(rc)
+        return self._inner.layout(rc)
 
     def draw(self, rc: RenderContext, /):
-        self.__inner.draw(rc)
+        self._inner.draw(rc)
 
     @property
     def help_data(self) -> WidgetHelp:
-        return self.__inner.help_data
+        return self._inner.help_data
 
 
 class Apply(Map[T, T], _t.Generic[T]):

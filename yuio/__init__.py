@@ -135,8 +135,6 @@ class PrettyException(Exception):
         a :class:`TypeError`.
     :param args:
         arguments for ``%``-formatting the message.
-    :raises:
-        :class:`TypeError` if ``args`` are given with a non-string ``msg``.
     :example:
         .. code-block:: python
 

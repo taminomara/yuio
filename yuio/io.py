@@ -1379,7 +1379,7 @@ elif os.name == "nt":
                 continue
             if c == "\r" or c == "\n":
                 break
-            if c == "\003":
+            if c == "\x03":
                 raise KeyboardInterrupt
             if c == "\b":
                 if result:

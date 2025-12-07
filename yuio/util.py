@@ -23,6 +23,11 @@ __all__ = [
     "to_dash_case",
 ]
 
+_UNPRINTABLE = "".join([chr(i) for i in range(32)]) + "\x7f"
+_UNPRINTABLE_TRANS = str.maketrans(_UNPRINTABLE, " " * len(_UNPRINTABLE))
+_UNPRINTABLE_RE = r"[" + _re.escape(_UNPRINTABLE) + "]"
+_UNPRINTABLE_RE_WITHOUT_NL = r"[" + _re.escape(_UNPRINTABLE.replace("\n", "")) + "]"
+
 _TO_DASH_CASE_RE = _re.compile(
     r"""
       # We will add a dash (bear with me here):

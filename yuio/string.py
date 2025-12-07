@@ -1655,6 +1655,7 @@ class _TextWrapper:
             self.current_line += self.indent
         self.current_line_width: int = self.indent.width
         self.at_line_start: bool = True
+        self.at_line_start_or_indent: bool = True
         self.has_ellipsis: bool = False
         self.needs_space_before_word = False
         self.space_before_word_href = None
@@ -1674,6 +1675,7 @@ class _TextWrapper:
 
         self.current_line_width: int = self.continuation_indent.width
         self.at_line_start = True
+        self.at_line_start_or_indent = True
         self.has_ellipsis = False
         self.nowrap_start_index = None
         self.nowrap_start_width = 0
@@ -1697,6 +1699,11 @@ class _TextWrapper:
         self.current_line.append_color(tail.active_color)
         self.current_line_width += tail_width
 
+    def _append_str(self, s: str):
+        self.current_line.append_str(s)
+        self.at_line_start = False
+        self.at_line_start_or_indent = self.at_line_start_or_indent and s.isspace()
+
     def _append_word(self, word: str, word_width: int):
         if (
             self.overflow is not False
@@ -1717,18 +1724,16 @@ class _TextWrapper:
                 word_head_width += c_width
 
             if word_head_len:
-                self.current_line.append_str(word[:word_head_len])
-                self.at_line_start = False
+                self._append_str(word[:word_head_len])
                 self.has_ellipsis = False
                 self.current_line_width += word_head_width
 
             if self.overflow:
                 self._add_ellipsis()
         else:
-            self.current_line.append_str(word)
+            self._append_str(word)
             self.current_line_width += word_width
             self.has_ellipsis = False
-            self.at_line_start = False
 
     def _append_space(self):
         if self.needs_space_before_word:
@@ -1746,9 +1751,8 @@ class _TextWrapper:
 
         if self.current_line_width + 1 <= self.width:
             # There's enough space on this line to add new ellipsis.
-            self.current_line.append_str(str(self.overflow))
+            self._append_str(str(self.overflow))
             self.current_line_width += 1
-            self.at_line_start = False
             self.has_ellipsis = True
         elif not self.at_line_start:
             # Modify last word on this line, if there is any.
@@ -1874,7 +1878,7 @@ class _TextWrapper:
                         # We need to check that the previous line ended with an
                         # explicit newline, otherwise this is not an indent.
                         or (
-                            self.at_line_start
+                            self.at_line_start_or_indent
                             and (not self.lines or self.lines[-1].explicit_newline)
                         )
                     ):

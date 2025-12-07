@@ -922,15 +922,9 @@ class Config:
 
         """
 
-        try:
-            result = cls.__load_from_env(prefix)
-            result.validate_config()
-            return result
-        except yuio.parse.ParsingError as e:
-            raise yuio.parse.ParsingError(
-                "Failed to load config from environment variables:\n%s",
-                yuio.string.Indent(e),
-            ) from None
+        result = cls.__load_from_env(prefix)
+        result.validate_config()
+        return result
 
     @classmethod
     def __load_from_env(cls, prefix: str = "") -> _t.Self:
@@ -949,7 +943,14 @@ class Config:
                 fields[name] = field.ty.load_from_env(prefix=env)
             elif env in os.environ:
                 assert field.parser is not None
-                fields[name] = field.parser.parse(os.environ[env])
+                try:
+                    fields[name] = field.parser.parse(os.environ[env])
+                except yuio.parse.ParsingError as e:
+                    raise yuio.parse.ParsingError(
+                        "Error when parsing environment variable `%s`:\n%s",
+                        env,
+                        yuio.string.Indent(e),
+                    ) from None
 
         return cls(**fields)
 
@@ -1324,7 +1325,9 @@ class Config:
         """
 
         try:
-            result = cls.__load_from_parsed_file(parsed, ignore_unknown_fields, "")
+            result = cls.__load_from_parsed_file(
+                yuio.parse.ConfigParsingContext(parsed), ignore_unknown_fields, ""
+            )
             result.validate_config()
             return result
         except yuio.parse.ParsingError as e:
@@ -1340,40 +1343,37 @@ class Config:
     @classmethod
     def __load_from_parsed_file(
         cls,
-        parsed: dict[str, object],
+        ctx: yuio.parse.ConfigParsingContext,
         ignore_unknown_fields: bool = False,
         field_prefix: str = "",
     ) -> _t.Self:
-        if not isinstance(parsed, dict):
-            raise TypeError("config should be a dict")
+        value = ctx.value
+
+        if not isinstance(value, dict):
+            raise yuio.parse.ParsingError.type_mismatch(value, dict, ctx=ctx)
 
         fields = {}
 
         if not ignore_unknown_fields:
-            for name in parsed:
+            for name in value:
                 if name not in cls.__get_fields() and name != "$schema":
                     raise yuio.parse.ParsingError(
                         "Unknown field `%s`", f"{field_prefix}{name}"
                     )
 
         for name, field in cls.__get_fields().items():
-            if name in parsed:
+            if name in value:
                 if field.is_subconfig:
                     fields[name] = field.ty.__load_from_parsed_file(
-                        parsed[name], ignore_unknown_fields, field_prefix=name + "."
+                        ctx.descend(value[name], name),
+                        ignore_unknown_fields,
+                        field_prefix=name + ".",
                     )
                 else:
                     assert field.parser is not None
-                    try:
-                        value = field.parser.parse_config(parsed[name])
-                    except yuio.parse.ParsingError as e:
-                        raise yuio.parse.ParsingError(
-                            "Can't parse field `%s%s`:\n%s",
-                            field_prefix,
-                            name,
-                            yuio.string.Indent(e),
-                        ) from None
-                    fields[name] = value
+                    fields[name] = field.parser.parse_config_with_ctx(
+                        ctx.descend(value[name], name)
+                    )
 
         return cls(**fields)
 

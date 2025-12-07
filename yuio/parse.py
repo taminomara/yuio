@@ -48,6 +48,7 @@ which describes parsing API.
     .. automethod:: parse_config
 
 .. autoclass:: ParsingError
+    :members:
 
 
 Value parsers
@@ -94,6 +95,8 @@ Value parsers
 .. autoclass:: Dir
 
 .. autoclass:: GitRepo
+
+.. autoclass:: Secret
 
 
 .. _validating-parsers:
@@ -142,8 +145,6 @@ Auxiliary parsers
 .. autoclass:: Strip
 
 .. autoclass:: WithMeta
-
-.. autoclass:: Secret
 
 
 Deriving parsers from type hints
@@ -209,7 +210,7 @@ on its own because it doesn't have full information about the object's type.
 You can only use partial parsers in type hints::
 
     >>> partial_parser = List(delimiter=",")
-    >>> partial_parser.parse("1,2,3")  # doctest: +ELLIPSIS
+    >>> partial_parser.parse_with_ctx("1,2,3")  # doctest: +ELLIPSIS
     Traceback (most recent call last):
     ...
     TypeError: List requires an inner parser
@@ -227,6 +228,12 @@ However, you can still use them in case you need to.
     :noindex:
 
     .. autoattribute:: __wrapped_parser__
+
+    .. automethod:: parse_with_ctx
+
+    .. automethod:: parse_many_with_ctx
+
+    .. automethod:: parse_config_with_ctx
 
     .. automethod:: get_nargs
 
@@ -362,6 +369,23 @@ must provide appropriate type hints for their ``__new__`` method.
     :members:
 
 
+Parsing contexts
+~~~~~~~~~~~~~~~~
+
+To track location of errors, parsers work with parsing context:
+:class:`StrParsingContext` for parsing raw strings, and :class:`ConfigParsingContext`
+for parsing configs.
+
+When raising a :class:`ParsingError`, pass context to it so that we can show error
+location to the user.
+
+.. autoclass:: StrParsingContext
+    :members:
+
+.. autoclass:: ConfigParsingContext
+    :members:
+
+
 Base classes
 ~~~~~~~~~~~~
 
@@ -422,6 +446,7 @@ import types
 import typing
 
 import yuio
+import yuio.color
 import yuio.complete
 import yuio.json_schema
 import yuio.string
@@ -438,6 +463,7 @@ __all__ = [
     "Bound",
     "CaseFold",
     "CollectionParser",
+    "ConfigParsingContext",
     "Date",
     "DateTime",
     "Decimal",
@@ -479,6 +505,7 @@ __all__ = [
     "SecretValue",
     "Set",
     "Str",
+    "StrParsingContext",
     "Strip",
     "Time",
     "TimeDelta",
@@ -506,16 +533,37 @@ Cmp = _t.TypeVar("Cmp", bound=_t.SupportsLt[_t.Any])
 E = _t.TypeVar("E", bound=enum.Enum)
 TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
+Params = _t.ParamSpec("Params")
 
 
 class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError):
-    """
+    """PrettyException(msg: typing.LiteralString, /, *args: typing.Any, ctx: ConfigParsingContext | StrParsingContext | None = None)
+    PrettyException(msg: str, /, *, ctx: ConfigParsingContext | StrParsingContext | None = None)
+
     Raised when parsing or validation fails.
+
+    :param msg:
+        message to format. Can be a literal string or any other colorable object.
+
+        If it's given as a literal string, additional arguments for ``%``-formatting
+        may be given. Otherwise, giving additional arguments will cause
+        a :class:`TypeError`.
+    :param args:
+        arguments for ``%``-formatting the message.
+    :param ctx:
+        current error context that will be used to set :attr:`~ParsingError.raw`,
+        :attr:`~ParsingError.pos`, and other attributes.
 
     """
 
     @classmethod
-    def type_mismatch(cls, value: _t.Any, /, *expected: type | str):
+    def type_mismatch(
+        cls,
+        value: _t.Any,
+        /,
+        *expected: type | str,
+        ctx: ConfigParsingContext | StrParsingContext | None = None,
+    ):
         """
         Make an error with a standard message "expected type X, got type Y".
 
@@ -524,6 +572,8 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
         :param expected:
             expected types. Each argument can be a type or a string that describes
             a type.
+        :param ctx:
+            current error context.
         :example:
             ::
 
@@ -539,7 +589,104 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
             yuio.string.Or(map(yuio.string.TypeRepr, expected)),
             yuio.string.TypeRepr(type(value)),
             value,
+            ctx=ctx,
         )
+
+    @_t.overload
+    def __init__(
+        self,
+        msg: _t.LiteralString,
+        /,
+        *args,
+        ctx: ConfigParsingContext | StrParsingContext | None = None,
+        raw: str | None = None,
+        pos: tuple[int, int] | None = None,
+        n_arg: int | None = None,
+        path: list[tuple[_t.Any, str | None]] | None = None,
+    ): ...
+    @_t.overload
+    def __init__(
+        self,
+        msg: yuio.string.Colorable | None | yuio.Missing = yuio.MISSING,
+        /,
+        *,
+        ctx: ConfigParsingContext | StrParsingContext | None = None,
+        raw: str | None = None,
+        pos: tuple[int, int] | None = None,
+        n_arg: int | None = None,
+        path: list[tuple[_t.Any, str | None]] | None = None,
+    ): ...
+    def __init__(
+        self,
+        *args,
+        ctx: ConfigParsingContext | StrParsingContext | None = None,
+        raw: str | None = None,
+        pos: tuple[int, int] | None = None,
+        n_arg: int | None = None,
+        path: list[tuple[_t.Any, str | None]] | None = None,
+    ):
+        super().__init__(*args)
+
+        if ctx:
+            if isinstance(ctx, ConfigParsingContext):
+                path = path if path is not None else ctx.make_path()
+            else:
+                raw = raw if raw is not None else ctx.content
+                pos = pos if pos is not None else (ctx.start, ctx.end)
+                n_arg = n_arg if n_arg is not None else ctx.n_arg
+
+        self.raw: str | None = raw
+        """
+        For errors that happened when parsing a string, this attribute contains the
+        original string.
+
+        """
+
+        self.pos: tuple[int, int] | None = pos
+        """
+        For errors that happened when parsing a string, this attribute contains
+        position in the original string in which this error has occurred (start
+        and end indices).
+
+        """
+
+        self.n_arg: int | None = n_arg
+        """
+        For errors that happened in :meth:`~Parser.parse_many`, this attribute contains
+        index of the string in which this error has occurred.
+
+        """
+
+        self.path: list[tuple[_t.Any, str | None]] | None = path
+        """
+        For errors that happened in :meth:`~Parser.parse_config_with_ctx`, this attribute
+        contains path to the value in which this error has occurred.
+
+        """
+
+    def set_ctx(self, ctx: ConfigParsingContext | StrParsingContext):
+        if isinstance(ctx, ConfigParsingContext):
+            self.path = ctx.make_path()
+        else:
+            self.raw = ctx.content
+            self.pos = (ctx.start, ctx.end)
+            self.n_arg = ctx.n_arg
+
+    def to_colorable(self) -> yuio.string.Colorable:
+        colorable = super().to_colorable()
+        if self.path:
+            colorable = yuio.string.Format(
+                "In `%s`:\n%s",
+                _PathRenderer(self.path),
+                yuio.string.Indent(colorable),
+            )
+        if self.pos and self.raw and self.pos != (0, len(self.raw)):
+            raw, pos = _repr_and_adjust_pos(self.raw, self.pos)
+            colorable = yuio.string.Stack(
+                _CodeRenderer(raw, pos),
+                yuio.string.Indent(colorable),
+            )
+        return colorable
 
 
 class PartialParser(abc.ABC):
@@ -562,7 +709,7 @@ class PartialParser(abc.ABC):
 
         """
 
-        return self.__orig_traceback
+        return self.__orig_traceback  # pragma: no cover
 
     @contextlib.contextmanager
     def _patch_stack_summary(self):
@@ -637,7 +784,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
     """
 
-    @abc.abstractmethod
+    @_t.final
     def parse(self, value: str, /) -> T_co:
         """
         Parse user input, raise :class:`ParsingError` on failure.
@@ -651,9 +798,25 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
-        raise NotImplementedError()
+        return self.parse_with_ctx(StrParsingContext(value))
 
     @abc.abstractmethod
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> T_co:
+        """
+        Actual implementation of :meth:`~Parser.parse`, receives parsing context instead
+        of a raw string.
+
+        :param ctx:
+            value to parse, wrapped into a parsing context.
+        :returns:
+            a parsed and processed value.
+        :raises:
+            :class:`ParsingError`.
+
+        """
+
+        raise NotImplementedError()
+
     def parse_many(self, value: _t.Sequence[str], /) -> T_co:
         """
         For collection parsers, parse and validate collection
@@ -682,6 +845,25 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         """
 
+        return self.parse_many_with_ctx(
+            [StrParsingContext(item, n_arg=i) for i, item in enumerate(value)]
+        )
+
+    @abc.abstractmethod
+    def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> T_co:
+        """
+        Actual implementation of :meth:`~Parser.parse_many`, receives parsing contexts
+        instead of a raw strings.
+
+        :param ctxs:
+            values to parse, wrapped into a parsing contexts.
+        :returns:
+            a parsed and processed value.
+        :raises:
+            :class:`ParsingError`.
+
+        """
+
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -697,7 +879,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         raise NotImplementedError()
 
-    @abc.abstractmethod
+    @_t.final
     def parse_config(self, value: object, /) -> T_co:
         """
         Parse value from a config, raise :class:`ParsingError` on failure.
@@ -724,6 +906,23 @@ class Parser(PartialParser, _t.Generic[T_co]):
                 >>> # We can process parsed json:
                 >>> parser.parse_config(user_config)
                 {1, 2, 3}
+
+        """
+
+        return self.parse_config_with_ctx(ConfigParsingContext(value))
+
+    @abc.abstractmethod
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T_co:
+        """
+        Actual implementation of :meth:`~Parser.parse_config`, receives parsing context
+        instead of a raw value.
+
+        :param ctx:
+            config value to parse, wrapped into a parsing contexts.
+        :returns:
+            verified and processed config value.
+        :raises:
+            :class:`ParsingError`.
 
         """
 
@@ -988,8 +1187,8 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
     """
     Base implementation for a parser that returns a single value.
 
-    Implements all method, except for :meth:`~Parser.parse`,
-    :meth:`~Parser.parse_config`, :meth:`~Parser.to_json_schema`,
+    Implements all method, except for :meth:`~Parser.parse_with_ctx`,
+    :meth:`~Parser.parse_config_with_ctx`, :meth:`~Parser.to_json_schema`,
     and :meth:`~Parser.to_json_value`.
 
     :param ty:
@@ -1008,13 +1207,13 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
                 def __init__(self):
                     super().__init__(MyType)
 
-                def parse(self, value: str, /) -> MyType:
-                    return self.parse_config(value)
+                def parse_with_ctx(self, ctx: StrParsingContext, /) -> MyType:
+                    return MyType(ctx.value)
 
-                def parse_config(self, value: object, /) -> MyType:
-                    if not isinstance(value, str):
-                        raise ParsingError.type_mismatch(value, str)
-                    return MyType(value)
+                def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> MyType:
+                    if not isinstance(ctx.value, str):
+                        raise ParsingError.type_mismatch(value, str, ctx=ctx)
+                    return MyType(ctx.value)
 
                 def to_json_schema(
                     self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -1074,7 +1273,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
                 )
         return self
 
-    def parse_many(self, value: _t.Sequence[str], /) -> T:
+    def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> T:
         raise RuntimeError("unable to parse multiple values")
 
     def supports_parse_many(self) -> bool:
@@ -1223,12 +1422,12 @@ class WrappingParser(Parser[T], _t.Generic[T, U]):
 
 class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
     """
-    This is a base abstraction for :class:`Map` and :class:`Optional`.
-    Forwards all calls to the inner parser, except for :meth:`~Parser.parse`,
-    :meth:`~Parser.parse_many`, :meth:`~Parser.parse_config`,
+    This is base abstraction for :class:`Map` and :class:`Optional`.
+    Forwards all calls to the inner parser, except for :meth:`~Parser.parse_with_ctx`,
+    :meth:`~Parser.parse_many_with_ctx`, :meth:`~Parser.parse_config_with_ctx`,
     :meth:`~Parser.options`, :meth:`~Parser.check_type`,
-    :meth:`~Parser.describe_value`, :meth:`~Parser.describe_value`,
-    :meth:`~Parser.widget`, and :meth:`~Parser.to_json_value`.
+    :meth:`~Parser.describe_value`, :meth:`~Parser.widget`,
+    and :meth:`~Parser.to_json_value`.
 
     :param inner:
         mapped parser or :data:`None`.
@@ -1364,27 +1563,37 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
                 f"expected between 1 and 2 positional arguments, got {len(args)}"
             )
 
-        self.__fn = fn
-        self.__rev = rev
+        self._fn = fn
+        self._rev = rev
         super().__init__(inner)
 
-    def parse(self, value: str, /) -> T:
-        return self.__fn(self._inner.parse(value))
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> T:
+        res = self._inner.parse_with_ctx(ctx)
+        try:
+            return self._fn(res)
+        except ParsingError as e:
+            e.set_ctx(ctx)
+            raise
 
-    def parse_many(self, value: _t.Sequence[str], /) -> T:
-        return self.__fn(self._inner.parse_many(value))
+    def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> T:
+        return self._fn(self._inner.parse_many_with_ctx(ctxs))
 
-    def parse_config(self, value: object, /) -> T:
-        return self.__fn(self._inner.parse_config(value))
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T:
+        res = self._inner.parse_config_with_ctx(ctx)
+        try:
+            return self._fn(res)
+        except ParsingError as e:
+            e.set_ctx(ctx)
+            raise
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
-        if self.__rev:
-            value = self.__rev(value)
+        if self._rev:
+            value = self._rev(value)
         return self._inner.check_type(value)
 
     def describe_value(self, value: object, /) -> str:
-        if self.__rev:
-            value = self.__rev(value)
+        if self._rev:
+            value = self._rev(value)
         return self._inner.describe_value(value)
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
@@ -1393,7 +1602,7 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
             return [
                 _t.cast(
                     yuio.widget.Option[T],
-                    dataclasses.replace(option, value=self.__fn(option.value)),
+                    dataclasses.replace(option, value=self._fn(option.value)),
                 )
                 for option in options
             ]
@@ -1409,12 +1618,12 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
     ) -> yuio.widget.Widget[T | yuio.Missing]:
         return yuio.widget.Map(
             self._inner.widget(default, input_description, default_description),
-            lambda v: self.__fn(v) if v is not yuio.MISSING else yuio.MISSING,
+            lambda v: self._fn(v) if v is not yuio.MISSING else yuio.MISSING,
         )
 
     def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
-        if self.__rev:
-            value = self.__rev(value)
+        if self._rev:
+            value = self._rev(value)
         return self._inner.to_json_value(value)
 
 
@@ -1580,22 +1789,30 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
         else:
             raise TypeError(f"expected 1 or 2 positional arguments, got {len(args)}")
 
-        self.__fn = fn
+        self._fn = fn
         super().__init__(inner)
 
-    def parse(self, value: str, /) -> T:
-        result = self._inner.parse(value)
-        self.__fn(result)
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> T:
+        result = self._inner.parse_with_ctx(ctx)
+        try:
+            self._fn(result)
+        except ParsingError as e:
+            e.set_ctx(ctx)
+            raise
         return result
 
-    def parse_many(self, value: _t.Sequence[str], /) -> T:
-        result = self._inner.parse_many(value)
-        self.__fn(result)
+    def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> T:
+        result = self._inner.parse_many_with_ctx(ctxs)
+        self._fn(result)
         return result
 
-    def parse_config(self, value: object, /) -> T:
-        result = self._inner.parse_config(value)
-        self.__fn(result)
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T:
+        result = self._inner.parse_config_with_ctx(ctx)
+        try:
+            self._fn(result)
+        except ParsingError as e:
+            e.set_ctx(ctx)
+            raise
         return result
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
@@ -1619,7 +1836,7 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
     ) -> yuio.widget.Widget[T | yuio.Missing]:
         return yuio.widget.Apply(
             self._inner.widget(default, input_description, default_description),
-            lambda v: self.__fn(v) if v is not yuio.MISSING else None,
+            lambda v: self._fn(v) if v is not yuio.MISSING else None,
         )
 
     def to_json_schema(
@@ -1646,14 +1863,14 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
             class IsLower(ValidatingParser[str]):
                 def _validate(self, value: str, /):
                     if not value.islower():
-                        raise ParsingError("value should be lowercase: `%r`", value)
+                        raise ParsingError("Value should be lowercase: `%r`", value)
 
         ::
 
             >>> IsLower(Str()).parse("Not lowercase!")
             Traceback (most recent call last):
             ...
-            yuio.parse.ParsingError: value should be lowercase: 'Not lowercase!'
+            yuio.parse.ParsingError: Value should be lowercase: 'Not lowercase!'
 
     """
 
@@ -1694,13 +1911,13 @@ class Str(ValueParser[str]):
     def __init__(self):
         super().__init__(str)
 
-    def parse(self, value: str, /) -> str:
-        return value
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> str:
+        return str(ctx.value)
 
-    def parse_config(self, value: object, /) -> str:
-        if not isinstance(value, str):
-            raise ParsingError.type_mismatch(value, str)
-        return value
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> str:
+        if not isinstance(ctx.value, str):
+            raise ParsingError.type_mismatch(ctx.value, str, ctx=ctx)
+        return str(ctx.value)
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -1721,19 +1938,45 @@ class Int(ValueParser[int]):
     def __init__(self):
         super().__init__(int)
 
-    def parse(self, value: str, /) -> int:
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> int:
+        ctx = ctx.strip_if_non_space()
         try:
-            return int(value.strip())
+            value = ctx.value.casefold()
+            if value.startswith("-"):
+                neg = True
+                value = value[1:]
+            else:
+                neg = False
+            if value.startswith("0x"):
+                base = 16
+                value = value[2:]
+            elif value.startswith("0o"):
+                base = 8
+                value = value[2:]
+            elif value.startswith("0b"):
+                base = 2
+                value = value[2:]
+            else:
+                base = 10
+            if value[:1] in "-\n\t\r\v\b ":
+                raise ValueError()
+            res = int(value, base=base)
+            if neg:
+                res = -res
+            return res
         except ValueError:
-            raise ParsingError("Can't parse `%r` as `int`", value) from None
+            raise ParsingError(
+                "Can't parse `%r` as `int`", ctx.value, ctx=ctx
+            ) from None
 
-    def parse_config(self, value: object, /) -> int:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> int:
+        value = ctx.value
         if isinstance(value, float):
             if value != int(value):  # pyright: ignore[reportUnnecessaryComparison]
-                raise ParsingError.type_mismatch(value, int)
+                raise ParsingError.type_mismatch(value, int, ctx=ctx)
             value = int(value)
         if not isinstance(value, int):
-            raise ParsingError.type_mismatch(value, int)
+            raise ParsingError.type_mismatch(value, int, ctx=ctx)
         return value
 
     def to_json_schema(
@@ -1755,15 +1998,19 @@ class Float(ValueParser[float]):
     def __init__(self):
         super().__init__(float)
 
-    def parse(self, value: str, /) -> float:
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> float:
+        ctx = ctx.strip_if_non_space()
         try:
-            return float(value.strip())
+            return float(ctx.value)
         except ValueError:
-            raise ParsingError("Can't parse `%r` as `float`", value) from None
+            raise ParsingError(
+                "Can't parse `%r` as `float`", ctx.value, ctx=ctx
+            ) from None
 
-    def parse_config(self, value: object, /) -> float:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> float:
+        value = ctx.value
         if not isinstance(value, (float, int)):
-            raise ParsingError.type_mismatch(value, float)
+            raise ParsingError.type_mismatch(value, float, ctx=ctx)
         return value
 
     def to_json_schema(
@@ -1785,21 +2032,24 @@ class Bool(ValueParser[bool]):
     def __init__(self):
         super().__init__(bool)
 
-    def parse(self, value: str, /) -> bool:
-        value = value.strip().lower()
-
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> bool:
+        ctx = ctx.strip_if_non_space()
+        value = ctx.value.casefold()
         if value in ("y", "yes", "true", "1"):
             return True
         elif value in ("n", "no", "false", "0"):
             return False
         else:
             raise ParsingError(
-                "Can't parse `%r` as `bool`, should be one of `'yes'`, `'no'`", value
+                "Can't parse `%r` as `bool`, should be one of `'yes'`, `'no'`",
+                value,
+                ctx=ctx,
             )
 
-    def parse_config(self, value: object, /) -> bool:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> bool:
+        value = ctx.value
         if not isinstance(value, bool):
-            raise ParsingError.type_mismatch(value, bool)
+            raise ParsingError.type_mismatch(value, bool, ctx=ctx)
         return value
 
     def describe(self) -> str | None:
@@ -1902,9 +2152,9 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         to_dash_case: bool = False,
         doc_inline: bool = False,
     ):
-        self.__by_name = by_name
-        self.__to_dash_case = to_dash_case
-        self.__doc_inline = doc_inline
+        self._by_name = by_name
+        self._to_dash_case = to_dash_case
+        self._doc_inline = doc_inline
         super().__init__(enum_type, enum_type)
 
     def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
@@ -1914,69 +2164,81 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         return result
 
     @functools.cached_property
-    def __getter(self) -> _t.Callable[[E], str]:
+    def _getter(self) -> _t.Callable[[E], str]:
         items = {}
         for e in self._inner:
-            if self.__by_name:
+            if self._by_name:
                 name = e.name
             else:
                 name = str(e.value)
-            if self.__to_dash_case:
+            if self._to_dash_case:
                 name = _to_dash_case(name)
             items[e] = name
         return lambda e: items[e]
 
     @functools.cached_property
-    def __docs(self) -> dict[str, str]:
+    def _docs(self) -> dict[str, str]:
         return _find_docs(self._inner)
 
-    def parse(self, value: str, /) -> E:
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> E:
+        ctx = ctx.strip_if_non_space()
+        return self._parse(ctx.value, ctx)
+
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> E:
+        value = ctx.value
+
+        if isinstance(value, self._inner):
+            return value
+
+        if not isinstance(value, str):
+            raise ParsingError.type_mismatch(value, str, ctx=ctx)
+
+        result = self._parse(value, ctx)
+
+        if self._getter(result) != value:
+            raise ParsingError(
+                "Can't parse `%r` as `%s`, did you mean `%s`?",
+                value,
+                self._inner.__name__,
+                self._getter(result),
+                ctx=ctx,
+            )
+
+        return result
+
+    def _parse(self, value: str, ctx: ConfigParsingContext | StrParsingContext):
         cf_value = value.strip().casefold()
 
         candidates: list[E] = []
         for item in self._inner:
-            if self.__getter(item) == value:
+            if self._getter(item) == value:
                 return item
-            elif (self.__getter(item)).casefold().startswith(cf_value):
+            elif (self._getter(item)).casefold().startswith(cf_value):
                 candidates.append(item)
 
         if len(candidates) == 1:
             return candidates[0]
         elif len(candidates) > 1:
-            enum_values = tuple(self.__getter(e) for e in candidates)
+            enum_values = tuple(self._getter(e) for e in candidates)
             raise ParsingError(
                 "Can't parse `%r` as `%s`, possible candidates are %s",
                 value,
                 self._inner.__name__,
                 yuio.string.Or(enum_values),
+                ctx=ctx,
             )
         else:
-            enum_values = tuple(self.__getter(e) for e in self._inner)
+            enum_values = tuple(self._getter(e) for e in self._inner)
             raise ParsingError(
                 "Can't parse `%r` as `%s`, should be %s",
                 value,
                 self._inner.__name__,
                 yuio.string.Or(enum_values),
+                ctx=ctx,
             )
-
-    def parse_config(self, value: object, /) -> E:
-        if not isinstance(value, str):
-            raise ParsingError.type_mismatch(value, str)
-
-        result = self.parse(value)
-
-        if self.__getter(result) != value:
-            raise ParsingError(
-                "Can't parse `%r` as `%s`, did you mean `%s`?",
-                value,
-                self._inner.__name__,
-                self.__getter(result),
-            )
-
-        return result
 
     def describe(self) -> str | None:
-        desc = "|".join(self.__getter(e) for e in self._inner)
+        desc = "|".join(self._getter(e) for e in self._inner)
         if len(self._inner) > 1:
             desc = f"{{{desc}}}"
         return desc
@@ -1986,22 +2248,22 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
     def describe_value(self, value: object, /) -> str:
         assert self.assert_type(value)
-        return str(self.__getter(value))
+        return str(self._getter(value))
 
     def options(self) -> _t.Collection[yuio.widget.Option[E]]:
-        docs = self.__docs
+        docs = self._docs
         return [
             yuio.widget.Option(
-                e, display_text=self.__getter(e), comment=docs.get(e.name)
+                e, display_text=self._getter(e), comment=docs.get(e.name)
             )
             for e in self._inner
         ]
 
     def completer(self) -> yuio.complete.Completer | None:
-        docs = self.__docs
+        docs = self._docs
         return yuio.complete.Choice(
             [
-                yuio.complete.Option(self.__getter(e), comment=docs.get(e.name))
+                yuio.complete.Option(self._getter(e), comment=docs.get(e.name))
                 for e in self._inner
             ]
         )
@@ -2030,16 +2292,16 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
-        items = [self.__getter(e) for e in self._inner]
-        docs = self.__docs
+        items = [self._getter(e) for e in self._inner]
+        docs = self._docs
         descriptions = [docs.get(e.name) for e in self._inner]
         if not any(descriptions):
             descriptions = None
-        if self.__doc_inline:
+        if self._doc_inline:
             return yuio.json_schema.Enum(items, descriptions)
         else:
             return ctx.add_type(
-                Enum._TyWrapper(self._inner, self.__by_name, self.__to_dash_case),
+                Enum._TyWrapper(self._inner, self._by_name, self._to_dash_case),
                 _t.type_repr(self._inner),
                 lambda: yuio.json_schema.Meta(
                     yuio.json_schema.Enum(items, descriptions),
@@ -2050,7 +2312,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
     def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
         assert self.assert_type(value)
-        return self.__getter(value)
+        return self._getter(value)
 
     def __repr__(self):
         if self._inner_raw is not None:
@@ -2074,16 +2336,25 @@ class Decimal(ValueParser[decimal.Decimal]):
     def __init__(self):
         super().__init__(decimal.Decimal)
 
-    def parse(self, value: str, /) -> decimal.Decimal:
-        return self.parse_config(value)
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> decimal.Decimal:
+        ctx = ctx.strip_if_non_space()
+        try:
+            return decimal.Decimal(ctx.value)
+        except (ArithmeticError, ValueError, TypeError):
+            raise ParsingError(
+                "Can't parse `%r` as `decimal`", ctx.value, ctx=ctx
+            ) from None
 
-    def parse_config(self, value: object, /) -> decimal.Decimal:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> decimal.Decimal:
+        value = ctx.value
         if not isinstance(value, (int, float, str, decimal.Decimal)):
-            raise ParsingError.type_mismatch(value, int, float, str)
+            raise ParsingError.type_mismatch(value, int, float, str, ctx=ctx)
         try:
             return decimal.Decimal(value)
         except (ArithmeticError, ValueError, TypeError):
-            raise ParsingError("Can't parse `%r` as `decimal`", value) from None
+            raise ParsingError(
+                "Can't parse `%r` as `decimal`", value, ctx=ctx
+            ) from None
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2119,10 +2390,21 @@ class Fraction(ValueParser[fractions.Fraction]):
     def __init__(self):
         super().__init__(fractions.Fraction)
 
-    def parse(self, value: str, /) -> fractions.Fraction:
-        return self.parse_config(value)
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> fractions.Fraction:
+        ctx = ctx.strip_if_non_space()
+        try:
+            return fractions.Fraction(ctx.value)
+        except ValueError:
+            raise ParsingError(
+                "Can't parse `%r` as `fraction`", ctx.value, ctx=ctx
+            ) from None
+        except ZeroDivisionError:
+            raise ParsingError(
+                "Can't parse `%r` as `fraction`, division by zero", ctx.value, ctx=ctx
+            ) from None
 
-    def parse_config(self, value: object, /) -> fractions.Fraction:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> fractions.Fraction:
+        value = ctx.value
         if (
             isinstance(value, (list, tuple))
             and len(value) == 2
@@ -2132,28 +2414,29 @@ class Fraction(ValueParser[fractions.Fraction]):
                 return fractions.Fraction(*value)
             except ValueError:
                 raise ParsingError(
-                    "Can't parse `%s/%s` as `fraction`", value[0], value[1]
+                    "Can't parse `%s/%s` as `fraction`", value[0], value[1], ctx=ctx
                 ) from None
             except ZeroDivisionError:
                 raise ParsingError(
                     "Can't parse `%s/%s` as `fraction`, division by zero",
                     value[0],
                     value[1],
+                    ctx=ctx,
                 ) from None
         if isinstance(value, (int, float, str, decimal.Decimal, fractions.Fraction)):
             try:
                 return fractions.Fraction(value)
             except ValueError:
                 raise ParsingError(
-                    "Can't parse `%r` as `fraction`",
-                    value,
+                    "Can't parse `%r` as `fraction`", value, ctx=ctx
                 ) from None
             except ZeroDivisionError:
                 raise ParsingError(
-                    "Can't parse `%r` as `fraction`, division by zero",
-                    value,
+                    "Can't parse `%r` as `fraction`, division by zero", value, ctx=ctx
                 ) from None
-        raise ParsingError.type_mismatch(value, int, float, str, "a tuple of two ints")
+        raise ParsingError.type_mismatch(
+            value, int, float, str, "a tuple of two ints", ctx=ctx
+        )
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2190,7 +2473,7 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
 
     This parser will load JSON strings into python objects.
     If ``inner`` parser is given, :class:`Json` will validate parsing results
-    by calling :meth:`~Parser.parse_config` on the inner parser.
+    by calling :meth:`~Parser.parse_config_with_ctx` on the inner parser.
 
     :param inner:
         a parser used to convert and validate contents of json.
@@ -2218,20 +2501,26 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
         self._inner = parser
         return self
 
-    def parse(self, value: str) -> T:
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> T:
+        ctx = ctx.strip_if_non_space()
         try:
-            config_value = json.loads(value)
+            config_value: JsonValue = json.loads(ctx.value)
         except json.JSONDecodeError as e:
             raise ParsingError(
-                "Can't parse `%r` as `JsonValue`: %s", value, e
+                "Can't parse `%r` as `JsonValue`: %s", ctx.value, e, ctx=ctx
             ) from None
-        return self.parse_config(config_value)
+        try:
+            return self.parse_config_with_ctx(ConfigParsingContext(config_value))
+        except ParsingError as e:
+            raise ParsingError(
+                "Error in parsed json value:\n%s", yuio.string.Indent(e), ctx=ctx
+            ) from None
 
-    def parse_config(self, value: object) -> T:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T:
         if self._inner_raw is not None:
-            return self._inner_raw.parse_config(value)
+            return self._inner_raw.parse_config_with_ctx(ctx)
         else:
-            return _t.cast(T, value)
+            return _t.cast(T, ctx.value)
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         if self._inner_raw is not None:
@@ -2269,19 +2558,27 @@ class DateTime(ValueParser[datetime.datetime]):
     def __init__(self):
         super().__init__(datetime.datetime)
 
-    def parse(self, value: str, /) -> datetime.datetime:
-        try:
-            return datetime.datetime.fromisoformat(value)
-        except ValueError:
-            raise ParsingError("Can't parse `%r` as `datetime`", value) from None
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> datetime.datetime:
+        ctx = ctx.strip_if_non_space()
+        return self._parse(ctx.value, ctx)
 
-    def parse_config(self, value: object, /) -> datetime.datetime:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> datetime.datetime:
+        value = ctx.value
         if isinstance(value, datetime.datetime):
             return value
         elif isinstance(value, str):
-            return self.parse(value)
+            return self._parse(value, ctx)
         else:
-            raise ParsingError.type_mismatch(value, str)
+            raise ParsingError.type_mismatch(value, str, ctx=ctx)
+
+    @staticmethod
+    def _parse(value: str, ctx: ConfigParsingContext | StrParsingContext):
+        try:
+            return datetime.datetime.fromisoformat(value)
+        except ValueError:
+            raise ParsingError(
+                "Can't parse `%r` as `datetime`", value, ctx=ctx
+            ) from None
 
     def describe(self) -> str | None:
         return "YYYY-MM-DD[ HH:MM:SS]"
@@ -2329,21 +2626,27 @@ class Date(ValueParser[datetime.date]):
     def __init__(self):
         super().__init__(datetime.date)
 
-    def parse(self, value: str, /) -> datetime.date:
-        try:
-            return datetime.date.fromisoformat(value)
-        except ValueError:
-            raise ParsingError("Can't parse `%r` as `date`", value) from None
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> datetime.date:
+        ctx = ctx.strip_if_non_space()
+        return self._parse(ctx.value, ctx)
 
-    def parse_config(self, value: object, /) -> datetime.date:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> datetime.date:
+        value = ctx.value
         if isinstance(value, datetime.datetime):
             return value.date()
         elif isinstance(value, datetime.date):
             return value
         elif isinstance(value, str):
-            return self.parse(value)
+            return self._parse(value, ctx)
         else:
-            raise ParsingError.type_mismatch(value, str)
+            raise ParsingError.type_mismatch(value, str, ctx=ctx)
+
+    @staticmethod
+    def _parse(value: str, ctx: ConfigParsingContext | StrParsingContext):
+        try:
+            return datetime.date.fromisoformat(value)
+        except ValueError:
+            raise ParsingError("Can't parse `%r` as `date`", value, ctx=ctx) from None
 
     def describe(self) -> str | None:
         return "YYYY-MM-DD"
@@ -2386,21 +2689,27 @@ class Time(ValueParser[datetime.time]):
     def __init__(self):
         super().__init__(datetime.time)
 
-    def parse(self, value: str, /) -> datetime.time:
-        try:
-            return datetime.time.fromisoformat(value)
-        except ValueError:
-            raise ParsingError("Can't parse `%r` as `time`", value) from None
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> datetime.time:
+        ctx = ctx.strip_if_non_space()
+        return self._parse(ctx.value, ctx)
 
-    def parse_config(self, value: object, /) -> datetime.time:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> datetime.time:
+        value = ctx.value
         if isinstance(value, datetime.datetime):
             return value.time()
         elif isinstance(value, datetime.time):
             return value
         elif isinstance(value, str):
-            return self.parse(value)
+            return self._parse(value, ctx)
         else:
-            raise ParsingError.type_mismatch(value, str)
+            raise ParsingError.type_mismatch(value, str, ctx=ctx)
+
+    @staticmethod
+    def _parse(value: str, ctx: ConfigParsingContext | StrParsingContext):
+        try:
+            return datetime.time.fromisoformat(value)
+        except ValueError:
+            raise ParsingError("Can't parse `%r` as `time`", value, ctx=ctx) from None
 
     def describe(self) -> str | None:
         return "HH:MM:SS"
@@ -2466,18 +2775,36 @@ class TimeDelta(ValueParser[datetime.timedelta]):
     def __init__(self):
         super().__init__(datetime.timedelta)
 
-    def parse(self, value: str, /) -> datetime.timedelta:
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> datetime.timedelta:
+        ctx = ctx.strip_if_non_space()
+        return self._parse(ctx.value, ctx)
+
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> datetime.timedelta:
+        value = ctx.value
+        if isinstance(value, datetime.timedelta):
+            return value
+        elif isinstance(value, str):
+            return self._parse(value, ctx)
+        else:
+            raise ParsingError.type_mismatch(value, str, ctx=ctx)
+
+    @staticmethod
+    def _parse(value: str, ctx: ConfigParsingContext | StrParsingContext):
         value = value.strip()
 
         if not value:
-            raise ParsingError("Got an empty `timedelta`")
+            raise ParsingError("Got an empty `timedelta`", ctx=ctx)
         if value.endswith(","):
             raise ParsingError(
-                "Can't parse `%r` as `timedelta`, trailing coma is not allowed", value
+                "Can't parse `%r` as `timedelta`, trailing coma is not allowed",
+                value,
+                ctx=ctx,
             )
         if value.startswith(","):
             raise ParsingError(
-                "Can't parse `%r` as `timedelta`, leading coma is not allowed", value
+                "Can't parse `%r` as `timedelta`, leading coma is not allowed",
+                value,
+                ctx=ctx,
             )
 
         if match := _TIMEDELTA_RE.match(value):
@@ -2492,7 +2819,7 @@ class TimeDelta(ValueParser[datetime.timedelta]):
                 microsecond,
             ) = match.groups()
         else:
-            raise ParsingError("Can't parse `%r` as `timedelta`", value)
+            raise ParsingError("Can't parse `%r` as `timedelta`", value, ctx=ctx)
 
         c_sign_s = -1 if c_sign_s == "-" else 1
         t_sign_s = -1 if t_sign_s == "-" else 1
@@ -2508,6 +2835,7 @@ class TimeDelta(ValueParser[datetime.timedelta]):
                         "Can't parse `%r` as `timedelta`, unknown unit `%r`",
                         value,
                         unit,
+                        ctx=ctx,
                     )
 
         timedelta = c_sign_s * datetime.timedelta(**kwargs)
@@ -2521,14 +2849,6 @@ class TimeDelta(ValueParser[datetime.timedelta]):
         )
 
         return timedelta
-
-    def parse_config(self, value: object, /) -> datetime.timedelta:
-        if isinstance(value, datetime.timedelta):
-            return value
-        elif isinstance(value, str):
-            return self.parse(value)
-        else:
-            raise ParsingError.type_mismatch(value, str)
 
     def describe(self) -> str | None:
         return "[+|-]HH:MM:SS"
@@ -2580,40 +2900,49 @@ class Path(ValueParser[pathlib.Path]):
         *,
         extensions: str | _t.Collection[str] | None = None,
     ):
-        self.__extensions = [extensions] if isinstance(extensions, str) else extensions
+        self._extensions = [extensions] if isinstance(extensions, str) else extensions
         super().__init__(pathlib.Path)
 
-    def parse(self, value: str, /) -> pathlib.Path:
-        path = pathlib.Path(value).expanduser().resolve().absolute()
-        self._validate(path)
-        return path
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> pathlib.Path:
+        ctx = ctx.strip_if_non_space()
+        return self._parse(ctx.value, ctx)
 
-    def parse_config(self, value: object, /) -> pathlib.Path:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> pathlib.Path:
+        value = ctx.value
         if not isinstance(value, str):
-            raise ParsingError.type_mismatch(value, str)
-        return self.parse(value)
+            raise ParsingError.type_mismatch(value, str, ctx=ctx)
+        return self._parse(value, ctx)
+
+    def _parse(self, value: str, ctx: ConfigParsingContext | StrParsingContext):
+        res = pathlib.Path(value).expanduser().resolve().absolute()
+        try:
+            self._validate(res)
+        except ParsingError as e:
+            e.set_ctx(ctx)
+            raise
+        return res
 
     def describe(self) -> str | None:
-        if self.__extensions is not None:
-            desc = "|".join(f"<*{e}>" for e in self.__extensions)
-            if len(self.__extensions) > 1:
+        if self._extensions is not None:
+            desc = "|".join(f"<*{e}>" for e in self._extensions)
+            if len(self._extensions) > 1:
                 desc = f"{{{desc}}}"
             return desc
         else:
             return super().describe()
 
     def _validate(self, value: pathlib.Path, /):
-        if self.__extensions is not None and not any(
-            value.name.endswith(ext) for ext in self.__extensions
+        if self._extensions is not None and not any(
+            value.name.endswith(ext) for ext in self._extensions
         ):
             raise ParsingError(
                 "<c path>%s</c> should have extension %s",
                 value,
-                yuio.string.Or(self.__extensions),
+                yuio.string.Or(self._extensions),
             )
 
     def completer(self) -> yuio.complete.Completer | None:
-        return yuio.complete.File(extensions=self.__extensions)
+        return yuio.complete.File(extensions=self._extensions)
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -2710,7 +3039,8 @@ class GitRepo(Dir):
 
 
 class Secret(Map[SecretValue[T], T], _t.Generic[T]):
-    """
+    """Secret(inner: Parser[U], /)
+
     Wraps result of the inner parser into :class:`~yuio.secret.SecretValue`
     and ensures that :func:`yuio.io.ask` doesn't show value as user enters it.
 
@@ -2729,29 +3059,52 @@ class Secret(Map[SecretValue[T], T], _t.Generic[T]):
     def __init__(self, inner: Parser[U] | None = None, /):
         super().__init__(inner, SecretValue, lambda x: x.data)
 
-    def parse(self, value: str) -> SecretValue[T]:
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> SecretValue[T]:
         try:
-            return super().parse(value)
-        except ParsingError:
+            return super().parse_with_ctx(ctx)
+        except ParsingError as e:
             # Error messages can contain secret value, hide them.
-            raise ParsingError("Error when parsing secret data")
+            raise ParsingError(
+                "Error when parsing secret data",
+                pos=e.pos,
+                path=e.path,
+                n_arg=e.n_arg,
+                # Omit raw value.
+            ) from None
 
-    def parse_many(self, value: _t.Sequence[str]) -> SecretValue[T]:
+    def parse_many_with_ctx(
+        self, ctxs: _t.Sequence[StrParsingContext], /
+    ) -> SecretValue[T]:
         try:
-            return super().parse_many(value)
-        except ParsingError:
+            return super().parse_many_with_ctx(ctxs)
+        except ParsingError as e:
             # Error messages can contain secret value, hide them.
-            raise ParsingError("Error when parsing secret data")
+            raise ParsingError(
+                "Error when parsing secret data",
+                pos=e.pos,
+                path=e.path,
+                n_arg=e.n_arg,
+                # Omit raw value.
+            ) from None
 
-    def parse_config(self, value: object) -> SecretValue[T]:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> SecretValue[T]:
         try:
-            return super().parse_config(value)
-        except ParsingError:
+            return super().parse_config_with_ctx(ctx)
+        except ParsingError as e:
             # Error messages can contain secret value, hide them.
-            raise ParsingError("Error when parsing secret data")
+            raise ParsingError(
+                "Error when parsing secret data",
+                pos=e.pos,
+                path=e.path,
+                n_arg=e.n_arg,
+                # Omit raw value.
+            ) from None
 
     def describe_value(self, value: object, /) -> str:
         return "***"
+
+    def completer(self) -> yuio.complete.Completer | None:
+        return None
 
     def widget(
         self,
@@ -2769,7 +3122,7 @@ class Secret(Map[SecretValue[T], T], _t.Generic[T]):
 class CollectionParser(
     WrappingParser[C, Parser[T]], ValueParser[C], PartialParser, _t.Generic[C, T]
 ):
-    """CollectionParser(inner: Parser[T] | None, /, *, ty: type[C], ctor: typing.Callable[[typing.Iterable[T]], C], iter: typing.Callable[[C], typing.Iterable[T]] = iter, config_type: type[C2] | tuple[type[C2], ...] = list, config_type_iter: typing.Callable[[C2], typing.Iterable[T]] = iter, delimiter: str | None = None)
+    """CollectionParser(inner: Parser[T] | None, /, **kwargs)
 
     A base class for implementing collection parsing. It will split a string
     by the given delimiter, parse each item using a subparser, and then pass
@@ -2801,7 +3154,7 @@ class CollectionParser(
     For example, let's implement a :class:`list` parser
     that repeats each element twice:
 
-    .. code-block::
+    .. code-block:: python
 
         from typing import Iterable, Generic
 
@@ -2815,6 +3168,18 @@ class CollectionParser(
 
             def to_json_schema(self, ctx: yuio.json_schema.JsonSchemaContext, /) -> yuio.json_schema.JsonSchemaType:
                 return {"type": "array", "items": self._inner.to_json_schema(ctx)}
+
+            def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+                assert self.assert_type(value)
+                return [self._inner.to_json_value(item) for item in value[::2]]
+
+    ::
+
+        >>> parser = DoubleList(Int())
+        >>> parser.parse("1 2 3")
+        [1, 1, 2, 2, 3, 3]
+        >>> parser.to_json_value([1, 1, 2, 2, 3, 3])
+        [1, 2, 3]
 
     """
 
@@ -2841,15 +3206,10 @@ class CollectionParser(
 
         #: See class parameters for more details.
         self._ty = ty
-        #: See class parameters for more details.
         self._ctor = ctor
-        #: See class parameters for more details.
         self._iter = iter
-        #: See class parameters for more details.
         self._config_type = config_type
-        #: See class parameters for more details.
         self._config_type_iter = config_type_iter
-        #: See class parameters for more details.
         self._delimiter = delimiter
 
         super().__init__(inner, ty)
@@ -2859,24 +3219,28 @@ class CollectionParser(
         result._inner = parser._inner  # type: ignore
         return result
 
-    def parse(self, value: str, /) -> C:
-        return self.parse_many(value.split(self._delimiter))
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> C:
+        return self._ctor(
+            self._inner.parse_with_ctx(item) for item in ctx.split(self._delimiter)
+        )
 
-    def parse_many(self, value: _t.Sequence[str], /) -> C:
-        return self._ctor(self._inner.parse(item) for item in value)
+    def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> C:
+        return self._ctor(self._inner.parse_with_ctx(item) for item in ctxs)
 
     def supports_parse_many(self) -> bool:
         return True
 
-    def parse_config(self, value: object, /) -> C:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> C:
+        value = ctx.value
         if not isinstance(value, self._config_type):
             expected = self._config_type
             if not isinstance(expected, tuple):
                 expected = (expected,)
-            raise ParsingError.type_mismatch(value, *expected)
+            raise ParsingError.type_mismatch(value, *expected, ctx=ctx)
 
         return self._ctor(
-            self._inner.parse_config(item) for item in self._config_type_iter(value)
+            self._inner.parse_config_with_ctx(ctx.descend(item, i))
+            for i, item in enumerate(self._config_type_iter(value))
         )
 
     def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
@@ -3160,9 +3524,13 @@ class Dict(CollectionParser[dict[K, V], tuple[K, V]], _t.Generic[K, V]):
         delimiter: str | None = None,
         pair_delimiter: str = ":",
     ):
-        self.__pair_delimiter = pair_delimiter
+        self._pair_delimiter = pair_delimiter
         super().__init__(
-            Tuple(key, value, delimiter=pair_delimiter) if key and value else None,
+            (
+                _DictElementParser(key, value, delimiter=pair_delimiter)
+                if key and value
+                else None
+            ),
             ty=dict,
             ctor=dict,
             iter=dict.items,
@@ -3173,7 +3541,7 @@ class Dict(CollectionParser[dict[K, V], tuple[K, V]], _t.Generic[K, V]):
 
     def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         result = super().wrap(parser)
-        setattr(result._inner, "_Tuple__delimiter", self.__pair_delimiter)
+        setattr(result._inner, "_delimiter", self._pair_delimiter)
         return result
 
     @staticmethod
@@ -3209,7 +3577,7 @@ class Tuple(
     PartialParser,
     _t.Generic[TU],
 ):
-    """Tuple(*parsers: Parser[T], delimiter: str | None = None)
+    """Tuple(*parsers: Parser[...], delimiter: str | None = None)
 
     Parser for tuples of fixed lengths.
 
@@ -3405,7 +3773,7 @@ class Tuple(
     ):
         if delimiter == "":
             raise ValueError("empty delimiter")
-        self.__delimiter = delimiter
+        self._delimiter = delimiter
         super().__init__(parsers or None, tuple)
 
     def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
@@ -3413,28 +3781,47 @@ class Tuple(
         result._inner = parser._inner  # type: ignore
         return result
 
-    def parse(self, value: str, /) -> TU:
-        items = value.split(self.__delimiter, maxsplit=len(self._inner) - 1)
-        return self.parse_many(items)
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> TU:
+        items = list(ctx.split(self._delimiter, maxsplit=len(self._inner) - 1))
 
-    def parse_many(self, value: _t.Sequence[str], /) -> TU:
-        if len(value) != len(self._inner):
+        if len(items) != len(self._inner):
             raise ParsingError(
                 "Expected %s element%s, got %s: `%r`",
                 len(self._inner),
                 "" if len(self._inner) == 1 else "s",
-                len(value),
-                value,
+                len(items),
+                ctx.value,
+                ctx=ctx,
             )
 
         return _t.cast(
             TU,
-            tuple(parser.parse(item) for parser, item in zip(self._inner, value)),
+            tuple(
+                parser.parse_with_ctx(item) for parser, item in zip(self._inner, items)
+            ),
         )
 
-    def parse_config(self, value: object, /) -> TU:
+    def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> TU:
+        if len(ctxs) != len(self._inner):
+            raise ParsingError(
+                "Expected %s element%s, got %s: `%r`",
+                len(self._inner),
+                "" if len(self._inner) == 1 else "s",
+                len(ctxs),
+                ctxs,
+            )
+
+        return _t.cast(
+            TU,
+            tuple(
+                parser.parse_with_ctx(item) for parser, item in zip(self._inner, ctxs)
+            ),
+        )
+
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> TU:
+        value = ctx.value
         if not isinstance(value, (list, tuple)):
-            raise ParsingError.type_mismatch(value, list, tuple)
+            raise ParsingError.type_mismatch(value, list, tuple, ctx=ctx)
         elif len(value) != len(self._inner):
             raise ParsingError(
                 "Expected %s element%s, got %s: `%r`",
@@ -3447,7 +3834,8 @@ class Tuple(
         return _t.cast(
             TU,
             tuple(
-                parser.parse_config(item) for parser, item in zip(self._inner, value)
+                parser.parse_config_with_ctx(ctx.descend(item, i))
+                for i, (parser, item) in enumerate(zip(self._inner, value))
             ),
         )
 
@@ -3458,7 +3846,7 @@ class Tuple(
         return len(self._inner)
 
     def describe(self) -> str | None:
-        delimiter = self.__delimiter or " "
+        delimiter = self._delimiter or " "
         desc = [parser.describe_or_def() for parser in self._inner]
         return delimiter.join(desc)
 
@@ -3468,7 +3856,7 @@ class Tuple(
     def describe_value(self, value: object, /) -> str:
         assert self.assert_type(value)
 
-        delimiter = self.__delimiter or " "
+        delimiter = self._delimiter or " "
         desc = [parser.describe_value(item) for parser, item in zip(self._inner, value)]
 
         return delimiter.join(desc)
@@ -3479,7 +3867,7 @@ class Tuple(
     def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Tuple(
             *[parser.completer() or yuio.complete.Empty() for parser in self._inner],
-            delimiter=self.__delimiter,
+            delimiter=self._delimiter,
         )
 
     def widget(
@@ -3528,6 +3916,53 @@ class Tuple(
             return self.__class__.__name__
 
 
+class _DictElementParser(Tuple[tuple[K, V]], _t.Generic[K, V]):
+    def __init__(self, k: Parser[K], v: Parser[V], delimiter: str | None = None):
+        super().__init__(k, v, delimiter=delimiter)
+
+    # def parse_with_ctx(self, ctx: StrParsingContext, /) -> tuple[K, V]:
+    #     items = list(ctx.split(self._delimiter, maxsplit=len(self._inner) - 1))
+
+    #     if len(items) != len(self._inner):
+    #         raise ParsingError("Expected key-value pair, got `%r`", ctx.value)
+
+    #     return _t.cast(
+    #         tuple[K, V],
+    #         tuple(parser.parse_with_ctx(item) for parser, item in zip(self._inner, items)),
+    #     )
+
+    # def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> tuple[K, V]:
+    #     if len(value) != len(self._inner):
+    #         with describe_context("element #%(key)r"):
+    #             raise ParsingError(
+    #                 "Expected key-value pair, got `%r`",
+    #                 value,
+    #             )
+
+    #     k = describe_context("key of element #%(key)r", self._inner[0].parse, value[0])
+    #     v = replace_context(k, self._inner[1].parse, value[1])
+
+    #     return _t.cast(tuple[K, V], (k, v))
+
+    # def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> tuple[K, V]:
+    #     if not isinstance(value, (list, tuple)):
+    #         with describe_context("element #%(key)r"):
+    #             raise ParsingError.type_mismatch(value, list, tuple)
+    #     elif len(value) != len(self._inner):
+    #         with describe_context("element #%(key)r"):
+    #             raise ParsingError(
+    #                 "Expected key-value pair, got `%r`",
+    #                 value,
+    #             )
+
+    #     k = describe_context(
+    #         "key of element #%(key)r", self._inner[0].parse_config_with_ctx, value[0]
+    #     )
+    #     v = replace_context(k, self._inner[1].parse_config_with_ctx, value[1])
+
+    #     return _t.cast(tuple[K, V], (k, v))
+
+
 class Optional(MappingParser[T | None, T], _t.Generic[T]):
     """Optional(inner: Parser[T], /)
 
@@ -3554,16 +3989,16 @@ class Optional(MappingParser[T | None, T], _t.Generic[T]):
     def __init__(self, inner: Parser[T] | None = None, /):
         super().__init__(inner)
 
-    def parse(self, value: str, /) -> T | None:
-        return self._inner.parse(value)
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> T | None:
+        return self._inner.parse_with_ctx(ctx)
 
-    def parse_many(self, value: _t.Sequence[str], /) -> T | None:
-        return self._inner.parse_many(value)
+    def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> T | None:
+        return self._inner.parse_many_with_ctx(ctxs)
 
-    def parse_config(self, value: object, /) -> T | None:
-        if value is None:
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T | None:
+        if ctx.value is None:
             return None
-        return self._inner.parse_config(value)
+        return self._inner.parse_config_with_ctx(ctx)
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T | None]:
         if value is None:
@@ -3791,16 +4226,33 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
         result._inner = parser._inner  # type: ignore
         return result
 
-    def parse(self, value: str, /) -> T:
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> T:
         errors: list[tuple[Parser[object], ParsingError]] = []
         for parser in self._inner:
             try:
-                return parser.parse(value)
+                return parser.parse_with_ctx(ctx)
             except ParsingError as e:
                 errors.append((parser, e))
+        raise self._make_error(errors, ctx)
 
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T:
+        errors: list[tuple[Parser[object], ParsingError]] = []
+        for parser in self._inner:
+            try:
+                return parser.parse_config_with_ctx(ctx)
+            except ParsingError as e:
+                errors.append((parser, e))
+        raise self._make_error(errors, ctx)
+
+    def _make_error(
+        self,
+        errors: list[tuple[Parser[object], ParsingError]],
+        ctx: StrParsingContext | ConfigParsingContext,
+    ):
         msgs = []
         for parser, error in errors:
+            error.raw = None
+            error.pos = None
             msgs.append(
                 yuio.string.Format(
                     "  Trying as `%s`:\n%s",
@@ -3808,29 +4260,8 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
                     yuio.string.Indent(error, indent=4),
                 )
             )
-        raise ParsingError(
-            "Can't parse `%r`:\n%s", value, yuio.string.JoinStr(msgs, sep="\n")
-        )
-
-    def parse_config(self, value: object, /) -> T:
-        errors: list[tuple[Parser[object], ParsingError]] = []
-        for parser in self._inner:
-            try:
-                return parser.parse_config(value)
-            except ParsingError as e:
-                errors.append((parser, e))
-
-        msgs = []
-        for parser, error in errors:
-            msgs.append(
-                yuio.string.Format(
-                    "  Trying as `%s`:\n%s",
-                    parser.describe(),
-                    yuio.string.Indent(error, indent=4),
-                )
-            )
-        raise ParsingError(
-            "Can't parse `%r`:\n%s", value, yuio.string.JoinStr(msgs, sep="\n")
+        return ParsingError(
+            "Can't parse `%r`:\n%s", ctx.value, yuio.string.Stack(*msgs), ctx=ctx
         )
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
@@ -4454,29 +4885,29 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
         super().__init__(inner)
 
-        self.__allowed_values = values
+        self._allowed_values = values
 
     def _validate(self, value: T, /):
-        if value not in self.__allowed_values:
+        if value not in self._allowed_values:
             raise ParsingError(
                 "Can't parse `%r`, should be %s",
                 value,
-                yuio.string.JoinRepr.or_(self.__allowed_values),
+                yuio.string.JoinRepr.or_(self._allowed_values),
             )
 
     def describe(self) -> str | None:
-        desc = "|".join(self.describe_value(e) for e in self.__allowed_values)
+        desc = "|".join(self.describe_value(e) for e in self._allowed_values)
         if len(desc) < 80:
-            if len(self.__allowed_values) > 1:
+            if len(self._allowed_values) > 1:
                 desc = f"{{{desc}}}"
             return desc
         else:
             return super().describe()
 
     def describe_or_def(self) -> str:
-        desc = "|".join(self.describe_value(e) for e in self.__allowed_values)
+        desc = "|".join(self.describe_value(e) for e in self._allowed_values)
         if len(desc) < 80:
-            if len(self.__allowed_values) > 1:
+            if len(self._allowed_values) > 1:
                 desc = f"{{{desc}}}"
             return desc
         else:
@@ -4484,15 +4915,12 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return [
-            yuio.widget.Option(e, self.describe_value(e)) for e in self.__allowed_values
+            yuio.widget.Option(e, self.describe_value(e)) for e in self._allowed_values
         ]
 
     def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Choice(
-            [
-                yuio.complete.Option(self.describe_value(e))
-                for e in self.__allowed_values
-            ]
+            [yuio.complete.Option(self.describe_value(e)) for e in self._allowed_values]
         )
 
     def widget(
@@ -4502,7 +4930,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
         default_description: str | None,
         /,
     ) -> yuio.widget.Widget[T | yuio.Missing]:
-        allowed_values = list(self.__allowed_values)
+        allowed_values = list(self._allowed_values)
 
         options = _t.cast(list[yuio.widget.Option[T | yuio.Missing]], self.options())
 
@@ -4573,40 +5001,40 @@ class WithMeta(MappingParser[T, T], _t.Generic[T]):
         else:
             raise TypeError(f"expected at most 1 positional argument, got {len(args)}")
 
-        self.__desc = desc
-        self.__completer = completer
+        self._desc = desc
+        self._completer = completer
         super().__init__(inner)
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         return self._inner.check_type(value)
 
     def describe(self) -> str | None:
-        return self.__desc or self._inner.describe()
+        return self._desc or self._inner.describe()
 
     def describe_or_def(self) -> str:
-        return self.__desc or self._inner.describe_or_def()
+        return self._desc or self._inner.describe_or_def()
 
     def describe_many(self) -> str | tuple[str, ...]:
-        return self.__desc or self._inner.describe_many()
+        return self._desc or self._inner.describe_many()
 
     def describe_value(self, value: object, /) -> str:
         return self._inner.describe_value(value)
 
-    def parse(self, value: str, /) -> T:
-        return self._inner.parse(value)
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> T:
+        return self._inner.parse_with_ctx(ctx)
 
-    def parse_many(self, value: _t.Sequence[str], /) -> T:
-        return self._inner.parse_many(value)
+    def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> T:
+        return self._inner.parse_many_with_ctx(ctxs)
 
-    def parse_config(self, value: object, /) -> T:
-        return self._inner.parse_config(value)
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T:
+        return self._inner.parse_config_with_ctx(ctx)
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
         return self._inner.options()
 
     def completer(self) -> yuio.complete.Completer | None:
-        if self.__completer is not yuio.MISSING:
-            return self.__completer  # type: ignore
+        if self._completer is not yuio.MISSING:
+            return self._completer  # type: ignore
         else:
             return self._inner.completer()
 
@@ -4641,8 +5069,25 @@ class _WidgetResultMapper(yuio.widget.Map[T | yuio.Missing, str]):
             return yuio.MISSING
         elif not s:
             raise ParsingError("Input is required")
-        else:
-            return self._parser.parse(s)
+        try:
+            return self._parser.parse_with_ctx(StrParsingContext(s))
+        except ParsingError as e:
+            if (
+                isinstance(
+                    self._inner, (yuio.widget.Input, yuio.widget.InputWithCompletion)
+                )
+                and e.pos
+                and e.raw == self._inner.text
+            ):
+                if e.pos == (0, len(self._inner.text)):
+                    # Don't highlight the entire text, it's not useful and creates
+                    # visual noise.
+                    self._inner.err_region = None
+                else:
+                    self._inner.err_region = e.pos
+                e.raw = None
+                e.pos = None
+            raise
 
     @property
     def help_data(self):
@@ -4671,6 +5116,450 @@ def _secret_widget(
             )
         ),
     )
+
+
+class StrParsingContext:
+    """StrParsingContext(content: str, /, *, n_arg: int | None = None)
+
+    String parsing context tracks current position in the string.
+
+    :param content:
+        content to parse.
+    :param n_arg:
+        content index when using :meth:`~Parser.parse_many`.
+
+    """
+
+    def __init__(
+        self,
+        content: str,
+        /,
+        *,
+        n_arg: int | None = None,
+        _value: str | None = None,
+        _start: int | None = None,
+        _end: int | None = None,
+    ):
+        self.start: int = _start if _start is not None else 0
+        """
+        Start position of the value.
+
+        """
+
+        self.end: int = _end if _end is not None else self.start + len(content)
+        """
+        End position of the value.
+
+        """
+
+        self.content: str = content
+        """
+        Full content of the value that was passed to :meth:`Parser.parse`.
+
+        """
+
+        self.value: str = _value if _value is not None else content
+        """
+        Part of the :attr:`~StrParsingContext.content` that's currently being parsed.
+
+        """
+
+        self.n_arg: int | None = n_arg
+        """
+        For :meth:`~Parser.parse_many`, this attribute contains index of the value
+        that is being parsed. For :meth:`~Parser.parse`, this is :data:`None`.
+
+        """
+
+    def split(
+        self, delimiter: str | None = None, /, maxsplit: int = -1
+    ) -> _t.Generator[StrParsingContext]:
+        """
+        Split current value by the given delimiter while keeping track of the current position.
+
+        """
+
+        if delimiter is None:
+            yield from self._split_space(maxsplit=maxsplit)
+            return
+
+        dlen = len(delimiter)
+        start = self.start
+        for part in self.value.split(delimiter, maxsplit=maxsplit):
+            yield StrParsingContext(
+                self.content,
+                _value=part,
+                _start=start,
+                _end=start + len(part),
+                n_arg=self.n_arg,
+            )
+            start += len(part) + dlen
+
+    def _split_space(self, maxsplit: int = -1) -> _t.Generator[StrParsingContext]:
+        i = 0
+        n_splits = 0
+        is_space = True
+        for part in re.split(r"(\s+)", self.value):
+            is_space = not is_space
+            if is_space:
+                i += len(part)
+                continue
+
+            if not part:
+                continue
+
+            if maxsplit >= 0 and n_splits >= maxsplit:
+                part = self.value[i:]
+                yield StrParsingContext(
+                    self.content,
+                    _value=part,
+                    _start=i,
+                    _end=i + len(part),
+                    n_arg=self.n_arg,
+                )
+                return
+            else:
+                yield StrParsingContext(
+                    self.content,
+                    _value=part,
+                    _start=i,
+                    _end=i + len(part),
+                    n_arg=self.n_arg,
+                )
+                i += len(part)
+                n_splits += 1
+
+    def strip(self, chars: str | None = None, /) -> StrParsingContext:
+        """
+        Strip current value while keeping track of the current position.
+
+        """
+
+        l_stripped = self.value.lstrip(chars)
+        start = self.start + (len(self.value) - len(l_stripped))
+        stripped = l_stripped.rstrip(chars)
+        return StrParsingContext(
+            self.content,
+            _value=stripped,
+            _start=start,
+            _end=start + len(stripped),
+            n_arg=self.n_arg,
+        )
+
+    def strip_if_non_space(self) -> StrParsingContext:
+        """
+        Strip current value unless it entirely consists of spaces.
+
+        """
+
+        if not self.value or self.value.isspace():
+            return self
+        else:
+            return self.strip()
+
+    # If you need more methods, feel free to open an issue or send a PR!
+    # For now, `split` and `split` is enough.
+
+
+class ConfigParsingContext:
+    """
+    Config parsing context tracks path in the config, similar to JSON path.
+
+    """
+
+    def __init__(
+        self,
+        value: object,
+        /,
+        *,
+        parent: ConfigParsingContext | None = None,
+        key: _t.Any = None,
+        desc: str | None = None,
+    ):
+        self.value: object = value
+        """
+        Config value to be validated and parsed.
+
+        """
+
+        self.parent: ConfigParsingContext | None = parent
+        """
+        Parent context.
+
+        """
+
+        self.key: _t.Any = key
+        """
+        Key that was accessed when we've descended from parent context to this one.
+
+        Root context has key :data:`None`.
+
+        """
+
+        self.desc: str | None = desc
+        """
+        Additional description of the key.
+
+        """
+
+    def descend(
+        self,
+        value: _t.Any,
+        key: _t.Any,
+        desc: str | None = None,
+    ) -> ConfigParsingContext:
+        """
+        Create a new context that adds a new key to the path.
+
+        :param value:
+            inner value that was derived from the current value by accessing it with
+            the given ``key``.
+        :param key:
+            key that we use to descend into the current value.
+
+            For example, let's say we're parsing a list. We iterate over it and pass
+            its elements to a sub-parser. Before calling a sub-parser, we need to
+            make a new context for it. In this situation, we'll pass current element
+            as ``value``, and is index as ``key``.
+        :param desc:
+            human-readable description for the new context. Will be colorized
+            and ``%``-formatted with a single named argument ``key``.
+
+            This is useful when parsing structures that need something more complex than
+            JSON path. For example, when parsing a key in a dictionary, it is helpful
+            to set description to something like ``"key of element #%(key)r"``.
+            This way, parsing errors will have a more clear message:
+
+            .. code-block:: text
+
+                Parsing error:
+                  In key of element #2:
+                    Expected str, got int: 10
+
+        """
+
+        return ConfigParsingContext(value, parent=self, key=key, desc=desc)
+
+    def make_path(self) -> list[tuple[_t.Any, str | None]]:
+        """
+        Capture current path.
+
+        :returns:
+            a list of tuples. First element of each tuple is a key, second is
+            an additional description.
+
+        """
+
+        path = []
+
+        root = self
+        while True:
+            if root.parent is None:
+                break
+            else:
+                path.append((root.key, root.desc))
+                root = root.parent
+
+        path.reverse()
+
+        return path
+
+
+class _PathRenderer:
+    def __init__(self, path: list[tuple[_t.Any, str | None]]):
+        self._path = path
+
+    def __str__(self):
+        return str(yuio.string.ReprContext().str(self))
+
+    def __colorized_str__(
+        self, ctx: yuio.string.ReprContext
+    ) -> yuio.string.ColorizedString:
+        code_color = ctx.theme.get_color("msg/text:code/repr hl:repr")
+        punct_color = ctx.theme.get_color("msg/text:code/repr hl/punct:repr")
+
+        msg = yuio.string.ColorizedString(code_color)
+        msg.start_no_wrap()
+
+        for i, (key, desc) in enumerate(self._path):
+            if desc:
+                desc = yuio.string.colorize(desc).percent_format({"key": key})
+
+                if i == len(self._path) - 1:
+                    # Last key.
+                    if msg:
+                        msg.append_color(punct_color)
+                        msg.append_str(", ")
+                    msg.append_colorized_str(desc)
+                else:
+                    # Element in the middle.
+                    if not msg:
+                        msg.append_str("$")
+                    msg.append_color(punct_color)
+                    msg.append_str(".<")
+                    msg.append_colorized_str(desc)
+                    msg.append_str(">")
+            elif isinstance(key, str) and re.match(r"^[a-zA-Z_][\w-]*$", key):
+                # Key is identifier-like, use `x.key` notation.
+                if not msg:
+                    msg.append_str("$")
+                msg.append_color(punct_color)
+                msg.append_str(".")
+                msg.append_color(code_color)
+                msg.append_str(key)
+            else:
+                # Key is not identifier-like, use `x[key]` notation.
+                if not msg:
+                    msg.append_str("$")
+                msg.append_color(punct_color)
+                msg.append_str("[")
+                msg.append_color(code_color)
+                msg.append_str(repr(key))
+                msg.append_color(punct_color)
+                msg.append_str("]")
+        return msg
+
+
+class _CodeRenderer:
+    def __init__(self, code: str, pos: tuple[int, int], as_cli: bool = False):
+        self._code = code
+        self._pos = pos
+        self._as_cli = as_cli
+
+    def __str__(self):
+        return str(yuio.string.ReprContext().str(self))
+
+    def __colorized_str__(
+        self, ctx: yuio.string.ReprContext
+    ) -> yuio.string.ColorizedString:
+        max_width = ctx.max_width - 2  # Account for indentation.
+
+        if max_width < 10:  # 6 symbols for ellipsis and at least 2 wide chars.
+            return yuio.string.ColorizedString()
+
+        start, end = self._pos
+        if end == start:
+            end += 1
+
+        left = self._code[:start]
+        center = self._code[start:end]
+        right = self._code[end:]
+
+        l_width = yuio.string.line_width(left)
+        c_width = yuio.string.line_width(center)
+        r_width = yuio.string.line_width(right)
+
+        available_width = max_width - (3 if left else 0) - 3
+        if c_width > available_width:
+            # Center can't fit: remove left and right side,
+            # and trim as much center as needed.
+
+            left = "..." if l_width > 3 else left
+            l_width = len(left)
+
+            right = ""
+            r_width = 0
+
+            new_c = ""
+            c_width = 0
+
+            for c in center:
+                cw = yuio.string.line_width(c)
+                if c_width + cw <= available_width:
+                    new_c += c
+                    c_width += cw
+                else:
+                    new_c += "..."
+                    c_width += 3
+                    break
+            center = new_c
+
+        if r_width > 3 and l_width + c_width + r_width > max_width:
+            # Trim right side.
+            new_r = ""
+            r_width = 3
+            for c in right:
+                cw = yuio.string.line_width(c)
+                if l_width + c_width + r_width + cw <= max_width:
+                    new_r += c
+                    r_width += cw
+                else:
+                    new_r += "..."
+                    break
+            right = new_r
+
+        if l_width > 3 and l_width + c_width + r_width > max_width:
+            # Trim left side.
+            new_l = ""
+            l_width = 3
+            for c in left[::-1]:
+                cw = yuio.string.line_width(c)
+                if l_width + c_width + r_width + cw <= max_width:
+                    new_l += c
+                    l_width += cw
+                else:
+                    new_l += "..."
+                    break
+            left = new_l[::-1]
+
+        if self._as_cli:
+            punct_color = ctx.theme.get_color(
+                "msg/text:code/sh-usage hl/punct:sh-usage"
+            )
+        else:
+            punct_color = ctx.theme.get_color("msg/text:code/text hl/punct:text")
+
+        res = yuio.string.ColorizedString()
+        res.start_no_wrap()
+        if self._as_cli:
+            res.append_color(punct_color)
+            res.append_str("$ ")
+            res.append_colorized_str(
+                ctx.str(
+                    yuio.string.Hl(
+                        left.replace("%", "%%")
+                        + "%s"
+                        + right.replace(
+                            "%", "%%"
+                        ),  # pyright: ignore[reportArgumentType]
+                        yuio.string.WithBaseColor(
+                            center, base_color="hl/error:sh-usage"
+                        ),
+                        syntax="sh-usage",
+                    )
+                )
+            )
+        else:
+            text_color = ctx.theme.get_color("msg/text:code/text")
+            res.append_color(punct_color)
+            res.append_str("> ")
+            res.append_color(text_color)
+            res.append_str(left)
+            res.append_color(text_color | ctx.theme.get_color("hl/error:text"))
+            res.append_str(center)
+            res.append_color(text_color)
+            res.append_str(right)
+        res.append_color(yuio.color.Color.NONE)
+        res.append_str("\n")
+        if self._as_cli:
+            res.append_color(punct_color)
+        else:
+            res.append_color(punct_color)
+        res.append_str("  ")
+        res.append_str(" " * yuio.string.line_width(left))
+        res.append_str("^" * yuio.string.line_width(center))
+
+        return res
+
+
+def _repr_and_adjust_pos(s: str, pos: tuple[int, int]):
+    start, end = pos
+
+    left = json.dumps(s[:start])[:-1]
+    center = json.dumps(s[start:end])[1:-1]
+    right = json.dumps(s[end:])[1:]
+
+    return left + center + right, (len(left), len(left) + len(center))
 
 
 _FromTypeHintCallback: _t.TypeAlias = _t.Callable[
@@ -4820,8 +5709,8 @@ def register_type_hint_conversion(
             class MyType: ...
             class MyTypeParser(ValueParser[MyType]):
                 def __init__(self): super().__init__(MyType)
-                def parse(self, value: str, /): ...
-                def parse_config(self, value, /): ...
+                def parse_with_ctx(self, ctx: StrParsingContext, /): ...
+                def parse_config_with_ctx(self, value, /): ...
                 def to_json_schema(self, ctx, /): ...
                 def to_json_value(self, value, /): ...
 
@@ -4890,8 +5779,10 @@ def suggest_delim_for_type_hint_conversion() -> str | None:
             >>> parser = from_type_hint(MyCollection[MyCollection[str]])
             >>> parser
             MyCollectionParser(MyCollectionParser(Str))
+            >>> # First delimiter is `None`, meaning split by whitespace:
             >>> parser._delimiter is None
             True
+            >>> # Second delimiter is `","`:
             >>> parser._inner._delimiter == ","
             True
 
@@ -5006,7 +5897,7 @@ def __secret(ty, origin, args):
     if origin is SecretValue:
         if len(args) == 1:
             return Secret(from_type_hint(args[0]))
-        else:
+        else:  # pragma: no cover
             raise TypeError(
                 f"yuio.secret.SecretValue requires 1 type argument, got {len(args)}"
             )

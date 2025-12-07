@@ -16,6 +16,241 @@ import yuio.secret
 from yuio import _typing as _t
 
 
+class TestStrParsingContext:
+    @pytest.mark.parametrize(
+        ("s", "delim", "expected", "maxsplit"),
+        [
+            ("", None, [], -1),
+            ("", ",", [("", 0, 0)], -1),
+            ("asd", None, [("asd", 0, 3)], -1),
+            ("asd dsa", None, [("asd", 0, 3), ("dsa", 4, 7)], -1),
+            ("  asd  dsa  ", None, [("asd", 2, 5), ("dsa", 7, 10)], -1),
+            ("asd  dsa  ", None, [("asd", 0, 3), ("dsa", 5, 8)], -1),
+            ("  asd  dsa", None, [("asd", 2, 5), ("dsa", 7, 10)], -1),
+            ("asd", None, [("asd", 0, 3)], 0),
+            ("asd  ", None, [("asd  ", 0, 5)], 0),
+            ("  asd", None, [("asd", 2, 5)], 0),
+            ("  asd  ", None, [("asd  ", 2, 7)], 0),
+            ("  asd", None, [("asd", 2, 5)], 1),
+            ("asd  ", None, [("asd", 0, 3)], 1),
+            ("  asd  ", None, [("asd", 2, 5)], 1),
+            ("  asd  dsa   ", None, [("asd", 2, 5), ("dsa   ", 7, 13)], 1),
+            ("  asd  dsa", None, [("asd", 2, 5), ("dsa", 7, 10)], 2),
+            ("a,b,c", ",", [("a,b,c", 0, 5)], 0),
+            ("a,b,c", ",", [("a", 0, 1), ("b,c", 2, 5)], 1),
+            ("a,b,c", ",", [("a", 0, 1), ("b", 2, 3), ("c", 4, 5)], -1),
+            (
+                ",a,,b,",
+                ",",
+                [("", 0, 0), ("a", 1, 2), ("", 3, 3), ("b", 4, 5), ("", 6, 6)],
+                -1,
+            ),
+        ],
+    )
+    def test_split(self, s, delim, expected, maxsplit):
+        ctx = yuio.parse.StrParsingContext(s)
+
+        results = [
+            (ctx.value, ctx.start, ctx.end)
+            for ctx in ctx.split(delim, maxsplit=maxsplit)
+        ]
+        assert results == expected
+
+        raw_results = [res[0] for res in results]
+        assert raw_results == s.split(
+            delim, maxsplit=maxsplit
+        ), "should match built-in str.split"
+
+    @pytest.mark.parametrize(
+        ("s", "chars", "expected"),
+        [
+            ("", None, ("", 0, 0)),
+            ("asd", None, ("asd", 0, 3)),
+            (" asd ", None, ("asd", 1, 4)),
+            ("\n\tasd  ", None, ("asd", 2, 5)),
+            ("   ", None, ("", 3, 3)),
+            ("", ".,", ("", 0, 0)),
+            ("asd", ".,", ("asd", 0, 3)),
+            (".,.asd.,.", ".,", ("asd", 3, 6)),
+            (".,.", ".,", ("", 3, 3)),
+        ],
+    )
+    def test_strip(self, s, chars, expected):
+        ctx = yuio.parse.StrParsingContext(s)
+        strip = ctx.strip(chars)
+        result = (strip.value, strip.start, strip.end)
+        assert result == expected
+        assert strip.value == ctx.value.strip(chars)
+
+    @pytest.mark.parametrize(
+        ("s", "expected"),
+        [
+            ("", ("", 0, 0)),
+            ("asd", ("asd", 0, 3)),
+            (" asd ", ("asd", 1, 4)),
+            ("\n\tasd  ", ("asd", 2, 5)),
+            ("   ", ("   ", 0, 3)),
+        ],
+    )
+    def test_strip_if_not_spaces(self, s, expected):
+        ctx = yuio.parse.StrParsingContext(s)
+        strip = ctx.strip_if_non_space()
+        result = (strip.value, strip.start, strip.end)
+        assert result == expected
+
+
+class TestConfigParsingContext:
+    def test_descend(self):
+        ctx = yuio.parse.ConfigParsingContext(1)
+
+        assert ctx.value == 1
+        assert ctx.key is None
+        assert ctx.desc is None
+        assert ctx.parent is None
+
+        ctx2 = ctx.descend(2, "k2", "d2")
+
+        assert ctx2.value == 2
+        assert ctx2.key == "k2"
+        assert ctx2.desc == "d2"
+        assert ctx2.parent is ctx
+
+    def test_make_path(self):
+        ctx = yuio.parse.ConfigParsingContext(1)
+
+        assert ctx.make_path() == []
+        ctx2 = ctx.descend(2, "k2", "d2")
+        assert ctx2.make_path() == [("k2", "d2")]
+        ctx3 = ctx2.descend(3, "k3")
+        assert ctx3.make_path() == [("k2", "d2"), ("k3", None)]
+        ctx4 = ctx3.descend(3, "k4")
+        assert ctx4.make_path() == [("k2", "d2"), ("k3", None), ("k4", None)]
+
+
+@pytest.mark.parametrize(
+    ("s", "pos", "expected_s", "expected_pos"),
+    [
+        ("", (0, 0), '""', (1, 1)),
+        ("asd", (0, 0), '"asd"', (1, 1)),
+        ("asd", (0, 3), '"asd"', (1, 4)),
+        ("asd", (3, 3), '"asd"', (4, 4)),
+        ("asd\ndsa", (0, 3), '"asd\\ndsa"', (1, 4)),
+        ("asd\ndsa", (0, 4), '"asd\\ndsa"', (1, 6)),
+        ("asd\ndsa", (4, 6), '"asd\\ndsa"', (6, 8)),
+    ],
+)
+def test_repr_and_adjust_pos(s, pos, expected_s, expected_pos):
+    s2, pos2 = yuio.parse._repr_and_adjust_pos(s, pos)
+    assert s2 == expected_s
+    assert pos2 == expected_pos
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ([], ""),
+        ([("foo", None)], "$.foo"),
+        ([("_foo", None)], "$._foo"),
+        ([("-foo", None)], "$['-foo']"),
+        ([("foo", None), ("bar", None)], "$.foo.bar"),
+        ([("foo", None), (10, None)], "$.foo[10]"),
+        ([("f\no", None), (10, None)], "$['f\\no'][10]"),
+        ([("foo", "desc")], "desc"),
+        ([("foo", "desc %(key)s")], "desc foo"),
+        ([("foo", "desc %(key)r")], "desc 'foo'"),
+        ([("x", None), ("foo", "desc %(key)r")], "$.x, desc 'foo'"),
+        ([(10, None), ("foo", "desc %(key)r")], "$[10], desc 'foo'"),
+        ([("foo", "desc %(key)r"), ("x", None)], "$.<desc 'foo'>.x"),
+    ],
+)
+def test_path_renderer(path, expected):
+    assert str(yuio.parse._PathRenderer(path)) == expected
+
+
+@pytest.mark.parametrize(("as_cli"), [True, False])
+@pytest.mark.parametrize(
+    ("code", "pos", "a", "b"),
+    [
+        (
+            "code",
+            (0, 4),
+            "> code",
+            "  ^^^^",
+        ),
+        (
+            "code",
+            (2, 3),
+            "> code",
+            "    ^",
+        ),
+        (
+            "some very long code very long indeed",
+            (0, 36),
+            "> some very long ...",
+            "  ^^^^^^^^^^^^^^^^^^",
+        ),
+        (
+            "some very long code very long indeed",
+            (15, 36),
+            "> ...code very lo...",
+            "     ^^^^^^^^^^^^^^^",
+        ),
+        (
+            "some very long code very long indeed",
+            (3, 36),
+            "> some very long ...",
+            "     ^^^^^^^^^^^^^^^",
+        ),
+        (
+            "some very long code very long indeed",
+            (0, 9),
+            "> some very long ...",
+            "  ^^^^^^^^^",
+        ),
+        (
+            "some very long code very long indeed",
+            (3, 12),
+            "> some very long ...",
+            "     ^^^^^^^^^",
+        ),
+        (
+            "some very long code very long indeed",
+            (5, 17),
+            "> ...very long co...",
+            "     ^^^^^^^^^^^^",
+        ),
+        (
+            "some very long code very long indeed",
+            (25, 36),
+            "> ...ery long indeed",
+            "         ^^^^^^^^^^^",
+        ),
+        (
+            "some very long code very long indeed",
+            (5, 14),
+            "> some very long ...",
+            "       ^^^^^^^^^",
+        ),
+        (
+            "some very long code very long indeed",
+            (25, 33),
+            "> ...ery long indeed",
+            "         ^^^^^^^^",
+        ),
+        (
+            "some very long code",
+            (5, 9),
+            "> some very long ...",
+            "       ^^^^",
+        ),
+    ],
+)
+def test_code_renderer(code, pos, a, b, as_cli):
+    if as_cli:
+        a = "$ " + a[2:]
+    assert str(yuio.parse._CodeRenderer(code, pos, as_cli=as_cli)) == a + "\n" + b
+
+
 class TestStr:
     def test_basics(self):
         parser = yuio.parse.Str()
@@ -2300,18 +2535,31 @@ class TestSecret:
         assert parser.describe_many() == "<str>"
         assert parser.describe_value(10) == "***"
 
+    def test_from_type_hint(self):
+        parser = yuio.parse.from_type_hint(yuio.parse.SecretString)
+        assert isinstance(parser, yuio.parse.Secret)
+        assert isinstance(parser._inner_raw, yuio.parse.Str)
+        with pytest.raises(TypeError, match=r"SecretValue requires type arguments"):
+            yuio.parse.from_type_hint(yuio.parse.SecretValue)
+
     def test_parse(self):
         parser = yuio.parse.Secret(yuio.parse.Int())
 
         assert parser.parse("10") == yuio.secret.SecretValue(10)
         with pytest.raises(
-            yuio.parse.ParsingError, check=lambda e: "xxx" not in str(e)
+            yuio.parse.ParsingError,
+            check=lambda e: "xxx" not in str(e) and e.raw is None,
         ):
             parser.parse("xxx")
 
+    def test_parse_config(self):
+        parser = yuio.parse.Secret(yuio.parse.Int())
+
         assert parser.parse_config(10) == yuio.secret.SecretValue(10)
         with pytest.raises(
-            yuio.parse.ParsingError, check=lambda e: "xxx" not in str(e)
+            yuio.parse.ParsingError,
+            check=lambda e: "xxx" not in str(e) and e.raw is None,
+            match=r"^Error when parsing secret data$",
         ):
             parser.parse_config("xxx")
 
@@ -2320,7 +2568,9 @@ class TestSecret:
 
         assert parser.parse("10 11 12") == yuio.secret.SecretValue([10, 11, 12])
         with pytest.raises(
-            yuio.parse.ParsingError, check=lambda e: "xxx" not in str(e)
+            yuio.parse.ParsingError,
+            check=lambda e: "xxx" not in str(e) and e.raw is None,
+            match=r"^Error when parsing secret data$",
         ):
             parser.parse("xxx")
 
@@ -2328,6 +2578,38 @@ class TestSecret:
             [10, 11, 12]
         )
         with pytest.raises(
-            yuio.parse.ParsingError, check=lambda e: "xxx" not in str(e)
+            yuio.parse.ParsingError,
+            check=lambda e: "xxx" not in str(e) and e.raw is None,
+            match=r"^Error when parsing secret data$",
         ):
             parser.parse_many(["10", "xxx", "12"])
+
+    def test_list_of_secrets(self):
+        parser = yuio.parse.List(yuio.parse.Secret(yuio.parse.Int()))
+        assert parser.is_secret()
+        assert parser.parse("10 11 12") == [
+            yuio.secret.SecretValue(10),
+            yuio.secret.SecretValue(11),
+            yuio.secret.SecretValue(12),
+        ]
+
+        with pytest.raises(
+            yuio.parse.ParsingError,
+            check=lambda e: "xxx" not in str(e) and e.raw is None,
+            match=r"^Error when parsing secret data$",
+        ):
+            parser.parse("xxx")
+
+        with pytest.raises(
+            yuio.parse.ParsingError,
+            check=lambda e: "xxx" not in str(e) and e.raw is None,
+            match=r"^Error when parsing secret data$"
+        ):
+            parser.parse_many(["10", "xxx", "12"])
+
+        with pytest.raises(
+            yuio.parse.ParsingError,
+            check=lambda e: "xxx" not in str(e) and e.raw is None,
+            match=r"^In \$\[1\]:\n  Error when parsing secret data$"
+        ):
+            parser.parse_config([10, "xxx", 12])
