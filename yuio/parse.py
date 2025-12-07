@@ -537,8 +537,8 @@ Params = _t.ParamSpec("Params")
 
 
 class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError):
-    """PrettyException(msg: typing.LiteralString, /, *args: typing.Any, ctx: ConfigParsingContext | StrParsingContext | None = None)
-    PrettyException(msg: str, /, *, ctx: ConfigParsingContext | StrParsingContext | None = None)
+    """PrettyException(msg: typing.LiteralString, /, *args: typing.Any, ctx: ConfigParsingContext | StrParsingContext | None = None, fallback_msg: typing.LiteralString | None = None, **kwargs)
+    PrettyException(msg: str, /, *, ctx: ConfigParsingContext | StrParsingContext | None = None, fallback_msg: typing.LiteralString | None = None, **kwargs)
 
     Raised when parsing or validation fails.
 
@@ -550,47 +550,25 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
         a :class:`TypeError`.
     :param args:
         arguments for ``%``-formatting the message.
+    :param fallback_msg:
+        fallback message that's guaranteed not to include representation of the faulty
+        value, will replace ``msg`` when parsing secret values.
+
+        .. warning::
+
+            This parameter must not include contents of the faulty value. It is typed
+            as :class:`~typing.LiteralString` as a deterrent; if you need string
+            interpolation, create an instance of :class:`ParsingError` and set
+            :attr:`~ParsingError.fallback_msg` directly.
     :param ctx:
         current error context that will be used to set :attr:`~ParsingError.raw`,
         :attr:`~ParsingError.pos`, and other attributes.
+    :param kwargs:
+        other keyword arguments set :attr:`~ParsingError.raw`,
+        :attr:`~ParsingError.pos`, :attr:`~ParsingError.n_arg`,
+        :attr:`~ParsingError.path`.
 
     """
-
-    @classmethod
-    def type_mismatch(
-        cls,
-        value: _t.Any,
-        /,
-        *expected: type | str,
-        ctx: ConfigParsingContext | StrParsingContext | None = None,
-    ):
-        """
-        Make an error with a standard message "expected type X, got type Y".
-
-        :param value:
-            value of an unexpected type.
-        :param expected:
-            expected types. Each argument can be a type or a string that describes
-            a type.
-        :param ctx:
-            current error context.
-        :example:
-            ::
-
-                >>> raise ParsingError.type_mismatch(10, str)
-                Traceback (most recent call last):
-                ...
-                yuio.parse.ParsingError: Expected str, got int: 10
-
-        """
-
-        return cls(
-            "Expected %s, got `%s`: `%r`",
-            yuio.string.Or(map(yuio.string.TypeRepr, expected)),
-            yuio.string.TypeRepr(type(value)),
-            value,
-            ctx=ctx,
-        )
 
     @_t.overload
     def __init__(
@@ -598,6 +576,7 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
         msg: _t.LiteralString,
         /,
         *args,
+        fallback_msg: _t.LiteralString | None = None,
         ctx: ConfigParsingContext | StrParsingContext | None = None,
         raw: str | None = None,
         pos: tuple[int, int] | None = None,
@@ -610,6 +589,7 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
         msg: yuio.string.Colorable | None | yuio.Missing = yuio.MISSING,
         /,
         *,
+        fallback_msg: _t.LiteralString | None = None,
         ctx: ConfigParsingContext | StrParsingContext | None = None,
         raw: str | None = None,
         pos: tuple[int, int] | None = None,
@@ -619,6 +599,7 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
     def __init__(
         self,
         *args,
+        fallback_msg: _t.LiteralString | None = None,
         ctx: ConfigParsingContext | StrParsingContext | None = None,
         raw: str | None = None,
         pos: tuple[int, int] | None = None,
@@ -634,6 +615,16 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
                 raw = raw if raw is not None else ctx.content
                 pos = pos if pos is not None else (ctx.start, ctx.end)
                 n_arg = n_arg if n_arg is not None else ctx.n_arg
+
+        self.fallback_msg: yuio.string.Colorable | None = fallback_msg
+        """
+        This message will be used if error occurred while parsing a secret value.
+
+        .. warning::
+
+            This colorable must not include contents of the faulty value.
+
+        """
 
         self.raw: str | None = raw
         """
@@ -663,6 +654,58 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
         contains path to the value in which this error has occurred.
 
         """
+
+    @classmethod
+    def type_mismatch(
+        cls,
+        value: _t.Any,
+        /,
+        *expected: type | str,
+        ctx: ConfigParsingContext | StrParsingContext | None = None,
+        raw: str | None = None,
+        pos: tuple[int, int] | None = None,
+        n_arg: int | None = None,
+        path: list[tuple[_t.Any, str | None]] | None = None,
+    ):
+        """type_mismatch(value: _t.Any, /, *expected: type | str, **kwargs)
+
+        Make an error with a standard message "expected type X, got type Y".
+
+        :param value:
+            value of an unexpected type.
+        :param expected:
+            expected types. Each argument can be a type or a string that describes
+            a type.
+        :param kwargs:
+            keyword arguments will be passed to constructor.
+        :example:
+            ::
+
+                >>> raise ParsingError.type_mismatch(10, str)
+                Traceback (most recent call last):
+                ...
+                yuio.parse.ParsingError: Expected str, got int: 10
+
+        """
+
+        err = cls(
+            "Expected %s, got `%s`: `%r`",
+            yuio.string.Or(map(yuio.string.TypeRepr, expected)),
+            yuio.string.TypeRepr(type(value)),
+            value,
+            ctx=ctx,
+            raw=raw,
+            pos=pos,
+            n_arg=n_arg,
+            path=path,
+        )
+        err.fallback_msg = yuio.string.Format(
+            "Expected %s, got `%s`",
+            yuio.string.Or(map(yuio.string.TypeRepr, expected)),
+            yuio.string.TypeRepr(type(value)),
+        )
+
+        return err
 
     def set_ctx(self, ctx: ConfigParsingContext | StrParsingContext):
         if isinstance(ctx, ConfigParsingContext):
@@ -1739,7 +1782,10 @@ def Regex(*args, group: int | str = 0) -> _t.Any:
     def mapper(value: str) -> str:
         if (match := compiled.match(value)) is None:
             raise ParsingError(
-                "value doesn't match regex `%s`: `%r`", compiled.pattern, value
+                "Value doesn't match regex `%s`: `%r`",
+                compiled.pattern,
+                value,
+                fallback_msg="Incorrect value format",
             )
         return match.group(group)
 
@@ -1863,7 +1909,11 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
             class IsLower(ValidatingParser[str]):
                 def _validate(self, value: str, /):
                     if not value.islower():
-                        raise ParsingError("Value should be lowercase: `%r`", value)
+                        raise ParsingError(
+                            "Value should be lowercase: `%r`",
+                            value,
+                            fallback_msg="Value should be lowercase",
+                        )
 
         ::
 
@@ -1966,7 +2016,10 @@ class Int(ValueParser[int]):
             return res
         except ValueError:
             raise ParsingError(
-                "Can't parse `%r` as `int`", ctx.value, ctx=ctx
+                "Can't parse `%r` as `int`",
+                ctx.value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `int`",
             ) from None
 
     def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> int:
@@ -2004,7 +2057,10 @@ class Float(ValueParser[float]):
             return float(ctx.value)
         except ValueError:
             raise ParsingError(
-                "Can't parse `%r` as `float`", ctx.value, ctx=ctx
+                "Can't parse `%r` as `float`",
+                ctx.value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `float`",
             ) from None
 
     def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> float:
@@ -2044,6 +2100,7 @@ class Bool(ValueParser[bool]):
                 "Can't parse `%r` as `bool`, should be one of `'yes'`, `'no'`",
                 value,
                 ctx=ctx,
+                fallback_msg="Can't parse value as `bool`",
             )
 
     def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> bool:
@@ -2342,7 +2399,10 @@ class Decimal(ValueParser[decimal.Decimal]):
             return decimal.Decimal(ctx.value)
         except (ArithmeticError, ValueError, TypeError):
             raise ParsingError(
-                "Can't parse `%r` as `decimal`", ctx.value, ctx=ctx
+                "Can't parse `%r` as `decimal`",
+                ctx.value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `decimal`",
             ) from None
 
     def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> decimal.Decimal:
@@ -2353,7 +2413,10 @@ class Decimal(ValueParser[decimal.Decimal]):
             return decimal.Decimal(value)
         except (ArithmeticError, ValueError, TypeError):
             raise ParsingError(
-                "Can't parse `%r` as `decimal`", value, ctx=ctx
+                "Can't parse `%r` as `decimal`",
+                value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `decimal`",
             ) from None
 
     def to_json_schema(
@@ -2396,11 +2459,17 @@ class Fraction(ValueParser[fractions.Fraction]):
             return fractions.Fraction(ctx.value)
         except ValueError:
             raise ParsingError(
-                "Can't parse `%r` as `fraction`", ctx.value, ctx=ctx
+                "Can't parse `%r` as `fraction`",
+                ctx.value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `fraction`",
             ) from None
         except ZeroDivisionError:
             raise ParsingError(
-                "Can't parse `%r` as `fraction`, division by zero", ctx.value, ctx=ctx
+                "Can't parse `%r` as `fraction`, division by zero",
+                ctx.value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `fraction`",
             ) from None
 
     def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> fractions.Fraction:
@@ -2414,7 +2483,11 @@ class Fraction(ValueParser[fractions.Fraction]):
                 return fractions.Fraction(*value)
             except ValueError:
                 raise ParsingError(
-                    "Can't parse `%s/%s` as `fraction`", value[0], value[1], ctx=ctx
+                    "Can't parse `%s/%s` as `fraction`",
+                    value[0],
+                    value[1],
+                    ctx=ctx,
+                    fallback_msg="Can't parse value as `fraction`",
                 ) from None
             except ZeroDivisionError:
                 raise ParsingError(
@@ -2422,17 +2495,24 @@ class Fraction(ValueParser[fractions.Fraction]):
                     value[0],
                     value[1],
                     ctx=ctx,
+                    fallback_msg="Can't parse value as `fraction`",
                 ) from None
         if isinstance(value, (int, float, str, decimal.Decimal, fractions.Fraction)):
             try:
                 return fractions.Fraction(value)
             except ValueError:
                 raise ParsingError(
-                    "Can't parse `%r` as `fraction`", value, ctx=ctx
+                    "Can't parse `%r` as `fraction`",
+                    value,
+                    ctx=ctx,
+                    fallback_msg="Can't parse value as `fraction`",
                 ) from None
             except ZeroDivisionError:
                 raise ParsingError(
-                    "Can't parse `%r` as `fraction`, division by zero", value, ctx=ctx
+                    "Can't parse `%r` as `fraction`, division by zero",
+                    value,
+                    ctx=ctx,
+                    fallback_msg="Can't parse value as `fraction`",
                 ) from None
         raise ParsingError.type_mismatch(
             value, int, float, str, "a tuple of two ints", ctx=ctx
@@ -2507,13 +2587,20 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
             config_value: JsonValue = json.loads(ctx.value)
         except json.JSONDecodeError as e:
             raise ParsingError(
-                "Can't parse `%r` as `JsonValue`: %s", ctx.value, e, ctx=ctx
+                "Can't parse `%r` as `JsonValue`:\n%s",
+                ctx.value,
+                yuio.string.Indent(e),
+                ctx=ctx,
+                fallback_msg="Can't parse value as `JsonValue`",
             ) from None
         try:
             return self.parse_config_with_ctx(ConfigParsingContext(config_value))
         except ParsingError as e:
             raise ParsingError(
-                "Error in parsed json value:\n%s", yuio.string.Indent(e), ctx=ctx
+                "Error in parsed json value:\n%s",
+                yuio.string.Indent(e),
+                ctx=ctx,
+                fallback_msg="Error in parsed json value",
             ) from None
 
     def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T:
@@ -2577,7 +2664,10 @@ class DateTime(ValueParser[datetime.datetime]):
             return datetime.datetime.fromisoformat(value)
         except ValueError:
             raise ParsingError(
-                "Can't parse `%r` as `datetime`", value, ctx=ctx
+                "Can't parse `%r` as `datetime`",
+                value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `datetime`",
             ) from None
 
     def describe(self) -> str | None:
@@ -2646,7 +2736,12 @@ class Date(ValueParser[datetime.date]):
         try:
             return datetime.date.fromisoformat(value)
         except ValueError:
-            raise ParsingError("Can't parse `%r` as `date`", value, ctx=ctx) from None
+            raise ParsingError(
+                "Can't parse `%r` as `date`",
+                value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `date`",
+            ) from None
 
     def describe(self) -> str | None:
         return "YYYY-MM-DD"
@@ -2709,7 +2804,12 @@ class Time(ValueParser[datetime.time]):
         try:
             return datetime.time.fromisoformat(value)
         except ValueError:
-            raise ParsingError("Can't parse `%r` as `time`", value, ctx=ctx) from None
+            raise ParsingError(
+                "Can't parse `%r` as `time`",
+                value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `time`",
+            ) from None
 
     def describe(self) -> str | None:
         return "HH:MM:SS"
@@ -2799,12 +2899,14 @@ class TimeDelta(ValueParser[datetime.timedelta]):
                 "Can't parse `%r` as `timedelta`, trailing coma is not allowed",
                 value,
                 ctx=ctx,
+                fallback_msg="Can't parse value as `timedelta`",
             )
         if value.startswith(","):
             raise ParsingError(
                 "Can't parse `%r` as `timedelta`, leading coma is not allowed",
                 value,
                 ctx=ctx,
+                fallback_msg="Can't parse value as `timedelta`",
             )
 
         if match := _TIMEDELTA_RE.match(value):
@@ -2819,7 +2921,12 @@ class TimeDelta(ValueParser[datetime.timedelta]):
                 microsecond,
             ) = match.groups()
         else:
-            raise ParsingError("Can't parse `%r` as `timedelta`", value, ctx=ctx)
+            raise ParsingError(
+                "Can't parse `%r` as `timedelta`",
+                value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `timedelta`",
+            )
 
         c_sign_s = -1 if c_sign_s == "-" else 1
         t_sign_s = -1 if t_sign_s == "-" else 1
@@ -2836,6 +2943,7 @@ class TimeDelta(ValueParser[datetime.timedelta]):
                         value,
                         unit,
                         ctx=ctx,
+                        fallback_msg="Can't parse value as `timedelta`",
                     )
 
         timedelta = c_sign_s * datetime.timedelta(**kwargs)
@@ -3060,40 +3168,28 @@ class Secret(Map[SecretValue[T], T], _t.Generic[T]):
         super().__init__(inner, SecretValue, lambda x: x.data)
 
     def parse_with_ctx(self, ctx: StrParsingContext, /) -> SecretValue[T]:
-        try:
+        with self._replace_error():
             return super().parse_with_ctx(ctx)
-        except ParsingError as e:
-            # Error messages can contain secret value, hide them.
-            raise ParsingError(
-                "Error when parsing secret data",
-                pos=e.pos,
-                path=e.path,
-                n_arg=e.n_arg,
-                # Omit raw value.
-            ) from None
 
     def parse_many_with_ctx(
         self, ctxs: _t.Sequence[StrParsingContext], /
     ) -> SecretValue[T]:
-        try:
+        with self._replace_error():
             return super().parse_many_with_ctx(ctxs)
-        except ParsingError as e:
-            # Error messages can contain secret value, hide them.
-            raise ParsingError(
-                "Error when parsing secret data",
-                pos=e.pos,
-                path=e.path,
-                n_arg=e.n_arg,
-                # Omit raw value.
-            ) from None
 
     def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> SecretValue[T]:
-        try:
+        with self._replace_error():
             return super().parse_config_with_ctx(ctx)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _replace_error():
+        try:
+            yield
         except ParsingError as e:
             # Error messages can contain secret value, hide them.
             raise ParsingError(
-                "Error when parsing secret data",
+                e.fallback_msg or "Error when parsing secret data",
                 pos=e.pos,
                 path=e.path,
                 n_arg=e.n_arg,
@@ -3158,6 +3254,7 @@ class CollectionParser(
 
         from typing import Iterable, Generic
 
+
         class DoubleList(CollectionParser[list[T], T], Generic[T]):
             def __init__(self, inner: Parser[T], /, *, delimiter: str | None = None):
                 super().__init__(inner, ty=list, ctor=self._ctor, delimiter=delimiter)
@@ -3166,7 +3263,9 @@ class CollectionParser(
             def _ctor(values: Iterable[T]) -> list[T]:
                 return [x for value in values for x in [value, value]]
 
-            def to_json_schema(self, ctx: yuio.json_schema.JsonSchemaContext, /) -> yuio.json_schema.JsonSchemaType:
+            def to_json_schema(
+                self, ctx: yuio.json_schema.JsonSchemaContext, /
+            ) -> yuio.json_schema.JsonSchemaType:
                 return {"type": "array", "items": self._inner.to_json_schema(ctx)}
 
             def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:

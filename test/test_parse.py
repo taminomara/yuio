@@ -57,9 +57,9 @@ class TestStrParsingContext:
         assert results == expected
 
         raw_results = [res[0] for res in results]
-        assert raw_results == s.split(
-            delim, maxsplit=maxsplit
-        ), "should match built-in str.split"
+        assert raw_results == s.split(delim, maxsplit=maxsplit), (
+            "should match built-in str.split"
+        )
 
     @pytest.mark.parametrize(
         ("s", "chars", "expected"),
@@ -318,14 +318,14 @@ class TestStr:
         parser = yuio.parse.Regex(yuio.parse.Str(), r"^a|b$")
         assert parser.parse("a") == "a"
         assert parser.parse("b") == "b"
-        with pytest.raises(ValueError, match=r"value doesn't match regex \^a\|b\$"):
+        with pytest.raises(ValueError, match=r"Value doesn't match regex \^a\|b\$"):
             parser.parse("foo")
 
     def test_regex_compiled(self):
         parser = yuio.parse.Regex(yuio.parse.Str(), re.compile(r"^a|b$"))
         assert parser.parse("a") == "a"
         assert parser.parse("b") == "b"
-        with pytest.raises(ValueError, match=r"value doesn't match regex \^a\|b\$"):
+        with pytest.raises(ValueError, match=r"Value doesn't match regex \^a\|b\$"):
             parser.parse("foo")
 
     def test_many(self):
@@ -2559,7 +2559,7 @@ class TestSecret:
         with pytest.raises(
             yuio.parse.ParsingError,
             check=lambda e: "xxx" not in str(e) and e.raw is None,
-            match=r"^Error when parsing secret data$",
+            match=r"^Expected int, got str$",
         ):
             parser.parse_config("xxx")
 
@@ -2570,7 +2570,7 @@ class TestSecret:
         with pytest.raises(
             yuio.parse.ParsingError,
             check=lambda e: "xxx" not in str(e) and e.raw is None,
-            match=r"^Error when parsing secret data$",
+            match=r"^Can't parse value as int$",
         ):
             parser.parse("xxx")
 
@@ -2580,7 +2580,7 @@ class TestSecret:
         with pytest.raises(
             yuio.parse.ParsingError,
             check=lambda e: "xxx" not in str(e) and e.raw is None,
-            match=r"^Error when parsing secret data$",
+            match=r"^Can't parse value as int$",
         ):
             parser.parse_many(["10", "xxx", "12"])
 
@@ -2596,20 +2596,20 @@ class TestSecret:
         with pytest.raises(
             yuio.parse.ParsingError,
             check=lambda e: "xxx" not in str(e) and e.raw is None,
-            match=r"^Error when parsing secret data$",
+            match=r"^Can't parse value as int$",
         ):
             parser.parse("xxx")
 
         with pytest.raises(
             yuio.parse.ParsingError,
             check=lambda e: "xxx" not in str(e) and e.raw is None,
-            match=r"^Error when parsing secret data$"
+            match=r"^Can't parse value as int$",
         ):
             parser.parse_many(["10", "xxx", "12"])
 
         with pytest.raises(
             yuio.parse.ParsingError,
             check=lambda e: "xxx" not in str(e) and e.raw is None,
-            match=r"^In \$\[1\]:\n  Error when parsing secret data$"
+            match=r"^In \$\[1\]:\n  Expected int, got str$",
         ):
             parser.parse_config([10, "xxx", 12])
