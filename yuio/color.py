@@ -282,7 +282,7 @@ class ColorValue:
 
     def _as_code(self, color_support: ColorSupport, /, fg_bg_prefix: str) -> str:
         if color_support == ColorSupport.NONE:
-            return ""
+            return ""  # pragma: no cover
         elif isinstance(self.data, int):
             return f"{fg_bg_prefix}{self.data}"
         elif isinstance(self.data, str):

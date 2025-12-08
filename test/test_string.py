@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import pytest
 
 import yuio.string
+import yuio.term
 import yuio.theme
 from yuio import _typing as _t
 from yuio.color import Color
@@ -4344,6 +4345,40 @@ def test_colorized_repr(value, expected, multiline, highlighted, max_depth):
             max_depth=max_depth,
         )._parts
     ) == _join_consecutive_strings(expected)
+
+
+class TestLink:
+    def test_simple(self):
+        l = yuio.string.Link("text", url="https://example.com")
+        assert (
+            l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
+            == "\x1b]8;;https://example.com\x1b\\text\x1b]8;;\x1b\\"
+        )
+        assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
+
+    def test_path(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.chdir("/")
+
+        l = yuio.string.Link.from_path("text", path="/foo/bar")
+        assert (
+            l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
+            == "\x1b]8;;file:///foo/bar\x1b\\text\x1b]8;;\x1b\\"
+        )
+        assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
+
+        l = yuio.string.Link.from_path("text", path="bar")
+        assert (
+            l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
+            == "\x1b]8;;file:///bar\x1b\\text\x1b]8;;\x1b\\"
+        )
+        assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
+
+        l = yuio.string.Link.from_path("text", path="a b c")
+        assert (
+            l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
+            == "\x1b]8;;file:///a%20b%20c\x1b\\text\x1b]8;;\x1b\\"
+        )
+        assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
 
 
 @yuio.string.repr_from_rich

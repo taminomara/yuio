@@ -4173,3 +4173,281 @@ class TestInputWithCompletion:
         pass
 
     # todo: test arrays
+
+
+@pytest.mark.parametrize(
+    ("keycodes", "expected"),
+    [
+        # Normal symbols.
+        (["a"], [yuio.widget.KeyboardEvent("a")]),
+        (["A"], [yuio.widget.KeyboardEvent("A")]),
+        (["1"], [yuio.widget.KeyboardEvent("1")]),
+        ([" "], [yuio.widget.KeyboardEvent(" ")]),
+        (
+            ["a", "b", "c"],
+            [
+                yuio.widget.KeyboardEvent("a"),
+                yuio.widget.KeyboardEvent("b"),
+                yuio.widget.KeyboardEvent("c"),
+            ],
+        ),
+        # Special symbols.
+        (["\t"], [yuio.widget.KeyboardEvent(yuio.widget.Key.TAB)]),
+        (["\r"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ENTER)]),
+        (["\n"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ENTER)]),
+        (["\x7f"], [yuio.widget.KeyboardEvent(yuio.widget.Key.BACKSPACE)]),
+        (["\x08"], [yuio.widget.KeyboardEvent(yuio.widget.Key.BACKSPACE)]),
+        (["\x1b", ""], [yuio.widget.KeyboardEvent(yuio.widget.Key.ESCAPE)]),
+        # Ctrl+letter.
+        (["\x01"], [yuio.widget.KeyboardEvent("a", ctrl=True)]),
+        (["\x02"], [yuio.widget.KeyboardEvent("b", ctrl=True)]),
+        (["\x03"], [yuio.widget.KeyboardEvent("c", ctrl=True)]),
+        (["\x04"], [yuio.widget.KeyboardEvent("d", ctrl=True)]),
+        (["\x05"], [yuio.widget.KeyboardEvent("e", ctrl=True)]),
+        (["\x06"], [yuio.widget.KeyboardEvent("f", ctrl=True)]),
+        (["\x07"], [yuio.widget.KeyboardEvent("g", ctrl=True)]),
+        (["\x0b"], [yuio.widget.KeyboardEvent("k", ctrl=True)]),
+        (["\x0c"], [yuio.widget.KeyboardEvent("l", ctrl=True)]),
+        (["\x0e"], [yuio.widget.KeyboardEvent("n", ctrl=True)]),
+        (["\x0f"], [yuio.widget.KeyboardEvent("o", ctrl=True)]),
+        (["\x10"], [yuio.widget.KeyboardEvent("p", ctrl=True)]),
+        (["\x11"], [yuio.widget.KeyboardEvent("q", ctrl=True)]),
+        (["\x12"], [yuio.widget.KeyboardEvent("r", ctrl=True)]),
+        (["\x13"], [yuio.widget.KeyboardEvent("s", ctrl=True)]),
+        (["\x14"], [yuio.widget.KeyboardEvent("t", ctrl=True)]),
+        (["\x15"], [yuio.widget.KeyboardEvent("u", ctrl=True)]),
+        (["\x16"], [yuio.widget.KeyboardEvent("v", ctrl=True)]),
+        (["\x17"], [yuio.widget.KeyboardEvent("w", ctrl=True)]),
+        (["\x18"], [yuio.widget.KeyboardEvent("x", ctrl=True)]),
+        (["\x19"], [yuio.widget.KeyboardEvent("y", ctrl=True)]),
+        (["\x1a"], [yuio.widget.KeyboardEvent("z", ctrl=True)]),
+        (["\x1c"], [yuio.widget.KeyboardEvent("4", ctrl=True)]),
+        (["\x1d"], [yuio.widget.KeyboardEvent("5", ctrl=True)]),
+        (["\x1e"], [yuio.widget.KeyboardEvent("6", ctrl=True)]),
+        (["\x1f"], [yuio.widget.KeyboardEvent("7", ctrl=True)]),
+        # Alt+letter.
+        (["\x1ba"], [yuio.widget.KeyboardEvent("a", alt=True)]),
+        (["\x1bA"], [yuio.widget.KeyboardEvent("A", alt=True)]),
+        (["\x1b1"], [yuio.widget.KeyboardEvent("1", alt=True)]),
+        # Double escape means alt+escape.
+        (
+            ["\x1b\x1b"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ESCAPE, alt=True)],
+        ),
+        # Multiple escapes fall back to alt+letter.
+        (["\x1b\x1b\x1ba"], [yuio.widget.KeyboardEvent("a", alt=True)]),
+        (
+            ["\x1b\x1b\x1b"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ESCAPE, alt=True)],
+        ),
+        # Arrow keys.
+        (["\x1b[A"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP)]),
+        (["\x1b[B"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN)]),
+        (["\x1b[C"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT)]),
+        (["\x1b[D"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT)]),
+        # Home/End.
+        (["\x1b[H"], [yuio.widget.KeyboardEvent(yuio.widget.Key.HOME)]),
+        (["\x1b[F"], [yuio.widget.KeyboardEvent(yuio.widget.Key.END)]),
+        (["\x1b[1~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.HOME)]),
+        (["\x1b[4~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.END)]),
+        (["\x1b[7~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.HOME)]),
+        (["\x1b[8~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.END)]),
+        # Insert/Delete.
+        (["\x1b[2~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.INSERT)]),
+        (["\x1b[3~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.DELETE)]),
+        # Page Up/Down.
+        (["\x1b[5~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_UP)]),
+        (["\x1b[6~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.PAGE_DOWN)]),
+        # Function keys.
+        (["\x1b[11~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F1)]),
+        (["\x1b[12~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F2)]),
+        (["\x1b[13~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F3)]),
+        (["\x1b[14~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F4)]),
+        (["\x1b[15~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F5)]),
+        (["\x1b[17~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F6)]),
+        (["\x1b[18~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F7)]),
+        (["\x1b[19~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F8)]),
+        (["\x1b[20~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F9)]),
+        (["\x1b[21~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F10)]),
+        (["\x1b[23~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F11)]),
+        (["\x1b[24~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F12)]),
+        # Arrow keys with modifiers.
+        (
+            ["\x1b[1;2A"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP, shift=True)],
+        ),
+        (
+            ["\x1b[1;3A"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP, alt=True)],
+        ),
+        (
+            ["\x1b[1;4A"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP, alt=True, shift=True)],
+        ),
+        (
+            ["\x1b[1;5A"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP, ctrl=True)],
+        ),
+        (
+            ["\x1b[1;6A"],
+            [
+                yuio.widget.KeyboardEvent(
+                    yuio.widget.Key.ARROW_UP, ctrl=True, shift=True
+                )
+            ],
+        ),
+        (
+            ["\x1b[1;7A"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP, ctrl=True, alt=True)],
+        ),
+        (
+            ["\x1b[1;8A"],
+            [
+                yuio.widget.KeyboardEvent(
+                    yuio.widget.Key.ARROW_UP, ctrl=True, alt=True, shift=True
+                )
+            ],
+        ),
+        (
+            ["\x1b[1;5B"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN, ctrl=True)],
+        ),
+        (
+            ["\x1b[1;5C"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT, ctrl=True)],
+        ),
+        (
+            ["\x1b[1;5D"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT, ctrl=True)],
+        ),
+        (
+            ["\x1b[3;5~"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.DELETE, ctrl=True)],
+        ),
+        # SS3 arrow keys.
+        (["\x1bOA"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP)]),
+        (["\x1bOB"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN)]),
+        (["\x1bOC"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_RIGHT)]),
+        (["\x1bOD"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_LEFT)]),
+        # SS3 function keys.
+        (["\x1bOP"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F1)]),
+        (["\x1bOQ"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F2)]),
+        (["\x1bOR"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F3)]),
+        (["\x1bOS"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F4)]),
+        # SS3 Home/End.
+        (["\x1bOH"], [yuio.widget.KeyboardEvent(yuio.widget.Key.HOME)]),
+        (["\x1bOF"], [yuio.widget.KeyboardEvent(yuio.widget.Key.END)]),
+        # Shift+Tab (SS3 Z).
+        (["\x1bOZ"], [yuio.widget.KeyboardEvent(yuio.widget.Key.TAB, shift=True)]),
+        # SS3 Enter.
+        (["\x1bOM"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ENTER)]),
+        # CSI u format.
+        (["\x1b[97u"], [yuio.widget.KeyboardEvent("a")]),
+        (["\x1b[97;2u"], [yuio.widget.KeyboardEvent("a", shift=True)]),
+        (["\x1b[97;3u"], [yuio.widget.KeyboardEvent("a", alt=True)]),
+        (["\x1b[97;5u"], [yuio.widget.KeyboardEvent("a", ctrl=True)]),
+        (
+            ["\x1b[97;8u"],
+            [yuio.widget.KeyboardEvent("a", ctrl=True, alt=True, shift=True)],
+        ),
+        # CSI 27 format.
+        (["\x1b[27;1;27~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ESCAPE)]),
+        (["\x1b[27;2;97~"], [yuio.widget.KeyboardEvent("a", shift=True)]),
+        (["\x1b[27;3;97~"], [yuio.widget.KeyboardEvent("a", alt=True)]),
+        (["\x1b[27;5;97~"], [yuio.widget.KeyboardEvent("a", ctrl=True)]),
+        (
+            ["\x1b[27;8;97~"],
+            [yuio.widget.KeyboardEvent("a", ctrl=True, alt=True, shift=True)],
+        ),
+        # DCS are ignored.
+        (["\x1b]ignored\x1b\\"], []),
+        (["\x1b]", "ignored", "\x1b\\"], []),
+        (["\x1b]ignored\x9c"], []),
+        # 8-bit CSI (0x9b).
+        (["\x9bA"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP)]),
+        (["\x9bB"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN)]),
+        (["\x9b3~"], [yuio.widget.KeyboardEvent(yuio.widget.Key.DELETE)]),
+        # 8-bit SS3 (0x8f).
+        (["\x8fP"], [yuio.widget.KeyboardEvent(yuio.widget.Key.F1)]),
+        (["\x8fA"], [yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP)]),
+        # 8-bit DCS (0x90)
+        (["\x90ignored\x1b\\"], []),
+        # 8-bit SS2 (0x9d)
+        (["\x9dignored\x1b\\"], []),
+        # ESC [ without continuation gives alt+[.
+        (["\x1b["], [yuio.widget.KeyboardEvent("[", alt=True)]),
+        # ESC O without continuation gives alt+O, not SS3.
+        (["\x1bO"], [yuio.widget.KeyboardEvent("O", alt=True)]),
+        # Unicode characters.
+        (["é"], [yuio.widget.KeyboardEvent("é")]),
+        (["日"], [yuio.widget.KeyboardEvent("日")]),
+        (["🎉"], [yuio.widget.KeyboardEvent("🎉")]),
+        # High characters (>= 160).
+        (["\xa0"], [yuio.widget.KeyboardEvent("\xa0")]),
+        (["\xff"], [yuio.widget.KeyboardEvent("\xff")]),
+        # Escape sequences come in a single chunk.
+        (
+            ["", "AB", "\x1b[AA\x1b[BB"],
+            [
+                yuio.widget.KeyboardEvent("A"),
+                yuio.widget.KeyboardEvent("B"),
+                yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_UP),
+                yuio.widget.KeyboardEvent("A"),
+                yuio.widget.KeyboardEvent(yuio.widget.Key.ARROW_DOWN),
+                yuio.widget.KeyboardEvent("B"),
+            ],
+        ),
+        # Bracketed paste.
+        (
+            ["\x1b[200~hello\x1b[201~"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.PASTE, paste_str="hello")],
+        ),
+        # Bracketed paste - text comes in chunks.
+        (
+            ["\x1b[200~", "hello", "\x1b[201~"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.PASTE, paste_str="hello")],
+        ),
+        (
+            ["\x1b[200~", "hello ", "world", "\x1b[201~"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.PASTE, paste_str="hello world")],
+        ),
+        (
+            ["\x1b[200~", "line1\nline2", "\x1b[201~"],
+            [
+                yuio.widget.KeyboardEvent(
+                    yuio.widget.Key.PASTE, paste_str="line1\nline2"
+                )
+            ],
+        ),
+        (
+            ["\x1b[200~", "", "\x1b[201~"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.PASTE, paste_str="")],
+        ),
+        # Paste with special characters.
+        (
+            ["\x1b[200~", "tab\there", "\x1b[201~"],
+            [yuio.widget.KeyboardEvent(yuio.widget.Key.PASTE, paste_str="tab\there")],
+        ),
+        # Paste is followed by other characters.
+        (
+            ["\x1b[200~", "tab\there", "\x1b[201~AB"],
+            [
+                yuio.widget.KeyboardEvent(yuio.widget.Key.PASTE, paste_str="tab\there"),
+                yuio.widget.KeyboardEvent("A"),
+                yuio.widget.KeyboardEvent("B"),
+            ],
+        ),
+    ],
+)
+def test_event_stream(
+    keycodes: list[str],
+    expected: list[yuio.widget.KeyboardEvent],
+    monkeypatch,
+):
+    keycode_iter = iter(keycodes)
+    monkeypatch.setattr("yuio.term._read_keycode", lambda *_: next(keycode_iter, "$"))
+
+    stream = yuio.widget._event_stream(None, None)  # type: ignore
+    for event in expected:
+        assert next(stream) == event
+    assert next(stream) == yuio.widget.KeyboardEvent("$")

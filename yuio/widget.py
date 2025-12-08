@@ -1050,13 +1050,13 @@ class RenderContext:
             full_redraw = True
             self._in_alternative_buffer = alternative_buffer
             if alternative_buffer:
-                self._out.append("\x1b[m\x1b[?1049h\x1b[2J\x1b[H")
+                self._out.append("\x1b[<u\x1b[?1049h\x1b[m\x1b[2J\x1b[H\x1b[>u")
                 self._normal_buffer_term_x = self._term_x
                 self._normal_buffer_term_y = self._term_y
                 self._term_x, self._term_y = 0, 0
                 self._term_color = self._none_color
             else:
-                self._out.append("\x1b[m\x1b[?1049l")
+                self._out.append("\x1b[<u\x1b[?1049l\x1b[m\x1b[>u")
                 self._term_x = self._normal_buffer_term_x
                 self._term_y = self._normal_buffer_term_y
                 self._term_color = self._none_color
@@ -4376,7 +4376,10 @@ class _EventStreamState:
     index: int = 0
 
     def load(self):
-        self.key = yuio.term._read_keycode(self.ostream, self.istream)
+        key = ""
+        while not key:
+            key = yuio.term._read_keycode(self.ostream, self.istream)
+        self.key = key
         self.index = 0
 
     def next(self):
@@ -4395,7 +4398,9 @@ class _EventStreamState:
 
 
 def _event_stream(ostream: _t.TextIO, istream: _t.TextIO) -> _t.Iterator[KeyboardEvent]:
-    # Implementation is heavily inspired by libtermkey by Paul Evans, MIT license.
+    # Implementation is heavily inspired by libtermkey by Paul Evans, MIT license,
+    # with some additions for modern protocols.
+    # See https://sw.kovidgoyal.net/kitty/keyboard-protocol/.
 
     state = _EventStreamState(ostream, istream)
     while True:
@@ -4463,14 +4468,14 @@ def _parse_csi(state: _EventStreamState, alt: bool = False):
         return
     if buffer.startswith(("?", "<", ">", "=")):
         # Some command response, ignore.
-        return
+        return  # pragma: no cover
     args = buffer.split(";")
 
     shift = ctrl = False
     if len(args) > 1:
         try:
             modifiers = int(args[1]) - 1
-        except ValueError:
+        except ValueError:  # pragma: no cover
             pass
         else:
             shift = bool(modifiers & 1)
@@ -4481,10 +4486,10 @@ def _parse_csi(state: _EventStreamState, alt: bool = False):
         if args[0] == "27":
             try:
                 ch = chr(int(args[2]))
-            except (ValueError, KeyError):
+            except (ValueError, KeyError):  # pragma: no cover
                 pass
             else:
-                yield from _parse_char(ch, ctrl=ctrl, alt=alt)
+                yield from _parse_char(ch, ctrl=ctrl, alt=alt, shift=shift)
         elif args[0] == "200":
             yield KeyboardEvent(Key.PASTE, paste_str=_read_pasted_content(state))
         elif key := _CSI_CODES.get(args[0]):
@@ -4492,13 +4497,13 @@ def _parse_csi(state: _EventStreamState, alt: bool = False):
     elif cmd == "u":
         try:
             ch = chr(int(args[0]))
-        except ValueError:
+        except ValueError:  # pragma: no cover
             pass
         else:
             yield from _parse_char(ch, ctrl=ctrl, alt=alt, shift=shift)
     elif cmd in "mMyR":
         # Some command response, ignore.
-        pass
+        pass  # pragma: no cover
     else:
         yield from _parse_ss3_key(cmd, ctrl=ctrl, alt=alt, shift=shift)
 
@@ -4587,8 +4592,8 @@ def _parse_char(
     elif ch == "\x7f":
         yield KeyboardEvent(Key.BACKSPACE, ctrl, alt, shift)
     elif "\x00" <= ch <= "\x1a":
-        yield KeyboardEvent(chr(ord(ch) + ord("a") - 0x1), True, alt, shift)
-    elif "\x0c" <= ch <= "\x1f":
+        yield KeyboardEvent(chr(ord(ch) + ord("a") - 0x01), True, alt, shift)
+    elif "\x1c" <= ch <= "\x1f":
         yield KeyboardEvent(chr(ord(ch) + ord("4") - 0x1C), True, alt, shift)
     elif ch in string.printable or ord(ch) >= 160:
         yield KeyboardEvent(ch, ctrl, alt, shift)

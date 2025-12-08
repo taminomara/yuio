@@ -306,17 +306,6 @@ class Term:
         )
 
     @property
-    def can_query_terminal(self) -> bool:
-        """
-        Return :data:`True` if terminal can process queries, enter ``CBREAK`` mode, etc.
-
-        This is an alias to :attr:`~Term.is_fully_interactive`.
-
-        """
-
-        return self.is_fully_interactive
-
-    @property
     def is_fully_interactive(self) -> bool:
         """
         Return :data:`True` if we're in a fully interactive environment.
@@ -626,7 +615,7 @@ elif os.name == "nt":
     def _is_foreground(stream: _t.TextIO | None) -> bool:
         return True
 
-else:
+else:  # pragma: no cover
 
     def _is_foreground(stream: _t.TextIO | None) -> bool:
         return False
@@ -646,6 +635,33 @@ def _is_interactive_output(stream: _t.TextIO | None) -> bool:
         return False
 
 
+@contextlib.contextmanager
+def _modify_keyboard(
+    ostream: _t.TextIO,
+    bracketed_paste: bool = False,
+    modify_keyboard: bool = False,
+):
+    prologue = []
+    if bracketed_paste:
+        prologue.append("\x1b[?2004h")
+    if modify_keyboard:
+        prologue.append("\x1b[>u")
+    if prologue:
+        ostream.write("".join(prologue))
+        ostream.flush()
+    try:
+        yield
+    finally:
+        epilogue = []
+        if bracketed_paste:
+            epilogue.append("\x1b[?2004l")
+        if modify_keyboard:
+            epilogue.append("\x1b[<u")
+        if epilogue:
+            ostream.write("".join(epilogue))
+            ostream.flush()
+
+
 # Platform-specific code for working with terminals.
 if os.name == "posix":
     import select
@@ -662,26 +678,10 @@ if os.name == "posix":
         prev_mode = termios.tcgetattr(istream)
         tty.setcbreak(istream, termios.TCSAFLUSH)
 
-        prologue = []
-        if bracketed_paste:
-            prologue.append("\x1b[?2004h")
-        if modify_keyboard:
-            prologue.append("\033[>4;2m")
-        if prologue:
-            ostream.write("".join(prologue))
-            ostream.flush()
-
         try:
-            yield
+            with _modify_keyboard(ostream, bracketed_paste, modify_keyboard):
+                yield
         finally:
-            epilogue = []
-            if bracketed_paste:
-                epilogue.append("\x1b[?2004l")
-            if modify_keyboard:
-                epilogue.append("\033[>4m")
-            if epilogue:
-                ostream.write("".join(epilogue))
-                ostream.flush()
             termios.tcsetattr(istream, termios.TCSAFLUSH, prev_mode)
 
     def _read_keycode(ostream: _t.TextIO, istream: _t.TextIO) -> str:
@@ -752,7 +752,8 @@ elif os.name == "nt":
             raise ctypes.WinError()
 
         try:
-            yield
+            with _modify_keyboard(ostream, bracketed_paste, modify_keyboard):
+                yield
         finally:
             success = _SetConsoleMode(_ISTREAM_HANDLE, mode)
             if not success:
@@ -803,7 +804,7 @@ elif os.name == "nt":
         except Exception:  # pragma: no cover
             return False
 
-else:
+else:  # pragma: no cover
 
     @contextlib.contextmanager
     def _enter_raw_mode(

@@ -63,6 +63,7 @@ class TestTheme(yuio.theme.Theme):
         "msg/text:warning": "yellow",
         "msg/text:success": "green",
         "msg/text:info": "cyan",
+        "menu/text/error": "bold red",
     }
 
 
@@ -433,13 +434,17 @@ class IOMocker:
         key: str | yuio.widget.Key,
         ctrl: bool = False,
         alt: bool = False,
+        shift: bool = False,
     ) -> _t.Self:
         """
         Yield a key from the mocked keyboard event stream.
 
         """
         self._events.append(
-            (self._get_stack_summary(), yuio.widget.KeyboardEvent(key, ctrl, alt))
+            (
+                self._get_stack_summary(),
+                yuio.widget.KeyboardEvent(key, ctrl, alt, shift),
+            )
         )
         return self
 
@@ -1043,7 +1048,7 @@ class RcCompare:
         return "<assert rendered screen>"
 
 
-_CSI_RE = re.compile(r"\x1b\[((?:-?[0-9]+)?(?:;(?:-?[0-9]+)?)*(?:[mJHABCDG]))|\a")
+_CSI_RE = re.compile(r"\x1b\[(.*?(?:[umhlJHABCDG]))|\a")
 _COLOR_NAMES = "krgybmcw"
 
 

@@ -5626,11 +5626,7 @@ class _CodeRenderer:
             res.append_colorized_str(
                 ctx.str(
                     yuio.string.Hl(
-                        left.replace("%", "%%")
-                        + "%s"
-                        + right.replace(
-                            "%", "%%"
-                        ),  # pyright: ignore[reportArgumentType]
+                        left.replace("%", "%%") + "%s" + right.replace("%", "%%"),  # pyright: ignore[reportArgumentType]
                         yuio.string.WithBaseColor(
                             center, base_color="hl/error:sh-usage"
                         ),

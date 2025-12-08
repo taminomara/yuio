@@ -178,9 +178,9 @@ term_colors = yuio.term.TerminalTheme(
 @pytest.mark.parametrize(
     ("level", "ansi", "ansi_256", "ansi_true"),
     [
-        (yuio.term.ColorSupport.ANSI, True, False, False),
-        (yuio.term.ColorSupport.ANSI_256, True, True, False),
-        (yuio.term.ColorSupport.ANSI_TRUE, True, True, True),
+        (yuio.color.ColorSupport.ANSI, True, False, False),
+        (yuio.color.ColorSupport.ANSI_256, True, True, False),
+        (yuio.color.ColorSupport.ANSI_TRUE, True, True, True),
     ],
 )
 def test_color_support(level, ansi, ansi_256, ansi_true):
@@ -202,7 +202,7 @@ def test_interactive_support(level, move, query):
     term = yuio.term.Term(
         None,  # type: ignore
         None,  # type: ignore
-        color_support=yuio.term.ColorSupport.ANSI,
+        color_support=yuio.color.ColorSupport.ANSI,
         interactive_support=level,
     )
     assert term.can_move_cursor == move
@@ -210,7 +210,7 @@ def test_interactive_support(level, move, query):
     term = yuio.term.Term(
         None,  # type: ignore
         None,  # type: ignore
-        color_support=yuio.term.ColorSupport.NONE,
+        color_support=yuio.color.ColorSupport.NONE,
         interactive_support=level,
     )
     assert not term.can_move_cursor
@@ -225,7 +225,7 @@ def test_interactive_support(level, move, query):
         (
             {},
             {
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -233,7 +233,7 @@ def test_interactive_support(level, move, query):
         (
             {"env": {"TERM": "xterm"}},
             {
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -245,7 +245,7 @@ def test_interactive_support(level, move, query):
             },
             {
                 "istream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -257,7 +257,7 @@ def test_interactive_support(level, move, query):
             },
             {
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI,
+                "color_support": yuio.color.ColorSupport.ANSI,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -271,7 +271,7 @@ def test_interactive_support(level, move, query):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI,
+                "color_support": yuio.color.ColorSupport.ANSI,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -282,7 +282,7 @@ def test_interactive_support(level, move, query):
                 "is_foreground": True,
             },
             {
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -295,7 +295,7 @@ def test_interactive_support(level, move, query):
             },
             {
                 "istream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -308,7 +308,7 @@ def test_interactive_support(level, move, query):
             },
             {
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI,
+                "color_support": yuio.color.ColorSupport.ANSI,
                 "interactive_support": yuio.term.InteractiveSupport.MOVE_CURSOR,
                 "terminal_theme": None,
             },
@@ -323,7 +323,7 @@ def test_interactive_support(level, move, query):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI,
+                "color_support": yuio.color.ColorSupport.ANSI,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": None,
             },
@@ -339,7 +339,7 @@ def test_interactive_support(level, move, query):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_256,
+                "color_support": yuio.color.ColorSupport.ANSI_256,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": None,
             },
@@ -355,7 +355,7 @@ def test_interactive_support(level, move, query):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": None,  # OSC query got no response
             },
@@ -372,7 +372,7 @@ def test_interactive_support(level, move, query):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_256,
+                "color_support": yuio.color.ColorSupport.ANSI_256,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": None,  # kbhit responds, but OSC is not properly supported
             },
@@ -389,7 +389,7 @@ def test_interactive_support(level, move, query):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_256,
+                "color_support": yuio.color.ColorSupport.ANSI_256,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": term_colors,  # Got the response!
             },
@@ -405,7 +405,7 @@ def test_interactive_support(level, move, query):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -420,7 +420,7 @@ def test_interactive_support(level, move, query):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -430,7 +430,7 @@ def test_interactive_support(level, move, query):
                 "args": ["--force-color"],
             },
             {
-                "color_support": yuio.term.ColorSupport.ANSI,
+                "color_support": yuio.color.ColorSupport.ANSI,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -438,7 +438,7 @@ def test_interactive_support(level, move, query):
         (
             {"env": {"FORCE_COLOR": "1"}},
             {
-                "color_support": yuio.term.ColorSupport.ANSI,
+                "color_support": yuio.color.ColorSupport.ANSI,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -460,7 +460,7 @@ def test_capabilities_estimation(kwargs, expected_term):
         (
             {},
             {
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -468,7 +468,7 @@ def test_capabilities_estimation(kwargs, expected_term):
         (
             {"enable_vt_processing": True},
             {
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -480,7 +480,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             },
             {
                 "istream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -491,7 +491,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             },
             {
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -503,7 +503,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             },
             {
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -516,7 +516,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -530,7 +530,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -541,7 +541,7 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "enable_vt_processing": True,
             },
             {
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -554,7 +554,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             },
             {
                 "istream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -567,7 +567,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             },
             {
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.MOVE_CURSOR,
                 "terminal_theme": None,
             },
@@ -583,7 +583,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": None,  # OSC query got no response
             },
@@ -600,7 +600,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": None,  # kbhit responds, but OSC is not properly supported
             },
@@ -617,7 +617,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.ANSI_TRUE,
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "interactive_support": yuio.term.InteractiveSupport.FULL,
                 "terminal_theme": term_colors,  # Got the response!
             },
@@ -633,7 +633,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -649,7 +649,7 @@ def test_capabilities_estimation(kwargs, expected_term):
             {
                 "istream_is_tty": True,
                 "ostream_is_tty": True,
-                "color_support": yuio.term.ColorSupport.NONE,
+                "color_support": yuio.color.ColorSupport.NONE,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -659,7 +659,7 @@ def test_capabilities_estimation(kwargs, expected_term):
                 "args": ["--force-color"],
             },
             {
-                "color_support": yuio.term.ColorSupport.ANSI,
+                "color_support": yuio.color.ColorSupport.ANSI,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -667,7 +667,7 @@ def test_capabilities_estimation(kwargs, expected_term):
         (
             {"env": {"FORCE_COLOR": "1"}},
             {
-                "color_support": yuio.term.ColorSupport.ANSI,
+                "color_support": yuio.color.ColorSupport.ANSI,
                 "interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
             },
@@ -680,3 +680,30 @@ def test_capabilities_estimation_windows(kwargs, expected_term):
         term = yuio.term.get_term_from_stream(ostream, istream)
         expected = yuio.term.Term(ostream, istream, **expected_term)
         assert term == expected
+
+
+@pytest.mark.parametrize(
+    ("env_vars", "expected"),
+    [
+        ({"GITHUB_ACTIONS": ""}, yuio.color.ColorSupport.ANSI_TRUE),
+        ({"TRAVIS": ""}, yuio.color.ColorSupport.ANSI),
+        ({"CIRCLECI": ""}, yuio.color.ColorSupport.ANSI),
+        ({"APPVEYOR": ""}, yuio.color.ColorSupport.ANSI),
+        ({"GITLAB_CI": ""}, yuio.color.ColorSupport.ANSI),
+        ({"BUILDKITE": ""}, yuio.color.ColorSupport.ANSI),
+        ({"DRONE": ""}, yuio.color.ColorSupport.ANSI),
+        ({"TEAMCITY_VERSION": "2023.1"}, yuio.color.ColorSupport.ANSI),
+        ({}, yuio.color.ColorSupport.NONE),
+        ({"PATH": "/usr/bin", "HOME": "/home/user"}, yuio.color.ColorSupport.NONE),
+        (
+            {"GITHUB_ACTIONS": "", "TRAVIS": ""},
+            yuio.color.ColorSupport.ANSI_TRUE,
+        ),
+        ({"TRAVIS": "", "CIRCLECI": ""}, yuio.color.ColorSupport.ANSI),
+        ({"CI": ""}, yuio.color.ColorSupport.NONE),
+    ],
+)
+def test_detect_ci_color_support(env_vars, expected, monkeypatch: pytest.MonkeyPatch):
+    for k, v in env_vars.items():
+        monkeypatch.setenv(k, v)
+    assert yuio.term.detect_ci_color_support() == expected

@@ -130,6 +130,19 @@ def test_combine(color, expect):
         (
             [
                 yuio.color.Color.fore_from_hex("#AA0000"),
+            ],
+            [i / 4 for i in range(5)],
+            [
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#AA0000"),
+                yuio.color.Color.fore_from_hex("#AA0000"),
+            ],
+        ),
+        (
+            [
+                yuio.color.Color.fore_from_hex("#AA0000"),
                 yuio.color.Color.fore_from_hex("#00AA00"),
             ],
             [i / 4 for i in range(5)],
@@ -209,6 +222,11 @@ def test_lerp(colors, coeffs, expect):
     assert result == expect
 
 
+def test_lerp_fail():
+    with pytest.raises(ValueError):
+        yuio.color.Color.lerp()
+
+
 @pytest.mark.parametrize(
     ("color", "expect"),
     [
@@ -232,6 +250,18 @@ def test_lerp(colors, coeffs, expect):
                 yuio.color.ColorValue.from_hex("#AA4700")
             ),
             yuio.color.ColorValue.from_hex("#00AAAA"),
+        ),
+        (
+            yuio.color.ColorValue(0).match_luminosity(
+                yuio.color.ColorValue.from_hex("#002A2A")
+            ),
+            yuio.color.ColorValue(0),
+        ),
+        (
+            yuio.color.ColorValue.from_hex("#005555").match_luminosity(
+                yuio.color.ColorValue(0)
+            ),
+            yuio.color.ColorValue.from_hex("#005555"),
         ),
     ],
 )
@@ -286,7 +316,42 @@ def test_color_operations(color, expect):
             yuio.color.ColorSupport.ANSI_TRUE,
             "\x1b[;48;2;51;143;21m",
         ),
+        (
+            # Special case for grayscale.
+            yuio.color.Color.fore_from_hex("#333333"),
+            yuio.color.ColorSupport.ANSI_256,
+            "\x1b[;38;5;236m",
+        ),
+        (yuio.color.Color.STYLE_BOLD, yuio.color.ColorSupport.ANSI, "\x1b[;1m"),
+        (yuio.color.Color.STYLE_DIM, yuio.color.ColorSupport.ANSI, "\x1b[;2m"),
+        (yuio.color.Color.STYLE_ITALIC, yuio.color.ColorSupport.ANSI, "\x1b[;3m"),
+        (yuio.color.Color.STYLE_UNDERLINE, yuio.color.ColorSupport.ANSI, "\x1b[;4m"),
+        (yuio.color.Color.STYLE_BLINK, yuio.color.ColorSupport.ANSI, "\x1b[;5m"),
+        (yuio.color.Color.STYLE_INVERSE, yuio.color.ColorSupport.ANSI, "\x1b[;7m"),
+        (
+            yuio.color.Color.STYLE_BOLD
+            | yuio.color.Color.STYLE_DIM
+            | yuio.color.Color.STYLE_ITALIC
+            | yuio.color.Color.STYLE_UNDERLINE
+            | yuio.color.Color.STYLE_INVERSE
+            | yuio.color.Color.STYLE_BLINK,
+            yuio.color.ColorSupport.ANSI,
+            "\x1b[;1;2;3;4;5;7m",
+        ),
+        (
+            yuio.color.Color.STYLE_BOLD
+            | yuio.color.Color.STYLE_DIM
+            | yuio.color.Color.STYLE_ITALIC
+            | yuio.color.Color.STYLE_UNDERLINE
+            | yuio.color.Color.STYLE_INVERSE
+            | yuio.color.Color.STYLE_BLINK
+            | yuio.color.Color.STYLE_NORMAL,
+            yuio.color.ColorSupport.ANSI,
+            "\x1b[m",
+        ),
+        (yuio.color.Color.STYLE_NORMAL, yuio.color.ColorSupport.ANSI, "\x1b[m"),
+        (yuio.color.Color.FORE_NORMAL_DIM, yuio.color.ColorSupport.ANSI, "\x1b[;2m"),
     ],
 )
-def color_to_code(self, color: yuio.color.Color, cap, expect):
+def test_color_to_code(color: yuio.color.Color, cap, expect):
     assert color.as_code(cap) == expect

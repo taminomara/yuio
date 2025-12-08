@@ -46,8 +46,8 @@ def main(
         if raw:
             _read_keycode = yuio.term._read_keycode
 
-            def read_keycode():
-                keycode = _read_keycode(term.ostream, term.istream)
+            def read_keycode(*a, **kw):
+                keycode = _read_keycode(*a, **kw)
                 yuio.io.info("<c d>Read: %r</c>", keycode, to_stdout=True)
                 return keycode
 

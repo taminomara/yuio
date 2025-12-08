@@ -1584,7 +1584,7 @@ class Link(_UserString):
         """
 
         if color_support < yuio.color.ColorSupport.ANSI_TRUE:
-            return ""
+            return str(self)
         else:
             return f"\x1b]8;;{self.__url}\x1b\\{self}\x1b]8;;\x1b\\"
 

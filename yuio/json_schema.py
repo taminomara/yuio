@@ -148,7 +148,7 @@ __all__ = [
 
 T = _t.TypeVar("T")
 
-if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:
+if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:  # pragma: no cover
     JsonValue: _t.TypeAlias = (
         str
         | int
@@ -250,7 +250,7 @@ class JsonSchemaContext:
         return schema
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class JsonSchemaType(abc.ABC):
     """
     Base class for JSON schema representation.
@@ -539,7 +539,7 @@ class Never(JsonSchemaType):
         return "never"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class OneOf(JsonSchemaType):
     """
     A union of possible values, equivalent to ``oneOf`` schema.
@@ -567,7 +567,9 @@ class OneOf(JsonSchemaType):
             return Never()
         elif len(flatten) == 1:
             return flatten[0]
-        return super(OneOf, cls).__new__(cls)
+        self = object.__new__(cls)
+        object.__setattr__(self, "items", flatten)
+        return self
 
     def render(self) -> dict[str, JsonValue]:
         return {"oneOf": [item.render() for item in self.items]}
@@ -588,7 +590,7 @@ class OneOf(JsonSchemaType):
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class AllOf(JsonSchemaType):
     """
     An intersection of possible values, equivalent to ``allOf`` schema.
@@ -616,7 +618,9 @@ class AllOf(JsonSchemaType):
             return Never()
         elif len(flatten) == 1:
             return flatten[0]
-        return super(AllOf, cls).__new__(cls)
+        self = object.__new__(cls)
+        object.__setattr__(self, "items", flatten)
+        return self
 
     def render(self) -> dict[str, JsonValue]:
         return {"allOf": [item.render() for item in self.items]}
@@ -637,7 +641,7 @@ class AllOf(JsonSchemaType):
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class AnyOf(JsonSchemaType):
     """
     A union of possible values, equivalent to ``anyOf`` schema.
@@ -665,7 +669,9 @@ class AnyOf(JsonSchemaType):
             return Never()
         elif len(flatten) == 1:
             return flatten[0]
-        return super(AnyOf, cls).__new__(cls)
+        self = object.__new__(cls)
+        object.__setattr__(self, "items", flatten)
+        return self
 
     def render(self) -> dict[str, JsonValue]:
         return {"anyOf": [item.render() for item in self.items]}
