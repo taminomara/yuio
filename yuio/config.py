@@ -947,7 +947,7 @@ class Config:
                     fields[name] = field.parser.parse(os.environ[env])
                 except yuio.parse.ParsingError as e:
                     raise yuio.parse.ParsingError(
-                        "Error when parsing environment variable `%s`:\n%s",
+                        "Can't parse environment variable `%s`:\n%s",
                         env,
                         yuio.string.Indent(e),
                     ) from None

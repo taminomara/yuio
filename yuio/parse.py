@@ -991,7 +991,18 @@ class Parser(PartialParser, _t.Generic[T_co]):
         Check whether the parser can handle a particular value in its
         :meth:`~Parser.describe_value` and other methods.
 
-        This function is used in :class:`Union` to dispatch values to correct parsers.
+        This function is used to raise :class:`TypeError`\\ s in function that accept
+        unknown values. Parsers like :class:`Union` rely on :class:`TypeError`\\ s
+        to dispatch values to correct sub-parsers.
+
+        .. note::
+
+            For performance reasons, this method should not inspect contents
+            of containers, only their type (otherwise some methods turn from linear
+            to quadratic).
+
+            This also means that validating and mapping parsers
+            can always return :data:`True`.
 
         :param value:
             value that needs a type check.
@@ -1630,9 +1641,7 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
             raise
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
-        if self._rev:
-            value = self._rev(value)
-        return self._inner.check_type(value)
+        return True
 
     def describe_value(self, value: object, /) -> str:
         if self._rev:
@@ -1862,7 +1871,7 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
         return result
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
-        return self._inner.check_type(value)
+        return True
 
     def describe_value(self, value: object, /) -> str:
         return self._inner.describe_value(value)
@@ -1994,7 +2003,7 @@ class Int(ValueParser[int]):
             value = ctx.value.casefold()
             if value.startswith("-"):
                 neg = True
-                value = value[1:]
+                value = value[1:].lstrip()
             else:
                 neg = False
             if value.startswith("0x"):
@@ -2481,7 +2490,7 @@ class Fraction(ValueParser[fractions.Fraction]):
         ):
             try:
                 return fractions.Fraction(*value)
-            except ValueError:
+            except (ValueError, TypeError):
                 raise ParsingError(
                     "Can't parse `%s/%s` as `fraction`",
                     value[0],
@@ -2500,7 +2509,7 @@ class Fraction(ValueParser[fractions.Fraction]):
         if isinstance(value, (int, float, str, decimal.Decimal, fractions.Fraction)):
             try:
                 return fractions.Fraction(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 raise ParsingError(
                     "Can't parse `%r` as `fraction`",
                     value,
@@ -2610,10 +2619,7 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
             return _t.cast(T, ctx.value)
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
-        if self._inner_raw is not None:
-            return self._inner_raw.check_type(value)
-        else:
-            return True  # xxx: make a better check
+        return True
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
@@ -3200,6 +3206,9 @@ class Secret(Map[SecretValue[T], T], _t.Generic[T]):
         return "***"
 
     def completer(self) -> yuio.complete.Completer | None:
+        return None
+
+    def options(self) -> _t.Collection[yuio.widget.Option[SecretValue[T]]] | None:
         return None
 
     def widget(
@@ -4100,9 +4109,7 @@ class Optional(MappingParser[T | None, T], _t.Generic[T]):
         return self._inner.parse_config_with_ctx(ctx)
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T | None]:
-        if value is None:
-            return True
-        return self._inner.check_type(value)
+        return True
 
     def describe_value(self, value: object, /) -> str:
         if value is None:
@@ -4364,7 +4371,7 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
         )
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
-        return any(parser.check_type(value) for parser in self._inner)
+        return True
 
     def describe(self) -> str | None:
         if len(self._inner) > 1:
@@ -5105,7 +5112,7 @@ class WithMeta(MappingParser[T, T], _t.Generic[T]):
         super().__init__(inner)
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
-        return self._inner.check_type(value)
+        return True
 
     def describe(self) -> str | None:
         return self._desc or self._inner.describe()
@@ -5516,6 +5523,8 @@ class _PathRenderer:
                 msg.append_str(repr(key))
                 msg.append_color(punct_color)
                 msg.append_str("]")
+
+        msg.end_no_wrap()
         return msg
 
 
@@ -5610,6 +5619,7 @@ class _CodeRenderer:
 
         res = yuio.string.ColorizedString()
         res.start_no_wrap()
+
         if self._as_cli:
             res.append_color(punct_color)
             res.append_str("$ ")
@@ -5647,6 +5657,8 @@ class _CodeRenderer:
         res.append_str("  ")
         res.append_str(" " * yuio.string.line_width(left))
         res.append_str("^" * yuio.string.line_width(center))
+
+        res.end_no_wrap()
 
         return res
 

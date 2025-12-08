@@ -223,6 +223,7 @@ import collections
 import dataclasses
 import functools
 import os
+import pathlib
 import re
 import reprlib
 import shutil
@@ -932,7 +933,7 @@ class ColorizedString:
                 if isinstance(part, Link):
                     if not cur_link:
                         cur_link = part
-                    elif cur_link.href == part.href:
+                    elif cur_link.url == part.url:
                         cur_link += part
                     else:
                         parts.append(cur_link.as_code(color_support))
@@ -1530,23 +1531,45 @@ class Link(_UserString):
     """
     A :class:`str` wrapper with an attached hyperlink.
 
+    :param args:
+        arguments for :class:`str` constructor.
+    :param url:
+        link, should be properly urlencoded.
+
     """
 
-    __slots__ = ("__href",)
+    __slots__ = ("__url",)
 
-    def __new__(cls, *args, href: str, **kwargs):
+    def __new__(cls, *args, url: str, **kwargs):
         res = super().__new__(cls, *args, **kwargs)
-        res.__href = href
+        res.__url = url
         return res
 
+    @classmethod
+    def from_path(cls, *args, path: str | pathlib.Path) -> _t.Self:
+        """
+        Create a link to a local file.
+
+        Ensures that file path is absolute and properly formatted.
+
+        :param args:
+            arguments for :class:`str` constructor.
+        :param path:
+            path to a file.
+
+        """
+
+        path = pathlib.Path(path).expanduser().absolute().as_uri()
+        return cls(*args, url=path)
+
     @property
-    def href(self):
+    def url(self):
         """
         Target link.
 
         """
 
-        return self.__href
+        return self.__url
 
     def as_code(self, color_support: yuio.color.ColorSupport):
         """
@@ -1563,13 +1586,13 @@ class Link(_UserString):
         if color_support < yuio.color.ColorSupport.ANSI_TRUE:
             return ""
         else:
-            return f"\x1b]8;;{self.__href}\x1b\\{self}\x1b]8;;\x1b\\"
+            return f"\x1b]8;;{self.__url}\x1b\\{self}\x1b]8;;\x1b\\"
 
     def _wrap(self, data: str):
-        return self.__class__(data, href=self.__href)
+        return self.__class__(data, url=self.__url)
 
     def __repr__(self) -> str:
-        return f"Link({super().__repr__()}, href={self.href!r})"
+        return f"Link({super().__repr__()}, url={self.url!r})"
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
         return ColorizedString(self)
@@ -1577,8 +1600,8 @@ class Link(_UserString):
 
 def _split_keep_link(s: str, r: _t.StrRePattern):
     if isinstance(s, Link):
-        href = s.href
-        ctor = lambda x: Link(x, href=href)
+        url = s.url
+        ctor = lambda x: Link(x, url=url)
     else:
         ctor = s.__class__
     return [ctor(part) for part in r.split(s)]
@@ -1658,7 +1681,7 @@ class _TextWrapper:
         self.at_line_start_or_indent: bool = True
         self.has_ellipsis: bool = False
         self.needs_space_before_word = False
-        self.space_before_word_href = None
+        self.space_before_word_url = None
 
         self.nowrap_start_index = None
         self.nowrap_start_width = 0
@@ -1681,7 +1704,7 @@ class _TextWrapper:
         self.nowrap_start_width = 0
         self.nowrap_start_added_space = False
         self.needs_space_before_word = False
-        self.space_before_word_href = None
+        self.space_before_word_url = None
 
     def _flush_line_part(self):
         assert self.nowrap_start_index is not None
@@ -1738,11 +1761,11 @@ class _TextWrapper:
     def _append_space(self):
         if self.needs_space_before_word:
             word = " "
-            if self.space_before_word_href:
-                word = Link(word, href=self.space_before_word_href)
+            if self.space_before_word_url:
+                word = Link(word, url=self.space_before_word_url)
             self._append_word(word, 1)
             self.needs_space_before_word = False
-            self.space_before_word_href = None
+            self.space_before_word_url = None
 
     def _add_ellipsis(self):
         if self.has_ellipsis:
@@ -1808,7 +1831,7 @@ class _TextWrapper:
                     # will be wrapped soon anyways.
                     self._append_space()
                 self.needs_space_before_word = False
-                self.space_before_word_href = None
+                self.space_before_word_url = None
                 self.current_line.append_color(part)
                 continue
             elif part is NO_WRAP_START:
@@ -1827,7 +1850,7 @@ class _TextWrapper:
                 else:
                     self.nowrap_start_added_space = False
                 self.needs_space_before_word = False
-                self.space_before_word_href = None
+                self.space_before_word_url = None
                 if self.at_line_start:
                     self.nowrap_start_index = None
                     self.nowrap_start_width = 0
@@ -1885,8 +1908,8 @@ class _TextWrapper:
                         word = word.translate(_SPACE_TRANS)
                     else:
                         self.needs_space_before_word = True
-                        self.space_before_word_href = (
-                            word.href if isinstance(word, Link) else None
+                        self.space_before_word_url = (
+                            word.url if isinstance(word, Link) else None
                         )
                         continue
 
@@ -2433,6 +2456,7 @@ class ReprContext:
         try:
             # If dataclass has a custom repr, fall back to it.
             # This code is copied from Rich, MIT License.
+            # See https://github.com/Textualize/rich/blob/master/LICENSE
             has_custom_repr = value.__repr__.__code__.co_filename not in (
                 dataclasses.__file__,
                 reprlib.__file__,

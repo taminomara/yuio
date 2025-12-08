@@ -2371,9 +2371,9 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
         """
 
-        assert len(self._widgets) == len(
-            self.__layouts
-        ), "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
+        assert len(self._widgets) == len(self.__layouts), (
+            "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
+        )
 
         if rc.height <= self.__min_h:
             scale = 0.0
@@ -2968,10 +2968,10 @@ class Input(Widget[str]):
     def go_to_err(self, /, *, checkpoint: bool = True):
         if not self.__err_region:
             return
-        if self.pos == self.__err_region[0]:
-            self.pos = self.__err_region[1]
-        else:
+        if self.pos == self.__err_region[1]:
             self.pos = self.__err_region[0]
+        else:
+            self.pos = self.__err_region[1]
         self.__require_checkpoint |= checkpoint
 
     _MODIFY = "Modify"

@@ -50,7 +50,7 @@ def main(
     # From CLI arguments...
     CONFIG.update(config)
 
-    yuio.io.info("global config is loaded: `%r`", CONFIG)
+    yuio.io.info("Loaded config: `%#+r`", CONFIG)
 
 
 main.epilog = """
@@ -91,7 +91,7 @@ def run(
 ):
     """apply trained model to a dataset."""
 
-    yuio.io.info("applying model `%s` to data `%s`", model, data)
+    yuio.io.info("Applying model `%s` to data `%s`", model, data)
 
 
 @main.subcommand(aliases=["t"])
@@ -106,7 +106,7 @@ def train(
 ):
     """train model on a dataset."""
 
-    yuio.io.info("training model `%s` on data `%s`", output, data)
+    yuio.io.info("Training model `%s` on data `%s`", output, data)
 
 
 if __name__ == "__main__":

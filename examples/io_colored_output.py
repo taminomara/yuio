@@ -19,6 +19,16 @@ if __name__ == "__main__":
     yuio.io.info("This text is <c red bold>rad!</c>")
     yuio.io.warning("File <c code>example.txt</c> does not exist.")
 
+    yuio.io.heading("Links")
+    yuio.io.info(
+        "Visit %s (if your terminal supports hyperlinks, that is.)",
+        yuio.io.Link("example.com", url="https://example.com"),
+    )
+    yuio.io.info(
+        "Or open %s in a text editor.",
+        yuio.io.Link.from_path("this example", path=__file__),
+    )
+
     yuio.io.heading("Exceptions")
     try:
         json.loads("{ nah, this is not a valid JSON 😕 }")

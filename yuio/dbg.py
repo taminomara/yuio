@@ -7,7 +7,7 @@
 
 """
 This module provides functionality for collecting data about environment for including
-it to bug reports. It's inspired by scooby__ package (check it out if functionality
+it to bug reports. It's inspired by Scooby__ (check it out if functionality
 of this module is not enough).
 
 __ https://github.com/banesullivan/scooby/

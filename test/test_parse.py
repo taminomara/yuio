@@ -1,5 +1,6 @@
 import datetime
 import enum
+import math
 import os.path
 import pathlib
 import re
@@ -13,6 +14,7 @@ import pytest
 import yuio.json_schema
 import yuio.parse
 import yuio.secret
+import yuio.widget
 from yuio import _typing as _t
 
 
@@ -251,11 +253,30 @@ def test_code_renderer(code, pos, a, b, as_cli):
     assert str(yuio.parse._CodeRenderer(code, pos, as_cli=as_cli)) == a + "\n" + b
 
 
+class TestErrorMessages:
+    def test_code(self):
+        parser = yuio.parse.List(yuio.parse.Int())
+        with pytest.raises(
+            yuio.parse.ParsingError,
+            match=re.escape("> \"10 xx 30\"\n      ^^\n  Can't parse 'xx' as int"),
+        ):
+            parser.parse("10 xx 30")
+
+    def test_path(self):
+        parser = yuio.parse.List(yuio.parse.Int())
+        with pytest.raises(
+            yuio.parse.ParsingError,
+            match=re.escape("In $[1]:\n  Expected int, got str: '20'"),
+        ):
+            parser.parse_config([10, "20", 30])
+
+
 class TestStr:
     def test_basics(self):
         parser = yuio.parse.Str()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -277,7 +298,7 @@ class TestStr:
         assert parser.parse("Test") == "Test"
         assert parser.parse(" Test ") == " Test "
         assert parser.parse_config("Test") == "Test"
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
     def test_lower(self):
@@ -286,7 +307,7 @@ class TestStr:
         assert parser.parse("Test") == "test"
         assert parser.parse("ῼ") == "ῳ"
         assert parser.parse_config("Test") == "test"
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
     def test_casefold(self):
@@ -295,7 +316,7 @@ class TestStr:
         assert parser.parse("Test") == "test"
         assert parser.parse("ῼ") == "ωι"
         assert parser.parse_config("Test") == "test"
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
     def test_upper(self):
@@ -303,7 +324,7 @@ class TestStr:
         assert parser.parse("Test") == "TEST"
         assert parser.parse("Test") == "TEST"
         assert parser.parse_config("Test") == "TEST"
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
     def test_strip(self):
@@ -311,21 +332,25 @@ class TestStr:
         assert parser.parse("Test  ") == "Test"
         assert parser.parse("  Test") == "Test"
         assert parser.parse_config("  Test  ") == "Test"
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
     def test_regex(self):
         parser = yuio.parse.Regex(yuio.parse.Str(), r"^a|b$")
         assert parser.parse("a") == "a"
         assert parser.parse("b") == "b"
-        with pytest.raises(ValueError, match=r"Value doesn't match regex \^a\|b\$"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Value doesn't match regex \^a\|b\$"
+        ):
             parser.parse("foo")
 
     def test_regex_compiled(self):
         parser = yuio.parse.Regex(yuio.parse.Str(), re.compile(r"^a|b$"))
         assert parser.parse("a") == "a"
         assert parser.parse("b") == "b"
-        with pytest.raises(ValueError, match=r"Value doesn't match regex \^a\|b\$"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Value doesn't match regex \^a\|b\$"
+        ):
             parser.parse("foo")
 
     def test_many(self):
@@ -372,6 +397,7 @@ class TestInt:
         parser = yuio.parse.Int()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -391,14 +417,30 @@ class TestInt:
     def test_parse(self):
         parser = yuio.parse.Int()
         assert parser.parse("1") == 1
-        assert parser.parse("1") == 1
+        assert parser.parse("0x10") == 16
+        assert parser.parse("0o10") == 8
+        assert parser.parse("0b10") == 2
+        assert parser.parse("-1") == -1
+        assert parser.parse("-0x10") == -16
+        assert parser.parse("-0o10") == -8
+        assert parser.parse("-0b10") == -2
+        assert parser.parse("  -  1  ") == -1
+        assert parser.parse("  -  0x10  ") == -16
+        assert parser.parse("  -  0o10  ") == -8
+        assert parser.parse("  -  0b10  ") == -2
         assert parser.parse_config(1) == 1
         assert parser.parse_config(1.0) == 1
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("x")
-        with pytest.raises(ValueError, match=r"Expected int"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
+            parser.parse("0x-10")
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
+            parser.parse("0x 10")
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
+            parser.parse("--10")
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected int"):
             parser.parse_config(1.5)
-        with pytest.raises(ValueError, match=r"Expected int"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected int"):
             parser.parse_config("x")
 
     def test_from_type_hint(self):
@@ -433,6 +475,7 @@ class TestFloat:
         parser = yuio.parse.Float()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -456,9 +499,9 @@ class TestFloat:
         assert parser.parse("2e9") == 2e9
         assert parser.parse_config(1.0) == 1.0
         assert parser.parse_config(1.5) == 1.5
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("x")
-        with pytest.raises(ValueError, match=r"Expected float"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected float"):
             parser.parse_config("x")
 
     def test_from_type_hint(self):
@@ -493,6 +536,7 @@ class TestBool:
         parser = yuio.parse.Bool()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -518,11 +562,11 @@ class TestBool:
         assert parser.parse("n") is False
         assert parser.parse("no") is False
         assert parser.parse("nO") is False
-        with pytest.raises(ValueError, match=r"'yes', 'no'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"'yes', 'no'"):
             parser.parse("Meh")
         assert parser.parse_config(True) is True
         assert parser.parse_config(False) is False
-        with pytest.raises(ValueError, match=r"Expected bool"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected bool"):
             parser.parse_config("x")
 
     def test_from_type_hint(self):
@@ -570,6 +614,32 @@ class TestEnum:
         parser = yuio.parse.Enum(self.Cuteness)
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() == [
+            yuio.widget.Option(
+                value=self.Cuteness.CATS,
+                display_text="Cats",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment="cats!",
+                color_tag="none",
+            ),
+            yuio.widget.Option(
+                value=self.Cuteness.DOGS,
+                display_text="Dogs",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment="dogs!",
+                color_tag="none",
+            ),
+            yuio.widget.Option(
+                value=self.Cuteness.BLAHAJ,
+                display_text=":3",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment="sharkie!",
+                color_tag="none",
+            ),
+        ]
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -667,13 +737,14 @@ class TestEnum:
         assert parser.parse("CATS") is self.Cuteness.CATS
         assert parser.parse("CATS") is self.Cuteness.CATS
         assert parser.parse_config("Cats") is self.Cuteness.CATS
-        with pytest.raises(ValueError):
+        assert parser.parse_config(self.Cuteness.CATS) is self.Cuteness.CATS
+        with pytest.raises(yuio.parse.ParsingError):
             parser.parse_config("CATS")
         assert parser.parse("dogs") is self.Cuteness.DOGS
         assert parser.parse(":3") is self.Cuteness.BLAHAJ
-        with pytest.raises(ValueError):
+        with pytest.raises(yuio.parse.ParsingError):
             parser.parse("Unchi")
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
     def test_by_name(self):
@@ -681,11 +752,12 @@ class TestEnum:
         assert parser.parse("RED") is self.Colors.RED
         assert parser.parse("RED") is self.Colors.RED
         assert parser.parse_config("RED") is self.Colors.RED
+        assert parser.parse_config(self.Colors.RED) is self.Colors.RED
         assert parser.parse("green") is self.Colors.GREEN
         assert parser.parse("Blue") is self.Colors.BLUE
-        with pytest.raises(ValueError):
+        with pytest.raises(yuio.parse.ParsingError):
             parser.parse("Color of a beautiful sunset")
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
         assert parser.describe() == "{RED|GREEN|BLUE}"
@@ -711,11 +783,12 @@ class TestEnum:
         assert parser.parse("R") is Colors.RED
         assert parser.parse("r") is Colors.RED
         with pytest.raises(
-            ValueError, match=r"possible candidates are GREEN_FORE or GREEN_BACK"
+            yuio.parse.ParsingError,
+            match=r"possible candidates are GREEN_FORE or GREEN_BACK",
         ):
             parser.parse("G")
         assert parser.parse("GREEN_F") is Colors.GREEN_FORE
-        with pytest.raises(ValueError, match=r"did you mean RED?"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"did you mean RED?"):
             parser.parse_config("r")
 
     def test_from_type_hint(self):
@@ -772,6 +845,7 @@ class TestDecimal:
         parser = yuio.parse.Decimal()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -802,11 +876,13 @@ class TestDecimal:
         assert parser.parse("-10") == Decimal("-10")
         assert parser.parse_config(1.0) == Decimal("1.0")
         assert parser.parse_config("1.5") == Decimal("1.5")
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("x")
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse_config("x")
-        with pytest.raises(ValueError, match=r"Expected int, float, or str, got list"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Expected int, float, or str, got list"
+        ):
             parser.parse_config([])
 
     def test_from_type_hint(self):
@@ -841,6 +917,7 @@ class TestFraction:
         parser = yuio.parse.Fraction()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -873,17 +950,29 @@ class TestFraction:
         assert parser.parse_config(1.0) == Fraction("1.0")
         assert parser.parse_config("1/3") == Fraction("1/3")
         assert parser.parse_config([2, 5]) == Fraction("2/5")
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("x")
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"division by zero"):
+            parser.parse("1/0")
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse_config("x")
         with pytest.raises(
-            ValueError,
+            yuio.parse.ParsingError,
             match=r"Expected int, float, str, or a tuple of two ints, got list",
         ):
             parser.parse_config([])
-        with pytest.raises(ValueError, match=r"Can't parse 1/0 as fraction"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Can't parse 1/0 as fraction"
+        ):
             parser.parse_config([1, 0])
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Can't parse 1/nan as fraction"
+        ):
+            parser.parse_config([1, math.nan])
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Can't parse nan as fraction"
+        ):
+            parser.parse_config(math.nan)
 
     def test_from_type_hint(self):
         assert isinstance(yuio.parse.from_type_hint(Fraction), yuio.parse.Fraction)
@@ -919,6 +1008,7 @@ class TestJson:
         parser = yuio.parse.Json()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -932,7 +1022,9 @@ class TestJson:
         assert parser.parse("[1, 2, 3]") == [1, 2, 3]
         assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
         assert parser.parse_config("[1, 2, 3]") == "[1, 2, 3]"
-        with pytest.raises(ValueError, match=r"Can't parse 'x' as JsonValue"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Can't parse 'x' as JsonValue"
+        ):
             parser.parse("x")
         assert isinstance(
             yuio.parse.from_type_hint(yuio.json_schema.JsonValue), yuio.parse.Json
@@ -941,18 +1033,26 @@ class TestJson:
             parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
             == yuio.json_schema.Any()
         )
+        assert parser.to_json_value([1, dict(a=0)]) == [1, dict(a=0)]
 
     def test_structured(self):
         parser = yuio.parse.Json(yuio.parse.List(yuio.parse.Int()))
         assert parser.parse("[1, 2, 3]") == [1, 2, 3]
         assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
-        with pytest.raises(ValueError, match=r"Can't parse 'x' as JsonValue"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Can't parse 'x' as JsonValue"
+        ):
             parser.parse("x")
-        with pytest.raises(ValueError, match=r"Expected list, got str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected int, got float"):
+            parser.parse("[1.5]")
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected list, got str"):
             parser.parse_config("[1, 2, 3]")
         assert parser.to_json_schema(
             yuio.json_schema.JsonSchemaContext()
         ) == yuio.json_schema.Array(yuio.json_schema.Integer())
+        assert parser.to_json_value([1, 2, 3]) == [1, 2, 3]
+        with pytest.raises(TypeError):
+            parser.to_json_value([1, dict(a=10)])
 
     def test_from_type_hint_annotated_unstructured(self):
         parser = yuio.parse.from_type_hint(
@@ -964,9 +1064,11 @@ class TestJson:
         parser = yuio.parse.from_type_hint(_t.Annotated[list[int], yuio.parse.Json()])
         assert parser.parse("[1, 2, 3]") == [1, 2, 3]
         assert parser.parse_config([1, 2, 3]) == [1, 2, 3]
-        with pytest.raises(ValueError, match=r"Can't parse 'x' as JsonValue"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Can't parse 'x' as JsonValue"
+        ):
             parser.parse("x")
-        with pytest.raises(ValueError, match=r"Expected list, got str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected list, got str"):
             parser.parse_config("[1, 2, 3]")
 
     def test_from_type_hint_annotated_shadowing(self):
@@ -1004,6 +1106,7 @@ class TestDateTime:
         parser = yuio.parse.DateTime()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -1051,9 +1154,9 @@ class TestDateTime:
         assert parser.parse_config(
             datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
         ) == datetime.datetime(2007, 1, 2, 10, 0, 5, 1000)
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("2007 01 02")
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
     def test_from_type_hint(self):
@@ -1096,6 +1199,7 @@ class TestDate:
         parser = yuio.parse.Date()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -1133,11 +1237,11 @@ class TestDate:
         assert parser.parse_config(datetime.datetime(2007, 1, 2)) == datetime.date(
             2007, 1, 2
         )
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("2007 01 02")
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(datetime.time(10, 1))
 
     def test_from_type_hint(self):
@@ -1174,6 +1278,7 @@ class TestTime:
         parser = yuio.parse.Time()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -1209,11 +1314,11 @@ class TestTime:
         assert parser.parse_config(
             datetime.datetime(2007, 1, 2, 12, 30, 5)
         ) == datetime.time(12, 30, 5)
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("10?05")
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(datetime.date(1996, 1, 1))
 
     def test_from_type_hint(self):
@@ -1250,6 +1355,7 @@ class TestTimeDelta:
         parser = yuio.parse.TimeDelta()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -1333,23 +1439,32 @@ class TestTimeDelta:
 
         assert parser.parse("1d, +5:00") == datetime.timedelta(days=1, hours=5)
 
-        with pytest.raises(ValueError, match=r"empty timedelta"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"empty timedelta"):
             parser.parse("")
 
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("-")
 
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("00:00,")
 
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse(",00:00")
 
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("00")
 
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("1 megasecond")
+
+        assert parser.parse_config("10:00:01") == datetime.timedelta(
+            hours=10, seconds=1
+        )
+        assert parser.parse_config(
+            datetime.timedelta(hours=10, seconds=1)
+        ) == datetime.timedelta(hours=10, seconds=1)
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str, got int: 10"):
+            parser.parse_config(10)
 
     def test_from_type_hint(self):
         assert isinstance(
@@ -1389,6 +1504,7 @@ class TestPath:
         parser = yuio.parse.Path()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -1396,6 +1512,13 @@ class TestPath:
         assert parser.describe_or_def() == "<path>"
         assert parser.describe_many() == "<path>"
         assert parser.describe_value(pathlib.Path("/")) == os.path.sep
+
+        parser = yuio.parse.Path(extensions=[".toml"])
+        assert parser.describe_or_def() == "<*.toml>"
+        assert parser.describe_or_def() == "<*.toml>"
+        parser = yuio.parse.Path(extensions=[".toml", ".yaml"])
+        assert parser.describe_or_def() == "{<*.toml>|<*.yaml>}"
+        assert parser.describe_or_def() == "{<*.toml>|<*.yaml>}"
 
     def test_json_schema(self):
         parser = yuio.parse.Path()
@@ -1433,7 +1556,7 @@ class TestPath:
             parser.parse_config("~/a")
             == pathlib.Path(os.path.expanduser("~/a")).resolve().absolute()
         )
-        with pytest.raises(ValueError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
             parser.parse_config(10)
 
     def test_extensions(self):
@@ -1446,7 +1569,9 @@ class TestPath:
             parser.parse("/a/s/d.txt")
             == pathlib.Path("/a/s/d.txt").resolve().absolute()
         )
-        with pytest.raises(ValueError, match=r"should have extension \.cfg or \.txt"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"should have extension \.cfg or \.txt"
+        ):
             parser.parse("file.sql")
 
     def test_from_type_hint(self):
@@ -1463,7 +1588,7 @@ class TestPath:
             _t.Annotated[pathlib.Path, yuio.parse.Path(extensions=[".x"])]
         )
         assert parser.parse("/a/s/d.x") == pathlib.Path("/a/s/d.x").resolve().absolute()
-        with pytest.raises(ValueError, match=r"should have extension \.x"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should have extension \.x"):
             parser.parse("file.y")
 
     def test_from_type_hint_annotated_wrong_type(self):
@@ -1491,7 +1616,7 @@ class TestExistingPath:
         tmpdir.join("file.cfg").write("hi!")
 
         parser = yuio.parse.ExistingPath()
-        with pytest.raises(ValueError, match=r"doesn't exist"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"doesn't exist"):
             parser.parse(tmpdir.join("file2.cfg").strpath)
         assert (
             str(parser.parse(tmpdir.join("file.cfg").strpath))
@@ -1510,7 +1635,7 @@ class TestNonExistentPath:
         tmpdir.join("file.cfg").write("hi!")
 
         parser = yuio.parse.NonExistentPath()
-        with pytest.raises(ValueError, match=r"already exists"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"already exists"):
             parser.parse(tmpdir.join("file.cfg").strpath)
         assert (
             str(parser.parse(tmpdir.join("file2.cfg").strpath))
@@ -1533,9 +1658,9 @@ class TestFile:
             str(parser.parse(tmpdir.join("file.cfg").strpath))
             == tmpdir.join("file.cfg").strpath
         )
-        with pytest.raises(ValueError, match=r"doesn't exist"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"doesn't exist"):
             parser.parse(tmpdir.join("file.txt").strpath)
-        with pytest.raises(ValueError, match=r"is not a file"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"is not a file"):
             parser.parse(tmpdir.strpath)
 
         parser = yuio.parse.File(extensions=[".cfg", ".txt"])
@@ -1543,9 +1668,11 @@ class TestFile:
             str(parser.parse(tmpdir.join("file.cfg").strpath))
             == tmpdir.join("file.cfg").strpath
         )
-        with pytest.raises(ValueError, match=r"doesn't exist"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"doesn't exist"):
             parser.parse(tmpdir.join("file.txt").strpath)
-        with pytest.raises(ValueError, match=r"should have extension \.cfg or \.txt"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"should have extension \.cfg or \.txt"
+        ):
             parser.parse(tmpdir.join("file.sql").strpath)
 
     def test_from_type_hint_annotated(self):
@@ -1562,9 +1689,9 @@ class TestDir:
         parser = yuio.parse.Dir()
         assert str(parser.parse("~")) == os.path.expanduser("~")
         assert str(parser.parse(tmpdir.strpath)) == tmpdir.strpath
-        with pytest.raises(ValueError, match=r"doesn't exist"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"doesn't exist"):
             parser.parse(tmpdir.join("subdir").strpath)
-        with pytest.raises(ValueError, match=r"is not a directory"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"is not a directory"):
             parser.parse(tmpdir.join("file.cfg").strpath)
 
     def test_from_type_hint_annotated(self):
@@ -1577,11 +1704,11 @@ class TestGitRepo:
         tmpdir.join("file.cfg").write("hi!")
 
         parser = yuio.parse.GitRepo()
-        with pytest.raises(ValueError, match=r"is not a git repository"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"is not a git repository"):
             parser.parse(tmpdir.strpath)
-        with pytest.raises(ValueError, match=r"doesn't exist"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"doesn't exist"):
             parser.parse(tmpdir.join("subdir").strpath)
-        with pytest.raises(ValueError, match=r"is not a directory"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"is not a directory"):
             parser.parse(tmpdir.join("file.cfg").strpath)
 
         tmpdir.join(".git").mkdir()
@@ -1611,31 +1738,35 @@ class TestBound:
     def test_gt(self):
         parser = yuio.parse.Gt(yuio.parse.Int(), 0)
         assert parser.parse("10") == 10
-        with pytest.raises(ValueError, match=r"should be greater than 0"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be greater than 0"):
             parser.parse("-1")
-        with pytest.raises(ValueError, match=r"should be greater than 0"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be greater than 0"):
             parser.parse("0")
 
     def test_ge(self):
         parser = yuio.parse.Ge(yuio.parse.Int(), 0)
         assert parser.parse("10") == 10
         assert parser.parse("0") == 0
-        with pytest.raises(ValueError, match=r"should be greater than or equal to 0"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"should be greater than or equal to 0"
+        ):
             parser.parse("-1")
 
     def test_lt(self):
         parser = yuio.parse.Lt(yuio.parse.Int(), 10)
         assert parser.parse("5") == 5
-        with pytest.raises(ValueError, match=r"should be lesser than 10"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be lesser than 10"):
             parser.parse("10")
-        with pytest.raises(ValueError, match=r"should be lesser than 10"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be lesser than 10"):
             parser.parse("11")
 
     def test_le(self):
         parser = yuio.parse.Le(yuio.parse.Int(), 10)
         assert parser.parse("5") == 5
         assert parser.parse("10") == 10
-        with pytest.raises(ValueError, match=r"should be lesser than or equal to 10"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"should be lesser than or equal to 10"
+        ):
             parser.parse("11")
 
     def test_range_inclusive(self):
@@ -1645,17 +1776,21 @@ class TestBound:
         assert parser.parse("0") == 0
         assert parser.parse("2") == 2
         assert parser.parse("5") == 5
-        with pytest.raises(ValueError, match=r"should be greater than or equal to 0"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"should be greater than or equal to 0"
+        ):
             parser.parse("-1")
-        with pytest.raises(ValueError, match=r"should be lesser than or equal to 5"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"should be lesser than or equal to 5"
+        ):
             parser.parse("6")
 
     def test_range_non_inclusive(self):
         parser = yuio.parse.Bound(yuio.parse.Int(), lower=0, upper=5)
         assert parser.parse("2") == 2
-        with pytest.raises(ValueError, match=r"should be greater than 0"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be greater than 0"):
             parser.parse("0")
-        with pytest.raises(ValueError, match=r"should be lesser than 5"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be lesser than 5"):
             parser.parse("5")
 
     def test_partial(self):
@@ -1669,7 +1804,7 @@ class TestBound:
         )
         assert parser.parse("0") == 0
         assert parser.parse("9") == 9
-        with pytest.raises(ValueError, match=r"should be lesser than 10"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be lesser than 10"):
             parser.parse("10")
 
     def test_from_type_hint_annotated_combine(self):
@@ -1680,7 +1815,7 @@ class TestBound:
         )
         assert parser.parse("0") == 0
         assert parser.parse("9") == 9
-        with pytest.raises(ValueError, match=r"should be lesser than 10"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be lesser than 10"):
             parser.parse("10")
 
     def test_from_type_hint_annotated_non_partial(self):
@@ -1695,9 +1830,9 @@ class TestBound:
     def test_gt_annotated(self):
         parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Gt(0)])
         assert parser.parse("10") == 10
-        with pytest.raises(ValueError, match=r"should be greater than 0"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be greater than 0"):
             parser.parse("-1")
-        with pytest.raises(ValueError, match=r"should be greater than 0"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be greater than 0"):
             parser.parse("0")
         with pytest.raises(TypeError):
             yuio.parse.from_type_hint(
@@ -1708,7 +1843,9 @@ class TestBound:
         parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Ge(0)])
         assert parser.parse("10") == 10
         assert parser.parse("0") == 0
-        with pytest.raises(ValueError, match=r"should be greater than or equal to 0"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"should be greater than or equal to 0"
+        ):
             parser.parse("-1")
         with pytest.raises(TypeError):
             yuio.parse.from_type_hint(
@@ -1718,9 +1855,9 @@ class TestBound:
     def test_lt_annotated(self):
         parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Lt(10)])
         assert parser.parse("5") == 5
-        with pytest.raises(ValueError, match=r"should be lesser than 10"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be lesser than 10"):
             parser.parse("10")
-        with pytest.raises(ValueError, match=r"should be lesser than 10"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be lesser than 10"):
             parser.parse("11")
         with pytest.raises(TypeError):
             yuio.parse.from_type_hint(
@@ -1731,7 +1868,9 @@ class TestBound:
         parser = yuio.parse.from_type_hint(_t.Annotated[int, yuio.parse.Le(10)])
         assert parser.parse("5") == 5
         assert parser.parse("10") == 10
-        with pytest.raises(ValueError, match=r"should be lesser than or equal to 10"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"should be lesser than or equal to 10"
+        ):
             parser.parse("11")
         with pytest.raises(TypeError):
             yuio.parse.from_type_hint(
@@ -1744,11 +1883,11 @@ class TestOneOf:
         parser = yuio.parse.OneOf(yuio.parse.Str(), ["qux", "duo"])
         assert parser.parse("qux") == "qux"
         assert parser.parse("duo") == "duo"
-        with pytest.raises(ValueError, match=r"should be 'qux' or 'duo'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be 'qux' or 'duo'"):
             parser.parse("foo")
-        with pytest.raises(ValueError, match=r"should be 'qux' or 'duo'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be 'qux' or 'duo'"):
             parser.parse("Qux")
-        with pytest.raises(ValueError, match=r"should be 'qux' or 'duo'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be 'qux' or 'duo'"):
             parser.parse("Duo")
 
     def test_partial(self):
@@ -1767,11 +1906,11 @@ class TestOneOf:
         )
         assert parser.parse("qux") == "qux"
         assert parser.parse("duo") == "duo"
-        with pytest.raises(ValueError, match=r"should be 'qux' or 'duo'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be 'qux' or 'duo'"):
             parser.parse("foo")
-        with pytest.raises(ValueError, match=r"should be 'qux' or 'duo'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be 'qux' or 'duo'"):
             parser.parse("Qux")
-        with pytest.raises(ValueError, match=r"should be 'qux' or 'duo'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"should be 'qux' or 'duo'"):
             parser.parse("Duo")
 
     def test_from_type_hint_annotated_combined_with_lower(self):
@@ -1807,6 +1946,7 @@ class TestMap:
         )
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -1827,6 +1967,7 @@ class TestMap:
         )
         assert parser.supports_parse_many()
         assert parser.get_nargs() == "*"
+        assert parser.options() is None
         assert parser.parse_many(["1", "2", "3"]) == TestMap.Wrapper([1, 2, 3])
         assert parser.describe() == "<int>[ <int>[ ...]]"
         assert parser.describe_or_def() == "<int>[ <int>[ ...]]"
@@ -1848,10 +1989,32 @@ class TestMap:
         )
         assert not parser.to_json_value(True)
 
+    def test_options(self):
+        class E(enum.Enum):
+            pass
+
+        parser = yuio.parse.Map(yuio.parse.Enum(E), lambda x: x)
+        assert parser.options() == []
+
+        class E(enum.Enum):
+            FOO = "foo"
+
+        parser = yuio.parse.Map(yuio.parse.Enum(E), lambda x: x)
+        assert parser.options() == [
+            yuio.widget.Option(
+                value=E.FOO,
+                display_text="foo",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+        ]
+
     def test_parse(self):
         parser = yuio.parse.Map(yuio.parse.Int(), lambda x: x * 2)
         assert parser.parse("2") == 4
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("foo")
 
     def test_partial(self):
@@ -1864,7 +2027,7 @@ class TestMap:
             _t.Annotated[int, yuio.parse.Map[int, int](lambda x: x * 2)]
         )
         assert parser.parse("2") == 4
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("foo")
 
     def test_from_type_hint_annotated_non_partial(self):
@@ -1912,6 +2075,28 @@ class TestApply:
         )
         assert parser.to_json_value(10) == 10
 
+    def test_options(self):
+        class E(enum.Enum):
+            pass
+
+        parser = yuio.parse.Apply(yuio.parse.Enum(E), lambda x: None)
+        assert parser.options() == []
+
+        class E(enum.Enum):
+            FOO = "foo"
+
+        parser = yuio.parse.Apply(yuio.parse.Enum(E), lambda x: None)
+        assert parser.options() == [
+            yuio.widget.Option(
+                value=E.FOO,
+                display_text="foo",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+        ]
+
     def test_parse(self):
         value = None
 
@@ -1926,7 +2111,7 @@ class TestApply:
 
         value = None
 
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("foo")
         assert value is None
 
@@ -1974,6 +2159,7 @@ class TestSimpleCollections:
         parser = parser_cls(yuio.parse.Int())
         assert parser.supports_parse_many()
         assert parser.get_nargs() == "*"
+        assert parser.options() is None
         assert not parser.is_secret()
         assert parser.parse("1 2 3") == ctor([1, 2, 3])
         assert parser.parse_config([1, 2, 3]) == ctor([1, 2, 3])
@@ -2099,6 +2285,7 @@ class TestDict:
         parser = yuio.parse.Dict(yuio.parse.Int(), yuio.parse.Str())
         assert parser.supports_parse_many()
         assert parser.get_nargs() == "*"
+        assert parser.options() is None
         assert not parser.is_secret()
         assert parser.parse("1:a 2:b") == {1: "a", 2: "b"}
         assert parser.parse_config({1: "a", 2: "b"}) == {1: "a", 2: "b"}
@@ -2199,6 +2386,7 @@ class TestTuple:
         parser = yuio.parse.Tuple(yuio.parse.Int())
         assert parser.supports_parse_many()
         assert parser.get_nargs() == 1
+        assert parser.options() is None
         assert not parser.is_secret()
         assert parser.parse_many(["1"]) == (1,)
         assert parser.describe() == "<int>"
@@ -2209,6 +2397,7 @@ class TestTuple:
         parser = yuio.parse.Tuple(yuio.parse.Int(), yuio.parse.Str())
         assert parser.supports_parse_many()
         assert parser.get_nargs() == 2
+        assert parser.options() is None
         assert parser.parse_many(["1", "x"]) == (1, "x")
         assert parser.describe() == "<int> <str>"
         assert parser.describe_or_def() == "<int> <str>"
@@ -2218,6 +2407,7 @@ class TestTuple:
         parser = yuio.parse.Tuple(yuio.parse.Int(), yuio.parse.Str(), yuio.parse.Bool())
         assert parser.supports_parse_many()
         assert parser.get_nargs() == 3
+        assert parser.options() is None
         assert parser.parse_many(["1", "x", "no"]) == (1, "x", False)
         assert parser.describe() == "<int> <str> {yes|no}"
         assert parser.describe_or_def() == "<int> <str> {yes|no}"
@@ -2238,17 +2428,21 @@ class TestTuple:
         assert parser.parse_config([1]) == (1,)
         assert parser.parse_config([1.0]) == (1,)
         assert parser.parse_many(["1"]) == (1,)
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("1 2 3")
-        with pytest.raises(ValueError, match=r"Can't parse"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse"):
             parser.parse("foo")
-        with pytest.raises(ValueError, match=r"Expected list or tuple, got int"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Expected list or tuple, got int"
+        ):
             parser.parse_config(5)
-        with pytest.raises(ValueError, match=r"Expected int, got str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected int, got str"):
             parser.parse_config(["5"])
-        with pytest.raises(ValueError, match=r"Expected 1 element, got 2"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected 1 element, got 0"):
+            parser.parse("")
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected 1 element, got 2"):
             parser.parse_config([1, 2])
-        with pytest.raises(ValueError, match=r"Expected 1 element, got 2"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected 1 element, got 2"):
             parser.parse_many(["1", "2"])
 
         parser = yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Str())
@@ -2256,6 +2450,10 @@ class TestTuple:
         assert parser.parse("x y z") == ("x", "y z")
         assert parser.parse_config(["x", "y"]) == ("x", "y")
         assert parser.parse_many(["x", "y"]) == ("x", "y")
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Expected 2 elements, got 1"
+        ):
+            parser.parse("x")
 
     def test_delim(self):
         parser = yuio.parse.Tuple(yuio.parse.Str(), yuio.parse.Str(), delimiter=",")
@@ -2316,6 +2514,7 @@ class TestOptional:
         parser = yuio.parse.Optional(yuio.parse.Int())
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -2349,6 +2548,28 @@ class TestOptional:
         assert parser.describe_many() == "<int>"
         assert parser.describe_value([]) == ""
         assert parser.describe_value(None) == "<none>"
+
+    def test_options(self):
+        class E(enum.Enum):
+            pass
+
+        parser = yuio.parse.Optional(yuio.parse.Enum(E))
+        assert parser.options() == []
+
+        class E(enum.Enum):
+            FOO = "foo"
+
+        parser = yuio.parse.Optional(yuio.parse.Enum(E))
+        assert parser.options() == [
+            yuio.widget.Option(
+                value=E.FOO,
+                display_text="foo",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+        ]
 
     def test_parse(self):
         parser = yuio.parse.Optional(yuio.parse.Int())
@@ -2426,6 +2647,51 @@ class TestUnion:
         assert parser.to_json_value(datetime.date(2024, 1, 1)) == "2024-01-01"
         assert parser.to_json_value(10) == 5
 
+    def test_options(self):
+        class E(enum.Enum):
+            pass
+
+        parser = yuio.parse.Union(yuio.parse.Enum(E))
+        assert parser.options() is None
+
+        class E(enum.Enum):
+            FOO = "foo"
+
+        parser = yuio.parse.Union(yuio.parse.Enum(E))
+        assert parser.options() == [
+            yuio.widget.Option(
+                value=E.FOO,
+                display_text="foo",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+        ]
+
+        class E2(enum.Enum):
+            BAR = "bar"
+
+        parser = yuio.parse.Union(yuio.parse.Enum(E), yuio.parse.Enum(E2))
+        assert parser.options() == [
+            yuio.widget.Option(
+                value=E.FOO,
+                display_text="foo",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+            yuio.widget.Option(
+                value=E2.BAR,
+                display_text="bar",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+        ]
+
     def test_parse(self):
         parser = yuio.parse.Union(
             yuio.parse.Int(), yuio.parse.OneOf(yuio.parse.Str(), ["foo", "bar"])
@@ -2433,12 +2699,12 @@ class TestUnion:
 
         assert parser.parse("10") == 10
         assert parser.parse("foo") == "foo"
-        with pytest.raises(ValueError, match=r"Can't parse 'baz'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse 'baz'"):
             parser.parse("baz")
 
         assert parser.parse_config(10) == 10
         assert parser.parse_config("foo") == "foo"
-        with pytest.raises(ValueError, match=r"Can't parse 'baz'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse 'baz'"):
             parser.parse_config("baz")
 
     def test_partial(self):
@@ -2479,6 +2745,7 @@ class TestWithMeta:
         parser = yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -2498,6 +2765,28 @@ class TestWithMeta:
             == yuio.json_schema.Integer()
         )
         assert parser.to_json_value(10) == 10
+
+    def test_options(self):
+        class E(enum.Enum):
+            pass
+
+        parser = yuio.parse.WithMeta(yuio.parse.Enum(E))
+        assert parser.options() == []
+
+        class E(enum.Enum):
+            FOO = "foo"
+
+        parser = yuio.parse.WithMeta(yuio.parse.Enum(E))
+        assert parser.options() == [
+            yuio.widget.Option(
+                value=E.FOO,
+                display_text="foo",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+        ]
 
     def test_parse(self):
         parser = yuio.parse.WithMeta(yuio.parse.Int(), desc="desc")
@@ -2527,6 +2816,7 @@ class TestSecret:
         parser = yuio.parse.Secret(yuio.parse.Str())
         assert not parser.supports_parse_many()
         assert parser.get_nargs() is None
+        assert parser.options() is None
         assert parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
@@ -2541,6 +2831,19 @@ class TestSecret:
         assert isinstance(parser._inner_raw, yuio.parse.Str)
         with pytest.raises(TypeError, match=r"SecretValue requires type arguments"):
             yuio.parse.from_type_hint(yuio.parse.SecretValue)
+
+    def test_options(self):
+        class E(enum.Enum):
+            pass
+
+        parser = yuio.parse.Secret(yuio.parse.Enum(E))
+        assert parser.options() is None
+
+        class E(enum.Enum):
+            FOO = "foo"
+
+        parser = yuio.parse.Secret(yuio.parse.Enum(E))
+        assert parser.options() is None
 
     def test_parse(self):
         parser = yuio.parse.Secret(yuio.parse.Int())

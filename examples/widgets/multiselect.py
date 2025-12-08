@@ -21,4 +21,4 @@ if __name__ == "__main__":
 
     yuio.io.heading("Choose consoles that you like")
     result = widget.run(term, theme)
-    yuio.io.info("You selected `%s`", result)
+    yuio.io.info("You selected `%#r`", result)

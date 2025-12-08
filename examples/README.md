@@ -13,6 +13,7 @@
 - [io_prompt.py] — simple interactive prompts.
 - [io_prompt_multiselect.py] — interactive prompts choose widgets based on type of input.
 - [io_prompt_secret.py] — reading passwords from command line.
+- [io_prompt_list.py] — reading list of integers and highlighting errors if an int can't be parsed.
 - [io_tasks.py] — progress bars that handle printing and logging.
 - [io_tasks_multithreaded.py] — displaying multiple progress bars, possible from different threads.
 - [theme.py] — custom theme.
@@ -42,6 +43,7 @@
 [io_log_handling.py]: ./io_log_handling.py
 [io_prompt_multiselect.py]: ./io_prompt_multiselect.py
 [io_prompt_secret.py]: ./io_prompt_secret.py
+[io_prompt_list.py]: ./io_prompt_list.py
 [io_prompt.py]: ./io_prompt.py
 [io_tasks_multithreaded.py]: ./io_tasks_multithreaded.py
 [io_tasks.py]: ./io_tasks.py

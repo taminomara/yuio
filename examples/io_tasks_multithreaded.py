@@ -55,4 +55,4 @@ if __name__ == "__main__":
         for thread in threads:
             thread.join()
 
-    yuio.io.success("Successfully installed %s", ", ".join(packages))
+    yuio.io.success("Successfully installed %s", yuio.io.JoinStr(packages))

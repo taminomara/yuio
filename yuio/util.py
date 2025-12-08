@@ -178,7 +178,8 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
 
     """
 
-    # based on code from Sphinx
+    # Based on code from Sphinx, two clause BSD license.
+    # See https://github.com/sphinx-doc/sphinx/blob/master/LICENSE.rst.
 
     import ast
     import inspect

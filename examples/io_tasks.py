@@ -64,4 +64,4 @@ if __name__ == "__main__":
 
         time.sleep(0.3)
 
-    yuio.io.success("Successfully installed %s", ", ".join(packages))
+    yuio.io.success("Successfully installed %s", yuio.io.JoinStr(packages))

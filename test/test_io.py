@@ -754,6 +754,57 @@ class TestAsk:
                 yuio.io.ask[yuio.parse.SecretString]("Enter password").data == "123 456"
             )
 
+    def test_error_highlighting(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "Enter some numbers: ",
+                ">                   ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.text("123 xxx 456")
+        io_mocker.key(yuio.widget.Key.ENTER)
+        io_mocker.expect_screen(
+            [
+                "Enter some numbers: ",
+                "> 123 xxx 456       ",
+                "▲ Can't parse 'xxx' ",
+                "as int              ",
+                "f1 help             ",
+            ],
+            [
+                "bbbbbbbbbbbbbbbbbbb ",
+                "      RRR           ",
+                "mrrrrrrrrrrrrrmmmmm ",
+                "rrrmmm              ",
+                "                    ",
+            ],
+        )
+        io_mocker.key("g", ctrl=True)
+        io_mocker.key("w", ctrl=True)
+        io_mocker.expect_screen(
+            [
+                "Enter some numbers: ",
+                "> 123  456          ",
+                "f1 help             ",
+                "                    ",
+                "                    ",
+            ],
+            [
+                "bbbbbbbbbbbbbbbbbbb ",
+                "                    ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+        io_mocker.key(yuio.widget.Key.ENTER)
+
+        with io_mocker.mock():
+            assert yuio.io.ask[list[int]]("Enter some numbers") == [123, 456]
+
 
 class TestAskNonInteractive:
     @pytest.fixture
