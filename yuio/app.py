@@ -82,19 +82,9 @@ arguments. You can use the :func:`field` function to override them:
 
 .. autofunction:: field
 
-.. autodata:: yuio.DISABLED
-
-.. autodata:: yuio.MISSING
-
-.. autodata:: yuio.POSITIONAL
-
-.. autodata:: yuio.GROUP
-
 .. autofunction:: inline
 
 .. autofunction:: positional
-
-.. autoclass:: MutuallyExclusiveGroup
 
 
 Creating argument groups
@@ -242,6 +232,20 @@ from the main function:
 .. autoclass:: CommandInfo
    :members:
 
+
+Re-imports
+----------
+
+.. type:: HelpGroup
+    :no-index:
+
+    Alias of :obj:`yuio.cli.HelpGroup`.
+
+.. type:: MutuallyExclusiveGroup
+    :no-index:
+
+    Alias of :obj:`yuio.cli.MutuallyExclusiveGroup`.
+
 """
 
 from __future__ import annotations
@@ -270,7 +274,8 @@ import yuio.string
 import yuio.term
 import yuio.theme
 from yuio import _typing as _t
-from yuio.config import MutuallyExclusiveGroup, field, inline, positional
+from yuio.cli import HelpGroup, MutuallyExclusiveGroup
+from yuio.config import field, inline, positional
 from yuio.util import _find_docs
 from yuio.util import dedent as _dedent
 from yuio.util import to_dash_case as _to_dash_case
@@ -279,6 +284,7 @@ __all__ = [
     "App",
     "AppError",
     "CommandInfo",
+    "HelpGroup",
     "MutuallyExclusiveGroup",
     "app",
     "field",
@@ -948,7 +954,9 @@ class App(_t.Generic[C]):
         if main_app.__config_type is not self.__config_type:
             main_app.__config_type._setup_arg_parser(
                 parser,
-                group=parser.add_argument_group("global options"),  # pyright: ignore[reportArgumentType]
+                group=parser.add_argument_group(
+                    "global options"
+                ),  # pyright: ignore[reportArgumentType]
                 ns_prefix="app",
             )
 
@@ -1237,20 +1245,12 @@ _MAX_ARGS_COLUMN_WIDTH = 24
 class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
     def __init__(
         self,
-        theme: yuio.theme.Theme,
-        *,
-        width: int | None = None,
+        ctx: yuio.string.ReprContext | yuio.theme.Theme,
     ):
         self._heading_indent = contextlib.ExitStack()
         self._args_column_width = _MAX_ARGS_COLUMN_WIDTH
 
-        super().__init__(
-            theme,
-            width=width,
-            allow_headings=True,
-        )
-
-        self.width = min(self.width, 80)
+        super().__init__(ctx, allow_headings=True)
 
     def colorize(
         self,

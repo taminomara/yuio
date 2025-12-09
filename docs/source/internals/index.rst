@@ -11,6 +11,9 @@ APIs for advanced use-cases.
    complete
       Building custom autocompleters.
 
+   cli
+      CLI parser internals.
+
    json_schema
       Building JSON schemas for configs.
 

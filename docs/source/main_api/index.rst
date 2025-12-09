@@ -5,6 +5,9 @@ The primary interface.
 
 .. nice-toc::
 
+   const
+      Constants used throughout Yuio.
+
    io
       Interacting with users.
 

@@ -51,8 +51,7 @@ __ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
 
 You often need to print lists joined by some separator. Yuio provides
 :class:`yuio.string.JoinStr` and :class:`yuio.string.JoinRepr`
-(also available from ``yuio.io.JoinStr`` and ``yuio.io.JoinRepr``) to help
-with this task:
+(also available from :mod:`yuio.io`) to help with this task:
 
 .. literalinclude:: interactive_things_code/join.py
     :language: python

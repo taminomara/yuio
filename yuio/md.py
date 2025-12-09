@@ -34,7 +34,9 @@ Markdown AST
 
 .. warning::
 
-   This is an experimental API which can change within a minor release.
+   This is experimental API which can change within a minor release.
+
+.. autofunction:: parse
 
 .. autoclass:: AstBase
    :members:
@@ -80,7 +82,6 @@ import dataclasses
 import math
 import os
 import re
-import shutil
 from dataclasses import dataclass
 
 import yuio.color
@@ -109,11 +110,13 @@ __all__ = [
     "Paragraph",
     "Quote",
     "Quote",
+    'Raw',
     "SyntaxHighlighter",
     "Text",
     "Text",
     "ThematicBreak",
     "ThematicBreak",
+    'parse'
 ]
 
 T = _t.TypeVar("T")
@@ -125,8 +128,9 @@ class MdFormatter:
     """
     A simple markdown formatter suitable for displaying rich text in the terminal.
 
-    :param theme:
-        a theme that's used to colorize rendered markdown.
+    :param ctx:
+        a :class:`~yuio.theme.Theme` or a :class:`~yuio.string.ReprContext`
+        that's used to colorize or wrap rendered markdown.
     :param width:
         maximum width for wrapping long paragraphs. If not given, it is inferred
         via :func:`shutil.get_terminal_size`.
@@ -189,13 +193,14 @@ class MdFormatter:
 
     def __init__(
         self,
-        theme: yuio.theme.Theme,
+        ctx: yuio.string.ReprContext | yuio.theme.Theme,
         *,
-        width: int | None = None,
         allow_headings: bool = True,
     ):
-        self.width = width
-        self.theme: yuio.theme.Theme = theme
+        if isinstance(ctx, yuio.theme.Theme):
+            ctx = yuio.string.ReprContext(theme=ctx)
+
+        self._ctx = ctx
         self.allow_headings: bool = allow_headings
 
         self._is_first_line: bool
@@ -204,19 +209,16 @@ class MdFormatter:
         self._continuation_indent: yuio.string.ColorizedString
 
     @property
-    def width(self) -> int:
-        """
-        Target width for soft-wrapping text.
+    def ctx(self):
+        return self._ctx
 
-        """
+    @property
+    def theme(self):
+        return self._ctx.theme
 
-        return self.__width
-
-    @width.setter
-    def width(self, width: int | None):
-        if width is None:
-            width = shutil.get_terminal_size().columns
-        self.__width = max(width, 0)
+    @property
+    def max_width(self):
+        return self._ctx.max_width
 
     def format(
         self, md: str, *, dedent: bool = True
@@ -243,7 +245,7 @@ class MdFormatter:
 
         .. warning::
 
-           This is an experimental API which can change within a minor release.
+           This is experimental API which can change within a minor release.
 
         :param md:
             markdown to parse. Common indentation will be removed from this string,
@@ -277,6 +279,7 @@ class MdFormatter:
         """
 
         self._is_first_line = True
+        self._separate_paragraphs = True
         self._out = []
         self._indent = yuio.string.ColorizedString()
         self._continuation_indent = yuio.string.ColorizedString()
@@ -347,6 +350,15 @@ class MdFormatter:
     def _format(self, node: AstBase, /):
         getattr(self, f"_format_{node.__class__.__name__.lstrip('_')}")(node)
 
+    def _format_Raw(self, node: Raw, /):
+        for line in node.raw.wrap(
+            self.max_width,
+            indent=self._indent,
+            continuation_indent=self._continuation_indent,
+            preserve_newlines=False,
+        ):
+            self._line(line)
+
     def _format_Text(self, node: Text, /, *, default_color: yuio.color.Color):
         s = self.colorize(
             "\n".join(node.lines).strip(),
@@ -354,7 +366,7 @@ class MdFormatter:
         )
 
         for line in s.wrap(
-            self.width,
+            self.max_width,
             indent=self._indent,
             continuation_indent=self._continuation_indent,
             preserve_newlines=False,
@@ -364,7 +376,7 @@ class MdFormatter:
     def _format_Container(self, node: Container[TAst], /):
         self._is_first_line = True
         for item in node.items:
-            if not self._is_first_line:
+            if not self._is_first_line and self._separate_paragraphs:
                 self._line(self._indent)
             self._format(item)
 
@@ -459,9 +471,23 @@ class AstBase(abc.ABC):
 
 
 @dataclass(kw_only=True, slots=True)
+class Raw(AstBase):
+    """
+    Embeds already formatted paragraph into the document.
+
+    """
+
+    raw: yuio.string.ColorizedString
+    """
+    Raw colorized string to add to the document.
+
+    """
+
+
+@dataclass(kw_only=True, slots=True)
 class Text(AstBase):
     """
-    Base class for all text-based AST nodes, i.e. paragraphs.
+    Base class for all text-based AST nodes, i.e. paragraphs, headings, etc.
 
     """
 
@@ -1001,6 +1027,28 @@ class _MdParser:
         result = self._nodes
         self._nodes = []
         return result
+
+
+def parse(md: str, /, *, dedent: bool = True, allow_headings: bool = True) -> Document:
+    """
+    Parse a markdown document and return an AST node.
+
+    :param md:
+        markdown to parse. Common indentation will be removed from this string,
+        making it suitable to use with triple quote literals.
+    :param dedent:
+        remove lading indent from markdown.
+    :param allow_headings:
+        if set to :data:`False`, headings are rendered as paragraphs.
+    :returns:
+        parsed AST node.
+
+    """
+
+    if dedent:
+        md = _dedent(md)
+
+    return _MdParser(allow_headings).parse(md)
 
 
 _SYNTAXES: dict[str, SyntaxHighlighter] = {}

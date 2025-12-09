@@ -45,6 +45,15 @@ Utilities
 
 .. autofunction:: detect_ci_color_support
 
+
+Re-imports
+----------
+
+.. type:: ColorSupport
+    :no-index:
+
+    Alias of :obj:`yuio.color.ColorSupport`.
+
 """
 
 from __future__ import annotations

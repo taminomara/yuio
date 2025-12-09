@@ -220,6 +220,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import contextlib
 import dataclasses
 import functools
 import os
@@ -2275,17 +2276,28 @@ class ReprContext:
         else:
             return ColorizedString(value)
 
-    def _print(
+    @contextlib.contextmanager
+    def with_settings(
         self,
-        value: _t.Any,
-        multiline: bool | None,
-        highlighted: bool | None,
-        max_width: int | None,
-        use_str: bool,
-    ) -> ColorizedString:
-        old_line, self._line = self._line, ColorizedString()
-        old_state, self._state = self._state, _ReprContextState.START
-        old_pending_sep, self._pending_sep = self._pending_sep, None
+        *,
+        multiline: bool | None = None,
+        highlighted: bool | None = None,
+        max_width: int | None = None,
+    ):
+        """
+        Temporarily replace settings of this context.
+
+        :param multiline:
+            if given, overrides settings passed to :func:`colorized_str` for this call.
+        :param highlighted:
+            if given, overrides settings passed to :func:`colorized_str` for this call.
+        :param max_width:
+            if given, overrides settings passed to :func:`colorized_str` for this call.
+        :returns:
+            a context manager that overrides settings.
+
+        """
+
         old_multiline, self._multiline = (
             self._multiline,
             (self._multiline if multiline is None else multiline),
@@ -2300,7 +2312,29 @@ class ReprContext:
         )
 
         try:
-            self._print_nested(value, use_str)
+            yield
+        finally:
+            self._multiline = old_multiline
+            self._highlighted = old_highlighted
+            self._max_width = old_max_width
+
+    def _print(
+        self,
+        value: _t.Any,
+        multiline: bool | None,
+        highlighted: bool | None,
+        max_width: int | None,
+        use_str: bool,
+    ) -> ColorizedString:
+        old_line, self._line = self._line, ColorizedString()
+        old_state, self._state = self._state, _ReprContextState.START
+        old_pending_sep, self._pending_sep = self._pending_sep, None
+
+        try:
+            with self.with_settings(
+                multiline=multiline, highlighted=highlighted, max_width=max_width
+            ):
+                self._print_nested(value, use_str)
             return self._line
         except Exception as e:
             yuio._logger.exception("error in repr context")
@@ -2312,9 +2346,6 @@ class ReprContext:
             self._line = old_line
             self._state = old_state
             self._pending_sep = old_pending_sep
-            self._multiline = old_multiline
-            self._highlighted = old_highlighted
-            self._max_width = old_max_width
 
     def _print_nested(self, value: _t.Any, use_str: bool = False):
         if id(value) in self._seen or self._indent > self._max_depth:
@@ -3194,26 +3225,25 @@ class Md(_StrBase):
         import yuio.md
 
         max_width = self._max_width or ctx.max_width
+        with ctx.with_settings(max_width=max_width):
+            formatter = yuio.md.MdFormatter(
+                ctx,
+                allow_headings=self._allow_headings,
+            )
 
-        formatter = yuio.md.MdFormatter(
-            ctx.theme,
-            width=max_width,
-            allow_headings=self._allow_headings,
-        )
+            res = ColorizedString()
+            res.start_no_wrap()
+            sep = False
+            for line in formatter.format(self._md, dedent=self._dedent):
+                if sep:
+                    res += "\n"
+                res += line
+                sep = True
+            res.end_no_wrap()
+            if self._args:
+                res = res.percent_format(self._args, ctx)
 
-        res = ColorizedString()
-        res.start_no_wrap()
-        sep = False
-        for line in formatter.format(self._md, dedent=self._dedent):
-            if sep:
-                res += "\n"
-            res += line
-            sep = True
-        res.end_no_wrap()
-        if self._args:
-            res = res.percent_format(self._args, ctx)
-
-        return res
+            return res
 
 
 @_t.final

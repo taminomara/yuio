@@ -67,8 +67,8 @@ Mutually exclusive arguments
 ----------------------------
 
 Sometimes you need to ensure that only one of several arguments can be passed.
-For this, create a :class:`yuio.app.MutuallyExclusiveGroup` and pass it to
-all such arguments:
+For this, create a :class:`yuio.cli.MutuallyExclusiveGroup` (also available from
+:mod:`yuio.app` and :mod:`yuio.config`) and pass it to all such arguments:
 
 .. code-block:: python
     :emphasize-lines: 1,6-8
@@ -87,6 +87,8 @@ all such arguments:
 
 Argument sections
 -----------------
+
+TODO!!!
 
 You can use :class:`yuio.config.Config` described in the previous chapter to group
 CLI arguments into sections:

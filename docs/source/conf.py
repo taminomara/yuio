@@ -35,17 +35,22 @@ intersphinx_mapping = {
     "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
 }
 nitpick_ignore_regex = [
-    (r"py:obj", r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|_[^.]*)"),
-    (r"py:class", r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|_[^.]*)"),
+    (r"py:obj", r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|NamespaceT|ConfigT|_[^.]*)"),
+    (r"py:class", r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|NamespaceT|ConfigT|_[^.]*)"),
 ]
 autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"
 autodoc_inherit_docstrings = False
+# autodoc_typehints = "description"  # maybe sphinx 9 fixes this mess?
 autodoc_type_aliases = {
     "yuio.Disabled": "~yuio.DISABLED",
+    "DISABLED": "~yuio.DISABLED",
     "yuio.Missing": "~yuio.MISSING",
+    "MISSING": "~yuio.MISSING",
     "yuio.Positional": "~yuio.POSITIONAL",
+    "POSITIONAL": "~yuio.POSITIONAL",
     "yuio.Group": "~yuio.GROUP",
+    "GROUP": "~yuio.GROUP",
     **{
         name: path
         for path in [

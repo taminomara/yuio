@@ -5,876 +5,2692 @@
 # You're free to copy this file to your project and edit it for your needs,
 # just keep this copyright line please :3
 
+"""
+Low-level interface to CLI parser.
+
+Yuio's primary interface for building CLIs is :mod:`yuio.app`; this is low-level module
+that actually parses arguments. Because of this, :mod:`yuio.cli` doesn't expose
+a convenient interface for building CLIs. Instead, it exposes a set of classes
+that describe an interface; :mod:`yuio.app` and :mod:`yuio.config` compose these
+classes and pass them to :class:`CliParser`.
+
+This module is inspired by :mod:`argparse`, but there are differences:
+
+-   all flags should start with ``-``, other symbols are not supported (at least
+    for now).
+
+-   unlike :mod:`argparse`, this module doesn't rely on partial parsing and sub-parses.
+    Instead, it operates like a regular state machine, and any unmatched flags
+    or arguments are reported right away.
+
+-   it uses nested namespaces, one namespace per subcommand. When a subcommand
+    is encountered, a new namespace is created and assigned to the corresponding
+    :attr:`~Option.dest` in the parent namespace.
+
+-   namespaces are abstracted away by the :class:`Namespace` protocol, which has an
+    interface similar to :class:`dict`.
+
+-   options from base command can be specified after a subcommand argument, unless
+    subcommand shadows them. This is possible because we don't do partial parsing.
+
+    For example, consider this program:
+
+    .. code-block:: python
+
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-v", "--verbose", action="count")
+        subparsers = parser.add_subparsers()
+        subcommand = subparsers.add_parser("subcommand")
+
+    Argparse will not recognize :flag:`--verbose` if it's specified
+    after :flag:`subcommand`, but :mod:`yuio.cli` handles this just fine:
+
+    .. code-block:: console
+
+        $ prog subcommand --verbose
+
+-   there's no distinction between ``nargs=None`` and ``nargs=1``; however, there is
+    a distinction between argument being specified inline or not. This allows us to
+    supply arguments for options with ``nargs=0``, getting rid of ambiguity introduced
+    by ``nargs="?"``.
+
+    Consider:
+
+    .. code-block:: console
+
+        $ prog --bool-flag subcommand
+
+    If :flag:`--bool-flag` has ``nargs="?"``, is :flag:`subcommand` an argument
+    for :flag:`--bool-flag`, or a free argument?
+
+    To avoid this dilemma, we don't use ``nargs="?"``. Instead, we set
+    :attr:`~Option.nargs` to ``"0"`` and :attr:`~Option.allow_inline_arg`
+    to :data:`True`:
+
+    .. code-block:: console
+
+        $ prog --bool-flag subcommand  # Equivalent to --bool-flag=true
+        $ prog --bool-flag=true subcommand
+        $ prog --bool-flag=false subcommand
+        $ prog --no-bool-flag subcommand  # Equivalent to --bool-flag=false
+
+-   the above point also allows us to disambiguate positional arguments
+    and arguments with ``nargs="*"``.
+
+    Here, :flag:`subcommand` will become an argument for :flag:`--array`:
+
+    .. code-block:: console
+
+        $ prog --array a b c subcommand
+
+
+    We can pass arguments for :flag:`--array` inline, disambiguating them.
+    Yuio will see that argument for :flag:`--array` was passed inline, and will
+    use :meth:`~yuio.parse.Parser.parse` instead of :meth:`~yuio.parse.Parser.parse_many`
+    to split them:
+
+    .. code-block:: console
+
+        $ prog --array="a b c" subcommand
+
+-   this parser tracks information about argument positions and offsets, allowing
+    it to display rich error messages.
+
+-   we expose more knobs to tweak help formatting; see functions on :class:`Option`
+    for details.
+
+
+Commands and sub-commands
+-------------------------
+
+.. autoclass:: Command
+    :members:
+
+
+Flags and positionals
+---------------------
+
+.. autoclass:: Option
+    :members:
+
+.. autoclass:: BoolOption
+    :members:
+
+.. autoclass:: ParseOneOption
+    :members:
+
+.. autoclass:: ParseManyOption
+    :members:
+
+.. autoclass:: StoreConstOption
+    :members:
+
+.. autoclass:: StoreFalseOption
+    :members:
+
+.. autoclass:: StoreTrueOption
+    :members:
+
+.. autoclass:: CountOption
+    :members:
+
+.. autoclass:: VersionOption
+    :members:
+
+.. autoclass:: HelpOption
+    :members:
+
+
+Namespace
+---------
+
+.. autoclass:: Namespace
+
+    .. automethod:: __getitem__
+
+    .. automethod:: __setitem__
+
+    .. automethod:: __contains__
+
+.. autoclass:: ConfigNamespace
+    :members:
+
+
+CLI parser
+----------
+
+.. autoclass:: CliParser
+    :members:
+
+.. autoclass:: Argument
+    :members:
+
+.. autoclass:: Flag
+    :members:
+
+.. autoclass:: ArgumentError
+    :members:
+
+.. type:: NArgs
+    :canonical: int | typing.Literal["?", "*", "+"]
+
+    Type alias for :attr:`~Option.nargs`.
+
+
+Option grouping
+---------------
+
+.. autoclass:: MutuallyExclusiveGroup
+    :members:
+
+.. autoclass:: HelpGroup
+    :members:
+
+.. autodata:: ARGS_GROUP
+
+.. autodata:: SUBCOMMANDS_GROUP
+
+.. autodata:: OPTS_GROUP
+
+.. autodata:: AUXILIARY_GROUP
+
+"""
+
 from __future__ import annotations
 
-__all__ = []
+import abc
+import contextlib
+import functools
+import re
+import string
+import sys
+import warnings
+from dataclasses import dataclass
+
+import yuio
+import yuio.color
+import yuio.complete
+import yuio.md
+import yuio.parse
+import yuio.string
+import yuio.theme
+import yuio.util
+from yuio import _typing as _t
+from yuio.string import ColorizedString as _ColorizedString
+from yuio.util import _UNPRINTABLE_TRANS
+
+if _t.TYPE_CHECKING:
+    import yuio.config
+
+__all__ = [
+    "ARGS_GROUP",
+    "AUXILIARY_GROUP",
+    "OPTS_GROUP",
+    "SUBCOMMANDS_GROUP",
+    "Argument",
+    "ArgumentError",
+    "BoolOption",
+    "CliParser",
+    "CliWarning",
+    "Command",
+    "ConfigNamespace",
+    "CountOption",
+    "Flag",
+    "HelpGroup",
+    "HelpOption",
+    "MutuallyExclusiveGroup",
+    "NArgs",
+    "Namespace",
+    "Option",
+    "ParseManyOption",
+    "ParseOneOption",
+    "StoreConstOption",
+    "StoreFalseOption",
+    "StoreTrueOption",
+    "VersionOption"
+]
+
+T = _t.TypeVar("T")
+
+_SHORT_FLAG_RE = r"^-[a-zA-Z0-9]$"
+_LONG_FLAG_RE = r"^--[a-zA-Z0-9_+/-]+$"
+
+_NUM_RE = r"""(?x)
+    ^
+    [+-]?
+    (?:
+      (?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?
+      |0[bB][01]+
+      |0[oO][0-7]+
+      |0[xX][0-9a-fA-F]+
+    )
+    $
+"""
+
+NArgs: _t.TypeAlias = int | _t.Literal["?", "*", "+"]
+"""
+Type alias for nargs.
+
+"""
+
+NamespaceT = _t.TypeVar("NamespaceT", bound="Namespace")
+ConfigT = _t.TypeVar("ConfigT", bound="yuio.config.Config")
+
+
+class CliWarning(yuio.YuioWarning):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class Argument:
+    """
+    Represents a CLI argument, or its part.
+
+    For positionals, this will contain the entire argument. For inline values,
+    this will contain value substring and its position relative to the full
+    value.
+
+    :example:
+        Consider the following command arguments:
+
+        .. code-block:: text
+
+            --arg=value
+
+        Argument ``"value"`` will be represented as:
+
+        .. code-block:: python
 
-# from __future__ import annotations
+            Argument(value="value", index=0, pos=6, flag="--arg", metavar=...)
 
-# import abc
-# import re
-# import sys
-# from dataclasses import dataclass
+    """
 
-# import yuio
-# import yuio.complete
-# import yuio.parse
-# import yuio.term
-# from yuio import _typing as _t
+    value: str
+    """
+    Contents of the argument.
 
-# __all__ = []
+    """
 
-# T = _t.TypeVar("T")
+    index: int
+    """
+    Index of this argument in the array that was passed to :meth:`CliParser.parse`.
+
+    Note that this array does not include executable name, so indexes are shifted
+    relative to :data:`sys.argv`.
+
+    """
+
+    pos: int
+    """
+    Position of the :attr:`~Argument.value` relative to the original argument string.
+
+    """
+
+    metavar: str
+    """
+    Meta variable for this argument.
+
+    """
+
+    flag: Flag | None
+    """
+    If this argument belongs to a flag, this attribute will contain flag's name.
+
+    """
+
+    def __str__(self) -> str:
+        return self.metavar
+
+    def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
+        return _ColorizedString(
+            [
+                ctx.theme.get_color("flag"),
+                self.metavar,
+            ]
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Flag:
+    value: str
+    """
+    Name of the flag.
+
+    """
+
+    index: int
+    """
+    Index of this flag in the array that was passed to :meth:`CliParser.parse`.
 
-# _PREFIX_CHARS = tuple("-+")
+    Note that this array does not include executable name, so indexes are shifted
+    relative to :data:`sys.argv`.
 
-# _SHORT_FLAG_RE = r"^[-+][a-zA-Z0-9]$"
-# _LONG_FLAG_RE = r"^[-+][a-zA-Z0-9_+/-]+$"
+    """
 
-# _NUM_RE = r"""(?x)
-#     ^
-#     [+-]?
-#     (?:
-#       (?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?
-#       |0[bB][01]+
-#       |0[oO][0-7]+
-#       |0[xX][0-9a-fA-F]+
-#     )
-#     $
-# """
+    def __str__(self) -> str:
+        return self.value
 
-# NArgs: _t.TypeAlias = int | _t.Literal["?", "*", "+"]
-# """
-# Type alias for nargs.
+    def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
+        return _ColorizedString(
+            [
+                ctx.theme.get_color("flag"),
+                self.value,
+            ]
+        )
 
-# """
 
+class ArgumentError(yuio.PrettyException, ValueError):
+    """
+    Error that happened during argument parsing.
 
-# class ArgumentError(yuio.parse.ParsingError):
-#     pass
+    """
+
+    @_t.overload
+    def __init__(
+        self,
+        msg: _t.LiteralString,
+        /,
+        *args,
+        flag: Flag | None = None,
+        arguments: Argument | list[Argument] | None = None,
+        n_arg: int | None = None,
+        pos: tuple[int, int] | None = None,
+        path: list[tuple[_t.Any, str | None]] | None = None,
+    ): ...
+    @_t.overload
+    def __init__(
+        self,
+        msg: yuio.string.Colorable | None = None,
+        /,
+        *,
+        flag: Flag | None = None,
+        arguments: Argument | list[Argument] | None = None,
+        n_arg: int | None = None,
+        pos: tuple[int, int] | None = None,
+        path: list[tuple[_t.Any, str | None]] | None = None,
+    ): ...
+    def __init__(
+        self,
+        *args,
+        flag: Flag | None = None,
+        arguments: Argument | list[Argument] | None = None,
+        n_arg: int | None = None,
+        pos: tuple[int, int] | None = None,
+        path: list[tuple[_t.Any, str | None]] | None = None,
+    ):
+        super().__init__(*args)
+
+        self.flag: Flag | None = flag
+        """
+        Flag that caused this error. Can be :data:`None` if error is caused
+        by a positional argument.
+
+        """
+
+        self.arguments: Argument | list[Argument] | None = arguments
+        """
+        Arguments that caused this error.
+
+        This can be a single argument, or multiple arguments. In the later case,
+        :attr:`~yuio.parse.ParsingError.n_arg` should correspond to the argument
+        that failed to parse. If :attr:`~yuio.parse.ParsingError.n_arg`
+        is :data:`None`, then all arguments are treated as faulty.
+
+        .. note::
+
+            Don't confuse :attr:`~ArgumentError.arguments` and :attr:`~BaseException.args`:
+            the latter contains formatting arguments and is defined
+            in the :class:`BaseException` class.
+
+        """
+
+        self.pos: tuple[int, int] | None = pos
+        """
+        Position in the original string in which this error has occurred (start
+        and end indices).
+
+        If :attr:`~ArgumentError.n_arg` is set, and :attr:`~ArgumentError.arguments`
+        is given as a list, then this position is relative to the argument
+        at index :attr:`~ArgumentError.n_arg`.
+
+        If :attr:`~ArgumentError.arguments` is given as a single argument (not a list),
+        then this position is relative to that argument.
+
+        Otherwise, position is ignored.
+
+        """
+
+        self.n_arg: int | None = n_arg
+        """
+        Index of the argument that caused the error.
+
+        """
+
+        self.path: list[tuple[_t.Any, str | None]] | None = path
+        """
+        Same as in :attr:`ParsingError.path <yuio.parse.ParsingError.path>`.
+        Can be present if parser uses :meth:`~yuio.parse.Parser.parse_config`
+        for validation.
+
+        """
+
+        self.commandline: list[str] | None = None
+        self.prog: str | None = None
+
+    @classmethod
+    def from_parsing_error(
+        cls,
+        e: yuio.parse.ParsingError,
+        /,
+        *,
+        flag: Flag | None = None,
+        arguments: Argument | list[Argument] | None = None,
+    ):
+        """
+        Convert parsing error to argument error.
+
+        """
+
+        return cls(
+            *e.args,
+            flag=flag,
+            arguments=arguments,
+            n_arg=e.n_arg,
+            pos=e.pos,
+            path=e.path,
+        )
+
+    def to_colorable(self) -> yuio.string.Colorable:
+        colorable = super().to_colorable()
+
+        msg = []
+        args = []
+        sep = False
+
+        if self.flag and self.flag.value:
+            msg.append("in flag <c flag>%s</c>")
+            args.append(self.flag.value)
+            sep = True
+
+        argument = None
+        if isinstance(self.arguments, list):
+            if self.n_arg is not None and self.n_arg < len(self.arguments):
+                argument = self.arguments[self.n_arg]
+        else:
+            argument = self.arguments
+
+        if argument and argument.metavar:
+            if sep:
+                msg.append(", ")
+            msg.append("in <c flag>%s</c>")
+            args.append(argument.metavar)
+
+        if self.path:
+            if sep:
+                msg.append(", ")
+            msg.append("in <c flag>%s</c>")
+            args.append(yuio.parse._PathRenderer(self.path))
+
+        if sep:
+            msg.insert(0, "Error ")
+            msg.append(":\n%s")
+            args.append(yuio.string.Indent(colorable))
+        else:
+            msg.append("%s")
+            args.append(colorable)
+
+        colorable = yuio.string.Format("".join(msg), *args)
+
+        if commandline := self._make_commandline():
+            colorable = yuio.string.Stack(
+                commandline,
+                yuio.string.Indent(colorable),
+            )
+
+        return colorable
+
+    def _make_commandline(self):
+        if not self.prog or not self.commandline:
+            return None
+
+        argument = None
+        if isinstance(self.arguments, list):
+            if self.n_arg is not None and self.n_arg < len(self.arguments):
+                argument = self.arguments[self.n_arg]
+        else:
+            argument = self.arguments
+
+        if argument:
+            arg_index = argument.index
+            arg_pos = (argument.pos, argument.pos + len(argument.value))
+            if self.pos:
+                arg_pos = (
+                    arg_pos[0] + self.pos[0],
+                    min(arg_pos[1], arg_pos[0] + self.pos[1]),
+                )
+        elif self.flag:
+            arg_index = self.flag.index
+            arg_pos = (0, len(self.commandline[arg_index]))
+        else:
+            return None
+
+        text = self.prog
+        text += " "
+        text += " ".join(_quote(arg) for arg in self.commandline[:arg_index])
+        if arg_index > 0:
+            text += " "
+
+        center, pos = _quote_and_adjust_pos(self.commandline[arg_index], arg_pos)
+        pos = (pos[0] + len(text), pos[1] + len(text))
+
+        text += center
+        text += " "
+        text += " ".join(_quote(arg) for arg in self.commandline[arg_index + 1 :])
+
+        if text:
+            return yuio.string.WithBaseColor(
+                yuio.parse._CodeRenderer(text, pos, as_cli=True),
+                base_color=yuio.color.Color.STYLE_NORMAL,
+            )
+        else:
+            return None
+
+
+class Namespace(_t.Protocol):
+    """
+    Protocol for namespace implementations.
+
+    """
+
+    @abc.abstractmethod
+    def __getitem__(self, key: str, /) -> _t.Any: ...
+
+    @abc.abstractmethod
+    def __setitem__(self, key: str, value: _t.Any, /): ...
+
+    @abc.abstractmethod
+    def __contains__(self, key: str, /) -> bool: ...
+
+
+@yuio.string.repr_from_rich
+class ConfigNamespace(Namespace, _t.Generic[ConfigT]):
+    """
+    Wrapper that makes :class:`~yuio.config.Config` instances behave like namespaces.
+
+    """
 
+    def __init__(self, config: ConfigT) -> None:
+        self.__config = config
 
-# @dataclass(kw_only=True)
-# class Option(abc.ABC):
-#     """
-#     Base class for a CLI option.
+    @property
+    def config(self) -> ConfigT:
+        """
+        Wrapped config instance.
 
-#     """
+        """
 
-#     metavar: str = "<value>"
-#     """
-#     Option's meta variable, used for displaying help messages.
+        return self.__config
 
-#     """
+    def __getitem__(self, key: str) -> _t.Any:
+        root, key = self.__split_key(key)
+        return getattr(root, key)
 
-#     completer: yuio.complete.Completer | None = None
-#     """
-#     Option's completer, used for generating completion scripts.
+    def __setitem__(self, key: str, value: _t.Any):
+        root, key = self.__split_key(key)
+        return setattr(root, key, value)
 
-#     """
+    def __contains__(self, key: str):
+        root, key = self.__split_key(key)
+        return key in root.__dict__
 
-#     usage: yuio.Group | bool = True
-#     """
-#     Specifies whether this option should be displayed in CLI usage.
+    def __split_key(self, key: str) -> tuple[yuio.config.Config, str]:
+        root = self.__config
+        *parents, key = key.split(".")
+        for parent in parents:
+            root = getattr(root, parent)
+        return root, key
 
-#     """
+    def __rich_repr__(self):
+        yield None, self.__config
 
-#     help: str = ""
-#     """
-#     Help message for an option.
 
-#     """
+@dataclass(eq=False)
+class HelpGroup:
+    """
+    Group of flags in CLI help.
 
-#     flags: list[str] | yuio.Positional
-#     """
-#     Flags corresponding to this option.
+    """
 
-#     """
+    title: str
+    """
+    Title for this group.
 
-#     nargs: NArgs
-#     """
-#     How many arguments this option takes.
+    """
 
-#     """
+    help: str | yuio.Disabled = ""
+    """
+    Help message for an option.
 
-#     mutually_exclusive_group: None | _t.Any = None
-#     """
-#     Index of a mutually exclusive group.
+    """
 
-#     """
+    usage: yuio.Group | bool = True
+    """
+    Specifies whether this group should be displayed in CLI usage.
 
-#     dest: str
-#     """
-#     Key where to store parsed argument.
+    """
 
-#     """
-
-#     @abc.abstractmethod
-#     def process(
-#         self,
-#         cli_parser: CliParser,
-#         name: str,
-#         args: str | list[str],
-#         ns: _t.MutableMapping[str, _t.Any],
-#     ):
-#         """
-#         Process this argument.
-
-#         This method is called every time an option is encountered
-#         on the command line. It should parse option's args and merge them
-#         with previous values, if there are any.
-
-#         When option's arguments are passed separately (i.e. ``--opt arg1 arg2 ...``),
-#         ``args`` is given as a list. List's length is checked against ``nargs``
-#         before this method is called.
-
-#         When option's arguments are passed as an inline value (i.e. ``--long=arg``
-#         or ``-Sarg``), the ``args`` is given as a string. ``nargs`` are not checked
-#         in this case, giving you an opportunity to handle inline option
-#         however you like.
-
-#         :param cli_parser:
-#             CLI parser instance that's doing the parsing. Not to be confused with
-#             :class:`yuio.parse.Parser`.
-#         :param name:
-#             name of the flag that set this option. For positional options, an empty
-#             string is passed.
-#         :param args:
-#             option arguments, see above.
-#         :param ns:
-#             namespace where parsed arguments should be stored.
-#         :raises:
-#             :class:`ArgumentError`, :class:`~yuio.parse.ParsingError`.
-
-#         """
-
-#     def format_usage(self) -> yuio.term.ColorizedString:
-#         """
-#         Allows customizing how this option looks in CLI usage.
-
-#         """
-
-#         return yuio.term.ColorizedString()
-
-#     def format_toc_usage(self) -> yuio.term.ColorizedString:
-#         """
-#         Allows customizing how this option looks in CLI help.
-
-#         """
-
-#         return yuio.term.ColorizedString()
-
-
-# @dataclass(kw_only=True)
-# class SubCommandOption(Option):
-#     """
-#     A positional option for subcommands.
-
-#     """
-
-#     subcommands: dict[str, Command]
-#     """
-#     All subcommands.
-
-#     """
-
-#     ns_dest: str
-#     """
-#     Where to save subcommand's namespace.
-
-#     """
-
-#     ns_ctor: _t.Callable[[], _t.MutableMapping[str, _t.Any]]
-#     """
-#     A constructor that will be called to create namespace for subcommand's arguments.
-
-#     """
-
-#     def __init__(
-#         self,
-#         *,
-#         subcommands: dict[str, Command],
-#         subcommand_required: bool,
-#         ns_dest: str,
-#         ns_ctor: _t.Callable[[], _t.MutableMapping[str, _t.Any]],
-#         **kwargs,
-#     ):
-#         super().__init__(
-#             metavar="<subcommand>",
-#             completer=None,
-#             usage=True,
-#             flags=[],
-#             nargs=1 if subcommand_required else "?",
-#             mutually_exclusive_group=None,
-#             **kwargs,
-#         )
-
-#         self.subcommands = subcommands
-#         self.ns_dest = ns_dest
-#         self.ns_ctor = ns_ctor
-
-#     def process(
-#         self,
-#         cli_parser: CliParser,
-#         name: str,
-#         args: str | list[str],
-#         ns: _t.MutableMapping[str, _t.Any],
-#     ):
-#         assert isinstance(args, list) and len(args) == 1
-#         subcommand = self.subcommands.get(args[0])
-#         if subcommand is None:
-#             allowed_subcommands = ", ".join(sorted(self.subcommands))
-#             raise ArgumentError(
-#                 f"unknown subcommand {args[0]}, can be one of {allowed_subcommands}"
-#             )
-#         ns[self.dest] = subcommand.name
-#         ns[self.ns_dest] = new_ns = self.ns_ctor()
-#         cli_parser._load_command(subcommand, new_ns)
-
-
-# @dataclass
-# class BoolOption(Option):
-#     """
-#     An option with flags to set :data:`True` and :data:`False` values.
-
-#     """
-
-#     parser: yuio.parse.Parser[bool]
-#     """
-#     A parser used to parse bools when an explicit value is provided.
-
-#     """
-
-#     neg_flags: list[str]
-#     """
-#     List of flag names that negate this boolean option.
-
-#     """
-
-#     def __init__(
-#         self,
-#         *,
-#         flags: list[str],
-#         neg_flags: list[str],
-#         parser: yuio.parse.Parser[bool] | None = None,
-#         **kwargs,
-#     ):
-#         self.parser = parser or yuio.parse.Bool()
-#         self.neg_flags = neg_flags
-
-#         super().__init__(
-#             completer=None,
-#             flags=flags + neg_flags,
-#             nargs=0,
-#             **kwargs,
-#         )
-
-#     def process(
-#         self,
-#         cli_parser: CliParser,
-#         name: str,
-#         args: str | list[str],
-#         ns: _t.MutableMapping[str, _t.Any],
-#     ):
-#         if name in self.neg_flags:
-#             if isinstance(args, str):
-#                 raise ArgumentError(f"{name} expected 0 arguments, got 1")
-#             ns[self.dest] = False
-#         elif isinstance(args, str):
-#             ns[self.dest] = self.parser.parse(args)
-#         else:
-#             ns[self.dest] = True
-
-
-# @dataclass
-# class ParseOneOption(Option, _t.Generic[T]):
-#     """
-#     An option with a single argument that uses Yuio parser.
-
-#     """
-
-#     parser: yuio.parse.Parser[T]
-#     """
-#     A parser used to parse bools when an explicit value is provided.
-
-#     """
-
-#     merge: _t.Callable[[T, T], T] | None
-#     """
-#     Function to merge previous and new value.
-
-#     """
-
-#     def __init__(
-#         self,
-#         *,
-#         parser: yuio.parse.Parser[T],
-#         merge: _t.Callable[[T, T], T] | None = None,
-#         **kwargs,
-#     ):
-#         self.parser = parser
-#         self.merge = merge
-
-#         super().__init__(
-#             nargs=1,
-#             **kwargs,
-#         )
-
-#         if self.completer is None:
-#             self.completer = self.parser.completer()
-
-#     def process(
-#         self,
-#         cli_parser: CliParser,
-#         name: str,
-#         args: str | list[str],
-#         ns: _t.MutableMapping[str, _t.Any],
-#     ):
-#         if not isinstance(args, str):
-#             args = args[0]
-#         try:
-#             value = self.parser.parse(args)
-#         except yuio.parse.ParsingError as e:
-#             raise e.with_prefix("Error in <c flag>%s</c>:", name) from None
-#         if self.merge and self.dest in ns:
-#             ns[self.dest] = self.merge(ns[self.dest], value)
-#         else:
-#             ns[self.dest] = value
-
-
-# @dataclass
-# class ParseManyOption(Option, _t.Generic[T]):
-#     """
-#     An option with a multiple arguments that uses Yuio parser.
-
-#     """
-
-#     parser: yuio.parse.Parser[T]
-#     """
-#     A parser used to parse bools when an explicit value is provided.
-
-#     """
-
-#     merge: _t.Callable[[T, T], T] | None
-#     """
-#     Function to merge previous and new value.
-
-#     """
-
-#     def __init__(
-#         self,
-#         *,
-#         parser: yuio.parse.Parser[T],
-#         merge: _t.Callable[[T, T], T] | None = None,
-#         **kwargs,
-#     ):
-#         self.parser = parser
-#         self.merge = merge
-
-#         super().__init__(
-#             nargs=self.parser.get_nargs(),
-#             **kwargs,
-#         )
-
-#         if self.completer is None:
-#             self.completer = self.parser.completer()
-
-#     def process(
-#         self,
-#         cli_parser: CliParser,
-#         name: str,
-#         args: str | list[str],
-#         ns: _t.MutableMapping[str, _t.Any],
-#     ):
-#         try:
-#             if isinstance(args, str):
-#                 value = self.parser.parse(args)
-#             else:
-#                 value = self.parser.parse_many(args)
-#         except yuio.parse.ParsingError as e:
-#             raise e.with_prefix("Error in <c flag>%s</c>:", name) from None
-#         if self.merge and self.dest in ns:
-#             ns[self.dest] = self.merge(ns[self.dest], value)
-#         else:
-#             ns[self.dest] = value
-
-
-# @dataclass
-# class ConstOption(Option, _t.Generic[T]):
-#     """
-#     An option with no arguments that stores a constant to namespace.
-
-#     """
-
-#     const: T
-#     """
-#     Constant that will be stored.
-
-#     """
-
-#     merge: _t.Callable[[T, T], T] | None
-#     """
-#     Function to merge previous and new value.
-
-#     """
-
-#     def __init__(
-#         self,
-#         *,
-#         const: T,
-#         merge: _t.Callable[[T, T], T] | None = None,
-#         **kwargs,
-#     ):
-#         self.const = const
-#         self.merge = merge
-
-#         super().__init__(
-#             nargs=0,
-#             **kwargs,
-#         )
-
-#     def process(
-#         self,
-#         cli_parser: CliParser,
-#         name: str,
-#         args: str | list[str],
-#         ns: _t.MutableMapping[str, _t.Any],
-#     ):
-#         if isinstance(args, str):
-#             raise ArgumentError(f"{name} expected 0 arguments, got 1")
-
-#         if self.merge and self.dest in ns:
-#             ns[self.dest] = self.merge(ns[self.dest], self.const)
-#         else:
-#             ns[self.dest] = self.const
-
-
-# @dataclass
-# class CountOption(ConstOption[int]):
-#     """
-#     An option that counts number of its appearances on the command line.
-
-#     """
-
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs, const=1, merge=lambda l, r: l + r)
-
-
-# @dataclass
-# class StoreTrueOption(ConstOption[bool]):
-#     """
-#     An option that stores :data:`True` to namespace.
-
-#     """
-
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs, const=True)
-
-
-# @dataclass
-# class StoreFalseOption(ConstOption[bool]):
-#     """
-#     An option that stores :data:`False` to namespace.
-
-#     """
-
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs, const=False)
-
-
-# @dataclass
-# class Command:
-#     """
-#     Data about CLI interface of a single command or subcommand.
-
-#     """
-
-#     name: str
-#     """
-#     Name of this command.
-
-#     """
-
-#     desc: str
-#     """
-#     Long description for a command.
-
-#     """
-
-#     help: str
-#     """
-#     Help message displayed when listing subcommands.
-
-#     """
-
-#     options: list[Option]
-#     """
-#     Options for this command.
-
-#     """
-
-#     subcommands: dict[str, Command]
-#     """
-#     Last positional option can be a sub-command.
-
-#     This is a map from subcommand's name or alias to subcommand's implementation.
-
-#     Subcommand's implementation is either a :class:`Command` or a callable that takes
-#     name/alias which invoked a subcommand, and returns a :class:`Command` instance.
-
-#     The latter is especially useful to set up command's options and bind them
-#     to a namespace.
-
-#     """
-
-#     subcommand_required: bool
-#     """
-#     Whether subcommand is required or optional.
-
-#     """
-
-#     def make_subcommand_option(self) -> SubCommandOption | None:
-#         """
-#         Turn :attr:`~Command.subcommands` and :attr:`~Command.subcommand_required`
-#         into a :class:`SubCommandOption`.
-
-#         Return :data:`None` if this command doesn't have any subcommands.
-
-#         """
-
-#         if not self.subcommands:
-#             return None
-#         else:
-#             return SubCommandOption(
-#                 subcommands=self.subcommands,
-#                 subcommand_required=self.subcommand_required,
-#                 help=self.help,
-#                 dest="subcommand",
-#                 ns_dest="subcommand_data",
-#                 ns_ctor=dict,
-#             )
-
-
-# @dataclass
-# class _BoundOption:
-#     wrapped: Option
-#     ns: _t.MutableMapping[str, _t.Any]
-
-#     @property
-#     def metavar(self):
-#         return self.wrapped.metavar
-
-#     @property
-#     def completer(self):
-#         return self.wrapped.completer
-
-#     @property
-#     def usage(self):
-#         return self.wrapped.usage
-
-#     @property
-#     def flags(self):
-#         return self.wrapped.flags
-
-#     @property
-#     def nargs(self):
-#         return self.wrapped.nargs
-
-#     @property
-#     def mutually_exclusive_group(self):
-#         return self.wrapped.mutually_exclusive_group
-
-#     @property
-#     def dest(self):
-#         return self.wrapped.dest
-
-
-# class CliParser:
-#     """
-#     CLI arguments parser.
-
-#     :param command:
-#         root command.
-
-#     """
-
-#     def __init__(self, command: Command, ns: _t.MutableMapping[str, _t.Any]) -> None:
-#         self._root_command = command
-#         self._allow_abbrev = True
-
-#         self._seen_mutex_groups: dict[_t.Any, tuple[_BoundOption, str]] = {}
-
-#         self._known_long_args: dict[str, _BoundOption] = {}
-#         self._known_short_args: dict[str, _BoundOption] = {}
-
-#         self._current_positional: int = 0
-#         self._current_positional_args: list[str] = []
-
-#         self._current_flag: _BoundOption | None = None
-#         self._current_flag_name: str = ""
-#         self._current_flag_args: list[str] = []
-
-#         self._positionals = []
-#         self._current_positional = 0
-
-#         self._load_command(command, ns)
-
-#     def _load_command(self, command: Command, ns: _t.MutableMapping[str, _t.Any]):
-#         # All pending flags and positionals should'be been flushed by now.
-#         assert self._current_flag is None
-#         assert self._current_positional == len(self._positionals)
-
-#         # Update known flags and positionals.
-#         self._positionals = []
-#         for option in command.options:
-#             if option.flags is yuio.POSITIONAL:
-#                 self._positionals.append(option)
-#             else:
-#                 for flag in option.flags:
-#                     if _is_short(flag):
-#                         dest = self._known_short_args
-#                     else:
-#                         dest = self._known_short_args
-#                     dest[flag] = _BoundOption(option, ns)
-#         if subcommand := command.make_subcommand_option():
-#             self._positionals.append(subcommand)
-#         self._current_positional = 0
-
-#     def parse(self, args: list[str] | None):
-#         """
-#         Parse arguments and invoke their actions.
-
-#         :param args:
-#             CLI arguments, not including the program name (i.e. the first argument).
-#             If :data:`None`, use :data:`sys.argv` instead.
-#         :returns:
-#             subcommand path, starting with the name of the root command,
-#             and namespace filled with parsing results.
-#         :raises:
-#             :class:`ArgumentError`, :class:`~yuio.parse.ParsingError`.
-
-#         """
-
-#         if args is None:
-#             args = sys.argv[1:]
-
-#         allow_flags = True
-
-#         for arg in args:
-#             # Handle `--`.
-#             if arg == "--" and allow_flags:
-#                 self._flush_flag()
-#                 allow_flags = False
-#                 continue
-
-#             # Check what we have here.
-#             if allow_flags:
-#                 result = self._detect_flag(arg, accept_negative_numbers=False)
-#             else:
-#                 result = None
-
-#             if result is None:
-#                 # This not a flag. Can be an argument to a positional/flag option.
-#                 self._handle_positional(arg)
-#             else:
-#                 # This is a flag.
-#                 options, inline_arg = result
-#                 self._handle_flags(options, inline_arg)
-
-#         self._flush_flag()
-#         self._flush_positional()
-
-#     def _detect_flag(
-#         self, arg: str, accept_negative_numbers: bool
-#     ) -> tuple[list[tuple[_BoundOption, str]], str | None] | None:
-#         if not arg.startswith(_PREFIX_CHARS):
-#             # This is a positional.
-#             return None
-
-#         # Detect long flag.
-#         if "=" in arg:
-#             long_arg, long_inline_arg = arg.split("=", maxsplit=1)
-#         else:
-#             long_arg, long_inline_arg = arg, None
-#         if long_opt := self._known_long_args.get(long_arg):
-#             return [(long_opt, long_arg)], long_inline_arg
-
-#         # This can be an abbreviated long flag or a short flag.
-
-#         # Try detecting short flags first.
-#         prefix_char = arg[0]
-#         short_opts: list[tuple[_BoundOption, str]] = []
-#         short_inline_arg = None
-#         unknown_ch = None
-#         for i, ch in enumerate(arg[1:]):
-#             if ch == "=":
-#                 # Short flag with explicit argument.
-#                 short_inline_arg = arg[i + 2 :]
-#                 break
-#             elif short_opts and short_opts[-1][0].nargs != 0:
-#                 # Short flag with implicit argument.
-#                 short_inline_arg = arg[i + 1 :]
-#                 break
-#             elif short_opt := self._known_short_args.get(prefix_char + ch):
-#                 # Short flag, arguments may follow.
-#                 short_opts.append((short_opt, prefix_char + ch))
-#             else:
-#                 # Unknown short flag. Will try parsing as abbreviated long flag next.
-#                 unknown_ch = ch
-#                 break
-
-#         # Try as abbreviated long flags.
-#         candidates = []
-#         if self._allow_abbrev:
-#             for candidate in self._known_long_args:
-#                 if candidate.startswith(long_arg):
-#                     candidates.append(candidate)
-#             if len(candidates) == 1:
-#                 candidate = candidates[0]
-#                 return [(self._known_long_args[candidate], candidate)], long_inline_arg
-
-#         # Try as signed int.
-#         if re.match(_NUM_RE, arg):
-#             # This is a positional.
-#             return None
-
-#         # Exhausted all options, raise an error.
-#         if candidates:
-#             raise ArgumentError(
-#                 "Unknown flag <c flag>%s</c>, can be "
-#                 + "".join([""] * len(candidates)),
-#                 long_arg,
-#                 *candidates,
-#             )
-#         elif unknown_ch:
-#             raise ArgumentError(
-#                 "Unknown short option {prefix_char}{short_inline_arg} in argument {arg}"
-#             )
-#         else:
-#             raise ArgumentError("Unknown flag {arg}")
-
-#     def _handle_positional(self, arg: str):
-#         if self._current_flag is not None:
-#             # This is an argument for a flag option.
-#             self._current_flag_args.append(arg)
-#             nargs = self._current_flag.nargs
-#             if nargs == "?" or (
-#                 isinstance(nargs, int) and len(self._current_flag_args) == nargs
-#             ):
-#                 self._flush_flag()  # This flag is full.
-#         else:
-#             # This is an argument for a positional option.
-#             if self._current_positional >= len(self._positionals):
-#                 raise ArgumentError(f"unexpected positional argument {arg}")
-#             self._current_positional_args.append(arg)
-#             nargs = self._positionals[self._current_positional].nargs
-#             if nargs == "?" or (
-#                 isinstance(nargs, int) and len(self._current_positional_args) == nargs
-#             ):
-#                 self._flush_positional()  # This positional is full.
-
-#     def _handle_flags(
-#         self, options: list[tuple[_BoundOption, str]], inline_arg: str | None
-#     ):
-#         # If we've seen another flag before this one, and we were waiting
-#         # for that flag's arguments, flush them now.
-#         self._flush_flag()
-
-#         # Handle short flags in multi-arg sequence, i.e. `-li` -> `-l -c`
-#         for opt, name in options[:-1]:
-#             self._eval_option(opt, name, [])
-
-#         # Handle the last short flag in multi-arg sequence.
-#         opt, name = options[-1]
-#         if inline_arg is not None:
-#             # Flag with an inline argument, i.e. `-Xfoo`/`-X=foo` -> `-X foo`
-#             self._eval_option(opt, name, inline_arg)
-#         else:
-#             self._push_flag(opt, name)
-
-#     def _flush_positional(self):
-#         if self._current_positional >= len(self._positionals):
-#             return
-#         opt, args = (
-#             self._positionals[self._current_positional],
-#             self._current_positional_args,
-#         )
-
-#         self._current_positional += 1
-#         self._current_positional_args = []
-
-#         self._eval_option(opt, "", args)
-
-#     def _flush_flag(self):
-#         if self._current_flag is None:
-#             return
-
-#         opt, name, args = (
-#             self._current_flag,
-#             self._current_flag_name,
-#             self._current_flag_args,
-#         )
-
-#         self._current_flag = None
-#         self._current_flag_name = ""
-#         self._current_flag_args = []
-
-#         self._eval_option(opt, name, args)
-
-#     def _push_flag(self, opt: _BoundOption, name: str):
-#         assert self._current_flag is None
-
-#         if opt.nargs == 0:
-#             # Flag without arguments, handle it right now.
-#             self._eval_option(opt, name, [])
-#         else:
-#             # Flag with possible arguments, save it. If we see a non-flag later,
-#             # it will be added to this flag's arguments.
-#             self._current_flag = opt
-#             self._current_flag_name = name
-#             self._current_flag_args = []
-
-#     def _eval_option(self, opt: _BoundOption, name: str, args: str | list[str]):
-#         metavar = name or opt.metavar
-#         if opt.mutually_exclusive_group is not None:
-#             if seen := self._seen_mutex_groups.get(opt.mutually_exclusive_group):
-#                 prev_opt, prev_name = seen
-#                 prev_name = prev_name or prev_opt.metavar
-#                 raise ArgumentError(f"{metavar} can't be given with option {prev_name}")
-#             self._seen_mutex_groups[opt.mutually_exclusive_group] = opt, name
-
-#         if isinstance(args, list):
-#             if opt.nargs == "?":
-#                 if len(args) > 1:
-#                     raise ArgumentError(
-#                         f"{metavar} expected at most 1 argument, got {len(args)}"
-#                     )
-#             elif opt.nargs == "+":
-#                 if not args:
-#                     raise ArgumentError(
-#                         f"{metavar} requires at least one argument, got 0"
-#                     )
-#             elif opt.nargs != "*":
-#                 if len(args) != opt.nargs:
-#                     s = "" if opt.nargs == 1 else "s"
-#                     raise ArgumentError(
-#                         f"{metavar} expected {opt.nargs} argument{s}, got {len(args)}"
-#                     )
-
-#         opt.wrapped.process(self, name, args, opt.ns)
-
-
-# def _is_short(flag: str):
-#     if not flag.startswith(_PREFIX_CHARS):
-#         pchars = " or ".join(map(repr, _PREFIX_CHARS))
-#         raise TypeError(f"flag {flag!r} should start with {pchars}")
-#     if len(flag) == 2:
-#         if not re.match(_SHORT_FLAG_RE, flag):
-#             raise TypeError(f"invalid short flag {flag!r}")
-#         return True
-#     elif len(flag) == 1:
-#         raise TypeError(f"flag {flag!r} is too short")
-#     else:
-#         if not re.match(_LONG_FLAG_RE, flag):
-#             raise TypeError(f"invalid long flag {flag!r}")
-#         return False
+    @property
+    def title_lines(self) -> list[str]:
+        title = self.title
+        if title and "\n" not in title and title[-1] not in string.punctuation:
+            title += ":"
+        return title.splitlines()
+
+
+ARGS_GROUP = HelpGroup("Arguments:")
+"""
+Help group for positional arguments.
+
+"""
+
+SUBCOMMANDS_GROUP = HelpGroup("Subcommands:")
+"""
+Help group for subcommands.
+
+"""
+
+OPTS_GROUP = HelpGroup("Options:")
+"""
+Help group for flags.
+
+"""
+
+AUXILIARY_GROUP = HelpGroup("Auxiliary options:", usage=yuio.GROUP)
+"""
+Help group for auxiliary flags such as :flag:`--help` or :flag:`--version`.
+
+"""
+
+
+@dataclass(kw_only=True, eq=False)
+class MutuallyExclusiveGroup:
+    """
+    A sentinel for creating mutually exclusive groups.
+
+    Pass an instance of this class all :func:`~yuio.app.field`\\ s that should
+    be mutually exclusive.
+
+    """
+
+    required: bool = False
+    """
+    Require that one of the mutually exclusive options is always given.
+
+    """
+
+
+@dataclass(eq=False, kw_only=True)
+class Option(abc.ABC):
+    """
+    Base class for a CLI option.
+
+    """
+
+    flags: list[str] | yuio.Positional
+    """
+    Flags corresponding to this option.
+
+    """
+
+    nargs: NArgs
+    """
+    How many arguments this option takes.
+
+    """
+
+    allow_inline_arg: bool
+    """
+    Whether to allow specifying argument inline (i.e. :flag:`--foo=bar`).
+
+    Inline arguments are handled separately from normal arguments,
+    and :attr:`~Option.nargs` setting does not affect them.
+
+    """
+
+    required: bool
+    """
+    Makes this option required. The parsing will fail if this option is not
+    encountered among CLI arguments.
+
+    Note that positional arguments are always parsed, so :attr:`~Option.required`
+    has no effect on them; instead, they rely on :attr:`~Option.nargs` to check
+    for missing arguments.
+
+    """
+
+    dest: str
+    """
+    Key where to store parsed argument.
+
+    """
+
+    metavar: str | tuple[str]
+    """
+    Option's meta variable, used for displaying help messages. If :attr:`~Option.nargs`
+    is an integer, this can be a tuple of strings, one for each argument.
+
+    """
+
+    mutually_exclusive_group: None | MutuallyExclusiveGroup = None
+    """
+    Index of a mutually exclusive group.
+
+    """
+
+    completer: yuio.complete.Completer | None = None
+    """
+    Option's completer, used for generating completion scripts.
+
+    """
+
+    usage: yuio.Group | bool = True
+    """
+    Specifies whether this option should be displayed in CLI usage.
+
+    """
+
+    help: str | yuio.Disabled = ""
+    """
+    Help message for an option.
+
+    """
+
+    help_group: HelpGroup | None = None
+    """
+    Group for this flag, default is :data:`OPTS_GROUP` for flags and :data:`ARGS_GROUP`
+    for positionals.
+
+    """
+
+    show_if_inherited: bool = False
+    """
+    Force-show this flag if it's inherited from parent command.
+
+    """
+
+    @abc.abstractmethod
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        """
+        Process this argument.
+
+        This method is called every time an option is encountered
+        on the command line. It should parse option's args and merge them
+        with previous values, if there are any.
+
+        When option's arguments are passed separately (i.e. ``--opt arg1 arg2 ...``),
+        ``args`` is given as a list. List's length is checked against ``nargs``
+        before this method is called.
+
+        When option's arguments are passed as an inline value (i.e. ``--long=arg``
+        or ``-Sarg``), the ``args`` is given as a string. ``nargs`` are not checked
+        in this case, giving you an opportunity to handle inline option
+        however you like.
+
+        :param cli_parser:
+            CLI parser instance that's doing the parsing. Not to be confused with
+            :class:`yuio.parse.Parser`.
+        :param flag:
+            flag that set this option. This will be set to :data:`None`
+            for positional arguments.
+        :param args:
+            option arguments, see above.
+        :param ns:
+            namespace where parsed arguments should be stored.
+        :raises:
+            :class:`ArgumentError`, :class:`~yuio.parse.ParsingError`.
+
+        """
+
+    @functools.cached_property
+    def primary_short_flag(self) -> str | None:
+        """
+        Short flag that will be displayed in CLI help.
+
+        """
+
+        if self.flags is yuio.POSITIONAL:
+            return None
+        for flag in self.flags:
+            if _is_short(flag):
+                return flag
+        return None
+
+    @functools.cached_property
+    def primary_long_flags(self) -> list[str] | None:
+        """
+        Long flags that will be displayed in CLI help.
+
+        """
+
+        if self.flags is yuio.POSITIONAL:
+            return None
+        for flag in self.flags:
+            if not _is_short(flag):
+                return [flag]
+        return None
+
+    def parse_help(self, ctx: yuio.string.ReprContext, /) -> yuio.md.AstBase | None:
+        """
+        Parse help for displaying it in LI help.
+
+        """
+
+        help = yuio.md.parse(yuio.util.dedent(self.help or ""), allow_headings=False)
+        if help_tail := self.format_help_tail(ctx):
+            help.items.append(yuio.md.Raw(raw=help_tail))
+
+        return help if help.items else None
+
+    def format_usage(
+        self,
+        ctx: yuio.string.ReprContext,
+        /,
+    ) -> tuple[_ColorizedString, bool]:
+        """
+        Allows customizing how this option looks in CLI usage.
+
+        """
+
+        can_group = False
+        res = _ColorizedString()
+        if self.flags is not yuio.POSITIONAL and self.flags:
+            flag = self.primary_short_flag
+            if flag:
+                can_group = True
+            elif self.primary_long_flags:
+                flag = self.primary_long_flags[0]
+            else:
+                flag = self.flags[0]
+            res.append_color(ctx.theme.get_color("hl/flag:sh-usage"))
+            res.append_str(flag)
+        if metavar := self.format_metavar(ctx):
+            res.append_colorized_str(metavar)
+            can_group = False
+        return res, can_group
+
+    def format_metavar(
+        self,
+        ctx: yuio.string.ReprContext,
+        /,
+    ) -> _ColorizedString:
+        """
+        Allows customizing how this option looks in CLI help.
+
+        """
+
+        res = _ColorizedString()
+
+        if not self.nargs:
+            return res
+
+        res.append_color(ctx.theme.get_color("hl/punct:sh-usage"))
+        if self.flags:
+            res.append_str(" ")
+
+        if self.nargs == "?":
+            res += "["
+            res += _format_metavar(self.nth_metavar(0), ctx)
+            res += "]"
+        elif self.nargs == "*":
+            res += "["
+            res += _format_metavar(self.nth_metavar(0), ctx)
+            res += " ...]"
+        elif self.nargs == "+":
+            res += _format_metavar(self.nth_metavar(0), ctx)
+            res += " [...]"
+        elif isinstance(self.nargs, int):
+            sep = False
+            for i in range(self.nargs):
+                if sep:
+                    res += " "
+                res += _format_metavar(self.nth_metavar(i), ctx)
+                sep = True
+
+        return res
+
+    def format_help_tail(
+        self,
+        ctx: yuio.string.ReprContext,
+        /,
+    ) -> _ColorizedString:
+        """
+        Format additional content that will be added to the end of the help message,
+        such as aliases, default value, etc.
+
+        """
+
+        res = _ColorizedString()
+
+        base_color = ctx.theme.get_color("msg/text:code/sh-usage")
+
+        if alias_flags := self.format_alias_flags(ctx):
+            es = "" if len(alias_flags) == 1 else "es"
+            res.append_str(f"Alias{es}: ")
+            sep = False
+            for alias_flag in alias_flags:
+                if sep:
+                    res.append_str(", ")
+                res.append_colorized_str(alias_flag.with_base_color(base_color))
+                sep = True
+
+        if default := self.format_default(ctx):
+            if res:
+                res.append_str("; ")
+            res.append_str("Default: ")
+            res.append_colorized_str(default.with_base_color(base_color))
+
+        if res:
+            res.append_str(".")
+
+        return res
+
+    def format_alias_flags(
+        self, ctx: yuio.string.ReprContext, /
+    ) -> list[_ColorizedString] | None:
+        """
+        Format alias flags that weren't included in :attr:`~Option.primary_short_flag`
+        and :attr:`~Option.primary_long_flags`.
+
+        """
+
+        if self.flags is yuio.POSITIONAL:
+            return None
+        primary_flags = set(self.primary_long_flags or [])
+        if self.primary_short_flag:
+            primary_flags.add(self.primary_short_flag)
+        aliases: list[_ColorizedString] = []
+        flag_color = ctx.theme.get_color("hl/flag:sh-usage")
+        for flag in self.flags:
+            if flag not in primary_flags:
+                res = _ColorizedString()
+                res.start_no_wrap()
+                res.append_color(flag_color)
+                res.append_str(flag)
+                res.end_no_wrap()
+                aliases.append(res)
+        return aliases
+
+    def format_default(
+        self, ctx: yuio.string.ReprContext, /
+    ) -> _ColorizedString | None:
+        """
+        Format default value that will be included in the CLI help.
+
+        """
+
+        return None
+
+    def nth_metavar(self, n: int):
+        """
+        Get metavar for n-th argument for this option.
+
+        """
+
+        metavar = self.metavar
+        if isinstance(metavar, tuple):
+            if not metavar:
+                return "<opt>"
+            if n >= len(metavar):
+                metavar = metavar[-1]
+            else:
+                metavar = metavar[n]
+        return metavar
+
+
+@dataclass(eq=False, kw_only=True)
+class BoolOption(Option):
+    """
+    An option that combines :class:`StoreTrueOption`, :class:`StoreFalseOption`,
+    and :class:`ParseOneOption`.
+
+    If any of the :attr:`~BoolOption.pos_flags` are given without arguments, it works like
+    :class:`StoreTrueOption`.
+
+    If any of the :attr:`~BoolOption.neg_flags` are given, it works like
+    :class:`StoreFalseOption`.
+
+    If any of the :attr:`~Option.flags` are given with an inline argument, the argument
+    is parsed as a :class:`bool`.
+
+    :example:
+        .. code-block:: console
+
+            $ prog --bool-flag  # Set `dest` to `True`
+            $ prog --no-bool-flag  # Set `dest` to `False`
+            $ prog --bool-flag=$value  # Set `dest` to parsed `$value`
+
+    """
+
+    parser: yuio.parse.Parser[bool]
+    """
+    A parser used to parse bools when an explicit value is provided.
+
+    """
+
+    pos_flags: list[str]
+    """
+    List of flag names that enable this boolean option.
+
+    """
+
+    neg_flags: list[str]
+    """
+    List of flag names that disable this boolean option.
+
+    """
+
+    default: bool | None
+    """
+    Default boolean value that will be used if this flag is not given.
+
+    Used for formatting help.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        flags: list[str],
+        neg_flags: list[str],
+        default: bool | None = None,
+        parser: yuio.parse.Parser[bool] | None = None,
+        required: bool = False,
+        **kwargs,
+    ):
+        self.parser = parser or yuio.parse.Bool()
+        self.pos_flags = flags
+        self.neg_flags = neg_flags
+        self.default = default
+
+        super().__init__(
+            completer=None,
+            flags=flags + neg_flags,
+            nargs=0,
+            allow_inline_arg=True,
+            required=required,
+            **kwargs,
+        )
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        if flag and flag.value in self.neg_flags:
+            if arguments:
+                raise ArgumentError(
+                    "This flag can't have arguments", flag=flag, arguments=arguments
+                )
+            value = False
+        elif isinstance(arguments, Argument):
+            value = self.parser.parse(arguments.value)
+        else:
+            value = True
+        ns[self.dest] = value
+
+    @functools.cached_property
+    def primary_short_flag(self):
+        if self.flags is yuio.POSITIONAL:
+            return None
+        for flag in self.pos_flags if self.default is not True else self.neg_flags:
+            if _is_short(flag):
+                return flag
+        return None
+
+    @functools.cached_property
+    def primary_long_flags(self):
+        flags = []
+        if self.default is not True:
+            for flag in self.pos_flags:
+                if not _is_short(flag):
+                    flags.append(flag)
+                    break
+        if self.default is not False:
+            for flag in self.neg_flags:
+                if not _is_short(flag):
+                    flags.append(flag)
+                    break
+        return flags
+
+    def format_alias_flags(
+        self, ctx: yuio.string.ReprContext
+    ) -> list[_ColorizedString] | None:
+        if self.flags is yuio.POSITIONAL:
+            return None
+
+        primary_flags = set(self.primary_long_flags or [])
+        if self.primary_short_flag:
+            primary_flags.add(self.primary_short_flag)
+
+        aliases: list[_ColorizedString] = []
+        flag_color = ctx.theme.get_color("hl/flag:sh-usage")
+        for flag in self.pos_flags + self.neg_flags:
+            if flag not in primary_flags:
+                res = _ColorizedString()
+                res.start_no_wrap()
+                res.append_color(flag_color)
+                res.append_str(flag)
+                res.end_no_wrap()
+                aliases.append(res)
+        if self.pos_flags:
+            primary_pos_flag = None
+            for flag in self.pos_flags:
+                if not _is_short(flag):
+                    primary_pos_flag = flag
+                    break
+                elif primary_pos_flag is None:
+                    primary_pos_flag = flag
+            if primary_pos_flag:
+                punct_color = ctx.theme.get_color("hl/punct:sh-usage")
+                metavar_color = ctx.theme.get_color("hl/metavar:sh-usage")
+                res = _ColorizedString()
+                res.start_no_wrap()
+                res.append_color(flag_color)
+                res.append_str(primary_pos_flag)
+                res.end_no_wrap()
+                res.append_color(punct_color)
+                res.append_str("={")
+                res.append_color(metavar_color)
+                res.append_str("true")
+                res.append_color(punct_color)
+                res.append_str("|")
+                res.append_color(metavar_color)
+                res.append_str("false")
+                res.append_color(punct_color)
+                res.append_str("}")
+                aliases.append(res)
+        return aliases
+
+
+@dataclass(eq=False, kw_only=True)
+class ParseOneOption(Option, _t.Generic[T]):
+    """
+    An option with a single argument that uses Yuio parser.
+
+    """
+
+    parser: yuio.parse.Parser[T]
+    """
+    A parser used to parse bools when an explicit value is provided.
+
+    """
+
+    merge: _t.Callable[[T, T], T] | None
+    """
+    Function to merge previous and new value.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        parser: yuio.parse.Parser[T],
+        merge: _t.Callable[[T, T], T] | None = None,
+        **kwargs,
+    ):
+        self.parser = parser
+        self.merge = merge
+
+        super().__init__(
+            nargs=1,
+            **kwargs,
+        )
+
+        if self.completer is None:
+            self.completer = self.parser.completer()
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        if isinstance(arguments, list):
+            arguments = arguments[0]
+        try:
+            value = self.parser.parse(arguments.value)
+        except yuio.parse.ParsingError as e:
+            raise ArgumentError.from_parsing_error(
+                e, flag=flag, arguments=arguments
+            ) from None
+        if self.merge and self.dest in ns:
+            ns[self.dest] = self.merge(ns[self.dest], value)
+        else:
+            ns[self.dest] = value
+
+
+@dataclass(eq=False, kw_only=True)
+class ParseManyOption(ParseOneOption[T], _t.Generic[T]):
+    """
+    An option with multiple arguments that uses Yuio parser.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        parser: yuio.parse.Parser[T],
+        merge: _t.Callable[[T, T], T] | None = None,
+        **kwargs,
+    ):
+        super().__init__(parser=parser, merge=merge, **kwargs)
+
+        nargs = self.parser.get_nargs()
+        if nargs is None:  # TODO: remove after App migrates to this module.
+            nargs = 1
+        self.nargs = nargs
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        if not isinstance(arguments, list):
+            super().process(cli_parser, flag, arguments, ns)
+            return
+
+        try:
+            value = self.parser.parse_many([arg.value for arg in arguments])
+        except yuio.parse.ParsingError as e:
+            raise ArgumentError.from_parsing_error(
+                e, flag=flag, arguments=arguments
+            ) from None
+
+        if self.merge and self.dest in ns:
+            ns[self.dest] = self.merge(ns[self.dest], value)
+        else:
+            ns[self.dest] = value
+
+
+@dataclass(eq=False, kw_only=True)
+class StoreConstOption(Option, _t.Generic[T]):
+    """
+    An option with no arguments that stores a constant to namespace.
+
+    """
+
+    const: T
+    """
+    Constant that will be stored.
+
+    """
+
+    merge: _t.Callable[[T, T], T] | None
+    """
+    Function to merge previous and new value.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        const: T,
+        merge: _t.Callable[[T, T], T] | None = None,
+        **kwargs,
+    ):
+        self.const = const
+        self.merge = merge
+
+        super().__init__(
+            nargs=0,
+            allow_inline_arg=False,
+            metavar="",
+            **kwargs,
+        )
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        if self.merge and self.dest in ns:
+            ns[self.dest] = self.merge(ns[self.dest], self.const)
+        else:
+            ns[self.dest] = self.const
+
+
+@dataclass(eq=False, kw_only=True)
+class CountOption(StoreConstOption[int]):
+    """
+    An option that counts number of its appearances on the command line.
+
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, const=1, merge=lambda l, r: l + r)
+
+    def format_metavar(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
+        return _ColorizedString((ctx.theme.get_color("hl/flag:sh-usage"), "..."))
+
+
+@dataclass(eq=False, kw_only=True)
+class StoreTrueOption(StoreConstOption[bool]):
+    """
+    An option that stores :data:`True` to namespace.
+
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, const=True)
+
+
+@dataclass(eq=False, kw_only=True)
+class StoreFalseOption(StoreConstOption[bool]):
+    """
+    An option that stores :data:`False` to namespace.
+
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, const=False)
+
+
+@dataclass(eq=False, kw_only=True)
+class VersionOption(Option):
+    """
+    An option that prints a version and stops the program.
+
+    """
+
+    version: str
+    """
+    Version to print.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        version: str,
+        flags: list[str] = ["-V", "--version"],
+        help: str | None = None,
+        help_group: HelpGroup | None = AUXILIARY_GROUP,
+    ):
+        super().__init__(
+            flags=flags,
+            nargs=0,
+            help="Print program version and exit." if help is None else help,
+            allow_inline_arg=False,
+            dest="",
+            required=False,
+            metavar="",
+            show_if_inherited=True,
+            help_group=help_group,
+        )
+
+        self.version = version
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        import yuio.io
+
+        if self.version:
+            yuio.io.info(self.version)
+        else:
+            yuio.io.info("<unknown version>")
+        sys.exit(0)
+
+
+@dataclass(eq=False, kw_only=True)
+class HelpOption(Option):
+    """
+    An option that prints help message and stops the program.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        flags: list[str] = ["-h", "--help"],
+        help: str | None = None,
+        help_group: HelpGroup | None = AUXILIARY_GROUP,
+    ):
+        super().__init__(
+            flags=flags,
+            nargs=0,
+            help="Print this message and exit." if help is None else help,
+            allow_inline_arg=False,
+            dest="",
+            required=False,
+            metavar="",
+            show_if_inherited=True,
+            help_group=help_group,
+        )
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        import yuio.io
+
+        formatter = _HelpFormatter()
+        inherited_options = []
+        seen_inherited_options = set()
+        for opt in cli_parser._inherited_options.values():
+            if opt not in seen_inherited_options:
+                seen_inherited_options.add(opt)
+                inherited_options.append(opt)
+        formatter.add_command(
+            cli_parser._current_command.name,
+            cli_parser._current_command,
+            list(inherited_options),
+        )
+        yuio.io.info(formatter, add_newline=False, wrap=False)
+        sys.exit(0)
+
+
+@dataclass(kw_only=True, eq=False, match_args=False)
+class Command(_t.Generic[NamespaceT]):
+    """
+    Data about CLI interface of a single command or subcommand.
+
+    """
+
+    name: str
+    """
+    Name of this command.
+
+    """
+
+    desc: str
+    """
+    Long description for a command.
+
+    """
+
+    help: str | yuio.Disabled
+    """
+    Help message displayed when listing subcommands.
+
+    """
+
+    epilogue: str
+    """
+    Long description printed after command help.
+
+    """
+
+    usage: str | None
+    """
+    Override for usage section of CLI help.
+
+    """
+
+    options: list[Option]
+    """
+    Options for this command.
+
+    """
+
+    subcommands: dict[str, Command[Namespace]]
+    """
+    Last positional option can be a sub-command.
+
+    This is a map from subcommand's name or alias to subcommand's implementation.
+
+    """
+
+    subcommand_required: bool
+    """
+    Whether subcommand is required or optional.
+
+    """
+
+    ns_ctor: _t.Callable[[], NamespaceT]
+    """
+    A constructor that will be called to create namespace for command's arguments.
+
+    """
+
+    dest: str
+    """
+    Where to save subcommand's name.
+
+    """
+
+    ns_dest: str
+    """
+    Where to save subcommand's namespace.
+
+    """
+
+    metavar: str = "<subcommand>"
+    """
+    Meta variable used for subcommand option.
+
+    """
+
+
+@dataclass(eq=False, kw_only=True)
+class _SubCommandOption(Option):
+    subcommands: dict[str, Command[Namespace]]
+    """
+    All subcommands.
+
+    """
+
+    ns_dest: str
+    """
+    Where to save subcommand's namespace.
+
+    """
+
+    ns_ctor: _t.Callable[[], Namespace]
+    """
+    A constructor that will be called to create namespace for subcommand's arguments.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        subcommands: dict[str, Command[Namespace]],
+        subcommand_required: bool,
+        dest: str,
+        ns_dest: str,
+        ns_ctor: _t.Callable[[], Namespace],
+        **kwargs,
+    ):
+        super().__init__(
+            completer=None,  # TODO!
+            usage=True,
+            flags=yuio.POSITIONAL,
+            nargs=1 if subcommand_required else "?",
+            mutually_exclusive_group=None,
+            dest=dest,
+            allow_inline_arg=False,
+            required=False,
+            **kwargs,
+        )
+
+        self.subcommands = subcommands
+        self.ns_dest = ns_dest
+        self.ns_ctor = ns_ctor
+
+        assert self.dest
+        assert self.ns_dest
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        assert isinstance(arguments, list)
+        if not arguments:
+            return
+        subcommand = self.subcommands.get(arguments[0].value)
+        if subcommand is None:
+            raise ArgumentError(
+                "Unknown subcommand <c flag>%s</c>, can be %s",
+                arguments[0].value,
+                yuio.string.JoinStr.or_(self.subcommands, color="flag"),
+                arguments=arguments,
+            )
+        ns[self.dest] = subcommand.name
+        ns[self.ns_dest] = new_ns = self.ns_ctor()
+        cli_parser._load_command(subcommand, new_ns)
+
+
+@dataclass(eq=False, match_args=False, slots=True)
+class _BoundOption:
+    wrapped: Option
+    ns: Namespace
+    seen: bool = False
+
+    @property
+    def metavar(self):
+        return self.wrapped.metavar
+
+    @property
+    def completer(self):
+        return self.wrapped.completer
+
+    @property
+    def usage(self):
+        return self.wrapped.usage
+
+    @property
+    def flags(self):
+        return self.wrapped.flags
+
+    @property
+    def nargs(self):
+        return self.wrapped.nargs
+
+    @property
+    def allow_inline_arg(self):
+        return self.wrapped.allow_inline_arg
+
+    @property
+    def mutually_exclusive_group(self):
+        return self.wrapped.mutually_exclusive_group
+
+    @property
+    def required(self):
+        return self.wrapped.required
+
+    def nth_metavar(self, n: int):
+        return self.wrapped.nth_metavar(n)
+
+
+class CliParser(_t.Generic[NamespaceT]):
+    """
+    CLI arguments parser.
+
+    :param command:
+        root command.
+
+    """
+
+    def __init__(self, command: Command[NamespaceT]) -> None:
+        self._root_command = command
+        self._current_command = command
+        self._inherited_options: dict[str, Option] = {}
+        self._allow_abbrev = True
+
+        self._seen_mutex_groups: dict[
+            MutuallyExclusiveGroup, tuple[_BoundOption, Flag]
+        ] = {}
+        self._mutex_groups: dict[MutuallyExclusiveGroup, list[Option]] = {}
+
+        self._current_index = 0
+
+        self._known_long_flags: dict[str, _BoundOption] = {}
+        self._known_short_flags: dict[str, _BoundOption] = {}
+        self._positionals: list[_BoundOption] = []
+        self._current_positional: int = 0
+
+        self._current_flag: tuple[_BoundOption, Flag] | None = None
+        self._current_flag_args: list[Argument] = []
+        self._current_positional_args: list[Argument] = []
+
+    def _load_command(self, command: Command[_t.Any], ns: Namespace):
+        # All pending flags and positionals should've been flushed by now.
+        assert self._current_flag is None
+        assert self._current_positional == len(self._positionals)
+
+        self._inherited_options.update(
+            {flag: opt.wrapped for flag, opt in self._known_long_flags.items()}
+        )
+        self._inherited_options.update(
+            {flag: opt.wrapped for flag, opt in self._known_short_flags.items()}
+        )
+
+        # Update known flags and positionals.
+        self._positionals = []
+        for option in command.options:
+            bound_option = _BoundOption(option, ns)
+            if option.flags is yuio.POSITIONAL:
+                self._positionals.append(bound_option)
+            else:
+                if option.mutually_exclusive_group is not None:
+                    self._mutex_groups.setdefault(
+                        option.mutually_exclusive_group, []
+                    ).append(option)
+                for flag in option.flags:
+                    self._inherited_options.pop(flag, None)
+                    if _is_short(flag):
+                        dest = self._known_short_flags
+                    else:
+                        dest = self._known_long_flags
+                    if flag in dest:
+                        warnings.warn(
+                            f"flag {flag} from subcommand {command.name} shadows "
+                            f"the same flag from command {self._current_command.name}",
+                            CliWarning,
+                        )
+                        self._finalize_unused_flag(flag, dest[flag])
+                    dest[flag] = bound_option
+        if command.subcommands:
+            self._positionals.append(_BoundOption(_make_subcommand(command), ns))
+        self._current_command = command
+        self._current_positional = 0
+
+    def parse(self, args: list[str] | None = None) -> NamespaceT:
+        """
+        Parse arguments and invoke their actions.
+
+        :param args:
+            CLI arguments, not including the program name (i.e. the first argument).
+            If :data:`None`, use :data:`sys.argv` instead.
+        :returns:
+            namespace with parsed arguments.
+        :raises:
+            :class:`ArgumentError`, :class:`~yuio.parse.ParsingError`.
+
+        """
+
+        prog = self._root_command.name or sys.argv[0]
+        if args is None:
+            args = sys.argv[1:]
+
+        try:
+            return self._parse(args)
+        except ArgumentError as e:
+            e.commandline = args
+            e.prog = prog
+            raise
+
+    def _parse(self, args: list[str]) -> NamespaceT:
+        self.__init__(self._root_command)
+        root_ns = self._root_command.ns_ctor()
+        self._load_command(self._root_command, root_ns)
+
+        allow_flags = True
+
+        for i, arg in enumerate(args):
+            self._current_index = i
+
+            # Handle `--`.
+            if arg == "--" and allow_flags:
+                self._flush_flag()
+                allow_flags = False
+                continue
+
+            # Check what we have here.
+            if allow_flags:
+                result = self._detect_flag(arg)
+            else:
+                result = None
+
+            if result is None:
+                # This not a flag. Can be an argument to a positional/flag option.
+                self._handle_positional(arg)
+            else:
+                # This is a flag.
+                options, inline_arg = result
+                self._handle_flags(options, inline_arg)
+
+        self._finalize()
+
+        return root_ns
+
+    def _finalize(self):
+        self._flush_flag()
+
+        for flag, option in self._known_long_flags.items():
+            self._finalize_unused_flag(flag, option)
+        for flag, option in self._known_short_flags.items():
+            self._finalize_unused_flag(flag, option)
+        while self._current_positional < len(self._positionals):
+            self._flush_positional()
+        for group, options in self._mutex_groups.items():
+            if group.required and group not in self._seen_mutex_groups:
+                raise ArgumentError(
+                    "%s %s must be provided",
+                    "Either" if len(options) > 1 else "Flag",
+                    yuio.string.JoinStr.or_(
+                        (option.flags[0] for option in options if option.flags),
+                        color="flag",
+                    ),
+                )
+
+    def _finalize_unused_flag(self, flag: str, option: _BoundOption):
+        if option.required and not option.seen:
+            raise ArgumentError("Missing required flag <c flag>%s</c>", flag)
+
+    def _detect_flag(
+        self, arg: str
+    ) -> tuple[list[tuple[_BoundOption, Flag]], Argument | None] | None:
+        if not arg.startswith("-") or len(arg) <= 1:
+            # This is a positional.
+            return None
+
+        if arg.startswith("--"):
+            # This is a long flag.
+            return self._parse_long_flag(arg)
+        else:
+            return self._detect_short_flag(arg)
+
+    def _parse_long_flag(
+        self, arg: str
+    ) -> tuple[list[tuple[_BoundOption, Flag]], Argument | None] | None:
+        if "=" in arg:
+            flag, inline_arg = arg.split("=", maxsplit=1)
+        else:
+            flag, inline_arg = arg, None
+        flag = self._make_flag(flag)
+        if long_opt := self._known_long_flags.get(flag.value):
+            if inline_arg is not None:
+                inline_arg = self._make_arg(
+                    long_opt, inline_arg, len(flag.value) + 1, flag
+                )
+            return [(long_opt, flag)], inline_arg
+
+        # Try as abbreviated long flags.
+        candidates = []
+        if self._allow_abbrev:
+            for candidate in self._known_long_flags:
+                if candidate.startswith(flag.value):
+                    candidates.append(candidate)
+            if len(candidates) == 1:
+                candidate = candidates[0]
+                opt = self._known_long_flags[candidate]
+                if inline_arg is not None:
+                    inline_arg = self._make_arg(
+                        opt, inline_arg, len(flag.value) + 1, flag
+                    )
+                return [(opt, candidate)], inline_arg
+
+        if candidates:
+            raise ArgumentError(
+                "Unknown flag <c flag>%s</c>, can be %s",
+                flag,
+                yuio.string.JoinStr.or_(candidates, color="flag"),
+                flag=self._make_flag(""),
+            )
+        else:
+            raise ArgumentError(
+                "Unknown flag <c flag>%s</c>",
+                flag,
+                flag=self._make_flag(""),
+            )
+
+    def _detect_short_flag(
+        self, arg: str
+    ) -> tuple[list[tuple[_BoundOption, Flag]], Argument | None] | None:
+        # Try detecting short flags first.
+        short_opts: list[tuple[_BoundOption, Flag]] = []
+        inline_arg = None
+        inline_arg_pos = 0
+        unknown_ch = None
+        for i, ch in enumerate(arg[1:]):
+            if ch == "=":
+                # Short flag with explicit argument.
+                inline_arg_pos = i + 2
+                inline_arg = arg[inline_arg_pos:]
+                break
+            elif short_opts and (
+                short_opts[-1][0].allow_inline_arg or short_opts[-1][0].nargs != 0
+            ):
+                # Short flag with implicit argument.
+                inline_arg_pos = i + 1
+                inline_arg = arg[inline_arg_pos:]
+                break
+            elif short_opt := self._known_short_flags.get("-" + ch):
+                # Short flag, arguments may follow.
+                short_opts.append((short_opt, self._make_flag("-" + ch)))
+            else:
+                # Unknown short flag. Will try parsing as abbreviated long flag next.
+                unknown_ch = ch
+                break
+        if short_opts and not unknown_ch:
+            if inline_arg is not None:
+                inline_arg = self._make_arg(
+                    short_opts[-1][0], inline_arg, inline_arg_pos, short_opts[-1][1]
+                )
+            return short_opts, inline_arg
+
+        # Try as signed int.
+        if re.match(_NUM_RE, arg):
+            # This is a positional.
+            return None
+
+        if unknown_ch and len(arg) > 2:
+            raise ArgumentError(
+                "Unknown flag <c flag>-%s</c> in argument <c flag>%s</c>",
+                unknown_ch,
+                arg,
+                flag=self._make_flag(""),
+            )
+        else:
+            raise ArgumentError(
+                "Unknown flag <c flag>%s</c>",
+                arg,
+                flag=self._make_flag(""),
+            )
+
+    def _make_arg(
+        self, opt: _BoundOption, arg: str, pos: int, flag: Flag | None = None
+    ):
+        return Argument(
+            arg,
+            index=self._current_index,
+            pos=pos,
+            metavar=opt.nth_metavar(0),
+            flag=flag,
+        )
+
+    def _make_flag(self, arg: str):
+        return Flag(arg, self._current_index)
+
+    def _handle_positional(self, arg: str):
+        if self._current_flag is not None:
+            opt, flag = self._current_flag
+            # This is an argument for a flag option.
+            self._current_flag_args.append(
+                Argument(
+                    arg,
+                    index=self._current_index,
+                    pos=0,
+                    metavar=opt.nth_metavar(len(self._current_flag_args)),
+                    flag=flag,
+                )
+            )
+            nargs = opt.nargs
+            if nargs == "?" or (
+                isinstance(nargs, int) and len(self._current_flag_args) == nargs
+            ):
+                self._flush_flag()  # This flag is full.
+        else:
+            # This is an argument for a positional option.
+            if self._current_positional >= len(self._positionals):
+                raise ArgumentError(
+                    "Unexpected positional argument <c flag>%r</c>",
+                    arg,
+                    arguments=Argument(
+                        arg, index=self._current_index, pos=0, metavar="", flag=None
+                    ),
+                )
+            current_positional = self._positionals[self._current_positional]
+            self._current_positional_args.append(
+                Argument(
+                    arg,
+                    index=self._current_index,
+                    pos=0,
+                    metavar=current_positional.nth_metavar(
+                        len(self._current_positional_args)
+                    ),
+                    flag=None,
+                )
+            )
+            nargs = current_positional.nargs
+            if nargs == "?" or (
+                isinstance(nargs, int) and len(self._current_positional_args) == nargs
+            ):
+                self._flush_positional()  # This positional is full.
+
+    def _handle_flags(
+        self, options: list[tuple[_BoundOption, Flag]], inline_arg: Argument | None
+    ):
+        # If we've seen another flag before this one, and we were waiting
+        # for that flag's arguments, flush them now.
+        self._flush_flag()
+
+        # Handle short flags in multi-arg sequence, i.e. `-li` -> `-l -i`
+        for opt, name in options[:-1]:
+            self._eval_option(opt, name, [])
+
+        # Handle the last short flag in multi-arg sequence.
+        opt, name = options[-1]
+        if inline_arg is not None:
+            # Flag with an inline argument, i.e. `-Xfoo`/`-X=foo` -> `-X foo`
+            self._eval_option(opt, name, inline_arg)
+        else:
+            self._push_flag(opt, name)
+
+    def _flush_positional(self):
+        if self._current_positional >= len(self._positionals):
+            return
+        opt, args = (
+            self._positionals[self._current_positional],
+            self._current_positional_args,
+        )
+
+        self._current_positional += 1
+        self._current_positional_args = []
+
+        self._eval_option(opt, None, args)
+
+    def _flush_flag(self):
+        if self._current_flag is None:
+            return
+
+        (opt, name), args = (self._current_flag, self._current_flag_args)
+
+        self._current_flag = None
+        self._current_flag_args = []
+
+        self._eval_option(opt, name, args)
+
+    def _push_flag(self, opt: _BoundOption, flag: Flag):
+        assert self._current_flag is None
+
+        if opt.nargs == 0:
+            # Flag without arguments, handle it right now.
+            self._eval_option(opt, flag, [])
+        else:
+            # Flag with possible arguments, save it. If we see a non-flag later,
+            # it will be added to this flag's arguments.
+            self._current_flag = (opt, flag)
+            self._current_flag_args = []
+
+    def _eval_option(
+        self, opt: _BoundOption, flag: Flag | None, arguments: Argument | list[Argument]
+    ):
+        if opt.mutually_exclusive_group is not None:
+            if seen := self._seen_mutex_groups.get(opt.mutually_exclusive_group):
+                raise ArgumentError(
+                    "Flag <c flag>%s</c> can't be given together with flag <c flag>%s</c>",
+                    flag or self._make_flag(opt.nth_metavar(0)),
+                    seen[1],
+                )
+            self._seen_mutex_groups[opt.mutually_exclusive_group] = (
+                opt,
+                flag or self._make_flag(opt.nth_metavar(0)),
+            )
+
+        if isinstance(arguments, list):
+            _check_nargs(opt, flag, arguments)
+        elif not opt.allow_inline_arg:
+            raise ArgumentError(
+                "This flag can't have arguments", flag=flag, arguments=arguments
+            )
+
+        opt.seen = True
+        try:
+            opt.wrapped.process(
+                _t.cast(CliParser[Namespace], self), flag, arguments, opt.ns
+            )
+        except yuio.parse.ParsingError as e:
+            raise ArgumentError.from_parsing_error(e, flag=flag, arguments=arguments)
+
+
+def _is_short(flag: str):
+    if not flag.startswith("-"):
+        raise TypeError(f"flag {flag!r} should start with `-`")
+    if len(flag) == 2:
+        if not re.match(_SHORT_FLAG_RE, flag):
+            raise TypeError(f"invalid short flag {flag!r}")
+        return True
+    elif len(flag) == 1:
+        raise TypeError(f"flag {flag!r} is too short")
+    else:
+        if not re.match(_LONG_FLAG_RE, flag):
+            raise TypeError(f"invalid long flag {flag!r}")
+        return False
+
+
+def _make_subcommand(command: Command[Namespace]):
+    return _SubCommandOption(
+        metavar=command.metavar,
+        subcommands=command.subcommands,
+        subcommand_required=command.subcommand_required,
+        help=command.help,
+        dest=command.dest,
+        ns_dest=command.ns_dest,
+        ns_ctor=command.ns_ctor,
+    )
+
+
+def _check_nargs(opt: _BoundOption, flag: Flag | None, args: list[Argument]):
+    match opt.nargs:
+        case "*":
+            pass
+        case "+":
+            if not args:
+                if opt.flags is yuio.POSITIONAL:
+                    raise ArgumentError(
+                        "Missing required positional %s",
+                        opt.nth_metavar(0),
+                        flag=flag,
+                    )
+                else:
+                    raise ArgumentError(
+                        "Expected at least 1 argument, got 0",
+                        flag=flag,
+                    )
+        case "?":
+            if len(args) > 1:
+                raise ArgumentError(
+                    "Expected at most 1 argument, got %s",
+                    len(args),
+                    flag=flag,
+                )
+        case n:
+            if len(args) < n and (opt.flags is yuio.POSITIONAL):
+                s = "" if n - len(args) == 1 else "s"
+                raise ArgumentError(
+                    "Missing required positional%s %s",
+                    s,
+                    yuio.string.JoinStr(
+                        [opt.nth_metavar(i) for i in range(len(args), n)], color="flag"
+                    ),
+                    flag=flag,
+                )
+            elif len(args) < n and (isinstance(opt.metavar, tuple)):
+                s = "" if n == 1 else "s"
+                raise ArgumentError(
+                    "Expected %s argument%s, got %s; missing %s",
+                    n,
+                    s,
+                    len(args),
+                    yuio.string.JoinStr(
+                        [opt.nth_metavar(i) for i in range(len(args), n)], color="flag"
+                    ),
+                    flag=flag,
+                )
+            elif len(args) != n:
+                s = "" if n == 1 else "s"
+                raise ArgumentError(
+                    "Expected %s argument%s, got %s",
+                    n,
+                    s,
+                    len(args),
+                    flag=flag,
+                )
+
+
+def _quote_and_adjust_pos(s: str, pos: tuple[int, int]):
+    s = s.translate(_UNPRINTABLE_TRANS)
+
+    if not s:
+        return "''", (1, 1)
+    elif not re.search(r"[^\w@%+=:,./-]", s, re.ASCII):
+        return s, pos
+
+    start, end = pos
+
+    start_shift = 1 + s[:start].count("'") * 4
+    end_shift = start_shift + s[start:end].count("'") * 4
+
+    return "'" + s.replace("'", "'\"'\"'") + "'", (start + start_shift, end + end_shift)
+
+
+def _quote(s: str):
+    s = s.translate(_UNPRINTABLE_TRANS)
+
+    if not s:
+        return "''"
+    elif not re.search(r"[^\w@%+=:,./-]", s, re.ASCII):
+        return s
+    else:
+        return "'" + s.replace("'", "'\"'\"'") + "'"
+
+
+class _HelpFormatter:
+    def __init__(self) -> None:
+        self.nodes: list[yuio.md.AstBase] = []
+
+    def add_command(
+        self, prog: str, cmd: Command[Namespace], inherited: list[Option], /
+    ):
+        self._add_usage(prog, cmd, inherited)
+        if cmd.desc:
+            self.nodes.extend(yuio.md.parse(cmd.desc).items)
+        self._add_options(cmd)
+        self._add_subcommands(cmd)
+        self._add_flags(cmd, inherited)
+        if cmd.epilogue:
+            self.nodes.append(_ResetIndentation())
+            self.nodes.extend(yuio.md.parse(cmd.epilogue).items)
+
+    def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
+        return self.format(ctx)
+
+    def format(self, ctx: yuio.string.ReprContext | yuio.theme.Theme):
+        res = _ColorizedString()
+        lines = _CliMdFormatter(ctx).format_node(yuio.md.Document(items=self.nodes))
+        for line in lines:
+            res.append_colorized_str(line)
+            res.append_str("\n")
+        return res
+
+    def _add_usage(
+        self, prog: str, cmd: Command[Namespace], inherited: list[Option], /
+    ):
+        self.nodes.append(_Usage(prog=prog, cmd=cmd, inherited=inherited))
+
+    def _add_options(self, cmd: Command[Namespace], /):
+        groups: dict[HelpGroup, list[Option]] = {}
+        for opt in cmd.options:
+            if opt.flags is not yuio.POSITIONAL:
+                continue
+            if opt.help is yuio.DISABLED:
+                continue
+            group = opt.help_group or ARGS_GROUP
+            if group.help is yuio.DISABLED:
+                continue
+            if group not in groups:
+                groups[group] = []
+            groups[group].append(opt)
+        for group, options in groups.items():
+            assert group.help is not yuio.DISABLED
+            self.nodes.append(yuio.md.Heading(lines=group.title_lines, level=1))
+            if group.help:
+                self.nodes.extend(yuio.md.parse(group.help, allow_headings=False).items)
+            arg_group = _HelpArgGroup(items=[])
+            for opt in options:
+                assert opt.help is not yuio.DISABLED
+                arg_group.items.append(_HelpArg(opt))
+            self.nodes.append(arg_group)
+
+    def _add_subcommands(self, cmd: Command[Namespace], /):
+        subcommands: dict[Command[Namespace], list[str]] = {}
+        for name, subcommand in cmd.subcommands.items():
+            if subcommand.help is yuio.DISABLED:
+                continue
+            if subcommand not in subcommands:
+                subcommands[subcommand] = [name]
+            else:
+                subcommands[subcommand].append(name)
+        if not subcommands:
+            return
+        group = SUBCOMMANDS_GROUP
+        self.nodes.append(yuio.md.Heading(lines=group.title_lines, level=1))
+        if group.help:
+            self.nodes.extend(yuio.md.parse(group.help, allow_headings=False).items)
+        arg_group = _HelpArgGroup(items=[])
+        for subcommand, names in subcommands.items():
+            assert subcommand.help is not yuio.DISABLED
+            arg_group.items.append(_HelpSubCommand(names, subcommand.help))
+        self.nodes.append(arg_group)
+
+    def _add_flags(self, cmd: Command[Namespace], inherited: list[Option], /):
+        groups: dict[HelpGroup, tuple[list[Option], list[Option], int]] = {}
+        for i, opt in enumerate(cmd.options + inherited):
+            if not opt.flags:
+                continue
+            if opt.help is yuio.DISABLED:
+                continue
+            group = opt.help_group or OPTS_GROUP
+            if group.help is yuio.DISABLED:
+                continue
+            is_inherited = i >= len(cmd.options)
+            if group not in groups:
+                groups[group] = ([], [], 0)
+            if opt.required or (
+                opt.mutually_exclusive_group and opt.mutually_exclusive_group.required
+            ):
+                groups[group][0].append(opt)
+            elif is_inherited and not opt.show_if_inherited:
+                required, optional, n_inherited = groups[group]
+                groups[group] = required, optional, n_inherited + 1
+            else:
+                groups[group][1].append(opt)
+        for group, (required, optional, n_inherited) in groups.items():
+            assert group.help is not yuio.DISABLED
+            self.nodes.append(yuio.md.Heading(lines=group.title_lines, level=1))
+            if group.help:
+                self.nodes.extend(yuio.md.parse(group.help, allow_headings=False).items)
+            arg_group = _HelpArgGroup(items=[])
+            for opt in required:
+                assert opt.help is not yuio.DISABLED
+                arg_group.items.append(_HelpOpt(opt))
+            for opt in optional:
+                assert opt.help is not yuio.DISABLED
+                arg_group.items.append(_HelpOpt(opt))
+            if n_inherited > 0:
+                arg_group.items.append(_InheritedOpts(n_inherited=n_inherited))
+            self.nodes.append(arg_group)
+
+
+def _format_metavar(metavar: str, ctx: yuio.string.ReprContext):
+    punct_color = ctx.theme.get_color("hl/punct:sh-usage")
+    metavar_color = ctx.theme.get_color("hl/metavar:sh-usage")
+
+    res = _ColorizedString()
+    is_punctuation = False
+    for part in re.split(r"((?:[{}()[\]\\;!&]|\s)+)", metavar):
+        if is_punctuation:
+            res.append_color(punct_color)
+        else:
+            res.append_color(metavar_color)
+        res.append_str(part)
+        is_punctuation = not is_punctuation
+
+    return res
+
+
+_MAX_ARGS_COLUMN_WIDTH = 26
+
+
+class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
+    def __init__(
+        self,
+        ctx: yuio.string.ReprContext | yuio.theme.Theme,
+    ):
+        self._heading_indent = contextlib.ExitStack()
+        self._args_column_width = _MAX_ARGS_COLUMN_WIDTH
+
+        super().__init__(ctx, allow_headings=True)
+
+        self.base_color = self.theme.get_color("msg/text:code/sh-usage")
+        self.prog_color = self.base_color | self.theme.get_color("hl/prog:sh-usage")
+        self.punct_color = self.base_color | self.theme.get_color("hl/punct:sh-usage")
+        self.metavar_color = self.base_color | self.theme.get_color(
+            "hl/metavar:sh-usage"
+        )
+        self.flag_color = self.base_color | self.theme.get_color("hl/flag:sh-usage")
+
+    def colorize(
+        self,
+        s: str,
+        /,
+        *,
+        default_color: yuio.color.Color | str = yuio.color.Color.NONE,
+    ):
+        return yuio.string.colorize(
+            s,
+            default_color=default_color,
+            parse_cli_flags_in_backticks=True,
+            ctx=self.theme,
+        )
+
+    def _format_Heading(self, node: yuio.md.Heading):
+        if node.level == 1:
+            self._heading_indent.close()
+
+        decoration = self.theme.msg_decorations.get("heading/section", "")
+        with self._with_indent("msg/decoration:heading/section", decoration):
+            self._format_Text(
+                node,
+                default_color=self.theme.get_color("msg/text:heading/section"),
+            )
+
+        if node.level == 1:
+            self._heading_indent.enter_context(self._with_indent(None, "  "))
+        else:
+            self._line(self._indent)
+
+        self._is_first_line = True
+
+    def _format_ResetIndentation(self, node: _ResetIndentation):
+        self._heading_indent.close()
+        self._is_first_line = True
+
+    def _format_Usage(self, node: _Usage):
+        prefix = _ColorizedString(
+            [self.theme.get_color("msg/text:heading/section"), node.prefix]
+        )
+
+        usage = _ColorizedString()
+        if node.cmd.usage:
+            usage = yuio.util.dedent(node.cmd.usage.strip())
+            sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
+
+            usage = sh_usage_highlighter.highlight(
+                self.theme,
+                usage,
+            ).percent_format({"prog": node.prog}, self.ctx)
+        else:
+            usage = self._build_usage(node)
+
+        with self._with_indent(None, prefix):
+            self._line(
+                usage.indent(
+                    indent=self._indent,
+                    continuation_indent=self._continuation_indent,
+                )
+            )
+
+    def _build_usage(self, node: _Usage):
+        flags_and_groups: list[Option | tuple[MutuallyExclusiveGroup, list[Option]]] = (
+            []
+        )
+        positionals: list[Option] = []
+        groups: dict[MutuallyExclusiveGroup, list[Option]] = {}
+        has_grouped_flags = False
+
+        for i, opt in enumerate(node.cmd.options + node.inherited):
+            is_inherited = i >= len(node.cmd.options)
+            if is_inherited and not opt.show_if_inherited:
+                continue
+            if opt.flags is yuio.POSITIONAL:
+                positionals.append(opt)
+            elif opt.help_group and opt.help_group.usage is yuio.GROUP:
+                has_grouped_flags = True
+            elif opt.help_group and not opt.help_group.usage:
+                pass
+            elif opt.usage is yuio.GROUP:
+                has_grouped_flags = True
+            elif not opt.usage:
+                pass
+            elif opt.mutually_exclusive_group:
+                if opt.mutually_exclusive_group not in groups:
+                    group_items = []
+                    groups[opt.mutually_exclusive_group] = group_items
+                    flags_and_groups.append((opt.mutually_exclusive_group, group_items))
+                else:
+                    group_items = groups[opt.mutually_exclusive_group]
+                group_items.append(opt)
+            else:
+                flags_and_groups.append(opt)
+
+        res = _ColorizedString()
+        res.append_color(self.prog_color)
+        res.append_str(node.prog)
+
+        if has_grouped_flags:
+            res.append_color(self.base_color)
+            res.append_str(" ")
+            res.append_color(self.flag_color)
+            res.append_str("<options>")
+
+        res.append_color(self.base_color)
+
+        in_opt_short_group = False
+        for flag_or_group in flags_and_groups:
+            match flag_or_group:
+                case (group, flags):
+                    res.append_color(self.base_color)
+                    res.append_str(" ")
+                    res.append_color(self.punct_color)
+                    res.append_str("(" if group.required else "[")
+                    sep = False
+                    for flag in flags:
+                        if sep:
+                            res.append_str("|")
+                        usage, _ = flag.format_usage(self.ctx)
+                        res.append_colorized_str(usage.with_base_color(self.base_color))
+                        sep = True
+                    res.append_str(")" if group.required else "]")
+                case flag:
+                    usage, can_group = flag.format_usage(self.ctx)
+                    if not flag.primary_short_flag or flag.nargs != 0 or flag.required:
+                        can_group = False
+
+                    if can_group:
+                        if not in_opt_short_group:
+                            res.append_color(self.base_color)
+                            res.append_str(" ")
+                            res.append_color(self.punct_color)
+                            res.append_str("[")
+                            res.append_color(self.flag_color)
+                            res.append_str("-")
+                            in_opt_short_group = True
+                        letter = (flag.primary_short_flag or "")[1:]
+                        res.append_str(letter)
+                        continue
+
+                    if in_opt_short_group:
+                        res.append_color(self.punct_color)
+                        res.append_str("]")
+                        in_opt_short_group = False
+
+                    res.append_color(self.base_color)
+                    res.append_str(" ")
+
+                    if not flag.required:
+                        res.append_color(self.punct_color)
+                        res.append_str("[")
+                    res.append_colorized_str(usage.with_base_color(self.base_color))
+                    if not flag.required:
+                        res.append_color(self.punct_color)
+                        res.append_str("]")
+
+        if in_opt_short_group:
+            res.append_color(self.punct_color)
+            res.append_str("]")
+            in_opt_short_group = False
+
+        for positional in positionals:
+            res.append_color(self.base_color)
+            res.append_str(" ")
+            res.append_colorized_str(
+                positional.format_usage(self.ctx)[0].with_base_color(self.base_color)
+            )
+
+        return res
+
+    def _format_HelpOpt(self, node: _HelpOpt):
+        lead = _ColorizedString()
+        if node.arg.primary_short_flag:
+            lead.append_color(self.flag_color)
+            lead.append_str(node.arg.primary_short_flag)
+            sep = True
+        else:
+            lead.append_color(self.base_color)
+            lead.append_str("    ")
+            sep = False
+        for flag in node.arg.primary_long_flags or []:
+            if sep:
+                lead.append_color(self.punct_color)
+                lead.append_str(", ")
+            lead.append_color(self.flag_color)
+            lead.append_str(flag)
+
+        lead.append_colorized_str(
+            node.arg.format_metavar(self.ctx).with_base_color(self.base_color)
+        )
+
+        help = node.arg.parse_help(self.ctx)
+
+        if help is None:
+            self._line(self._indent + lead)
+            return
+
+        if lead.width + 2 > self._args_column_width:
+            self._line(self._indent + lead)
+            indent_ctx = self._with_indent(None, " " * self._args_column_width)
+        else:
+            indent_ctx = self._with_indent(None, self._make_lead_padding(lead))
+
+        with indent_ctx:
+            self._format(help)
+
+    def _format_HelpArg(self, node: _HelpArg):
+        lead = _format_metavar(node.arg.nth_metavar(0), self.ctx).with_base_color(
+            self.base_color
+        )
+
+        help = node.arg.parse_help(self.ctx)
+
+        if help is None:
+            self._line(self._indent + lead)
+            return
+
+        if lead.width + 2 > self._args_column_width:
+            self._line(self._indent + lead)
+            indent_ctx = self._with_indent(None, " " * self._args_column_width)
+        else:
+            indent_ctx = self._with_indent(None, self._make_lead_padding(lead))
+
+        with indent_ctx:
+            self._format(help)
+
+    def _format_HelpSubCommand(self, node: _HelpSubCommand):
+        lead = _ColorizedString()
+        sep = False
+        for name in node.names:
+            if sep:
+                lead.append_color(self.punct_color)
+                lead.append_str(", ")
+            lead.append_color(self.flag_color)
+            lead.append_str(name)
+
+        help = node.help
+
+        if not help:
+            self._line(self._indent + lead)
+            return
+
+        if lead.width + 2 > self._args_column_width:
+            self._line(self._indent + lead)
+            indent_ctx = self._with_indent(None, " " * self._args_column_width)
+        else:
+            indent_ctx = self._with_indent(None, self._make_lead_padding(lead))
+
+        with indent_ctx:
+            self._format(yuio.md.parse(help, allow_headings=False))
+
+    def _format_InheritedOpts(self, node: _InheritedOpts):
+        raw = _ColorizedString()
+        s = "" if node.n_inherited == 1 else "s"
+        raw.append_color(self.theme.get_color("secondary_color"))
+        raw.append_str(f"  +{node.n_inherited} global option{s}")
+        self._line(raw)
+
+    def _format_HelpArgGroup(self, node: _HelpArgGroup):
+        self._separate_paragraphs = False
+        for item in node.items:
+            self._format(item)
+        self._separate_paragraphs = True
+
+    def _make_lead_padding(self, lead: _ColorizedString):
+        color = self.theme.get_color("low_priority_color_b")
+        return lead + color + " " * (self._args_column_width - lead.width)
+
+
+@dataclass(eq=False, match_args=False, slots=True)
+class _ResetIndentation(yuio.md.AstBase):
+    pass
+
+
+@dataclass(eq=False, match_args=False, slots=True)
+class _Usage(yuio.md.AstBase):
+    prog: str
+    cmd: Command[Namespace]
+    inherited: list[Option]
+    prefix: str = "Usage: "
+
+
+@dataclass(eq=False, match_args=False, slots=True)
+class _HelpOpt(yuio.md.AstBase):
+    arg: Option
+
+
+@dataclass(eq=False, match_args=False, slots=True)
+class _HelpArg(yuio.md.AstBase):
+    arg: Option
+
+
+@dataclass(eq=False, match_args=False, slots=True)
+class _InheritedOpts(yuio.md.AstBase):
+    n_inherited: int
+
+
+@dataclass(eq=False, match_args=False, slots=True)
+class _HelpSubCommand(yuio.md.AstBase):
+    names: list[str]
+    help: str | None
+
+
+@dataclass(eq=False, match_args=False, slots=True)
+class _HelpArgGroup(yuio.md.Container[yuio.md.AstBase]):
+    pass

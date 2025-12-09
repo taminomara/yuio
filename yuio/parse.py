@@ -424,6 +424,25 @@ for a collection parser. Use :func:`suggest_delim_for_type_hint_conversion`:
 
 .. autofunction:: suggest_delim_for_type_hint_conversion
 
+
+Re-imports
+----------
+
+.. type:: JsonValue
+    :no-index:
+
+    Alias of :obj:`yuio.json_schema.JsonValue`.
+
+.. type:: SecretString
+    :no-index:
+
+    Alias of :obj:`yuio.secret.SecretString`.
+
+.. type:: SecretValue
+    :no-index:
+
+    Alias of :obj:`yuio.secret.SecretValue`.
+
 """
 
 from __future__ import annotations

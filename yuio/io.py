@@ -245,6 +245,91 @@ Helper types
 
     Exception information as returned by :func:`sys.exc_info`.
 
+
+Re-imports
+----------
+
+.. type:: And
+    :no-index:
+
+    Alias of :obj:`yuio.string.And`.
+
+.. type:: ColorizedString
+    :no-index:
+
+    Alias of :obj:`yuio.string.ColorizedString`.
+
+.. type:: Format
+    :no-index:
+
+    Alias of :obj:`yuio.string.Format`.
+
+.. type:: Hl
+    :no-index:
+
+    Alias of :obj:`yuio.string.Hl`.
+
+.. type:: Hr
+    :no-index:
+
+    Alias of :obj:`yuio.string.Hr`.
+
+.. type:: Indent
+    :no-index:
+
+    Alias of :obj:`yuio.string.Indent`.
+
+.. type:: JoinRepr
+    :no-index:
+
+    Alias of :obj:`yuio.string.JoinRepr`.
+
+.. type:: JoinStr
+    :no-index:
+
+    Alias of :obj:`yuio.string.JoinStr`.
+
+.. type:: Link
+    :no-index:
+
+    Alias of :obj:`yuio.string.Link`.
+
+.. type:: Md
+    :no-index:
+
+    Alias of :obj:`yuio.string.Md`.
+
+.. type:: Or
+    :no-index:
+
+    Alias of :obj:`yuio.string.Or`.
+
+.. type:: Repr
+    :no-index:
+
+    Alias of :obj:`yuio.string.Repr`.
+
+.. type:: Stack
+    :no-index:
+
+    Alias of :obj:`yuio.string.Stack`.
+
+.. type:: TypeRepr
+    :no-index:
+
+    Alias of :obj:`yuio.string.TypeRepr`.
+
+.. type:: WithBaseColor
+    :no-index:
+
+    Alias of :obj:`yuio.string.WithBaseColor`.
+
+.. type:: Wrap
+    :no-index:
+
+    Alias of :obj:`yuio.string.Wrap`.
+
+
 """
 
 from __future__ import annotations

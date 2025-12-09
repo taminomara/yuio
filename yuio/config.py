@@ -47,8 +47,7 @@ By default, :class:`Config` infers names for env variables and flags,
 appropriate parsers, and other things from field's name, type hint, and comments.
 
 If you need to override them, you can use :func:`yuio.app.field`
-and :func:`yuio.app.inline` functions (also available from ``yuio.config.field``
-and ``yuio.config.inline``):
+and :func:`yuio.app.inline` functions (also available from :mod:`yuio.config`):
 
 .. code-block:: python
 
@@ -247,6 +246,35 @@ will be concatenated.
         config = AppConfig(plugins=["markdown", "rst"])
         config.update(...)
 
+
+Re-imports
+----------
+
+.. function:: field
+    :no-index:
+
+    Alias of :obj:`yuio.app.field`.
+
+.. function:: inline
+    :no-index:
+
+    Alias of :obj:`yuio.app.inline`.
+
+.. function:: positional
+    :no-index:
+
+    Alias of :obj:`yuio.app.positional`.
+
+.. type:: HelpGroup
+    :no-index:
+
+    Alias of :obj:`yuio.cli.HelpGroup`.
+
+.. type:: MutuallyExclusiveGroup
+    :no-index:
+
+    Alias of :obj:`yuio.cli.MutuallyExclusiveGroup`.
+
 """
 
 from __future__ import annotations
@@ -265,10 +293,12 @@ import yuio.json_schema
 import yuio.parse
 import yuio.string
 from yuio import _typing as _t
+from yuio.cli import HelpGroup, MutuallyExclusiveGroup
 from yuio.util import _find_docs
 
 __all__ = [
     "Config",
+    "HelpGroup",
     "MutuallyExclusiveGroup",
     "field",
     "inline",
@@ -277,22 +307,6 @@ __all__ = [
 
 T = _t.TypeVar("T")
 Cfg = _t.TypeVar("Cfg", bound="Config")
-
-
-class MutuallyExclusiveGroup:
-    """
-    A sentinel for creating mutually exclusive groups.
-
-    Pass an instance of this class all :func:`~yuio.app.field`\\ s that should
-    be mutually exclusive.
-
-    .. warning::
-
-        Exclusivity checks only work within a single config/command. Passing
-        the same :class:`MutuallyExclusiveGroup` to fields in different configs
-        or commands will not have any effects.
-
-    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -469,7 +483,7 @@ class _Field:
     ty: type
     required: bool
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
-    group: MutuallyExclusiveGroup | None
+    mutex_group: MutuallyExclusiveGroup | None
     usage: yuio.Group | bool | None = None
 
 
@@ -481,7 +495,8 @@ def field(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
-    group: MutuallyExclusiveGroup | None = None,
+    mutex_group: MutuallyExclusiveGroup | None = None,
+    help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> _t.Any: ...
 @_t.overload
@@ -495,7 +510,8 @@ def field(
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
-    group: MutuallyExclusiveGroup | None = None,
+    mutex_group: MutuallyExclusiveGroup | None = None,
+    help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> T | None: ...
 @_t.overload
@@ -509,7 +525,8 @@ def field(
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
-    group: MutuallyExclusiveGroup | None = None,
+    mutex_group: MutuallyExclusiveGroup | None = None,
+    help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> T: ...
 def field(
@@ -522,7 +539,8 @@ def field(
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None,
-    group: MutuallyExclusiveGroup | None = None,
+    mutex_group: MutuallyExclusiveGroup | None = None,
+    help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> _t.Any:
     """
@@ -567,10 +585,13 @@ def field(
         is equivalent to overriding ``desc`` with :class:`yuio.parse.WithMeta`.
     :param merge:
         defines how values of this field are merged when configs are updated.
-    :param group:
+    :param mutex_group:
         defines mutually exclusive group for this field. Create an instance
-        of :class:`yuio.app.MutuallyExclusiveGroup` and pass it to all fields that
+        of :class:`yuio.cli.MutuallyExclusiveGroup` and pass it to all fields that
         should be mutually exclusive.
+    :param help_group:
+        defines group in which this field will be placed when generating CLI help
+        message. By default, help group is inherited from current config class.
     :param usage:
         controls how this field renders in CLI usage section. Passing :data:`False`
         removes this field from usage, and passing :class:`yuio.GROUP` replaces all
@@ -618,7 +639,7 @@ def field(
         env=env,
         flags=flags,
         merge=merge,
-        group=group,
+        group=mutex_group,
         usage=usage,
     )
 
@@ -1074,10 +1095,14 @@ class Config:
                 nargs = "?"
             nargs_kw: _t.Any = {"nargs": nargs} if nargs is not None else {}
 
-            if field.group is not None:
-                if field.group not in mutex_groups:
-                    mutex_groups[field.group] = group.add_mutually_exclusive_group()
-                field_group = mutex_groups[field.group]
+            if field.mutex_group is not None:
+                if field.mutex_group not in mutex_groups:
+                    mutex_groups[field.mutex_group] = (
+                        group.add_mutually_exclusive_group(
+                            required=field.mutex_group.required
+                        )
+                    )
+                field_group = mutex_groups[field.mutex_group]
             else:
                 field_group = None
 
