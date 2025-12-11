@@ -466,7 +466,7 @@ def detect_ci_color_support() -> ColorSupport:
     Scan environment variables to detect an appropriate level of color support
     of a CI environment.
 
-    If we're not in CI, return :attr:`ColorSupport.NONE`.
+    If we're not in CI, return :attr:`ColorSupport.NONE <yuio.color.ColorSupport.NONE>`.
 
     """
 
@@ -654,7 +654,7 @@ def _modify_keyboard(
     if bracketed_paste:
         prologue.append("\x1b[?2004h")
     if modify_keyboard:
-        prologue.append("\x1b[>u")
+        prologue.append("\x1b[>1u")
     if prologue:
         ostream.write("".join(prologue))
         ostream.flush()
@@ -664,8 +664,7 @@ def _modify_keyboard(
         epilogue = []
         if bracketed_paste:
             epilogue.append("\x1b[?2004l")
-        if modify_keyboard:
-            epilogue.append("\x1b[<u")
+        epilogue.append("\x1b[<u")
         if epilogue:
             ostream.write("".join(epilogue))
             ostream.flush()
@@ -685,7 +684,16 @@ if os.name == "posix":
         modify_keyboard: bool = False,
     ):
         prev_mode = termios.tcgetattr(istream)
-        tty.setcbreak(istream, termios.TCSAFLUSH)
+        new_mode = prev_mode.copy()
+        new_mode[tty.LFLAG] &= ~(
+            termios.ECHO  # Don't print back what user types.
+            | termios.ICANON  # Disable line editing.
+            | termios.ISIG  # Disable signals on C-c and C-z.
+        )
+        new_mode[tty.CC] = new_mode[tty.CC].copy()
+        new_mode[tty.CC][termios.VMIN] = 1
+        new_mode[tty.CC][termios.VTIME] = 0
+        termios.tcsetattr(istream, termios.TCSAFLUSH, new_mode)
 
         try:
             with _modify_keyboard(ostream, bracketed_paste, modify_keyboard):

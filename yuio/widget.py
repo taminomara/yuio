@@ -1050,13 +1050,13 @@ class RenderContext:
             full_redraw = True
             self._in_alternative_buffer = alternative_buffer
             if alternative_buffer:
-                self._out.append("\x1b[<u\x1b[?1049h\x1b[m\x1b[2J\x1b[H\x1b[>u")
+                self._out.append("\x1b[<u\x1b[?1049h\x1b[m\x1b[2J\x1b[H\x1b[>1u")
                 self._normal_buffer_term_x = self._term_x
                 self._normal_buffer_term_y = self._term_y
                 self._term_x, self._term_y = 0, 0
                 self._term_color = self._none_color
             else:
-                self._out.append("\x1b[<u\x1b[?1049l\x1b[m\x1b[>u")
+                self._out.append("\x1b[<u\x1b[?1049l\x1b[m\x1b[>1u")
                 self._term_x = self._normal_buffer_term_x
                 self._term_y = self._normal_buffer_term_y
                 self._term_color = self._none_color
@@ -1590,8 +1590,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         self.__key_width = 10
         formatter = yuio.md.MdFormatter(
-            rc.theme,
-            width=min(rc.width, 90) - self.__key_width - 2,
+            yuio.string.ReprContext(
+                theme=rc.theme, max_width=min(rc.width, 90) - self.__key_width - 2
+            ),
             allow_headings=False,
         )
 
@@ -2371,9 +2372,9 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
         """
 
-        assert len(self._widgets) == len(self.__layouts), (
-            "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
-        )
+        assert len(self._widgets) == len(
+            self.__layouts
+        ), "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
 
         if rc.height <= self.__min_h:
             scale = 0.0
@@ -3070,9 +3071,10 @@ class Input(Widget[str]):
 
     # the actual shortcut is `C-7`, the rest produce the same code...
     @bind("7", ctrl=True, show_in_detailed_help=False)
-    @bind("_", ctrl=True, show_in_detailed_help=False)
+    @bind("-", ctrl=True, shift=True, show_in_detailed_help=False)
+    @bind("?", ctrl=True, show_in_detailed_help=False)
     @bind("-", ctrl=True)
-    @bind("?", ctrl=True)
+    @bind("z", ctrl=True)
     @help(group=_MODIFY)
     def undo(self):
         """undo"""
