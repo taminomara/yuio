@@ -33,20 +33,20 @@ dev = [
 ]
 test = [
     "jsonschema==4.25.1",
-    "libtmux==0.50.0",
+    "libtmux==0.53.0",
     "pyright==1.1.407",
     "pytest-cov==7.0.0",
     "pytest-regressions==2.8.3",
-    "pytest==9.0.1",
+    "pytest==9.0.2",
     "PyYaml==6.0.3",
-    "sybil==9.2.0",
+    "sybil==9.3.0",
     "toml==0.10.2",
 ]
 doc = [
     "furo==2025.9.25",
     "sphinx_design==0.6.1",
     "sphinx-vhs==1.3.0",
-    "sybil==9.2.0",
+    "sybil==9.3.0",
 ]
 lint = ["ruff==0.14.7", "pre-commit==4.5.0"]
 ci = [
