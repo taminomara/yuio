@@ -20,10 +20,10 @@ Let's create a config for our :doc:`hello world app <hello_world>`:
     import yuio.config
 
     class Config(yuio.config.Config):
-        #: what kind of greeting does a user want?
+        #: What kind of greeting does a user want?
         use_formal_greeting: bool = False
 
-        #: who the greeting is coming from?
+        #: Who the greeting is coming from?
         sender_name: str | None = None
 
 
@@ -41,7 +41,7 @@ of config fields:
     :emphasize-lines: 3
 
     class Config(yuio.config.Config):
-        #: number of threads to use for executing model
+        #: Number of threads to use for executing model.
         n_threads: Annotated[int, yuio.parse.Gt(0)] = 4
 
         ...
@@ -91,10 +91,10 @@ every time a new config is loaded from a new source:
     :emphasize-lines: 10-12
 
     class Config(yuio.config.Config):
-        #: what kind of greeting does a user want?
+        #: What kind of greeting does a user want?
         use_formal_greeting: bool = False
 
-        #: who the greeting is coming from?
+        #: Who the greeting is coming from?
         sender_name: str | None = None
 
         def validate_config(self):
@@ -118,7 +118,7 @@ You can provide a custom merging function to achieve this:
     class Config(yuio.config.Config):
         plugins: list[str] = yuio.config.field(
             default=[],
-            merge=lambda left, right: [*left, *right],
+            merge=lambda left, right: left + right,
         )
 
 .. warning::
@@ -149,17 +149,18 @@ or environment variables:
     :emphasize-lines: 5-6,11-12
 
     class Config(yuio.config.Config):
-        #: whether to use formal or informal template
-        use_formal_greeting: bool = yuio.config.field(
-            default=False,
-            flags=["-f", "--formal"],
-            env="FORMAL",
-        )
-
+        #: What kind of greeting does a user want?
         sender_name: str | None = yuio.config.field(
             default=None,
             flags=["-s", "--sender"],
             env="SENDER",
+        )
+
+        #: Whether to use formal or informal template.
+        use_formal_greeting: bool = yuio.config.field(
+            default=False,
+            flags=["-f", "--formal"],
+            env="FORMAL",
         )
 
 You've already seen that we can prefix all environment variable names when loading
@@ -197,14 +198,14 @@ Configs can be nested:
 .. code-block:: python
 
     class ExecutorConfig(yuio.config.Config):
-        #: number of threads to use for executing model
+        #: Number of threads to use for executing model.
         threads: Annotated[int, yuio.parse.Ge(1)] = 4
 
-        #: enable or disable gpu
+        #: Enable or disable gpu.
         gpu: bool = True
 
     class AppConfig(yuio.config.Config):
-        #: executor options
+        #: Executor options.
         executor: ExecutorConfig
 
 When loading from file, nested configs are parsed from nested objects:
@@ -229,7 +230,7 @@ You can change the prefixes by overriding field's name in the parent config:
     :emphasize-lines: 4-5
 
     class AppConfig(yuio.config.Config):
-        #: executor options
+        #: Executor options.
         executor: ExecutorConfig = yuio.config.field(
             flags="--ex",
             env="EX",
@@ -241,5 +242,5 @@ You can also disable prefixing by using :func:`yuio.config.inline <yuio.app.inli
     :emphasize-lines: 3
 
     class AppConfig(yuio.config.Config):
-        #: executor options
+        #: Executor options.
         executor: ExecutorConfig = yuio.config.inline()

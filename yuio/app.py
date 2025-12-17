@@ -121,6 +121,41 @@ with :func:`field` or :func:`inline`:
     only in apps.
 
 
+.. _custom-cli-options:
+
+Creating custom CLI options
+---------------------------
+
+You can override default behavior and presentation of a CLI option by passing
+custom ``option_ctor`` to :func:`field`. Furthermore, you can create your own
+implementation of :class:`yuio.cli.Option` to further fine-tune how an option
+is parsed, presented in CLI help, etc.
+
+.. autofunction:: bool_option
+
+.. autofunction:: parse_one_option
+
+.. autofunction:: parse_many_option
+
+.. autofunction:: store_const_option
+
+.. autofunction:: count_option
+
+.. autofunction:: store_true_option
+
+.. autofunction:: store_false_option
+
+.. type:: OptionCtor
+    :canonical: typing.Callable[[OptionSettings], yuio.cli.Option[T]]
+
+    CLI option constructor. Takes a single positional argument
+    of type :class:`OptionSettings`, and returns an instance
+    of :class:`yuio.cli.Option`.
+
+.. autoclass:: OptionSettings
+    :members:
+
+
 App settings
 ------------
 
@@ -188,6 +223,8 @@ attached to the ``main()`` command. See the `example app`_ for details.
     .. automethod:: subcommand
 
 
+.. _sub-commands-more:
+
 Controlling how sub-commands are invoked
 ----------------------------------------
 
@@ -246,50 +283,89 @@ Re-imports
 
     Alias of :obj:`yuio.cli.MutuallyExclusiveGroup`.
 
+.. data:: MISC_GROUP
+    :no-index:
+
+    Alias of :obj:`yuio.cli.MISC_GROUP`.
+
+.. data:: OPTS_GROUP
+    :no-index:
+
+    Alias of :obj:`yuio.cli.OPTS_GROUP`.
+
+.. data:: SUBCOMMANDS_GROUP
+    :no-index:
+
+    Alias of :obj:`yuio.cli.SUBCOMMANDS_GROUP`.
+
 """
 
 from __future__ import annotations
 
-import argparse
-import contextlib
 import dataclasses
 import functools
 import inspect
 import logging
-import os
-import re
+import pathlib
 import sys
 import types
 from dataclasses import dataclass
 
 import yuio
-import yuio.color
-import yuio.complete
+import yuio.cli
 import yuio.config
 import yuio.dbg
 import yuio.io
-import yuio.md
 import yuio.parse
-import yuio.string
 import yuio.term
 import yuio.theme
 from yuio import _typing as _t
-from yuio.cli import HelpGroup, MutuallyExclusiveGroup
-from yuio.config import field, inline, positional
+from yuio.cli import (
+    MISC_GROUP,
+    OPTS_GROUP,
+    SUBCOMMANDS_GROUP,
+    HelpGroup,
+    MutuallyExclusiveGroup,
+)
+from yuio.config import (
+    OptionCtor,
+    OptionSettings,
+    bool_option,
+    count_option,
+    field,
+    inline,
+    parse_many_option,
+    parse_one_option,
+    positional,
+    store_const_option,
+    store_false_option,
+    store_true_option,
+)
 from yuio.util import _find_docs
-from yuio.util import dedent as _dedent
 from yuio.util import to_dash_case as _to_dash_case
 
 __all__ = [
+    "MISC_GROUP",
+    "OPTS_GROUP",
+    "SUBCOMMANDS_GROUP",
     "App",
     "AppError",
     "CommandInfo",
     "HelpGroup",
     "MutuallyExclusiveGroup",
+    "OptionCtor",
+    "OptionSettings",
     "app",
+    "bool_option",
+    "count_option",
     "field",
     "inline",
+    "parse_many_option",
+    "parse_one_option",
     "positional",
+    "store_const_option",
+    "store_false_option",
+    "store_true_option",
 ]
 
 C = _t.TypeVar("C", bound=_t.Callable[..., None])
@@ -405,15 +481,29 @@ class CommandInfo:
 
     """
 
-    subcommand: CommandInfo | None
-    """
-    Subcommand of this command, if one was given.
-
-    """
-
     # Internal, do not use.
     _config: _t.Any = dataclasses.field(repr=False)
     _executed: bool = dataclasses.field(default=False, repr=False)
+    _subcommand: CommandInfo | None | yuio.Missing = dataclasses.field(
+        default=yuio.MISSING, repr=False
+    )
+
+    @property
+    def subcommand(self) -> CommandInfo | None:
+        """
+        Subcommand of this command, if one was given.
+
+        """
+
+        if self._subcommand is yuio.MISSING:
+            if self._config._subcommand is None:
+                subcommand = None
+            else:
+                subcommand = CommandInfo(
+                    self._config._subcommand, self._config._subcommand_ns.config
+                )
+            object.__setattr__(self, "_subcommand", subcommand)
+        return self._subcommand  # pyright: ignore[reportReturnType]
 
     def __call__(self) -> _t.Literal[False]:
         """
@@ -425,11 +515,8 @@ class CommandInfo:
             return False
         object.__setattr__(self, "_executed", True)
 
-        if self._config is not None:
-            should_invoke_subcommand = self._config._run(self)
-            if should_invoke_subcommand is None:
-                should_invoke_subcommand = True
-        else:
+        should_invoke_subcommand = self._config._run(self)
+        if should_invoke_subcommand is None:
             should_invoke_subcommand = True
 
         if should_invoke_subcommand and self.subcommand is not None:
@@ -547,13 +634,11 @@ class App(_t.Generic[C]):
 
         """
 
-        if help is yuio.DISABLED:
-            help = argparse.SUPPRESS
-        elif help is None and description:
+        if help is None and description:
             lines = description.split("\n\n", 1)
             help = lines[0].rstrip(".")
 
-        self.help: str | None = help
+        self.help: str | yuio.Disabled | None = help
         """
         Short help message that is shown when listing subcommands.
 
@@ -677,7 +762,7 @@ class App(_t.Generic[C]):
                     if name in kwargs:
                         raise TypeError(f"argument {name} was given twice")
                     kwargs[name] = arg
-            return CommandInfo("__raw__", None, self.__config_type(**kwargs), False)()
+            return CommandInfo("__raw__", self.__config_type(**kwargs), False)()
 
         self.wrapped: C = wrapped_command  # type: ignore
         """
@@ -748,8 +833,10 @@ class App(_t.Generic[C]):
         """
 
         def registrar(cb: C2, /) -> App[C2]:
+            main_name = name or _to_dash_case(cb.__name__)
             app = App(
                 cb,
+                prog=main_name,
                 usage=usage,
                 help=help,
                 description=description,
@@ -758,7 +845,6 @@ class App(_t.Generic[C]):
 
             app.allow_abbrev = self.allow_abbrev
 
-            main_name = name or _to_dash_case(cb.__name__)
             self.__sub_apps[main_name] = App._SubApp(
                 app, main_name, aliases, is_primary=True
             )
@@ -789,12 +875,12 @@ class App(_t.Generic[C]):
         if args is None:
             args = sys.argv[1:]
 
-        if "--yuio-custom-completer--" in args:
-            index = args.index("--yuio-custom-completer--")
-            yuio.complete._run_custom_completer(
-                self.__get_completions(), args[index + 1], args[index + 2]
-            )
-            sys.exit(0)
+        # if "--yuio-custom-completer--" in args:
+        #     index = args.index("--yuio-custom-completer--")
+        #     yuio.complete._run_custom_completer(
+        #         self.__get_completions(), args[index + 1], args[index + 2]
+        #     )
+        #     sys.exit(0)
 
         if "--yuio-bug-report--" in args:
             from yuio.dbg import print_report
@@ -804,240 +890,92 @@ class App(_t.Generic[C]):
 
         yuio.io.setup(theme=self.theme, wrap_stdio=True)
 
-        parser, subparsers_map = self.__setup_arg_parser()
-        namespace = parser.parse_args(args)
-
-        if self.is_dev_mode is None:
-            self.is_dev_mode = (
-                self.version is not None and "dev" in self.version.lower()
-            )
-        if self.is_dev_mode:
-            yuio.enable_internal_logging(propagate=True)
-
-        if self.setup_logging:
-            logging_level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}.get(
-                namespace.verbosity_level, logging.DEBUG
-            )
-            logging.basicConfig(handlers=[yuio.io.Handler()], level=logging_level)
-
         try:
-            command = self.__load_from_namespace(namespace)
+            cli_command = self.__make_cli_command(root=True)
+            namespace = yuio.cli.CliParser(cli_command).parse()
+
+            if self.is_dev_mode is None:
+                self.is_dev_mode = (
+                    self.version is not None and "dev" in self.version.lower()
+                )
+            if self.is_dev_mode:
+                yuio.enable_internal_logging(propagate=True)
+
+            if self.setup_logging:
+                logging_level = {
+                    0: logging.WARNING,
+                    1: logging.INFO,
+                    2: logging.DEBUG,
+                }.get(namespace["_verbosity"], logging.DEBUG)
+                logging.basicConfig(handlers=[yuio.io.Handler()], level=logging_level)
+
+            command = CommandInfo("__main__", _config=namespace.config)
             command()
             sys.exit(0)
-        except AppError as e:
+        except (AppError, yuio.cli.ArgumentError, yuio.parse.ParsingError) as e:
             yuio.io.failure(e)
             sys.exit(1)
-        except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
-            # Make sure we print subcommand's usage, not the main one.
-            subcommand_path = self.__get_subcommand_path(namespace)
-            subparser = subparsers_map[subcommand_path]
-            subparser.error(str(e))
         except KeyboardInterrupt:
             yuio.io.failure("Received Keyboard Interrupt, stopping now")
             sys.exit(130)
         except Exception as e:
-            msg = str(e)
-            if "Original traceback:" in msg:
-                msg = re.sub(
-                    r"\n*?^Original traceback:.*",
-                    "",
-                    msg,
-                    flags=re.MULTILINE | re.DOTALL,
-                )
-            yuio.io.failure_with_tb("Error: %s", msg)
+            yuio.io.failure_with_tb("Error: %s", e)
             sys.exit(3)
         finally:
             yuio.io.restore_streams()
 
-    def __load_from_namespace(self, namespace: argparse.Namespace) -> CommandInfo:
-        return self.__load_from_namespace_impl(namespace, "app")
+    def __make_cli_command(self, root: bool = False):
+        options = self.__config_type._build_options()
 
-    def __load_from_namespace_impl(
-        self, namespace: argparse.Namespace, ns_prefix: str
-    ) -> CommandInfo:
-        config = self.__config_type._load_from_namespace(namespace, ns_prefix=ns_prefix)
-        subcommand = None
-
-        if name := getattr(namespace, ns_prefix + "@subcommand", None):
-            sub_app = self.__sub_apps[name]
-            subcommand = dataclasses.replace(
-                sub_app.app.__load_from_namespace_impl(
-                    namespace, f"{ns_prefix}/{sub_app.name}"
-                ),
-                name=sub_app.name,
+        if root:
+            options.append(yuio.cli.HelpOption())
+            if self.version:
+                options.append(yuio.cli.VersionOption(version=self.version))
+            if self.setup_logging:
+                options.append(
+                    yuio.cli.CountOption(
+                        flags=["-v", "--verbose"],
+                        usage=yuio.GROUP,
+                        help="Increase output verbosity.",
+                        help_group=yuio.cli.MISC_GROUP,
+                        show_if_inherited=True,
+                        dest="_verbosity",
+                    )
+                )
+            options.append(
+                yuio.cli.BoolOption(
+                    pos_flags=["--color"],
+                    neg_flags=["--no-color"],
+                    usage=yuio.GROUP,
+                    help="Enable or disable ANSI colors.",
+                    help_group=yuio.cli.MISC_GROUP,
+                    show_if_inherited=True,
+                    dest="_color",
+                )
             )
 
-        return CommandInfo("__main__", subcommand, _config=config)
+        subcommands = {}
+        for sub_app in self.__sub_apps.values():
+            if not sub_app.is_primary:
+                continue
+            aubcommand = sub_app.app.__make_cli_command()
+            subcommands[sub_app.name] = aubcommand
+            for alias in sub_app.aliases or []:
+                subcommands[alias] = aubcommand
 
-    def __get_subcommand_path(self, namespace: argparse.Namespace) -> str:
-        return self.__get_subcommand_path_impl(namespace, "app")
-
-    def __get_subcommand_path_impl(self, namespace: argparse.Namespace, ns_prefix: str):
-        if name := getattr(namespace, ns_prefix + "@subcommand", None):
-            sub_app = self.__sub_apps[name]
-            return sub_app.app.__get_subcommand_path_impl(
-                namespace, f"{ns_prefix}/{sub_app.name}"
-            )
-        else:
-            return ns_prefix
-
-    def __setup_arg_parser(
-        self, parser: argparse.ArgumentParser | None = None
-    ) -> tuple[argparse.ArgumentParser, dict[str, argparse.ArgumentParser]]:
-        prog = self.prog
-        if not prog:
-            prog = os.path.basename(sys.argv[0])
-
-        parser = parser or _ArgumentParser(
-            prog=self.prog,
+        return yuio.cli.Command(
+            name=self.prog or pathlib.Path(sys.argv[0]).stem,
+            desc=self.description or "",
+            help=self.help or "",
+            epilog=self.epilog or "",
             usage=self.usage,
-            description=self.description,
-            epilog=self.epilog,
-            allow_abbrev=self.allow_abbrev,
-            add_help=False,
-            formatter_class=_HelpFormatter,  # type: ignore
+            options=options,
+            subcommands=subcommands,
+            subcommand_required=self.subcommand_required,
+            ns_ctor=lambda: yuio.cli.ConfigNamespace(self.__config_type()),
+            dest="_subcommand",
+            ns_dest="_subcommand_ns",
         )
-
-        subparsers_map = {}
-
-        self.__setup_arg_parser_impl(self, parser, "app", prog, subparsers_map)
-
-        return parser, subparsers_map
-
-    def __setup_arg_parser_impl(
-        self,
-        main_app: App[_t.Any],
-        parser: argparse.ArgumentParser,
-        ns_prefix: str,
-        prog: str,
-        subparsers_map: dict[str, argparse.ArgumentParser],
-    ):
-        subparsers_map[ns_prefix] = parser
-
-        self.__config_type._setup_arg_parser(parser, ns_prefix=ns_prefix)
-
-        if self.__sub_apps:
-            subparsers = parser.add_subparsers(
-                required=self.subcommand_required,
-                dest=ns_prefix + "@subcommand",
-                metavar="<subcommand>",
-                parser_class=_ArgumentParser,
-            )
-
-            for name, sub_app in self.__sub_apps.items():
-                if not sub_app.is_primary:
-                    continue
-
-                sub_prog = f"{prog} {name}"
-
-                subparser = subparsers.add_parser(
-                    name,
-                    aliases=sub_app.aliases or [],
-                    prog=sub_prog,
-                    help=sub_app.app.help,
-                    usage=sub_app.app.usage,
-                    description=sub_app.app.description,
-                    epilog=sub_app.app.epilog,
-                    allow_abbrev=self.allow_abbrev,
-                    add_help=False,
-                    formatter_class=_HelpFormatter,  # type: ignore
-                )
-
-                sub_app.app.__setup_arg_parser_impl(
-                    main_app,
-                    subparser,
-                    ns_prefix=f"{ns_prefix}/{name}",
-                    prog=sub_prog,
-                    subparsers_map=subparsers_map,
-                )
-
-        if main_app.__config_type is not self.__config_type:
-            main_app.__config_type._setup_arg_parser(
-                parser,
-                group=parser.add_argument_group(
-                    "global options"
-                ),  # pyright: ignore[reportArgumentType]
-                ns_prefix="app",
-            )
-
-        aux = parser.add_argument_group("auxiliary options")
-        color = aux.add_mutually_exclusive_group()
-        color.add_argument(
-            "--force-color",
-            help="force-enable colored output",
-            action=_NoOpAction,  # Note: `yuio.term` inspects `sys.argv` on its own
-            nargs=0,
-        )
-        color.add_argument(
-            "--force-no-color",
-            help="force-disable colored output",
-            action=_NoOpAction,  # Note: `yuio.term` inspects `sys.argv` on its own
-            nargs=0,
-        )
-
-        aux.add_argument(
-            "-h",
-            "--help",
-            help="show this help message and exit",
-            action=_HelpAction,
-            nargs=0,
-        )
-
-        if main_app.setup_logging:
-            aux.add_argument(
-                "-v",
-                "--verbose",
-                help="increase output verbosity",
-                # note the merge function in `_Namespace` for this dest.
-                action=_StoreConstAction,
-                const=1,
-                default=0,
-                nargs=0,
-                dest="verbosity_level",
-            )
-
-        if main_app.version is not None:
-            aux.add_argument(
-                "-V",
-                "--version",
-                action=_VersionAction,
-                nargs=0,
-                version=main_app.version,
-                help="show program's version number and exit",
-            )
-
-        if main_app.bug_report:
-            aux.add_argument(
-                "--bug-report",
-                action=_BugReportAction,
-                nargs=0,
-                app=main_app,
-                help="show environment data for bug report and exit",
-            )
-
-        aux.add_argument(
-            "--completions",
-            help="generate autocompletion scripts and exit",
-            nargs="?",
-            action=_make_completions_action(main_app),
-        )
-
-    def __get_completions(self) -> yuio.complete._CompleterSerializer:
-        serializer = yuio.complete._CompleterSerializer(
-            add_help=True,
-            add_version=self.version is not None,
-            add_bug_report=bool(self.bug_report),
-        )
-        self.__setup_arg_parser(serializer.as_parser())
-        return serializer
-
-    def __write_completions(self, shell: str):
-        yuio.complete._write_completions(self.__get_completions(), self.prog, shell)
-
-
-class _NoReprConfig(yuio.config.Config):
-    def __repr__(self):
-        return "<move along, nothing to see here>"
 
 
 def _command_from_callable(cb: _t.Callable[..., None]) -> type[yuio.config.Config]:
@@ -1077,8 +1015,6 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> type[yuio.config.Confi
             field = _t.cast(
                 yuio.config._FieldSettings, yuio.config.field(default=field)
             )
-        if field.default is yuio.MISSING:
-            field = dataclasses.replace(field, required=True)
         if name in docs:
             field = dataclasses.replace(field, help=docs[name])
 
@@ -1091,13 +1027,17 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> type[yuio.config.Confi
     dct["_run"] = _command_from_callable_run_impl(
         cb, list(annotations.keys()), accepts_command_info
     )
+    dct["_color"] = None
+    dct["_verbosity"] = 0
+    dct["_subcommand"] = None
+    dct["_subcommand_ns"] = None
     dct["__annotations__"] = annotations
     dct["__module__"] = getattr(cb, "__module__", None)
     dct["__doc__"] = getattr(cb, "__doc__", None)
 
     return types.new_class(
         cb.__name__,
-        (_NoReprConfig,),
+        (yuio.config.Config,),
         {"_allow_positionals": True},
         exec_body=lambda ns: ns.update(dct),
     )
@@ -1113,552 +1053,3 @@ def _command_from_callable_run_impl(
         return cb(**kw)
 
     return run
-
-
-class _ArgumentParser(argparse.ArgumentParser):
-    def parse_known_args(self, args=None, namespace=None):  # type: ignore
-        self._merge_by_dest: dict[str, _t.Callable[[_t.Any, _t.Any], _t.Any]] = {
-            action.dest: merge
-            for action in self._actions
-            if (get_merge := getattr(action, "get_merge", None))
-            and (merge := get_merge())
-        }
-        self._merge_by_dest["verbosity_level"] = lambda l, r: l + r
-        if namespace is None:
-            namespace = _Namespace(self)
-        return super().parse_known_args(args=args, namespace=namespace)
-
-    def error(self, message: str) -> _t.NoReturn:
-        self.print_usage()
-        yuio.io.failure("Error: %s", message)
-        sys.exit(2)
-
-
-class _Namespace(argparse.Namespace):
-    # Since we add flags from main function to all of the subparsers,
-    # we need to merge them properly. Otherwise, values from subcommands
-    # will override values from the main command: `app --foo=x subcommand --foo=y`
-    # will result in `--foo` being just `y`, not `merge(x, y)`. In fact, argparse
-    # will override every absent flag with its default: `app --foo x subcommand`
-    # will result in `--foo` having a default value.
-    def __init__(self, parser: _ArgumentParser):
-        self.__parser = parser
-
-    def __setattr__(self, name: str, value: _t.Any):
-        if value is yuio.MISSING and hasattr(self, name):
-            # Flag was not specified in a subcommand, don't override it.
-            return
-        if (prev := getattr(self, name, yuio.MISSING)) is not yuio.MISSING and (
-            merge := self.__parser._merge_by_dest.get(name)
-        ) is not None:
-            # Flag was specified in main command and in a subcommand, merge the values.
-            value = merge(prev, value)
-        super().__setattr__(name, value)
-
-
-def _make_completions_action(app: App[_t.Any]):
-    class _CompletionsAction(argparse.Action):
-        @staticmethod
-        def get_usage():
-            return False
-
-        @staticmethod
-        def get_parser():
-            return yuio.parse.OneOf(
-                yuio.parse.Lower(yuio.parse.Str()),
-                ["all", "bash", "zsh", "fish", "pwsh", "uninstall"],
-            )
-
-        def __init__(self, **kwargs):
-            kwargs["metavar"] = self.get_parser().describe_or_def()
-            super().__init__(**kwargs)
-
-        def __call__(self, parser, namespace, value, *args):
-            try:
-                app._App__write_completions(self.get_parser().parse(value or "all"))  # type: ignore
-            except argparse.ArgumentTypeError as e:
-                raise argparse.ArgumentError(self, str(e))
-            parser.exit()
-
-    return _CompletionsAction
-
-
-class _NoOpAction(argparse.Action):
-    @staticmethod
-    def get_usage():
-        return False
-
-    def __call__(self, parser, namespace, value, *args):
-        pass
-
-
-class _StoreConstAction(argparse.Action):
-    @staticmethod
-    def get_usage():
-        return False
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, self.const)
-
-
-class _HelpAction(argparse.Action):
-    @staticmethod
-    def get_usage():
-        return False
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        parser.print_help()
-        parser.exit()
-
-
-class _VersionAction(argparse.Action):
-    @staticmethod
-    def get_usage():
-        return False
-
-    def __init__(self, version=None, **kwargs):
-        super().__init__(**kwargs)
-        self.version = version
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        print(self.version)  # noqa: T201
-        parser.exit()
-
-
-class _BugReportAction(argparse.Action):
-    @staticmethod
-    def get_usage():
-        return False
-
-    def __init__(self, app: App[_t.Any], **kwargs):
-        super().__init__(**kwargs)
-        self.app = app
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        yuio.dbg.print_report(settings=self.app.bug_report, app=self.app)
-        parser.exit()
-
-
-_MAX_ARGS_COLUMN_WIDTH = 24
-
-
-class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
-    def __init__(
-        self,
-        ctx: yuio.string.ReprContext | yuio.theme.Theme,
-    ):
-        self._heading_indent = contextlib.ExitStack()
-        self._args_column_width = _MAX_ARGS_COLUMN_WIDTH
-
-        super().__init__(ctx, allow_headings=True)
-
-    def colorize(
-        self,
-        s: str,
-        /,
-        *,
-        default_color: yuio.color.Color | str = yuio.color.Color.NONE,
-    ):
-        return yuio.string.colorize(
-            s,
-            default_color=default_color,
-            parse_cli_flags_in_backticks=True,
-            ctx=self.theme,
-        )
-
-    def _format_Heading(self, node: yuio.md.Heading):
-        if node.level == 1:
-            self._heading_indent.close()
-
-        decoration = self.theme.msg_decorations.get("heading/section", "")
-        with self._with_indent("msg/decoration:heading/section", decoration):
-            self._format_Text(
-                node,
-                default_color=self.theme.get_color("msg/text:heading/section"),
-            )
-
-        if node.level == 1:
-            self._heading_indent.enter_context(self._with_indent(None, "  "))
-        else:
-            self._line(self._indent)
-
-        self._is_first_line = True
-
-    def _format_Usage(self, node: "_Usage"):
-        with self._with_indent(None, node.prefix):
-            self._line(
-                node.usage.indent(
-                    indent=self._indent,
-                    continuation_indent=self._continuation_indent,
-                )
-            )
-
-    def _format_HelpArg(self, node: _HelpArg):
-        if node.help is None:
-            self._line(self._indent + node.args)
-            return
-
-        if node.args.width + 2 > self._args_column_width:
-            self._line(self._indent + node.indent + node.args)
-            indent_ctx = self._with_indent(None, " " * self._args_column_width)
-        else:
-            indent_ctx = self._with_indent(
-                None,
-                node.indent
-                + node.args
-                + " " * (self._args_column_width - len(node.indent) - node.args.width),
-            )
-
-        with indent_ctx:
-            if node.help:
-                self._format(node.help)
-
-    def _format_HelpArgGroup(self, node: _HelpArgGroup):
-        for item in node.items:
-            self._format(item)
-
-
-@dataclass(eq=False, match_args=False, slots=True)
-class _Usage(yuio.md.AstBase):
-    prefix: yuio.string.ColorizedString
-    usage: yuio.string.ColorizedString
-
-
-@dataclass(eq=False, match_args=False, slots=True)
-class _HelpArg(yuio.md.AstBase):
-    indent: str
-    args: yuio.string.ColorizedString
-    help: yuio.md.AstBase | None
-
-
-@dataclass(eq=False, match_args=False, slots=True)
-class _HelpArgGroup(yuio.md.Container[_HelpArg]):
-    pass
-
-
-class _HelpFormatter:
-    def __init__(self, prog: str):
-        self._prog = prog
-        self._term = yuio.io.get_term()
-        self._theme = yuio.io.get_theme()
-        self._usage_main_color = self._theme.get_color("msg/text:code/sh-usage")
-        self._usage_prog_color = self._usage_main_color | self._theme.get_color(
-            "hl/prog:sh-usage"
-        )
-        self._usage_punct_color = self._usage_main_color | self._theme.get_color(
-            "hl/punct:sh-usage"
-        )
-        self._usage_metavar_color = self._usage_main_color | self._theme.get_color(
-            "hl/metavar:sh-usage"
-        )
-        self._usage_flag_color = self._usage_main_color | self._theme.get_color(
-            "hl/flag:sh-usage"
-        )
-        self._formatter = _CliMdFormatter(self._theme)
-        self._nodes: list[yuio.md.AstBase] = []
-        self._args_column_width = 0
-
-    def start_section(self, heading: str | None):
-        if heading:
-            if not heading.endswith(":"):
-                heading += ":"
-            self._nodes.append(yuio.md.Heading(lines=[heading], level=1))
-
-    def end_section(self):
-        if self._nodes and isinstance(self._nodes[-1], yuio.md.Heading):
-            self._nodes.pop()
-
-    def add_text(self, text):
-        if text != argparse.SUPPRESS and text:
-            self._nodes.append(self._formatter.parse(text))
-
-    def add_usage(
-        self, usage, actions: _t.Iterable[argparse.Action], groups, prefix=None
-    ):
-        if usage == argparse.SUPPRESS:
-            return
-
-        if prefix is not None:
-            c_prefix = self._formatter.colorize(
-                prefix,
-                default_color="msg/text:heading/section",
-            )
-        else:
-            c_prefix = yuio.string.ColorizedString(
-                [self._theme.get_color("msg/text:heading/section"), "usage: "]
-            )
-
-        if usage is not None:
-            usage = _dedent(usage.strip())
-            sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
-
-            c_usage = sh_usage_highlighter.highlight(
-                self._theme,
-                usage,
-            ).percent_format({"prog": self._prog}, self._theme)
-        else:
-            c_usage = yuio.string.ColorizedString(
-                [self._usage_prog_color, str(self._prog)]
-            )
-            c_usage_elems = yuio.string.ColorizedString()
-
-            optionals: list[argparse.Action | argparse._MutuallyExclusiveGroup] = []
-            positionals: list[argparse.Action | argparse._MutuallyExclusiveGroup] = []
-            for action in actions:
-                if action.option_strings:
-                    optionals.append(action)
-                else:
-                    positionals.append(action)
-            for group in groups:
-                if len(group._group_actions) <= 1:
-                    continue
-                for arr in [optionals, positionals]:
-                    try:
-                        start = arr.index(group._group_actions[0])
-                    except (ValueError, IndexError):
-                        continue
-                    else:
-                        end = start + len(group._group_actions)
-                        if arr[start:end] == group._group_actions:
-                            arr[start:end] = [group]
-
-            has_omitted_usages = False
-            sep = False
-            for arr in optionals, positionals:
-                for elem in arr:
-                    if isinstance(elem, argparse.Action):
-                        usage_settings = getattr(elem, "get_usage", lambda: True)()
-                        if usage_settings is yuio.GROUP:
-                            has_omitted_usages = True
-                            continue
-                        if (
-                            not usage_settings
-                            or elem.help == argparse.SUPPRESS
-                            or elem.metavar == argparse.SUPPRESS
-                        ):
-                            continue
-                        if sep:
-                            c_usage_elems += self._usage_main_color
-                            c_usage_elems += " "
-                        self._format_action_short(elem, c_usage_elems)
-                        sep = True
-                    elif elem._group_actions:
-                        group_actions = []
-                        for action in elem._group_actions:
-                            usage_settings = getattr(
-                                action, "get_usage", lambda: True
-                            )()
-                            if usage_settings is yuio.GROUP:
-                                has_omitted_usages = True
-                            elif (
-                                usage_settings
-                                and action.help != argparse.SUPPRESS
-                                and action.metavar != argparse.SUPPRESS
-                            ):
-                                group_actions.append(action)
-                        if not group_actions:
-                            continue
-                        if sep:
-                            c_usage_elems += self._usage_main_color
-                            c_usage_elems += " "
-                        if len(group_actions) == 1:
-                            self._format_action_short(group_actions[0], c_usage_elems)
-                            sep = True
-                        else:
-                            for i, action in enumerate(group_actions):
-                                if i == 0:
-                                    c_usage_elems += self._usage_punct_color
-                                    c_usage_elems += "(" if elem.required else "["
-                                self._format_action_short(
-                                    action, c_usage_elems, in_group=True
-                                )
-                                if i + 1 < len(group_actions):
-                                    c_usage_elems += self._usage_punct_color
-                                    c_usage_elems += "|"
-                                else:
-                                    c_usage_elems += self._usage_punct_color
-                                    c_usage_elems += ")" if elem.required else "]"
-                                sep = True
-
-            if has_omitted_usages:
-                c_usage_elems_prev = c_usage_elems
-                c_usage_elems = yuio.string.ColorizedString(
-                    [
-                        self._usage_punct_color,
-                        "[",
-                        self._usage_flag_color,
-                        "<options>",
-                        self._usage_punct_color,
-                        "]",
-                    ]
-                )
-                if c_usage_elems_prev:
-                    c_usage_elems += self._usage_main_color
-                    c_usage_elems += " "
-                    c_usage_elems += c_usage_elems_prev
-
-            if c_usage_elems:
-                c_usage += self._usage_main_color
-                c_usage += " "
-                c_usage += c_usage_elems
-
-        self._nodes.append(
-            _Usage(
-                prefix=c_prefix,
-                usage=c_usage,
-            )
-        )
-
-    def add_argument(self, action: argparse.Action, indent: str = ""):
-        if action.help != argparse.SUPPRESS:
-            c_usage = yuio.string.ColorizedString()
-            sep = False
-            if not action.option_strings:
-                self._format_action_metavar(action, 0, c_usage)
-            for option_string in action.option_strings:
-                if sep:
-                    c_usage += self._usage_punct_color
-                    c_usage += "  "
-                c_usage += self._usage_flag_color
-                c_usage += option_string
-                if action.nargs != 0:
-                    c_usage += self._usage_punct_color
-                    c_usage += " "
-                self._format_action_metavar_expl(action, c_usage)
-                sep = True
-
-            if self._nodes and isinstance(self._nodes[-1], _HelpArgGroup):
-                group = self._nodes[-1]
-            else:
-                group = _HelpArgGroup(items=[])
-                self._nodes.append(group)
-            group.items.append(
-                _HelpArg(
-                    indent=indent,
-                    args=c_usage,
-                    help=self._formatter.parse(action.help) if action.help else None,
-                )
-            )
-
-            arg_width = len(indent) + c_usage.width + 2
-            if arg_width <= _MAX_ARGS_COLUMN_WIDTH:
-                self._args_column_width = max(self._args_column_width, arg_width)
-
-            try:
-                get_subactions = action._get_subactions  # type: ignore
-            except AttributeError:
-                pass
-            else:
-                self.add_arguments(get_subactions(), indent + "  ")
-
-    def add_arguments(self, actions, indent: str = ""):
-        for action in actions:
-            self.add_argument(action, indent)
-
-    def format_help(self) -> str:
-        self._formatter._args_column_width = self._args_column_width
-        res = yuio.string.ColorizedString()
-        for line in self._formatter.format_node(yuio.md.Document(items=self._nodes)):
-            res += line
-            res += "\n"
-        res += yuio.color.Color()
-        return "".join(res.process_colors(self._term.color_support))
-
-    def _format_action_short(
-        self,
-        action: argparse.Action,
-        out: yuio.string.ColorizedString,
-        in_group: bool = False,
-    ):
-        if not in_group and not action.required:
-            out += self._usage_punct_color
-            out += "["
-
-        if action.option_strings:
-            out += self._usage_flag_color
-            out += action.option_strings[0]
-            if action.nargs != 0:
-                out += self._usage_punct_color
-                out += " "
-
-        self._format_action_metavar_expl(action, out)
-
-        if not in_group and not action.required:
-            out += self._usage_punct_color
-            out += "]"
-
-    def _format_action_metavar_expl(
-        self, action: argparse.Action, out: yuio.string.ColorizedString
-    ):
-        nargs = action.nargs if action.nargs is not None else 1
-
-        if nargs == argparse.OPTIONAL:
-            out += self._usage_punct_color
-            out += "["
-            self._format_action_metavar(action, 0, out)
-            out += self._usage_punct_color
-            out += "]"
-        elif nargs == argparse.ZERO_OR_MORE:
-            out += self._usage_punct_color
-            out += "["
-            self._format_action_metavar(action, 0, out)
-            out += self._usage_punct_color
-            out += " ...]"
-        elif nargs == argparse.ONE_OR_MORE:
-            self._format_action_metavar(action, 0, out)
-            out += self._usage_punct_color
-            out += " ["
-            self._format_action_metavar(action, 1, out)
-            out += self._usage_punct_color
-            out += " ...]"
-        elif nargs == argparse.REMAINDER:
-            out += self._usage_main_color
-            out += "..."
-        elif nargs == argparse.PARSER:
-            self._format_action_metavar(action, 1, out)
-            out += self._usage_main_color
-            out += " ..."
-        elif isinstance(nargs, int):
-            sep = False
-            for i in range(nargs):
-                if sep:
-                    out += self._usage_punct_color
-                    out += " "
-                self._format_action_metavar(action, i, out)
-                sep = True
-
-    def _format_action_metavar(
-        self, action: argparse.Action, n: int, out: yuio.string.ColorizedString
-    ):
-        metavar_t = action.metavar
-        if not metavar_t and action.option_strings:
-            metavar_t = f"<{action.option_strings[0]}>"
-        if not metavar_t:
-            metavar_t = "<value>"
-        if isinstance(metavar_t, tuple):
-            metavar = metavar_t[n] if n < len(metavar_t) else metavar_t[-1]
-        else:
-            metavar = metavar_t
-
-        cur_color = None
-        is_punctuation = False
-        for part in re.split(r"((?:[{}()[\]\\;!&]|\s)+)", metavar):
-            if is_punctuation and cur_color is not self._usage_punct_color:
-                cur_color = self._usage_punct_color
-                out += self._usage_punct_color
-            elif not is_punctuation and cur_color is not self._usage_metavar_color:
-                cur_color = self._usage_metavar_color
-                out += self._usage_metavar_color
-            out += part
-            is_punctuation = not is_punctuation
-
-    def _format_args(self, *_):
-        # argparse calls this method sometimes
-        # to check if given metavar is valid or not (TODO!)
-        pass
-
-    def _set_color(self, *_):
-        pass
-
-    def _expand_help(self, *_):
-        pass

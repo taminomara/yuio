@@ -3,6 +3,7 @@ import yuio.theme
 import yuio.app
 
 class Theme(yuio.theme.DefaultTheme):
+    separate_headings = False
     msg_decorations = {
         "heading/1": "=> ",
         "info": "-> ",

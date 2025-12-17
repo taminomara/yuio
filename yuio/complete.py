@@ -1244,7 +1244,7 @@ class _CompleterSerializer:
 
         self._flags.append((list(args), help, metavar, nargs, completion_model))
 
-    def add_mutually_exclusive_group(self, *args, **kwargs):
+    def add_mutex_group(self, *args, **kwargs):
         return self
 
     def add_argument_group(self, *args, **kwargs):

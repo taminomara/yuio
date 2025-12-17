@@ -293,7 +293,7 @@ For example, let's make a parser that checks if the input is even:
             def assert_is_even(value: int):
                 if value % 2 != 0:
                     raise yuio.parse.ParsingError(
-                        "expected an even value: `%r`",
+                        "Expected an even value: `%r`",
                         value,
                     )
 
@@ -308,7 +308,7 @@ For example, let's make a parser that checks if the input is even:
             def assert_is_even(value: int):
                 if value % 2 != 0:
                     raise yuio.parse.ParsingError(
-                        "expected an even value: `%r`",
+                        "Expected an even value: `%r`",
                         value,
                     )
 

@@ -9,7 +9,7 @@ from yuio import _typing as _t
 
 def make_command(
     name: str = "test",
-    options: _t.Collection[yuio.cli.Option] | None = None,
+    options: _t.Collection[yuio.cli.Option[_t.Any]] | None = None,
     subcommands: dict[str, yuio.cli.Command[_t.Any]] | None = None,
     subcommand_required: bool = False,
     dest: str = "",
@@ -20,7 +20,7 @@ def make_command(
         desc="",
         help="",
         usage=None,
-        epilogue="",
+        epilog="",
         options=list(options or []),
         subcommands=subcommands or {},
         subcommand_required=subcommand_required,
@@ -33,17 +33,14 @@ def make_command(
 def str_option(
     flags: list[str] | yuio.Positional = ["--name"],
     dest: str = "name",
-    metavar: str = "<name>",
     required: bool = False,
     **kwargs,
 ) -> yuio.cli.ParseOneOption[str]:
     return yuio.cli.ParseOneOption(
         flags=flags,
         parser=yuio.parse.Str(),
-        allow_inline_arg=flags is not yuio.POSITIONAL,
         required=required,
         dest=dest,
-        metavar=metavar,
         **kwargs,
     )
 
@@ -58,10 +55,8 @@ def int_option(
     return yuio.cli.ParseOneOption(
         flags=flags,
         parser=yuio.parse.Int(),
-        allow_inline_arg=flags is not yuio.POSITIONAL,
         required=required,
         dest=dest,
-        metavar=metavar,
         **kwargs,
     )
 
@@ -69,34 +64,30 @@ def int_option(
 def float_option(
     flags: list[str] | yuio.Positional = ["--value"],
     dest: str = "value",
-    metavar: str = "<num>",
     required: bool = False,
     **kwargs,
 ) -> yuio.cli.ParseOneOption[float]:
     return yuio.cli.ParseOneOption(
         flags=flags,
         parser=yuio.parse.Float(),
-        allow_inline_arg=flags is not yuio.POSITIONAL,
         required=required,
         dest=dest,
-        metavar=metavar,
         **kwargs,
     )
 
 
 def bool_option(
-    flags: list[str] = ["--verbose", "-v"],
+    pos_flags: list[str] = ["--verbose", "-v"],
     neg_flags: list[str] = ["--no-verbose"],
     dest: str = "verbose",
     required: bool = False,
     **kwargs,
 ) -> yuio.cli.BoolOption:
     return yuio.cli.BoolOption(
-        flags=flags,
+        pos_flags=pos_flags,
         neg_flags=neg_flags,
         required=required,
         dest=dest,
-        metavar="",
         **kwargs,
     )
 
@@ -146,7 +137,6 @@ def count_option(
 def list_option(
     flags: list[str] | yuio.Positional = ["--files"],
     dest: str = "files",
-    metavar: str = "<file>",
     nargs: yuio.cli.NArgs = "*",
     required: bool = False,
     **kwargs,
@@ -154,10 +144,8 @@ def list_option(
     opt = yuio.cli.ParseManyOption(
         flags=flags,
         parser=yuio.parse.List(yuio.parse.Str()),
-        allow_inline_arg=flags is not yuio.POSITIONAL,
         required=required,
         dest=dest,
-        metavar=metavar,
         **kwargs,
     )
     opt.nargs = nargs  # Override parser's nargs for tests.
@@ -168,7 +156,6 @@ def tuple_option(
     *parsers: yuio.parse.Parser[_t.Any],
     flags: list[str] | yuio.Positional = ["--coords"],
     dest: str = "coords",
-    metavar: tuple[str, ...] = ("<x>", "<y>"),
     required: bool = False,
     **kwargs,
 ) -> yuio.cli.ParseManyOption[_t.Any]:
@@ -177,10 +164,8 @@ def tuple_option(
     return yuio.cli.ParseManyOption(
         flags=flags,
         parser=yuio.parse.Tuple(*parsers),
-        allow_inline_arg=True,
         required=required,
         dest=dest,
-        metavar=metavar,
         **kwargs,
     )
 
@@ -202,7 +187,7 @@ def const_option(
 
 
 def parse_args(
-    options: _t.Collection[yuio.cli.Option] | None = None,
+    options: _t.Collection[yuio.cli.Option[_t.Any]] | None = None,
     args: list[str] | None = None,
     subcommands: dict[str, yuio.cli.Command[_t.Any]] | None = None,
     subcommand_required: bool = False,
@@ -349,16 +334,16 @@ class TestMutuallyExclusiveGroups:
     def mutex_options(self):
         group = yuio.config.MutuallyExclusiveGroup()
         return [
-            store_true_option(["--json"], "json", mutually_exclusive_group=group),
-            store_true_option(["--xml"], "xml", mutually_exclusive_group=group),
+            store_true_option(["--json"], "json", mutex_group=group),
+            store_true_option(["--xml"], "xml", mutex_group=group),
         ]
 
     @pytest.fixture
     def mutex_options_required_group(self):
         group = yuio.config.MutuallyExclusiveGroup(required=True)
         return [
-            store_true_option(["--json"], "json", mutually_exclusive_group=group),
-            store_true_option(["--xml"], "xml", mutually_exclusive_group=group),
+            store_true_option(["--json"], "json", mutex_group=group),
+            store_true_option(["--xml"], "xml", mutex_group=group),
         ]
 
     def test_mutually_exclusive_raises(self, mutex_options):
@@ -375,14 +360,14 @@ class TestMutuallyExclusiveGroups:
         assert "json" not in ns
         assert "xml" not in ns
 
-    def test_single_from_required_mutually_exclusive_group_allowed(
+    def test_single_from_required_mutex_group_allowed(
         self, mutex_options_required_group
     ):
         ns = parse_args(mutex_options_required_group, ["--json"])
         assert ns["json"] is True
         assert "xml" not in ns
 
-    def test_required_mutually_exclusive_group_raises(
+    def test_required_mutex_group_raises(
         self, mutex_options_required_group
     ):
         with pytest.raises(
@@ -390,6 +375,17 @@ class TestMutuallyExclusiveGroups:
             match=r"Either --json or --xml must be provided",
         ):
             parse_args(mutex_options_required_group, [])
+
+    def test_positionals_cant_have_mutex_groups(self):
+        group = yuio.config.MutuallyExclusiveGroup()
+        options = [
+            str_option(yuio.POSITIONAL, mutex_group=group),
+        ]
+        with pytest.raises(
+            TypeError,
+            match=r"positional arguments can't appear in mutually exclusive groups",
+        ):
+            parse_args(options, [])
 
 
 class TestShortFlagCombinations:
@@ -418,7 +414,7 @@ class TestShortFlagCombinations:
     ):
         options = [
             store_true_option(["-v"], "verbose"),
-            str_option(["-o"], "output", "<file>"),
+            str_option(["-o"], "output"),
         ]
         ns = parse_args(options, args)
         assert ns.get("verbose") is expected_verbose
@@ -430,10 +426,8 @@ class TestNumericArguments:
         opt = yuio.cli.ParseManyOption(
             flags=yuio.POSITIONAL,
             parser=yuio.parse.List(yuio.parse.Int()),
-            allow_inline_arg=False,
             required=False,
             dest="numbers",
-            metavar="<num>",
         )
         ns = parse_args([opt], ["-42", "-0x42", "-0o42", "-0b11"])
         assert ns["numbers"] == [-42, -0x42, -0o42, -0b11]
@@ -446,10 +440,8 @@ class TestNumericArguments:
         opt = yuio.cli.ParseManyOption(
             flags=["--numbers"],
             parser=yuio.parse.List(yuio.parse.Int()),
-            allow_inline_arg=False,
             required=False,
             dest="numbers",
-            metavar="<num>",
         )
         ns = parse_args([opt], ["--numbers", "-42", "-0x42", "-0o42", "-0b11"])
         assert ns["numbers"] == [-42, -0x42, -0o42, -0b11]
@@ -514,7 +506,7 @@ class TestFlagAbbreviation:
 
 class TestPositionalArguments:
     def test_positional_argument(self):
-        ns = parse_args([str_option(yuio.POSITIONAL, "file", "<file>")], ["input.txt"])
+        ns = parse_args([str_option(yuio.POSITIONAL, "file")], ["input.txt"])
         assert ns["file"] == "input.txt"
 
     def test_unexpected_positional_error(self):
@@ -551,7 +543,6 @@ class TestNargs:
             yuio.parse.Int(),
             yuio.parse.Int(),
             flags=yuio.POSITIONAL,
-            metavar=("<x>", "<y>", "<z>"),
         )
         with pytest.raises(yuio.cli.ArgumentError):
             parse_args([option], ["10", "20"])
@@ -598,7 +589,6 @@ class TestNargsFlag:
             yuio.parse.Int(),
             yuio.parse.Int(),
             yuio.parse.Int(),
-            metavar=("<x>", "<y>", "<z>"),
         )
         with pytest.raises(yuio.cli.ArgumentError):
             parse_args([option], ["--files", "10", "20"])
@@ -625,7 +615,7 @@ class TestFlagsAndPositionalsInteraction:
     )
     def test_positional_and_flag_order(self, args):
         options = [
-            str_option(yuio.POSITIONAL, "input", "<input>"),
+            str_option(yuio.POSITIONAL, "input"),
             store_true_option(["--verbose"], "verbose"),
         ]
         ns = parse_args(options, args)
@@ -634,9 +624,9 @@ class TestFlagsAndPositionalsInteraction:
 
     def test_flag_with_value_between_positionals(self):
         options = [
-            str_option(yuio.POSITIONAL, "source", "<source>"),
-            str_option(yuio.POSITIONAL, "dest", "<dest>"),
-            str_option(["--format"], "format", "<fmt>"),
+            str_option(yuio.POSITIONAL, "source"),
+            str_option(yuio.POSITIONAL, "dest"),
+            str_option(["--format"], "format"),
         ]
         ns = parse_args(options, ["input.txt", "--format", "json", "output.txt"])
         assert ns["source"] == "input.txt"
@@ -645,8 +635,8 @@ class TestFlagsAndPositionalsInteraction:
 
     def test_multiple_positionals_different_nargs(self):
         options = [
-            str_option(yuio.POSITIONAL, "cmd", "<cmd>"),
-            list_option(yuio.POSITIONAL, "args", "<arg>", nargs="*"),
+            str_option(yuio.POSITIONAL, "cmd"),
+            list_option(yuio.POSITIONAL, "args", nargs="*"),
         ]
         ns = parse_args(options, ["run", "arg1", "arg2"])
         assert ns["cmd"] == "run"
@@ -749,13 +739,13 @@ class TestFlagsAndPositionalsInteraction:
     )
     def test_positionals_and_flags_interactions(self, args, expected):
         options = [
-            str_option(yuio.POSITIONAL, "dest", "<dest>"),
+            str_option(yuio.POSITIONAL, "dest"),
             list_option(yuio.POSITIONAL),
-            str_option(["--format"], "format", "<format>"),  # Nargs 1
+            str_option(["--format"], "format"),  # Nargs 1
             tuple_option(),  # Nargs 2
-            list_option(["--configs"], "configs", "<config>"),  # Nargs *
-            list_option(["--patches"], "patches", "<patch>", nargs="+"),  # Nargs +
-            list_option(["--protocol"], "protocol", "<protocol>", nargs="?"),  # Nargs ?
+            list_option(["--configs"], "configs"),  # Nargs *
+            list_option(["--patches"], "patches", nargs="+"),  # Nargs +
+            list_option(["--protocol"], "protocol", nargs="?"),  # Nargs ?
         ]
         ns = parse_args(options, args)
         assert ns == expected
@@ -892,10 +882,8 @@ class TestRequiredAndShadowedFlags:
         required_opt = yuio.cli.ParseOneOption(
             flags=["--required"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="required",
-            metavar="<val>",
         )
         command = make_command(
             options=[required_opt],
@@ -920,10 +908,8 @@ class TestRequiredAndShadowedFlags:
         required_opt = yuio.cli.ParseOneOption(
             flags=["--required"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="required",
-            metavar="<val>",
         )
         subcommand = make_command(name="sub")
         command = make_command(
@@ -943,18 +929,14 @@ class TestRequiredAndShadowedFlags:
         parent_opt = yuio.cli.ParseOneOption(
             flags=["--name"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="parent_name",
-            metavar="<name>",
         )
         sub_opt = yuio.cli.ParseOneOption(
             flags=["--name"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=False,
             dest="sub_name",
-            metavar="<name>",
         )
         subcommand = make_command(name="sub", options=[sub_opt])
         command = make_command(
@@ -982,18 +964,14 @@ class TestRequiredAndShadowedFlags:
         parent_opt = yuio.cli.ParseOneOption(
             flags=["--name"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="parent_name",
-            metavar="<name>",
         )
         sub_opt = yuio.cli.ParseOneOption(
             flags=["--name"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=False,
             dest="sub_name",
-            metavar="<name>",
         )
         subcommand = make_command(name="sub", options=[sub_opt])
         command = make_command(
@@ -1014,10 +992,8 @@ class TestRequiredAndShadowedFlags:
         sub_opt = yuio.cli.ParseOneOption(
             flags=["--required-sub"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="required_sub",
-            metavar="<val>",
         )
         subcommand = make_command(name="sub", options=[sub_opt])
         command = make_command(
@@ -1035,10 +1011,8 @@ class TestRequiredAndShadowedFlags:
         sub_opt = yuio.cli.ParseOneOption(
             flags=["--required-sub"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="required_sub",
-            metavar="<val>",
         )
         subcommand = make_command(name="sub", options=[sub_opt])
         command = make_command(
@@ -1056,18 +1030,14 @@ class TestRequiredAndShadowedFlags:
         opt1 = yuio.cli.ParseOneOption(
             flags=["--req1"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="req1",
-            metavar="<val>",
         )
         opt2 = yuio.cli.ParseOneOption(
             flags=["--req2"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="req2",
-            metavar="<val>",
         )
         command = make_command(options=[opt1, opt2])
 
@@ -1079,18 +1049,14 @@ class TestRequiredAndShadowedFlags:
         opt1 = yuio.cli.ParseOneOption(
             flags=["--req1"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="req1",
-            metavar="<val>",
         )
         opt2 = yuio.cli.ParseOneOption(
             flags=["--req2"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="req2",
-            metavar="<val>",
         )
         command = make_command(
             options=[opt1, opt2],
@@ -1104,18 +1070,14 @@ class TestRequiredAndShadowedFlags:
         opt1 = yuio.cli.ParseOneOption(
             flags=["--req1"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="req1",
-            metavar="<val>",
         )
         opt2 = yuio.cli.ParseOneOption(
             flags=["--req2"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="req2",
-            metavar="<val>",
         )
         command = make_command(
             options=[opt1, opt2],
@@ -1130,10 +1092,8 @@ class TestRequiredAndShadowedFlags:
         sub_opt = yuio.cli.ParseOneOption(
             flags=["--required-sub"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="required_sub",
-            metavar="<val>",
         )
         subcommand = make_command(name="sub", options=[sub_opt])
         command = make_command(
@@ -1152,10 +1112,8 @@ class TestRequiredAndShadowedFlags:
         sub1_opt = yuio.cli.ParseOneOption(
             flags=["--required-in-sub1"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=True,
             dest="required_in_sub1",
-            metavar="<val>",
         )
         sub1 = make_command(name="sub1", options=[sub1_opt])
         sub2 = make_command(name="sub2")  # No required flags
@@ -1379,10 +1337,8 @@ class TestSubcommandEdgeCases:
         flag_opt = yuio.cli.ParseOneOption(
             flags=["--mode"],
             parser=yuio.parse.Str(),
-            allow_inline_arg=True,
             required=False,
             dest="mode",
-            metavar="<mode>",
         )
         subcommand = make_command(name="run")
         command = make_command(
@@ -1403,10 +1359,8 @@ class TestSubcommandEdgeCases:
         pos_opt = yuio.cli.ParseOneOption(
             flags=yuio.POSITIONAL,
             parser=yuio.parse.Str(),
-            allow_inline_arg=False,
             required=False,
             dest="config",
-            metavar="<config>",
         )
         subcommand = make_command(name="run")
         command = make_command(
@@ -1456,6 +1410,7 @@ class TestMalformedFlags:
         ],
     )
     def test_is_short_valid_flags(self, flag, expected):
+        yuio.cli._check_flag(flag)
         assert yuio.cli._is_short(flag) is expected
 
     @pytest.mark.parametrize(
@@ -1470,7 +1425,7 @@ class TestMalformedFlags:
     )
     def test_is_short_invalid_flags(self, flag, match):
         with pytest.raises(TypeError, match=match):
-            yuio.cli._is_short(flag)
+            yuio.cli._check_flag(flag)
 
 
 class TestConfigNamespace:
@@ -1527,52 +1482,3 @@ class TestHelperFunctions:
     )
     def test_quote(self, input, expected):
         assert yuio.cli._quote(input) == expected
-
-
-# if __name__ == "__main__":
-#     g = yuio.config.MutuallyExclusiveGroup()
-#     l = str_option(["-n", "--name", "--names"], help="Some help message.")
-#     n = list_option(help="Some help message.")
-#     l.mutually_exclusive_group = n.mutually_exclusive_group = g
-#     options = [
-#             l,
-#             n,
-#             tuple_option(),
-#             store_true_option(["-l", "--l"]),
-#             store_true_option(["-a", "--a"]),
-#             yuio.cli.BoolOption(
-#                 flags=["-x", "--xs"],
-#                 neg_flags=["--no-x"],
-#                 dest="",
-#                 metavar="",
-#                 # help="123",
-#                 default=None,
-#             ),
-#             list_option(flags=yuio.POSITIONAL),
-#         ]
-#     command = make_command(
-#         options=options,
-#         subcommands={},
-#         subcommand_required=False,
-#         dest="",
-#         ns_dest="",
-#     )
-#     command.help = "help..."
-#     command.desc = "desc..."
-#     command.epilogue = "# epilogue...\n\n> foo bar"
-#     v = count_option()
-#     v.help = "Increase verbosity."
-#     v.group = yuio.cli.AUXILIARY_GROUP
-#     v.show_if_inherited = True
-#     main = make_command(
-#         options=[
-#             v,
-#             yuio.cli.HelpOption(),
-#             yuio.cli.VersionOption(version="1.0.0"),
-#         ],
-#         subcommands={"foo": command},
-#         dest="sub",
-#         ns_dest="sub_ns",
-#     )
-#     parser = yuio.cli.CliParser(main)
-#     parser.parse()

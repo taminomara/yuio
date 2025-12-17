@@ -359,7 +359,7 @@ class Color:
 
     underline: bool | None = None
     """
-    If true, render underline the text.
+    If true, underline the text.
 
     """
 

@@ -17,7 +17,7 @@ you can configure them the same way as you configure config fields:
 
     @yuio.app.app
     def main(
-        #: who are we greeting?
+        #: Who are we greeting?
         greeting: str = yuio.app.field(
             default="world",
             flags=["-g", "--greeting"],
@@ -57,7 +57,7 @@ by using :func:`yuio.app.positional`:
 
     @yuio.app.app
     def main(
-        #: who are we greeting?
+        #: Who are we greeting?
         greeting: str = yuio.app.positional(metavar="<name>")
     ):
         print(f"Hello, {greeting}!")
@@ -85,29 +85,57 @@ For this, create a :class:`yuio.cli.MutuallyExclusiveGroup` (also available from
         ...
 
 
-Argument sections
------------------
+Argument groups
+---------------
 
-TODO!!!
-
-You can use :class:`yuio.config.Config` described in the previous chapter to group
-CLI arguments into sections:
+You can use :class:`~yuio.config.Config` to group CLI arguments. This can help with
+encapsulation and reduce code duplication:
 
 .. literalinclude:: cli_code/config.py
     :language: python
     :lines: 1-19
     :emphasize-lines: 6,15
 
-Notice that we use :func:`yuio.app.inline` to inline config field names
-without prefixing them with ``--executor-config-...``.
+By default, Yuio will prefix all flags in the nested config with flag of config's
+field. That is, ``ExecutorConfig.threads`` will be loaded from
+``--executor-config-threads``.
+
+You can override this prefix by passing ``flag`` to :func:`yuio.app.field`,
+or disable prefixing by using :func:`yuio.app.inline`:
+
+.. literalinclude:: cli_code/config_inline.py
+    :language: python
+    :lines: 11-18
+    :emphasize-lines: 4
+
+
+Splitting help into sections
+----------------------------
+
+Yuio automatically separates CLI options into sections when you use nested
+:class:`~yuio.config.Config`\ s; config's help message becomes group's title:
 
 .. vhs-inline::
     :scale: 40%
 
     Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m cli_code.config -h"
+    Type "python -m cli_code.config_inline -h"
     Enter
     Sleep 6s
+
+You can disable this behavior by setting ``help`` to an empty string:
+
+.. literalinclude:: cli_code/config_no_group.py
+    :language: python
+    :lines: 11-17
+    :emphasize-lines: 3
+
+You can also assign groups for individual fields by passing :class:`yuio.cli.HelpGroup`
+(also available from :mod:`yuio.app` and :mod:`yuio.config`) to :func:`yuio.app.field`:
+
+.. literalinclude:: cli_code/config_explicit_group.py
+    :language: python
+    :emphasize-lines: 4,11,16
 
 
 Subcommands
@@ -120,6 +148,10 @@ by using :meth:`yuio.app.App.subcommand`:
     :language: python
     :lines: 5-18
     :emphasize-lines: 5,10
+
+When you run ``app backup ...``, ``main()`` will be called first, then ``backup()``.
+This lets you run code that's needed for all sub-commands, such as loading configs.
+See details in :ref:`sub-commands-more`.
 
 
 App settings
@@ -158,7 +190,7 @@ into specific files. Just run your app with ``--completions`` flag:
 
     $ ./app --completions
 
-.. vhs-inline::
+.. vhs-inline:
     :scale: 40%
 
     Source "docs/source/_tapes/_config.tape"
@@ -187,7 +219,7 @@ into specific files. Just run your app with ``--completions`` flag:
     Sleep 250ms
     Tab
     Sleep 500ms
-    Type "r"
+    Type "rb"
     Sleep 250ms
     Tab
     Sleep 500ms
@@ -199,3 +231,28 @@ into specific files. Just run your app with ``--completions`` flag:
     Hide
     Type "rm -rf ./.vhs_tmp"
     Enter
+
+
+CLI options with custom behavior
+--------------------------------
+
+If default behavior doesn't meet your needs, you can provide your own option
+implementation by passing ``option_ctor`` to :func:`yuio.app.field`. This will let you
+manually configure option's parsing and help formatting:
+
+.. code-block:: python
+
+    @yuio.app.app
+    def main(
+        quiet: int = yuio.app.field(
+            default=0,
+            flags=["-q", "--quiet"],
+            option_ctor=yuio.app.count_option(),
+        )
+    ):
+        ...
+
+.. seealso::
+
+    See :ref:`custom-cli-options`, :class:`yuio.app.OptionCtor`,
+    and :mod:`yuio.cli` for API reference.

@@ -2654,9 +2654,9 @@ class _IoManager(abc.ABC):
         heading: bool = False,
     ):
         with _IO_LOCK:
-            if heading and self._printed_some_lines:
-                msg.insert(0, "\n")
-            if heading:
+            if heading and self.theme.separate_headings:
+                if self._printed_some_lines:
+                    msg.insert(0, "\n")
                 msg.append("\n")
             if term.ostream_is_tty:
                 self._emit_lines(msg, term.ostream, ignore_suspended)

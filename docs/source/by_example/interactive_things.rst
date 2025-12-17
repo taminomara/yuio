@@ -69,7 +69,7 @@ You often need to print lists joined by some separator. Yuio provides
 :class:`~yuio.string.JoinStr` will call :class:`str() <str>`
 (:class:`~yuio.string.JoinRepr` calls :func:`repr`)
 on collection values, then join them with the given separator.
-No only that, it will also highlight joined values (but not separators!) using
+Not only that, it will also highlight joined values (but not separators!) using
 the given color tag (``code`` by default).
 
 

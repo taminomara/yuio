@@ -54,6 +54,7 @@ autodoc_type_aliases = {
     **{
         name: path
         for path in [
+            "~yuio.app.OptionCtor",
             "~yuio.io.ExcInfo",
             "~yuio.widget.ActionKey",
             "~yuio.widget.ActionKeys",

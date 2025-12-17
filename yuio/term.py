@@ -661,12 +661,12 @@ def _modify_keyboard(
     try:
         yield
     finally:
-        epilogue = []
+        epilog = []
         if bracketed_paste:
-            epilogue.append("\x1b[?2004l")
-        epilogue.append("\x1b[<u")
-        if epilogue:
-            ostream.write("".join(epilogue))
+            epilog.append("\x1b[?2004l")
+        epilog.append("\x1b[<u")
+        if epilog:
+            ostream.write("".join(epilog))
             ostream.flush()
 
 

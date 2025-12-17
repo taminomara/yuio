@@ -25,7 +25,7 @@ This module is inspired by :mod:`argparse`, but there are differences:
 
 -   it uses nested namespaces, one namespace per subcommand. When a subcommand
     is encountered, a new namespace is created and assigned to the corresponding
-    :attr:`~Option.dest` in the parent namespace.
+    :attr:`~ValueOption.dest` in the parent namespace.
 
 -   namespaces are abstracted away by the :class:`Namespace` protocol, which has an
     interface similar to :class:`dict`.
@@ -60,10 +60,10 @@ This module is inspired by :mod:`argparse`, but there are differences:
 
     .. code-block:: console
 
-        $ prog --bool-flag subcommand
+        $ prog --json subcommand
 
-    If :flag:`--bool-flag` has ``nargs="?"``, is :flag:`subcommand` an argument
-    for :flag:`--bool-flag`, or a free argument?
+    If :flag:`--json` has ``nargs="?"``, is :flag:`subcommand` an argument
+    for :flag:`--json`, or a free argument?
 
     To avoid this dilemma, we don't use ``nargs="?"``. Instead, we set
     :attr:`~Option.nargs` to ``"0"`` and :attr:`~Option.allow_inline_arg`
@@ -71,10 +71,10 @@ This module is inspired by :mod:`argparse`, but there are differences:
 
     .. code-block:: console
 
-        $ prog --bool-flag subcommand  # Equivalent to --bool-flag=true
-        $ prog --bool-flag=true subcommand
-        $ prog --bool-flag=false subcommand
-        $ prog --no-bool-flag subcommand  # Equivalent to --bool-flag=false
+        $ prog --json subcommand  # Equivalent to --json=true
+        $ prog --json=true subcommand
+        $ prog --json=false subcommand
+        $ prog --no-json subcommand  # Equivalent to --json=false
 
 -   the above point also allows us to disambiguate positional arguments
     and arguments with ``nargs="*"``.
@@ -113,6 +113,12 @@ Flags and positionals
 ---------------------
 
 .. autoclass:: Option
+    :members:
+
+.. autoclass:: ValueOption
+    :members:
+
+.. autoclass:: ParserOption
     :members:
 
 .. autoclass:: BoolOption
@@ -194,7 +200,7 @@ Option grouping
 
 .. autodata:: OPTS_GROUP
 
-.. autodata:: AUXILIARY_GROUP
+.. autodata:: MISC_GROUP
 
 """
 
@@ -202,6 +208,7 @@ from __future__ import annotations
 
 import abc
 import contextlib
+import dataclasses
 import functools
 import re
 import string
@@ -211,7 +218,6 @@ from dataclasses import dataclass
 
 import yuio
 import yuio.color
-import yuio.complete
 import yuio.md
 import yuio.parse
 import yuio.string
@@ -226,7 +232,7 @@ if _t.TYPE_CHECKING:
 
 __all__ = [
     "ARGS_GROUP",
-    "AUXILIARY_GROUP",
+    "MISC_GROUP",
     "OPTS_GROUP",
     "SUBCOMMANDS_GROUP",
     "Argument",
@@ -246,13 +252,16 @@ __all__ = [
     "Option",
     "ParseManyOption",
     "ParseOneOption",
+    "ParserOption",
     "StoreConstOption",
     "StoreFalseOption",
     "StoreTrueOption",
-    "VersionOption"
+    "ValueOption",
+    "VersionOption",
 ]
 
 T = _t.TypeVar("T")
+T_cov = _t.TypeVar("T_cov", covariant=True)
 
 _SHORT_FLAG_RE = r"^-[a-zA-Z0-9]$"
 _LONG_FLAG_RE = r"^--[a-zA-Z0-9_+/-]+$"
@@ -546,7 +555,7 @@ class ArgumentError(yuio.PrettyException, ValueError):
         if commandline := self._make_commandline():
             colorable = yuio.string.Stack(
                 commandline,
-                yuio.string.Indent(colorable),
+                colorable,
             )
 
         return colorable
@@ -635,11 +644,17 @@ class ConfigNamespace(Namespace, _t.Generic[ConfigT]):
 
     def __getitem__(self, key: str) -> _t.Any:
         root, key = self.__split_key(key)
-        return getattr(root, key)
+        try:
+            return getattr(root, key)
+        except AttributeError as e:
+            raise KeyError(str(e)) from None
 
     def __setitem__(self, key: str, value: _t.Any):
         root, key = self.__split_key(key)
-        return setattr(root, key, value)
+        try:
+            return setattr(root, key, value)
+        except AttributeError as e:
+            raise KeyError(str(e)) from None
 
     def __contains__(self, key: str):
         root, key = self.__split_key(key)
@@ -669,15 +684,9 @@ class HelpGroup:
 
     """
 
-    help: str | yuio.Disabled = ""
+    help: str | yuio.Disabled = dataclasses.field(default="", kw_only=True)
     """
     Help message for an option.
-
-    """
-
-    usage: yuio.Group | bool = True
-    """
-    Specifies whether this group should be displayed in CLI usage.
 
     """
 
@@ -707,9 +716,9 @@ Help group for flags.
 
 """
 
-AUXILIARY_GROUP = HelpGroup("Auxiliary options:", usage=yuio.GROUP)
+MISC_GROUP = HelpGroup("Misc options:")
 """
-Help group for auxiliary flags such as :flag:`--help` or :flag:`--version`.
+Help group for misc flags such as :flag:`--help` or :flag:`--version`.
 
 """
 
@@ -732,7 +741,7 @@ class MutuallyExclusiveGroup:
 
 
 @dataclass(eq=False, kw_only=True)
-class Option(abc.ABC):
+class Option(abc.ABC, _t.Generic[T_cov]):
     """
     Base class for a CLI option.
 
@@ -740,13 +749,8 @@ class Option(abc.ABC):
 
     flags: list[str] | yuio.Positional
     """
-    Flags corresponding to this option.
-
-    """
-
-    nargs: NArgs
-    """
-    How many arguments this option takes.
+    Flags corresponding to this option. Positional options have flags set to
+    :data:`yuio.POSITIONAL`.
 
     """
 
@@ -757,6 +761,15 @@ class Option(abc.ABC):
     Inline arguments are handled separately from normal arguments,
     and :attr:`~Option.nargs` setting does not affect them.
 
+    Positional options can't take inline arguments, so this attribute has
+    no effect on them.
+
+    """
+
+    nargs: NArgs
+    """
+    How many arguments this option takes.
+
     """
 
     required: bool
@@ -764,59 +777,55 @@ class Option(abc.ABC):
     Makes this option required. The parsing will fail if this option is not
     encountered among CLI arguments.
 
-    Note that positional arguments are always parsed, so :attr:`~Option.required`
-    has no effect on them; instead, they rely on :attr:`~Option.nargs` to check
-    for missing arguments.
+    Note that positional arguments are always parsed; if no positionals are given,
+    all positional options are processed with zero arguments, at which point they'll
+    fail :attr:`~Option.nargs` check. Thus, :attr:`~Option.required` has no effect
+    on positionals.
 
     """
 
-    dest: str
+    metavar: str | tuple[str, ...]
     """
-    Key where to store parsed argument.
+    Option's meta variable, used for displaying help messages.
+
+    If :attr:`~Option.nargs` is an integer, this can be a tuple of strings,
+    one for each argument. If :attr:`~Option.nargs` is zero, this can be an empty
+    tuple.
 
     """
 
-    metavar: str | tuple[str]
+    mutex_group: None | MutuallyExclusiveGroup
     """
-    Option's meta variable, used for displaying help messages. If :attr:`~Option.nargs`
-    is an integer, this can be a tuple of strings, one for each argument.
+    Mutually exclusive group for this option. Positional options can't have
+    mutex groups.
 
     """
 
-    mutually_exclusive_group: None | MutuallyExclusiveGroup = None
+    usage: yuio.Group | bool
     """
-    Index of a mutually exclusive group.
+    Specifies whether this option should be displayed in CLI usage. Positional options
+    are always displayed, regardless of this setting.
 
     """
 
-    completer: yuio.complete.Completer | None = None
-    """
-    Option's completer, used for generating completion scripts.
-
-    """
-
-    usage: yuio.Group | bool = True
-    """
-    Specifies whether this option should be displayed in CLI usage.
-
-    """
-
-    help: str | yuio.Disabled = ""
+    help: str | yuio.Disabled
     """
     Help message for an option.
 
     """
 
-    help_group: HelpGroup | None = None
+    help_group: HelpGroup | None
     """
     Group for this flag, default is :data:`OPTS_GROUP` for flags and :data:`ARGS_GROUP`
-    for positionals.
+    for positionals. Positionals are flags are never mixed together; if they appear
+    in the same group, the group title will be repeated twice.
 
     """
 
-    show_if_inherited: bool = False
+    show_if_inherited: bool
     """
-    Force-show this flag if it's inherited from parent command.
+    Force-show this flag if it's inherited from parent command. Positionals can't be
+    inherited because subcommand argument always goes last.
 
     """
 
@@ -860,18 +869,30 @@ class Option(abc.ABC):
         """
 
     @functools.cached_property
+    def short_flags(self) -> list[str] | None:
+        if self.flags is yuio.POSITIONAL:
+            return None
+        else:
+            return [flag for flag in self.flags if _is_short(flag)]
+
+    @functools.cached_property
+    def long_flags(self) -> list[str] | None:
+        if self.flags is yuio.POSITIONAL:
+            return None
+        else:
+            return [flag for flag in self.flags if not _is_short(flag)]
+
+    @functools.cached_property
     def primary_short_flag(self) -> str | None:
         """
         Short flag that will be displayed in CLI help.
 
         """
 
-        if self.flags is yuio.POSITIONAL:
+        if short_flags := self.short_flags:
+            return short_flags[0]
+        else:
             return None
-        for flag in self.flags:
-            if _is_short(flag):
-                return flag
-        return None
 
     @functools.cached_property
     def primary_long_flags(self) -> list[str] | None:
@@ -880,12 +901,10 @@ class Option(abc.ABC):
 
         """
 
-        if self.flags is yuio.POSITIONAL:
+        if long_flags := self.long_flags:
+            return [long_flags[0]]
+        else:
             return None
-        for flag in self.flags:
-            if not _is_short(flag):
-                return [flag]
-        return None
 
     def parse_help(self, ctx: yuio.string.ReprContext, /) -> yuio.md.AstBase | None:
         """
@@ -1038,25 +1057,83 @@ class Option(abc.ABC):
 
         return None
 
-    def nth_metavar(self, n: int):
+    def nth_metavar(self, n: int) -> str:
         """
         Get metavar for n-th argument for this option.
 
         """
 
-        metavar = self.metavar
-        if isinstance(metavar, tuple):
-            if not metavar:
-                return "<opt>"
-            if n >= len(metavar):
-                metavar = metavar[-1]
+        if not self.metavar:
+            return "<argument>"
+        if isinstance(self.metavar, tuple):
+            if n >= len(self.metavar):
+                return self.metavar[-1]
             else:
-                metavar = metavar[n]
-        return metavar
+                return self.metavar[n]
+        else:
+            return self.metavar
 
 
 @dataclass(eq=False, kw_only=True)
-class BoolOption(Option):
+class ValueOption(Option[T], _t.Generic[T]):
+    """
+    Base class for options that parse arguments and assign them to namespace.
+
+    This base handles assigning parsed value to the target destination and merging
+    values if option is invoked multiple times. Call ``self.set(ns, value)`` from
+    :meth:`Option.process` to set result of option processing.
+
+    """
+
+    dest: str
+    """
+    Key where to store parsed argument.
+
+    """
+
+    merge: _t.Callable[[T, T], T] | None
+    """
+    Function to merge previous and new value.
+
+    """
+
+    default: object
+    """
+    Default value that will be used if this flag is not given.
+
+    Used for formatting help, does not affect actual parsing.
+
+    """
+
+    def set(self, ns: Namespace, value: T):
+        """
+        Save new value. If :attr:`~ValueOption.merge` is given, automatically
+        merge old and new value.
+
+        """
+
+        if self.merge and self.dest in ns:
+            ns[self.dest] = self.merge(ns[self.dest], value)
+        else:
+            ns[self.dest] = value
+
+
+@dataclass(eq=False, kw_only=True)
+class ParserOption(ValueOption[T], _t.Generic[T]):
+    """
+    Base class for options that use :mod:`yuio.parse` to process arguments.
+
+    """
+
+    parser: yuio.parse.Parser[T]
+    """
+    A parser used to parse option's arguments.
+
+    """
+
+
+@dataclass(eq=False, kw_only=True)
+class BoolOption(ParserOption[bool]):
     """
     An option that combines :class:`StoreTrueOption`, :class:`StoreFalseOption`,
     and :class:`ParseOneOption`.
@@ -1067,27 +1144,42 @@ class BoolOption(Option):
     If any of the :attr:`~BoolOption.neg_flags` are given, it works like
     :class:`StoreFalseOption`.
 
-    If any of the :attr:`~Option.flags` are given with an inline argument, the argument
-    is parsed as a :class:`bool`.
+    If any of the :attr:`~BoolOption.pos_flags` are given with an inline argument,
+    the argument is parsed as a :class:`bool`.
 
-    :example:
+    .. note::
+
+        Bool option has :attr:`~Option.nargs` set to ``0``, so non-inline arguments
+        (i.e. :flag:`--json false`) are not recognized. You should always use inline
+        argument to set boolean flag's value (i.e. :flag:`--json=false`). This avoids
+        ambiguity in cases like the following:
+
         .. code-block:: console
 
-            $ prog --bool-flag  # Set `dest` to `True`
-            $ prog --no-bool-flag  # Set `dest` to `False`
-            $ prog --bool-flag=$value  # Set `dest` to parsed `$value`
+            $ prog --json subcommand  # Ok
+            $ prog --json=true subcommand  # Ok
+            $ prog --json true subcommand  # Not allowed
 
-    """
+    :example:
+        .. code-block:: python
 
-    parser: yuio.parse.Parser[bool]
-    """
-    A parser used to parse bools when an explicit value is provided.
+            option = yuio.cli.BoolOption(
+                pos_flags=["--json"],
+                neg_flags=["--no-json"],
+                dest=...,
+            )
+
+        .. code-block:: console
+
+            $ prog --json  # Set `dest` to `True`
+            $ prog --no-json  # Set `dest` to `False`
+            $ prog --json=$value  # Set `dest` to parsed `$value`
 
     """
 
     pos_flags: list[str]
     """
-    List of flag names that enable this boolean option.
+    List of flag names that enable this boolean option. Should be non-empty.
 
     """
 
@@ -1097,36 +1189,40 @@ class BoolOption(Option):
 
     """
 
-    default: bool | None
-    """
-    Default boolean value that will be used if this flag is not given.
-
-    Used for formatting help.
-
-    """
-
     def __init__(
         self,
         *,
-        flags: list[str],
+        pos_flags: list[str],
         neg_flags: list[str],
-        default: bool | None = None,
-        parser: yuio.parse.Parser[bool] | None = None,
         required: bool = False,
-        **kwargs,
+        mutex_group: None | MutuallyExclusiveGroup = None,
+        usage: yuio.Group | bool = True,
+        help: str | yuio.Disabled = "",
+        help_group: HelpGroup | None = None,
+        show_if_inherited: bool = False,
+        dest: str,
+        parser: yuio.parse.Parser[bool] | None = None,
+        merge: _t.Callable[[bool, bool], bool] | None = None,
+        default: bool | yuio.Missing = yuio.MISSING,
     ):
-        self.parser = parser or yuio.parse.Bool()
-        self.pos_flags = flags
+        self.pos_flags = pos_flags
         self.neg_flags = neg_flags
-        self.default = default
 
         super().__init__(
-            completer=None,
-            flags=flags + neg_flags,
-            nargs=0,
+            flags=pos_flags + neg_flags,
             allow_inline_arg=True,
+            nargs=0,
             required=required,
-            **kwargs,
+            metavar=(),
+            mutex_group=mutex_group,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=show_if_inherited,
+            dest=dest,
+            merge=merge,
+            default=default,
+            parser=parser or yuio.parse.Bool(),
         )
 
     def process(
@@ -1146,13 +1242,17 @@ class BoolOption(Option):
             value = self.parser.parse(arguments.value)
         else:
             value = True
-        ns[self.dest] = value
+        self.set(ns, value)
 
     @functools.cached_property
     def primary_short_flag(self):
         if self.flags is yuio.POSITIONAL:
             return None
-        for flag in self.pos_flags if self.default is not True else self.neg_flags:
+        if self.default is True:
+            flags = self.neg_flags
+        else:
+            flags = self.pos_flags
+        for flag in flags:
             if _is_short(flag):
                 return flag
         return None
@@ -1194,12 +1294,12 @@ class BoolOption(Option):
                 aliases.append(res)
         if self.pos_flags:
             primary_pos_flag = None
-            for flag in self.pos_flags:
-                if not _is_short(flag):
-                    primary_pos_flag = flag
-                    break
-                elif primary_pos_flag is None:
-                    primary_pos_flag = flag
+            if self.primary_long_flags:
+                primary_pos_flag = self.primary_long_flags[0]
+            elif self.primary_short_flag:
+                primary_pos_flag = self.primary_short_flag
+            elif self.flags:
+                primary_pos_flag = self.flags[0]
             if primary_pos_flag:
                 punct_color = ctx.theme.get_color("hl/punct:sh-usage")
                 metavar_color = ctx.theme.get_color("hl/metavar:sh-usage")
@@ -1223,41 +1323,43 @@ class BoolOption(Option):
 
 
 @dataclass(eq=False, kw_only=True)
-class ParseOneOption(Option, _t.Generic[T]):
+class ParseOneOption(ParserOption[T], _t.Generic[T]):
     """
     An option with a single argument that uses Yuio parser.
-
-    """
-
-    parser: yuio.parse.Parser[T]
-    """
-    A parser used to parse bools when an explicit value is provided.
-
-    """
-
-    merge: _t.Callable[[T, T], T] | None
-    """
-    Function to merge previous and new value.
 
     """
 
     def __init__(
         self,
         *,
+        flags: list[str] | yuio.Positional,
+        required: bool = False,
+        mutex_group: None | MutuallyExclusiveGroup = None,
+        usage: yuio.Group | bool = True,
+        help: str | yuio.Disabled = "",
+        help_group: HelpGroup | None = None,
+        show_if_inherited: bool = False,
+        dest: str,
         parser: yuio.parse.Parser[T],
         merge: _t.Callable[[T, T], T] | None = None,
-        **kwargs,
+        default: T | yuio.Missing = yuio.MISSING,
     ):
-        self.parser = parser
-        self.merge = merge
-
         super().__init__(
+            flags=flags,
+            allow_inline_arg=True,
             nargs=1,
-            **kwargs,
+            required=required,
+            metavar=parser.describe_or_def(),
+            mutex_group=mutex_group,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=show_if_inherited,
+            dest=dest,
+            merge=merge,
+            default=default,
+            parser=parser,
         )
-
-        if self.completer is None:
-            self.completer = self.parser.completer()
 
     def process(
         self,
@@ -1274,14 +1376,11 @@ class ParseOneOption(Option, _t.Generic[T]):
             raise ArgumentError.from_parsing_error(
                 e, flag=flag, arguments=arguments
             ) from None
-        if self.merge and self.dest in ns:
-            ns[self.dest] = self.merge(ns[self.dest], value)
-        else:
-            ns[self.dest] = value
+        self.set(ns, value)
 
 
 @dataclass(eq=False, kw_only=True)
-class ParseManyOption(ParseOneOption[T], _t.Generic[T]):
+class ParseManyOption(ParserOption[T], _t.Generic[T]):
     """
     An option with multiple arguments that uses Yuio parser.
 
@@ -1290,16 +1389,40 @@ class ParseManyOption(ParseOneOption[T], _t.Generic[T]):
     def __init__(
         self,
         *,
+        flags: list[str] | yuio.Positional,
+        required: bool = False,
+        mutex_group: None | MutuallyExclusiveGroup = None,
+        usage: yuio.Group | bool = True,
+        help: str | yuio.Disabled = "",
+        help_group: HelpGroup | None = None,
+        show_if_inherited: bool = False,
+        dest: str,
         parser: yuio.parse.Parser[T],
         merge: _t.Callable[[T, T], T] | None = None,
-        **kwargs,
+        default: T | yuio.Missing = yuio.MISSING,
     ):
-        super().__init__(parser=parser, merge=merge, **kwargs)
+        assert parser.supports_parse_many()
 
-        nargs = self.parser.get_nargs()
+        nargs = parser.get_nargs()
         if nargs is None:  # TODO: remove after App migrates to this module.
             nargs = 1
-        self.nargs = nargs
+
+        super().__init__(
+            flags=flags,
+            allow_inline_arg=True,
+            nargs=nargs,
+            required=required,
+            metavar=parser.describe_many(),
+            mutex_group=mutex_group,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=show_if_inherited,
+            dest=dest,
+            merge=merge,
+            default=default,
+            parser=parser,
+        )
 
     def process(
         self,
@@ -1308,25 +1431,21 @@ class ParseManyOption(ParseOneOption[T], _t.Generic[T]):
         arguments: Argument | list[Argument],
         ns: Namespace,
     ):
-        if not isinstance(arguments, list):
-            super().process(cli_parser, flag, arguments, ns)
-            return
-
         try:
-            value = self.parser.parse_many([arg.value for arg in arguments])
+            if isinstance(arguments, list):
+                value = self.parser.parse_many([arg.value for arg in arguments])
+            else:
+                value = self.parser.parse(arguments.value)
         except yuio.parse.ParsingError as e:
             raise ArgumentError.from_parsing_error(
                 e, flag=flag, arguments=arguments
             ) from None
 
-        if self.merge and self.dest in ns:
-            ns[self.dest] = self.merge(ns[self.dest], value)
-        else:
-            ns[self.dest] = value
+        self.set(ns, value)
 
 
 @dataclass(eq=False, kw_only=True)
-class StoreConstOption(Option, _t.Generic[T]):
+class StoreConstOption(ValueOption[T], _t.Generic[T]):
     """
     An option with no arguments that stores a constant to namespace.
 
@@ -1338,27 +1457,37 @@ class StoreConstOption(Option, _t.Generic[T]):
 
     """
 
-    merge: _t.Callable[[T, T], T] | None
-    """
-    Function to merge previous and new value.
-
-    """
-
     def __init__(
         self,
         *,
-        const: T,
+        flags: list[str],
+        required: bool = False,
+        mutex_group: None | MutuallyExclusiveGroup = None,
+        usage: yuio.Group | bool = True,
+        help: str | yuio.Disabled = "",
+        help_group: HelpGroup | None = None,
+        show_if_inherited: bool = False,
+        dest: str,
         merge: _t.Callable[[T, T], T] | None = None,
-        **kwargs,
+        default: T | yuio.Missing = yuio.MISSING,
+        const: T,
     ):
         self.const = const
-        self.merge = merge
 
         super().__init__(
-            nargs=0,
+            flags=flags,
             allow_inline_arg=False,
-            metavar="",
-            **kwargs,
+            nargs=0,
+            required=required,
+            metavar=(),
+            mutex_group=mutex_group,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=show_if_inherited,
+            dest=dest,
+            merge=merge,
+            default=default,
         )
 
     def process(
@@ -1381,8 +1510,32 @@ class CountOption(StoreConstOption[int]):
 
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs, const=1, merge=lambda l, r: l + r)
+    def __init__(
+        self,
+        *,
+        flags: list[str],
+        required: bool = False,
+        mutex_group: None | MutuallyExclusiveGroup = None,
+        usage: yuio.Group | bool = True,
+        help: str | yuio.Disabled = "",
+        help_group: HelpGroup | None = None,
+        show_if_inherited: bool = False,
+        dest: str,
+        default: int | yuio.Missing = yuio.MISSING,
+    ):
+        super().__init__(
+            flags=flags,
+            required=required,
+            mutex_group=mutex_group,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=show_if_inherited,
+            dest=dest,
+            merge=lambda x, y: x + y,
+            default=default,
+            const=1,
+        )
 
     def format_metavar(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return _ColorizedString((ctx.theme.get_color("hl/flag:sh-usage"), "..."))
@@ -1395,8 +1548,32 @@ class StoreTrueOption(StoreConstOption[bool]):
 
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs, const=True)
+    def __init__(
+        self,
+        *,
+        flags: list[str],
+        required: bool = False,
+        mutex_group: None | MutuallyExclusiveGroup = None,
+        usage: yuio.Group | bool = True,
+        help: str | yuio.Disabled = "",
+        help_group: HelpGroup | None = None,
+        show_if_inherited: bool = False,
+        dest: str,
+        default: bool | yuio.Missing = yuio.MISSING,
+    ):
+        super().__init__(
+            flags=flags,
+            required=required,
+            mutex_group=mutex_group,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=show_if_inherited,
+            dest=dest,
+            merge=None,
+            default=default,
+            const=True,
+        )
 
 
 @dataclass(eq=False, kw_only=True)
@@ -1406,14 +1583,38 @@ class StoreFalseOption(StoreConstOption[bool]):
 
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs, const=False)
+    def __init__(
+        self,
+        *,
+        flags: list[str],
+        required: bool = False,
+        mutex_group: None | MutuallyExclusiveGroup = None,
+        usage: yuio.Group | bool = True,
+        help: str | yuio.Disabled = "",
+        help_group: HelpGroup | None = None,
+        show_if_inherited: bool = False,
+        dest: str,
+        default: bool | yuio.Missing = yuio.MISSING,
+    ):
+        super().__init__(
+            flags=flags,
+            required=required,
+            mutex_group=mutex_group,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=show_if_inherited,
+            dest=dest,
+            merge=None,
+            default=default,
+            const=False,
+        )
 
 
 @dataclass(eq=False, kw_only=True)
-class VersionOption(Option):
+class VersionOption(Option[_t.Never]):
     """
-    An option that prints a version and stops the program.
+    An option that prints app's version and stops the program.
 
     """
 
@@ -1428,19 +1629,21 @@ class VersionOption(Option):
         *,
         version: str,
         flags: list[str] = ["-V", "--version"],
-        help: str | None = None,
-        help_group: HelpGroup | None = AUXILIARY_GROUP,
+        usage: yuio.Group | bool = yuio.GROUP,
+        help: str | yuio.Disabled = "Print program version and exit.",
+        help_group: HelpGroup | None = MISC_GROUP,
     ):
         super().__init__(
             flags=flags,
-            nargs=0,
-            help="Print program version and exit." if help is None else help,
             allow_inline_arg=False,
-            dest="",
+            nargs=0,
             required=False,
-            metavar="",
-            show_if_inherited=True,
+            metavar=(),
+            mutex_group=None,
+            usage=usage,
+            help=help,
             help_group=help_group,
+            show_if_inherited=True,
         )
 
         self.version = version
@@ -1462,7 +1665,7 @@ class VersionOption(Option):
 
 
 @dataclass(eq=False, kw_only=True)
-class HelpOption(Option):
+class HelpOption(Option[_t.Never]):
     """
     An option that prints help message and stops the program.
 
@@ -1472,19 +1675,21 @@ class HelpOption(Option):
         self,
         *,
         flags: list[str] = ["-h", "--help"],
-        help: str | None = None,
-        help_group: HelpGroup | None = AUXILIARY_GROUP,
+        usage: yuio.Group | bool = yuio.GROUP,
+        help: str | yuio.Disabled = "Print this message and exit.",
+        help_group: HelpGroup | None = MISC_GROUP,
     ):
         super().__init__(
             flags=flags,
-            nargs=0,
-            help="Print this message and exit." if help is None else help,
             allow_inline_arg=False,
-            dest="",
+            nargs=0,
             required=False,
-            metavar="",
-            show_if_inherited=True,
+            metavar="<scope>",
+            mutex_group=None,
+            usage=usage,
+            help=help,
             help_group=help_group,
+            show_if_inherited=True,
         )
 
     def process(
@@ -1504,7 +1709,7 @@ class HelpOption(Option):
                 seen_inherited_options.add(opt)
                 inherited_options.append(opt)
         formatter.add_command(
-            cli_parser._current_command.name,
+            " ".join(cli_parser._current_path),
             cli_parser._current_command,
             list(inherited_options),
         )
@@ -1521,7 +1726,7 @@ class Command(_t.Generic[NamespaceT]):
 
     name: str
     """
-    Name of this command.
+    Canonical name of this command.
 
     """
 
@@ -1533,11 +1738,11 @@ class Command(_t.Generic[NamespaceT]):
 
     help: str | yuio.Disabled
     """
-    Help message displayed when listing subcommands.
+    Help message for this command, displayed when listing subcommands.
 
     """
 
-    epilogue: str
+    epilog: str
     """
     Long description printed after command help.
 
@@ -1549,7 +1754,7 @@ class Command(_t.Generic[NamespaceT]):
 
     """
 
-    options: list[Option]
+    options: list[Option[_t.Any]]
     """
     Options for this command.
 
@@ -1565,7 +1770,8 @@ class Command(_t.Generic[NamespaceT]):
 
     subcommand_required: bool
     """
-    Whether subcommand is required or optional.
+    Whether subcommand is required or optional. If no :attr:`~Command.subcommands`
+    are given, this attribute is ignored.
 
     """
 
@@ -1595,7 +1801,7 @@ class Command(_t.Generic[NamespaceT]):
 
 
 @dataclass(eq=False, kw_only=True)
-class _SubCommandOption(Option):
+class _SubCommandOption(ValueOption[str]):
     subcommands: dict[str, Command[Namespace]]
     """
     All subcommands.
@@ -1619,21 +1825,28 @@ class _SubCommandOption(Option):
         *,
         subcommands: dict[str, Command[Namespace]],
         subcommand_required: bool,
-        dest: str,
         ns_dest: str,
         ns_ctor: _t.Callable[[], Namespace],
-        **kwargs,
+        metavar: str = "<subcommand>",
+        help: str | yuio.Disabled = "",
+        help_group: HelpGroup | None = SUBCOMMANDS_GROUP,
+        show_if_inherited: bool = False,
+        dest: str,
     ):
         super().__init__(
-            completer=None,  # TODO!
-            usage=True,
             flags=yuio.POSITIONAL,
-            nargs=1 if subcommand_required else "?",
-            mutually_exclusive_group=None,
-            dest=dest,
             allow_inline_arg=False,
+            nargs=1 if subcommand_required else "?",
             required=False,
-            **kwargs,
+            metavar=metavar,
+            mutex_group=None,
+            usage=True,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=show_if_inherited,
+            dest=dest,
+            merge=None,
+            default=yuio.MISSING,
         )
 
         self.subcommands = subcommands
@@ -1658,27 +1871,26 @@ class _SubCommandOption(Option):
             raise ArgumentError(
                 "Unknown subcommand <c flag>%s</c>, can be %s",
                 arguments[0].value,
-                yuio.string.JoinStr.or_(self.subcommands, color="flag"),
+                yuio.string.Or(
+                    (
+                        name
+                        for name, subcommand in self.subcommands.items()
+                        if subcommand.help != yuio.DISABLED
+                    ),
+                    color="flag",
+                ),
                 arguments=arguments,
             )
         ns[self.dest] = subcommand.name
-        ns[self.ns_dest] = new_ns = self.ns_ctor()
+        ns[self.ns_dest] = new_ns = subcommand.ns_ctor()
         cli_parser._load_command(subcommand, new_ns)
 
 
 @dataclass(eq=False, match_args=False, slots=True)
 class _BoundOption:
-    wrapped: Option
+    wrapped: Option[_t.Any]
     ns: Namespace
     seen: bool = False
-
-    @property
-    def metavar(self):
-        return self.wrapped.metavar
-
-    @property
-    def completer(self):
-        return self.wrapped.completer
 
     @property
     def usage(self):
@@ -1697,14 +1909,14 @@ class _BoundOption:
         return self.wrapped.allow_inline_arg
 
     @property
-    def mutually_exclusive_group(self):
-        return self.wrapped.mutually_exclusive_group
+    def mutex_group(self):
+        return self.wrapped.mutex_group
 
     @property
     def required(self):
         return self.wrapped.required
 
-    def nth_metavar(self, n: int):
+    def nth_metavar(self, n: int) -> str:
         return self.wrapped.nth_metavar(n)
 
 
@@ -1720,13 +1932,14 @@ class CliParser(_t.Generic[NamespaceT]):
     def __init__(self, command: Command[NamespaceT]) -> None:
         self._root_command = command
         self._current_command = command
-        self._inherited_options: dict[str, Option] = {}
+        self._current_path: list[str] = []
+        self._inherited_options: dict[str, Option[_t.Any]] = {}
         self._allow_abbrev = True
 
         self._seen_mutex_groups: dict[
             MutuallyExclusiveGroup, tuple[_BoundOption, Flag]
         ] = {}
-        self._mutex_groups: dict[MutuallyExclusiveGroup, list[Option]] = {}
+        self._mutex_groups: dict[MutuallyExclusiveGroup, list[Option[_t.Any]]] = {}
 
         self._current_index = 0
 
@@ -1750,20 +1963,37 @@ class CliParser(_t.Generic[NamespaceT]):
         self._inherited_options.update(
             {flag: opt.wrapped for flag, opt in self._known_short_flags.items()}
         )
+        self._current_path.append(command.name)
 
         # Update known flags and positionals.
         self._positionals = []
+        seen_flags: set[str] = set()
         for option in command.options:
             bound_option = _BoundOption(option, ns)
             if option.flags is yuio.POSITIONAL:
+                if option.mutex_group is not None:
+                    raise TypeError(
+                        f"{option}: positional arguments can't appear "
+                        "in mutually exclusive groups"
+                    )
+                if option.nargs == 0:
+                    raise TypeError(
+                        f"{option}: positional arguments can't nave nargs=0"
+                    )
                 self._positionals.append(bound_option)
             else:
-                if option.mutually_exclusive_group is not None:
-                    self._mutex_groups.setdefault(
-                        option.mutually_exclusive_group, []
-                    ).append(option)
+                if option.mutex_group is not None:
+                    self._mutex_groups.setdefault(option.mutex_group, []).append(option)
+                if not option.flags:
+                    raise TypeError(f"{option}: option has no flags")
                 for flag in option.flags:
+                    if flag in seen_flags:
+                        raise TypeError(
+                            f"got multiple options with the same flag {flag}"
+                        )
+                    seen_flags.add(flag)
                     self._inherited_options.pop(flag, None)
+                    _check_flag(flag)
                     if _is_short(flag):
                         dest = self._known_short_flags
                     else:
@@ -1795,7 +2025,6 @@ class CliParser(_t.Generic[NamespaceT]):
 
         """
 
-        prog = self._root_command.name or sys.argv[0]
         if args is None:
             args = sys.argv[1:]
 
@@ -1803,7 +2032,7 @@ class CliParser(_t.Generic[NamespaceT]):
             return self._parse(args)
         except ArgumentError as e:
             e.commandline = args
-            e.prog = prog
+            e.prog = self._root_command.name
             raise
 
     def _parse(self, args: list[str]) -> NamespaceT:
@@ -1854,7 +2083,7 @@ class CliParser(_t.Generic[NamespaceT]):
                 raise ArgumentError(
                     "%s %s must be provided",
                     "Either" if len(options) > 1 else "Flag",
-                    yuio.string.JoinStr.or_(
+                    yuio.string.Or(
                         (option.flags[0] for option in options if option.flags),
                         color="flag",
                     ),
@@ -1893,7 +2122,7 @@ class CliParser(_t.Generic[NamespaceT]):
             return [(long_opt, flag)], inline_arg
 
         # Try as abbreviated long flags.
-        candidates = []
+        candidates: list[str] = []
         if self._allow_abbrev:
             for candidate in self._known_long_flags:
                 if candidate.startswith(flag.value):
@@ -1901,17 +2130,18 @@ class CliParser(_t.Generic[NamespaceT]):
             if len(candidates) == 1:
                 candidate = candidates[0]
                 opt = self._known_long_flags[candidate]
+                flag = self._make_flag(candidate)
                 if inline_arg is not None:
                     inline_arg = self._make_arg(
                         opt, inline_arg, len(flag.value) + 1, flag
                     )
-                return [(opt, candidate)], inline_arg
+                return [(opt, flag)], inline_arg
 
         if candidates:
             raise ArgumentError(
                 "Unknown flag <c flag>%s</c>, can be %s",
                 flag,
-                yuio.string.JoinStr.or_(candidates, color="flag"),
+                yuio.string.Or(candidates, color="flag"),
                 flag=self._make_flag(""),
             )
         else:
@@ -2093,14 +2323,14 @@ class CliParser(_t.Generic[NamespaceT]):
     def _eval_option(
         self, opt: _BoundOption, flag: Flag | None, arguments: Argument | list[Argument]
     ):
-        if opt.mutually_exclusive_group is not None:
-            if seen := self._seen_mutex_groups.get(opt.mutually_exclusive_group):
+        if opt.mutex_group is not None:
+            if seen := self._seen_mutex_groups.get(opt.mutex_group):
                 raise ArgumentError(
                     "Flag <c flag>%s</c> can't be given together with flag <c flag>%s</c>",
                     flag or self._make_flag(opt.nth_metavar(0)),
                     seen[1],
                 )
-            self._seen_mutex_groups[opt.mutually_exclusive_group] = (
+            self._seen_mutex_groups[opt.mutex_group] = (
                 opt,
                 flag or self._make_flag(opt.nth_metavar(0)),
             )
@@ -2121,19 +2351,21 @@ class CliParser(_t.Generic[NamespaceT]):
             raise ArgumentError.from_parsing_error(e, flag=flag, arguments=arguments)
 
 
-def _is_short(flag: str):
+def _check_flag(flag: str):
     if not flag.startswith("-"):
         raise TypeError(f"flag {flag!r} should start with `-`")
     if len(flag) == 2:
         if not re.match(_SHORT_FLAG_RE, flag):
             raise TypeError(f"invalid short flag {flag!r}")
-        return True
     elif len(flag) == 1:
         raise TypeError(f"flag {flag!r} is too short")
     else:
         if not re.match(_LONG_FLAG_RE, flag):
             raise TypeError(f"invalid long flag {flag!r}")
-        return False
+
+
+def _is_short(flag: str):
+    return flag.startswith("-") and len(flag) == 2 and flag != "--"
 
 
 def _make_subcommand(command: Command[Namespace]):
@@ -2183,18 +2415,6 @@ def _check_nargs(opt: _BoundOption, flag: Flag | None, args: list[Argument]):
                     ),
                     flag=flag,
                 )
-            elif len(args) < n and (isinstance(opt.metavar, tuple)):
-                s = "" if n == 1 else "s"
-                raise ArgumentError(
-                    "Expected %s argument%s, got %s; missing %s",
-                    n,
-                    s,
-                    len(args),
-                    yuio.string.JoinStr(
-                        [opt.nth_metavar(i) for i in range(len(args), n)], color="flag"
-                    ),
-                    flag=flag,
-                )
             elif len(args) != n:
                 s = "" if n == 1 else "s"
                 raise ArgumentError(
@@ -2234,11 +2454,12 @@ def _quote(s: str):
 
 
 class _HelpFormatter:
-    def __init__(self) -> None:
+    def __init__(self, all: bool = False) -> None:
         self.nodes: list[yuio.md.AstBase] = []
+        self.all = all
 
     def add_command(
-        self, prog: str, cmd: Command[Namespace], inherited: list[Option], /
+        self, prog: str, cmd: Command[Namespace], inherited: list[Option[_t.Any]], /
     ):
         self._add_usage(prog, cmd, inherited)
         if cmd.desc:
@@ -2246,9 +2467,9 @@ class _HelpFormatter:
         self._add_options(cmd)
         self._add_subcommands(cmd)
         self._add_flags(cmd, inherited)
-        if cmd.epilogue:
+        if cmd.epilog:
             self.nodes.append(_ResetIndentation())
-            self.nodes.extend(yuio.md.parse(cmd.epilogue).items)
+            self.nodes.extend(yuio.md.parse(cmd.epilog).items)
 
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return self.format(ctx)
@@ -2262,12 +2483,12 @@ class _HelpFormatter:
         return res
 
     def _add_usage(
-        self, prog: str, cmd: Command[Namespace], inherited: list[Option], /
+        self, prog: str, cmd: Command[Namespace], inherited: list[Option[_t.Any]], /
     ):
         self.nodes.append(_Usage(prog=prog, cmd=cmd, inherited=inherited))
 
     def _add_options(self, cmd: Command[Namespace], /):
-        groups: dict[HelpGroup, list[Option]] = {}
+        groups: dict[HelpGroup, list[Option[_t.Any]]] = {}
         for opt in cmd.options:
             if opt.flags is not yuio.POSITIONAL:
                 continue
@@ -2311,8 +2532,10 @@ class _HelpFormatter:
             arg_group.items.append(_HelpSubCommand(names, subcommand.help))
         self.nodes.append(arg_group)
 
-    def _add_flags(self, cmd: Command[Namespace], inherited: list[Option], /):
-        groups: dict[HelpGroup, tuple[list[Option], list[Option], int]] = {}
+    def _add_flags(self, cmd: Command[Namespace], inherited: list[Option[_t.Any]], /):
+        groups: dict[
+            HelpGroup, tuple[list[Option[_t.Any]], list[Option[_t.Any]], int]
+        ] = {}
         for i, opt in enumerate(cmd.options + inherited):
             if not opt.flags:
                 continue
@@ -2324,11 +2547,9 @@ class _HelpFormatter:
             is_inherited = i >= len(cmd.options)
             if group not in groups:
                 groups[group] = ([], [], 0)
-            if opt.required or (
-                opt.mutually_exclusive_group and opt.mutually_exclusive_group.required
-            ):
+            if opt.required or (opt.mutex_group and opt.mutex_group.required):
                 groups[group][0].append(opt)
-            elif is_inherited and not opt.show_if_inherited:
+            elif is_inherited and not opt.show_if_inherited and not self.all:
                 required, optional, n_inherited = groups[group]
                 groups[group] = required, optional, n_inherited + 1
             else:
@@ -2450,11 +2671,11 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             )
 
     def _build_usage(self, node: _Usage):
-        flags_and_groups: list[Option | tuple[MutuallyExclusiveGroup, list[Option]]] = (
-            []
-        )
-        positionals: list[Option] = []
-        groups: dict[MutuallyExclusiveGroup, list[Option]] = {}
+        flags_and_groups: list[
+            Option[_t.Any] | tuple[MutuallyExclusiveGroup, list[Option[_t.Any]]]
+        ] = []
+        positionals: list[Option[_t.Any]] = []
+        groups: dict[MutuallyExclusiveGroup, list[Option[_t.Any]]] = {}
         has_grouped_flags = False
 
         for i, opt in enumerate(node.cmd.options + node.inherited):
@@ -2463,21 +2684,17 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
                 continue
             if opt.flags is yuio.POSITIONAL:
                 positionals.append(opt)
-            elif opt.help_group and opt.help_group.usage is yuio.GROUP:
-                has_grouped_flags = True
-            elif opt.help_group and not opt.help_group.usage:
-                pass
             elif opt.usage is yuio.GROUP:
                 has_grouped_flags = True
             elif not opt.usage:
                 pass
-            elif opt.mutually_exclusive_group:
-                if opt.mutually_exclusive_group not in groups:
+            elif opt.mutex_group:
+                if opt.mutex_group not in groups:
                     group_items = []
-                    groups[opt.mutually_exclusive_group] = group_items
-                    flags_and_groups.append((opt.mutually_exclusive_group, group_items))
+                    groups[opt.mutex_group] = group_items
+                    flags_and_groups.append((opt.mutex_group, group_items))
                 else:
-                    group_items = groups[opt.mutually_exclusive_group]
+                    group_items = groups[opt.mutex_group]
                 group_items.append(opt)
             else:
                 flags_and_groups.append(opt)
@@ -2556,6 +2773,24 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
                 positional.format_usage(self.ctx)[0].with_base_color(self.base_color)
             )
 
+        if node.cmd.subcommands:
+            res.append_str(" ")
+            if not node.cmd.subcommand_required:
+                res.append_color(self.punct_color)
+                res.append_str("[")
+            res.append_colorized_str(
+                _format_metavar(node.cmd.metavar, self.ctx).with_base_color(
+                    self.base_color
+                )
+            )
+            res.append_color(self.base_color)
+            res.append_str(" ")
+            res.append_color(self.metavar_color)
+            res.append_str("...")
+            if not node.cmd.subcommand_required:
+                res.append_color(self.punct_color)
+                res.append_str("]")
+
         return res
 
     def _format_HelpOpt(self, node: _HelpOpt):
@@ -2574,6 +2809,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
                 lead.append_str(", ")
             lead.append_color(self.flag_color)
             lead.append_str(flag)
+            sep = True
 
         lead.append_colorized_str(
             node.arg.format_metavar(self.ctx).with_base_color(self.base_color)
@@ -2623,6 +2859,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
                 lead.append_str(", ")
             lead.append_color(self.flag_color)
             lead.append_str(name)
+            sep = True
 
         help = node.help
 
@@ -2643,7 +2880,9 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         raw = _ColorizedString()
         s = "" if node.n_inherited == 1 else "s"
         raw.append_color(self.theme.get_color("secondary_color"))
-        raw.append_str(f"  +{node.n_inherited} global option{s}")
+        raw.append_str(
+            f"  +{node.n_inherited} global option{s}, use --help=all to show"
+        )
         self._line(raw)
 
     def _format_HelpArgGroup(self, node: _HelpArgGroup):
@@ -2666,18 +2905,18 @@ class _ResetIndentation(yuio.md.AstBase):
 class _Usage(yuio.md.AstBase):
     prog: str
     cmd: Command[Namespace]
-    inherited: list[Option]
+    inherited: list[Option[_t.Any]]
     prefix: str = "Usage: "
 
 
 @dataclass(eq=False, match_args=False, slots=True)
 class _HelpOpt(yuio.md.AstBase):
-    arg: Option
+    arg: Option[_t.Any]
 
 
 @dataclass(eq=False, match_args=False, slots=True)
 class _HelpArg(yuio.md.AstBase):
-    arg: Option
+    arg: Option[_t.Any]
 
 
 @dataclass(eq=False, match_args=False, slots=True)

@@ -250,20 +250,56 @@ will be concatenated.
 Re-imports
 ----------
 
+
 .. function:: field
     :no-index:
 
-    Alias of :obj:`yuio.app.field`.
+    Alias of :obj:`yuio.app.field`
 
 .. function:: inline
     :no-index:
 
-    Alias of :obj:`yuio.app.inline`.
+    Alias of :obj:`yuio.app.inline`
 
 .. function:: positional
     :no-index:
 
-    Alias of :obj:`yuio.app.positional`.
+    Alias of :obj:`yuio.app.positional`
+
+.. function:: bool_option
+    :no-index:
+
+    Alias of :obj:`yuio.app.bool_option`
+
+.. function:: count_option
+    :no-index:
+
+    Alias of :obj:`yuio.app.count_option`
+
+.. function:: parse_many_option
+    :no-index:
+
+    Alias of :obj:`yuio.app.parse_many_option`
+
+.. function:: parse_one_option
+    :no-index:
+
+    Alias of :obj:`yuio.app.parse_one_option`
+
+.. function:: store_const_option
+    :no-index:
+
+    Alias of :obj:`yuio.app.store_const_option`
+
+.. function:: store_false_option
+    :no-index:
+
+    Alias of :obj:`yuio.app.store_false_option`
+
+.. function:: store_true_option
+    :no-index:
+
+    Alias of :obj:`yuio.app.store_true_option`
 
 .. type:: HelpGroup
     :no-index:
@@ -275,11 +311,35 @@ Re-imports
 
     Alias of :obj:`yuio.cli.MutuallyExclusiveGroup`.
 
+.. type:: OptionCtor
+    :no-index:
+
+    Alias of :obj:`yuio.app.OptionCtor`.
+
+.. type:: OptionSettings
+    :no-index:
+
+    Alias of :obj:`yuio.app.OptionSettings`.
+
+.. data:: MISC_GROUP
+    :no-index:
+
+    Alias of :obj:`yuio.cli.MISC_GROUP`.
+
+.. data:: OPTS_GROUP
+    :no-index:
+
+    Alias of :obj:`yuio.cli.OPTS_GROUP`.
+
+.. data:: SUBCOMMANDS_GROUP
+    :no-index:
+
+    Alias of :obj:`yuio.cli.SUBCOMMANDS_GROUP`.
+
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import pathlib
@@ -288,21 +348,40 @@ import types
 from dataclasses import dataclass
 
 import yuio
+import yuio.cli
 import yuio.complete
 import yuio.json_schema
 import yuio.parse
 import yuio.string
 from yuio import _typing as _t
-from yuio.cli import HelpGroup, MutuallyExclusiveGroup
+from yuio.cli import (
+    MISC_GROUP,
+    OPTS_GROUP,
+    SUBCOMMANDS_GROUP,
+    HelpGroup,
+    MutuallyExclusiveGroup,
+)
 from yuio.util import _find_docs
 
 __all__ = [
+    "MISC_GROUP",
+    "OPTS_GROUP",
+    "SUBCOMMANDS_GROUP",
     "Config",
     "HelpGroup",
     "MutuallyExclusiveGroup",
+    "OptionCtor",
+    "OptionSettings",
+    "bool_option",
+    "count_option",
     "field",
     "inline",
+    "parse_many_option",
+    "parse_one_option",
     "positional",
+    "store_const_option",
+    "store_false_option",
+    "store_true_option",
 ]
 
 T = _t.TypeVar("T")
@@ -318,10 +397,12 @@ class _FieldSettings:
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None
     completer: yuio.complete.Completer | None = None
     metavar: str | None = None
-    required: bool = False
+    required: bool | None = None
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None
-    group: MutuallyExclusiveGroup | None = None
+    mutex_group: MutuallyExclusiveGroup | None = None
+    help_group: HelpGroup | None = None
     usage: yuio.Group | bool | None = None
+    option_ctor: _t.Callable[[OptionSettings], _t.Any] | None = None
 
     def _update_defaults(
         self,
@@ -345,8 +426,6 @@ class _FieldSettings:
             help = ty.__doc__
         else:
             help = ""
-        if help == argparse.SUPPRESS:
-            help = yuio.DISABLED
 
         env: str | yuio.Disabled
         if self.env is not None:
@@ -357,58 +436,62 @@ class _FieldSettings:
             raise TypeError(f"{qualname} got an empty env variable name")
 
         flags: list[str] | yuio.Positional | yuio.Disabled
-        if self.flags is yuio.DISABLED or self.flags is yuio.POSITIONAL:
+        if self.flags is yuio.DISABLED:
             flags = self.flags
-            if not allow_positionals and flags is yuio.POSITIONAL:
+        elif self.flags is yuio.POSITIONAL:
+            if not allow_positionals:
                 raise TypeError(
                     f"{qualname}: positional arguments are not allowed in configs"
                 )
+            if is_subconfig:
+                raise TypeError(
+                    f"error in {qualname}: nested configs can't be positional"
+                )
+            flags = self.flags
         elif self.flags is None:
             flags = ["--" + name.replace("_", "-")]
-        elif isinstance(self.flags, str):
-            flags = [self.flags]
         else:
-            if not self.flags:
-                raise TypeError(f"{qualname} should have at least one flag")
-            flags = self.flags
-        if flags is not yuio.DISABLED and flags is not yuio.POSITIONAL:
-            for flag in flags:
-                if flag and not flag.startswith("-"):
-                    raise TypeError(f"{qualname}: flag should start with a dash")
-                if not flag and not is_subconfig:
-                    raise TypeError(f"{qualname} got an empty flag")
+            if isinstance(self.flags, str):
+                flags = self.flags.split() or [""]
+            else:
+                flags = self.flags
 
-        default = self.default
-
-        parser = self.parser
-
-        required = self.required
-
-        if is_subconfig:
-            if default is not yuio.MISSING:
-                raise TypeError(
-                    f"error in {qualname}: nested configs can't have defaults"
-                )
-
-            if parser is not None:
-                raise TypeError(
-                    f"error in {qualname}: nested configs can't have parsers"
-                )
-
-            if flags is not yuio.DISABLED:
-                if flags is yuio.POSITIONAL:
+            if is_subconfig:
+                if not flags:
                     raise TypeError(
-                        f"error in {qualname}: nested configs can't be positional"
+                        f"error in {qualname}: nested configs should have exactly one flag; "
+                        "to disable prefixing, pass an empty string as a flag"
                     )
                 if len(flags) > 1:
                     raise TypeError(
                         f"error in {qualname}: nested configs can't have multiple flags"
                     )
-                if flags[0] and not flags[0].startswith("--"):
-                    raise TypeError(
-                        f"error in {qualname}: nested configs can't have a short flag"
-                    )
-        elif parser is None:
+                if flags[0]:
+                    if not flags[0].startswith("--"):
+                        raise TypeError(
+                            f"error in {qualname}: nested configs can't have a short flag"
+                        )
+                    try:
+                        yuio.cli._check_flag(flags[0])
+                    except TypeError as e:
+                        raise TypeError(f"error in {qualname}: {e}") from None
+            else:
+                if not flags:
+                    raise TypeError(f"{qualname} should have at least one flag")
+                for flag in flags:
+                    try:
+                        yuio.cli._check_flag(flag)
+                    except TypeError as e:
+                        raise TypeError(f"error in {qualname}: {e}") from None
+
+        default = self.default
+        if is_subconfig and default is not yuio.MISSING:
+            raise TypeError(f"error in {qualname}: nested configs can't have defaults")
+
+        parser = self.parser
+        if is_subconfig and parser is not None:
+            raise TypeError(f"error in {qualname}: nested configs can't have parsers")
+        elif not is_subconfig and parser is None:
             try:
                 parser = yuio.parse.from_type_hint(ty_with_extras)
             except TypeError as e:
@@ -416,46 +499,54 @@ class _FieldSettings:
                     f"can't derive parser for {qualname}:\n"
                     + textwrap.indent(str(e), "  ")
                 ) from None
-
         if parser is not None:
             origin = _t.get_origin(ty)
             args = _t.get_args(ty)
-
             is_optional = (
                 default is None or _t.is_union(origin) and types.NoneType in args
             )
-
             if is_optional and not yuio.parse._is_optional_parser(parser):
                 parser = yuio.parse.Optional(parser)
+            completer = self.completer
+            metavar = self.metavar
+            if not metavar and flags is yuio.POSITIONAL:
+                metavar = f"<{name.replace('_', '-')}>"
+            if completer is not None or metavar is not None:
+                parser = yuio.parse.WithMeta(parser, desc=metavar, completer=completer)
 
-            if (
-                flags is yuio.POSITIONAL
-                and default is not yuio.MISSING
-                and parser.supports_parse_many()
-            ):
-                raise TypeError(
-                    f"{qualname}: positional multi-value arguments can't have defaults"
-                )
-
-        completer = self.completer
-        metavar = self.metavar
-        if parser is not None and (completer is not None or metavar is not None):
-            parser = yuio.parse.WithMeta(parser, desc=metavar, completer=completer)
+        required = self.required
+        if is_subconfig and required:
+            raise TypeError(f"error in {qualname}: nested configs can't be required")
+        if required is None:
+            if is_subconfig:
+                required = False
+            elif allow_positionals:
+                required = default is yuio.MISSING
+            else:
+                required = False
 
         merge = self.merge
-
         if is_subconfig and merge is not None:
-            raise TypeError(f"error in {qualname}: nested configs can't have merge")
+            raise TypeError(
+                f"error in {qualname}: nested configs can't have merge function"
+            )
 
-        group = self.group
-
-        if is_subconfig and group is not None:
+        mutex_group = self.mutex_group
+        if is_subconfig and mutex_group is not None:
             raise TypeError(
                 f"error in {qualname}: nested configs can't be a part "
                 "of a mutually exclusive group"
             )
+        if flags is yuio.POSITIONAL and mutex_group is not None:
+            raise TypeError(
+                f"error in {qualname}: positional arguments can't appear in mutually exclusive groups"
+            )
 
         usage = self.usage
+        if usage is None:
+            usage = True
+
+        help_group = self.help_group
 
         return _Field(
             default,
@@ -467,7 +558,8 @@ class _FieldSettings:
             ty,
             required,
             merge,
-            group,
+            mutex_group,
+            help_group,
             usage,
         )
 
@@ -484,7 +576,9 @@ class _Field:
     required: bool
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
     mutex_group: MutuallyExclusiveGroup | None
-    usage: yuio.Group | bool | None = None
+    help_group: HelpGroup | None
+    usage: yuio.Group | bool | None
+    option_ctor: _t.Callable[[OptionSettings], _t.Any] | None = None
 
 
 @_t.overload
@@ -495,6 +589,7 @@ def field(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    required: bool | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
     help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
@@ -507,12 +602,14 @@ def field(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    required: bool | None = None,
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
     help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
+    option_ctor: OptionCtor[T] | None = None,
 ) -> T | None: ...
 @_t.overload
 def field(
@@ -522,12 +619,14 @@ def field(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    required: bool | None = None,
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
     help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
+    option_ctor: OptionCtor[T] | None = None,
 ) -> T: ...
 def field(
     *,
@@ -536,39 +635,39 @@ def field(
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    required: bool | None = None,
     completer: yuio.complete.Completer | None = None,
     metavar: str | None = None,
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
     help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
+    option_ctor: _t.Callable[..., _t.Any] | None = None,
 ) -> _t.Any:
     """
-    Field descriptor, used for additional configuration of CLI arguments
+    Field descriptor, used for additional configuration of CLI options
     and config fields.
 
     :param default:
-        default value for the field or CLI argument.
+        default value for the field or CLI option.
     :param parser:
-        parser that will be used to parse config values and CLI arguments.
+        parser that will be used to parse config values and CLI options.
     :param help:
-        help message that will be used in CLI argument description.
+        help message that will be used in CLI option description,
+        formatted using Markdown (see :mod:`yuio.md`).
 
-        Pass :data:`~yuio.DISABLED` to remove this field from CLI help.
+        Pass :data:`yuio.DISABLED` to remove this field from CLI help.
 
-        Help messages are formatted using Markdown (see :mod:`yuio.md`).
-
-        By default, first paragraph of the field's documentation is used.
-        The documentation is processed using markdown parser; additionally, RST roles
-        are processed, trailing dot is removed, and capitalization is normalized
-        to match style of default help messages.
+        In sub-config fields, controls grouping of fields; pass an empty string
+        to disable grouping.
     :param env:
-        in configs, specifies name of environment variable that will be used
-        if loading config from environment variable.
+        specifies name of environment variable that will be used if loading config
+        from environment.
 
-        Pass :data:`~yuio.DISABLED` to disable loading this field form environment variable.
+        Pass :data:`~yuio.DISABLED` to disable loading this field form environment.
 
-        Pass an empty string to disable prefixing nested config variables.
+        In sub-config fields, controls prefix for all environment variables within
+        this sub-config; pass an empty string to disable prefixing.
     :param flags:
         list of names (or a single name) of CLI flags that will be used for this field.
 
@@ -576,7 +675,8 @@ def field(
 
         In apps, pass :data:`~yuio.POSITIONAL` to make this argument positional.
 
-        Pass an empty string to disable prefixing nested config flags.
+        In sub-config fields, controls prefix for all flags withing this sub-config;
+        pass an empty string to disable prefixing.
     :param completer:
         completer that will be used for autocompletion in CLI. Using this option
         is equivalent to overriding ``completer`` with :class:`yuio.parse.WithMeta`.
@@ -586,16 +686,28 @@ def field(
     :param merge:
         defines how values of this field are merged when configs are updated.
     :param mutex_group:
-        defines mutually exclusive group for this field. Create an instance
-        of :class:`yuio.cli.MutuallyExclusiveGroup` and pass it to all fields that
-        should be mutually exclusive.
+        defines mutually exclusive group for this field.
     :param help_group:
-        defines group in which this field will be placed when generating CLI help
-        message. By default, help group is inherited from current config class.
+        overrides group in which this field will be placed when generating CLI help
+        message.
     :param usage:
-        controls how this field renders in CLI usage section. Passing :data:`False`
-        removes this field from usage, and passing :class:`yuio.GROUP` replaces all
-        omitted fields with a single string ``"<options>"``.
+        controls how this field renders in CLI usage section.
+
+        Pass :data:`False` to remove this field from usage.
+
+        Pass :class:`yuio.GROUP` to omit this field and add a single string
+        ``<options>`` instead.
+
+        Setting ``usage`` on sub-config fields overrides default ``usage`` for all
+        fields within this sub-config.
+    :param option_ctor:
+        this parameter is similar to :mod:`argparse`\\ 's ``action``: it allows
+        overriding logic for handling CLI arguments by providing a custom
+        :class:`~yuio.cli.Option` implementation.
+
+        ``option_ctor`` should be a callable which takes a single positional argument
+        of type :class:`~yuio.app.OptionSettings`, and returns an instance
+        of :class:`yuio.cli.Option`.
     :returns:
         a magic object that will be replaced with field's default value once a new
         config class is created.
@@ -614,10 +726,10 @@ def field(
                 input: pathlib.Path | None = None,
 
                 # Will be loaded from `-o` or `--output`.
-                output: pathlib.Path | None = field(default=None, flags=['-p', '--pid'])
+                output: pathlib.Path | None = field(default=None, flags="-o --output")
             ):
                 ...
-    :example:
+
         In configs:
 
         .. code-block:: python
@@ -632,21 +744,25 @@ def field(
 
     return _FieldSettings(
         default=default,
-        completer=completer,
-        metavar=metavar,
         parser=parser,
         help=help,
         env=env,
         flags=flags,
+        completer=completer,
+        metavar=metavar,
+        required=required,
         merge=merge,
-        group=mutex_group,
+        mutex_group=mutex_group,
+        help_group=help_group,
         usage=usage,
+        option_ctor=option_ctor,
     )
 
 
 def inline(
     help: str | yuio.Disabled | None = None,
     usage: yuio.Group | bool | None = None,
+    help_group: HelpGroup | None = None,
 ) -> _t.Any:
     """
     A shortcut for inlining nested configs.
@@ -656,7 +772,7 @@ def inline(
 
     """
 
-    return field(help=help, env="", flags="", usage=usage)
+    return field(help=help, env="", flags="", usage=usage, help_group=help_group)
 
 
 @_t.overload
@@ -717,53 +833,6 @@ def positional(
         metavar=metavar,
         usage=usage,
     )
-
-
-def _action(
-    field: _Field,
-    usage: yuio.Group | bool,
-    parse_many: bool = False,
-    const: _t.Any = yuio.MISSING,
-):
-    class Action(argparse.Action):
-        @staticmethod
-        def get_parser():
-            return field.parser
-
-        @staticmethod
-        def get_merge():
-            return field.merge
-
-        @staticmethod
-        def get_usage():
-            return usage
-
-        def __call__(self, _, namespace, values, option_string=None):
-            try:
-                if const is not yuio.MISSING:
-                    assert field.parser
-                    assert values == []
-                    parsed = field.parser.parse_config(const)
-                elif parse_many:
-                    if values is yuio.MISSING:
-                        values = []
-                    assert values is not None
-                    assert not isinstance(values, str)
-                    assert field.parser
-                    parsed = field.parser.parse_many(values)
-                else:
-                    if values is yuio.MISSING:
-                        return
-                    assert isinstance(values, str)
-                    assert field.parser
-                    parsed = field.parser.parse(values)
-            except argparse.ArgumentTypeError as e:
-                raise argparse.ArgumentError(self, str(e))
-            # Note: merge will be executed in `namespace.__setattr__`,
-            # see `yuio.app._Namespace`.
-            setattr(namespace, self.dest, parsed)
-
-    return Action
 
 
 @_t.dataclass_transform(
@@ -976,78 +1045,27 @@ class Config:
         return cls(**fields)
 
     @classmethod
-    def _load_from_namespace(
-        cls,
-        namespace: argparse.Namespace,
-        /,
-        *,
-        ns_prefix: str = "",
-    ) -> _t.Self:
-        result = cls.__load_from_namespace(namespace, ns_prefix + ":")
-        result.validate_config()
-        return result
+    def _build_options(cls):
+        return cls.__build_options("", "", None, True)
 
     @classmethod
-    def __load_from_namespace(
-        cls, namespace: argparse.Namespace, prefix: str
-    ) -> _t.Self:
-        fields = {}
-
-        for name, field in cls.__get_fields().items():
-            if field.flags is yuio.DISABLED:
-                continue
-
-            dest = prefix + name
-
-            if field.is_subconfig:
-                fields[name] = field.ty.__load_from_namespace(namespace, dest + ".")
-            elif hasattr(namespace, dest):
-                fields[name] = getattr(namespace, dest)
-
-        return cls(**fields)
-
-    @classmethod
-    def _setup_arg_parser(
+    def __build_options(
         cls,
-        parser: argparse.ArgumentParser,
-        /,
-        *,
-        group: argparse.ArgumentParser | None = None,
-        ns_prefix: str = "",
-    ):
-        group = group or parser
-        cls.__setup_arg_parser(group, parser, "", ns_prefix + ":", False, 0, True)
-
-    @classmethod
-    def __setup_arg_parser(
-        cls,
-        group: argparse.ArgumentParser,
-        parser: argparse.ArgumentParser,
         prefix: str,
         dest_prefix: str,
-        suppress_help: bool,
-        depth: int,
+        help_group: yuio.cli.HelpGroup | None,
         usage: yuio.Group | bool,
-    ):
+    ) -> list[yuio.cli.Option[_t.Any]]:
+        options: list[yuio.cli.Option[_t.Any]] = []
+
         if prefix:
             prefix += "-"
-
-        mutex_groups = {}
 
         for name, field in cls.__get_fields().items():
             if field.flags is yuio.DISABLED:
                 continue
 
             dest = dest_prefix + name
-
-            if suppress_help or field.help is yuio.DISABLED:
-                help = argparse.SUPPRESS
-                current_suppress_help = True
-                current_usage = field.usage if field.usage is not None else False
-            else:
-                help = field.help
-                current_suppress_help = False
-                current_usage = field.usage if field.usage is not None else usage
 
             flags: list[str] | yuio.Positional
             if prefix and field.flags is not yuio.POSITIONAL:
@@ -1057,118 +1075,52 @@ class Config:
 
             if field.is_subconfig:
                 assert flags is not yuio.POSITIONAL
-                if current_suppress_help:
-                    subgroup = group
+                assert issubclass(field.ty, Config)
+                if field.help_group is None:
+                    if field.help is yuio.DISABLED:
+                        subgroup = yuio.cli.HelpGroup("", help=yuio.DISABLED)
+                    elif field.help:
+                        lines = field.help.split("\n\n", 1)
+                        title = lines[0].replace("\n", " ").rstrip(".") or name
+                        help = textwrap.dedent(lines[1]) if len(lines) > 1 else ""
+                        subgroup = yuio.cli.HelpGroup(title=title, help=help)
+                    else:
+                        subgroup = help_group
                 else:
-                    lines = help.split("\n\n", 1)
-                    title = lines[0].replace("\n", " ").rstrip(".") or name
-                    desc = textwrap.dedent(lines[1]) if len(lines) > 1 else None
-                    subgroup = parser.add_argument_group(title, desc)
-                field.ty.__setup_arg_parser(
-                    subgroup,
-                    parser,
-                    flags[0],
-                    dest + ".",
-                    current_suppress_help,
-                    depth + 1,
-                    current_usage,
+                    subgroup = field.help_group
+                options.extend(
+                    field.ty.__build_options(
+                        flags[0],
+                        dest + ".",
+                        subgroup,
+                        field.usage if field.usage is not None else usage,
+                    )
                 )
                 continue
-            else:
-                assert field.parser is not None
 
-            parse_many = field.parser.supports_parse_many()
+            assert field.parser is not None
 
-            if flags is yuio.POSITIONAL:
-                metavar = f"<{name.replace('_', '-')}>"
-            elif parse_many:
-                metavar = field.parser.describe_many()
-            else:
-                metavar = field.parser.describe_or_def()
-
-            nargs = field.parser.get_nargs()
-            if (
-                flags is yuio.POSITIONAL
-                and field.default is not yuio.MISSING
-                and nargs is None
-            ):
-                nargs = "?"
-            nargs_kw: _t.Any = {"nargs": nargs} if nargs is not None else {}
-
-            if field.mutex_group is not None:
-                if field.mutex_group not in mutex_groups:
-                    mutex_groups[field.mutex_group] = (
-                        group.add_mutually_exclusive_group(
-                            required=field.mutex_group.required
-                        )
-                    )
-                field_group = mutex_groups[field.mutex_group]
-            else:
-                field_group = None
-
-            if flags is yuio.POSITIONAL:
-                (field_group or group).add_argument(
-                    dest,
-                    default=yuio.MISSING,
-                    help=help,
-                    metavar=metavar,
-                    action=_action(field, current_usage, parse_many),
-                    **nargs_kw,
-                )
-            elif yuio.parse._is_bool_parser(field.parser):
-                mutex_group = field_group or group.add_mutually_exclusive_group(
-                    required=field.required
-                )
-
-                if depth > 0 or not isinstance(field.default, bool):
-                    pos_help = help
-                    neg_help = None
-                elif field.default:
-                    pos_help = argparse.SUPPRESS
-                    neg_help = help
-                else:
-                    pos_help = help
-                    neg_help = argparse.SUPPRESS
-
-                mutex_group.add_argument(
-                    *flags,
-                    default=yuio.MISSING,
-                    help=pos_help,
-                    dest=dest,
-                    action=_action(field, current_usage, const=True),
-                    nargs=0,
-                )
-
-                assert field.flags is not yuio.POSITIONAL
-                for flag in field.flags:
-                    if flag.startswith("--"):
-                        flag_neg = (prefix or "--") + "no-" + flag[2:]
-                        if current_suppress_help or neg_help == argparse.SUPPRESS:
-                            help = argparse.SUPPRESS
-                        elif neg_help:
-                            help = neg_help
-                        else:
-                            help = f"disable <c hl/flag:sh-usage>{(prefix or '--') + flag[2:]}</c>"
-                        mutex_group.add_argument(
-                            flag_neg,
-                            default=yuio.MISSING,
-                            help=help,
-                            dest=dest,
-                            action=_action(field, current_usage, const=False),
-                            nargs=0,
-                        )
-                        break
-            else:
-                (field_group or group).add_argument(
-                    *flags,
-                    default=yuio.MISSING,
-                    help=help,
-                    metavar=metavar,
+            option_ctor = field.option_ctor or _default_option
+            option = option_ctor(
+                OptionSettings(
+                    name=name,
+                    parser=field.parser,
+                    flags=flags,
                     required=field.required,
+                    mutex_group=field.mutex_group,
+                    usage=field.usage if field.usage is not None else usage,
+                    help=field.help,
+                    help_group=field.help_group or help_group,
+                    show_if_inherited=False,  # TODO
+                    merge=field.merge,
                     dest=dest,
-                    action=_action(field, current_usage, parse_many),
-                    **nargs_kw,
+                    default=field.default,
+                    long_flag_prefix=prefix or "--",
                 )
+            )
+            options.append(option)
+
+        return options
 
     @classmethod
     def load_from_json_file(
@@ -1527,3 +1479,398 @@ class Config:
 
 
 Config.__init_subclass__(_allow_positionals=False)
+
+
+@dataclass(eq=False, kw_only=True)
+class OptionSettings:
+    """
+    Settings for creating an :class:`~yuio.cli.Option` derived from field's type
+    and configuration.
+
+    """
+
+    name: str | None
+    """
+    Name of config field or app parameter that caused creation of this option.
+
+    """
+
+    parser: yuio.parse.Parser[_t.Any]
+    """
+    Parser associated with this option.
+
+    """
+
+    flags: list[str] | yuio.Positional
+    """
+    See :attr:`yuio.cli.Option.flags`.
+
+    """
+
+    required: bool
+    """
+    See :attr:`yuio.cli.Option.required`.
+
+    """
+
+    mutex_group: None | MutuallyExclusiveGroup
+    """
+    See :attr:`yuio.cli.Option.mutex_group`.
+
+    """
+
+    usage: yuio.Group | bool
+    """
+    See :attr:`yuio.cli.Option.usage`.
+
+    """
+
+    help: str | yuio.Disabled
+    """
+    See :attr:`yuio.cli.Option.help`.
+
+    """
+
+    help_group: HelpGroup | None
+    """
+    See :attr:`yuio.cli.Option.help_group`.
+
+    """
+
+    show_if_inherited: bool
+    """
+    See :attr:`yuio.cli.Option.show_if_inherited`.
+
+    """
+
+    merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
+    """
+    See :attr:`yuio.cli.ValueOption.merge`.
+
+    """
+
+    dest: str
+    """
+    See :attr:`yuio.cli.Option.dest`. We don't provide any guarantees about ``dest``\\ 's
+    contents and recommend treating it as an opaque value.
+
+    """
+
+    default: _t.Any | yuio.Missing
+    """
+    See :attr:`yuio.cli.Option.default`.
+
+    """
+
+    long_flag_prefix: str
+    """
+    This argument will contain prefix that was added to all :attr:`~OptionSettings.flags`.
+    For apps and top level configs if will be ``"--"``, for nested configs it will
+    include additional prefixes, for example ``"--nested-"``.
+
+    """
+
+
+OptionCtor: _t.TypeAlias = _t.Callable[[OptionSettings], yuio.cli.Option[T]]
+
+
+def _default_option(s: OptionSettings):
+    if s.flags is not yuio.POSITIONAL and yuio.parse._is_bool_parser(s.parser):
+        return bool_option()(s)
+    elif s.parser.supports_parse_many():
+        return parse_many_option()(s)
+    else:
+        return parse_one_option()(s)
+
+
+def bool_option(*, neg_flags: list[str] | None = None) -> OptionCtor[bool]:
+    """
+    Factory for :class:`yuio.cli.BoolOption`.
+
+    :param neg_flags:
+        additional set of flags that will set option's value to :data:`False`. If not
+        given, a negative flag will be created by adding prefix ``no-`` to the first
+        long flag of the option.
+    :example:
+        Boolean flag :flag:`--json` implicitly creates flag :flag:`--no-json`:
+
+        .. code-block:: python
+            :emphasize-lines: 5
+
+            @yuio.app.app
+            def main(
+                json: bool = yuio.app.field(
+                    default=False,
+                    option_ctor=yuio.app.bool_option(),
+                )
+            ):
+                ...
+
+        Boolean flag :flag:`--json` with explicitly provided flag
+        :flag:`--disable-json`:
+
+        .. code-block:: python
+            :emphasize-lines: 5-7
+
+            @yuio.app.app
+            def main(
+                json: bool = yuio.app.field(
+                    default=False,
+                    option_ctor=yuio.app.bool_option(
+                        neg_flags=["--disable-json"],
+                    ),
+                )
+            ):
+                ...
+
+    """
+
+    def ctor(s: OptionSettings, /):
+        if s.flags is yuio.POSITIONAL:
+            raise TypeError(f"error in {s.name}: BoolOption can't be a positional")
+        if neg_flags is None:
+            _neg_flags = []
+            for flag in s.flags:
+                if not yuio.cli._is_short(flag) and flag.startswith(s.long_flag_prefix):
+                    prefix = s.long_flag_prefix.strip("-")
+                    if prefix:
+                        prefix += "-"
+                    suffix = flag[len(s.long_flag_prefix) :].removeprefix("-")
+                    _neg_flags.append(f"--{prefix}no-{suffix}")
+                    break
+        elif s.long_flag_prefix == "--":
+            _neg_flags = neg_flags
+        else:
+            _neg_flags = []
+            for flag in neg_flags:
+                _neg_flags.append(s.long_flag_prefix + flag.lstrip("-"))
+        return yuio.cli.BoolOption(
+            pos_flags=s.flags,
+            neg_flags=_neg_flags,
+            required=s.required,
+            mutex_group=s.mutex_group,
+            usage=s.usage,
+            help=s.help,
+            help_group=s.help_group,
+            show_if_inherited=s.show_if_inherited,
+            dest=s.dest,
+            parser=s.parser,
+            merge=s.merge,
+            default=s.default,
+        )
+
+    return ctor
+
+
+def parse_one_option() -> OptionCtor[_t.Any]:
+    """
+    Factory for :class:`yuio.cli.ParseOneOption`.
+
+    This option takes one argument and passes it
+    to :meth:`Parser.parse() <yuio.parse.Parser.parse>`.
+
+    :example:
+        Forcing a field which can use :func:`parse_many_option`
+        to use :func:`parse_one_option` instead.
+
+        .. code-block:: python
+            :emphasize-lines: 5
+
+            @yuio.app.app
+            def main(
+                files: list[str] = yuio.app.field(
+                    default=[],
+                    parser=yuio.parse.List(yuio.parse.Int(), delimiter=","),
+                    option_ctor=yuio.app.parse_one_option(),
+                )
+            ):
+                ...
+
+        This will disable multi-argument syntax:
+
+        .. code-block:: console
+
+            $ prog --files a.txt,b.txt  # Ok
+            $ prog --files a.txt b.txt  # Error: `--files` takes one argument.
+
+    """
+
+    def ctor(s: OptionSettings, /):
+        return yuio.cli.ParseOneOption(
+            flags=s.flags,
+            required=s.required,
+            mutex_group=s.mutex_group,
+            usage=s.usage,
+            help=s.help,
+            help_group=s.help_group,
+            show_if_inherited=s.show_if_inherited,
+            dest=s.dest,
+            parser=s.parser,
+            merge=s.merge,
+            default=s.default,
+        )
+
+    return ctor
+
+
+def parse_many_option() -> OptionCtor[_t.Any]:
+    """
+    Factory for :class:`yuio.cli.ParseManyOption`.
+
+    This option takes multiple arguments and passes them
+    to :meth:`Parser.parse_many() <yuio.parse.Parser.parse_many>`.
+
+    """
+
+    def ctor(s: OptionSettings, /):
+        return yuio.cli.ParseManyOption(
+            flags=s.flags,
+            required=s.required,
+            mutex_group=s.mutex_group,
+            usage=s.usage,
+            help=s.help,
+            help_group=s.help_group,
+            show_if_inherited=s.show_if_inherited,
+            dest=s.dest,
+            parser=s.parser,
+            merge=s.merge,
+            default=s.default,
+        )
+
+    return ctor
+
+
+def store_const_option(const: T) -> OptionCtor[T]:
+    """
+    Factory for :class:`yuio.cli.StoreConstOption`.
+
+    This options takes no arguments. When it's encountered amongst CLI arguments,
+    it writes ``const`` to the resulting config.
+
+    """
+
+    def ctor(s: OptionSettings, /):
+        if s.flags is yuio.POSITIONAL:
+            raise TypeError(
+                f"error in {s.name}: StoreConstOption can't be a positional"
+            )
+
+        return yuio.cli.StoreConstOption(
+            flags=s.flags,
+            required=s.required,
+            mutex_group=s.mutex_group,
+            usage=s.usage,
+            help=s.help,
+            help_group=s.help_group,
+            show_if_inherited=s.show_if_inherited,
+            dest=s.dest,
+            merge=s.merge,
+            default=s.default,
+            const=const,
+        )
+
+    return ctor
+
+
+def count_option() -> OptionCtor[int]:
+    """
+    Factory for :class:`yuio.cli.CountOption`.
+
+    This option counts number of times it's encountered amongst CLI arguments.
+
+    Equivalent to using :func:`store_const_option` with ``const=1``
+    and ``merge=lambda a, b: a + b``.
+
+    :example:
+
+    .. code-block:: python
+
+        @yuio.app.app
+        def main(
+            quiet: int = yuio.app.field(
+                default=0,
+                flags=["-q", "--quiet"],
+                option_ctor=yuio.app.count_option(),
+            )
+        ):
+            ...
+
+    .. code-block:: console
+
+        prog -qq  # quiet=2
+
+    """
+
+    def ctor(s: OptionSettings, /):
+        if s.flags is yuio.POSITIONAL:
+            raise TypeError(f"error in {s.name}: CountOption can't be a positional")
+
+        return yuio.cli.CountOption(
+            flags=s.flags,
+            required=s.required,
+            mutex_group=s.mutex_group,
+            usage=s.usage,
+            help=s.help,
+            help_group=s.help_group,
+            show_if_inherited=s.show_if_inherited,
+            dest=s.dest,
+            default=s.default,
+        )
+
+    return ctor
+
+
+def store_true_option() -> OptionCtor[bool]:
+    """
+    Factory for :class:`yuio.cli.StoreTrueOption`.
+
+    Equivalent to using :func:`store_const_option` with ``const=True``.
+
+    """
+
+    def ctor(s: OptionSettings, /):
+        if s.flags is yuio.POSITIONAL:
+            raise TypeError(f"error in {s.name}: StoreTrueOption can't be a positional")
+
+        return yuio.cli.StoreTrueOption(
+            flags=s.flags,
+            required=s.required,
+            mutex_group=s.mutex_group,
+            usage=s.usage,
+            help=s.help,
+            help_group=s.help_group,
+            show_if_inherited=s.show_if_inherited,
+            dest=s.dest,
+            default=s.default,
+        )
+
+    return ctor
+
+
+def store_false_option() -> OptionCtor[bool]:
+    """
+    Factory for :class:`yuio.cli.StoreFalseOption`.
+
+    Equivalent to using :func:`store_const_option` with ``const=False``.
+
+    """
+
+    def ctor(s: OptionSettings, /):
+        if s.flags is yuio.POSITIONAL:
+            raise TypeError(
+                f"error in {s.name}: StoreFalseOption can't be a positional"
+            )
+
+        return yuio.cli.StoreFalseOption(
+            flags=s.flags,
+            required=s.required,
+            mutex_group=s.mutex_group,
+            usage=s.usage,
+            help=s.help,
+            help_group=s.help_group,
+            show_if_inherited=s.show_if_inherited,
+            dest=s.dest,
+            default=s.default,
+        )
+
+    return ctor

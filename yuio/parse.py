@@ -746,7 +746,7 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
             raw, pos = _repr_and_adjust_pos(self.raw, self.pos)
             colorable = yuio.string.Stack(
                 _CodeRenderer(raw, pos),
-                yuio.string.Indent(colorable),
+                colorable,
             )
         return colorable
 
@@ -5666,12 +5666,14 @@ class _CodeRenderer:
         res.append_color(yuio.color.Color.NONE)
         res.append_str("\n")
         if self._as_cli:
-            res.append_color(punct_color)
+            text_color = ctx.theme.get_color("msg/text:code/sh-usage")
+            res.append_color(text_color | ctx.theme.get_color("hl/error:sh-usage"))
         else:
-            res.append_color(punct_color)
+            text_color = ctx.theme.get_color("msg/text:code/text")
+            res.append_color(text_color | ctx.theme.get_color("hl/error:text"))
         res.append_str("  ")
         res.append_str(" " * yuio.string.line_width(left))
-        res.append_str("^" * yuio.string.line_width(center))
+        res.append_str("~" * yuio.string.line_width(center))
 
         res.end_no_wrap()
 

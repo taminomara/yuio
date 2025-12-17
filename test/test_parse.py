@@ -177,73 +177,73 @@ def test_path_renderer(path, expected):
             "code",
             (0, 4),
             "> code",
-            "  ^^^^",
+            "  ~~~~",
         ),
         (
             "code",
             (2, 3),
             "> code",
-            "    ^",
+            "    ~",
         ),
         (
             "some very long code very long indeed",
             (0, 36),
             "> some very long ...",
-            "  ^^^^^^^^^^^^^^^^^^",
+            "  ~~~~~~~~~~~~~~~~~~",
         ),
         (
             "some very long code very long indeed",
             (15, 36),
             "> ...code very lo...",
-            "     ^^^^^^^^^^^^^^^",
+            "     ~~~~~~~~~~~~~~~",
         ),
         (
             "some very long code very long indeed",
             (3, 36),
             "> some very long ...",
-            "     ^^^^^^^^^^^^^^^",
+            "     ~~~~~~~~~~~~~~~",
         ),
         (
             "some very long code very long indeed",
             (0, 9),
             "> some very long ...",
-            "  ^^^^^^^^^",
+            "  ~~~~~~~~~",
         ),
         (
             "some very long code very long indeed",
             (3, 12),
             "> some very long ...",
-            "     ^^^^^^^^^",
+            "     ~~~~~~~~~",
         ),
         (
             "some very long code very long indeed",
             (5, 17),
             "> ...very long co...",
-            "     ^^^^^^^^^^^^",
+            "     ~~~~~~~~~~~~",
         ),
         (
             "some very long code very long indeed",
             (25, 36),
             "> ...ery long indeed",
-            "         ^^^^^^^^^^^",
+            "         ~~~~~~~~~~~",
         ),
         (
             "some very long code very long indeed",
             (5, 14),
             "> some very long ...",
-            "       ^^^^^^^^^",
+            "       ~~~~~~~~~",
         ),
         (
             "some very long code very long indeed",
             (25, 33),
             "> ...ery long indeed",
-            "         ^^^^^^^^",
+            "         ~~~~~~~~",
         ),
         (
             "some very long code",
             (5, 9),
             "> some very long ...",
-            "       ^^^^",
+            "       ~~~~",
         ),
     ],
 )
@@ -258,7 +258,7 @@ class TestErrorMessages:
         parser = yuio.parse.List(yuio.parse.Int())
         with pytest.raises(
             yuio.parse.ParsingError,
-            match=re.escape("> \"10 xx 30\"\n      ^^\n  Can't parse 'xx' as int"),
+            match=re.escape("> \"10 xx 30\"\n      ~~\nCan't parse 'xx' as int"),
         ):
             parser.parse("10 xx 30")
 

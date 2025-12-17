@@ -541,6 +541,12 @@ class Theme:
 
     """
 
+    separate_headings: bool = True
+    """
+    Whether to print newlines before and after :func:`yuio.io.heading`.
+
+    """
+
     colors: _t.Mapping[str, str | yuio.color.Color] = {}
     """
     Mapping of color paths to actual colors.
@@ -1215,7 +1221,7 @@ class DefaultTheme(Theme):
         "tb/frame/usr/file/line": "accent_color",
         "tb/frame/usr/file/path": "accent_color",
         "tb/frame/usr/code": "primary_color",
-        "tb/frame/usr/highlight": "low_priority_color_a",
+        "tb/frame/usr/highlight": "error_color",
         "tb/frame/lib": "dim",
         "tb/frame/lib/file/module": "tb/frame/usr/file/module",
         "tb/frame/lib/file/line": "tb/frame/usr/file/line",
