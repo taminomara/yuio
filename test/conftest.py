@@ -27,8 +27,12 @@ W = _t.TypeVar("W", bound=yuio.widget.Widget[object])
 
 class TestTheme(yuio.theme.Theme):
     progress_bar_width = 5
-    msg_decorations = {
-        **yuio.theme._MSG_DECORATIONS_UNICODE,
+    msg_decorations_ascii = {
+        **yuio.theme.DefaultTheme.msg_decorations_ascii,
+        "spinner/pattern": "#",
+    }
+    msg_decorations_unicode = {
+        **yuio.theme.DefaultTheme.msg_decorations_unicode,
         "spinner/pattern": "⣿",
     }
     colors = {
@@ -83,16 +87,12 @@ def height() -> int:
 
 @pytest.fixture
 def ostream() -> io.StringIO:
-    ostream = io.StringIO()
-    ostream.isatty = lambda: True
-    return ostream
+    return _MockedOStream()
 
 
 @pytest.fixture
 def istream() -> _t.TextIO:
-    istream = _MockedIStream()
-    istream.isatty = lambda: True
-    return istream
+    return _MockedIStream()
 
 
 @pytest.fixture
@@ -105,10 +105,10 @@ def term(ostream: io.StringIO, istream: _t.TextIO) -> yuio.term.Term:
     return yuio.term.Term(
         ostream,
         istream,
-        ostream_is_tty=True,
-        istream_is_tty=True,
         color_support=yuio.term.ColorSupport.ANSI_TRUE,
-        interactive_support=yuio.term.InteractiveSupport.FULL,
+        ostream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+        istream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+        is_unicode=True,
     )
 
 
@@ -123,15 +123,25 @@ def rc(
 
 
 @pytest.fixture
+def ctx(
+    term: yuio.term.Term, theme: yuio.theme.Theme, width: int
+) -> yuio.string.ReprContext:
+    return yuio.string.ReprContext(
+        term=term,
+        theme=theme,
+        width=width,
+    )
+
+
+@pytest.fixture
 def io_mocker_factory(
-    ostream: io.StringIO,
     term: yuio.term.Term,
     theme: yuio.theme.Theme,
     width: int,
     height: int,
 ) -> _t.Callable[[], IOMocker]:
     def factory():
-        return IOMocker(ostream, term, theme, width, height)
+        return IOMocker(term, theme, width, height)
 
     return factory
 
@@ -143,16 +153,13 @@ def io_mocker(io_mocker_factory) -> IOMocker:
 
 @pytest.fixture
 def widget_checker_factory(
-    ostream: io.StringIO,
     term: yuio.term.Term,
     theme: yuio.theme.Theme,
     width: int,
     height: int,
 ) -> _t.Callable[[], WidgetChecker[yuio.widget.Widget[object]]]:
     def factory():
-        return WidgetChecker[yuio.widget.Widget[object]](
-            ostream, term, theme, width, height
-        )
+        return WidgetChecker[yuio.widget.Widget[object]](term, theme, width, height)
 
     return factory
 
@@ -258,7 +265,6 @@ _ExpectMark.__name__ = """<mark>"""
 class _KeyboardEventStream:
     def __init__(
         self,
-        ostream: io.StringIO,
         term: yuio.term.Term,
         theme: yuio.theme.Theme,
         events: list[
@@ -276,7 +282,6 @@ class _KeyboardEventStream:
         ],
         width: int,
     ):
-        self.ostream = ostream
         self.term = term
         self.theme = theme
         self.events = events
@@ -307,9 +312,9 @@ class _KeyboardEventStream:
                 if isinstance(event, _KeyboardEventStreamDone):
                     raise event
                 elif isinstance(event, RcCompare):
-                    self.ostream.seek(0)
-                    commands = self.ostream.read()
-                    self.ostream.seek(0, io.SEEK_END)
+                    self.term.ostream.seek(0)
+                    commands = self.term.ostream.read()
+                    self.term.ostream.seek(0, io.SEEK_END)
                     assert RcCompare.from_commands(commands, self.width) == event
                 elif isinstance(event, _WidgetAssert):
                     event.fn()
@@ -336,7 +341,7 @@ class _KeyboardEventStream:
             _, event = self._next(expected_event_kind=_ExpectStdinRead)
         except StopIteration:
             raise AssertionError("unexpected call to istream.read()") from None
-        self.ostream.write(event.result)
+        self.term.ostream.write(event.result)
         return event.result
 
     def readline(self, limit: int = -1) -> str:
@@ -345,7 +350,7 @@ class _KeyboardEventStream:
         except StopIteration:
             raise AssertionError("unexpected call to istream.readline()") from None
         if event.echo:
-            self.ostream.write(event.result)
+            self.term.ostream.write(event.result)
         return event.result
 
     def readlines(self, hint: int = -1) -> list[str]:
@@ -353,7 +358,7 @@ class _KeyboardEventStream:
             _, event = self._next(expected_event_kind=_ExpectStdinReadlines)
         except StopIteration:
             raise AssertionError("unexpected call to istream.read()") from None
-        self.ostream.writelines(event.result)
+        self.term.ostream.writelines(event.result)
         return event.result
 
     def mark(self, mark: str | None):
@@ -394,7 +399,6 @@ class IOMocker:
 
     def __init__(
         self,
-        ostream: io.StringIO | None = None,
         term: yuio.term.Term | None = None,
         theme: yuio.theme.Theme | None = None,
         width: int | None = None,
@@ -415,7 +419,6 @@ class IOMocker:
             ]
         ] = []
 
-        self._ostream = ostream
         self._term = term
         self._theme = theme
         self._width = width
@@ -636,7 +639,6 @@ class IOMocker:
     @contextlib.contextmanager
     def mock(
         self,
-        ostream: io.StringIO | None = None,
         term: yuio.term.Term | None = None,
         theme: yuio.theme.Theme | None = None,
         width: int | None = None,
@@ -648,13 +650,6 @@ class IOMocker:
         to events from this mocker.
 
         """
-
-        ostream = ostream or self._ostream
-        if ostream is None:
-            raise RuntimeError(
-                "this mocker is not bound to any ostream; "
-                "pass ostream to its constructor or its `mock`/`check` method"
-            )
 
         term = term or self._term
         if term is None:
@@ -689,9 +684,7 @@ class IOMocker:
         global _CURRENT_IOSTREAM_MOCK
         if _CURRENT_IOSTREAM_MOCK is not None:
             raise RuntimeError("can't have more than one mock at a time")
-        _CURRENT_IOSTREAM_MOCK = _KeyboardEventStream(
-            ostream, term, theme, self._events, width
-        )
+        _CURRENT_IOSTREAM_MOCK = _KeyboardEventStream(term, theme, self._events, width)
 
         old_event_stream, yuio.widget._event_stream = (
             yuio.widget._event_stream,
@@ -740,10 +733,10 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
     .. code-block:: python
 
-       def test_something(ostream, term, theme, width, height):
+       def test_something(term, theme, width, height):
            # We know that we're testing an `Input` widget...
            checker = (
-               WidgetChecker[yuio.widget.Input](ostream, term, theme, width, height)
+               WidgetChecker[yuio.widget.Input](term, theme, width, height)
                # ...therefore we can write asserts that check specific properties
                # of the `Input` widget.
                .expect_widget_eq(lambda widget: widget.text, "foo bar!")
@@ -761,10 +754,11 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
            _ostream,
            _istream,
            color_support=yuio.term.ColorSupport.ANSI_TRUE,
-           interactive_support=yuio.term.InteractiveSupport.FULL,
+           ostream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+           istream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
        )
        _theme = yuio.theme.Theme()
-       test_something(_ostream, _term, _theme, 20, 5)
+       test_something(_term, _theme, 20, 5)
 
     """
 
@@ -825,7 +819,6 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
     @contextlib.contextmanager
     def mock(
         self,
-        ostream: io.StringIO | None = None,
         term: yuio.term.Term | None = None,
         theme: yuio.theme.Theme | None = None,
         width: int | None = None,
@@ -837,7 +830,6 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
     def check(
         self,
         widget: W,
-        ostream: io.StringIO | None = None,
         term: yuio.term.Term | None = None,
         theme: yuio.theme.Theme | None = None,
         width: int | None = None,
@@ -851,7 +843,7 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
 
         assert self._widget is None, "can't have more than one widget check at a time"
         self._widget = widget
-        with super().mock(ostream, term, theme, width, height, wrap_streams):
+        with super().mock(term, theme, width, height, wrap_streams):
             if _CURRENT_IOSTREAM_MOCK is None:
                 raise RuntimeError(
                     "mock() should've set _CURRENT_IOSTREAM_MOCK, but it didn't?"
@@ -886,7 +878,7 @@ class _MockedIStream(_t.TextIO):
         self._assert_not_closed()
 
     def isatty(self) -> bool:
-        return False
+        return True
 
     def writable(self) -> bool:
         return False
@@ -948,11 +940,18 @@ class _MockedIStream(_t.TextIO):
 
     @property
     def encoding(self) -> str:
-        return None  # type: ignore
+        return "utf-8"
 
     @property
     def errors(self) -> str | None:
         return None
+
+
+class _MockedOStream(io.StringIO):
+    encoding = "utf-8"
+
+    def isatty(self) -> bool:
+        return True
 
 
 def pytest_assertrepr_compare(op, left, right):

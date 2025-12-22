@@ -117,25 +117,27 @@ class Lightness(enum.Enum):
 
 class InteractiveSupport(enum.IntEnum):
     """
-    Terminal's capability for rendering interactive widgets.
+    Interactive capabilities of some input or output stream.
 
     """
 
     NONE = 0
     """
-    Terminal can't render anything interactive.
+    Stream is not interactive, probably redirected to a file.
 
     """
 
-    MOVE_CURSOR = 1
+    BACKGROUND = 1
     """
-    Terminal can move cursor and erase lines.
+    Stream is not interactive. It's attached to a TTY, but this process runs
+    in background, or we're in CI.
 
     """
 
-    FULL = 2
+    INTERACTIVE = 2
     """
-    Terminal can process queries, enter ``CBREAK`` mode, etc.
+    Stream is user-facing, it's attached to a TTY, this process runs in foreground,
+    and we're not in CI.
 
     """
 
@@ -235,24 +237,6 @@ class Term:
 
     """
 
-    ostream_is_tty: bool = dataclasses.field(default=False, kw_only=True)
-    """
-    Output stream is connected to a TTY device, meaning that is goes to a user.
-
-    Output stream being a TTY doesn't necessarily mean that it's interactive.
-    For example, the process can run in background, but still be attached
-    to a terminal.
-
-    Use :attr:`~Term.interactive_support` to check for interactivity level.
-
-    """
-
-    istream_is_tty: bool = dataclasses.field(default=False, kw_only=True)
-    """
-    Input stream is connected to a TTY device, meaning that is goes to a user.
-
-    """
-
     color_support: ColorSupport = dataclasses.field(
         default=ColorSupport.NONE, kw_only=True
     )
@@ -261,17 +245,31 @@ class Term:
 
     """
 
-    interactive_support: InteractiveSupport = dataclasses.field(
+    ostream_interactive_support: InteractiveSupport = dataclasses.field(
         default=InteractiveSupport.NONE, kw_only=True
     )
     """
-    Terminal's capability for rendering interactive widgets.
+    Output's interactive capabilities.
+
+    """
+
+    istream_interactive_support: InteractiveSupport = dataclasses.field(
+        default=InteractiveSupport.NONE, kw_only=True
+    )
+    """
+    Input's interactive capabilities.
 
     """
 
     terminal_theme: TerminalTheme | None = dataclasses.field(default=None, kw_only=True)
     """
     Terminal's default foreground, background, and text colors.
+
+    """
+
+    is_unicode: bool = dataclasses.field(default=False, kw_only=True)
+    """
+    Terminal's output supports unicode characters.
 
     """
 
@@ -303,34 +301,45 @@ class Term:
         return self.color_support >= ColorSupport.ANSI_TRUE
 
     @property
-    def can_move_cursor(self) -> bool:
+    def can_query_user(self) -> bool:
         """
-        Return :data:`True` if terminal can move cursor and erase lines.
-
-        """
-
-        return (
-            self.supports_colors
-            and self.interactive_support >= InteractiveSupport.MOVE_CURSOR
-        )
-
-    @property
-    def is_fully_interactive(self) -> bool:
-        """
-        Return :data:`True` if we're in a fully interactive environment.
+        Return :data:`True` if input and output is interactive. In this mode we can
+        interact with the user by writing and reading lines of text.
 
         """
 
         return (
-            self.supports_colors and self.interactive_support >= InteractiveSupport.FULL
+            self.istream_interactive_support >= InteractiveSupport.INTERACTIVE
+            and self.ostream_interactive_support >= InteractiveSupport.INTERACTIVE
         )
 
     @property
-    def is_unicode(self) -> bool:
-        encoding = (
-            getattr(self.ostream, "encoding", None) or locale.getpreferredencoding()
+    def can_render_widgets(self) -> bool:
+        """
+        Return :data:`True` if output is interactive and colors are supported. In this
+        mode we can show live widgets (i.e. progress bars and such) to the user,
+        but not necessarily read keystrokes.
+
+        """
+
+        return (
+            self.color_support >= ColorSupport.ANSI
+            and self.ostream_interactive_support >= InteractiveSupport.INTERACTIVE
         )
-        return "utf" in encoding or "unicode" in encoding
+
+    @property
+    def can_run_widgets(self) -> bool:
+        """
+        Return :data:`True` if input and output are interactive and colors
+        are supported. In this mode we can run interactive widgets.
+
+        """
+
+        return (
+            self.color_support >= ColorSupport.ANSI
+            and self.ostream_interactive_support >= InteractiveSupport.INTERACTIVE
+            and self.istream_interactive_support >= InteractiveSupport.INTERACTIVE
+        )
 
 
 _CI_ENV_VARS = [
@@ -363,51 +372,35 @@ def get_term_from_stream(
 
     """
 
+    encoding = getattr(ostream, "encoding", None) or locale.getpreferredencoding()
+    is_unicode = "utf" in encoding or "unicode" in encoding
+
     if "__YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ:  # pragma: no cover
         # For building docs in github
         return Term(
             ostream=ostream,
             istream=istream,
-            ostream_is_tty=True,
-            istream_is_tty=True,
             color_support=ColorSupport.ANSI_TRUE,
-            interactive_support=InteractiveSupport.FULL,
+            ostream_interactive_support=InteractiveSupport.INTERACTIVE,
+            istream_interactive_support=InteractiveSupport.INTERACTIVE,
+            is_unicode=is_unicode,
         )
 
-    has_interactive_output = _is_interactive_output(ostream)
-    has_interactive_input = _is_interactive_input(istream)
+    explicit_color_settings = _detect_explicit_color_settings()
 
-    # Note: we don't rely on argparse to parse out flags and send them to us
-    # because these functions can be called before parsing arguments.
-    if (
-        "--no-color" in sys.argv
-        or "--no-colors" in sys.argv
-        or "--force-no-color" in sys.argv
-        or "--force-no-colors" in sys.argv
-        or "NO_COLOR" in os.environ
-        or "FORCE_NO_COLOR" in os.environ
-        or "FORCE_NO_COLORS" in os.environ
-    ):
-        return Term(
-            ostream,
-            istream,
-            ostream_is_tty=has_interactive_output,
-            istream_is_tty=has_interactive_input,
-        )
-
+    output_is_tty = _output_is_tty(ostream)
+    output_is_fg = _is_foreground(ostream)
+    input_is_tty = _input_is_tty(istream)
+    input_is_fg = _is_foreground(istream)
     term = os.environ.get("TERM", "").lower()
     colorterm = os.environ.get("COLORTERM", "").lower()
-    is_foreground = _is_foreground(ostream) and _is_foreground(istream)
     in_ci = detect_ci()
+
+    # Detect colors.
     color_support = ColorSupport.NONE
-    if (
-        "--force-color" in sys.argv
-        or "--force-colors" in sys.argv
-        or "FORCE_COLOR" in os.environ
-        or "FORCE_COLORS" in os.environ
-    ):
+    if explicit_color_settings:
         color_support = ColorSupport.ANSI
-    if has_interactive_output:
+    if output_is_tty and explicit_color_settings is not False:
         if in_ci:
             color_support = detect_ci_color_support()
         elif os.name == "nt":
@@ -427,29 +420,67 @@ def get_term_from_stream(
         elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
             color_support = ColorSupport.ANSI
 
-    interactive_support = InteractiveSupport.NONE
-    theme = None
-    if is_foreground and color_support >= ColorSupport.ANSI and not in_ci:
-        if has_interactive_output and has_interactive_input:
-            interactive_support = InteractiveSupport.FULL
-            if (
-                query_terminal_theme
-                and color_support >= ColorSupport.ANSI_256
-                and "YUIO_DISABLE_OSC_QUERIES" not in os.environ
-            ):
-                theme = _get_standard_colors(ostream, istream)
-        else:
-            interactive_support = InteractiveSupport.MOVE_CURSOR
+    # Detect ostream capabilities.
+    ostream_interactive_support = InteractiveSupport.NONE
+    if output_is_tty:
+        ostream_interactive_support = InteractiveSupport.BACKGROUND
+        if output_is_fg and not in_ci:
+            ostream_interactive_support = InteractiveSupport.INTERACTIVE
+
+    # Detect istream capabilities.
+    istream_interactive_support = InteractiveSupport.NONE
+    if input_is_tty:
+        istream_interactive_support = InteractiveSupport.BACKGROUND
+        if input_is_fg and not in_ci:
+            istream_interactive_support = InteractiveSupport.INTERACTIVE
+
+    # Query terminal theme.
+    if (
+        query_terminal_theme
+        and color_support >= ColorSupport.ANSI
+        and ostream_interactive_support >= InteractiveSupport.INTERACTIVE
+        and istream_interactive_support >= InteractiveSupport.INTERACTIVE
+        and "YUIO_DISABLE_OSC_QUERIES" not in os.environ
+    ):
+        theme = _get_standard_colors(ostream, istream)
+    else:
+        theme = None
 
     return Term(
         ostream=ostream,
         istream=istream,
-        ostream_is_tty=has_interactive_output,
-        istream_is_tty=has_interactive_input,
         color_support=color_support,
-        interactive_support=interactive_support,
+        ostream_interactive_support=ostream_interactive_support,
+        istream_interactive_support=istream_interactive_support,
         terminal_theme=theme,
+        is_unicode=is_unicode,
     )
+
+
+def _detect_explicit_color_settings():
+    color_support = None
+
+    if "FORCE_COLOR" in os.environ:
+        color_support = True
+
+    if "NO_COLOR" in os.environ or "FORCE_NO_COLOR" in os.environ:
+        color_support = False
+
+    # Note: we don't rely on argparse to parse flags and send them to us
+    # because these functions can be called before parsing arguments.
+    for arg in sys.argv[1:]:
+        if arg in ("--color", "--force-color"):
+            color_support = True
+        elif arg in ("--no-color", "--force-no-color"):
+            color_support = False
+        elif arg.startswith(("--color=", "--colors=")):
+            value = arg.split("=", maxsplit=1)[1].casefold()
+            if value in ["1", "yes", "true"]:
+                color_support = True
+            elif value in ["0", "no", "false"]:
+                color_support = False
+
+    return color_support
 
 
 def detect_ci() -> bool:
@@ -630,14 +661,14 @@ else:  # pragma: no cover
         return False
 
 
-def _is_interactive_input(stream: _t.TextIO | None) -> bool:
+def _input_is_tty(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.readable()
     except Exception:  # pragma: no cover
         return False
 
 
-def _is_interactive_output(stream: _t.TextIO | None) -> bool:
+def _output_is_tty(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and _is_tty(stream) and stream.writable()
     except Exception:  # pragma: no cover

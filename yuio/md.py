@@ -110,13 +110,13 @@ __all__ = [
     "Paragraph",
     "Quote",
     "Quote",
-    'Raw',
+    "Raw",
     "SyntaxHighlighter",
     "Text",
     "Text",
     "ThematicBreak",
     "ThematicBreak",
-    'parse'
+    "parse",
 ]
 
 T = _t.TypeVar("T")
@@ -193,13 +193,10 @@ class MdFormatter:
 
     def __init__(
         self,
-        ctx: yuio.string.ReprContext | yuio.theme.Theme,
+        ctx: yuio.string.ReprContext,
         *,
         allow_headings: bool = True,
     ):
-        if isinstance(ctx, yuio.theme.Theme):
-            ctx = yuio.string.ReprContext(theme=ctx)
-
         self._ctx = ctx
         self.allow_headings: bool = allow_headings
 
@@ -213,12 +210,8 @@ class MdFormatter:
         return self._ctx
 
     @property
-    def theme(self):
-        return self._ctx.theme
-
-    @property
-    def max_width(self):
-        return self._ctx.max_width
+    def width(self):
+        return self._ctx.width
 
     def format(
         self, md: str, *, dedent: bool = True
@@ -309,7 +302,7 @@ class MdFormatter:
 
         """
 
-        return yuio.string.colorize(text, default_color=default_color, ctx=self.theme)
+        return yuio.string.colorize(text, default_color=default_color, ctx=self.ctx)
 
     @contextlib.contextmanager
     def _with_indent(
@@ -320,7 +313,7 @@ class MdFormatter:
         *,
         continue_with_spaces: bool = True,
     ):
-        color = self.theme.to_color(color)
+        color = self.ctx.to_color(color)
         indent = yuio.string.ColorizedString(color)
         indent += s
 
@@ -352,7 +345,7 @@ class MdFormatter:
 
     def _format_Raw(self, node: Raw, /):
         for line in node.raw.wrap(
-            self.max_width,
+            self.width,
             indent=self._indent,
             continuation_indent=self._continuation_indent,
             preserve_newlines=False,
@@ -366,7 +359,7 @@ class MdFormatter:
         )
 
         for line in s.wrap(
-            self.max_width,
+            self.width,
             indent=self._indent,
             continuation_indent=self._continuation_indent,
             preserve_newlines=False,
@@ -384,30 +377,28 @@ class MdFormatter:
         self._format_Container(node)
 
     def _format_ThematicBreak(self, _: ThematicBreak):
-        decoration = self.theme.msg_decorations.get("thematic_break", "")
+        decoration = self.ctx.get_msg_decoration("thematic_break")
         self._line(self._indent + decoration)
 
     def _format_Heading(self, node: Heading, /):
         if not self._is_first_line:
             self._line(self._indent)
 
-        decoration = self.theme.msg_decorations.get(f"heading/{node.level}", "")
+        decoration = self.ctx.get_msg_decoration(f"heading/{node.level}")
         with self._with_indent(f"msg/decoration:heading/{node.level}", decoration):
             self._format_Text(
                 node,
-                default_color=self.theme.get_color(f"msg/text:heading/{node.level}"),
+                default_color=self.ctx.get_color(f"msg/text:heading/{node.level}"),
             )
 
         self._line(self._indent)
         self._is_first_line = True
 
     def _format_Paragraph(self, node: Paragraph, /):
-        self._format_Text(
-            node, default_color=self.theme.get_color("msg/text:paragraph")
-        )
+        self._format_Text(node, default_color=self.ctx.get_color("msg/text:paragraph"))
 
     def _format_ListItem(self, node: ListItem, /, *, min_width: int = 0):
-        decoration = self.theme.msg_decorations.get("list", "")
+        decoration = self.ctx.get_msg_decoration("list")
         if node.number is not None:
             decoration = f"{node.number:>{min_width}}." + " " * (
                 yuio.string.line_width(decoration) - min_width - 1
@@ -416,7 +407,7 @@ class MdFormatter:
             self._format_Container(node)
 
     def _format_Quote(self, node: Quote, /):
-        decoration = self.theme.msg_decorations.get("quote", "")
+        decoration = self.ctx.get_msg_decoration("quote")
         with self._with_indent(
             "msg/decoration:quote", decoration, continue_with_spaces=False
         ):
@@ -424,11 +415,11 @@ class MdFormatter:
 
     def _format_Code(self, node: Code, /):
         s = SyntaxHighlighter.get_highlighter(node.syntax).highlight(
-            self.theme,
+            self.ctx.theme,
             "\n".join(node.lines),
         )
 
-        decoration = self.theme.msg_decorations.get("code", "")
+        decoration = self.ctx.get_msg_decoration("code")
         with self._with_indent("msg/decoration:code", decoration):
             self._line(
                 s.indent(

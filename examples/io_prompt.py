@@ -19,4 +19,4 @@ if __name__ == "__main__":
     if with_fries:
         description += " with fries"
 
-    yuio.io.info("Alright, %s it is!", description)
+    yuio.io.success("Alright, %s it is!", description)

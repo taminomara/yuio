@@ -221,7 +221,6 @@ import yuio.color
 import yuio.md
 import yuio.parse
 import yuio.string
-import yuio.theme
 import yuio.util
 from yuio import _typing as _t
 from yuio.string import ColorizedString as _ColorizedString
@@ -355,7 +354,7 @@ class Argument:
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return _ColorizedString(
             [
-                ctx.theme.get_color("flag"),
+                ctx.get_color("flag"),
                 self.metavar,
             ]
         )
@@ -384,7 +383,7 @@ class Flag:
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return _ColorizedString(
             [
-                ctx.theme.get_color("flag"),
+                ctx.get_color("flag"),
                 self.value,
             ]
         )
@@ -938,7 +937,7 @@ class Option(abc.ABC, _t.Generic[T_cov]):
                 flag = self.primary_long_flags[0]
             else:
                 flag = self.flags[0]
-            res.append_color(ctx.theme.get_color("hl/flag:sh-usage"))
+            res.append_color(ctx.get_color("hl/flag:sh-usage"))
             res.append_str(flag)
         if metavar := self.format_metavar(ctx):
             res.append_colorized_str(metavar)
@@ -960,7 +959,7 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         if not self.nargs:
             return res
 
-        res.append_color(ctx.theme.get_color("hl/punct:sh-usage"))
+        res.append_color(ctx.get_color("hl/punct:sh-usage"))
         if self.flags:
             res.append_str(" ")
 
@@ -998,7 +997,7 @@ class Option(abc.ABC, _t.Generic[T_cov]):
 
         res = _ColorizedString()
 
-        base_color = ctx.theme.get_color("msg/text:code/sh-usage")
+        base_color = ctx.get_color("msg/text:code/sh-usage")
 
         if alias_flags := self.format_alias_flags(ctx):
             es = "" if len(alias_flags) == 1 else "es"
@@ -1036,7 +1035,7 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         if self.primary_short_flag:
             primary_flags.add(self.primary_short_flag)
         aliases: list[_ColorizedString] = []
-        flag_color = ctx.theme.get_color("hl/flag:sh-usage")
+        flag_color = ctx.get_color("hl/flag:sh-usage")
         for flag in self.flags:
             if flag not in primary_flags:
                 res = _ColorizedString()
@@ -1283,7 +1282,7 @@ class BoolOption(ParserOption[bool]):
             primary_flags.add(self.primary_short_flag)
 
         aliases: list[_ColorizedString] = []
-        flag_color = ctx.theme.get_color("hl/flag:sh-usage")
+        flag_color = ctx.get_color("hl/flag:sh-usage")
         for flag in self.pos_flags + self.neg_flags:
             if flag not in primary_flags:
                 res = _ColorizedString()
@@ -1301,8 +1300,8 @@ class BoolOption(ParserOption[bool]):
             elif self.flags:
                 primary_pos_flag = self.flags[0]
             if primary_pos_flag:
-                punct_color = ctx.theme.get_color("hl/punct:sh-usage")
-                metavar_color = ctx.theme.get_color("hl/metavar:sh-usage")
+                punct_color = ctx.get_color("hl/punct:sh-usage")
+                metavar_color = ctx.get_color("hl/metavar:sh-usage")
                 res = _ColorizedString()
                 res.start_no_wrap()
                 res.append_color(flag_color)
@@ -1538,7 +1537,7 @@ class CountOption(StoreConstOption[int]):
         )
 
     def format_metavar(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
-        return _ColorizedString((ctx.theme.get_color("hl/flag:sh-usage"), "..."))
+        return _ColorizedString((ctx.get_color("hl/flag:sh-usage"), "..."))
 
 
 @dataclass(eq=False, kw_only=True)
@@ -2474,7 +2473,7 @@ class _HelpFormatter:
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return self.format(ctx)
 
-    def format(self, ctx: yuio.string.ReprContext | yuio.theme.Theme):
+    def format(self, ctx: yuio.string.ReprContext):
         res = _ColorizedString()
         lines = _CliMdFormatter(ctx).format_node(yuio.md.Document(items=self.nodes))
         for line in lines:
@@ -2572,8 +2571,8 @@ class _HelpFormatter:
 
 
 def _format_metavar(metavar: str, ctx: yuio.string.ReprContext):
-    punct_color = ctx.theme.get_color("hl/punct:sh-usage")
-    metavar_color = ctx.theme.get_color("hl/metavar:sh-usage")
+    punct_color = ctx.get_color("hl/punct:sh-usage")
+    metavar_color = ctx.get_color("hl/metavar:sh-usage")
 
     res = _ColorizedString()
     is_punctuation = False
@@ -2594,20 +2593,18 @@ _MAX_ARGS_COLUMN_WIDTH = 26
 class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
     def __init__(
         self,
-        ctx: yuio.string.ReprContext | yuio.theme.Theme,
+        ctx: yuio.string.ReprContext,
     ):
         self._heading_indent = contextlib.ExitStack()
         self._args_column_width = _MAX_ARGS_COLUMN_WIDTH
 
         super().__init__(ctx, allow_headings=True)
 
-        self.base_color = self.theme.get_color("msg/text:code/sh-usage")
-        self.prog_color = self.base_color | self.theme.get_color("hl/prog:sh-usage")
-        self.punct_color = self.base_color | self.theme.get_color("hl/punct:sh-usage")
-        self.metavar_color = self.base_color | self.theme.get_color(
-            "hl/metavar:sh-usage"
-        )
-        self.flag_color = self.base_color | self.theme.get_color("hl/flag:sh-usage")
+        self.base_color = self.ctx.get_color("msg/text:code/sh-usage")
+        self.prog_color = self.base_color | self.ctx.get_color("hl/prog:sh-usage")
+        self.punct_color = self.base_color | self.ctx.get_color("hl/punct:sh-usage")
+        self.metavar_color = self.base_color | self.ctx.get_color("hl/metavar:sh-usage")
+        self.flag_color = self.base_color | self.ctx.get_color("hl/flag:sh-usage")
 
     def colorize(
         self,
@@ -2620,18 +2617,18 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             s,
             default_color=default_color,
             parse_cli_flags_in_backticks=True,
-            ctx=self.theme,
+            ctx=self.ctx,
         )
 
     def _format_Heading(self, node: yuio.md.Heading):
         if node.level == 1:
             self._heading_indent.close()
 
-        decoration = self.theme.msg_decorations.get("heading/section", "")
+        decoration = self.ctx.get_msg_decoration("heading/section")
         with self._with_indent("msg/decoration:heading/section", decoration):
             self._format_Text(
                 node,
-                default_color=self.theme.get_color("msg/text:heading/section"),
+                default_color=self.ctx.get_color("msg/text:heading/section"),
             )
 
         if node.level == 1:
@@ -2647,7 +2644,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
 
     def _format_Usage(self, node: _Usage):
         prefix = _ColorizedString(
-            [self.theme.get_color("msg/text:heading/section"), node.prefix]
+            [self.ctx.get_color("msg/text:heading/section"), node.prefix]
         )
 
         usage = _ColorizedString()
@@ -2656,7 +2653,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
 
             usage = sh_usage_highlighter.highlight(
-                self.theme,
+                self.ctx.theme,
                 usage,
             ).percent_format({"prog": node.prog}, self.ctx)
         else:
@@ -2879,7 +2876,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
     def _format_InheritedOpts(self, node: _InheritedOpts):
         raw = _ColorizedString()
         s = "" if node.n_inherited == 1 else "s"
-        raw.append_color(self.theme.get_color("secondary_color"))
+        raw.append_color(self.ctx.get_color("secondary_color"))
         raw.append_str(
             f"  +{node.n_inherited} global option{s}, use --help=all to show"
         )
@@ -2892,7 +2889,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         self._separate_paragraphs = True
 
     def _make_lead_padding(self, lead: _ColorizedString):
-        color = self.theme.get_color("low_priority_color_b")
+        color = self.ctx.get_color("low_priority_color_b")
         return lead + color + " " * (self._args_column_width - lead.width)
 
 

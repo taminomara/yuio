@@ -8,4 +8,4 @@ if __name__ == "__main__":
 
     value = yuio.io.ask[list[int]]("Enter numbers")
 
-    yuio.io.info("You've entered %#r.", value)
+    yuio.io.success("You've entered %#r.", value)

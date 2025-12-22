@@ -323,7 +323,7 @@ The parser will apply our ``assert_is_even`` to all values that it returns::
     >>> parser.parse("3")
     Traceback (most recent call last):
     ...
-    yuio.parse.ParsingError: expected an even value: 3
+    yuio.parse.ParsingError: Expected an even value: 3
 
 
 Mutating parsers

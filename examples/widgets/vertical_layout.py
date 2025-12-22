@@ -12,7 +12,7 @@ from yuio.widget import KeyboardEvent, RenderContext, VerticalLayout, Widget
 # and we'll stack them together using `yuio.widget.VerticalLayout`.
 class InputWithHeading(Widget[str]):
     def __init__(self):
-        self._heading = yuio.widget.Line("Enter something:", color="bold")
+        self._heading = yuio.widget.Line("Enter something:")
         self._input = yuio.widget.Input()
 
         # We will init this attribute in the `layout` function.
@@ -31,7 +31,7 @@ class InputWithHeading(Widget[str]):
 
         # ...and the third one will only show if entered text is long enough.
         if yuio.string.line_width(self._input.text) > 15:
-            self._layout.append(yuio.widget.Line("Wow that's long!", color="blue"))
+            self._layout.append(yuio.widget.Line("Wow that's long!"))
 
         return self._layout.layout(rc)
 

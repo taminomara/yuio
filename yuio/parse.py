@@ -5494,9 +5494,6 @@ class _PathRenderer:
     def __init__(self, path: list[tuple[_t.Any, str | None]]):
         self._path = path
 
-    def __str__(self):
-        return str(yuio.string.ReprContext().str(self))
-
     def __colorized_str__(
         self, ctx: yuio.string.ReprContext
     ) -> yuio.string.ColorizedString:
@@ -5508,7 +5505,11 @@ class _PathRenderer:
 
         for i, (key, desc) in enumerate(self._path):
             if desc:
-                desc = yuio.string.colorize(desc).percent_format({"key": key})
+                desc = (
+                    (yuio.string)
+                    .colorize(desc, ctx=ctx)
+                    .percent_format({"key": key}, ctx=ctx)
+                )
 
                 if i == len(self._path) - 1:
                     # Last key.
@@ -5553,15 +5554,12 @@ class _CodeRenderer:
         self._pos = pos
         self._as_cli = as_cli
 
-    def __str__(self):
-        return str(yuio.string.ReprContext().str(self))
-
     def __colorized_str__(
         self, ctx: yuio.string.ReprContext
     ) -> yuio.string.ColorizedString:
-        max_width = ctx.max_width - 2  # Account for indentation.
+        width = ctx.width - 2  # Account for indentation.
 
-        if max_width < 10:  # 6 symbols for ellipsis and at least 2 wide chars.
+        if width < 10:  # 6 symbols for ellipsis and at least 2 wide chars.
             return yuio.string.ColorizedString()
 
         start, end = self._pos
@@ -5576,7 +5574,7 @@ class _CodeRenderer:
         c_width = yuio.string.line_width(center)
         r_width = yuio.string.line_width(right)
 
-        available_width = max_width - (3 if left else 0) - 3
+        available_width = width - (3 if left else 0) - 3
         if c_width > available_width:
             # Center can't fit: remove left and right side,
             # and trim as much center as needed.
@@ -5601,13 +5599,13 @@ class _CodeRenderer:
                     break
             center = new_c
 
-        if r_width > 3 and l_width + c_width + r_width > max_width:
+        if r_width > 3 and l_width + c_width + r_width > width:
             # Trim right side.
             new_r = ""
             r_width = 3
             for c in right:
                 cw = yuio.string.line_width(c)
-                if l_width + c_width + r_width + cw <= max_width:
+                if l_width + c_width + r_width + cw <= width:
                     new_r += c
                     r_width += cw
                 else:
@@ -5615,13 +5613,13 @@ class _CodeRenderer:
                     break
             right = new_r
 
-        if l_width > 3 and l_width + c_width + r_width > max_width:
+        if l_width > 3 and l_width + c_width + r_width > width:
             # Trim left side.
             new_l = ""
             l_width = 3
             for c in left[::-1]:
                 cw = yuio.string.line_width(c)
-                if l_width + c_width + r_width + cw <= max_width:
+                if l_width + c_width + r_width + cw <= width:
                     new_l += c
                     l_width += cw
                 else:

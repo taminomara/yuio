@@ -23,6 +23,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.githubpages",
+    "sphinx.ext.todo",
     "yuio.ext.sphinx",
     "sphinx_design",
     "sphinx_vhs",
@@ -35,8 +36,14 @@ intersphinx_mapping = {
     "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
 }
 nitpick_ignore_regex = [
-    (r"py:obj", r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|NamespaceT|ConfigT|_[^.]*)"),
-    (r"py:class", r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|NamespaceT|ConfigT|_[^.]*)"),
+    (
+        r"py:obj",
+        r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|NamespaceT|ConfigT|_[^.]*)",
+    ),
+    (
+        r"py:class",
+        r"(.*\.)?([A-Z]\w?|[A-Z]+_co|Cmp|SupportsLt|TAst|NamespaceT|ConfigT|_[^.]*)",
+    ),
 ]
 autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"

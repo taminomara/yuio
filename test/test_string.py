@@ -6,7 +6,6 @@ import pytest
 
 import yuio.string
 import yuio.term
-import yuio.theme
 from yuio import _typing as _t
 from yuio.color import Color
 from yuio.string import NO_WRAP_END, NO_WRAP_START, Esc
@@ -480,8 +479,8 @@ def test_extend(text, expected):
         ),
     ],
 )
-def test_colorize(text, kwargs, expect):
-    formatted = yuio.string.colorize(text, **kwargs)
+def test_colorize(text, kwargs, expect, ctx):
+    formatted = yuio.string.colorize(text, ctx=ctx, **kwargs)
     assert formatted._parts == expect
 
 
@@ -919,8 +918,8 @@ def test_strip_color_tags(text, expect):
         ),
     ],
 )
-def test_string_format(text, args, expect):
-    formatted = _s(text).percent_format(args)
+def test_string_format(text, args, expect, ctx):
+    formatted = _s(text).percent_format(args, ctx=ctx)
     assert formatted._parts == expect
 
 
@@ -951,9 +950,9 @@ def test_string_format(text, args, expect):
         ("", "foo", TypeError, r"not all arguments converted during string formatting"),
     ],
 )
-def test_format_error(text, args, exc, match):
+def test_format_error(text, args, exc, match, ctx):
     with pytest.raises(exc, match=match):
-        _s(text).percent_format(args, yuio.theme.Theme())
+        _s(text).percent_format(args, ctx=ctx)
 
 
 @pytest.mark.parametrize(
@@ -3084,9 +3083,9 @@ class ColorfulObjectDeep:
         ),
     ],
 )
-def test_colorized_str(value, expected):
+def test_colorized_str(value, expected, ctx):
     assert _join_consecutive_strings(
-        yuio.string.colorized_str(value)._parts
+        ctx.str(value)._parts
     ) == _join_consecutive_strings(expected)
 
 
@@ -4324,7 +4323,7 @@ class Str:
         ),
     ],
 )
-def test_colorized_repr(value, expected, multiline, highlighted, max_depth):
+def test_colorized_repr(value, expected, multiline, highlighted, max_depth, ctx):
     if not highlighted:
         expected = _s(
             [
@@ -4338,7 +4337,7 @@ def test_colorized_repr(value, expected, multiline, highlighted, max_depth):
         )._parts
 
     assert _join_consecutive_strings(
-        yuio.string.colorized_repr(
+        ctx.repr(
             value,
             multiline=multiline,
             highlighted=highlighted,
@@ -4467,11 +4466,11 @@ class TestFormat:
             (("%s", _s([Color.FORE_BLUE, "qux"])), [Color.FORE_BLUE, "qux"]),
         ],
     )
-    def test_format(self, args, expected):
+    def test_format(self, args, expected, ctx):
         r = yuio.string.Format(*args)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(p for p in expected if isinstance(p, str))
         assert repr(r) == f"Format({', '.join(map(repr, args))})"
 
@@ -4546,12 +4545,14 @@ class TestRepr:
             ),
         ],
     )
-    def test_repr(self, value, kwargs, expected):
+    def test_repr(self, value, kwargs, expected, ctx):
         r = yuio.string.Repr(value, **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
-        assert str(r) == repr(value)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
+        assert [str(r)] == _join_consecutive_strings(
+            part for part in expected if isinstance(part, str)
+        )
 
     @pytest.mark.parametrize(
         ("value", "kwargs", "expected"),
@@ -4619,12 +4620,11 @@ class TestRepr:
             ),
         ],
     )
-    def test_repr_hl(self, value, kwargs, expected):
+    def test_repr_hl(self, value, kwargs, expected, ctx):
         r = yuio.string.Repr(value, **kwargs)
         assert _join_consecutive_strings(
-            yuio.string.colorized_str(r, multiline=True, highlighted=True)
+            ctx.str(r, multiline=True, highlighted=True)
         ) == _join_consecutive_strings(expected)
-        assert str(r) == repr(value)
 
 
 class TestTypeRepr:
@@ -4679,11 +4679,11 @@ class TestTypeRepr:
             ),
         ],
     )
-    def test_repr(self, value, kwargs, expected):
+    def test_repr(self, value, kwargs, expected, ctx):
         r = yuio.string.TypeRepr(value, **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert [str(r)] == _join_consecutive_strings(
             part for part in expected if isinstance(part, str)
         )
@@ -4711,10 +4711,10 @@ class TestTypeRepr:
             ),
         ],
     )
-    def test_repr_hl(self, value, kwargs, expected):
+    def test_repr_hl(self, value, kwargs, expected, ctx):
         r = yuio.string.TypeRepr(value, **kwargs)
         assert _join_consecutive_strings(
-            yuio.string.colorized_str(r, highlighted=True)
+            ctx.str(r, highlighted=True)
         ) == _join_consecutive_strings(expected)
         assert [str(r)] == _join_consecutive_strings(
             part for part in expected if isinstance(part, str)
@@ -4845,41 +4845,41 @@ class TestJoinStr:
             ),
         ],
     )
-    def test_join(self, value, kwargs, expected):
+    def test_join(self, value, kwargs, expected, ctx):
         r = yuio.string.JoinStr(value, **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
-    def test_and(self, theme):
+    def test_and(self, ctx):
         r = yuio.string.And("", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == []
+        assert _join_consecutive_strings(ctx.str(r)) == []
 
         r = yuio.string.And("12", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
+        assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "1 and 2",
         ]
 
         r = yuio.string.And("123", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
+        assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "1, 2, and 3",
         ]
 
-    def test_or(self, theme):
+    def test_or(self, ctx):
         r = yuio.string.Or("", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == []
+        assert _join_consecutive_strings(ctx.str(r)) == []
 
         r = yuio.string.Or("12", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
+        assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "1 or 2",
         ]
 
         r = yuio.string.Or("123", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
+        assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "1, 2, or 3",
         ]
@@ -4993,41 +4993,41 @@ class TestJoinRepr:
             ),
         ],
     )
-    def test_join(self, value, kwargs, expected):
+    def test_join(self, value, kwargs, expected, ctx):
         r = yuio.string.JoinRepr(value, **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
-    def test_and(self, theme):
+    def test_and(self, ctx):
         r = yuio.string.JoinRepr.and_("", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == []
+        assert _join_consecutive_strings(ctx.str(r)) == []
 
         r = yuio.string.JoinRepr.and_("12", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
+        assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "'1' and '2'",
         ]
 
         r = yuio.string.JoinRepr.and_("123", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
+        assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "'1', '2', and '3'",
         ]
 
-    def test_or(self, theme):
+    def test_or(self, ctx):
         r = yuio.string.JoinRepr.or_("", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == []
+        assert _join_consecutive_strings(ctx.str(r)) == []
 
         r = yuio.string.JoinRepr.or_("12", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
+        assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "'1' or '2'",
         ]
 
         r = yuio.string.JoinRepr.or_("123", color=None)
-        assert _join_consecutive_strings(yuio.string.colorized_str(r, theme)) == [
+        assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "'1', '2', or '3'",
         ]
@@ -5055,11 +5055,11 @@ class TestStack:
             ),
         ],
     )
-    def test_join(self, args, expected):
+    def test_join(self, args, expected, ctx):
         r = yuio.string.Stack(*args)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
 
@@ -5127,11 +5127,11 @@ class TestIndent:
             ),
         ],
     )
-    def test_indent(self, value, kwargs, expected):
+    def test_indent(self, value, kwargs, expected, ctx):
         r = yuio.string.Indent(value, **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
 
@@ -5176,7 +5176,7 @@ class TestMd:
             ),
             (
                 ("Some paragraph that will be wrapped at 10 characters",),
-                {"max_width": 10},
+                {"width": 10},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5226,11 +5226,11 @@ class TestMd:
             ),
         ],
     )
-    def test_md(self, args, kwargs, expected):
+    def test_md(self, args, kwargs, expected, ctx):
         r = yuio.string.Md(*args, **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
 
@@ -5261,11 +5261,11 @@ class TestHl:
             ),
         ],
     )
-    def test_hl(self, args, kwargs, expected):
+    def test_hl(self, args, kwargs, expected, ctx):
         r = yuio.string.Hl(*args, syntax="json", **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
 
@@ -5298,7 +5298,7 @@ class TestWrap:
             ),
             (
                 "Some paragraph that will be wrapped at 10 characters",
-                {"max_width": 10},
+                {"width": 10},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5342,7 +5342,7 @@ class TestWrap:
             ),
             (
                 "foo_bar_baz_qux_duo",
-                {"overflow": True, "break_long_words": False, "max_width": 10},
+                {"overflow": True, "break_long_words": False, "width": 10},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5352,7 +5352,7 @@ class TestWrap:
             ),
             (
                 "foo_bar_baz_qux_duo",
-                {"overflow": "!", "break_long_words": False, "max_width": 10},
+                {"overflow": "!", "break_long_words": False, "width": 10},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5362,11 +5362,11 @@ class TestWrap:
             ),
         ],
     )
-    def test_wrap(self, value, kwargs, expected):
+    def test_wrap(self, value, kwargs, expected, ctx):
         r = yuio.string.Wrap(value, **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
 
@@ -5396,11 +5396,11 @@ class TestWithBaseColor:
             ),
         ],
     )
-    def test_with_base_color(self, value, color, expected):
+    def test_with_base_color(self, value, color, expected, ctx):
         r = yuio.string.WithBaseColor(value, base_color=color)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
 
@@ -5503,7 +5503,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {"max_width": 3},
+                {"width": 3},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5513,7 +5513,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {"max_width": 5},
+                {"width": 5},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5527,7 +5527,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {"max_width": 7},
+                {"width": 7},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5541,7 +5541,7 @@ class TestHr:
             ),
             (
                 "foobar",
-                {"max_width": 7},
+                {"width": 7},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5553,7 +5553,7 @@ class TestHr:
             ),
             (
                 "foobarbaz",
-                {"max_width": 7},
+                {"width": 7},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5563,7 +5563,7 @@ class TestHr:
             ),
             (
                 "foobarbaz",
-                {"max_width": 7, "overflow": ""},
+                {"width": 7, "overflow": ""},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5573,7 +5573,7 @@ class TestHr:
             ),
             (
                 "foobarbaz",
-                {"max_width": 7, "overflow": False},
+                {"width": 7, "overflow": False},
                 [
                     NO_WRAP_START,
                     Color.NONE,
@@ -5617,7 +5617,7 @@ class TestHr:
             ),
             (
                 "",
-                {**_HR_KWARGS_2, "max_width": 19},
+                {**_HR_KWARGS_2, "width": 19},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5627,7 +5627,7 @@ class TestHr:
             ),
             (
                 "",
-                {**_HR_KWARGS_2, "max_width": 18},
+                {**_HR_KWARGS_2, "width": 18},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5637,7 +5637,7 @@ class TestHr:
             ),
             (
                 "",
-                {**_HR_KWARGS_2, "max_width": 5},
+                {**_HR_KWARGS_2, "width": 5},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5647,7 +5647,7 @@ class TestHr:
             ),
             (
                 "",
-                {**_HR_KWARGS_2, "max_width": 4},
+                {**_HR_KWARGS_2, "width": 4},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5657,7 +5657,7 @@ class TestHr:
             ),
             (
                 "",
-                {**_HR_KWARGS_2, "max_width": 3},
+                {**_HR_KWARGS_2, "width": 3},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5667,7 +5667,7 @@ class TestHr:
             ),
             (
                 "",
-                {**_HR_KWARGS_2, "max_width": 1},
+                {**_HR_KWARGS_2, "width": 1},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5691,7 +5691,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {**_HR_KWARGS_2, "max_width": 19},
+                {**_HR_KWARGS_2, "width": 19},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5705,7 +5705,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {**_HR_KWARGS_2, "max_width": 15},
+                {**_HR_KWARGS_2, "width": 15},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5719,7 +5719,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {**_HR_KWARGS_2, "max_width": 11},
+                {**_HR_KWARGS_2, "width": 11},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5733,7 +5733,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {**_HR_KWARGS_2, "max_width": 10},
+                {**_HR_KWARGS_2, "width": 10},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5747,7 +5747,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {**_HR_KWARGS_2, "max_width": 9},
+                {**_HR_KWARGS_2, "width": 9},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5761,7 +5761,7 @@ class TestHr:
             ),
             (
                 "foo",
-                {**_HR_KWARGS_2, "max_width": 5},
+                {**_HR_KWARGS_2, "width": 5},
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
@@ -5775,18 +5775,16 @@ class TestHr:
             ),
         ],
     )
-    def test_hr(self, value, kwargs, expected):
+    def test_hr(self, value, kwargs, expected, ctx):
         r = yuio.string.Hr(value, **kwargs)
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(expected)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
 
-    def test_hr_no_args(self):
+    def test_hr_no_args(self, ctx):
         r = yuio.string.Hr()
-        assert _join_consecutive_strings(
-            yuio.string.colorized_str(r)
-        ) == _join_consecutive_strings(
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
             [NO_WRAP_START, Color.FORE_MAGENTA, "────────────────────", NO_WRAP_END]
         )
         assert str(r) == "────────────────────"

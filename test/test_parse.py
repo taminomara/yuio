@@ -165,8 +165,8 @@ def test_repr_and_adjust_pos(s, pos, expected_s, expected_pos):
         ([("foo", "desc %(key)r"), ("x", None)], "$.<desc 'foo'>.x"),
     ],
 )
-def test_path_renderer(path, expected):
-    assert str(yuio.parse._PathRenderer(path)) == expected
+def test_path_renderer(path, expected, ctx):
+    assert str(ctx.str(yuio.parse._PathRenderer(path))) == expected
 
 
 @pytest.mark.parametrize(("as_cli"), [True, False])
@@ -247,10 +247,11 @@ def test_path_renderer(path, expected):
         ),
     ],
 )
-def test_code_renderer(code, pos, a, b, as_cli):
+def test_code_renderer(code, pos, a, b, as_cli, ctx):
     if as_cli:
         a = "$ " + a[2:]
-    assert str(yuio.parse._CodeRenderer(code, pos, as_cli=as_cli)) == a + "\n" + b
+    col = ctx.str(yuio.parse._CodeRenderer(code, pos, as_cli=as_cli))
+    assert str(col) == a + "\n" + b
 
 
 class TestErrorMessages:

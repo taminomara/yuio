@@ -5,6 +5,7 @@ import pytest
 
 import yuio.color
 import yuio.complete
+import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
@@ -581,27 +582,6 @@ class TestLine:
 
         widget_checker.check(yuio.widget.Line("Text 1 2 3 4 5 6 7 8 9 0"))
 
-    def test_color_simple(self, widget_checker: WidgetChecker[yuio.widget.Line]):
-        widget_checker.expect_screen(
-            [
-                "Text                ",
-                "                    ",
-                "                    ",
-                "                    ",
-                "                    ",
-            ],
-            [
-                "rrrr                ",
-                "                    ",
-                "                    ",
-                "                    ",
-                "                    ",
-            ],
-        )
-        widget_checker.expect_widget_to_continue()
-
-        widget_checker.check(yuio.widget.Line("Text", color="red"))
-
     def test_colorized_string(self, widget_checker: WidgetChecker[yuio.widget.Line]):
         widget_checker.expect_screen(
             [
@@ -612,7 +592,7 @@ class TestLine:
                 "                    ",
             ],
             [
-                "rrrrrbbbb           ",
+                "     bbbb           ",
                 "                    ",
                 "                    ",
                 "                    ",
@@ -622,7 +602,11 @@ class TestLine:
         widget_checker.expect_widget_to_continue()
 
         widget_checker.check(
-            yuio.widget.Line(["Text ", yuio.color.Color.FORE_BLUE, "blue"], color="red")
+            yuio.widget.Line(
+                yuio.string.ColorizedString(
+                    ["Text ", yuio.color.Color.FORE_BLUE, "blue"]
+                )
+            )
         )
 
 
@@ -689,7 +673,11 @@ class TestText:
         widget_checker.expect_widget_to_continue()
 
         widget_checker.check(
-            yuio.widget.Text(["Text ", yuio.color.Color.FORE_BLUE, "blue"])
+            yuio.widget.Text(
+                yuio.string.ColorizedString(
+                    ["Text ", yuio.color.Color.FORE_BLUE, "blue"]
+                )
+            )
         )
 
 
@@ -1914,7 +1902,7 @@ class TestInput:
         height: int,
     ):
         widget = yuio.widget.Input(text=text, pos=pos)
-        widget_checker.check(widget, ostream, term, theme, width, height)
+        widget_checker.check(widget, term, theme, width, height)
 
 
 class TestGrid:

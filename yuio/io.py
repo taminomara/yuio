@@ -418,6 +418,7 @@ __all__ = [
     "hl",
     "hr",
     "info",
+    "make_repr_context",
     "md",
     "orig_stderr",
     "orig_stdout",
@@ -476,6 +477,9 @@ def setup(
     theme: (
         yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
     ) = None,
+    fallback_theme: (
+        yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
+    ) = None,
     wrap_stdio: bool = True,
 ):
     """
@@ -492,6 +496,12 @@ def setup(
 
         If not passed, the global theme is not re-configured; the default is to use
         :class:`yuio.theme.DefaultTheme` then.
+    :param fallback_theme:
+        either a theme that will be used when printing to non-tty terminals, i.e. when
+        output is redirected to a file.
+
+        If not passed, the global theme is not re-configured; the default is to use
+        :class:`yuio.theme.DummyTheme` then.
     :param wrap_stdio:
         if set to :data:`True`, wraps :data:`sys.stdout` and :data:`sys.stderr`
         in a special wrapper that ensures better interaction
@@ -554,6 +564,72 @@ def get_theme() -> yuio.theme.Theme:
     return _manager().theme
 
 
+def make_repr_context(
+    *,
+    term: yuio.term.Term | None = None,
+    to_stdout: bool = False,
+    to_stderr: bool = False,
+    theme: yuio.theme.Theme | None = None,
+    multiline: bool = False,
+    highlighted: bool = False,
+    max_depth: int = 5,
+    width: int | None = None,
+) -> yuio.string.ReprContext:
+    """
+    Create new :class:`~yuio.string.ReprContext` for the given term and theme.
+
+    :param term:
+        terminal where to print this message. If not given, terminal from
+        :func:`get_term` is used.
+    :param to_stdout:
+        shortcut for setting ``term`` to ``stdout``.
+    :param to_stderr:
+        shortcut for setting ``term`` to ``stderr``.
+    :param theme:
+        theme used to format the message. If not given, theme from
+        :func:`get_theme` is used.
+    :param multiline:
+        sets initial value for :attr:`ReprContext.multiline`.
+    :param highlighted:
+        sets initial value for :attr:`ReprContext.highlighted`.
+    :param max_depth:
+        sets initial value for :attr:`ReprContext.max_depth`.
+    :param width:
+        sets initial value for :attr:`ReprContext.width`. If not given, uses current
+        terminal width or :attr:`Theme.fallback_width` depending on whether
+        `term` is attached to a TTY device.
+
+    """
+
+    if (term is not None) + to_stdout + to_stderr > 1:
+        raise TypeError("term, to_stdout, to_stderr can't be given together")
+
+    manager = _manager()
+
+    theme = manager.theme
+    if term is None:
+        if to_stdout:
+            term = manager.out_term
+        elif to_stderr:
+            term = manager.err_term
+        else:
+            term = manager.term
+    if (
+        width is None
+        and term.ostream_interactive_support >= yuio.term.InteractiveSupport.BACKGROUND
+    ):
+        width = manager.rc.canvas_width
+
+    return yuio.string.ReprContext(
+        term=term,
+        theme=theme,
+        multiline=multiline,
+        highlighted=highlighted,
+        max_depth=max_depth,
+        width=width,
+    )
+
+
 def wrap_streams():
     """
     Wrap :data:`sys.stdout` and :data:`sys.stderr` so that they honor
@@ -582,9 +658,9 @@ def wrap_streams():
         if _STREAMS_WRAPPED:  # pragma: no cover
             return
 
-        if yuio.term._is_interactive_output(sys.stdout):
+        if yuio.term._output_is_tty(sys.stdout):
             _ORIG_STDOUT, sys.stdout = sys.stdout, _WrappedOutput(sys.stdout)
-        if yuio.term._is_interactive_output(sys.stderr):
+        if yuio.term._output_is_tty(sys.stderr):
             _ORIG_STDERR, sys.stderr = sys.stderr, _WrappedOutput(sys.stderr)
         _STREAMS_WRAPPED = True
 
@@ -1007,6 +1083,7 @@ def raw(
     term: yuio.term.Term | None = None,
     to_stdout: bool = False,
     to_stderr: bool = False,
+    theme: yuio.theme.Theme | None = None,
     ignore_suspended: bool = False,
     tag: str | None = None,
     exc_info: ExcInfo | bool | None = None,
@@ -1029,6 +1106,9 @@ def raw(
         shortcut for setting ``term`` to ``stdout``.
     :param to_stderr:
         shortcut for setting ``term`` to ``stderr``.
+    :param theme:
+        theme used to format the message. If not given, theme from
+        :func:`get_theme` is used.
     :param ignore_suspended:
         whether to ignore :class:`SuspendOutput` context.
     :param tag:
@@ -1059,19 +1139,13 @@ def raw(
 
     manager = _manager()
 
-    theme = manager.theme
-    if term is None:
-        if to_stdout:
-            term = manager.out_term
-        elif to_stderr:
-            term = manager.err_term
-        else:
-            term = manager.term
-    ctx = yuio.string.ReprContext(theme=theme, max_width=manager.rc.canvas_width)
+    ctx = make_repr_context(
+        term=term, to_stdout=to_stdout, to_stderr=to_stderr, theme=theme
+    )
 
-    if tag and (decoration := theme.msg_decorations.get(tag, "")):
+    if tag and (decoration := ctx.get_msg_decoration(tag)):
         indent = yuio.string.ColorizedString(
-            [theme.get_color(f"msg/decoration:{tag}"), decoration]
+            [ctx.get_color(f"msg/decoration:{tag}"), decoration]
         )
         continuation_indent = " " * indent.width
     else:
@@ -1080,7 +1154,7 @@ def raw(
 
     if tag:
         msg = yuio.string.WithBaseColor(
-            msg, base_color=theme.get_color(f"msg/text:{tag}")
+            msg, base_color=ctx.get_color(f"msg/text:{tag}")
         )
 
     if wrap:
@@ -1113,11 +1187,11 @@ def raw(
     if exc_info is not None and exc_info != (None, None, None):
         tb = "".join(traceback.format_exception(*exc_info))
         highlighter = yuio.md.SyntaxHighlighter.get_highlighter("python-traceback")
-        msg += highlighter.highlight(theme, tb).indent()
+        msg += highlighter.highlight(ctx.theme, tb).indent()
 
     manager.print(
-        msg.process_colors(term.color_support),
-        term,
+        msg.process_colors(ctx.term.color_support),
+        ctx.term,
         ignore_suspended=ignore_suspended,
         heading=heading,
     )
@@ -1126,9 +1200,7 @@ def raw(
 class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
     _layout: yuio.widget.VerticalLayout[T]
 
-    def __init__(
-        self, prompt: yuio.string.ColorizedString, widget: yuio.widget.Widget[T]
-    ):
+    def __init__(self, prompt: yuio.string.Colorable, widget: yuio.widget.Widget[T]):
         self._prompt = yuio.widget.Text(prompt)
         self._error: Exception | None = None
         self._inner = widget
@@ -1154,7 +1226,7 @@ class _AskWidget(yuio.widget.Widget[T], _t.Generic[T]):
                 "<c msg/decoration:error>▲</c> %s",
                 yuio.string.Indent(self._error, indent=0, continuation_indent=2),
                 default_color="msg/text:error",
-                ctx=rc.theme,
+                ctx=rc.make_repr_context(),
             )
             builder = builder.add(yuio.widget.Text(error_msg))
 
@@ -1284,10 +1356,9 @@ def _ask(
     input_description: str | None = None,
     default_description: str | None = None,
 ) -> _t.Any:
-    manager = _manager()
-    term, theme = manager.term, manager.theme
+    ctx = make_repr_context()
 
-    if not term.istream.readable():
+    if not ctx.term.can_query_user:
         if default_non_interactive is yuio.MISSING:
             default_non_interactive = default
         if default_non_interactive is yuio.MISSING:
@@ -1304,8 +1375,8 @@ def _ask(
     else:
         needs_colon = msg and msg[-1] not in string.punctuation
 
-    base_color = theme.get_color("msg/text:question")
-    prompt = yuio.string.colorize(msg, *args, default_color=base_color, ctx=theme)
+    base_color = ctx.get_color("msg/text:question")
+    prompt = yuio.string.colorize(msg, *args, default_color=base_color, ctx=ctx)
 
     if not input_description:
         input_description = parser.describe()
@@ -1316,7 +1387,7 @@ def _ask(
         except TypeError:
             default_description = str(default)
 
-    if term.is_fully_interactive:
+    if ctx.term.can_run_widgets:
         # Use widget.
 
         if needs_colon:
@@ -1335,7 +1406,7 @@ def _ask(
         widget = _AskWidget(prompt, inner_widget)
         with SuspendOutput() as s:
             try:
-                result = widget.run(term, theme)
+                result = widget.run(ctx.term, ctx.theme)
             except (OSError, EOFError) as e:  # pragma: no cover
                 raise UserIoError("Unexpected end of input") from e
 
@@ -1349,10 +1420,10 @@ def _ask(
 
             prompt.append_color(base_color)
             prompt.append_str(" ")
-            prompt.append_color(base_color | theme.get_color("code"))
+            prompt.append_color(base_color | ctx.get_color("code"))
             prompt.append_str(result_desc)
 
-            s.info(prompt, tag="question", term=term)
+            s.info(prompt, tag="question", term=ctx.term, theme=ctx.theme)
             return result
     else:
         # Use raw input.
@@ -1364,7 +1435,7 @@ def _ask(
             prompt += ")"
         if default_description:
             prompt += " ["
-            prompt += base_color | theme.get_color("code")
+            prompt += base_color | ctx.get_color("code")
             prompt += default_description
             prompt += base_color
             prompt += "]"
@@ -1376,18 +1447,18 @@ def _ask(
         with SuspendOutput() as s:
             while True:
                 try:
-                    answer = do_input(term, prompt)
+                    answer = do_input(ctx.term, prompt)
                 except (OSError, EOFError) as e:  # pragma: no cover
                     raise UserIoError("Unexpected end of input") from e
                 if not answer and default is not yuio.MISSING:
                     return default
                 elif not answer:
-                    s.error("Input is required.", term=term)
+                    s.error("Input is required.", term=ctx.term, theme=ctx.theme)
                 else:
                     try:
                         return parser.parse(answer)
                     except yuio.parse.ParsingError as e:
-                        s.error(e, term=term)
+                        s.error(e, term=ctx.term, theme=ctx.theme)
 
 
 def _read(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
@@ -1485,7 +1556,7 @@ else:
 
 
 class _WaitForUserWidget(yuio.widget.Widget[None]):
-    def __init__(self, prompt: yuio.string.ColorizedString):
+    def __init__(self, prompt: yuio.string.Colorable):
         self._prompt = yuio.widget.Text(prompt)
 
     def layout(self, rc: yuio.widget.RenderContext, /) -> tuple[int, int]:
@@ -1519,24 +1590,23 @@ def wait_for_user(
 
     """
 
-    manager = _manager()
-    term, theme = manager.term, manager.theme
+    ctx = make_repr_context()
 
-    if not term.istream.readable():
+    if not ctx.term.can_query_user:
         return
 
     prompt = yuio.string.colorize(
-        msg.rstrip(), *args, default_color="msg/text:question", ctx=theme
+        msg.rstrip(), *args, default_color="msg/text:question", ctx=ctx
     )
     prompt += yuio.string.Esc(" ")
 
     with SuspendOutput() as s:
         try:
-            if term.is_fully_interactive:
-                _WaitForUserWidget(prompt).run(term, theme)
+            if ctx.term.can_run_widgets:
+                _WaitForUserWidget(prompt).run(ctx.term, ctx.theme)
             else:
                 s.info(prompt, add_newline=False, tag="question")
-                term.istream.readline()
+                ctx.term.istream.readline()
         except (OSError, EOFError):  # pragma: no cover
             return
 
@@ -1633,7 +1703,7 @@ def edit(
     manager = _manager()
     term = manager.term
 
-    if term.is_fully_interactive:
+    if term.can_run_widgets:
         if editor is None:
             editor = detect_editor(fallbacks)
 
@@ -2458,10 +2528,7 @@ class Formatter(logging.Formatter):
     def formatMessage(self, record):
         level = record.levelname.lower()
 
-        manager = _manager()
-        theme = manager.theme
-        term = manager.term
-        ctx = yuio.string.ReprContext(theme=theme, max_width=manager.rc.canvas_width)
+        ctx = make_repr_context()
 
         if not hasattr(record, "colMessage"):
             msg = str(record.msg)
@@ -2484,7 +2551,7 @@ class Formatter(logging.Formatter):
                 self._fmt or self.default_format, default_color=f"log:{level}", ctx=ctx
             )
             .percent_format(data, ctx)
-            .process_colors(term.color_support)
+            .process_colors(ctx.term.color_support)
         )
 
     def formatException(self, ei):
@@ -2658,10 +2725,7 @@ class _IoManager(abc.ABC):
                 if self._printed_some_lines:
                     msg.insert(0, "\n")
                 msg.append("\n")
-            if term.ostream_is_tty:
-                self._emit_lines(msg, term.ostream, ignore_suspended)
-            else:
-                term.ostream.writelines(msg)
+            self._emit_lines(msg, term.ostream, ignore_suspended)
             if heading:
                 self._printed_some_lines = False
 
@@ -2777,7 +2841,7 @@ class _IoManager(abc.ABC):
             self._suspended = 0
 
     def _start_task(self, task: Task):
-        if self._term.can_move_cursor:
+        if self._term.can_render_widgets:
             self._tasks.append(task)
             self._update_tasks()
         else:
@@ -2786,7 +2850,7 @@ class _IoManager(abc.ABC):
             )
 
     def _start_subtask(self, parent: Task, task: Task):
-        if self._term.can_move_cursor:
+        if self._term.can_render_widgets:
             parent._subtasks.append(task)
             self._update_tasks()
         else:
@@ -2804,7 +2868,7 @@ class _IoManager(abc.ABC):
             if subtask._status == Task._Status.RUNNING:
                 self._finish_task(subtask, status)
 
-        if self._term.can_move_cursor:
+        if self._term.can_render_widgets:
             if task in self._tasks:
                 self._tasks.remove(task)
                 self._emit_lines(
@@ -2818,7 +2882,7 @@ class _IoManager(abc.ABC):
             )
 
     def _clear_tasks(self):
-        if self._term.can_move_cursor and self._tasks_printed:
+        if self._term.can_render_widgets and self._tasks_printed:
             self._rc.finalize()
             self._tasks_printed = 0
 
@@ -2829,7 +2893,7 @@ class _IoManager(abc.ABC):
 
     def _show_tasks(self, immediate_render: bool = False):
         if (
-            self._term.can_move_cursor
+            self._term.can_render_widgets
             and not self._suspended
             and (self._tasks or self._tasks_printed)
         ):
@@ -2890,7 +2954,9 @@ class _IoManager(abc.ABC):
 
         ctx = task._status.value
 
-        if decoration := self._theme.msg_decorations.get("task"):
+        if decoration := self._theme.get_msg_decoration(
+            "task", is_unicode=self._term.is_unicode
+        ):
             res += self._theme.get_color(f"task/decoration:{ctx}")
             res += decoration
 
@@ -2912,7 +2978,11 @@ class _IoManager(abc.ABC):
                 task._msg,
                 *task._args,
                 default_color=f"task/heading:{task._status.value}",
-                ctx=self._theme,
+                ctx=yuio.string.ReprContext(
+                    term=self._term,
+                    theme=self._theme,
+                    width=self._rc.width,
+                ),
             )
             task._cached_msg = msg
         return task._cached_msg
@@ -2925,7 +2995,11 @@ class _IoManager(abc.ABC):
                 task._comment,
                 *(task._comment_args or ()),
                 default_color=f"task/comment:{task._status.value}",
-                ctx=self._theme,
+                ctx=yuio.string.ReprContext(
+                    term=self._term,
+                    theme=self._theme,
+                    width=self._rc.width,
+                ),
             )
             task._cached_comment = comment
         return task._cached_comment
@@ -2965,26 +3039,30 @@ class _IoManager(abc.ABC):
                 self._rc.write(task._progress_total)
 
     def _draw_task_progressbar(self, task: Task):
-        progress_bar_start_symbol = self._theme.msg_decorations.get(
-            "progress_bar/start_symbol", ""
+        progress_bar_start_symbol = self._theme.get_msg_decoration(
+            "progress_bar/start_symbol", is_unicode=self._term.is_unicode
         )
-        progress_bar_end_symbol = self._theme.msg_decorations.get(
-            "progress_bar/end_symbol", ""
+        progress_bar_end_symbol = self._theme.get_msg_decoration(
+            "progress_bar/end_symbol", is_unicode=self._term.is_unicode
         )
         total_width = (
             self._theme.progress_bar_width
             - yuio.string.line_width(progress_bar_start_symbol)
             - yuio.string.line_width(progress_bar_end_symbol)
         )
-        progress_bar_done_symbol = self._theme.msg_decorations.get(
-            "progress_bar/done_symbol", ""
+        progress_bar_done_symbol = self._theme.get_msg_decoration(
+            "progress_bar/done_symbol", is_unicode=self._term.is_unicode
         )
-        progress_bar_pending_symbol = self._theme.msg_decorations.get(
-            "progress_bar/pending_symbol", ""
+        progress_bar_pending_symbol = self._theme.get_msg_decoration(
+            "progress_bar/pending_symbol", is_unicode=self._term.is_unicode
         )
         if task._status != Task._Status.RUNNING:
             self._rc.set_color_path(f"task/decoration:{task._status.value}")
-            self._rc.write(self._theme.msg_decorations.get("spinner/static_symbol", ""))
+            self._rc.write(
+                self._theme.get_msg_decoration(
+                    "spinner/static_symbol", is_unicode=self._term.is_unicode
+                )
+            )
         elif (
             task._progress is None
             or total_width <= 1
@@ -2992,14 +3070,16 @@ class _IoManager(abc.ABC):
             or not progress_bar_pending_symbol
         ):
             self._rc.set_color_path(f"task/decoration:{task._status.value}")
-            spinner_pattern = self._theme.msg_decorations.get("spinner/pattern", "")
+            spinner_pattern = self._theme.get_msg_decoration(
+                "spinner/pattern", is_unicode=self._term.is_unicode
+            )
             if spinner_pattern:
                 self._rc.write(
                     spinner_pattern[self._spinner_state % len(spinner_pattern)]
                 )
         else:
-            transition_pattern = self._theme.msg_decorations.get(
-                "progress_bar/transition_pattern"
+            transition_pattern = self._theme.get_msg_decoration(
+                "progress_bar/transition_pattern", is_unicode=self._term.is_unicode
             )
 
             progress = max(0, min(1, task._progress))

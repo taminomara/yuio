@@ -78,9 +78,9 @@ For this, create a :class:`yuio.cli.MutuallyExclusiveGroup` (also available from
     @yuio.app.app
     def main(
         release: str,
-        alpha: bool = yuio.app.field(default=False, group=GROUP),
-        beta: bool = yuio.app.field(default=False, group=GROUP),
-        rc: bool = yuio.app.field(default=False, group=GROUP),
+        alpha: bool = yuio.app.field(default=False, mutex_group=GROUP),
+        beta: bool = yuio.app.field(default=False, mutex_group=GROUP),
+        rc: bool = yuio.app.field(default=False, mutex_group=GROUP),
     ):
         ...
 

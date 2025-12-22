@@ -22,6 +22,7 @@ class TestSetup:
         monkeypatch.setattr("yuio.io._STREAMS_WRAPPED", False)
         monkeypatch.setattr("yuio.io._ORIG_STDERR", None)
         monkeypatch.setattr("yuio.io._ORIG_STDOUT", None)
+        monkeypatch.setattr("sys.argv", ["prog"])
 
     def test_implicit(self, monkeypatch: pytest.MonkeyPatch):
         stdout = io.StringIO()
@@ -806,14 +807,16 @@ class TestAsk:
             assert yuio.io.ask[list[int]]("Enter some numbers") == [123, 456]
 
 
-class TestAskNonInteractive:
+class TestAskNoColor:
     @pytest.fixture
     def term(self, ostream: io.StringIO, istream: _t.TextIO) -> yuio.term.Term:
         return yuio.term.Term(
             ostream,
             istream,
-            color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            interactive_support=yuio.term.InteractiveSupport.MOVE_CURSOR,
+            color_support=yuio.term.ColorSupport.NONE,
+            ostream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+            istream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+            is_unicode=True,
         )
 
     def test_simple(self, io_mocker: IOMocker):
@@ -1274,7 +1277,7 @@ class TestAskNonInteractive:
         assert output_str == "***"
 
 
-class TestAskUnreadable:
+class TestAskNonInteractive:
     @pytest.fixture
     def term(self, ostream: io.StringIO, istream: _t.TextIO) -> yuio.term.Term:
         istream.readable = lambda: False
@@ -1282,7 +1285,9 @@ class TestAskUnreadable:
             ostream,
             istream,
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            interactive_support=yuio.term.InteractiveSupport.NONE,
+            ostream_interactive_support=yuio.term.InteractiveSupport.NONE,
+            istream_interactive_support=yuio.term.InteractiveSupport.NONE,
+            is_unicode=True,
         )
 
     def test_default(self, io_mocker: IOMocker):
@@ -1342,14 +1347,16 @@ class TestWaitForUser:
             yuio.io.wait_for_user("Slam that %s button!", "Enter")
 
 
-class TestWaitForUserNonInteractive:
+class TestWaitForUserNoColor:
     @pytest.fixture
     def term(self, ostream: io.StringIO, istream: _t.TextIO) -> yuio.term.Term:
         return yuio.term.Term(
             ostream,
             istream,
-            color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            interactive_support=yuio.term.InteractiveSupport.MOVE_CURSOR,
+            color_support=yuio.term.ColorSupport.NONE,
+            ostream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+            istream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+            is_unicode=True,
         )
 
     def test_simple(self, io_mocker: IOMocker):
@@ -1423,7 +1430,7 @@ class TestWaitForUserNonInteractive:
             yuio.io.wait_for_user("Slam that %s button!", "Enter")
 
 
-class TestWaitForUserUnreadable:
+class TestWaitForUserNonInteractive:
     @pytest.fixture
     def term(self, ostream: io.StringIO, istream: _t.TextIO) -> yuio.term.Term:
         istream.readable = lambda: False
@@ -1431,7 +1438,9 @@ class TestWaitForUserUnreadable:
             ostream,
             istream,
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            interactive_support=yuio.term.InteractiveSupport.NONE,
+            ostream_interactive_support=yuio.term.InteractiveSupport.NONE,
+            istream_interactive_support=yuio.term.InteractiveSupport.NONE,
+            is_unicode=True,
         )
 
     def test_wait(self, io_mocker: IOMocker):
@@ -2370,11 +2379,11 @@ class TestTask:
             yuio.io.info("bar")
 
     def test_progressbar_decoration(self, theme: yuio.theme.Theme, io_mocker: IOMocker):
-        theme.set_msg_decoration("progress_bar/start_symbol", "[")
-        theme.set_msg_decoration("progress_bar/end_symbol", "]")
-        theme.set_msg_decoration("progress_bar/done_symbol", ">")
-        theme.set_msg_decoration("progress_bar/pending_symbol", ".")
-        theme.set_msg_decoration("progress_bar/transition_pattern", "")
+        theme.set_msg_decoration_unicode("progress_bar/start_symbol", "[")
+        theme.set_msg_decoration_unicode("progress_bar/end_symbol", "]")
+        theme.set_msg_decoration_unicode("progress_bar/done_symbol", ">")
+        theme.set_msg_decoration_unicode("progress_bar/pending_symbol", ".")
+        theme.set_msg_decoration_unicode("progress_bar/transition_pattern", "")
         theme.progress_bar_width = 17
 
         io_mocker.expect_screen(
@@ -2416,11 +2425,13 @@ class TestTask:
     def test_progressbar_decoration_transition(
         self, theme: yuio.theme.Theme, io_mocker: IOMocker
     ):
-        theme.set_msg_decoration("progress_bar/start_symbol", "[")
-        theme.set_msg_decoration("progress_bar/end_symbol", "]")
-        theme.set_msg_decoration("progress_bar/done_symbol", ">")
-        theme.set_msg_decoration("progress_bar/pending_symbol", ".")
-        theme.set_msg_decoration("progress_bar/transition_pattern", "9876543210")
+        theme.set_msg_decoration_unicode("progress_bar/start_symbol", "[")
+        theme.set_msg_decoration_unicode("progress_bar/end_symbol", "]")
+        theme.set_msg_decoration_unicode("progress_bar/done_symbol", ">")
+        theme.set_msg_decoration_unicode("progress_bar/pending_symbol", ".")
+        theme.set_msg_decoration_unicode(
+            "progress_bar/transition_pattern", "9876543210"
+        )
         theme.progress_bar_width = 17
 
         io_mocker.expect_screen(

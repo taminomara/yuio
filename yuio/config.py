@@ -724,11 +724,9 @@ def field(
             def main(
                 # Will be loaded from `--input`.
                 input: pathlib.Path | None = None,
-
                 # Will be loaded from `-o` or `--output`.
-                output: pathlib.Path | None = field(default=None, flags="-o --output")
-            ):
-                ...
+                output: pathlib.Path | None = field(default=None, flags="-o --output"),
+            ): ...
 
         In configs:
 
@@ -1602,9 +1600,8 @@ def bool_option(*, neg_flags: list[str] | None = None) -> OptionCtor[bool]:
                 json: bool = yuio.app.field(
                     default=False,
                     option_ctor=yuio.app.bool_option(),
-                )
-            ):
-                ...
+                ),
+            ): ...
 
         Boolean flag :flag:`--json` with explicitly provided flag
         :flag:`--disable-json`:
@@ -1619,9 +1616,8 @@ def bool_option(*, neg_flags: list[str] | None = None) -> OptionCtor[bool]:
                     option_ctor=yuio.app.bool_option(
                         neg_flags=["--disable-json"],
                     ),
-                )
-            ):
-                ...
+                ),
+            ): ...
 
     """
 
@@ -1682,9 +1678,8 @@ def parse_one_option() -> OptionCtor[_t.Any]:
                     default=[],
                     parser=yuio.parse.List(yuio.parse.Int(), delimiter=","),
                     option_ctor=yuio.app.parse_one_option(),
-                )
-            ):
-                ...
+                ),
+            ): ...
 
         This will disable multi-argument syntax:
 
@@ -1791,9 +1786,8 @@ def count_option() -> OptionCtor[int]:
                 default=0,
                 flags=["-q", "--quiet"],
                 option_ctor=yuio.app.count_option(),
-            )
-        ):
-            ...
+            ),
+        ): ...
 
     .. code-block:: console
 

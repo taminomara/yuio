@@ -11,6 +11,24 @@ import yuio.theme
 
 
 class TestColors:
+    def test_colors_immutable(self, theme):
+        with pytest.raises(TypeError, match=r"Theme\.colors is immutable"):
+            theme.colors = {}
+        with pytest.raises(TypeError, match=r"Theme\.colors is immutable"):
+            del theme.colors
+        with pytest.raises(TypeError, match=r"Theme\.colors is immutable"):
+            theme.colors["foo"] = "bar"
+        with pytest.raises(TypeError, match=r"Theme\.colors is immutable"):
+            del theme.colors["foo"]
+        with pytest.raises(TypeError, match=r"Theme\.colors is immutable"):
+            theme.__class__.colors = {}
+        with pytest.raises(TypeError, match=r"Theme\.colors is immutable"):
+            del theme.__class__.colors
+        with pytest.raises(TypeError, match=r"Theme\.colors is immutable"):
+            theme.__class__.colors["foo"] = "bar"
+        with pytest.raises(TypeError, match=r"Theme\.colors is immutable"):
+            del theme.__class__.colors["foo"]
+
     def test_get_color(self, theme):
         assert theme.get_color("code") == yuio.color.Color.FORE_MAGENTA
         assert theme.get_color("note") == yuio.color.Color.FORE_CYAN
@@ -141,8 +159,6 @@ class TestColors:
         assert a.get_color("q/q") == yuio.color.Color.FORE_BLUE
         assert a.get_color("q/q:y") == yuio.color.Color.FORE_BLUE
 
-
-class TestInheritance:
     def test_simple_inheritance(self):
         class A(yuio.theme.Theme):
             colors = {
@@ -199,8 +215,12 @@ class TestInheritance:
                 "t_b_2": yuio.color.Color.FORE_CYAN,
             }
 
+        class C(B):
+            pass
+
         a = A()
         b = B()
+        c = C()
 
         assert A.colors["t_a"] == yuio.color.Color.FORE_RED
         assert A.colors["t_b"] == yuio.color.Color.FORE_GREEN
@@ -218,45 +238,204 @@ class TestInheritance:
         assert b.get_color("t_b") == yuio.color.Color.FORE_CYAN
         assert b.get_color("t_b_2") == yuio.color.Color.BACK_MAGENTA
 
+        assert C.colors["t_a"] == yuio.color.Color.FORE_RED
+        assert C.colors["t_b"] == yuio.color.Color.FORE_CYAN
+        assert C.colors["t_b_2"] == yuio.color.Color.FORE_CYAN
+
+        assert c.get_color("t_a") == yuio.color.Color.BACK_RED
+        assert c.get_color("t_b") == yuio.color.Color.FORE_CYAN
+        assert c.get_color("t_b_2") == yuio.color.Color.BACK_MAGENTA
+
+    def test_set_color(self):
+        class A(yuio.theme.Theme):
+            colors = {
+                "x": yuio.color.Color.STYLE_BOLD,
+            }
+
+        a = A()
+
+        assert a.get_color("x") == yuio.color.Color.STYLE_BOLD
+        assert a.get_color("x/y") == yuio.color.Color.STYLE_BOLD
+        assert a.get_color("z") == yuio.color.Color.NONE
+
+        a.set_color("x", yuio.color.Color.FORE_RED)
+        a.set_color("z", yuio.color.Color.FORE_BLUE)
+
+        assert a.get_color("x") == yuio.color.Color.FORE_RED
+        assert a.get_color("x/y") == yuio.color.Color.FORE_RED
+        assert a.get_color("z") == yuio.color.Color.FORE_BLUE
+
+    def test_set_color_if_not_overridden_error_outside_of_init(self):
+        class A(yuio.theme.Theme):
+            colors = {
+                "x": yuio.color.Color.STYLE_BOLD,
+            }
+
+        a = A()
+
+        with pytest.raises(TypeError):
+            a._set_color_if_not_overridden("x", yuio.color.Color.FORE_RED)
+
+
+class TestDecorations:
+    def test_unicode_decorations_immutable(self, theme):
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_unicode is immutable"
+        ):
+            theme.msg_decorations_unicode = {}
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_unicode is immutable"
+        ):
+            del theme.msg_decorations_unicode
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_unicode is immutable"
+        ):
+            theme.msg_decorations_unicode["foo"] = "bar"
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_unicode is immutable"
+        ):
+            del theme.msg_decorations_unicode["foo"]
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_unicode is immutable"
+        ):
+            theme.__class__.msg_decorations_unicode = {}
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_unicode is immutable"
+        ):
+            del theme.__class__.msg_decorations_unicode
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_unicode is immutable"
+        ):
+            theme.__class__.msg_decorations_unicode["foo"] = "bar"
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_unicode is immutable"
+        ):
+            del theme.__class__.msg_decorations_unicode["foo"]
+
+    def test_ascii_decorations_immutable(self, theme):
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_ascii is immutable"
+        ):
+            theme.msg_decorations_ascii = {}
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_ascii is immutable"
+        ):
+            del theme.msg_decorations_ascii
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_ascii is immutable"
+        ):
+            theme.msg_decorations_ascii["foo"] = "bar"
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_ascii is immutable"
+        ):
+            del theme.msg_decorations_ascii["foo"]
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_ascii is immutable"
+        ):
+            theme.__class__.msg_decorations_ascii = {}
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_ascii is immutable"
+        ):
+            del theme.__class__.msg_decorations_ascii
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_ascii is immutable"
+        ):
+            theme.__class__.msg_decorations_ascii["foo"] = "bar"
+        with pytest.raises(
+            TypeError, match=r"Theme\.msg_decorations_ascii is immutable"
+        ):
+            del theme.__class__.msg_decorations_ascii["foo"]
+
+    def test_get_msg_decoration(self, theme):
+        assert theme.get_msg_decoration("heading/1", is_unicode=True) == "⣿ "
+        assert theme.get_msg_decoration("heading/1", is_unicode=False) == "# "
+        assert theme.get_msg_decoration("unknown", is_unicode=True) == ""
+        assert theme.get_msg_decoration("unknown", is_unicode=False) == ""
+
     def test_decoration_overrides(self):
         class A(yuio.theme.Theme):
-            msg_decorations = {
-                "t_a": "a",
-                "t_b": "a",
-                "t_b_2": "a",
+            msg_decorations_unicode = {
+                "t_a": "a_u",
+                "t_b": "a_u",
+                "t_b_2": "a_u",
+            }
+
+            msg_decorations_ascii = {
+                "t_a": "a_a",
+                "t_b": "a_a",
+                "t_b_2": "a_a",
             }
 
             def __init__(self):
                 super().__init__()
 
-                self._set_msg_decoration_if_not_overridden("t_a", "a2")
-                self._set_msg_decoration_if_not_overridden("t_b", "a2")
-                self.set_msg_decoration("t_b_2", "a2")
+                self._set_msg_decoration_unicode_if_not_overridden("t_a", "a2_u")
+                self._set_msg_decoration_unicode_if_not_overridden("t_b", "a2_u")
+                self.set_msg_decoration_unicode("t_b_2", "a2_u")
+
+                self._set_msg_decoration_ascii_if_not_overridden("t_a", "a2_a")
+                self._set_msg_decoration_ascii_if_not_overridden("t_b", "a2_a")
+                self.set_msg_decoration_ascii("t_b_2", "a2_a")
 
         class B(A):
-            msg_decorations = {
-                "t_b": "b",
-                "t_b_2": "b",
+            msg_decorations_unicode = {
+                "t_b": "b_u",
+                "t_b_2": "b_u",
             }
+
+            msg_decorations_ascii = {
+                "t_b": "b_a",
+                "t_b_2": "b_a",
+            }
+
+        class C(B):
+            pass
 
         a = A()
         b = B()
+        c = C()
 
-        assert A.msg_decorations["t_a"] == "a"
-        assert A.msg_decorations["t_b"] == "a"
-        assert A.msg_decorations["t_b_2"] == "a"
+        assert A.msg_decorations_unicode["t_a"] == "a_u"
+        assert A.msg_decorations_ascii["t_a"] == "a_a"
+        assert A.msg_decorations_unicode["t_b"] == "a_u"
+        assert A.msg_decorations_ascii["t_b"] == "a_a"
+        assert A.msg_decorations_unicode["t_b_2"] == "a_u"
+        assert A.msg_decorations_ascii["t_b_2"] == "a_a"
 
-        assert a.msg_decorations["t_a"] == "a2"
-        assert a.msg_decorations["t_b"] == "a2"
-        assert a.msg_decorations["t_b_2"] == "a2"
+        assert a.msg_decorations_unicode["t_a"] == "a2_u"
+        assert a.msg_decorations_ascii["t_a"] == "a2_a"
+        assert a.msg_decorations_unicode["t_b"] == "a2_u"
+        assert a.msg_decorations_ascii["t_b"] == "a2_a"
+        assert a.msg_decorations_unicode["t_b_2"] == "a2_u"
+        assert a.msg_decorations_ascii["t_b_2"] == "a2_a"
 
-        assert B.msg_decorations["t_a"] == "a"
-        assert B.msg_decorations["t_b"] == "b"
-        assert B.msg_decorations["t_b_2"] == "b"
+        assert B.msg_decorations_unicode["t_a"] == "a_u"
+        assert B.msg_decorations_ascii["t_a"] == "a_a"
+        assert B.msg_decorations_unicode["t_b"] == "b_u"
+        assert B.msg_decorations_ascii["t_b"] == "b_a"
+        assert B.msg_decorations_unicode["t_b_2"] == "b_u"
+        assert B.msg_decorations_ascii["t_b_2"] == "b_a"
 
-        assert b.msg_decorations["t_a"] == "a2"
-        assert b.msg_decorations["t_b"] == "b"
-        assert b.msg_decorations["t_b_2"] == "a2"
+        assert b.msg_decorations_unicode["t_a"] == "a2_u"
+        assert b.msg_decorations_ascii["t_a"] == "a2_a"
+        assert b.msg_decorations_unicode["t_b"] == "b_u"
+        assert b.msg_decorations_ascii["t_b"] == "b_a"
+        assert b.msg_decorations_unicode["t_b_2"] == "a2_u"
+        assert b.msg_decorations_ascii["t_b_2"] == "a2_a"
+
+        assert C.msg_decorations_unicode["t_a"] == "a_u"
+        assert C.msg_decorations_ascii["t_a"] == "a_a"
+        assert C.msg_decorations_unicode["t_b"] == "b_u"
+        assert C.msg_decorations_ascii["t_b"] == "b_a"
+        assert C.msg_decorations_unicode["t_b_2"] == "b_u"
+        assert C.msg_decorations_ascii["t_b_2"] == "b_a"
+
+        assert c.msg_decorations_unicode["t_a"] == "a2_u"
+        assert c.msg_decorations_ascii["t_a"] == "a2_a"
+        assert c.msg_decorations_unicode["t_b"] == "b_u"
+        assert c.msg_decorations_ascii["t_b"] == "b_a"
+        assert c.msg_decorations_unicode["t_b_2"] == "a2_u"
+        assert c.msg_decorations_ascii["t_b_2"] == "a2_a"
 
 
 class TestBrokenTheme:
@@ -308,63 +487,6 @@ class TestBrokenTheme:
             yuio.theme.ThemeWarning, match=r"color value for path 'bold' is empty"
         ):
             theme.check()
-
-
-class TestSetAttrs:
-    def test_set_color(self):
-        class A(yuio.theme.Theme):
-            colors = {
-                "x": yuio.color.Color.STYLE_BOLD,
-            }
-
-        a = A()
-
-        assert a.get_color("x") == yuio.color.Color.STYLE_BOLD
-        assert a.get_color("x/y") == yuio.color.Color.STYLE_BOLD
-        assert a.get_color("z") == yuio.color.Color.NONE
-
-        a.set_color("x", yuio.color.Color.FORE_RED)
-        a.set_color("z", yuio.color.Color.FORE_BLUE)
-
-        assert a.get_color("x") == yuio.color.Color.FORE_RED
-        assert a.get_color("x/y") == yuio.color.Color.FORE_RED
-        assert a.get_color("z") == yuio.color.Color.FORE_BLUE
-
-    def test_set_color_if_not_overridden(self):
-        class A(yuio.theme.Theme):
-            colors = {
-                "x": yuio.color.Color.STYLE_BOLD,
-            }
-
-        a = A()
-
-        with pytest.raises(RuntimeError):
-            a._set_color_if_not_overridden("x", yuio.color.Color.FORE_RED)
-
-    def test_set_msg_decoration(self):
-        class A(yuio.theme.Theme):
-            msg_decorations = {
-                "x": "a",
-            }
-
-        a = A()
-
-        assert a.msg_decorations["x"] == "a"
-
-        a.set_msg_decoration("x", "b")
-
-        assert a.msg_decorations["x"] == "b"
-
-    def test_set_msg_decoration_if_not_overridden(self):
-        class A(yuio.theme.Theme):
-            msg_decorations = {
-                "x": "a",
-            }
-
-        a = A()
-
-        with pytest.raises(RuntimeError):
-            a._set_msg_decoration_if_not_overridden("x", "b")
 
 
 terminal_theme_dark = yuio.term.TerminalTheme(
@@ -484,48 +606,58 @@ class TestLoad:
     def setup_theme_file(self, tmp_path: pathlib.Path):
         self.ok = tmp_path / "ok.json"
         self.ok.write_text(
-            textwrap.dedent("""
+            textwrap.dedent(
+                """
             {
                 "progress_bar_width": 25,
                 "spinner_update_rate_ms": 100,
+                "separate_headings": false,
+                "fallback_width": 100,
                 "colors": {
                     "red": "#ff5555",
                     "green": "#55ff55",
                     "bold_red": "bold red"
                 },
-                "msg_decorations": {
+                "msg_decorations_unicode": {
                     "heading/1": "=> "
                 }
             }
-        """)
+        """
+            )
         )
 
         self.include = tmp_path / "include.json"
         self.include.write_text(
-            textwrap.dedent("""
+            textwrap.dedent(
+                """
             {
                 "include": "ok.json",
                 "colors": {
                     "red": "#ff0000"
                 }
             }
-        """)
+        """
+            )
         )
 
         self.invalid = tmp_path / "invalid.json"
         self.invalid.write_text(
-            textwrap.dedent("""
+            textwrap.dedent(
+                """
             {
                 "progress_bar_width": -1
             }
-        """)
+        """
+            )
         )
 
         self.broken = tmp_path / "broken.json"
         self.broken.write_text(
-            textwrap.dedent("""
+            textwrap.dedent(
+                """
             broken json
-        """)
+        """
+            )
         )
 
     def test_ok(self, term, monkeypatch):
@@ -533,6 +665,8 @@ class TestLoad:
         theme = yuio.theme.load(term)
 
         assert theme.progress_bar_width == 25
+        assert theme.separate_headings is False
+        assert theme.fallback_width == 100
         assert theme.spinner_update_rate_ms == 100
         assert theme.get_color("red") == yuio.color.Color.fore_from_rgb(
             0xFF, 0x55, 0x55
@@ -543,13 +677,15 @@ class TestLoad:
         assert theme.get_color("bold_red") == yuio.color.Color.fore_from_rgb(
             0xFF, 0x55, 0x55, bold=True
         )
-        assert theme.msg_decorations["heading/1"] == "=> "
+        assert theme.msg_decorations_unicode["heading/1"] == "=> "
 
     def test_include(self, term, monkeypatch):
         monkeypatch.setenv("YUIO_THEME_PATH", str(self.include))
         theme = yuio.theme.load(term)
 
         assert theme.progress_bar_width == 25
+        assert theme.separate_headings is False
+        assert theme.fallback_width == 100
         assert theme.spinner_update_rate_ms == 100
         assert theme.get_color("red") == yuio.color.Color.fore_from_rgb(
             0xFF, 0x00, 0x00
@@ -560,7 +696,7 @@ class TestLoad:
         assert theme.get_color("bold_red") == yuio.color.Color.fore_from_rgb(
             0xFF, 0x00, 0x00, bold=True
         )
-        assert theme.msg_decorations["heading/1"] == "=> "
+        assert theme.msg_decorations_unicode["heading/1"] == "=> "
 
     def test_invalid(self, term, monkeypatch):
         monkeypatch.setenv("YUIO_THEME_PATH", str(self.invalid))

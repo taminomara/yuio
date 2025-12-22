@@ -20,11 +20,21 @@ in a :class:`Theme` object:
 
     .. autoattribute:: spinner_update_rate_ms
 
-    .. autoattribute:: msg_decorations
+    .. autoattribute:: separate_headings
 
-    .. automethod:: set_msg_decoration
+    .. autoattribute:: fallback_width
 
-    .. automethod:: _set_msg_decoration_if_not_overridden
+    .. autoattribute:: msg_decorations_unicode
+
+    .. automethod:: set_msg_decoration_unicode
+
+    .. automethod:: _set_msg_decoration_unicode_if_not_overridden
+
+    .. autoattribute:: msg_decorations_ascii
+
+    .. automethod:: set_msg_decoration_ascii
+
+    .. automethod:: _set_msg_decoration_ascii_if_not_overridden
 
     .. autoattribute:: colors
 
@@ -47,6 +57,12 @@ Use the following loader to create an instance of the default theme:
 .. autofunction:: load
 
 .. autoclass:: DefaultTheme
+
+
+Dummy theme
+-----------
+
+.. autoclass:: DummyTheme
 
 
 .. _all-color-paths:
@@ -436,9 +452,13 @@ class RecursiveThemeWarning(ThemeWarning):
     pass
 
 
-class _ImmutableDictProxy(_t.Mapping[K, V], _t.Generic[K, V]):  # pragma: no cover
-    def __init__(self, data: dict[K, V], /, *, attr: str):
+@_t.final
+class _ImmutableDict(_t.Mapping[K, V], _t.Generic[K, V]):
+    def __init__(
+        self, data: dict[K, V], sources: dict[K, type[Theme] | None], attr: str
+    ):
         self.__data = data
+        self.__sources = sources
         self.__attr = attr
 
     def items(self) -> _t.ItemsView[K, V]:
@@ -466,13 +486,162 @@ class _ImmutableDictProxy(_t.Mapping[K, V], _t.Generic[K, V]):  # pragma: no cov
         return repr(self.__data)
 
     def __setitem__(self, key, item):
-        raise RuntimeError(f"Theme.{self.__attr} is immutable")
+        raise TypeError(f"Theme.{self.__attr} is immutable")
 
     def __delitem__(self, key):
-        raise RuntimeError(f"Theme.{self.__attr} is immutable")
+        raise TypeError(f"Theme.{self.__attr} is immutable")
+
+    def copy(self) -> _t.Self:
+        return self.__class__(
+            self.__data.copy(),
+            self.__sources.copy(),
+            self.__attr,
+        )
+
+    def _set(self, key: K, value: V, source: type[Theme] | None = None):
+        self.__data[key] = value
+        self.__sources[key] = source
+
+    def _set_if_not_overridden(self, key: K, value: V, source: type[Theme] | None):
+        if source is None:
+            raise TypeError(
+                f"Theme._set_{self.__attr}_if_not_overridden can't be called "
+                "outside of __init__"
+            )
+        prev_source = self.__sources.get(key)
+        if prev_source is not None and issubclass(source, prev_source):
+            self._set(key, value, source)
 
 
-class Theme:
+@_t.final
+class _ReadOnlyDescriptor:
+    def __set_name__(self, owner: object, attr: str):
+        self.__attr = attr
+        self.__private_name = f"_Theme__{attr}"
+
+    def __get__(self, instance: object | None, owner: type[object] | None = None):
+        if instance is None:  # pragma: no cover
+            return self
+        elif (data := instance.__dict__.get(self.__private_name)) is not None:
+            return data
+        else:
+            data = owner.__dict__[self.__private_name].copy()
+            instance.__dict__[self.__private_name] = data
+            return data
+
+    def __set__(self, instance: object, value: _t.Any):
+        raise TypeError(f"Theme.{self.__attr} is immutable")
+
+    def __delete__(self, instance: object):
+        raise TypeError(f"Theme.{self.__attr} is immutable")
+
+
+class _ThemeMeta(type):
+    # BEWARE OF MAGIC!
+    #
+    #
+    # Descriptors
+    # -----------
+    #
+    # _ThemeMeta.__dict__["colors"]
+    #     this is a `_ReadOnlyDescriptor` that handles access to `Theme.colors`,
+    #     proxying it to `Theme.__dict__["_Theme__colors"]`.
+    #
+    #     Accessing `Theme.colors` is equivalent to calling
+    #     `_ThemeMeta.__dict__["colors"].__get__(Theme)`,
+    #     which in turn will return `Theme.__dict__["_Theme__colors"]`.
+    #
+    #     Value for `Theme.__dict__["_Theme__colors"]` is assigned by this metaclass.
+    #
+    # Theme.__dict__["colors"]
+    #     this is a `_ReadOnlyDescriptor` that handles access to `theme.colors`,
+    #     proxying it to `theme.__dict__["_Theme__colors"]`.
+    #
+    #     Accessing `theme.colors` is equivalent to calling
+    #     `Theme.__dict__["colors"].__get__(theme)`,
+    #     which in turn will return `theme.__dict__["_Theme__colors"]`.
+    #
+    #     If `theme.__dict__` does not contain `"_Theme__colors"`, then it  will assign
+    #     `theme.__dict__["_Theme__colors"] = Theme.__dict__["_Theme__colors"].copy()`.
+    #
+    # theme.__dict__["colors"]
+    #     this attribute does not exist. Accessing `theme.colors` is handled
+    #     by its descriptor.
+    #
+    #
+    # Data
+    # ----
+    #
+    # Theme.__dict__["_Theme__colors"]
+    #     this is the data returned when accessing `Theme.colors`. It contains
+    #     an `_ImmutableDict` with combination of all colors from all bases.
+    #
+    # Theme.__dict__["_Theme__colors__orig"]
+    #     this is original data assigned to `colors` variable in `Theme`'s namespace.
+    #
+    #     For example:
+    #
+    #         class MyTheme(Theme):
+    #             colors = {"foo": "#000000"}
+    #
+    #     In this class:
+    #
+    #     - `MyTheme.__dict__["_Theme__colors"]` will contain combination of
+    #       colors defined in `Theme` and in `MyTheme`.
+    #     - `MyTheme.__dict__["_Theme__colors__orig"]` will contain initial dict
+    #       `{"foo": "#000000"}`.
+    #
+    # theme.__dict__["_Theme__colors"]
+    #     this is lazily initialized copy of `Theme.__dict__["_Theme__colors"]`;
+    #     `Theme.set_color` will mutate this value.
+
+    _managed_attrs = ["msg_decorations_ascii", "msg_decorations_unicode", "colors"]
+    for _attr in _managed_attrs:
+        locals()[_attr] = _ReadOnlyDescriptor()
+    del _attr  # type: ignore
+
+    def __new__(mcs, name, bases, ns, **kwargs):
+        # Pop any overrides from class' namespace and save them in `_Theme__attr__orig`.
+        # Set up read-only descriptors for managed attributes.
+        for attr in mcs._managed_attrs:
+            ns[f"_Theme__{attr}__orig"] = ns.pop(attr, {})
+            ns[attr] = _ReadOnlyDescriptor()
+
+        # Create metaclass instance.
+        cls = super().__new__(mcs, name, bases, ns, **kwargs)
+
+        # Set up class-level data for managed attributes.
+        for attr in mcs._managed_attrs:
+            setattr(cls, f"_Theme__{attr}", mcs._collect_data(cls, attr))
+
+        # Patch `__init__` so that it handles `__expected_source`.
+        if init := cls.__dict__.get("__init__", None):
+
+            @functools.wraps(init)
+            def _wrapped_init(self, *args, **kwargs):
+                prev_expected_source = self._Theme__expected_source
+                self._Theme__expected_source = cls
+                try:
+                    return init(self, *args, **kwargs)
+                finally:
+                    self._Theme__expected_source = prev_expected_source
+
+            setattr(cls, "__init__", _wrapped_init)
+
+        return cls
+
+    def _collect_data(cls, attr):
+        attr_orig = f"_Theme__{attr}__orig"
+        data = {}
+        sources = {}
+        for base in reversed(cls.__mro__):
+            if base_data := base.__dict__.get(attr_orig):
+                data.update(base_data)
+                sources.update(dict.fromkeys(base_data, base))
+        return _ImmutableDict(data, sources, attr)
+
+
+class Theme(metaclass=_ThemeMeta):
     """
     Base class for Yuio themes.
 
@@ -483,49 +652,20 @@ class Theme:
 
     """
 
-    msg_decorations: _t.Mapping[str, str] = {}
+    msg_decorations_unicode: _t.Mapping[str, str] = {}
     """
     Decorative symbols for certain text elements, such as headings,
     list items, etc.
 
     This mapping becomes immutable once a theme class is created. The only possible
-    way to modify it is by using :meth:`~Theme.set_msg_decoration`
-    or :meth:`~Theme._set_msg_decoration_if_not_overridden`.
+    way to modify it is by using :meth:`~Theme.set_msg_decoration_ascii`
+    or :meth:`~Theme._set_msg_decoration_ascii_if_not_overridden`.
 
     """
 
-    __msg_decorations: dict[str, str]
+    msg_decorations_ascii: _t.Mapping[str, str] = {}
     """
-    An actual mutable version of :attr:`~Theme.msg_decorations`
-    is kept here, because ``__init_subclass__`` will replace
-    :attr:`~Theme.msg_decorations` with an immutable proxy.
-
-    """
-
-    __msg_decoration_sources: dict[str, type | None] = {}
-    """
-    Keeps track of where a message decoration was inherited from. This var is used
-    to avoid ``__init__``-ing message decorations that were overridden in a subclass.
-
-    """
-
-    table_drawing_symbols: _t.Mapping[int, str] = {}
-    """
-    TODO!
-    """
-
-    __table_drawing_symbols: dict[int, str] = {}
-    """
-    An actual mutable version of :attr:`~Theme.table_drawing_symbols`
-    is kept here, because ``__init_subclass__`` will replace
-    :attr:`~Theme.table_drawing_symbols` with an immutable proxy.
-
-    """
-
-    __table_drawing_symbol_sources: dict[int, type | None] = {}
-    """
-    Keeps track of where a table drawing symbol was inherited from. This var is used
-    to avoid ``__init__``-ing table drawing symbols that were overridden in a subclass.
+    Like :attr:`~Theme.msg_decorations_unicode`, but suitable for non-unicode terminals.
 
     """
 
@@ -544,6 +684,13 @@ class Theme:
     separate_headings: bool = True
     """
     Whether to print newlines before and after :func:`yuio.io.heading`.
+
+    """
+
+    fallback_width: int = 120
+    """
+    Preferred width that will be used if printing to a stream that's redirected
+    to a file.
 
     """
 
@@ -604,22 +751,7 @@ class Theme:
 
     """
 
-    __colors: dict[str, str | yuio.color.Color]
-    """
-    An actual mutable version of :attr:`~Theme.colors`
-    is kept here, because ``__init_subclass__`` will replace
-    :attr:`~Theme.colors` with an immutable proxy.
-
-    """
-
-    __color_sources: dict[str, type | None] = {}
-    """
-    Keeps track of where a color was inherited from. This var is used
-    to avoid ``__init__``-ing colors that were overridden in a subclass.
-
-    """
-
-    __expected_source: type | None = None
+    __expected_source: type[Theme] | None = None
     """
     When running an ``__init__`` function, this variable will be set to the class
     that implemented it, regardless of type of ``self``.
@@ -627,7 +759,7 @@ class Theme:
     That is, inside ``DefaultTheme.__init__``, ``__expected_source`` is set
     to ``DefaultTheme``, in ``MyTheme.__init__`` it is ``MyTheme``, etc.
 
-    This is possible because ``__init_subclass__`` wraps any implementation
+    This is possible because ``_ThemeMeta`` wraps any implementation
     of ``__init__`` into a wrapper that sets this variable.
 
     """
@@ -635,87 +767,14 @@ class Theme:
     def __init__(self):
         self.__color_cache: dict[str, yuio.color.Color | None] = {}
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-
-        colors = {}
-        color_sources = {}
-        for base in reversed(cls.__mro__):
-            base_colors = getattr(base, "_Theme__colors", {})
-            colors.update(base_colors)
-            base_color_sources = getattr(base, "_Theme__color_sources", {})
-            color_sources.update(base_color_sources)
-
-        colors.update(cls.colors)
-        color_sources.update(dict.fromkeys(cls.colors.keys(), cls))
-
-        cls.__colors = colors
-        cls.__color_sources = color_sources
-        cls.colors = _ImmutableDictProxy(cls.__colors, attr="colors")
-
-        msg_decorations = {}
-        msg_decoration_sources = {}
-        for base in reversed(cls.__mro__):
-            base_msg_decorations = getattr(base, "_Theme__msg_decorations", {})
-            msg_decorations.update(base_msg_decorations)
-            base_msg_decoration_sources = getattr(
-                base, "_Theme__msg_decoration_sources", {}
-            )
-            msg_decoration_sources.update(base_msg_decoration_sources)
-
-        msg_decorations.update(cls.msg_decorations)
-        msg_decoration_sources.update(dict.fromkeys(cls.msg_decorations.keys(), cls))
-
-        cls.__msg_decorations = msg_decorations
-        cls.__msg_decoration_sources = msg_decoration_sources
-        cls.msg_decorations = _ImmutableDictProxy(
-            cls.__msg_decorations, attr="msg_decorations"
-        )
-
-        table_drawing_symbols = {}
-        table_drawing_symbol_sources = {}
-        for base in reversed(cls.__mro__):
-            base_table_drawing_symbols = getattr(
-                base, "_Theme__table_drawing_symbols", {}
-            )
-            table_drawing_symbols.update(base_table_drawing_symbols)
-            base_table_drawing_symbol_sources = getattr(
-                base, "_Theme__table_drawing_symbol_sources", {}
-            )
-            table_drawing_symbol_sources.update(base_table_drawing_symbol_sources)
-
-        table_drawing_symbols.update(cls.table_drawing_symbols)
-        table_drawing_symbol_sources.update(
-            dict.fromkeys(cls.table_drawing_symbols.keys(), cls)
-        )
-
-        cls.__table_drawing_symbols = table_drawing_symbols
-        cls.__table_drawing_symbol_sources = table_drawing_symbol_sources
-        cls.table_drawing_symbols = _ImmutableDictProxy(
-            cls.__table_drawing_symbols, attr="table_drawing_symbols"
-        )
-
-        if init := cls.__dict__.get("__init__", None):
-
-            @functools.wraps(init)
-            def _wrapped_init(_self, *args, **kwargs):
-                prev_expected_source = _self._Theme__expected_source
-                _self._Theme__expected_source = cls
-                try:
-                    return init(_self, *args, **kwargs)
-                finally:
-                    _self._Theme__expected_source = prev_expected_source
-
-            cls.__init__ = _wrapped_init  # type: ignore
-
-    def _set_msg_decoration_if_not_overridden(
+    def _set_msg_decoration_unicode_if_not_overridden(
         self,
         name: str,
         msg_decoration: str,
         /,
     ):
         """
-        Set message decoration by name, but only if it wasn't overridden
+        Set Unicode message decoration by name, but only if it wasn't overridden
         in a subclass.
 
         This method should be called from ``__init__`` implementations
@@ -724,85 +783,82 @@ class Theme:
 
         """
 
-        if self.__expected_source is None:
-            raise RuntimeError(
-                "_set_msg_decoration_if_not_overridden should only be called from __init__"
-            )
-        source = self.__msg_decoration_sources.get(name, Theme)
-        # The class that's `__init__` is currently running should be a parent
-        # of the msg_decoration's source. This means that the msg_decoration was assigned by a parent.
-        if source is not None and issubclass(self.__expected_source, source):
-            self.set_msg_decoration(name, msg_decoration)
+        proxy = _t.cast(_ImmutableDict[str, str], self.msg_decorations_unicode)
+        proxy._set_if_not_overridden(
+            name,
+            msg_decoration,
+            self.__expected_source,
+        )
 
-    def set_msg_decoration(
+    def set_msg_decoration_unicode(
         self,
         name: str,
         msg_decoration: str,
         /,
     ):
         """
-        Set message decoration by name.
+        Set Unicode message decoration by name.
 
         """
 
-        if "_Theme__msg_decorations" not in self.__dict__:
-            self.__msg_decorations = self.__class__.__msg_decorations.copy()
-            self.__msg_decoration_sources = (
-                self.__class__.__msg_decoration_sources.copy()
-            )
-            self.msg_decorations = _ImmutableDictProxy(
-                self.__msg_decorations, attr="msg_decorations"
-            )
-        self.__msg_decorations[name] = msg_decoration
-        self.__msg_decoration_sources[name] = self.__expected_source
+        proxy = _t.cast(_ImmutableDict[str, str], self.msg_decorations_unicode)
+        proxy._set(
+            name,
+            msg_decoration,
+            self.__expected_source,
+        )
 
-    def _set_table_drawing_symbol_if_not_overridden(
+    def _set_msg_decoration_ascii_if_not_overridden(
         self,
-        code: int,
-        table_drawing_symbol: str,
+        name: str,
+        msg_decoration: str,
         /,
     ):
         """
-        Set table drawing symbol by code, but only if it wasn't overridden
+        Set ASCII message decoration by name, but only if it wasn't overridden
         in a subclass.
 
         This method should be called from ``__init__`` implementations
-        to dynamically set table drawing symbols. It will only set the symbol
+        to dynamically set message decorations. It will only set the decoration
         if it was not overridden by any child class.
 
         """
 
-        if self.__expected_source is None:
-            raise RuntimeError(
-                "_set_table_drawing_symbol_if_not_overridden should only be called from __init__"
-            )
-        source = self.__table_drawing_symbol_sources.get(code, Theme)
-        # The class that's `__init__` is currently running should be a parent
-        # of the table_drawing_symbol's source. This means that the table_drawing_symbol was assigned by a parent.
-        if source is not None and issubclass(self.__expected_source, source):
-            self.set_table_drawing_symbol(code, table_drawing_symbol)
+        proxy = _t.cast(_ImmutableDict[str, str], self.msg_decorations_ascii)
+        proxy._set_if_not_overridden(
+            name,
+            msg_decoration,
+            self.__expected_source,
+        )
 
-    def set_table_drawing_symbol(
+    def set_msg_decoration_ascii(
         self,
-        code: int,
-        table_drawing_symbol: str,
+        name: str,
+        msg_decoration: str,
         /,
     ):
         """
-        Set table drawing symbol by code.
+        Set ASCII message decoration by name.
 
         """
 
-        if "_Theme__table_drawing_symbols" not in self.__dict__:
-            self.__table_drawing_symbols = self.__class__.__table_drawing_symbols.copy()
-            self.__table_drawing_symbol_sources = (
-                self.__class__.__table_drawing_symbol_sources.copy()
-            )
-            self.table_drawing_symbols = _ImmutableDictProxy(
-                self.__table_drawing_symbols, attr="table_drawing_symbols"
-            )
-        self.__table_drawing_symbols[code] = table_drawing_symbol
-        self.__table_drawing_symbol_sources[code] = self.__expected_source
+        proxy = _t.cast(_ImmutableDict[str, str], self.msg_decorations_ascii)
+        proxy._set(
+            name,
+            msg_decoration,
+            self.__expected_source,
+        )
+
+    def get_msg_decoration(self, key: str, /, *, is_unicode: bool) -> str:
+        """
+        Get message decoration by name.
+
+        """
+
+        msg_decorations = (
+            self.msg_decorations_unicode if is_unicode else self.msg_decorations_ascii
+        )
+        return msg_decorations.get(key, "")
 
     def _set_color_if_not_overridden(
         self,
@@ -819,15 +875,14 @@ class Theme:
 
         """
 
-        if self.__expected_source is None:
-            raise RuntimeError(
-                "_set_color_if_not_overridden should only be called from __init__"
-            )
-        source = self.__color_sources.get(path, Theme)
-        # The class who's `__init__` is currently running should be a parent
-        # of the color's source. This means that the color was assigned by a parent.
-        if source is not None and issubclass(self.__expected_source, source):
-            self.set_color(path, color)
+        proxy = _t.cast(_ImmutableDict[str, str | yuio.color.Color], self.colors)
+        proxy._set_if_not_overridden(
+            path,
+            color,
+            self.__expected_source,
+        )
+        self.__color_cache.clear()
+        self.__dict__.pop("_Theme__color_tree", None)
 
     def set_color(
         self,
@@ -840,12 +895,12 @@ class Theme:
 
         """
 
-        if "_Theme__colors" not in self.__dict__:
-            self.__colors = self.__class__.__colors.copy()
-            self.__color_sources = self.__class__.__color_sources.copy()
-            self.colors = _ImmutableDictProxy(self.__colors, attr="colors")
-        self.__colors[path] = color
-        self.__color_sources[path] = self.__expected_source
+        proxy = _t.cast(_ImmutableDict[str, str | yuio.color.Color], self.colors)
+        proxy._set(
+            path,
+            color,
+            self.__expected_source,
+        )
         self.__color_cache.clear()
         self.__dict__.pop("_Theme__color_tree", None)
 
@@ -878,7 +933,7 @@ class Theme:
     def __color_tree(self) -> Theme.__ColorTree:
         root = self.__ColorTree()
 
-        for path, colors in self.__colors.items():
+        for path, colors in self.colors.items():
             loc, ctx = self.__parse_path(path)
 
             node = root
@@ -906,7 +961,6 @@ class Theme:
             loc, ctx = path_parts
         return loc.split("/") if loc else [], ctx.split("/") if ctx else []
 
-    @_t.final
     def get_color(self, paths: str, /) -> yuio.color.Color:
         """
         Lookup a color by path.
@@ -1052,9 +1106,6 @@ class Theme:
         )
 
 
-Theme.__init_subclass__()
-
-
 class DefaultTheme(Theme):
     """
     Default Yuio theme. Adapts for terminal background color,
@@ -1075,6 +1126,94 @@ class DefaultTheme(Theme):
       even lower priority.
 
     """
+
+    msg_decorations_ascii = {
+        "heading/section": "",
+        "heading/1": "# ",
+        "heading/2": "",
+        "heading/3": "",
+        "heading/4": "",
+        "heading/5": "",
+        "heading/6": "",
+        "question": "> ",
+        "task": "> ",
+        "thematic_break": "-" * 8,
+        "list": "*   ",
+        "quote": ">   ",
+        "code": " " * 8,
+        "overflow": "~",
+        "progress_bar/start_symbol": "[",
+        "progress_bar/end_symbol": "]",
+        "progress_bar/done_symbol": "-",
+        "progress_bar/pending_symbol": " ",
+        "progress_bar/transition_pattern": ">",
+        "spinner/pattern": "|||/-\\",
+        "spinner/static_symbol": ">",
+        "hr/1/left_start": "-",
+        "hr/1/left_middle": "-",
+        "hr/1/left_end": " ",
+        "hr/1/middle": "-",
+        "hr/1/right_start": " ",
+        "hr/1/right_middle": "-",
+        "hr/1/right_end": "-",
+        "hr/2/left_start": "=",
+        "hr/2/left_middle": "=",
+        "hr/2/left_end": " ",
+        "hr/2/middle": "=",
+        "hr/2/right_start": " ",
+        "hr/2/right_middle": "=",
+        "hr/2/right_end": "=",
+        # TODO: support these in widgets
+        # 'menu/current_item': '>',
+        # 'menu/selected_item': '*',
+        # 'menu/default_item': '*',
+        # 'menu/select': '#',
+        # 'menu/search': '/',
+    }
+
+    msg_decorations_unicode = {
+        "heading/section": "",
+        "heading/1": "⣿ ",
+        "heading/2": "",
+        "heading/3": "",
+        "heading/4": "",
+        "heading/5": "",
+        "heading/6": "",
+        "question": "> ",
+        "task": "> ",
+        "thematic_break": "╌╌╌╌╌╌╌╌",
+        "list": "•   ",
+        "quote": ">   ",
+        "code": " " * 8,
+        "overflow": "…",
+        "hr/1/left_start": "─",
+        "hr/1/left_middle": "─",
+        "hr/1/left_end": "╴",
+        "hr/1/middle": "─",
+        "hr/1/right_start": "╶",
+        "hr/1/right_middle": "─",
+        "hr/1/right_end": "─",
+        "hr/2/left_start": "━",
+        "hr/2/left_middle": "━",
+        "hr/2/left_end": "╸",
+        "hr/2/middle": "━",
+        "hr/2/right_start": "╺",
+        "hr/2/right_middle": "━",
+        "hr/2/right_end": "━",
+        "progress_bar/start_symbol": "",
+        "progress_bar/end_symbol": "",
+        "progress_bar/done_symbol": "■",  # "█",
+        "progress_bar/pending_symbol": "□",  # " ",
+        "progress_bar/transition_pattern": "",  # "█▉▊▋▌▍▎▏ ",
+        "spinner/pattern": "⣤⣤⣤⠶⠛⠛⠛⠶",
+        "spinner/static_symbol": "⣿",
+        # TODO: support these in widgets
+        # 'menu/current_item': '▶︎',
+        # 'menu/selected_item': '★',
+        # 'menu/default_item': '★',
+        # 'menu/select': '#',
+        # 'menu/search': '/',
+    }
 
     colors = {
         #
@@ -1283,17 +1422,6 @@ class DefaultTheme(Theme):
     def __init__(self, term: yuio.term.Term):
         super().__init__()
 
-        if term.is_unicode:
-            decorations = _MSG_DECORATIONS_UNICODE
-            table_symbols = _TABLE_SYMBOLS_UNICODE
-        else:
-            decorations = _MSG_DECORATIONS_ASCII
-            table_symbols = _TABLE_SYMBOLS_ASCII
-        for k, v in decorations.items():
-            self._set_msg_decoration_if_not_overridden(k, v)
-        for k, v in table_symbols.items():
-            self._set_table_drawing_symbol_if_not_overridden(k, v)
-
         if (colors := term.terminal_theme) is None:
             return
 
@@ -1387,7 +1515,13 @@ def load(
         include: list[str] | str | None = None
         progress_bar_width: _t.Annotated[int, yuio.parse.Ge(0)] | None = None
         spinner_update_rate_ms: _t.Annotated[int, yuio.parse.Ge(0)] | None = None
-        msg_decorations: dict[str, str] = yuio.config.field(
+        separate_headings: bool | None = None
+        fallback_width: _t.Annotated[int, yuio.parse.Gt(0)] | None = None
+        msg_decorations_unicode: dict[str, str] = yuio.config.field(
+            default={},
+            merge=lambda l, r: {**l, **r},
+        )
+        msg_decorations_ascii: dict[str, str] = yuio.config.field(
             default={},
             merge=lambda l, r: {**l, **r},
         )
@@ -1431,10 +1565,15 @@ def load(
         theme.progress_bar_width = theme_data.progress_bar_width
     if theme_data.spinner_update_rate_ms is not None:
         theme.spinner_update_rate_ms = theme_data.spinner_update_rate_ms
+    if theme_data.separate_headings is not None:
+        theme.separate_headings = theme_data.separate_headings
+    if theme_data.fallback_width is not None:
+        theme.fallback_width = theme_data.fallback_width
 
-    for k, v in theme_data.msg_decorations.items():
-        theme.set_msg_decoration(k, v)
-
+    for k, v in theme_data.msg_decorations_ascii.items():
+        theme.set_msg_decoration_ascii(k, v)
+    for k, v in theme_data.msg_decorations_unicode.items():
+        theme.set_msg_decoration_unicode(k, v)
     for k, v in theme_data.colors.items():
         theme.set_color(k, v)
 
@@ -1473,50 +1612,6 @@ class TableJunction(IntFlag):
         return f"<{self.__class__.__name__} {res}>"
 
 
-_MSG_DECORATIONS_UNICODE: dict[str, str] = {
-    "heading/section": "",
-    "heading/1": "⣿ ",
-    "heading/2": "",
-    "heading/3": "",
-    "heading/4": "",
-    "heading/5": "",
-    "heading/6": "",
-    "question": "> ",
-    "task": "> ",
-    "thematic_break": "╌╌╌╌╌╌╌╌",
-    "list": "•   ",
-    "quote": ">   ",
-    "code": " " * 8,
-    "overflow": "…",
-    "hr/1/left_start": "─",
-    "hr/1/left_middle": "─",
-    "hr/1/left_end": "╴",
-    "hr/1/middle": "─",
-    "hr/1/right_start": "╶",
-    "hr/1/right_middle": "─",
-    "hr/1/right_end": "─",
-    "hr/2/left_start": "━",
-    "hr/2/left_middle": "━",
-    "hr/2/left_end": "╸",
-    "hr/2/middle": "━",
-    "hr/2/right_start": "╺",
-    "hr/2/right_middle": "━",
-    "hr/2/right_end": "━",
-    "progress_bar/start_symbol": "",
-    "progress_bar/end_symbol": "",
-    "progress_bar/done_symbol": "■",  # "█",
-    "progress_bar/pending_symbol": "□",  # " ",
-    "progress_bar/transition_pattern": "",  # "█▉▊▋▌▍▎▏ ",
-    "spinner/pattern": "⣤⣤⣤⠶⠛⠛⠛⠶",
-    "spinner/static_symbol": "⣿",
-    # TODO: support these in widgets
-    # 'menu/current_item': '▶︎',
-    # 'menu/selected_item': '★',
-    # 'menu/default_item': '★',
-    # 'menu/select': '#',
-    # 'menu/search': '/',
-}
-
 # fmt: off
 _TABLE_SYMBOLS_UNICODE: dict[int, str] = {
     0x000: " ", 0x040: "╵", 0x0C0: "╹", 0x010: "╶", 0x050: "└", 0x0D0: "┖", 0x030: "╺",
@@ -1545,50 +1640,6 @@ _TABLE_SYMBOLS_UNICODE: dict[int, str] = {
     0x1FF: "╬",
 }
 # fmt: on
-
-_MSG_DECORATIONS_ASCII: dict[str, str] = {
-    "heading/section": "",
-    "heading/1": "# ",
-    "heading/2": "",
-    "heading/3": "",
-    "heading/4": "",
-    "heading/5": "",
-    "heading/6": "",
-    "question": "> ",
-    "task": "> ",
-    "thematic_break": "-" * 8,
-    "list": "*   ",
-    "quote": ">   ",
-    "code": " " * 8,
-    "overflow": "~",
-    "progress_bar/start_symbol": "[",
-    "progress_bar/end_symbol": "]",
-    "progress_bar/done_symbol": "-",
-    "progress_bar/pending_symbol": " ",
-    "progress_bar/transition_pattern": ">",
-    "spinner/pattern": "|||/-\\",
-    "spinner/static_symbol": ">",
-    "hr/1/left_start": "-",
-    "hr/1/left_middle": "-",
-    "hr/1/left_end": " ",
-    "hr/1/middle": "-",
-    "hr/1/right_start": " ",
-    "hr/1/right_middle": "-",
-    "hr/1/right_end": "-",
-    "hr/2/left_start": "=",
-    "hr/2/left_middle": "=",
-    "hr/2/left_end": " ",
-    "hr/2/middle": "=",
-    "hr/2/right_start": " ",
-    "hr/2/right_middle": "=",
-    "hr/2/right_end": "=",
-    # TODO: support these in widgets
-    # 'menu/current_item': '>',
-    # 'menu/selected_item': '*',
-    # 'menu/default_item': '*',
-    # 'menu/select': '#',
-    # 'menu/search': '/',
-}
 
 # fmt: off
 _TABLE_SYMBOLS_ASCII: dict[int, str] = {

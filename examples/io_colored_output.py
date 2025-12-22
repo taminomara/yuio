@@ -84,7 +84,7 @@ if __name__ == "__main__":
                         ]
                     ),
                 ),
-                max_width=40,
+                width=40,
                 indent=yuio.io.ColorizedString(
                     [yuio.io.get_theme().get_color("msg/decoration"), "> "]
                 ),

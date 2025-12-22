@@ -367,9 +367,7 @@ class TestMutuallyExclusiveGroups:
         assert ns["json"] is True
         assert "xml" not in ns
 
-    def test_required_mutex_group_raises(
-        self, mutex_options_required_group
-    ):
+    def test_required_mutex_group_raises(self, mutex_options_required_group):
         with pytest.raises(
             yuio.cli.ArgumentError,
             match=r"Either --json or --xml must be provided",

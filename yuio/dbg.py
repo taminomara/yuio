@@ -283,8 +283,13 @@ def _terminal() -> Report:
     report = Report("Terminal and CLI")
 
     term = yuio.io.get_term()
-    report.items.append(("interactive support", term.interactive_support.name))
-    report.items.append(("terminal colors", term.color_support.name))
+    report.items.append(
+        ("ostream interactive support", term.ostream_interactive_support.name)
+    )
+    report.items.append(
+        ("istream interactive support", term.istream_interactive_support.name)
+    )
+    report.items.append(("color support", term.color_support.name))
     report.items.append(("detected colors", str(term.terminal_theme is not None)))
     report.items.append(("term", os.environ.get("TERM", "")))
     report.items.append(("colorterm", os.environ.get("COLORTERM", "")))

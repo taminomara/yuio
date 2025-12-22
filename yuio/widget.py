@@ -1032,6 +1032,43 @@ class RenderContext:
 
         self._bell = True
 
+    def make_repr_context(
+        self,
+        *,
+        multiline: bool = False,
+        highlighted: bool = False,
+        max_depth: int = 5,
+        width: int | None = None,
+    ) -> yuio.string.ReprContext:
+        """
+        Create a new :class:`~yuio.string.ReprContext` for rendering colorized strings
+        inside widgets.
+
+        :param multiline:
+            sets initial value for :attr:`ReprContext.multiline`.
+        :param highlighted:
+            sets initial value for :attr:`ReprContext.highlighted`.
+        :param max_depth:
+            sets initial value for :attr:`ReprContext.max_depth`.
+        :param width:
+            sets initial value for :attr:`ReprContext.width`. If not given, uses
+            current frame's width.
+        :returns:
+            a new repr context suitable for rendering colorized strings.
+
+        """
+
+        if width is None:
+            width = self._frame_w
+        return yuio.string.ReprContext(
+            term=self._term,
+            theme=self._theme,
+            multiline=multiline,
+            highlighted=highlighted,
+            max_depth=max_depth,
+            width=width,
+        )
+
     def prepare(self, *, full_redraw: bool = False, alternative_buffer: bool = False):
         """
         Reset output canvas and prepare context for a new round of widget formatting.
@@ -1110,7 +1147,7 @@ class RenderContext:
 
         """
 
-        if not self.term.can_move_cursor:
+        if self.term.ostream_interactive_support is yuio.term.InteractiveSupport.NONE:
             # For tests. Widgets can't work with dumb terminals
             self._render_dumb()
             return
@@ -1366,7 +1403,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         """
 
-        if not term.is_fully_interactive:
+        if not term.can_run_widgets:
             raise RuntimeError("terminal doesn't support rendering widgets")
 
         with yuio.term._enter_raw_mode(
@@ -1590,8 +1627,8 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         self.__key_width = 10
         formatter = yuio.md.MdFormatter(
-            yuio.string.ReprContext(
-                theme=rc.theme, max_width=min(rc.width, 90) - self.__key_width - 2
+            rc.make_repr_context(
+                width=min(rc.width, 90) - self.__key_width - 2,
             ),
             allow_headings=False,
         )
@@ -1668,7 +1705,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             else:
                 title_color = "menu/text/help_info:help"
             colorized_title = yuio.string.colorize(
-                title, default_color=title_color, ctx=rc.theme
+                title,
+                default_color=title_color,
+                ctx=rc.make_repr_context(),
             )
             self.__colorized_inline_help.append((keys, colorized_title, key_width))
 
@@ -2372,9 +2411,9 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
         """
 
-        assert len(self._widgets) == len(
-            self.__layouts
-        ), "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
+        assert len(self._widgets) == len(self.__layouts), (
+            "you need to call `VerticalLayout.layout()` before `VerticalLayout.draw()`"
+        )
 
         if rc.height <= self.__min_h:
             scale = 0.0
@@ -2411,49 +2450,32 @@ class Line(Widget[_t.Never]):
 
     def __init__(
         self,
-        text: yuio.string.AnyString,
+        text: yuio.string.Colorable,
         /,
-        *,
-        color: _Color | str | None = None,
     ):
-        self.__text = _ColorizedString(text)
+        self.__text = text
         self.__colorized_text = None
-        self.__color = color
 
     @property
-    def text(self) -> _ColorizedString:
+    def text(self) -> yuio.string.Colorable:
         """
         Currently displayed text.
 
         """
+
         return self.__text
 
     @text.setter
-    def text(self, text: yuio.string.AnyString, /):
-        self.__text = _ColorizedString(text)
-
-    @property
-    def color(self) -> _Color | str | None:
-        """
-        Color of the currently displayed text.
-
-        """
-        return self.__color
-
-    @color.setter
-    def color(self, color: _Color | str | None, /):
-        self.__color = color
+    def text(self, text: yuio.string.Colorable, /):
+        self.__text = text
+        self.__colorized_text = None
 
     def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         return 1, 1
 
     def draw(self, rc: RenderContext, /):
         if self.__colorized_text is None:
-            if self.__color is None:
-                self.__colorized_text = self.__text
-            else:
-                color = rc.theme.to_color(self.__color)
-                self.__colorized_text = self.__text.with_base_color(color)
+            self.__colorized_text = rc.make_repr_context().str(self.__text)
 
         rc.write(self.__colorized_text)
 
@@ -2466,30 +2488,32 @@ class Text(Widget[_t.Never]):
 
     def __init__(
         self,
-        text: yuio.string.AnyString,
+        text: yuio.string.Colorable,
         /,
     ):
-        self.__text = _ColorizedString(text)
+        self.__text = text
         self.__wrapped_text: list[_ColorizedString] | None = None
         self.__wrapped_text_width: int = 0
 
     @property
-    def text(self) -> _ColorizedString:
+    def text(self) -> yuio.string.Colorable:
         """
         Currently displayed text.
 
         """
+
         return self.__text
 
     @text.setter
-    def text(self, text: yuio.string.AnyString, /):
-        self.__text = _ColorizedString(text)
+    def text(self, text: yuio.string.Colorable, /):
+        self.__text = text
         self.__wrapped_text = None
         self.__wrapped_text_width = 0
 
     def layout(self, rc: RenderContext, /) -> tuple[int, int]:
         if self.__wrapped_text is None or self.__wrapped_text_width != rc.width:
-            self.__wrapped_text = self.__text.wrap(
+            colorized_text = rc.make_repr_context().str(self.__text)
+            self.__wrapped_text = colorized_text.wrap(
                 rc.width,
                 break_long_nowrap_words=True,
             )

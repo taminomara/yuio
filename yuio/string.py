@@ -68,12 +68,12 @@ Yuio searches for special methods on your objects when rendering them.
 
             def __colorized_str__(self, ctx: yuio.string.ReprContext):
                 result = yuio.string.ColorizedString()
-                result += ctx.theme.get_color("magenta")
+                result += ctx.get_color("magenta")
                 result += "MyObject"
-                result += ctx.theme.get_color("normal")
+                result += ctx.get_color("normal")
                 result += "MyObject"
                 result += ctx.repr(self.value)
-                result += ctx.theme.get_color("normal")
+                result += ctx.get_color("normal")
                 result += ")"
                 return result
 
@@ -227,7 +227,6 @@ import os
 import pathlib
 import re
 import reprlib
-import shutil
 import string
 import types
 import unicodedata
@@ -235,6 +234,7 @@ from enum import Enum
 
 import yuio
 import yuio.color
+import yuio.term
 import yuio.theme
 from yuio import _typing as _t
 from yuio.color import Color as _Color
@@ -276,8 +276,6 @@ __all__ = [
     "WithBaseColor",
     "Wrap",
     "colorize",
-    "colorized_repr",
-    "colorized_str",
     "line_width",
     "repr_from_rich",
     "strip_color_tags",
@@ -1079,9 +1077,7 @@ class ColorizedString:
 
         return res
 
-    def percent_format(
-        self, args: _t.Any, ctx: yuio.theme.Theme | ReprContext | None = None
-    ) -> ColorizedString:
+    def percent_format(self, args: _t.Any, ctx: ReprContext) -> ColorizedString:
         """
         Format colorized string as if with ``%``-formatting
         (i.e. `printf-style formatting`__).
@@ -1186,14 +1182,8 @@ _S_SYNTAX = re.compile(
 
 
 def _percent_format(
-    s: ColorizedString, args: object, ctx: yuio.theme.Theme | ReprContext | None
+    s: ColorizedString, args: object, ctx: ReprContext
 ) -> ColorizedString:
-    if ctx is None:
-        import yuio.io
-
-        ctx = yuio.io.get_theme()
-    if not isinstance(ctx, ReprContext):
-        ctx = ReprContext(theme=ctx)
     seen_mapping = False
     arg_index = 0
     res = ColorizedString()
@@ -1277,7 +1267,7 @@ def _percent_format_repl(
 
     fmt = match.group(0) % fmt_args
     if added_color:
-        added_color = ctx.theme.to_color(added_color)
+        added_color = ctx.to_color(added_color)
         fmt = ColorizedString([base_color | added_color, fmt])
     return arg_index, fmt
 
@@ -1416,7 +1406,7 @@ def colorize(
     line: str,
     /,
     *args: _t.Any,
-    ctx: yuio.theme.Theme | ReprContext | None = None,
+    ctx: ReprContext,
     default_color: _Color | str = _Color.NONE,
     parse_cli_flags_in_backticks: bool = False,
 ) -> ColorizedString:
@@ -1440,14 +1430,7 @@ def colorize(
 
     """
 
-    if ctx is None:
-        import yuio.io
-
-        ctx = yuio.io.get_theme()
-    if not isinstance(ctx, ReprContext):
-        ctx = ReprContext(theme=ctx)
-
-    default_color = ctx.theme.to_color(default_color)
+    default_color = ctx.to_color(default_color)
 
     res = ColorizedString(default_color)
 
@@ -1459,7 +1442,7 @@ def colorize(
         last_pos = tag.end()
 
         if name := tag.group("tag_open"):
-            color = stack[-1] | ctx.theme.get_color(name)
+            color = stack[-1] | ctx.get_color(name)
             res.append_color(color)
             stack.append(color)
         elif code := tag.group("code"):
@@ -1471,9 +1454,9 @@ def colorize(
                 and __FLAG_RE.match(code)
                 and not __NEG_NUM_RE.match(code)
             ):
-                res.append_color(stack[-1] | ctx.theme.get_color("flag"))
+                res.append_color(stack[-1] | ctx.get_color("flag"))
             else:
-                res.append_color(stack[-1] | ctx.theme.get_color("code"))
+                res.append_color(stack[-1] | ctx.get_color("code"))
             res.start_no_wrap()
             res.append_str(code)
             res.end_no_wrap()
@@ -1643,7 +1626,7 @@ _WORDSEP_NL_RE = re.compile(r"(\r\n|\r|\n|\v\r\n|\v\r|\v\n|\v)")
 class _TextWrapper:
     def __init__(
         self,
-        width: float,
+        width: int,
         /,
         *,
         preserve_spaces: bool,
@@ -1654,7 +1637,7 @@ class _TextWrapper:
         indent: AnyString | int,
         continuation_indent: AnyString | int | None,
     ):
-        self.width: float = width  # Actual type is `int | +inf`.
+        self.width = width
         self.preserve_spaces: bool = preserve_spaces
         self.preserve_newlines: bool = preserve_newlines
         self.break_long_words: bool = break_long_words
@@ -2039,8 +2022,10 @@ class ReprContext:
     :param max_depth:
         maximum depth of nested containers, after which container's contents
         are not rendered.
-    :param max_width:
-        maximum width of the content, used when wrapping text or rendering markdown.
+    :param width:
+        maximum width of the content, used when wrapping text, rendering markdown,
+        or rendering horizontal rulers. If not given, defaults
+        to :attr:`Theme.fallback_width`.
 
     .. _rich repr protocol: https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
 
@@ -2049,21 +2034,19 @@ class ReprContext:
     def __init__(
         self,
         *,
-        theme: yuio.theme.Theme | None = None,
+        term: yuio.term.Term,
+        theme: yuio.theme.Theme,
         multiline: bool = False,
         highlighted: bool = False,
         max_depth: int = 5,
-        max_width: int | None = None,
+        width: int | None = None,
     ):
-        if theme is None:
-            import yuio.io
-
-            theme = yuio.io.get_theme()
+        self._term = term
         self._theme = theme
         self._multiline = multiline
         self._highlighted = highlighted
         self._max_depth = max_depth
-        self._max_width = max(max_width or shutil.get_terminal_size().columns, 1)
+        self._width = max(width or theme.fallback_width, 1)
 
         self._seen: set[int] = set()
         self._line = ColorizedString()
@@ -2075,6 +2058,15 @@ class ReprContext:
 
         self._hl = yuio.md.SyntaxHighlighter.get_highlighter("repr")
         self._base_color = theme.get_color("msg/text:code/repr")
+
+    @property
+    def term(self) -> yuio.term.Term:
+        """
+        Current term.
+
+        """
+
+        return self._term  # pragma: no cover
 
     @property
     def theme(self) -> yuio.theme.Theme:
@@ -2114,13 +2106,39 @@ class ReprContext:
         return self._max_depth  # pragma: no cover
 
     @property
-    def max_width(self) -> int:
+    def width(self) -> int:
         """
         Maximum width of the content, used when wrapping text or rendering markdown.
 
         """
 
-        return self._max_width  # pragma: no cover
+        return self._width  # pragma: no cover
+
+    def get_color(self, paths: str, /) -> yuio.color.Color:
+        """
+        Lookup a color by path.
+
+        """
+
+        return self._theme.get_color(paths)
+
+    def to_color(
+        self, color_or_path: yuio.color.Color | str | None, /
+    ) -> yuio.color.Color:
+        """
+        Convert color or color path to color.
+
+        """
+
+        return self._theme.to_color(color_or_path)
+
+    def get_msg_decoration(self, name: str, /) -> str:
+        """
+        Get message decoration by name.
+
+        """
+
+        return self._theme.get_msg_decoration(name, is_unicode=self._term.is_unicode)
 
     def _flush_sep(self):
         if self._pending_sep is not None:
@@ -2180,7 +2198,8 @@ class ReprContext:
         *,
         multiline: bool | None = None,
         highlighted: bool | None = None,
-        max_width: int | None = None,
+        width: int | None = None,
+        max_depth: int | None = None,
     ) -> ColorizedString:
         """
         Convert value to colorized string using repr methods.
@@ -2191,7 +2210,9 @@ class ReprContext:
             if given, overrides settings passed to :func:`colorized_str` for this call.
         :param highlighted:
             if given, overrides settings passed to :func:`colorized_str` for this call.
-        :param max_width:
+        :param width:
+            if given, overrides settings passed to :func:`colorized_str` for this call.
+        :param max_depth:
             if given, overrides settings passed to :func:`colorized_str` for this call.
         :returns:
             a colorized string containing representation of the ``value``.
@@ -2207,7 +2228,8 @@ class ReprContext:
             multiline=multiline,
             highlighted=highlighted,
             use_str=False,
-            max_width=max_width,
+            width=width,
+            max_depth=max_depth,
         )
 
     def str(
@@ -2217,7 +2239,8 @@ class ReprContext:
         *,
         multiline: bool | None = None,
         highlighted: bool | None = None,
-        max_width: int | None = None,
+        width: int | None = None,
+        max_depth: int | None = None,
     ) -> ColorizedString:
         """
         Convert value to colorized string.
@@ -2228,7 +2251,9 @@ class ReprContext:
             if given, overrides settings passed to :func:`colorized_str` for this call.
         :param highlighted:
             if given, overrides settings passed to :func:`colorized_str` for this call.
-        :param max_width:
+        :param width:
+            if given, overrides settings passed to :func:`colorized_str` for this call.
+        :param max_depth:
             if given, overrides settings passed to :func:`colorized_str` for this call.
         :returns:
             a colorized string containing string representation of the ``value``.
@@ -2244,7 +2269,8 @@ class ReprContext:
             multiline=multiline,
             highlighted=highlighted,
             use_str=True,
-            max_width=max_width,
+            width=width,
+            max_depth=max_depth,
         )
 
     def hl(
@@ -2282,7 +2308,8 @@ class ReprContext:
         *,
         multiline: bool | None = None,
         highlighted: bool | None = None,
-        max_width: int | None = None,
+        width: int | None = None,
+        max_depth: int | None = None,
     ):
         """
         Temporarily replace settings of this context.
@@ -2291,7 +2318,9 @@ class ReprContext:
             if given, overrides settings passed to :func:`colorized_str` for this call.
         :param highlighted:
             if given, overrides settings passed to :func:`colorized_str` for this call.
-        :param max_width:
+        :param width:
+            if given, overrides settings passed to :func:`colorized_str` for this call.
+        :param max_depth:
             if given, overrides settings passed to :func:`colorized_str` for this call.
         :returns:
             a context manager that overrides settings.
@@ -2306,9 +2335,13 @@ class ReprContext:
             self._highlighted,
             (self._highlighted if highlighted is None else highlighted),
         )
-        old_max_width, self._max_width = (
-            self._max_width,
-            (self._max_width if max_width is None else max_width),
+        old_width, self._width = (
+            self._width,
+            (self._width if width is None else width),
+        )
+        old_max_depth, self._max_depth = (
+            self._max_depth,
+            (self._max_depth if max_depth is None else max_depth),
         )
 
         try:
@@ -2316,14 +2349,16 @@ class ReprContext:
         finally:
             self._multiline = old_multiline
             self._highlighted = old_highlighted
-            self._max_width = old_max_width
+            self._width = old_width
+            self._max_depth = old_max_depth
 
     def _print(
         self,
         value: _t.Any,
         multiline: bool | None,
         highlighted: bool | None,
-        max_width: int | None,
+        width: int | None,
+        max_depth: int | None,
         use_str: bool,
     ) -> ColorizedString:
         old_line, self._line = self._line, ColorizedString()
@@ -2332,7 +2367,10 @@ class ReprContext:
 
         try:
             with self.with_settings(
-                multiline=multiline, highlighted=highlighted, max_width=max_width
+                multiline=multiline,
+                highlighted=highlighted,
+                width=width,
+                max_depth=max_depth,
             ):
                 self._print_nested(value, use_str)
             return self._line
@@ -2617,74 +2655,6 @@ _CONTAINERS = {
 _CONTAINER_TYPES = tuple(_CONTAINERS)
 
 
-def colorized_str(
-    value: _t.Any,
-    /,
-    theme: yuio.theme.Theme | None = None,
-    **kwargs,
-) -> ColorizedString:
-    """
-    Like :class:`str() <str>`, but uses ``__colorized_str__`` and returns
-    a colorized string.
-
-    This function is used when formatting values
-    via :meth:`ColorizedString.percent_format`, or printing them via :mod:`yuio.io`
-    functions.
-
-    :param value:
-        value to colorize.
-    :param theme:
-        theme will be passed to ``__colorized_str__``.
-    :param kwargs:
-        all other keyword arguments will be forwarded to :class:`ReprContext`.
-    :returns:
-        a colorized string containing representation of ``value``.
-    :raises:
-        this method does not raise any errors. If any inner object raises an
-        exception, this function returns a colorized string with an error description.
-
-    .. _rich repr protocol: https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
-
-    """
-
-    ctx = ReprContext(theme=theme, **kwargs)
-    return ctx.str(value)
-
-
-def colorized_repr(
-    value: _t.Any,
-    /,
-    theme: yuio.theme.Theme | None = None,
-    **kwargs,
-) -> ColorizedString:
-    """
-    Like :func:`repr`, but uses ``__colorized_repr__`` and returns
-    a colorized string.
-
-    This function is used when formatting values
-    via :meth:`ColorizedString.percent_format`, or printing them via :mod:`yuio.io`
-    functions.
-
-    :param value:
-        value to colorize.
-    :param theme:
-        theme will be passed to ``__colorized_repr__``.
-    :param kwargs:
-        all other keyword arguments will be forwarded to :class:`ReprContext`.
-    :returns:
-        a colorized string containing representation of ``value``.
-    :raises:
-        this method does not raise any errors. If any inner object raises an
-        exception, this function returns a colorized string with an error description.
-
-    .. _rich repr protocol: https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
-
-    """
-
-    ctx = ReprContext(theme=theme, **kwargs)
-    return ctx.repr(value)
-
-
 def _to_colorable(msg: _t.Any, args: tuple[_t.Any, ...] | None = None) -> Colorable:
     """
     Convert generic ``msg, args`` tuple to a colorable.
@@ -2706,7 +2676,9 @@ def _to_colorable(msg: _t.Any, args: tuple[_t.Any, ...] | None = None) -> Colora
 
 class _StrBase(abc.ABC):
     def __str__(self) -> str:
-        return str(ReprContext().str(self))
+        import yuio.io
+
+        return str(yuio.io.make_repr_context().str(self))
 
     @abc.abstractmethod
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
@@ -2754,7 +2726,7 @@ class Format(_StrBase):
 
 @_t.final
 @repr_from_rich
-class Repr:
+class Repr(_StrBase):
     """
     Lazy wrapper that calls :func:`colorized_repr` on the given value.
 
@@ -2790,9 +2762,6 @@ class Repr:
         yield None, self.value
         yield "multiline", self.multiline, None
         yield "highlighted", self.highlighted, None
-
-    def __str__(self):
-        return repr(self.value)
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
         return ctx.repr(
@@ -3151,18 +3120,16 @@ class Indent(_StrBase):
             continuation_indent = ColorizedString(self._continuation_indent)
 
         indent_width = max(indent.width, continuation_indent.width)
-        max_width = max(1, ctx.max_width - indent_width)
+        width = max(1, ctx.width - indent_width)
 
-        return ctx.str(self._msg, max_width=max_width).indent(
-            indent, continuation_indent
-        )
+        return ctx.str(self._msg, width=width).indent(indent, continuation_indent)
 
 
 @_t.final
 @repr_from_rich
 class Md(_StrBase):
-    """Md(msg: typing.LiteralString, /, *args, max_width: int | None | yuio.Missing = yuio.MISSING, dedent: bool = True, allow_headings: bool = True)
-    Md(msg: str, /, *, max_width: int | None | yuio.Missing = yuio.MISSING, dedent: bool = True, allow_headings: bool = True)
+    """Md(msg: typing.LiteralString, /, *args, width: int | None | yuio.Missing = yuio.MISSING, dedent: bool = True, allow_headings: bool = True)
+    Md(msg: str, /, *, width: int | None | yuio.Missing = yuio.MISSING, dedent: bool = True, allow_headings: bool = True)
 
     Lazy wrapper that renders markdown during formatting.
 
@@ -3170,7 +3137,7 @@ class Md(_StrBase):
         markdown to format.
     :param args:
         arguments for ``%``-formatting the rendered markdown.
-    :param max_width:
+    :param width:
         if given, overrides settings passed to :func:`colorized_repr` for this call.
     :param dedent:
         whether to remove leading indent from markdown.
@@ -3185,7 +3152,7 @@ class Md(_StrBase):
         md: _t.LiteralString,
         /,
         *args: _t.Any,
-        max_width: int | None = None,
+        width: int | None = None,
         dedent: bool = True,
         allow_headings: bool = True,
     ): ...
@@ -3195,7 +3162,7 @@ class Md(_StrBase):
         md: str,
         /,
         *,
-        max_width: int | None = None,
+        width: int | None = None,
         dedent: bool = True,
         allow_headings: bool = True,
     ): ...
@@ -3204,28 +3171,28 @@ class Md(_StrBase):
         md: str,
         /,
         *args: _t.Any,
-        max_width: int | None = None,
+        width: int | None = None,
         dedent: bool = True,
         allow_headings: bool = True,
     ):
         self._md: str = md
         self._args: tuple[_t.Any, ...] = args
-        self._max_width: int | None = max_width
+        self._width: int | None = width
         self._dedent: bool = dedent
         self._allow_headings: bool = allow_headings
 
     def __rich_repr__(self) -> RichReprResult:
         yield None, self._md
         yield from ((None, arg) for arg in self._args)
-        yield "max_width", self._max_width, yuio.MISSING
+        yield "width", self._width, yuio.MISSING
         yield "dedent", self._dedent, True
         yield "allow_headings", self._allow_headings, True
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
         import yuio.md
 
-        max_width = self._max_width or ctx.max_width
-        with ctx.with_settings(max_width=max_width):
+        width = self._width or ctx.width
+        with ctx.with_settings(width=width):
             formatter = yuio.md.MdFormatter(
                 ctx,
                 allow_headings=self._allow_headings,
@@ -3337,7 +3304,7 @@ class Wrap(_StrBase):
 
     :param msg:
         message to wrap.
-    :param max_width:
+    :param width:
         if given, overrides settings passed to :func:`colorized_repr` for this call.
     :param preserve_spaces:
         if set to :data:`True`, all spaces are preserved.
@@ -3372,7 +3339,7 @@ class Wrap(_StrBase):
         msg: Colorable,
         /,
         *,
-        max_width: int | None = None,
+        width: int | None = None,
         preserve_spaces: bool = False,
         preserve_newlines: bool = True,
         break_long_words: bool = True,
@@ -3382,7 +3349,7 @@ class Wrap(_StrBase):
         continuation_indent: AnyString | int | None = None,
     ):
         self._msg = msg
-        self._max_width: int | None = max_width
+        self._width: int | None = width
         self._preserve_spaces = preserve_spaces
         self._preserve_newlines = preserve_newlines
         self._break_long_words = break_long_words
@@ -3393,7 +3360,7 @@ class Wrap(_StrBase):
 
     def __rich_repr__(self) -> RichReprResult:
         yield None, self._msg
-        yield "max_width", self._max_width, None
+        yield "width", self._width, None
         yield "indent", self._indent, ""
         yield "continuation_indent", self._continuation_indent, None
         yield "preserve_spaces", self._preserve_spaces, None
@@ -3413,19 +3380,19 @@ class Wrap(_StrBase):
         else:
             continuation_indent = ColorizedString(self._continuation_indent)
 
-        max_width = self._max_width or ctx.max_width
+        width = self._width or ctx.width
         indent_width = max(indent.width, continuation_indent.width)
-        inner_max_width = max(1, max_width - indent_width)
+        inner_width = max(1, width - indent_width)
 
         overflow = self._overflow
         if overflow is True:
-            overflow = ctx.theme.msg_decorations.get("overflow", "")
+            overflow = ctx.get_msg_decoration("overflow")
 
         res = ColorizedString()
         res.start_no_wrap()
         sep = False
-        for line in ctx.str(self._msg, max_width=inner_max_width).wrap(
-            max_width,
+        for line in ctx.str(self._msg, width=inner_width).wrap(
+            width,
             preserve_spaces=self._preserve_spaces,
             preserve_newlines=self._preserve_newlines,
             break_long_words=self._break_long_words,
@@ -3477,7 +3444,7 @@ class WithBaseColor(_StrBase):
         yield "base_color", self._base_color
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
-        return ctx.str(self._msg).with_base_color(ctx.theme.to_color(self._base_color))
+        return ctx.str(self._msg).with_base_color(ctx.to_color(self._base_color))
 
 
 @repr_from_rich
@@ -3497,7 +3464,7 @@ class Hr(_StrBase):
 
         Additional styles can be added through
         :attr:`Theme.msg_decorations <yuio.theme.Theme.msg_decorations>`.
-    :param max_width:
+    :param width:
         if given, overrides settings passed to :func:`colorized_repr` for this call.
     :param overflow:
         pass :data:`False` to disable trimming ``msg`` to terminal width.
@@ -3526,7 +3493,7 @@ class Hr(_StrBase):
         msg: Colorable = "",
         /,
         *,
-        max_width: int | None = None,
+        width: int | None = None,
         overflow: bool | str = True,
         weight: int | str = 1,
         left_start: str | None = None,
@@ -3538,7 +3505,7 @@ class Hr(_StrBase):
         right_end: str | None = None,
     ):
         self._msg = msg
-        self._max_width = max_width
+        self._width = width
         self._overflow = overflow
         self._weight = weight
         self._left_start = left_start
@@ -3552,7 +3519,7 @@ class Hr(_StrBase):
     def __rich_repr__(self) -> RichReprResult:
         yield None, self._msg, None
         yield "weight", self._weight, None
-        yield "max_width", self._max_width, None
+        yield "width", self._width, None
         yield "overflow", self._overflow, None
         yield "left_start", self._left_start, None
         yield "left_middle", self._left_middle, None
@@ -3563,25 +3530,25 @@ class Hr(_StrBase):
         yield "right_end", self._right_end, None
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
-        max_width = self._max_width or ctx.max_width
+        width = self._width or ctx.width
 
-        color = ctx.theme.get_color(f"msg/decoration:hr/{self._weight}")
+        color = ctx.get_color(f"msg/decoration:hr/{self._weight}")
 
         res = ColorizedString(color)
         res.start_no_wrap()
 
         msg = ctx.str(self._msg)
         if not msg:
-            res.append_str(self._make_whole(max_width, ctx.theme.msg_decorations))
+            res.append_str(self._make_whole(width, ctx))
             return res
 
         overflow = self._overflow
         if overflow is True:
-            overflow = ctx.theme.msg_decorations.get("overflow", "")
+            overflow = ctx.get_msg_decoration("overflow")
 
         sep = False
         for line in msg.wrap(
-            max_width, preserve_spaces=True, break_long_words=False, overflow=overflow
+            width, preserve_spaces=True, break_long_words=False, overflow=overflow
         ):
             if sep:
                 res.append_color(yuio.color.Color.NONE)
@@ -3589,77 +3556,77 @@ class Hr(_StrBase):
                 res.append_color(color)
 
             line_w = line.width
-            line_w_fill = max(0, max_width - line_w)
+            line_w_fill = max(0, width - line_w)
             line_w_fill_l = line_w_fill // 2
             line_w_fill_r = line_w_fill - line_w_fill_l
             if not line_w_fill_l and not line_w_fill_r:
                 res.append_colorized_str(line)
                 return res
 
-            res.append_str(self._make_left(line_w_fill_l, ctx.theme.msg_decorations))
+            res.append_str(self._make_left(line_w_fill_l, ctx))
             res.append_colorized_str(line)
-            res.append_str(self._make_right(line_w_fill_r, ctx.theme.msg_decorations))
+            res.append_str(self._make_right(line_w_fill_r, ctx))
 
             sep = True
 
         return res
 
-    def _make_left(self, w: int, msg_decorations: _t.Mapping[str, str]):
+    def _make_left(self, w: int, ctx: ReprContext):
         weight = self._weight
         start = (
             self._left_start
             if self._left_start is not None
-            else msg_decorations.get(f"hr/{weight}/left_start", "")
+            else ctx.get_msg_decoration(f"hr/{weight}/left_start")
         )
         middle = (
             self._left_middle
             if self._left_middle is not None
-            else msg_decorations.get(f"hr/{weight}/left_middle")
+            else ctx.get_msg_decoration(f"hr/{weight}/left_middle")
         ) or " "
         end = (
             self._left_end
             if self._left_end is not None
-            else msg_decorations.get(f"hr/{weight}/left_end", "")
+            else ctx.get_msg_decoration(f"hr/{weight}/left_end")
         )
 
         return _make_left(w, start, middle, end)
 
-    def _make_right(self, w: int, msg_decorations: _t.Mapping[str, str]):
+    def _make_right(self, w: int, ctx: ReprContext):
         weight = self._weight
         start = (
             self._right_start
             if self._right_start is not None
-            else msg_decorations.get(f"hr/{weight}/right_start", "")
+            else ctx.get_msg_decoration(f"hr/{weight}/right_start")
         )
         middle = (
             self._right_middle
             if self._right_middle is not None
-            else msg_decorations.get(f"hr/{weight}/right_middle")
+            else ctx.get_msg_decoration(f"hr/{weight}/right_middle")
         ) or " "
         end = (
             self._right_end
             if self._right_end is not None
-            else msg_decorations.get(f"hr/{weight}/right_end", "")
+            else ctx.get_msg_decoration(f"hr/{weight}/right_end")
         )
 
         return _make_right(w, start, middle, end)
 
-    def _make_whole(self, w: int, msg_decorations: _t.Mapping[str, str]):
+    def _make_whole(self, w: int, ctx: ReprContext):
         weight = self._weight
         start = (
             self._left_start
             if self._left_start is not None
-            else msg_decorations.get(f"hr/{weight}/left_start", " ")
+            else ctx.get_msg_decoration(f"hr/{weight}/left_start")
         )
         middle = (
             self._middle
             if self._middle is not None
-            else msg_decorations.get(f"hr/{weight}/middle")
+            else ctx.get_msg_decoration(f"hr/{weight}/middle")
         ) or " "
         end = (
             self._right_end
             if self._right_end is not None
-            else msg_decorations.get(f"hr/{weight}/right_end", " ")
+            else ctx.get_msg_decoration(f"hr/{weight}/right_end")
         )
 
         start_w = line_width(start)

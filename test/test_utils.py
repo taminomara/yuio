@@ -2,7 +2,6 @@ import pytest
 
 import yuio
 import yuio.color
-import yuio.string
 import yuio.util
 
 
@@ -184,9 +183,9 @@ def test_dedent(doc, expected):
     assert yuio.util.dedent(doc) == expected
 
 
-def test_pretty_exception():
+def test_pretty_exception(ctx):
     a = yuio.PrettyException("foo %r bar", "xyz")
-    assert yuio.string.colorized_str(a)._parts == [
+    assert ctx.str(a)._parts == [
         yuio.color.Color.NONE,
         "foo ",
         "'xyz'",

@@ -31,7 +31,7 @@ def main(
     # This is to allow redirecting stdout to some file while recording keystrokes.
     # In fact, we do exactly this in our tests.
     term = yuio.io.get_term()
-    if not term.is_fully_interactive:
+    if not term.can_run_widgets:
         raise yuio.app.AppError("Stderr is not interactive")
 
     yuio.io.info(
