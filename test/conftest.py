@@ -50,7 +50,7 @@ class TestTheme(yuio.theme.Theme):
         "u": "underline",
         "inverse": yuio.color.Color.STYLE_INVERSE,
         "normal": yuio.color.Color.FORE_NORMAL,
-        "normal_dim": yuio.color.Color.FORE_NORMAL_DIM,
+        "muted": yuio.color.Color.FORE_NORMAL_DIM,
         "black": yuio.color.Color.FORE_BLACK,
         "red": yuio.color.Color.FORE_RED,
         "green": yuio.color.Color.FORE_GREEN,

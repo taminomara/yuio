@@ -149,7 +149,7 @@ class MdFormatter:
       Yuio has only two levels of headings. Headings past level two will look the same
       as level two headings (you can adjust theme to change this).
 
-      If ``allow_headings`` is set to :data:`False`, headings look like paragraphs.
+      If `allow_headings` is set to :data:`False`, headings look like paragraphs.
 
     - lists, numbered lists, quotes:
 

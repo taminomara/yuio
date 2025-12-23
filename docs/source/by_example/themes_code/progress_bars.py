@@ -5,7 +5,7 @@ import yuio.app
 
 class Theme(yuio.theme.DefaultTheme):
     spinner_update_rate_ms = 100
-    msg_decorations = {
+    msg_decorations_unicode = {
         # Custom progress bar symbols.
         "progress_bar/start_symbol": "|",
         "progress_bar/end_symbol": "|",

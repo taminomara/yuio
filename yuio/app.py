@@ -41,7 +41,7 @@ right above the field definition (comments must start with ``#:``).
 They are all formatted using Markdown (see :mod:`yuio.md`).
 
 Parsers for CLI argument values are derived from type hints.
-Use the ``parser`` parameter of the :func:`field` function to override them.
+Use the `parser` parameter of the :func:`field` function to override them.
 
 Arguments with bool parsers and parsers that support
 :meth:`parsing collections <yuio.parse.Parser.supports_parse_many>`
@@ -127,7 +127,7 @@ Creating custom CLI options
 ---------------------------
 
 You can override default behavior and presentation of a CLI option by passing
-custom ``option_ctor`` to :func:`field`. Furthermore, you can create your own
+custom `option_ctor` to :func:`field`. Furthermore, you can create your own
 implementation of :class:`yuio.cli.Option` to further fine-tune how an option
 is parsed, presented in CLI help, etc.
 
@@ -206,7 +206,7 @@ using the :meth:`App.subcommand` method:
     def do_stuff(): ...
 
 There is no limit to how deep you can nest subcommands, but for usability reasons
-we suggest not exceeding level of sub-sub-commands (``git stash push``, anyone?)
+we suggest not exceeding level of sub-sub-commands (:flag:`git stash push`, anyone?)
 
 When user invokes a subcommand, the ``main()`` function is called first,
 then subcommand. In the above example, invoking our app with subcommand ``push``
@@ -233,7 +233,7 @@ a sub-command. This behavior can be disabled by setting :attr:`App.subcommand_re
 to :data:`False`.
 
 When this happens, we need to understand whether a subcommand was invoked or not.
-To determine this, you can accept a special parameter called ``_command_info``
+To determine this, you can accept a special parameter called `_command_info`
 of type :class:`CommandInfo`. It will contain info about the current function,
 including its name and subcommand:
 
@@ -687,7 +687,7 @@ class App(_t.Generic[C]):
         its initialization. Disable this if you want to customize
         logging initialization.
 
-        Disabling this option also removes the ``--verbose`` flag form the CLI.
+        Disabling this option also removes the :flag:`--verbose` flag form the CLI.
 
         """
 

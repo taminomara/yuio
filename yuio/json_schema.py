@@ -192,10 +192,10 @@ class JsonSchemaContext:
             will be used as a unique key in the ``$defs`` section.
         :param name:
             name of the type, will be used in the ``$defs`` section. If there are
-            two types with different ``ty``\\ s and the same ``name``, their names
+            two types with different `key`\\ s and the same `name`, their names
             will be deduplicated.
         :param make_schema:
-            a lambda that will be called if ``ty`` wasn't added to this context before.
+            a lambda that will be called if `key` wasn't added to this context before.
             It should build and return the schema for this type.
         :returns:
             a :class:`Ref` type pointing to the just-added schema.

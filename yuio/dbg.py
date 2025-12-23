@@ -323,7 +323,7 @@ def print_report(
     app: yuio.app.App[_t.Any] | None = None,
 ):
     """
-    Collect and print debug report to the given ``dest``.
+    Collect and print debug report to the given `dest`.
 
     :param dest:
         destination stream for printing bug report, default is ``stdout``.

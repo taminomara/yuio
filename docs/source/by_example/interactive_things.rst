@@ -50,8 +50,8 @@ __ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
 --------------------------------
 
 You often need to print lists joined by some separator. Yuio provides
-:class:`yuio.string.JoinStr` and :class:`yuio.string.JoinRepr`
-(also available from :mod:`yuio.io`) to help with this task:
+:class:`~yuio.string.JoinStr`, :class:`~yuio.string.JoinRepr`,
+:class:`~yuio.string.And`, and :class:`~yuio.string.Or` to help with this task:
 
 .. literalinclude:: interactive_things_code/join.py
     :language: python
@@ -76,7 +76,7 @@ the given color tag (``code`` by default).
 Markdown and inline markup
 --------------------------
 
-If you need something even more complicated, you can use :func:`yuio.io.md` to print
+If you need something even more complex, you can use :func:`yuio.io.md` to print
 formatted markdown:
 
 .. literalinclude:: interactive_things_code/markdown.py
@@ -177,7 +177,7 @@ updates progress as you iterate over a collection.
 Opening an external editor
 --------------------------
 
-You know how when you run ``git commit``, it opens an editor and asks you to edit
+You know how when you run :flag:`git commit`, it opens an editor and asks you to edit
 a commit message? Yuio can do the same:
 
 .. literalinclude:: interactive_things_code/edit.py
@@ -191,7 +191,7 @@ Logging
 -------
 
 The app will automatically perform a basic logging configuration on startup.
-The logging level will depend on how many ``-v`` flags are given,
+The logging level will depend on how many :flag:`-v` flags are given,
 from ``WARNING`` to ``DEBUG``:
 
 .. literalinclude:: interactive_things_code/logging.py
@@ -241,7 +241,7 @@ and writes to :data:`sys.stderr` and :data:`sys.stdout`. To bypass it,
 use :func:`yuio.io.orig_stderr`, :func:`yuio.io.orig_stdout`, and methods
 on the :class:`yuio.io.SuspendOutput` class.
 
-Here's a more complicated example:
+Here's a more comprehensive example:
 
 .. literalinclude:: interactive_things_code/suspend_complex.py
     :language: python

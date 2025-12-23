@@ -4,7 +4,11 @@ import yuio.app
 
 class Theme(yuio.theme.DefaultTheme):
     separate_headings = False
-    msg_decorations = {
+    msg_decorations_unicode = {
+        "heading/1": "=> ",
+        "info": "-> ",
+    }
+    msg_decorations_ascii = {
         "heading/1": "=> ",
         "info": "-> ",
     }

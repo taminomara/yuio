@@ -183,7 +183,7 @@ all we need is to make a small adjustment to a part of the type. For example:
 
     AppConfig()
 
-Instead, we can use :class:`typing.Annotated` to attach validating parsers directly
+Instead, we can use :obj:`typing.Annotated` to attach validating parsers directly
 to type hints:
 
 .. code-block:: python
@@ -335,7 +335,7 @@ consider this code:
 
     yuio.io.ask("Enter some names", parser=List())
 
-This will fail because ``List`` needs an inner parser to function.
+This will fail because :class:`~List` needs an inner parser to function.
 
 To annotate this behavior, we provide type hints for ``__new__`` methods
 on each parser. When an inner parser is given, ``__new__`` is annotated as
@@ -571,7 +571,7 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
         arguments for ``%``-formatting the message.
     :param fallback_msg:
         fallback message that's guaranteed not to include representation of the faulty
-        value, will replace ``msg`` when parsing secret values.
+        value, will replace `msg` when parsing secret values.
 
         .. warning::
 
@@ -820,7 +820,7 @@ class PartialParser(abc.ABC):
             and previous annotations.
         :returns:
             a result of upgrading this parser from partial to full. This method
-            usually returns ``self``.
+            usually returns `self`.
         :raises:
             :class:`TypeError` if this parser can't be wrapped. Specifically, this
             method should raise a :class:`TypeError` for any non-partial parser.
@@ -996,7 +996,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
         Generate ``nargs`` for argparse.
 
         :returns:
-            ``nargs`` as defined by argparse. If :meth:`~Parser.supports_parse_many`
+            `nargs` as defined by argparse. If :meth:`~Parser.supports_parse_many`
             returns :data:`True`, value should be ``"+"``, ``"*"``, ``"?"``,
             or an integer. Otherwise, value should be :data:`None`.
 
@@ -1039,7 +1039,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         This method always returns :data:`True` or throws an error, but type checkers
         don't know this. Use ``assert parser.assert_type(value)`` so that they
-        understand that type of the ``value`` has narrowed.
+        understand that type of the `value` has narrowed.
 
         :param value:
             value that needs a type check.
@@ -1177,7 +1177,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         This function is used when reading values from user via :func:`yuio.io.ask`.
 
-        The returned widget must produce values of type ``T``. If ``default`` is given,
+        The returned widget must produce values of type ``T``. If `default` is given,
         and the user input is empty, the widget must produce
         the :data:`~yuio.MISSING` constant (*not* the default constant).
         This is because the default value might be of any type
@@ -2580,7 +2580,7 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
     A parser that tries to parse value as JSON.
 
     This parser will load JSON strings into python objects.
-    If ``inner`` parser is given, :class:`Json` will validate parsing results
+    If `inner` parser is given, :class:`Json` will validate parsing results
     by calling :meth:`~Parser.parse_config_with_ctx` on the inner parser.
 
     :param inner:
@@ -3263,7 +3263,7 @@ class CollectionParser(
         a function that is used to get an iterator from a collection.
         This defaults to :func:`iter`, but sometimes it may be different.
         For example, :class:`Dict` is implemented as a collection of pairs,
-        and its ``iter`` is :meth:`dict.items`.
+        and its `iter` is :meth:`dict.items`.
     :param config_type:
         type of a collection that we expect to find when parsing a config.
         This will usually be a list.
@@ -4575,16 +4575,16 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
         parser whose result will be validated.
     :param lower:
         set lower bound for value, so we require that ``value > lower``.
-        Can't be given if ``lower_inclusive`` is also given.
+        Can't be given if `lower_inclusive` is also given.
     :param lower_inclusive:
         set lower bound for value, so we require that ``value >= lower``.
-        Can't be given if ``lower`` is also given.
+        Can't be given if `lower` is also given.
     :param upper:
         set upper bound for value, so we require that ``value < upper``.
-        Can't be given if ``upper_inclusive`` is also given.
+        Can't be given if `upper_inclusive` is also given.
     :param upper_inclusive:
         set upper bound for value, so we require that ``value <= upper``.
-        Can't be given if ``upper`` is also given.
+        Can't be given if `upper` is also given.
     :example:
         ::
 
@@ -4767,16 +4767,16 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
         parser whose result will be validated.
     :param lower:
         set lower bound for value's length, so we require that ``len(value) > lower``.
-        Can't be given if ``lower_inclusive`` is also given.
+        Can't be given if `lower_inclusive` is also given.
     :param lower_inclusive:
         set lower bound for value's length, so we require that ``len(value) >= lower``.
-        Can't be given if ``lower`` is also given.
+        Can't be given if `lower` is also given.
     :param upper:
         set upper bound for value's length, so we require that ``len(value) < upper``.
-        Can't be given if ``upper_inclusive`` is also given.
+        Can't be given if `upper_inclusive` is also given.
     :param upper_inclusive:
         set upper bound for value's length, so we require that ``len(value) <= upper``.
-        Can't be given if ``upper`` is also given.
+        Can't be given if `upper` is also given.
     :example:
         ::
 
@@ -5438,17 +5438,17 @@ class ConfigParsingContext:
 
         :param value:
             inner value that was derived from the current value by accessing it with
-            the given ``key``.
+            the given `key`.
         :param key:
             key that we use to descend into the current value.
 
             For example, let's say we're parsing a list. We iterate over it and pass
             its elements to a sub-parser. Before calling a sub-parser, we need to
             make a new context for it. In this situation, we'll pass current element
-            as ``value``, and is index as ``key``.
+            as `value`, and is index as `key`.
         :param desc:
             human-readable description for the new context. Will be colorized
-            and ``%``-formatted with a single named argument ``key``.
+            and ``%``-formatted with a single named argument `key`.
 
             This is useful when parsing structures that need something more complex than
             JSON path. For example, when parsing a key in a dictionary, it is helpful
@@ -5819,7 +5819,7 @@ def register_type_hint_conversion(
     All registered callbacks are tried in the same order
     as they were registered.
 
-    If ``uses_delim`` is :data:`True`, callback can use
+    If `uses_delim` is :data:`True`, callback can use
     :func:`suggest_delim_for_type_hint_conversion`.
 
     This function can be used as a decorator.
@@ -5886,7 +5886,7 @@ def suggest_delim_for_type_hint_conversion() -> str | None:
 
     :raises:
         :class:`RuntimeError` if called from a type converter that
-        didn't set ``uses_delim`` to :data:`True`.
+        didn't set `uses_delim` to :data:`True`.
     :example:
         .. code-block:: python
 

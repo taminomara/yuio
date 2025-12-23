@@ -29,6 +29,7 @@ extensions = [
     "sphinx_vhs",
     "nice_toc",
     "api_ref",
+    "yuio_objects",
 ]
 
 intersphinx_mapping = {

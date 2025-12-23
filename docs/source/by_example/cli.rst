@@ -26,7 +26,7 @@ you can configure them the same way as you configure config fields:
     ):
         print(f"Hello, {greeting}!")
 
-Decorated functions should only have named arguments; ``*args`` and ``**kwargs``
+Decorated functions should only have named arguments; `*args` and `**kwargs`
 are not supported.
 
 We can run the app with method :meth:`~yuio.app.App.run`:
@@ -67,8 +67,8 @@ Mutually exclusive arguments
 ----------------------------
 
 Sometimes you need to ensure that only one of several arguments can be passed.
-For this, create a :class:`yuio.cli.MutuallyExclusiveGroup` (also available from
-:mod:`yuio.app` and :mod:`yuio.config`) and pass it to all such arguments:
+For this, create a :class:`~yuio.cli.MutuallyExclusiveGroup` and pass it to all
+such arguments:
 
 .. code-block:: python
     :emphasize-lines: 1,6-8
@@ -98,9 +98,9 @@ encapsulation and reduce code duplication:
 
 By default, Yuio will prefix all flags in the nested config with flag of config's
 field. That is, ``ExecutorConfig.threads`` will be loaded from
-``--executor-config-threads``.
+:flag:`--executor-config-threads`.
 
-You can override this prefix by passing ``flag`` to :func:`yuio.app.field`,
+You can override this prefix by passing `flag` to :func:`yuio.app.field`,
 or disable prefixing by using :func:`yuio.app.inline`:
 
 .. literalinclude:: cli_code/config_inline.py
@@ -123,15 +123,15 @@ Yuio automatically separates CLI options into sections when you use nested
     Enter
     Sleep 6s
 
-You can disable this behavior by setting ``help`` to an empty string:
+You can disable this behavior by setting `help` to an empty string:
 
 .. literalinclude:: cli_code/config_no_group.py
     :language: python
     :lines: 11-17
     :emphasize-lines: 3
 
-You can also assign groups for individual fields by passing :class:`yuio.cli.HelpGroup`
-(also available from :mod:`yuio.app` and :mod:`yuio.config`) to :func:`yuio.app.field`:
+You can also assign groups for individual fields by passing
+:class:`~yuio.cli.HelpGroup` to :func:`yuio.app.field`:
 
 .. literalinclude:: cli_code/config_explicit_group.py
     :language: python
@@ -142,7 +142,7 @@ Subcommands
 -----------
 
 We can easily build apps with multiple subcommands
-by using :meth:`yuio.app.App.subcommand`:
+by using :meth:`App.subcommand <yuio.app.App.subcommand>`:
 
 .. literalinclude:: cli_code/subcommands.py
     :language: python
@@ -184,7 +184,7 @@ Autocompletion
 
 Yuio can generate autocompletion for Bash, Fish, Zsh, and PowerShell.
 It installs completions automatically, without any need to pipe shell scripts
-into specific files. Just run your app with ``--completions`` flag:
+into specific files. Just run your app with :flag:`--completions` flag:
 
 .. code-block:: console
 
@@ -237,7 +237,7 @@ CLI options with custom behavior
 --------------------------------
 
 If default behavior doesn't meet your needs, you can provide your own option
-implementation by passing ``option_ctor`` to :func:`yuio.app.field`. This will let you
+implementation by passing `option_ctor` to :func:`yuio.app.field`. This will let you
 manually configure option's parsing and help formatting:
 
 .. code-block:: python

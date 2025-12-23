@@ -204,7 +204,7 @@ class CompletionCollector:
 
     When completions are added to the collector, they are checked against
     the current prefix to determine if they match the entered text. If they
-    do, the completion system will replace text from ``prefix`` and ``suffix``
+    do, the completion system will replace text from `prefix` and `suffix`
     with the new completion string.
 
     The two additional parts are:
@@ -215,8 +215,8 @@ class CompletionCollector:
 
     For example, suppose you're completing a second element
     of a colon-separated list. The list completer will set up
-    the collector so that ``prefix`` and ``suffix`` contain parts of the
-    current list element, while ``iprefix`` and ``isuffix`` contain
+    the collector so that `prefix` and `suffix` contain parts of the
+    current list element, while `iprefix` and `isuffix` contain
     the rest of the elements:
 
     .. code-block:: text
@@ -227,8 +227,8 @@ class CompletionCollector:
                              └ cursor
 
     Now, if the completer adds a completion ``"list_elements"``,
-    this text will replace the ``prefix`` and ``suffix``, but not ``iprefix``
-    and ``isuffix``. So, after the completion is applied, the string will
+    this text will replace the `prefix` and `suffix`, but not `iprefix`
+    and `isuffix`. So, after the completion is applied, the string will
     look like so:
 
     .. code-block:: text
@@ -237,7 +237,7 @@ class CompletionCollector:
                       └┬──────────┘
                        this got replaced
 
-    Finally, there is ``rsuffix``:
+    Finally, there is `rsuffix`:
 
     .. autoattribute:: rsuffix
 
@@ -514,7 +514,7 @@ class CompletionCollector:
 
     def split_off_prefix(self, delim: str | None = None, /):
         """
-        Move everything up to the last occurrence of ``delim``
+        Move everything up to the last occurrence of `delim`
         from :attr:`~CompletionCollector.prefix`
         to :attr:`~CompletionCollector.iprefix`.
 
@@ -532,7 +532,7 @@ class CompletionCollector:
 
     def split_off_suffix(self, delim: str | None = None, /):
         """
-        Move everything past the first occurrence of ``delim``
+        Move everything past the first occurrence of `delim`
         from :attr:`~CompletionCollector.suffix`
         to :attr:`~CompletionCollector.isuffix`.
 
@@ -765,7 +765,7 @@ class Completer(abc.ABC):
             is after the last character.
         :param do_corrections:
             if :data:`True` (default), completion system will try to guess
-            if there are any misspells in the ``text``, and offer to correct them.
+            if there are any misspells in the `text`, and offer to correct them.
         :returns:
             a sorted list of completions.
 

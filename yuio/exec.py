@@ -50,7 +50,7 @@ class ExecError(subprocess.CalledProcessError):
     .. py:data:: cmd
         :type: tuple[str | pathlib.Path, ...]
 
-        Initial ``args`` passed to the :func:`exec`.
+        Initial `args` passed to the :func:`exec`.
 
     .. py:data:: output
                  stdout
@@ -147,11 +147,11 @@ def exec(
     :param env:
         define the environment variables for the command.
     :param input:
-        string with command's stdin. If ``text`` is set to :data:`False`, this should
+        string with command's stdin. If `text` is set to :data:`False`, this should
         be :class:`bytes`, otherwise it should be a :class:`str`.
     :param capture_io:
         if set to :data:`False`, process' stdout and stderr are not captured;
-        ``logger`` and ``level`` arguments can't be given in this case, and this
+        `logger` and `level` arguments can't be given in this case, and this
         function returns :data:`None` instead of process' output.
     :param logger:
         logger that will be used for logging command's output. Default is to log
@@ -161,7 +161,7 @@ def exec(
     :param text:
         if set to :data:`False`, stdout is returned as :class:`bytes`.
     :returns:
-        string (or bytes) with command's stdout, or :data:`None` if ``capture_io``
+        string (or bytes) with command's stdout, or :data:`None` if `capture_io`
         is :data:`False`.
     :raises:
         If the command fails, a :class:`~subprocess.CalledProcessError` is raised.

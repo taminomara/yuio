@@ -13,8 +13,8 @@ Configuration
 
 Yuio configures itself upon import using environment variables:
 
-- ``FORCE_NO_COLORS``: disable colored output,
-- ``FORCE_COLORS``: enable colored output.
+- ``FORCE_NO_COLOR``: disable colored output,
+- ``FORCE_COLOR``: enable colored output.
 
 The only thing it doesn't do automatically is wrapping :data:`sys.stdout`
 and :data:`sys.stderr` into safe proxies. The :mod:`yuio.app` CLI builder
@@ -109,30 +109,40 @@ Coloring the output
 By default, all messages are colored according to their level (i.e. which function
 you use to print them).
 
-If you need inline colors, you can use special tags in your log messages::
+If you need inline colors, you can use special tags in your log messages:
 
-    info("Using the <c code>code</c> tag.")
+.. code-block:: python
 
-You can combine multiple colors in the same tag::
+    yuio.io.info("Using the <c code>code</c> tag.")
 
-    info("<c bold green>Success!</c>")
+You can combine multiple colors in the same tag:
 
-Only tags that appear in the message itself are processed::
+.. code-block:: python
 
-    info("Tags in this message --> %s are printed as-is", "<c color>")
+    yuio.io.info("<c bold green>Success!</c>")
 
-For highlighting inline code, Yuio supports parsing CommonMark's backticks::
+Only tags that appear in the message itself are processed:
 
-    info("Using the `backticks`.")
-    info("Using the `` nested `backticks` ``")
+.. code-block:: python
+
+    yuio.io.info("Tags in this message --> %s are printed as-is", "<c color>")
+
+For highlighting inline code, Yuio supports parsing CommonMark's backticks:
+
+.. code-block:: python
+
+    yuio.io.info("Using the `backticks`.")
+    yuio.io.info("Using the `` nested `backticks` ``")
 
 List of all tags that are available by default:
 
 -   ``code``, ``note``, ``path``: highlights,
 -   ``bold``, ``b``, ``dim``, ``d``, ``italic``, ``i``,
     ``underline``, ``u``, ``inverse``: font style,
--   ``normal``, ``red``, ``green``, ``yellow``, ``blue``,
+-   ``normal``, ``muted``, ``red``, ``green``, ``yellow``, ``blue``,
     ``magenta``, ``cyan``: colors.
+
+You can add more with :doc:`themes </internals/theme>`.
 
 
 Formatting utilities
@@ -477,9 +487,6 @@ def setup(
     theme: (
         yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
     ) = None,
-    fallback_theme: (
-        yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
-    ) = None,
     wrap_stdio: bool = True,
 ):
     """
@@ -496,12 +503,6 @@ def setup(
 
         If not passed, the global theme is not re-configured; the default is to use
         :class:`yuio.theme.DefaultTheme` then.
-    :param fallback_theme:
-        either a theme that will be used when printing to non-tty terminals, i.e. when
-        output is redirected to a file.
-
-        If not passed, the global theme is not re-configured; the default is to use
-        :class:`yuio.theme.DummyTheme` then.
     :param wrap_stdio:
         if set to :data:`True`, wraps :data:`sys.stdout` and :data:`sys.stderr`
         in a special wrapper that ensures better interaction
@@ -582,22 +583,26 @@ def make_repr_context(
         terminal where to print this message. If not given, terminal from
         :func:`get_term` is used.
     :param to_stdout:
-        shortcut for setting ``term`` to ``stdout``.
+        shortcut for setting `term` to ``stdout``.
     :param to_stderr:
-        shortcut for setting ``term`` to ``stderr``.
+        shortcut for setting `term` to ``stderr``.
     :param theme:
         theme used to format the message. If not given, theme from
         :func:`get_theme` is used.
     :param multiline:
-        sets initial value for :attr:`ReprContext.multiline`.
+        sets initial value for
+        :attr:`ReprContext.multiline <yuio.string.ReprContext.multiline>`.
     :param highlighted:
-        sets initial value for :attr:`ReprContext.highlighted`.
+        sets initial value for
+        :attr:`ReprContext.highlighted <yuio.string.ReprContext.highlighted>`.
     :param max_depth:
-        sets initial value for :attr:`ReprContext.max_depth`.
+        sets initial value for
+        :attr:`ReprContext.max_depth <yuio.string.ReprContext.max_depth>`.
     :param width:
-        sets initial value for :attr:`ReprContext.width`. If not given, uses current
-        terminal width or :attr:`Theme.fallback_width` depending on whether
-        `term` is attached to a TTY device.
+        sets initial value for
+        :attr:`ReprContext.width <yuio.string.ReprContext.width>`.
+        If not given, uses current terminal width or :attr:`Theme.fallback_width`
+        depending on whether `term` is attached to a TTY device.
 
     """
 
@@ -1020,7 +1025,7 @@ def hr(msg: yuio.string.Colorable = "", /, *args, weight: int | str = 1, **kwarg
         -   ``2`` prints bold ruler.
 
         Additional styles can be added through
-        :attr:`Theme.msg_decorations <yuio.theme.Theme.msg_decorations>`.
+        :attr:`Theme.msg_decorations <yuio.theme.Theme.msg_decorations_unicode>`.
     :param kwargs:
         any additional keyword arguments will be passed to :func:`raw`.
 
@@ -1103,9 +1108,9 @@ def raw(
         terminal where to print this message. If not given, terminal from
         :func:`get_term` is used.
     :param to_stdout:
-        shortcut for setting ``term`` to ``stdout``.
+        shortcut for setting `term` to ``stdout``.
     :param to_stderr:
-        shortcut for setting ``term`` to ``stderr``.
+        shortcut for setting `term` to ``stderr``.
     :param theme:
         theme used to format the message. If not given, theme from
         :func:`get_theme` is used.
@@ -1115,7 +1120,7 @@ def raw(
         tag that will be used to add color and decoration to the message.
 
         Decoration is looked up by path :samp:`{tag}`
-        (see :attr:`Theme.msg_decorations <yuio.theme.Theme.msg_decorations>`),
+        (see :attr:`Theme.msg_decorations <yuio.theme.Theme.msg_decorations_unicode>`),
         and color is looked up by path :samp:`msg/text:{tag}`
         (see :attr:`Theme.colors <yuio.theme.Theme.colors>`).
     :param exc_info:
@@ -1190,7 +1195,7 @@ def raw(
         msg += highlighter.highlight(ctx.theme, tb).indent()
 
     manager.print(
-        msg.process_colors(ctx.term.color_support),
+        msg.as_code(ctx.term.color_support),
         ctx.term,
         ignore_suspended=ignore_suspended,
         heading=heading,
@@ -1297,7 +1302,7 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
 
     Ask user to provide an input, parse it and return a value.
 
-    If ``stdin`` is not readable, return default if one is present,
+    If current terminal is not interactive, return default if one is present,
     or raise a :class:`UserIoError`.
 
     .. vhs:: /_tapes/questions.tape
@@ -1310,7 +1315,7 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
 
     You can also supply a custom :class:`~yuio.parse.Parser`,
     which will determine the widget that is displayed to the user,
-    the way auto completions work, etc.
+    the way autocompletion works, etc.
 
     :param msg:
         prompt to display to user.
@@ -1322,9 +1327,9 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
         default value to return if user input is empty.
     :param default_non_interactive:
         default value returned if input stream is not readable. If not given,
-        ``default`` is used instead. This is handy when you want to ask user if they
-        want to continue with ``default`` set to :data:`False`,
-        but ``default_non_interactive`` set to :data:`True`.
+        `default` is used instead. This is handy when you want to ask user if they
+        want to continue with `default` set to :data:`False`,
+        but `default_non_interactive` set to :data:`True`.
     :param input_description:
         description of the expected input, like ``"yes/no"`` for boolean
         inputs.
@@ -1336,12 +1341,12 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
         .. code-block:: python
 
             class Level(enum.Enum):
-                WARNING = ("Warning",)
-                INFO = ("Info",)
-                DEBUG = ("Debug",)
+                WARNING = "Warning"
+                INFO = "Info"
+                DEBUG = "Debug"
 
 
-            answer = ask[Level]("Choose a logging level", default=Level.INFO)
+            answer = yuio.io.ask[Level]("Choose a logging level", default=Level.INFO)
 
     """
 
@@ -1581,7 +1586,7 @@ def wait_for_user(
     """
     A simple function to wait for user to press enter.
 
-    If ``stdin`` is not readable, does not do anything.
+    If current terminal is not interactive, this functions has no effect.
 
     :param msg:
         prompt to display to user.
@@ -1657,7 +1662,7 @@ def edit(
 
     This function creates a temporary file with the given text
     and opens it in an editor. After editing is done, it strips away
-    all lines that start with ``comment_marker``, if one is given.
+    all lines that start with `comment_marker`, if one is given.
 
     If editor is not available or returns a non-zero exit code,
     a :class:`UserIoError` is raised.
@@ -1686,7 +1691,7 @@ def edit(
     :example:
         .. code-block:: python
 
-            message = edit(
+            message = yuio.io.edit(
                 \"""
                     # Please enter the commit message for your changes. Lines starting
                     # with '#' will be ignored, and an empty message aborts the commit.
@@ -2090,9 +2095,11 @@ class Task:
        :alt: Demonstration of the `Task` class.
        :scale: 40%
 
-    This class can be used as a context manager::
+    This class can be used as a context manager:
 
-        with Task("Processing input") as t:
+    .. code-block:: python
+
+        with yuio.io.Task("Processing input") as t:
             ...
             t.progress(0.3)
             ...
@@ -2179,7 +2186,7 @@ class Task:
         If given one argument, it is treated as percentage between ``0`` and ``1``.
 
         If given two arguments, they are treated as amount of finished work,
-        and a total amount of work. In this case, optional argument ``unit``
+        and a total amount of work. In this case, optional argument `unit`
         can be used to indicate units for the progress.
 
         If given a single :data:`None`, reset task progress.
@@ -2187,24 +2194,25 @@ class Task:
         .. note::
 
             Tasks are updated asynchronously once every ~100ms, so calling this method
-            is relatively cheap. It still requires acquiring a global lock, though.
+            is relatively cheap. It still requires acquiring a global lock, though:
+            contention could be an issue in multi-threaded applications.
 
         :param progress:
             a percentage between ``0`` and ``1``, or :data:`None`
             to reset task progress.
         :param done:
-            amount of finished work, should be less than or equal to ``total``.
+            amount of finished work, should be less than or equal to `total`.
         :param total:
             total amount of work.
         :param unit:
             unit for measuring progress. Only displayed when progress is given
-            as ``done`` and ``total``.
+            as `done` and `total`.
         :param ndigits:
             number of digits to display after a decimal point.
         :example:
             .. code-block:: python
 
-                with Task("Loading cargo") as task:
+                with yuio.io.Task("Loading cargo") as task:
                     task.progress(110, 150, unit="Kg")
 
             This will print the following:
@@ -2270,7 +2278,7 @@ class Task:
         :example:
             .. code-block:: python
 
-                with Task("Downloading a file") as task:
+                with yuio.io.Task("Downloading a file") as task:
                     task.progress_size(31.05 * 2**20, 150 * 2**20)
 
             This will print:
@@ -2317,7 +2325,7 @@ class Task:
         with SI system.
 
         :param done:
-            amount of finished work, should be less than or equal to ``total``.
+            amount of finished work, should be less than or equal to `total`.
         :param total:
             total amount of work.
         :param unit:
@@ -2327,7 +2335,7 @@ class Task:
         :example:
             .. code-block:: python
 
-                with Task("Charging a capacitor") as task:
+                with yuio.io.Task("Charging a capacitor") as task:
                     task.progress_scale(889.25e-3, 1, unit="V")
 
             This will print:
@@ -2379,8 +2387,6 @@ class Task:
 
         :param collection:
             an iterable collection. Should support returning its length.
-        :param total:
-            total amount of work.
         :param unit:
             unit for measuring progress.
         :param ndigits:
@@ -2392,7 +2398,7 @@ class Task:
 
             .. code-block:: python
 
-                with Task("Fetching data") as t:
+                with yuio.io.Task("Fetching data") as t:
                     for url in t.iter(urls):
                         ...
 
@@ -2423,7 +2429,7 @@ class Task:
 
             .. code-block:: python
 
-                with Task("Fetching data") as t:
+                with yuio.io.Task("Fetching data") as t:
                     for url in urls:
                         t.comment("%s", url)
                         ...
@@ -2495,7 +2501,7 @@ class Formatter(logging.Formatter):
     output terminal.
 
     Every part of log message is colored with path :samp:`log/{name}:{level}`.
-    For example, ``asctime`` in info log line is colored
+    For example, `asctime` in info log line is colored
     with path ``log/asctime:info``.
 
     In addition to the usual `log record attributes`__, this formatter also
@@ -2551,7 +2557,7 @@ class Formatter(logging.Formatter):
                 self._fmt or self.default_format, default_color=f"log:{level}", ctx=ctx
             )
             .percent_format(data, ctx)
-            .process_colors(ctx.term.color_support)
+            .as_code(ctx.term.color_support)
         )
 
     def formatException(self, ei):
@@ -2566,7 +2572,7 @@ class Formatter(logging.Formatter):
         return "".join(
             highlighter.highlight(theme, stack_info)
             .indent()
-            .process_colors(term.color_support)
+            .as_code(term.color_support)
         )
 
 
@@ -2846,7 +2852,7 @@ class _IoManager(abc.ABC):
             self._update_tasks()
         else:
             self._emit_lines(
-                self._format_task(task).process_colors(self._term.color_support)
+                self._format_task(task).as_code(self._term.color_support)
             )
 
     def _start_subtask(self, parent: Task, task: Task):
@@ -2855,7 +2861,7 @@ class _IoManager(abc.ABC):
             self._update_tasks()
         else:
             self._emit_lines(
-                self._format_task(task).process_colors(self._term.color_support)
+                self._format_task(task).as_code(self._term.color_support)
             )
 
     def _finish_task(self, task: Task, status: Task._Status):
@@ -2872,13 +2878,13 @@ class _IoManager(abc.ABC):
             if task in self._tasks:
                 self._tasks.remove(task)
                 self._emit_lines(
-                    self._format_task(task).process_colors(self._term.color_support)
+                    self._format_task(task).as_code(self._term.color_support)
                 )
             else:
                 self._update_tasks()
         else:
             self._emit_lines(
-                self._format_task(task).process_colors(self._term.color_support)
+                self._format_task(task).as_code(self._term.color_support)
             )
 
     def _clear_tasks(self):

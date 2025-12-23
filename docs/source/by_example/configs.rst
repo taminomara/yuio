@@ -88,7 +88,7 @@ You can add additional verification method to your config. It will be called
 every time a new config is loaded from a new source:
 
 .. code-block:: python
-    :emphasize-lines: 10-12
+    :emphasize-lines: 10-13
 
     class Config(yuio.config.Config):
         #: What kind of greeting does a user want?
@@ -100,7 +100,8 @@ every time a new config is loaded from a new source:
         def validate_config(self):
             if self.sender_name == "guest":
                 raise yuio.parse.ParsingError(
-                    f"sending greetings from {self.sender_name} is not allowed"
+                    "Sending greetings from `%r` is not allowed",
+                    self.sender_name,
                 )
 
 
@@ -146,7 +147,7 @@ You can adjust names of config fields when loading configs from CLI arguments
 or environment variables:
 
 .. code-block:: python
-    :emphasize-lines: 5-6,11-12
+    :emphasize-lines: 5-6,12-13
 
     class Config(yuio.config.Config):
         #: What kind of greeting does a user want?
@@ -221,10 +222,10 @@ When loading from file, nested configs are parsed from nested objects:
 
 When loading from environment or CLI, names for fields of the nested config
 will be prefixed by the name of its field in the parent config. In our example,
-``AppConfig.executor.threads`` will be loaded from flag ``--executor-threads``
+``AppConfig.executor.threads`` will be loaded from flag :flag:`--executor-threads`
 and environment variable ``EXECUTOR_THREADS``.
 
-You can change the prefixes by overriding field's name in the parent config:
+You can change prefixes by overriding field's name in the parent config:
 
 .. code-block:: python
     :emphasize-lines: 4-5

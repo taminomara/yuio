@@ -366,7 +366,7 @@ def get_term_from_stream(
         input stream.
     :param query_terminal_theme:
         By default, this function queries background, foreground, and text colors
-        of the terminal if ``ostream`` and ``istream`` are connected to a TTY.
+        of the terminal if `ostream` and `istream` are connected to a TTY.
 
         Set this parameter to :data:`False` to disable querying.
 

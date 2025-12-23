@@ -49,7 +49,7 @@ and backticks in messages. Here's the list of color tags available from the box:
 -   ``code``, ``note``, ``path``: highlights,
 -   ``bold``, ``b``, ``dim``, ``d``, ``italic``, ``i``,
     ``underline``, ``u``, ``inverse``: font style,
--   ``normal``, ``red``, ``green``, ``yellow``, ``blue``,
+-   ``normal``, ``muted``, ``red``, ``green``, ``yellow``, ``blue``,
     ``magenta``, ``cyan``: colors.
 
 You can add more with :doc:`themes </internals/theme>`.
@@ -58,7 +58,7 @@ You can add more with :doc:`themes </internals/theme>`.
 Flags and positional arguments
 ------------------------------
 
-This is good, but we want a shorter flag for ``--greeting``. And we'd like to add
+This is good, but we want a shorter flag for :flag:`--greeting`. And we'd like to add
 an option to output the greeting to a file.
 
 Well, :func:`yuio.app.field` and :func:`yuio.app.positional` got you there:
@@ -68,7 +68,7 @@ Well, :func:`yuio.app.field` and :func:`yuio.app.positional` got you there:
     :lines: 1-13
     :emphasize-lines: 1,7,8
 
-We've added a short flag for ``--greeting`` using :func:`yuio.app.field`.
+We've added a short flag for :flag:`--greeting` using :func:`yuio.app.field`.
 We've also added an optional positional argument for output file
 using :func:`yuio.app.positional`.
 

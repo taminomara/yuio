@@ -6,12 +6,9 @@
 # just keep this copyright line please :3
 
 """
-The higher-level :mod:`io` module uses strings with xml-like color
+The higher-level :mod:`yuio.io` module uses strings with xml-like color
 tags to store information about line formatting. Here, on the lower level,
-these strings are parsed and transformed to :class:`ColorizedString`\\ s:
-
-This is a low-level module upon which :mod:`yuio.io` builds
-its higher-level abstraction.
+these strings are parsed and transformed to :class:`ColorizedString`\\ s.
 
 .. autoclass:: ColorizedString
    :members:
@@ -20,38 +17,28 @@ its higher-level abstraction.
    :members:
 
 
-Parsing color tags
-------------------
-
-.. autofunction:: colorize
-
-.. autofunction:: strip_color_tags
-
-
-Pretty ``str`` and ``repr``
----------------------------
-
-.. autofunction:: colorized_str
-
-.. autofunction:: colorized_repr
-
-
 .. _pretty-protocol:
 
 Pretty printing protocol
 ------------------------
 
-Yuio searches for special methods on your objects when rendering them.
+Complex message formatting requires knowing capabilities of the target terminal.
+This affects which message decorations are used (Unicode or ASCII), how lines are
+wrapped, and so on. This data is encapsulated in an instance of :class:`ReprContext`:
+
+.. autoclass:: ReprContext
+    :members:
+
+Repr context may not always be available when a message is created, though.
+For example, we may know that we will be printing some data, but we don't know
+whether we'll print it to a file or to a terminal.
+
+The solution is to defer formatting by creating a :type:`Colorable`, i.e. an object
+that defines one of the following special methods:
 
 ``__colorized_str__``, ``__colorized_repr__``
     This should be a method that accepts a single positional argument,
     :class:`ReprContext`, and returns a :class:`ColorizedString`.
-
-    .. warning::
-
-        Don't call :func:`colorized_repr` or :func:`colorized_str` from these
-        implementations, as this may result in infinite recursion. Instead,
-        use :meth:`ReprContext.repr` and :meth:`ReprContext.str`.
 
     .. tip::
 
@@ -71,9 +58,8 @@ Yuio searches for special methods on your objects when rendering them.
                 result += ctx.get_color("magenta")
                 result += "MyObject"
                 result += ctx.get_color("normal")
-                result += "MyObject"
+                result += "("
                 result += ctx.repr(self.value)
-                result += ctx.get_color("normal")
                 result += ")"
                 return result
 
@@ -84,7 +70,7 @@ Yuio searches for special methods on your objects when rendering them.
     -   ``yield name, value`` will generate a keyword argument,
     -   ``yield name, value, default`` will generate a keyword argument if value
         is not equal to default,
-    -   if ``name`` is :data:`None`, it will generate positional argument instead.
+    -   if `name` is :data:`None`, it will generate positional argument instead.
 
     See the `Rich library documentation`__ for more info.
 
@@ -102,9 +88,6 @@ Yuio searches for special methods on your objects when rendering them.
             def __rich_repr__(self) -> yuio.string.RichReprResult:
                 yield "value1", self.value1
                 yield "value2", self.value2
-
-.. autoclass:: ReprContext
-    :members:
 
 .. type:: RichReprResult
     :canonical: typing.Iterable[tuple[typing.Any] | tuple[str | None, typing.Any] | tuple[str | None, typing.Any, typing.Any]]
@@ -193,8 +176,18 @@ Formatting utilities
     :members:
 
 
-Helper types
-------------
+Parsing color tags
+------------------
+
+.. autofunction:: colorize
+
+.. autofunction:: strip_color_tags
+
+
+Helpers
+-------
+
+.. autofunction:: line_width
 
 .. type:: AnyString
     :canonical: str | ~yuio.color.Color | ColorizedString | NoWrapMarker | typing.Iterable[AnyString]
@@ -211,8 +204,6 @@ Helper types
           NoWrapEnd
 
     Type of a no-wrap marker.
-
-.. autofunction:: line_width
 
 """
 
@@ -419,7 +410,7 @@ def repr_from_rich(cls: type[RichReprProtocolT], /) -> type[RichReprProtocolT]:
     :param cls:
         class that needs ``__repr__``.
     :returns:
-        always returns ``cls``.
+        always returns `cls`.
     :example:
         .. code-block:: python
 
@@ -799,9 +790,9 @@ class ColorizedString:
         Start a no-wrap region.
 
         String parts within no-wrap regions are not wrapped on spaces; they can be
-        hard-wrapped if ``break_long_nowrap_words`` is :data:`True`. Whitespaces and
-        newlines in no-wrap regions are preserved regardless of ``preserve_spaces``
-        and ``preserve_newlines`` settings.
+        hard-wrapped if `break_long_nowrap_words` is :data:`True`. Whitespaces and
+        newlines in no-wrap regions are preserved regardless of `preserve_spaces`
+        and `preserve_newlines` settings.
 
         """
 
@@ -911,12 +902,12 @@ class ColorizedString:
 
         return res
 
-    def process_colors(self, color_support: yuio.color.ColorSupport, /) -> list[str]:
+    def as_code(self, color_support: yuio.color.ColorSupport, /) -> list[str]:
         """
         Convert colors in this string to ANSI escape sequences.
 
-        :param term:
-            terminal that will be used to print the resulting string.
+        :param color_support:
+            desired level of color support.
         :returns:
             raw parts of colorized string with all colors converted to ANSI
             escape sequences.
@@ -967,6 +958,8 @@ class ColorizedString:
         """
         Wrap a long line of text into multiple lines.
 
+        :param width:
+            desired wrapping width.
         :param preserve_spaces:
             if set to :data:`True`, all spaces are preserved.
             Otherwise, consecutive spaces are collapsed into a single space.
@@ -984,7 +977,7 @@ class ColorizedString:
                 :stub-columns: 1
 
                 * - Sequence
-                  - ``preserve_newlines``
+                  - `preserve_newlines`
                   - Result
                 * - ``\\n``, ``\\r\\n``, ``\\r``
                   - ``False``
@@ -1009,6 +1002,7 @@ class ColorizedString:
             a string that will be prepended before the first line.
         :param continuation_indent:
             a string that will be prepended before all subsequent lines.
+            Defaults to `indent`.
         :returns:
             a list of individual lines without newline characters at the end.
 
@@ -1038,7 +1032,7 @@ class ColorizedString:
             Defaults to two spaces.
         :param continuation_indent:
             this will be prepended to subsequent lines in the string.
-            Defaults to ``indent``.
+            Defaults to `indent`.
         :returns:
             indented string.
 
@@ -1088,9 +1082,8 @@ class ColorizedString:
             arguments for formatting. Can be either a tuple of a mapping. Any other
             value will be converted to a tuple of one element.
         :param ctx:
-            :class:`ReprContext` or theme that will be passed to ``__colorized_str__``
-            and ``__colorized_repr__``. If not given, uses theme
-            from :func:`yuio.io.get_theme`.
+            :class:`ReprContext` that will be passed to ``__colorized_str__``
+            and ``__colorized_repr__`` when formatting colorables.
         :returns:
             formatted string.
         :raises:
@@ -1421,8 +1414,8 @@ def colorize(
     :param args:
         if given, string will be ``%``-formatted after parsing.
     :param ctx:
-        :class:`ReprContext` or theme that will be used to look up color tags.
-        If not given, uses theme from :func:`yuio.io.get_theme`.
+        :class:`ReprContext` that will be used to look up color tags
+        and format colorables.
     :param default_color:
         color or color tag to apply to the entire text.
     :returns:
@@ -1504,7 +1497,7 @@ def strip_color_tags(s: str) -> str:
 class Esc(_UserString):
     """
     A string that can't be broken during word wrapping even
-    if ``break_long_nowrap_words`` is :data:`True`.
+    if `break_long_nowrap_words` is :data:`True`.
 
     """
 
@@ -1563,7 +1556,7 @@ class Link(_UserString):
         :param color_support:
             level of color support of a terminal.
         :returns:
-            either ANSI escape code for this color or an empty string.
+            string text with ANSI codes that add a hyperlink to it.
 
         """
 
@@ -2011,8 +2004,10 @@ class ReprContext:
     Context object that tracks repr settings and ensures that recursive objects
     are handled properly.
 
+    :param term:
+        terminal that will be used to print formatted messages.
     :param theme:
-        theme will be passed to ``__colorized_repr__``.
+        theme that will be used to format messages.
     :param multiline:
         indicates that values rendered via `rich repr protocol`_
         should be split into multiple lines.
@@ -2025,7 +2020,7 @@ class ReprContext:
     :param width:
         maximum width of the content, used when wrapping text, rendering markdown,
         or rendering horizontal rulers. If not given, defaults
-        to :attr:`Theme.fallback_width`.
+        to :attr:`Theme.fallback_width <yuio.theme.Theme.fallback_width>`.
 
     .. _rich repr protocol: https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
 
@@ -2080,7 +2075,7 @@ class ReprContext:
     @property
     def multiline(self) -> bool:
         """
-        Whether values rendered with ``repr`` are split into multiple lines.
+        Whether values rendered with :meth:`~ReprContext.repr` are split into multiple lines.
 
         """
 
@@ -2089,7 +2084,7 @@ class ReprContext:
     @property
     def highlighted(self) -> bool:
         """
-        Whether values rendered with ``repr`` are highlighted.
+        Whether values rendered with :meth:`~ReprContext.repr` are highlighted.
 
         """
 
@@ -2207,15 +2202,15 @@ class ReprContext:
         :param value:
             value to be rendered.
         :param multiline:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param highlighted:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param width:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param max_depth:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :returns:
-            a colorized string containing representation of the ``value``.
+            a colorized string containing representation of the `value`.
         :raises:
             this method does not raise any errors. If any inner object raises an
             exception, this function returns a colorized string with
@@ -2248,15 +2243,15 @@ class ReprContext:
         :param value:
             value to be rendered.
         :param multiline:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param highlighted:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param width:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param max_depth:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :returns:
-            a colorized string containing string representation of the ``value``.
+            a colorized string containing string representation of the `value`.
         :raises:
             this method does not raise any errors. If any inner object raises an
             exception, this function returns a colorized string with
@@ -2315,13 +2310,13 @@ class ReprContext:
         Temporarily replace settings of this context.
 
         :param multiline:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param highlighted:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param width:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :param max_depth:
-            if given, overrides settings passed to :func:`colorized_str` for this call.
+            if given, overrides settings passed to :class:`ReprContext` for this call.
         :returns:
             a context manager that overrides settings.
 
@@ -2657,10 +2652,10 @@ _CONTAINER_TYPES = tuple(_CONTAINERS)
 
 def _to_colorable(msg: _t.Any, args: tuple[_t.Any, ...] | None = None) -> Colorable:
     """
-    Convert generic ``msg, args`` tuple to a colorable.
+    Convert generic `msg`, `args` tuple to a colorable.
 
     If msg is a string, returns :class:`Format`. Otherwise, check that no arguments
-    were given, and returns ``msg`` unchanged.
+    were given, and returns `msg` unchanged.
 
     """
 
@@ -2728,14 +2723,14 @@ class Format(_StrBase):
 @repr_from_rich
 class Repr(_StrBase):
     """
-    Lazy wrapper that calls :func:`colorized_repr` on the given value.
+    Lazy wrapper that calls :meth:`~ReprContext.repr` on the given value.
 
     :param value:
         value to repr.
     :param multiline:
-        if given, overrides settings passed to :func:`colorized_repr` for this call.
+        if given, overrides settings passed to :class:`ReprContext` for this call.
     :param highlighted:
-        if given, overrides settings passed to :func:`colorized_repr` for this call.
+        if given, overrides settings passed to :class:`ReprContext` for this call.
     :example:
         .. code-block:: python
 
@@ -2773,16 +2768,16 @@ class Repr(_StrBase):
 @repr_from_rich
 class TypeRepr(_StrBase):
     """
-    Lazy wrapper that calls :func:`typing.type_repr` on the given value
+    Lazy wrapper that calls :func:`annotationlib.type_repr` on the given value
     and highlights the result.
 
     :param ty:
         type to format.
 
-        If ``ty`` is a string, :func:`typing.type_repr` is not called on it, allowing
-        you to mix types and arbitrary descriptions.
+        If `ty` is a string, :func:`annotationlib.type_repr` is not called on it,
+        allowing you to mix types and arbitrary descriptions.
     :param highlighted:
-        if given, overrides settings passed to :func:`colorized_repr` for this call.
+        if given, overrides settings passed to :class:`ReprContext` for this call.
     :example:
         .. invisible-code-block: python
 
@@ -2934,7 +2929,7 @@ class _JoinBase(_StrBase):
 @_t.final
 class JoinStr(_JoinBase):
     """
-    Lazy wrapper that calls :class:`colorized_str` on elements of the given collection,
+    Lazy wrapper that calls :meth:`~ReprContext.str` on elements of the given collection,
     then joins the results using the given separator.
 
     :param collection:
@@ -2943,10 +2938,10 @@ class JoinStr(_JoinBase):
         separator that's printed between elements of the collection.
     :param sep_two:
         separator that's used when there are only two elements in the collection.
-        Defaults to ``sep``.
+        Defaults to `sep`.
     :param sep_last:
         separator that's used between the last and prior-to-last element
-        of the collection. Defaults to ``sep``.
+        of the collection. Defaults to `sep`.
     :param fallback:
         printed if collection is empty.
     :param color:
@@ -2966,7 +2961,7 @@ class JoinStr(_JoinBase):
 @_t.final
 class JoinRepr(_JoinBase):
     """
-    Lazy wrapper that calls :class:`colorized_repr` on elements of the given collection,
+    Lazy wrapper that calls :meth:`~ReprContext.repr` on elements of the given collection,
     then joins the results using the given separator.
 
     :param collection:
@@ -2975,10 +2970,10 @@ class JoinRepr(_JoinBase):
         separator that's printed between elements of the collection.
     :param sep_two:
         separator that's used when there are only two elements in the collection.
-        Defaults to ``sep``.
+        Defaults to `sep`.
     :param sep_last:
         separator that's used between the last and prior-to-last element
-        of the collection. Defaults to ``sep``.
+        of the collection. Defaults to `sep`.
     :param fallback:
         printed if collection is empty.
     :param color:
@@ -3079,7 +3074,7 @@ class Indent(_StrBase):
         Defaults to two spaces.
     :param continuation_indent:
         this will be prepended to subsequent lines in the string.
-        Defaults to ``indent``.
+        Defaults to `indent`.
     :example:
         .. code-block:: python
 
@@ -3138,7 +3133,7 @@ class Md(_StrBase):
     :param args:
         arguments for ``%``-formatting the rendered markdown.
     :param width:
-        if given, overrides settings passed to :func:`colorized_repr` for this call.
+        if given, overrides settings passed to :class:`ReprContext` for this call.
     :param dedent:
         whether to remove leading indent from markdown.
     :param allow_headings:
@@ -3305,7 +3300,7 @@ class Wrap(_StrBase):
     :param msg:
         message to wrap.
     :param width:
-        if given, overrides settings passed to :func:`colorized_repr` for this call.
+        if given, overrides settings passed to :class:`ReprContext` for this call.
     :param preserve_spaces:
         if set to :data:`True`, all spaces are preserved.
         Otherwise, consecutive spaces are collapsed into a single space.
@@ -3330,7 +3325,7 @@ class Wrap(_StrBase):
         Defaults to two spaces.
     :param continuation_indent:
         this will be prepended to subsequent lines in the string.
-        Defaults to ``indent``.
+        Defaults to `indent`.
 
     """
 
@@ -3463,27 +3458,27 @@ class Hr(_StrBase):
         -   ``2`` prints bold ruler.
 
         Additional styles can be added through
-        :attr:`Theme.msg_decorations <yuio.theme.Theme.msg_decorations>`.
+        :attr:`Theme.msg_decorations <yuio.theme.Theme.msg_decorations_unicode>`.
     :param width:
-        if given, overrides settings passed to :func:`colorized_repr` for this call.
+        if given, overrides settings passed to :class:`ReprContext` for this call.
     :param overflow:
-        pass :data:`False` to disable trimming ``msg`` to terminal width.
+        pass :data:`False` to disable trimming `msg` to terminal width.
     :param kwargs:
         Other keyword arguments override corresponding decorations from the theme:
 
-        :``left_start``:
+        :`left_start`:
             start of the ruler to the left of the message.
-        :``left_middle``:
+        :`left_middle`:
             filler of the ruler to the left of the message.
-        :``left_end``:
+        :`left_end`:
             end of the ruler to the left of the message.
-        :``middle``:
-            filler of the ruler that's used if ``msg`` is empty.
-        :``right_start``:
+        :`middle`:
+            filler of the ruler that's used if `msg` is empty.
+        :`right_start`:
             start of the ruler to the right of the message.
-        :``right_middle``:
+        :`right_middle`:
             filler of the ruler to the right of the message.
-        :``right_end``:
+        :`right_end`:
             end of the ruler to the right of the message.
 
     """

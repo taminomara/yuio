@@ -31,13 +31,13 @@ and its methods. If an interaction fails, a :class:`GitError` is raised.
 Status objects
 --------------
 
-:meth:`Repo.status` returns repository status parsed from ``git status`` command.
+:meth:`Repo.status` returns repository status parsed from :flag:`git status` command.
 It can show changed and unmerged files and submodules. See details about change
 representation in `git status`__ manual.
 
 __ https://git-scm.com/docs/git-status#_output
 
-Yuio represents ``git status`` output as close to the original as possible,
+Yuio represents :flag:`git status` output as close to the original as possible,
 but makes some convenience renames. This results in somewhat unexpected
 class structure:
 
@@ -350,7 +350,7 @@ class Repo:
         Call git and return its stdout.
 
         :param args:
-            arguments for the ``git`` command.
+            arguments for the :flag:`git` command.
         :param capture_io:
             If set to :data:`False`, command's stderr and stdout are not captured.
         :returns:
@@ -543,7 +543,7 @@ class Repo:
 
     def print_status(self):
         """
-        Run ``git status`` and show its output to the user.
+        Run :flag:`git status` and show its output to the user.
 
         """
 
@@ -554,7 +554,7 @@ class Repo:
         Query the log for given git objects.
 
         :param refs:
-            git references that will be passed to ``git log``.
+            git references that will be passed to :flag:`git log`.
         :param max_entries:
             maximum number of returned references.
         :returns:
@@ -597,7 +597,7 @@ class Repo:
         __ https://git-scm.com/docs/git-interpret-trailers
 
         :param refs:
-            git references that will be passed to ``git log``.
+            git references that will be passed to :flag:`git log`.
         :param max_entries:
             maximum number of checked commits.
 
@@ -636,7 +636,7 @@ class Repo:
         Return :data:`None` if object is not found.
 
         :param ref:
-            git reference that will be passed to ``git log``.
+            git reference that will be passed to :flag:`git log`.
         :returns:
             found commit or :data:`None`.
         :raises:

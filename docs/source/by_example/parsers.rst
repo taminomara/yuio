@@ -8,7 +8,7 @@ to use, how to do autocompletion, and so on. Every time you get data from user,
 a parser is involved.
 
 By default, Yuio constructs an appropriate parser from type hints. You can customize
-this process by using :class:`typing.Annotated`, or you can build a parser on your own.
+this process by using :obj:`typing.Annotated`, or you can build a parser on your own.
 
 
 Creating and using a parser
@@ -70,9 +70,9 @@ You can also build a parser from type hint, should you need one::
 Annotating type hints
 ---------------------
 
-Type hints offer a more concise way to build a parser. However, they're less expressive
+Type hints offer a concise way to build a parser. However, they're less expressive
 when it comes to constraints or validation. You'll have to use
-:class:`typing.Annotated` to inject parsers that don't map directly to types:
+:obj:`typing.Annotated` to inject parsers that don't map directly to types:
 
 .. code-block:: python
 
@@ -81,11 +81,11 @@ when it comes to constraints or validation. You'll have to use
     type_hint = dict[str, Annotated[int, yuio.parse.Gt(0)]]
 
 Here, we've created a parser for dictionaries that map strings to *positive ints*.
-Technically, Yuio will derive a parser from ``int``, then it will apply
+Technically, Yuio will derive a parser from :class:`int`, then it will apply
 ``yuio.parse.Gt(0)`` on top of it.
 
 Notice that we didn't specify inner parser for :class:`~yuio.parse.Gt`.
-This is because its internal parser will be derived from type hint,
+This is because its inner parser will be derived from type hint,
 so we only care about :class:`~yuio.parse.Gt`'s settings.
 
 Parsers created in such a way are called "partial". You can't use a partial parser
@@ -147,7 +147,7 @@ Enum parser
 
 A parser that you will use quite often is :class:`yuio.parse.Enum`.
 It parses string-based enumerations derived from :class:`enum.Enum`.
-We encourage users to use enums over plain strings because they provide
+We encourage use of enums over plain strings because they provide
 enhanced widgets and autocompletion:
 
 .. vhs:: /_tapes/widget_choice.tape
@@ -202,7 +202,7 @@ While Yuio supports parsing collections, it doesn't provide a fully capable
 context-free parser; instead, it relies on splitting string by delimiters,
 which can be limiting.
 
-To enable parsing more complex structures, Yuio has :class:`yuio.parse.Json` parser.
+To enable parsing more complex structures, Yuio has :class:`yuio.parse.Json`.
 
 It can be used on its own:
 
@@ -354,7 +354,7 @@ In addition to validation, you can mutate the input. For example:
             >>> parser.parse("UPPER")
             'upper'
 
-You can also use :class:`yuio.parse.Map` to implement a custom mutation.
+You can also use :class:`yuio.parse.Map` to implement custom mutations.
 
 Note that parsers need to convert parsed values back to their original form
 when printing them, rendering examples for documentation, or converting to JSON.

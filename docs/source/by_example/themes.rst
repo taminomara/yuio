@@ -26,11 +26,9 @@ pass theme to :func:`yuio.io.setup`:
 
         .. code-block:: python
 
-            @yuio.app.app
+            @yuio.app.app(theme=Theme)
             def main():
                 ...
-
-            main.theme = Theme
 
     .. tab-item:: Setup
 
@@ -117,7 +115,7 @@ Message decorations
 
 .. literalinclude:: themes_code/message_decorations.py
     :language: python
-    :lines: 5-9
+    :lines: 5-14
 
 .. vhs-inline::
     :scale: 40%
@@ -149,14 +147,3 @@ More decorations
 ~~~~~~~~~~~~~~~~
 
 See all available decorations in :ref:`decorations reference <all-decorations>`.
-
-
-Choosing ASCII or Unicode
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Not all terminals are configured to understand unicode. You can check if terminal
-supports unicode output and set decorations dynamically:
-
-.. literalinclude:: themes_code/dynamic_decorations.py
-    :language: python
-    :lines: 6-23

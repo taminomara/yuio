@@ -7,15 +7,15 @@ def main():
     pass
 
 main.epilog = """
-# usage examples
+# Usage examples
 
-- this will copy `./prod.sqlite3` to `./prod.sqlite3.bak`:
+- This will copy `./prod.sqlite3` to `./prod.sqlite3.bak`:
 
   ```bash
   python main.py backup ./prod.sqlite3
   ```
 
-- this will move `./prod.sqlite3.bak` to `./prod.sqlite3`:
+- This will move `./prod.sqlite3.bak` to `./prod.sqlite3`:
 
   ```bash
   python main.py restore ./prod.sqlite3

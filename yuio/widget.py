@@ -60,14 +60,14 @@ you can use the :class:`VerticalLayout` class:
 Widget help
 -----------
 
-Widgets automatically generate help: the help menu is available via the ``F1`` key,
+Widgets automatically generate help: the help menu is available via the :kbd:`F1` key,
 and there's also inline help that is displayed under the widget.
 
 By default, help items are generated from event handler docstrings:
 all event handlers that have them will be displayed in the help menu.
 
 You can control which keybindings appear in the help menu and inline help
-by supplying ``show_in_inline_help`` and ``show_in_detailed_help`` arguments
+by supplying `show_in_inline_help` and `show_in_detailed_help` arguments
 to the :func:`bind` function.
 
 For even more detailed customization you can decorate an event handler with
@@ -372,7 +372,7 @@ class KeyboardEvent:
         Protocol for interacting with terminals is quite old, and not all terminals
         support all keystroke combinations.
 
-        Use ``python -m yuio.scripts.showkey`` to check how your terminal reports
+        Use :flag:`python -m yuio.scripts.showkey` to check how your terminal reports
         keystrokes, and how Yuio interprets them.
 
     """
@@ -440,7 +440,7 @@ class KeyboardEvent:
 
     paste_str: str | None = dataclasses.field(default=None, compare=False, kw_only=True)
     """
-    If ``key`` is :attr:`Key.PASTE`, this attribute will contain pasted string.
+    If `key` is :attr:`Key.PASTE`, this attribute will contain pasted string.
 
     """
 
@@ -1045,14 +1045,18 @@ class RenderContext:
         inside widgets.
 
         :param multiline:
-            sets initial value for :attr:`ReprContext.multiline`.
+            sets initial value for
+            :attr:`ReprContext.multiline <yuio.string.ReprContext.multiline>`.
         :param highlighted:
-            sets initial value for :attr:`ReprContext.highlighted`.
+            sets initial value for
+            :attr:`ReprContext.highlighted <yuio.string.ReprContext.highlighted>`.
         :param max_depth:
-            sets initial value for :attr:`ReprContext.max_depth`.
+            sets initial value for
+            :attr:`ReprContext.max_depth <yuio.string.ReprContext.max_depth>`.
         :param width:
-            sets initial value for :attr:`ReprContext.width`. If not given, uses
-            current frame's width.
+            sets initial value for
+            :attr:`ReprContext.width <yuio.string.ReprContext.width>`.
+            If not given, uses current frame's width.
         :returns:
             a new repr context suitable for rendering colorized strings.
 
@@ -1958,8 +1962,8 @@ def bind(
 
        :kbd:`Ctrl+L` and :kbd:`F1` are always reserved by the widget itself.
 
-    If ``show_in_help`` is :data:`True`, this binding will be shown in the widget's
-    inline help. If ``show_in_detailed_help`` is :data:`True`,
+    If `show_in_help` is :data:`True`, this binding will be shown in the widget's
+    inline help. If `show_in_detailed_help` is :data:`True`,
     this binding will be shown in the widget's help menu.
 
     Example::
@@ -2027,7 +2031,7 @@ def help(
         this parameter overrides a message in the help menu. By default,
         it will be taken from a docstring.
     :param msg:
-        a shortcut parameter for setting both ``inline_msg`` and ``long_msg``
+        a shortcut parameter for setting both `inline_msg` and `long_msg`
         at the same time.
 
     Example::
@@ -2135,7 +2139,7 @@ class WidgetHelp:
             this parameter overrides a message in the help menu. By default,
             it will be taken from a docstring.
         :param msg:
-            a shortcut parameter for setting both ``inline_msg`` and ``long_msg``
+            a shortcut parameter for setting both `inline_msg` and `long_msg`
             at the same time.
         :param prepend:
             if :data:`True`, action will be added to the beginning of its group.
@@ -3774,10 +3778,10 @@ class Choice(Widget[T], _t.Generic[T]):
     :param mapper:
         maps option to a text that will be used for filtering. By default,
         uses :attr:`Option.display_text`. This argument is ignored
-        if a custom ``filter`` is given.
+        if a custom `filter` is given.
     :param filter:
         customizes behavior of list filtering. The default filter extracts text
-        from an option using the ``mapper``, and checks if it starts with the search
+        from an option using the `mapper`, and checks if it starts with the search
         query.
     :param default_index:
         index of the initially selected option.
@@ -3928,10 +3932,10 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
     :param mapper:
         maps option to a text that will be used for filtering. By default,
         uses :attr:`Option.display_text`. This argument is ignored
-        if a custom ``filter`` is given.
+        if a custom `filter` is given.
     :param filter:
         customizes behavior of list filtering. The default filter extracts text
-        from an option using the ``mapper``, and checks if it starts with the search
+        from an option using the `mapper`, and checks if it starts with the search
         query.
     :param default_index:
         index of the initially selected option.

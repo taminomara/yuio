@@ -843,13 +843,13 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         on the command line. It should parse option's args and merge them
         with previous values, if there are any.
 
-        When option's arguments are passed separately (i.e. ``--opt arg1 arg2 ...``),
-        ``args`` is given as a list. List's length is checked against ``nargs``
-        before this method is called.
+        When option's arguments are passed separately (i.e. :flag:`--opt arg1 arg2 ...`),
+        `args` is given as a list. List's length is checked against
+        :attr:`~Option.nargs` before this method is called.
 
-        When option's arguments are passed as an inline value (i.e. ``--long=arg``
-        or ``-Sarg``), the ``args`` is given as a string. ``nargs`` are not checked
-        in this case, giving you an opportunity to handle inline option
+        When option's arguments are passed as an inline value (i.e. :flag:`--long=arg`
+        or :flag:`-Sarg`), the `args` is given as a string. :attr:`~Option.nargs`
+        are not checked in this case, giving you an opportunity to handle inline option
         however you like.
 
         :param cli_parser:

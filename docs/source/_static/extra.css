@@ -43,6 +43,14 @@ pre.ascii-graphics {
   color: var(--color-foreground-muted);
 }
 
+.color-path-hl em::before {
+  content: "{";
+}
+
+.color-path-hl em::after {
+  content: "}";
+}
+
 .toc-tree a.reference code {
   white-space: nowrap;
 }

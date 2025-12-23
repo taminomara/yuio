@@ -679,10 +679,10 @@ def field(
         pass an empty string to disable prefixing.
     :param completer:
         completer that will be used for autocompletion in CLI. Using this option
-        is equivalent to overriding ``completer`` with :class:`yuio.parse.WithMeta`.
+        is equivalent to overriding `completer` with :class:`yuio.parse.WithMeta`.
     :param metavar:
         value description that will be used for CLI help messages. Using this option
-        is equivalent to overriding ``desc`` with :class:`yuio.parse.WithMeta`.
+        is equivalent to overriding `desc` with :class:`yuio.parse.WithMeta`.
     :param merge:
         defines how values of this field are merged when configs are updated.
     :param mutex_group:
@@ -698,14 +698,14 @@ def field(
         Pass :class:`yuio.GROUP` to omit this field and add a single string
         ``<options>`` instead.
 
-        Setting ``usage`` on sub-config fields overrides default ``usage`` for all
+        Setting `usage` on sub-config fields overrides default `usage` for all
         fields within this sub-config.
     :param option_ctor:
         this parameter is similar to :mod:`argparse`\\ 's ``action``: it allows
         overriding logic for handling CLI arguments by providing a custom
         :class:`~yuio.cli.Option` implementation.
 
-        ``option_ctor`` should be a callable which takes a single positional argument
+        `option_ctor` should be a callable which takes a single positional argument
         of type :class:`~yuio.app.OptionSettings`, and returns an instance
         of :class:`yuio.cli.Option`.
     :returns:
@@ -765,7 +765,7 @@ def inline(
     """
     A shortcut for inlining nested configs.
 
-    Equivalent to calling :func:`~yuio.app.field` with ``env`` and ``flags``
+    Equivalent to calling :func:`~yuio.app.field` with `env` and `flags`
     set to an empty string.
 
     """
@@ -817,7 +817,7 @@ def positional(
     """
     A shortcut for adding a positional argument.
 
-    Equivalent to calling :func:`field` with ``flags`` set to :data:`~yuio.POSITIONAL`.
+    Equivalent to calling :func:`field` with `flags` set to :data:`~yuio.POSITIONAL`.
 
     """
 
@@ -1549,14 +1549,14 @@ class OptionSettings:
 
     dest: str
     """
-    See :attr:`yuio.cli.Option.dest`. We don't provide any guarantees about ``dest``\\ 's
+    See :attr:`yuio.cli.ValueOption.dest`. We don't provide any guarantees about `dest`\\ 's
     contents and recommend treating it as an opaque value.
 
     """
 
     default: _t.Any | yuio.Missing
     """
-    See :attr:`yuio.cli.Option.default`.
+    See :attr:`yuio.cli.ValueOption.default`.
 
     """
 
@@ -1740,7 +1740,7 @@ def store_const_option(const: T) -> OptionCtor[T]:
     Factory for :class:`yuio.cli.StoreConstOption`.
 
     This options takes no arguments. When it's encountered amongst CLI arguments,
-    it writes ``const`` to the resulting config.
+    it writes `const` to the resulting config.
 
     """
 

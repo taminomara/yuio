@@ -172,7 +172,7 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
     Find documentation for fields of a class.
 
     Inspects source code of a class and finds docstrings and doc comments (``#:``)
-    for variables in its body. Doesn't inspect ``__init``, doesn't return documentation
+    for variables in its body. Doesn't inspect ``__init__``, doesn't return documentation
     for class methods. Returns first paragraph from each docstring, formatted for use
     in CLI help messages.
 

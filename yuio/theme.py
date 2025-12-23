@@ -56,13 +56,9 @@ Use the following loader to create an instance of the default theme:
 
 .. autofunction:: load
 
+.. autoclass:: BaseTheme
+
 .. autoclass:: DefaultTheme
-
-
-Dummy theme
------------
-
-.. autoclass:: DummyTheme
 
 
 .. _all-color-paths:
@@ -70,8 +66,11 @@ Dummy theme
 Color paths
 -----------
 
-common tags
-    :class:`DefaultTheme` sets up commonly used colors that you can use
+.. _common-tags:
+
+.. color-path:: common tags
+
+    :class:`BaseTheme` sets up commonly used colors that you can use
     in formatted messages:
 
     -   ``code``: inline code,
@@ -84,7 +83,7 @@ common tags
     -   ``underline``, ``u``: font style,
     -   ``inverse``: swap foreground and background colors,
     -   ``normal``: normal foreground,
-    -   ``normal_dim``: muted foreground (see :attr:`~yuio.color.Color.FORE_NORMAL_DIM`),
+    -   ``muted``: muted foreground (see :attr:`~yuio.color.Color.FORE_NORMAL_DIM`),
     -   ``red``: foreground,
     -   ``green``: foreground,
     -   ``yellow``: foreground,
@@ -95,13 +94,32 @@ common tags
     .. note::
 
         We don't define ``black`` and ``white`` because they can be invisible
-        with some terminal themes. Prefer ``normal_dim`` when you need a muted color.
+        with some terminal themes. Prefer ``muted`` when you need a muted color.
 
         We also don't define tags for backgrounds because there's no way to tell
         which foreground/background combination will be readable and which will not.
         Prefer ``inverse`` when you need to add a background.
 
-:samp:`msg/decoration:{tag}`
+.. _main-colors:
+
+.. color-path:: main colors
+
+    :class:`DefaultTheme` defines *main colors*, which you can override by subclassing.
+
+    -   ``heading_color``: for headings,
+    -   ``primary_color``: for main text,
+    -   ``accent_color``, ``accent_color_2``: for visually highlighted elements,
+    -   ``secondary_color``: for visually dimmed elements,
+    -   ``error_color``: for everything that indicates an error,
+    -   ``warning_color``: for everything that indicates a warning,
+    -   ``success_color``: for everything that indicates a success,
+    -   ``critical_color``: for critical or internal errors,
+    -   ``low_priority_color_a``: for auxiliary elements such as help widget,
+    -   ``low_priority_color_b``: for auxiliary elements such as help widget,
+        even lower priority.
+
+.. color-path:: `msg/decoration:{tag}`
+
     Color for decorations in front of messages:
 
     -   ``msg/decoration:info``: messages from :mod:`yuio.io.info`,
@@ -121,14 +139,16 @@ common tags
     -   :samp:`msg/decoration:hr/{weight}`: horizontal rulers (see :func:`yuio.io.hr`
         and :func:`yuio.string.Hr`).
 
-:samp:`msg/text:{tag}`
+.. color-path:: `msg/text:{tag}`
+
     Color for the text part of messages:
 
     -   ``msg/text:info`` and all other tags from ``msg/decoration``,
     -   ``msg/text:paragraph``: plain text in markdown,
     -   :samp:`msg/text:code/{syntax}`: plain text in highlighted code blocks.
 
-:samp:`task/...:{status}`
+.. color-path:: `task/...:{status}`
+
     Running and finished tasks:
 
     -   :samp:`task/decoration`: decoration before the task,
@@ -148,7 +168,8 @@ common tags
 
     ``status`` can be ``running``, ``done``, or ``error``.
 
-:samp:`hl/{part}:{syntax}`
+.. color-path:: `hl/{part}:{syntax}`
+
     Color for highlighted part of code:
 
     -   ``hl/comment``: code comments,
@@ -165,7 +186,10 @@ common tags
     -   ``hl/flag``: CLI flags,
     -   ``hl/metavar``: meta variables in CLI usage.
 
-``tb/heading``, ``tb/message``, :samp:`tb/frame/{location}/...`
+.. color-path:: `tb/heading`
+                `tb/message`
+                `tb/frame/{location}/...`
+
     For highlighted tracebacks:
 
     -   ``tb/heading``: traceback heading,
@@ -179,7 +203,8 @@ common tags
     ``location`` is either ``lib`` or ``usr`` depending on whether the code
     is located in site-packages or in user code.
 
-:samp:`log/{part}:{level}`
+.. color-path:: `log/{part}:{level}`
+
     Colors for log records. ``part`` is name of a `log record attribute`__,
     level is lowercase name of logging level.
 
@@ -189,7 +214,8 @@ common tags
 
         :class:`yuio.io.Formatter`.
 
-input widget
+.. color-path:: input widget
+
     Colors for :class:`yuio.widget.Input`:
 
     -   ``menu/decoration:input``: decoration before an input box,
@@ -198,7 +224,8 @@ input widget
     -   ``menu/text/error:input``: highlights for error region reported by a parser,
     -   ``menu/text/placeholder:input``: placeholder text in an input box,
 
-grid widgets
+.. color-path:: grid widgets
+
     Colors for :class:`yuio.widget.Grid`, :class:`yuio.widget.Choice`, and other
     similar widgets:
 
@@ -241,7 +268,8 @@ grid widgets
     -   ``original``: original completion item before spelling correction,
     -   ``corrected``: completion item that was found after spelling correction.
 
-full screen help menu
+.. color-path:: full screen help menu
+
     Colors for help menu that appears when pressing :kbd:`F1`:
 
     -   ``menu/text/heading:help_menu``: section heading,
@@ -249,7 +277,8 @@ full screen help menu
     -   ``menu/text/help_sep:help_menu``: separators between key names,
     -   ``menu/decoration:help_menu``: decorations.
 
-inline help menu
+.. color-path:: inline help menu
+
     Colors for help items rendered under a widget:
 
     -   ``menu/text/help_info:help``: help items that aren't associated with any key,
@@ -263,46 +292,60 @@ inline help menu
 Decorations
 -----------
 
-``info``
+.. decoration-path:: `info`
+
     Messages from :mod:`yuio.io.info`.
 
-``warning``
+.. decoration-path:: `warning`
+
     Messages from :mod:`yuio.io.warning`.
 
-``error``
+.. decoration-path:: `error`
+
     Messages from :mod:`yuio.io.error`.
 
-``success``
+.. decoration-path:: `success`
+
     Messages from :mod:`yuio.io.success`.
 
-``failure``
+.. decoration-path:: `failure`
+
     Messages from :mod:`yuio.io.failure`.
 
-:samp:`heading/{level}`
+.. decoration-path:: `heading/{level}`
+
     Messages from :mod:`yuio.io.heading` and headings in markdown.
 
-``heading/section``
+.. decoration-path:: `heading/section`
+
     First-level headings in CLI help.
 
-``question``
+.. decoration-path:: `question`
+
     Messages from :func:`yuio.io.ask`.
 
-``list``
+.. decoration-path:: `list`
+
     Bullets in markdown.
 
-``quote``
+.. decoration-path:: `quote`
+
     Quote decorations in markdown.
 
-``code``
+.. decoration-path:: `code`
+
     Code decorations in markdown.
 
-``thematic_break``
+.. decoration-path:: `thematic_break`
+
     Thematic breaks (i.e. horizontal rulers) in markdown.
 
-``overflow``
+.. decoration-path:: `overflow`
+
     Ellipsis symbol for lines that don't fit terminal width. Must be one character wide.
 
-:samp:`progress_bar/{position}`
+.. decoration-path:: `progress_bar/{position}`
+
     Decorations for progress bars.
 
     Available positions are:
@@ -354,7 +397,8 @@ Decorations
                 "progress_bar/transition_pattern": "█▉▊▋▌▍▎▏ ",
             }
 
-``spinner/pattern``
+.. decoration-path:: `spinner/pattern`
+
     Defines a sequence of symbols that will be used to show spinners for tasks
     without known progress. Next element of the sequence will be shown
     every :attr:`~Theme.spinner_update_rate_ms`.
@@ -363,10 +407,12 @@ Decorations
 
     __ https://github.com/ManrajGrover/py-spinners?tab=readme-ov-file
 
-``spinner/static_symbol``
+.. decoration-path:: `spinner/static_symbol`
+
     Static spinner symbol, for sub-tasks that've finished running but'.
 
-:samp:`hr/{weight}/{position}`
+.. decoration-path:: `hr/{weight}/{position}`
+
     Decorations for horizontal rulers (see :func:`yuio.io.hr`
     and :func:`yuio.string.Hr`).
 
@@ -385,7 +431,7 @@ Decorations
     :``left_end``:
         End of the ruler to the left of the message.
     :``middle``:
-        Filler of the ruler that's used if ``msg`` is empty.
+        Filler of the ruler that's used if `msg` is empty.
     :``right_start``:
         Start of the ruler to the right of the message.
     :``right_middle``:
@@ -754,7 +800,7 @@ class Theme(metaclass=_ThemeMeta):
     __expected_source: type[Theme] | None = None
     """
     When running an ``__init__`` function, this variable will be set to the class
-    that implemented it, regardless of type of ``self``.
+    that implemented it, regardless of type of `self`.
 
     That is, inside ``DefaultTheme.__init__``, ``__expected_source`` is set
     to ``DefaultTheme``, in ``MyTheme.__init__`` it is ``MyTheme``, etc.
@@ -1106,24 +1152,60 @@ class Theme(metaclass=_ThemeMeta):
         )
 
 
-class DefaultTheme(Theme):
+class BaseTheme(Theme):
+    """
+    This theme defines :ref:`common colors <common-tags>` that are commonly used
+    in :ref:`inline color tags <color-tags>`.
+
+    """
+
+    colors = {
+        #
+        # Common tags
+        # -----------
+        "code": "italic",
+        "note": "cyan",
+        "path": "code",
+        "flag": "note",
+        #
+        # Styles
+        # ------
+        "bold": yuio.color.Color.STYLE_BOLD,
+        "b": "bold",
+        "dim": yuio.color.Color.STYLE_DIM,
+        "d": "dim",
+        "italic": yuio.color.Color.STYLE_ITALIC,
+        "i": "italic",
+        "underline": yuio.color.Color.STYLE_UNDERLINE,
+        "u": "underline",
+        "inverse": yuio.color.Color.STYLE_INVERSE,
+        #
+        # Foreground
+        # ----------
+        # Note: we don't have tags for background because it's impossible to guarantee
+        # that they'll work nicely with whatever foreground you choose. Prefer using
+        # `inverse` instead.
+        "normal": yuio.color.Color.FORE_NORMAL,
+        "muted": yuio.color.Color.FORE_NORMAL_DIM,
+        "black": yuio.color.Color.FORE_BLACK,
+        "red": yuio.color.Color.FORE_RED,
+        "green": yuio.color.Color.FORE_GREEN,
+        "yellow": yuio.color.Color.FORE_YELLOW,
+        "blue": yuio.color.Color.FORE_BLUE,
+        "magenta": yuio.color.Color.FORE_MAGENTA,
+        "cyan": yuio.color.Color.FORE_CYAN,
+        "white": yuio.color.Color.FORE_WHITE,
+    }
+
+
+class DefaultTheme(BaseTheme):
     """
     Default Yuio theme. Adapts for terminal background color,
     if one can be detected.
 
-    This theme defines *main colors*, which you can override by subclassing.
-
-    - ``"heading_color"``: for headings,
-    - ``"primary_color"``: for main text,
-    - ``"accent_color"``, ``"accent_color_2"``: for visually highlighted elements,
-    - ``"secondary_color"``: for visually dimmed elements,
-    - ``"error_color"``: for everything that indicates an error,
-    - ``"warning_color"``: for everything that indicates a warning,
-    - ``"success_color"``: for everything that indicates a success,
-    - ``"critical_color"``: for critical or internal errors,
-    - ``"low_priority_color_a"``: for auxiliary elements such as help widget,
-    - ``"low_priority_color_b"``: for auxiliary elements such as help widget,
-      even lower priority.
+    This theme defines :ref:`main colors <main-colors>`, which you can override
+    by subclassing. All other colors are expressed in terms of main colors,
+    so changing a main color will have an effect on the entire theme.
 
     """
 
@@ -1216,6 +1298,7 @@ class DefaultTheme(Theme):
     }
 
     colors = {
+        "note": "accent_color_2",
         #
         # Main settings
         # -------------
@@ -1225,48 +1308,13 @@ class DefaultTheme(Theme):
         "primary_color": "normal",
         "accent_color": "magenta",
         "accent_color_2": "cyan",
-        "secondary_color": "normal_dim",
+        "secondary_color": "muted",
         "error_color": "red",
         "warning_color": "yellow",
         "success_color": "green",
         "critical_color": "inverse error_color",
-        "low_priority_color_a": "normal_dim",
-        "low_priority_color_b": "normal_dim",
-        #
-        # Common tags
-        # -----------
-        "code": "italic",
-        "note": "accent_color_2",
-        "path": "code",
-        "flag": "note",
-        #
-        # Styles
-        # ------
-        "bold": yuio.color.Color.STYLE_BOLD,
-        "b": "bold",
-        "dim": yuio.color.Color.STYLE_DIM,
-        "d": "dim",
-        "italic": yuio.color.Color.STYLE_ITALIC,
-        "i": "italic",
-        "underline": yuio.color.Color.STYLE_UNDERLINE,
-        "u": "underline",
-        "inverse": yuio.color.Color.STYLE_INVERSE,
-        #
-        # Foreground
-        # ----------
-        # Note: we don't have tags for background because it's impossible to guarantee
-        # that they'll work nicely with whatever foreground you choose. Prefer using
-        # `inverse` instead.
-        "normal": yuio.color.Color.FORE_NORMAL,
-        "normal_dim": yuio.color.Color.FORE_NORMAL_DIM,
-        "black": yuio.color.Color.FORE_BLACK,
-        "red": yuio.color.Color.FORE_RED,
-        "green": yuio.color.Color.FORE_GREEN,
-        "yellow": yuio.color.Color.FORE_YELLOW,
-        "blue": yuio.color.Color.FORE_BLUE,
-        "magenta": yuio.color.Color.FORE_MAGENTA,
-        "cyan": yuio.color.Color.FORE_CYAN,
-        "white": yuio.color.Color.FORE_WHITE,
+        "low_priority_color_a": "muted",
+        "low_priority_color_b": "muted",
         #
         # IO messages and text
         # --------------------
