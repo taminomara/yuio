@@ -4355,6 +4355,8 @@ class TestLink:
         )
         assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
 
+    @pytest.mark.linux
+    @pytest.mark.darwin
     def test_path(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.chdir("/")
 
