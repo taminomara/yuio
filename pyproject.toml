@@ -88,11 +88,15 @@ depends = []
 [tool.tox.env_run_base]
 description = "Run tests under {base_python}"
 dependency_groups = ["test"]
-deps = [
-    "./test/test_deps/dbg_hooks",
-    "./test/test_deps/dbg_dep",
-]
 commands = [
+    [
+        "pip",
+        "install",
+        "-e",
+        "./test/test_deps/dbg_hooks",
+        "-e",
+        "./test/test_deps/dbg_dep",
+    ],
     [
         "pytest",
         "--color=yes",
@@ -109,7 +113,6 @@ set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}.{envname}" }
 [tool.tox.env.type]
 description = "Run type check"
 dependency_groups = ["test"]
-deps = []
 commands = [["pyright"]]
 base_python = ["3.10"]
 depends = []
@@ -117,14 +120,12 @@ depends = []
 [tool.tox.env.lint]
 description = "Run pre-commit hooks"
 dependency_groups = ["lint"]
-deps = []
 commands = [["pre-commit", "run", "--all", "--color=always"]]
 depends = []
 
 [tool.tox.env.coverage-clean]
 description = "Delete coverage data"
 dependency_groups = ["test"]
-deps = []
 skip_install = true
 commands = [["coverage", "erase"]]
 depends = []
@@ -134,7 +135,6 @@ set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}" }
 description = "Combine coverage data"
 skip_install = true
 dependency_groups = ["test"]
-deps = []
 commands = [["coverage", "combine"]]
 depends = ["3.14", "3.13", "3.12", "3.11", "3.10"]
 set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}" }
