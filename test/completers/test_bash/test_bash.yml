@@ -1,6 +1,7 @@
 - cmd: '|'
   results:
   - args
+  - hidden
 - cmd: -|
   results:
   - --bug-report
@@ -54,6 +55,7 @@
   - --one-of
   - --override
   - --set
+  - --special-chars
   - --str
   - --tuple
   - --union
@@ -65,6 +67,12 @@
 - cmd: args --bool|
   results:
   - --bool
+- cmd: args --bool=|
+  results:
+  - --bool=false
+  - --bool=no
+  - --bool=true
+  - --bool=yes
 - cmd: args --bool |
   results: []
 - cmd: args --no-b|
@@ -98,6 +106,8 @@
   - comp_1
   - comp_2
   - other_comp
+  - with:colon
+  - with=equals
   - with\ spaces
   - with_comment
 - cmd: args --custom c|
@@ -179,6 +189,7 @@
   - --one-of
   - --override
   - --set
+  - --special-chars
   - --str
   - --tuple
   - --union
@@ -374,3 +385,33 @@
   - option-1
   - option-2
   - other-option
+- cmd: args --special-chars |
+  results:
+  - foo:bar
+  - foo\"bar
+  - foo\$bar
+  - foo\'bar
+  - foo\*bar
+  - foo\\bar
+- cmd: hidden |
+  results:
+  - option_3
+  - option_4
+- cmd: hidden --|
+  results:
+  - --bug-report
+  - --color
+  - --completions
+  - --help
+  - --no-color
+  - --verbose
+  - --version
+- cmd: hidden --secret |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: hidden --secret x |
+  results:
+  - option_3
+  - option_4

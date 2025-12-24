@@ -27,6 +27,8 @@ class Completer(yuio.complete.Completer):
         collector.add("comp_2")
         collector.add("other_comp")
         collector.add("with spaces")
+        collector.add("with:colon")
+        collector.add("with=equals")
         collector.add("with_comment", comment="my comment")
 
 
@@ -71,6 +73,29 @@ def args(
     file: pathlib.Path,
     file_bash: typing.Annotated[pathlib.Path, yuio.parse.File(extensions=".bash")],
     dir: typing.Annotated[pathlib.Path, yuio.parse.Dir()],
+    special_chars: typing.Annotated[
+        str,
+        yuio.parse.WithMeta(
+            completer=yuio.complete.Choice(
+                [
+                    yuio.complete.Option("foo$bar"),
+                    yuio.complete.Option("foo\"bar"),
+                    yuio.complete.Option("foo'bar"),
+                    yuio.complete.Option("foo\\bar"),
+                    yuio.complete.Option("foo*bar"),
+                    yuio.complete.Option("foo:bar"),
+                ]
+            )
+        ),
+    ],
+):
+    pass
+
+
+@main.subcommand()
+def hidden(
+    secret: E = yuio.app.field(help=yuio.DISABLED),
+    normal: E2 = yuio.app.positional(),
 ):
     pass
 

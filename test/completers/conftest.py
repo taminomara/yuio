@@ -58,6 +58,7 @@ def test_cases():
         "args |",
         "args -|",
         "args --bool|",
+        "args --bool=|",
         "args --bool |",
         "args --no-b|",
         "args --int |",
@@ -125,6 +126,11 @@ def test_cases():
         "args --union |",
         "args --union oth|",
         "args --enum-by-name |",
+        "args --special-chars |",
+        "hidden |",
+        "hidden --|",
+        "hidden --secret |",
+        "hidden --secret x |",
     ]
 
     return list(map(_prepare_test_case, cases))
