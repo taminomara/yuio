@@ -154,4 +154,6 @@ def extract_results(output: str):
     lines = output.splitlines()
     i = lines.index("--BEGIN RESULTS--")
     j = lines.index("--END RESULTS--")
-    return lines[i + 1 : j]
+    res = lines[i + 1 : j]
+    res.sort()
+    return res

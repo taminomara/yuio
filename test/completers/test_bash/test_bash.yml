@@ -3,25 +3,25 @@
   - args
 - cmd: -|
   results:
-  - -h
-  - --help
-  - -V
-  - --version
-  - -v
-  - --verbose
   - --bug-report
-  - --completions
   - --color
+  - --completions
+  - --help
   - --no-color
+  - --verbose
+  - --version
+  - -V
+  - -h
+  - -v
 - cmd: --|
   results:
-  - --help
-  - --version
-  - --verbose
   - --bug-report
-  - --completions
   - --color
+  - --completions
+  - --help
   - --no-color
+  - --verbose
+  - --version
 - cmd: a|
   results:
   - args
@@ -30,38 +30,38 @@
 - cmd: args -|
   results:
   - --bool
-  - --no-bool
-  - --int
-  - --str
-  - --enum
-  - --override
+  - --bug-report
+  - --color
+  - --completions
   - --custom
-  - --one-of
-  - --git-ref
-  - --git-tag
-  - --tuple
-  - --list
-  - --set
   - --dict
-  - --nested-tuple
-  - --nested-list
-  - --nested-set
-  - --nested-dict
-  - --union
+  - --dir
+  - --enum
   - --enum-by-name
   - --file
   - --file-bash
-  - --dir
-  - -h
+  - --git-ref
+  - --git-tag
   - --help
-  - -V
-  - --version
-  - -v
-  - --verbose
-  - --bug-report
-  - --completions
-  - --color
+  - --int
+  - --list
+  - --nested-dict
+  - --nested-list
+  - --nested-set
+  - --nested-tuple
+  - --no-bool
   - --no-color
+  - --one-of
+  - --override
+  - --set
+  - --str
+  - --tuple
+  - --union
+  - --verbose
+  - --version
+  - -V
+  - -h
+  - -v
 - cmd: args --bool|
   results:
   - --bool
@@ -87,8 +87,8 @@
   results:
   - option-1
   - option-2
-  - with\ space
   - with-comment
+  - with\ space
 - cmd: args --override op|
   results:
   - option-1
@@ -109,9 +109,9 @@
   - comp_2
 - cmd: args --one-of |
   results:
-  - foo
   - bar
   - baz
+  - foo
 - cmd: args --git-ref |
   results:
   - main
@@ -155,40 +155,40 @@
 - cmd: args --list x --|
   results:
   - --bool
-  - --no-bool
-  - --int
-  - --str
-  - --enum
-  - --override
+  - --bug-report
+  - --color
+  - --completions
   - --custom
-  - --one-of
-  - --git-ref
-  - --git-tag
-  - --tuple
-  - --list
-  - --set
   - --dict
-  - --nested-tuple
-  - --nested-list
-  - --nested-set
-  - --nested-dict
-  - --union
+  - --dir
+  - --enum
   - --enum-by-name
   - --file
   - --file-bash
-  - --dir
+  - --git-ref
+  - --git-tag
   - --help
-  - --version
-  - --verbose
-  - --bug-report
-  - --completions
-  - --color
+  - --int
+  - --list
+  - --nested-dict
+  - --nested-list
+  - --nested-set
+  - --nested-tuple
+  - --no-bool
   - --no-color
+  - --one-of
+  - --override
+  - --set
+  - --str
+  - --tuple
+  - --union
+  - --verbose
+  - --version
 - cmd: args --list x --one-of |
   results:
-  - foo
   - bar
   - baz
+  - foo
 - cmd: args --list=|
   results:
   - --list=option_1
@@ -363,9 +363,9 @@
   results:
   - option_1
   - option_2
-  - other_option
   - option_3
   - option_4
+  - other_option
 - cmd: args --union oth|
   results:
   - other_option
