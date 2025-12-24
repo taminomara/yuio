@@ -15,6 +15,7 @@ from packaging.version import Version
 import yuio.app
 import yuio.config
 import yuio.io
+import yuio.parse
 
 TEMPLATE = """# TYPING EXTENSIONS
 #
@@ -43,14 +44,14 @@ else:
 
 class GithubAuth(yuio.config.Config):
     login: str | None = None
-    password: str | None = None  # TODO: secret str
+    password: yuio.parse.SecretString | None = None
 
 
 @yuio.app.app
 def main():
     auth_config = GithubAuth.load_from_env("GITHUB")
     if auth_config.login and auth_config.password:
-        auth = github.Auth.Login(auth_config.login, auth_config.password)
+        auth = github.Auth.Login(auth_config.login, auth_config.password.data)
     else:
         yuio.io.info("Using unauthenticated github connection")
         auth = None
