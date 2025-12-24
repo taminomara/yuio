@@ -69,10 +69,8 @@ its :meth:`~Completer._process` method.
 from __future__ import annotations
 
 import abc
-import argparse
 import contextlib
 import dataclasses
-import enum
 import functools
 import json
 import math
@@ -548,7 +546,7 @@ class CompletionCollector:
             self.suffix = parts[0]
             self.isuffix = delim + parts[1] + self.isuffix
 
-    def finalize(self) -> list[Completion]:
+    def finalize(self, *, derive_common_prefix: bool = True) -> list[Completion]:
         """
         Finish collecting completions and return everything that was collected.
 
@@ -570,7 +568,8 @@ class CompletionCollector:
             isuffix = c0.isuffix
 
             if (
-                self.full_prefix.startswith(iprefix)
+                derive_common_prefix
+                and self.full_prefix.startswith(iprefix)
                 and self.full_suffix.endswith(isuffix)
                 and all(
                     c.iprefix == iprefix and c.isuffix == isuffix
@@ -673,7 +672,7 @@ class _CorrectingCollector(CompletionCollector):
                 )
                 self._has_corrections = True
 
-    def finalize(self) -> list[Completion]:
+    def finalize(self, *, derive_common_prefix: bool = True) -> list[Completion]:
         if self._has_corrections:
             c0 = self._completions[0]
 
@@ -752,7 +751,13 @@ class Completer(abc.ABC):
     """
 
     def complete(
-        self, text: str, pos: int, /, *, do_corrections: bool = True
+        self,
+        text: str,
+        pos: int,
+        /,
+        *,
+        do_corrections: bool = True,
+        derive_common_prefix: bool = True,
     ) -> list[Completion]:
         """
         Complete the given text at the given cursor position.
@@ -766,6 +771,9 @@ class Completer(abc.ABC):
         :param do_corrections:
             if :data:`True` (default), completion system will try to guess
             if there are any misspells in the `text`, and offer to correct them.
+        :param derive_common_prefix:
+            if :data:`True` (default), and all returned completions have a non-empty
+            common prefix, return a single completion with this prefix instead.
         :returns:
             a sorted list of completions.
 
@@ -784,7 +792,7 @@ class Completer(abc.ABC):
         collector = _CorrectingCollector(text, pos)
         with collector.save_state():
             self._process(collector)
-        return collector.finalize()
+        return collector.finalize(derive_common_prefix=derive_common_prefix)
 
     @abc.abstractmethod
     def _process(self, collector: CompletionCollector, /):
@@ -808,13 +816,13 @@ class Completer(abc.ABC):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> _CompleterSerializer.Model:
+    ) -> _OptionSerializer.Model:
         """
         Internal, do not use.
 
         """
 
-        return _CompleterSerializer.CustomCompleter(self)
+        return _OptionSerializer.CustomCompleter(self)
 
 
 class Empty(Completer):
@@ -828,8 +836,8 @@ class Empty(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> _CompleterSerializer.Model:
-        return _CompleterSerializer.Model()
+    ) -> _OptionSerializer.Model:
+        return _OptionSerializer.Model()
 
 
 @dataclass(frozen=True, slots=True)
@@ -870,13 +878,13 @@ class Choice(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> _CompleterSerializer.Model:
+    ) -> _OptionSerializer.Model:
         if any(option.comment for option in self._choices):
-            return _CompleterSerializer.ChoiceWithDesc(
+            return _OptionSerializer.ChoiceWithDesc(
                 [(option.completion, option.comment or "") for option in self._choices]
             )
         else:
-            return _CompleterSerializer.Choice(
+            return _OptionSerializer.Choice(
                 [option.completion for option in self._choices]
             )
 
@@ -906,8 +914,8 @@ class Alternative(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> _CompleterSerializer.Model:
-        return _CompleterSerializer.Alternative(
+    ) -> _OptionSerializer.Model:
+        return _OptionSerializer.Alternative(
             [
                 (name, completer._get_completion_model(is_many=is_many))
                 for name, completer in self._completers
@@ -964,13 +972,13 @@ class List(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> _CompleterSerializer.Model:
+    ) -> _OptionSerializer.Model:
         if is_many:
-            return _CompleterSerializer.ListMany(
+            return _OptionSerializer.ListMany(
                 self._delimiter or " ", self._inner._get_completion_model()
             )
         else:
-            return _CompleterSerializer.List(
+            return _OptionSerializer.List(
                 self._delimiter or " ", self._inner._get_completion_model()
             )
 
@@ -1018,14 +1026,14 @@ class Tuple(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> _CompleterSerializer.Model:
+    ) -> _OptionSerializer.Model:
         if is_many:
-            return _CompleterSerializer.TupleMany(
+            return _OptionSerializer.TupleMany(
                 self._delimiter or " ",
                 [inner._get_completion_model() for inner in self._inner],
             )
         else:
-            return _CompleterSerializer.Tuple(
+            return _OptionSerializer.Tuple(
                 self._delimiter or " ",
                 [inner._get_completion_model() for inner in self._inner],
             )
@@ -1113,8 +1121,8 @@ class File(Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> _CompleterSerializer.Model:
-        return _CompleterSerializer.File(
+    ) -> _OptionSerializer.Model:
+        return _OptionSerializer.File(
             "|".join(extension.lstrip(".") for extension in self._extensions or [])
         )
 
@@ -1130,272 +1138,121 @@ class Dir(File):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> _CompleterSerializer.Model:
-        return _CompleterSerializer.Dir()
+    ) -> _OptionSerializer.Model:
+        return _OptionSerializer.Dir()
 
 
-class _CompleterSerializer:
-    def __init__(
-        self,
-        add_help: bool,
-        add_version: bool,
-        add_bug_report: bool,
-        path: str = "",
-        custom_completers: dict[tuple[str, str], list[Completer]] = {},
-    ):
-        self._path = path
-        self._custom_completers = custom_completers
-        self._subcommands: dict[str, tuple[_CompleterSerializer, bool, str]] = {}
-        self._positional = 0
-        self._flags: list[
-            tuple[
-                list[str],
-                str | None,
-                str | tuple[str, ...] | None,
-                int | _t.Literal["-", "+", "*", "?"],
-                _CompleterSerializer.Model,
-            ]
-        ] = []
-        self._add_help = add_help
-        if add_help:
-            self._flags.append(
-                (
-                    ["-h", "--help"],
-                    "show help message and exit",
-                    None,
-                    "-",
-                    _CompleterSerializer.Model(),
-                )
-            )
-        self._add_version = add_version
-        if add_version:
-            self._flags.append(
-                (
-                    ["-V", "--version"],
-                    "show program version and exit",
-                    None,
-                    "-",
-                    _CompleterSerializer.Model(),
-                )
-            )
-        self._add_bug_report = add_bug_report
-        if add_bug_report:
-            self._flags.append(
-                (
-                    ["--bug-report"],
-                    "show environment data for bug report and exit",
-                    None,
-                    "-",
-                    _CompleterSerializer.Model(),
-                )
-            )
+class _CustomCompleterRegistrar:
+    def __init__(self) -> None:
+        self._custom_completer_index = 0
 
-    def add_argument(self, *args: str, **kwargs):
-        if self._add_help and "--help" in args:
-            return
-        if self._add_version and "--version" in args:
-            return
-        if self._add_bug_report and "--bug-report" in args:
-            return
+    def _register_custom_completer(self) -> int:
+        index = self._custom_completer_index
+        self._custom_completer_index += 1
+        return index
 
-        help = kwargs.get("help") or ""
 
-        if help == argparse.SUPPRESS:
-            return
-
-        help = yuio.string.strip_color_tags(help)
-
-        if all(not arg.startswith("-") for arg in args):
-            args = (str(self._positional),)
-            self._positional += 1
-
-        action = kwargs.get("action")
-        metavar = kwargs.get("metavar") or ""
-        nargs = kwargs.get(
-            "nargs",
-            (
-                0
-                if action
-                in [
-                    "store_const",
-                    "store_true",
-                    "store_false",
-                    "append_const",
-                    "count",
-                    "help",
-                    "version",
-                ]
-                else 1
-            ),
-        )
-        if get_parser := getattr(action, "get_parser", None):
-            parser = get_parser()
-            completer = parser.completer()
-            if completer is None:
-                completer = Empty()
-            completion_model = completer._get_completion_model(
-                is_many=parser.supports_parse_many()
-            )
-        else:
-            completion_model = self.Model()
-
-        self._args = ";".join(args)
-        completion_model.collect(self)
-
-        self._flags.append((list(args), help, metavar, nargs, completion_model))
-
-    def add_mutex_group(self, *args, **kwargs):
-        return self
-
-    def add_argument_group(self, *args, **kwargs):
-        return self
-
-    def add_subparsers(self, *args, **kwargs):
-        return self
-
-    def add_parser(
-        self,
-        name: str,
-        *,
-        aliases: _t.Sequence[str] = (),
-        help: str,
-        **kwargs,
-    ):
-        if help != argparse.SUPPRESS:
-            help = yuio.string.strip_color_tags(str(help or ""))
-        serializer = _CompleterSerializer(
-            self._add_help,
-            self._add_version,
-            self._add_bug_report,
-            f"{self._path}/{name}",
-            self._custom_completers,
-        )
-        self._subcommands[name] = (serializer, False, help)
-        for alias in aliases:
-            self._subcommands[alias] = (serializer, True, help)
-        return serializer
-
-    def register_custom_completer(self, completer: Completer) -> str:
-        completers = self._custom_completers.setdefault((self._path, self._args), [])
-        data = json.dumps([self._path, self._args, len(completers)])
-        completers.append(completer)
-        return data
-
-    def get_custom_completer(self, data: str) -> Completer | None:
-        try:
-            path, args, index = json.loads(data)
-            return self._custom_completers[(path, args)][index]
-        except (json.JSONDecodeError, IndexError, TypeError, ValueError):
-            pass
-        return None
-
-    def as_parser(self) -> argparse.ArgumentParser:
-        # We've implemented all methods that `Config._setup_arg_parser` could call.
-        return _t.cast(argparse.ArgumentParser, self)
-
+class _OptionSerializer(_CustomCompleterRegistrar):
     _SPECIAL_SYMBOLS = str.maketrans("\r\n\a\b\t", "     ")
 
-    def _dump(self, path: str, result: list[str]):
-        if self._subcommands:
-            self._flags.append(
-                (
-                    ["c"],
-                    "subcommand",
-                    "<cmd>",
-                    1,
-                    _CompleterSerializer.ChoiceWithDesc(
-                        [
-                            (name, help)
-                            for name, (_, is_alias, help) in self._subcommands.items()
-                            if not is_alias and help != argparse.SUPPRESS
-                        ]
-                    ),
+    def __init__(
+        self,
+        flags: list[str],
+        path: str,
+        nargs: str | int,
+        metavar: str | tuple[str, ...],
+        help: str | yuio.Disabled,
+    ):
+        super().__init__()
+
+        self._flags = flags
+        self._path = path
+        self._nargs = nargs
+        self._metavar = metavar if isinstance(metavar, tuple) else (metavar,)
+        self._help: str | yuio.Disabled = help
+
+    def dump(self, model: _OptionSerializer.Model):
+        if self._help is yuio.DISABLED:
+            desc = "__yuio_hide__"
+        else:
+            desc = self._process_help(self._help)
+
+        compspec = [
+            self._path,
+            " ".join(self._flags),
+            desc,
+            " ".join(
+                re.sub(
+                    r"[\\ ]",
+                    lambda s: "\\S" if s.group() == " " else "\\L",
+                    str(m),
                 )
-            )
+                or ""
+                for m in self._metavar
+            ),
+            str(self._nargs),
+            *model.dump(self),
+        ]
 
-        for opts, desc, meta, nargs, completer in self._flags:
-            if not isinstance(meta, tuple):
-                meta = (meta,)
-            compspec: list[str] = [
-                path,
-                " ".join(opts),
-                desc or "",
-                " ".join(
-                    re.sub(
-                        r"[\\ ]",
-                        lambda s: "\\S" if s.group() == " " else "\\L",
-                        str(m),
-                    )
-                    or ""
-                    for m in meta
-                ),
-                str(nargs),
-                *completer.dump(),
-            ]
-
-            result.append(
-                "\t".join(item.translate(self._SPECIAL_SYMBOLS) for item in compspec)
-            )
-
-        for subcommand, (serializer, *_) in self._subcommands.items():
-            serializer._dump(f"{path}/{subcommand}", result)
-
-    def _collect_nested(self, compspec: list[object]):
-        for item in compspec:
-            self._collect_nested_item(item)
-
-    def _collect_nested_item(self, item: object):
-        if isinstance(item, _CompleterSerializer.Model):
-            item.collect(self)
-        elif isinstance(item, (list, tuple)):
-            for sub_item in item:
-                self._collect_nested_item(sub_item)
+        return "\t".join(item.translate(self._SPECIAL_SYMBOLS) for item in compspec)
 
     @staticmethod
-    def _dump_nested(compspec: list[object]) -> list[str]:
+    def _process_help(help: str):
+        if (
+            len(help) > 2
+            and help[0].isupper()
+            and (help[1].islower() or help[1].isspace())
+        ):
+            help = help[0].lower() + help[1:]
+        if help.endswith(".") and not help.endswith(".."):
+            help = help[:-1]
+        return yuio.string.strip_color_tags(help)
+
+    @staticmethod
+    def _dump_nested(compspec: _t.Iterable[object], s: _OptionSerializer) -> list[str]:
         contents = []
 
         for item in compspec:
-            contents.extend(_CompleterSerializer._dump_nested_item(item))
+            contents.extend(_OptionSerializer._dump_nested_item(item, s))
 
         return contents
 
     @staticmethod
-    def _dump_nested_item(item: object) -> list[str]:
+    def _dump_nested_item(item: object, s: _OptionSerializer) -> list[str]:
         contents = []
 
-        if isinstance(item, _CompleterSerializer.Model):
-            contents.extend(item.dump())
+        if isinstance(item, _OptionSerializer.Model):
+            contents.extend(item.dump(s))
         elif isinstance(item, list):
             contents.append(str(len(item)))
             for sub_item in item:
-                contents.extend(_CompleterSerializer._dump_nested_item(sub_item))
+                contents.extend(_OptionSerializer._dump_nested_item(sub_item, s))
         elif isinstance(item, tuple):
             for sub_item in item:
-                contents.extend(_CompleterSerializer._dump_nested_item(sub_item))
+                contents.extend(_OptionSerializer._dump_nested_item(sub_item, s))
         else:
             contents.append(str(item))
 
         return contents
 
     @dataclass
-    class ModelBase:
+    class Model:
         tag: typing.ClassVar[str] = "-"
 
         def __init_subclass__(cls, tag: str = "-", **kwargs):
             super().__init_subclass__(**kwargs)
             cls.tag = tag
 
-    @dataclass
-    class Model(ModelBase):
-        def collect(self, s: _CompleterSerializer):
-            compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
-            s._collect_nested(compspec)
-
-        def dump(self) -> list[str]:
-            compspec = [getattr(self, field.name) for field in dataclasses.fields(self)]
-            contents = _CompleterSerializer._dump_nested(compspec)
+        def dump(self, s: _OptionSerializer) -> list[str]:
+            contents = _OptionSerializer._dump_nested(
+                (getattr(self, field.name) for field in dataclasses.fields(self)), s
+            )
             return [self.tag, str(len(contents)), *contents]
+
+        def get_completer_at_index(
+            self, s: _CustomCompleterRegistrar, index: int
+        ) -> Completer | None:
+            return None
 
     @dataclass
     class File(Model, tag="f"):
@@ -1409,44 +1266,34 @@ class _CompleterSerializer:
     class Choice(Model, tag="c"):
         choices: list[str]
 
-        def dump(self) -> list[str]:
+        def dump(self, s: _OptionSerializer) -> list[str]:
             return [self.tag, str(len(self.choices)), *self.choices]
 
     @dataclass
     class ChoiceWithDesc(Model, tag="cd"):
         choices: list[tuple[str, str]]
 
-        def dump(self) -> list[str]:
+        def dump(self, s: _OptionSerializer) -> list[str]:
             return [
                 self.tag,
                 str(len(self.choices) * 2),
                 *[c[0] for c in self.choices],
-                *[yuio.string.strip_color_tags(c[1]) for c in self.choices],
+                *[s._process_help(c[1]) for c in self.choices],
             ]
 
     @dataclass
     class Git(Model, tag="g"):
-        class Mode(enum.Enum):
-            Branch = "b"
-            Remote = "r"
-            Tag = "t"
-            Head = "h"
-
-        modes: set[Mode] = dataclasses.field(
-            default_factory=lambda: {
-                _CompleterSerializer.Git.Mode.Branch,
-                _CompleterSerializer.Git.Mode.Tag,
-                _CompleterSerializer.Git.Mode.Head,
-            }
-        )
-
-        def dump(self) -> list[str]:
-            return [self.tag, "1", "".join(mode.value for mode in self.modes)]
+        modes: str
 
     @dataclass
     class List(Model, tag="l"):
         delim: str
-        inner: _CompleterSerializer.Model
+        inner: _OptionSerializer.Model
+
+        def get_completer_at_index(
+            self, s: _CustomCompleterRegistrar, index: int
+        ) -> Completer | None:
+            return self.inner.get_completer_at_index(s, index)
 
     @dataclass
     class ListMany(List, tag="lm"):
@@ -1455,7 +1302,15 @@ class _CompleterSerializer:
     @dataclass
     class Tuple(Model, tag="t"):
         delim: str
-        inner: list[_CompleterSerializer.Model]
+        inner: list[_OptionSerializer.Model]
+
+        def get_completer_at_index(
+            self, s: _CustomCompleterRegistrar, index: int
+        ) -> Completer | None:
+            for inner in self.inner:
+                if completer := inner.get_completer_at_index(s, index):
+                    return completer
+            return None
 
     @dataclass
     class TupleMany(Tuple, tag="tm"):
@@ -1463,35 +1318,115 @@ class _CompleterSerializer:
 
     @dataclass
     class Alternative(Model, tag="a"):
-        alternatives: list[tuple[str, _CompleterSerializer.Model]]
+        alternatives: list[tuple[str, _OptionSerializer.Model]]
+
+        def get_completer_at_index(
+            self, s: _CustomCompleterRegistrar, index: int
+        ) -> Completer | None:
+            for _, inner in self.alternatives:
+                if completer := inner.get_completer_at_index(s, index):
+                    return completer
+            return None
 
     @dataclass
     class CustomCompleter(Model, tag="cc"):
         completer: Completer
-        _data: str | None = None
 
-        def collect(self, s: _CompleterSerializer):
-            self._data = s.register_custom_completer(self.completer)
-
-        def dump(self) -> list[str]:
-            assert self._data is not None
+        def dump(self, s: _OptionSerializer) -> list[str]:
             return [
                 self.tag,
                 "1",
-                self._data,
+                json.dumps(
+                    {
+                        "path": s._path,
+                        "flags": s._flags,
+                        "index": s._register_custom_completer(),
+                    }
+                ),
             ]
 
+        def get_completer_at_index(
+            self, s: _CustomCompleterRegistrar, index: int
+        ) -> Completer | None:
+            this_index = s._register_custom_completer()
+            if index == this_index:
+                return self.completer
+            else:
+                return None
 
-def _run_custom_completer(s: _CompleterSerializer, data: str, word: str):
-    completer = s.get_custom_completer(data)
-    if completer is None:
-        return
-    completions = completer.complete(word, len(word), do_corrections=False)
-    for completion in completions:
-        print(
-            f"{completion.iprefix}{completion.completion}{completion.isuffix}\t{completion.comment or ''}",
-            file=sys.__stdout__,
+
+class _ProgramSerializer:
+    def __init__(self, path: str = "") -> None:
+        self._path = path
+        self._lines: list[str] = []
+        self._positionals = 0
+        self._subcommands: dict[
+            str, tuple[_ProgramSerializer, bool, str | yuio.Disabled]
+        ] = {}
+
+    def add_option(
+        self,
+        flags: list[str] | yuio.Positional,
+        nargs: str | int,
+        metavar: str | tuple[str, ...],
+        help: str | yuio.Disabled,
+        completer: Completer | None,
+        is_many: bool,
+    ):
+        if flags is yuio.POSITIONAL:
+            flags = [str(self._positionals)]
+            self._positionals += 1
+        if completer is None:
+            model = _OptionSerializer.Model()
+        else:
+            model = completer._get_completion_model(is_many=is_many)
+        self._add_option(flags, nargs, metavar, help, model)
+
+    def _add_option(
+        self,
+        flags: list[str],
+        nargs: str | int,
+        metavar: str | tuple[str, ...],
+        help: str | yuio.Disabled,
+        model: _OptionSerializer.Model,
+    ):
+        self._lines.append(
+            _OptionSerializer(flags, self._path, nargs, metavar, help).dump(model)
         )
+
+    def add_subcommand(
+        self,
+        name: str,
+        is_alias: bool,
+        help: str | yuio.Disabled,
+    ):
+        serializer = _ProgramSerializer(f"{self._path}/{name}")
+        self._subcommands[name] = (serializer, is_alias, help)
+        return serializer
+
+    def _dump(self):
+        if self._subcommands:
+            self._add_option(
+                ["c"],
+                1,
+                "<subcommand>",
+                "Subcommand.",
+                _OptionSerializer.ChoiceWithDesc(
+                    [
+                        (name, help)
+                        for name, (_, is_alias, help) in self._subcommands.items()
+                        if not is_alias and help is not yuio.DISABLED
+                    ]
+                ),
+            )
+
+        for _, (serializer, _, _) in self._subcommands.items():
+            self._lines.extend(serializer._dump())
+
+        return self._lines
+
+    def dump(self):
+        return "\n".join(self._dump())
 
 
 _PROG_ESCAPE = str.maketrans(
@@ -1500,9 +1435,23 @@ _PROG_ESCAPE = str.maketrans(
 )
 
 
-def _write_completions(
-    s: _CompleterSerializer, prog: str | None = None, shell: str = "all"
-):
+def _run_completer_at_index(completer: Completer, is_many: bool, index: int, word: str):
+    registrar = _CustomCompleterRegistrar()
+    model = completer._get_completion_model(is_many=is_many)
+    completer_at_index = model.get_completer_at_index(registrar, index)
+    if completer_at_index:
+        # It's up to user's shell to do corrections and derive common prefix.
+        completions = completer.complete(
+            word, len(word), do_corrections=False, derive_common_prefix=False
+        )
+        for completion in completions:
+            print(
+                f"{completion.iprefix}{completion.completion}{completion.isuffix}\t{completion.comment or ''}",
+                file=sys.__stdout__,
+            )
+
+
+def _write_completions(compdata: str, prog: str | None = None, shell: str = "all"):
     import yuio.io
 
     true_prog = prog or pathlib.Path(sys.argv[0]).stem
@@ -1565,10 +1514,6 @@ def _write_completions(
 
     with yuio.io.Task(task_heading) as t:
         if install:
-            result = []
-            s._dump("", result)
-            compdata = "\n".join(result)
-
             os.makedirs(data_home / "yuio", exist_ok=True)
             compdata_path.write_text(compdata)
             yuio.io.info(

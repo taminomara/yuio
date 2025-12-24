@@ -305,6 +305,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import inspect
+import json
 import logging
 import pathlib
 import sys
@@ -313,12 +314,14 @@ from dataclasses import dataclass
 
 import yuio
 import yuio.cli
+import yuio.complete
 import yuio.config
 import yuio.dbg
 import yuio.io
 import yuio.parse
 import yuio.term
 import yuio.theme
+import yuio.util
 from yuio import _typing as _t
 from yuio.cli import (
     MISC_GROUP,
@@ -594,7 +597,9 @@ class App(_t.Generic[C]):
         """
 
         if not description and command.__doc__:
-            description = command.__doc__
+            description = yuio.util._process_docstring(
+                command.__doc__, only_first_paragraph=False
+            )
 
         self.description: str | None = description
         """
@@ -635,8 +640,9 @@ class App(_t.Generic[C]):
         """
 
         if help is None and description:
-            lines = description.split("\n\n", 1)
-            help = lines[0].rstrip(".")
+            help = description
+            if (index := help.find("\n\n")) != -1:
+                help = help[:index]
 
         self.help: str | yuio.Disabled | None = help
         """
@@ -875,12 +881,12 @@ class App(_t.Generic[C]):
         if args is None:
             args = sys.argv[1:]
 
-        # if "--yuio-custom-completer--" in args:
-        #     index = args.index("--yuio-custom-completer--")
-        #     yuio.complete._run_custom_completer(
-        #         self.__get_completions(), args[index + 1], args[index + 2]
-        #     )
-        #     sys.exit(0)
+        if "--yuio-custom-completer--" in args:
+            index = args.index("--yuio-custom-completer--")
+            _run_custom_completer(
+                self.__make_cli_command(root=True), args[index + 1], args[index + 2]
+            )
+            sys.exit(0)
 
         if "--yuio-bug-report--" in args:
             from yuio.dbg import print_report
@@ -896,7 +902,7 @@ class App(_t.Generic[C]):
 
             if self.is_dev_mode is None:
                 self.is_dev_mode = (
-                    self.version is not None and "dev" in self.version.lower()
+                    self.version is not None and "dev" in self.version.casefold()
                 )
             if self.is_dev_mode:
                 yuio.enable_internal_logging(propagate=True)
@@ -912,14 +918,17 @@ class App(_t.Generic[C]):
             command = CommandInfo("__main__", _config=namespace.config)
             command()
             sys.exit(0)
+        except yuio.cli.ArgumentError as e:
+            yuio.io.raw(e, add_newline=True)
+            sys.exit(1)
         except (AppError, yuio.cli.ArgumentError, yuio.parse.ParsingError) as e:
-            yuio.io.failure(e)
+            yuio.io.failure(e, wrap=False)
             sys.exit(1)
         except KeyboardInterrupt:
-            yuio.io.failure("Received Keyboard Interrupt, stopping now")
+            yuio.io.failure("Received Keyboard Interrupt, stopping now", wrap=False)
             sys.exit(130)
         except Exception as e:
-            yuio.io.failure_with_tb("Error: %s", e)
+            yuio.io.failure_with_tb("Error: %s", e, wrap=False)
             sys.exit(3)
         finally:
             yuio.io.restore_streams()
@@ -942,6 +951,9 @@ class App(_t.Generic[C]):
                         dest="_verbosity",
                     )
                 )
+            if self.bug_report:
+                options.append(yuio.cli.BugReportOption(app=self))
+            options.append(yuio.cli.CompletionOption())
             options.append(
                 yuio.cli.BoolOption(
                     pos_flags=["--color"],
@@ -1053,3 +1065,33 @@ def _command_from_callable_run_impl(
         return cb(**kw)
 
     return run
+
+
+def _run_custom_completer(command: yuio.cli.Command[_t.Any], raw_data: str, word: str):
+    data = json.loads(raw_data)
+    path: str = data["path"]
+    flags: set[str] = set(data["flags"])
+    index: int = data["index"]
+
+    root = command
+    for name in path.split("/"):
+        if not name:
+            continue
+        if name not in command.subcommands:
+            return
+        root = command.subcommands[name]
+
+    positional_index = 0
+    for option in root.options:
+        option_flags = option.flags
+        if option_flags is yuio.POSITIONAL:
+            option_flags = [str(positional_index)]
+            positional_index += 1
+        if flags.intersection(option_flags):
+            completer, is_many = option.get_completer()
+            break
+    else:
+        completer, is_many = None, False
+
+    if completer:
+        yuio.complete._run_completer_at_index(completer, is_many, index, word)

@@ -395,7 +395,7 @@ class _FieldSettings:
     help: str | yuio.Disabled | None = None
     env: str | yuio.Disabled | None = None
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None
-    completer: yuio.complete.Completer | None = None
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING
     metavar: str | None = None
     required: bool | None = None
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None
@@ -584,7 +584,7 @@ class _Field:
 @_t.overload
 def field(
     *,
-    completer: yuio.complete.Completer | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     metavar: str | None = None,
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
@@ -603,7 +603,7 @@ def field(
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     required: bool | None = None,
-    completer: yuio.complete.Completer | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
@@ -620,7 +620,7 @@ def field(
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     required: bool | None = None,
-    completer: yuio.complete.Completer | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
@@ -636,7 +636,7 @@ def field(
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     required: bool | None = None,
-    completer: yuio.complete.Completer | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     metavar: str | None = None,
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
@@ -778,7 +778,7 @@ def positional(
     *,
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
-    completer: yuio.complete.Completer | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     metavar: str | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> _t.Any: ...
@@ -789,7 +789,7 @@ def positional(
     parser: yuio.parse.Parser[T] | None = None,
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
-    completer: yuio.complete.Completer | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     metavar: str | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> T | None: ...
@@ -800,7 +800,7 @@ def positional(
     parser: yuio.parse.Parser[T] | None = None,
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
-    completer: yuio.complete.Completer | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     metavar: str | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> T: ...
@@ -810,7 +810,7 @@ def positional(
     parser: yuio.parse.Parser[_t.Any] | None = None,
     help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
-    completer: yuio.complete.Completer | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     metavar: str | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> _t.Any:

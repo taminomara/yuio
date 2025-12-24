@@ -243,7 +243,7 @@ function Load-Compdata {
         $path = $items[0]
         $flags = $items[1].Split(" ")
         $desc = $items[2]
-        $meta = $items[3].Split(" ")
+        $meta = $items[3].Split(" ")  # TODO: replace \S and \L
         $nargs = $items[4]
         $command = $items[5..$items.Length]
 
@@ -283,7 +283,7 @@ function Complete-Flags {
     } else {
         @(
             $pathData.GetEnumerator() | `
-            Where-Object { $_.Key -match "^\-" } | `
+            Where-Object { $_.Key -match "^\-" -and $_.Value.Desc -ne "__yuio_hide__" } | `
             Sort-Object -Property { $_.Key -replace '^--?', '' } | `
             ForEach-Object {
                 [CompletionResult]::new(

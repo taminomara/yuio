@@ -2036,12 +2036,42 @@ class ReprContext:
         max_depth: int = 5,
         width: int | None = None,
     ):
-        self._term = term
-        self._theme = theme
-        self._multiline = multiline
-        self._highlighted = highlighted
-        self._max_depth = max_depth
-        self._width = max(width or theme.fallback_width, 1)
+        self.term = term
+        """
+        Current term.
+
+        """
+
+        self.theme = theme
+        """
+        Current theme.
+
+        """
+
+        self.multiline = multiline
+        """
+        Whether values rendered with :meth:`~ReprContext.repr` are split into multiple lines.
+
+        """
+
+        self.highlighted = highlighted
+        """
+        Whether values rendered with :meth:`~ReprContext.repr` are highlighted.
+
+        """
+
+        self.max_depth = max_depth
+        """
+        Maximum depth of nested containers, after which container's contents
+        are not rendered.
+
+        """
+
+        self.width = max(width or theme.fallback_width, 1)
+        """
+        Maximum width of the content, used when wrapping text or rendering markdown.
+
+        """
 
         self._seen: set[int] = set()
         self._line = ColorizedString()
@@ -2054,68 +2084,13 @@ class ReprContext:
         self._hl = yuio.md.SyntaxHighlighter.get_highlighter("repr")
         self._base_color = theme.get_color("msg/text:code/repr")
 
-    @property
-    def term(self) -> yuio.term.Term:
-        """
-        Current term.
-
-        """
-
-        return self._term  # pragma: no cover
-
-    @property
-    def theme(self) -> yuio.theme.Theme:
-        """
-        Current theme.
-
-        """
-
-        return self._theme  # pragma: no cover
-
-    @property
-    def multiline(self) -> bool:
-        """
-        Whether values rendered with :meth:`~ReprContext.repr` are split into multiple lines.
-
-        """
-
-        return self._multiline  # pragma: no cover
-
-    @property
-    def highlighted(self) -> bool:
-        """
-        Whether values rendered with :meth:`~ReprContext.repr` are highlighted.
-
-        """
-
-        return self._highlighted  # pragma: no cover
-
-    @property
-    def max_depth(self) -> int:
-        """
-        Maximum depth of nested containers, after which container's contents
-        are not rendered.
-
-        """
-
-        return self._max_depth  # pragma: no cover
-
-    @property
-    def width(self) -> int:
-        """
-        Maximum width of the content, used when wrapping text or rendering markdown.
-
-        """
-
-        return self._width  # pragma: no cover
-
     def get_color(self, paths: str, /) -> yuio.color.Color:
         """
         Lookup a color by path.
 
         """
 
-        return self._theme.get_color(paths)
+        return self.theme.get_color(paths)
 
     def to_color(
         self, color_or_path: yuio.color.Color | str | None, /
@@ -2125,7 +2100,7 @@ class ReprContext:
 
         """
 
-        return self._theme.to_color(color_or_path)
+        return self.theme.to_color(color_or_path)
 
     def get_msg_decoration(self, name: str, /) -> str:
         """
@@ -2133,35 +2108,41 @@ class ReprContext:
 
         """
 
-        return self._theme.get_msg_decoration(name, is_unicode=self._term.is_unicode)
+        return self.theme.get_msg_decoration(name, is_unicode=self.term.is_unicode)
 
-    def _flush_sep(self):
+    def _flush_sep(self, trim: bool = False):
         if self._pending_sep is not None:
             self._push_color("punct")
+            if trim:
+                self._pending_sep = self._pending_sep.rstrip()
             self._line.append_str(self._pending_sep)
             self._pending_sep = None
 
     def _flush_line(self):
-        if self._multiline:
-            self._line.append_color(_Color.NONE)
+        if self.multiline:
+            self._line.append_color(self._base_color)
             self._line.append_str("\n")
             if self._indent:
                 self._line.append_str("  " * self._indent)
 
-    def _push_color(self, tag: str):
-        if self._highlighted:
-            self._line.append_color(
-                self._base_color | self._theme.to_color(f"hl/{tag}:repr")
-            )
-
-    def _push_token(self, content: str, tag: str):
-        self._flush_sep()
-
-        if self._state in [
+    def _flush_sep_and_line(self):
+        if self.multiline and self._state in [
             _ReprContextState.CONTAINER_START,
             _ReprContextState.ITEM_START,
         ]:
+            self._flush_sep(trim=True)
             self._flush_line()
+        else:
+            self._flush_sep()
+
+    def _push_color(self, tag: str):
+        if self.highlighted:
+            self._line.append_color(
+                self._base_color | self.theme.to_color(f"hl/{tag}:repr")
+            )
+
+    def _push_token(self, content: str, tag: str):
+        self._flush_sep_and_line()
 
         self._push_color(tag)
         self._line.append_str(content)
@@ -2288,12 +2269,10 @@ class ReprContext:
 
         """
 
-        highlighted = highlighted if highlighted is not None else self._highlighted
+        highlighted = highlighted if highlighted is not None else self.highlighted
 
         if highlighted:
-            return self._hl.highlight(
-                self._theme, value, default_color=self._base_color
-            )
+            return self._hl.highlight(self.theme, value, default_color=self._base_color)
         else:
             return ColorizedString(value)
 
@@ -2322,30 +2301,30 @@ class ReprContext:
 
         """
 
-        old_multiline, self._multiline = (
-            self._multiline,
-            (self._multiline if multiline is None else multiline),
+        old_multiline, self.multiline = (
+            self.multiline,
+            (self.multiline if multiline is None else multiline),
         )
-        old_highlighted, self._highlighted = (
-            self._highlighted,
-            (self._highlighted if highlighted is None else highlighted),
+        old_highlighted, self.highlighted = (
+            self.highlighted,
+            (self.highlighted if highlighted is None else highlighted),
         )
-        old_width, self._width = (
-            self._width,
-            (self._width if width is None else width),
+        old_width, self.width = (
+            self.width,
+            (self.width if width is None else max(width, 1)),
         )
-        old_max_depth, self._max_depth = (
-            self._max_depth,
-            (self._max_depth if max_depth is None else max_depth),
+        old_max_depth, self.max_depth = (
+            self.max_depth,
+            (self.max_depth if max_depth is None else max_depth),
         )
 
         try:
             yield
         finally:
-            self._multiline = old_multiline
-            self._highlighted = old_highlighted
-            self._width = old_width
-            self._max_depth = old_max_depth
+            self.multiline = old_multiline
+            self.highlighted = old_highlighted
+            self.width = old_width
+            self.max_depth = old_max_depth
 
     def _print(
         self,
@@ -2381,7 +2360,7 @@ class ReprContext:
             self._pending_sep = old_pending_sep
 
     def _print_nested(self, value: _t.Any, use_str: bool = False):
-        if id(value) in self._seen or self._indent > self._max_depth:
+        if id(value) in self._seen or self._indent > self.max_depth:
             self._push_token("...", "more")
             return
         self._seen.add(id(value))
@@ -2438,17 +2417,11 @@ class ReprContext:
     def _print_plain(self, value, convert=None, hl=True):
         convert = convert or repr
 
-        self._flush_sep()
+        self._flush_sep_and_line()
 
-        if self._state in [
-            _ReprContextState.CONTAINER_START,
-            _ReprContextState.ITEM_START,
-        ]:
-            self._flush_line()
-
-        if hl and self._highlighted:
+        if hl and self.highlighted:
             self._line += self._hl.highlight(
-                self._theme, convert(value), default_color=self._base_color
+                self.theme, convert(value), default_color=self._base_color
             )
         else:
             self._line.append_str(convert(value))
@@ -2459,7 +2432,7 @@ class ReprContext:
         if name:
             self._push_token(name, "type")
         self._push_token(obrace, "punct")
-        if self._indent >= self._max_depth:
+        if self._indent >= self.max_depth:
             self._push_token("...", "more")
         else:
             self._start_container()
@@ -2473,7 +2446,7 @@ class ReprContext:
         if name:
             self._push_token(name, "type")
         self._push_token(obrace, "punct")
-        if self._indent >= self._max_depth:
+        if self._indent >= self.max_depth:
             self._push_token("...", "more")
         else:
             self._start_container()
@@ -2488,7 +2461,7 @@ class ReprContext:
     def _print_defaultdict(self, value: collections.defaultdict[_t.Any, _t.Any]):
         self._push_token("defaultdict", "type")
         self._push_token("(", "punct")
-        if self._indent >= self._max_depth:
+        if self._indent >= self.max_depth:
             self._push_token("...", "more")
         else:
             self._start_container()
@@ -2502,7 +2475,7 @@ class ReprContext:
     def _print_dequeue(self, value: collections.deque[_t.Any]):
         self._push_token("deque", "type")
         self._push_token("(", "punct")
-        if self._indent >= self._max_depth:
+        if self._indent >= self.max_depth:
             self._push_token("...", "more")
         else:
             self._start_container()
@@ -2535,7 +2508,7 @@ class ReprContext:
         self._push_token(value.__class__.__name__, "type")
         self._push_token("(", "punct")
 
-        if self._indent >= self._max_depth:
+        if self._indent >= self.max_depth:
             self._push_token("...", "more")
         else:
             self._start_container()
@@ -2551,13 +2524,7 @@ class ReprContext:
         self._push_token(")", "punct")
 
     def _print_colorized_repr(self, value):
-        self._flush_sep()
-
-        if self._state in [
-            _ReprContextState.CONTAINER_START,
-            _ReprContextState.ITEM_START,
-        ]:
-            self._flush_line()
+        self._flush_sep_and_line()
 
         res = value.__colorized_repr__(self)
         if not isinstance(res, ColorizedString):
@@ -2569,15 +2536,7 @@ class ReprContext:
         self._state = _ReprContextState.NORMAL
 
     def _print_colorized_str(self, value):
-        self._flush_sep()
-
-        if self._state in [
-            _ReprContextState.CONTAINER_START,
-            _ReprContextState.ITEM_START,
-        ]:  # pragma: no cover
-            self._flush_line()
-            # This never happens because `_state` is always `START`
-            # when rendering as `str`.
+        self._flush_sep_and_line()
 
         res = value.__colorized_str__(self)
         if not isinstance(res, ColorizedString):
@@ -2599,7 +2558,7 @@ class ReprContext:
         else:
             self._push_token("(", "punct")
 
-        if self._indent >= self._max_depth:
+        if self._indent >= self.max_depth:
             self._push_token("...", "more")
         else:
             self._start_container()
@@ -2955,7 +2914,7 @@ class JoinStr(_JoinBase):
     """
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
-        return self._render(ctx._theme, ctx.str)
+        return self._render(ctx.theme, ctx.str)
 
 
 @_t.final
@@ -2987,7 +2946,7 @@ class JoinRepr(_JoinBase):
     """
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
-        return self._render(ctx._theme, ctx.repr)
+        return self._render(ctx.theme, ctx.repr)
 
 
 And = JoinStr.and_

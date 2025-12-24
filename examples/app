@@ -92,7 +92,13 @@ def run(
     #: Input data for the model.
     data: pathlib.Path = yuio.config.positional(),
 ):
-    """Apply trained model to a dataset."""
+    """
+    Apply trained model to a dataset.
+
+    The model can erase your your storage or drop production database,
+    use at your own risk.
+
+    """
 
     yuio.io.info("Applying model `%s` to data `%s`", model, data)
 
@@ -107,7 +113,13 @@ def train(
         flags=["-o", "--output"],
     ),
 ):
-    """Train model on a dataset."""
+    """
+    Train model on a dataset.
+
+    This will eat all resources on your machine,
+    use at your own risk.
+
+    """
 
     yuio.io.info("Training model `%s` on data `%s`", output, data)
 

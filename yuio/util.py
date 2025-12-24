@@ -148,23 +148,13 @@ def _rst_repl(match: _re.Match[str]):
         return f"{bt} {text} {bt}"
 
 
-def _process_docstring(msg: str, /):
+def _process_docstring(msg: str, /, only_first_paragraph: bool = True):
     value = dedent(msg).removesuffix("\n")
 
-    if (index := value.find("\n\n")) != -1:
+    if only_first_paragraph and (index := value.find("\n\n")) != -1:
         value = value[:index]
 
-    value = _RST_ROLE_RE.sub(_rst_repl, value)
-
-    if (
-        len(value) > 2
-        and value[0].isupper()
-        and (value[1].islower() or value[1].isspace())
-    ):
-        value = value[0].lower() + value[1:]
-    if value.endswith(".") and not value.endswith(".."):
-        value = value[:-1]
-    return value
+    return _RST_ROLE_RE.sub(_rst_repl, value)
 
 
 def _find_docs(obj: _t.Any, /) -> dict[str, str]:

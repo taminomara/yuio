@@ -7,21 +7,21 @@
   - --help
   - -V
   - --version
-  - --bug-report
-  - --force-color
-  - --force-no-color
   - -v
   - --verbose
+  - --bug-report
   - --completions
+  - --color
+  - --no-color
 - cmd: --|
   results:
   - --help
   - --version
-  - --bug-report
-  - --force-color
-  - --force-no-color
   - --verbose
+  - --bug-report
   - --completions
+  - --color
+  - --no-color
 - cmd: a|
   results:
   - args
@@ -29,11 +29,6 @@
   results: []
 - cmd: args -|
   results:
-  - -h
-  - --help
-  - -V
-  - --version
-  - --bug-report
   - --bool
   - --no-bool
   - --int
@@ -57,11 +52,16 @@
   - --file
   - --file-bash
   - --dir
-  - --force-color
-  - --force-no-color
+  - -h
+  - --help
+  - -V
+  - --version
   - -v
   - --verbose
+  - --bug-report
   - --completions
+  - --color
+  - --no-color
 - cmd: args --bool|
   results:
   - --bool
@@ -154,9 +154,6 @@
   - other_option
 - cmd: args --list x --|
   results:
-  - --help
-  - --version
-  - --bug-report
   - --bool
   - --no-bool
   - --int
@@ -180,10 +177,13 @@
   - --file
   - --file-bash
   - --dir
-  - --force-color
-  - --force-no-color
+  - --help
+  - --version
   - --verbose
+  - --bug-report
   - --completions
+  - --color
+  - --no-color
 - cmd: args --list x --one-of |
   results:
   - foo

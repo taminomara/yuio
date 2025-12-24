@@ -189,7 +189,7 @@ end
 function __yuio_compl__@prog@__complete_opts -a cmd
     awk -F '\t' -v OFS='\t' -v cmd="$cmd" \
         '
-            $1==cmd {
+            $1==cmd && $3 != "__yuio_hide__" {
                 split($2, options, " ");
                 for (i in options) {
                     print options[i], $3

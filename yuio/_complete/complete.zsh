@@ -51,7 +51,7 @@ function __yuio_compl__@prog@__handle_subcommand {
   # Read relevant specs from `compdata` and build arg for `_arguments`.
   local _compspec compdata_for_cmd=$(
     printf -- $compdata | \
-    awk -F '\t' -v cmd=$cmd '$1==cmd { print $0 }' | \
+    awk -F '\t' -v cmd=$cmd '$1==cmd && $3 != "__yuio_hide__" { print $0 }' | \
     tr $'\t' $'\a' | \
     sort -k2 -t $'\a' -V
   )
@@ -106,7 +106,10 @@ function __yuio_compl__@prog@__handle_subcommand {
           elif [[ $nargs == [+*] ]]; then
             arg=$arg:*-*:${meta[1]:- }:$argspec
           elif [[ $nargs == '?' ]]; then
-            arg=$arg::${meta[1]:- }:$argspec
+            # our parser is greedy, so we set up arg as if `$nargs` was set to `1`;
+            # otherwise, zsh will mix completions for this option
+            # and for the next positional.
+            arg=$arg:${meta[1]:- }:$argspec
           else
             local i
             for i in $(seq $nargs); do

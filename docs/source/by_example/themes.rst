@@ -26,9 +26,13 @@ pass theme to :func:`yuio.io.setup`:
 
         .. code-block:: python
 
-            @yuio.app.app(theme=Theme)
+            import yuio.app
+
+            @yuio.app.app
             def main():
                 ...
+
+            main.theme = Theme
 
     .. tab-item:: Setup
 

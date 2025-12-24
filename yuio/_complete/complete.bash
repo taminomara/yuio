@@ -258,7 +258,7 @@ function __yuio_compl__@prog@__complete_opts {
     local opts=$(
         awk -F '\t' -v cmd="$1" \
             '
-                $1==cmd {
+                $1==cmd && $3 != "__yuio_hide__" {
                     split($2, options, " ");
                     for (i in options) {
                         print options[i]

@@ -478,6 +478,7 @@ import yuio.term
 from yuio import _typing as _t
 
 __all__ = [
+    "BaseTheme",
     "DefaultTheme",
     "RecursiveThemeWarning",
     "TableJunction",
@@ -733,7 +734,7 @@ class Theme(metaclass=_ThemeMeta):
 
     """
 
-    fallback_width: int = 120
+    fallback_width: int = 80
     """
     Preferred width that will be used if printing to a stream that's redirected
     to a file.
@@ -1321,12 +1322,14 @@ class DefaultTheme(BaseTheme):
         "msg/decoration": "secondary_color",
         "msg/decoration:heading": "heading_color accent_color",
         "msg/decoration:thematic_break": "secondary_color",
-        "msg/text": "primary_color",
+        "msg/text:code": "primary_color",
         "msg/text:heading": "heading_color",
         "msg/text:heading/1": "accent_color",
         "msg/text:heading/section": "green",
+        "msg/text:heading/note": "green",
         "msg/text:question": "heading_color",
         "msg/text:error": "error_color",
+        "msg/text:error/note": "green",
         "msg/text:warning": "warning_color",
         "msg/text:success": "heading_color success_color",
         "msg/text:failure": "heading_color error_color",

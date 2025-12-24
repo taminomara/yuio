@@ -2125,7 +2125,7 @@ class Bool(ValueParser[bool]):
             return False
         else:
             raise ParsingError(
-                "Can't parse `%r` as `bool`, should be one of `'yes'`, `'no'`",
+                "Can't parse `%r` as `bool`, should be `yes`, `no`, `true`, or `false`",
                 value,
                 ctx=ctx,
                 fallback_msg="Can't parse value as `bool`",
@@ -2149,6 +2149,8 @@ class Bool(ValueParser[bool]):
             [
                 yuio.complete.Option("no"),
                 yuio.complete.Option("yes"),
+                yuio.complete.Option("true"),
+                yuio.complete.Option("false"),
             ]
         )
 

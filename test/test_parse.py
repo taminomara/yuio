@@ -563,7 +563,7 @@ class TestBool:
         assert parser.parse("n") is False
         assert parser.parse("no") is False
         assert parser.parse("nO") is False
-        with pytest.raises(yuio.parse.ParsingError, match=r"'yes', 'no'"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"yes, no, true, or false"):
             parser.parse("Meh")
         assert parser.parse_config(True) is True
         assert parser.parse_config(False) is False
@@ -621,7 +621,7 @@ class TestEnum:
                 display_text="Cats",
                 display_text_prefix="",
                 display_text_suffix="",
-                comment="cats!",
+                comment="Cats!",
                 color_tag="none",
             ),
             yuio.widget.Option(
@@ -629,7 +629,7 @@ class TestEnum:
                 display_text="Dogs",
                 display_text_prefix="",
                 display_text_suffix="",
-                comment="dogs!",
+                comment="Dogs!",
                 color_tag="none",
             ),
             yuio.widget.Option(
@@ -637,7 +637,7 @@ class TestEnum:
                 display_text=":3",
                 display_text_prefix="",
                 display_text_suffix="",
-                comment="sharkie!",
+                comment="Sharkie!",
                 color_tag="none",
             ),
         ]
@@ -730,7 +730,7 @@ class TestEnum:
         assert parser.to_json_schema(
             yuio.json_schema.JsonSchemaContext()
         ) == yuio.json_schema.Enum(
-            ["Cats", "Dogs", ":3"], ["cats!", "dogs!", "sharkie!"]
+            ["Cats", "Dogs", ":3"], ["Cats!", "Dogs!", "Sharkie!"]
         )
 
     def test_by_value(self):

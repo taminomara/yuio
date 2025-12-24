@@ -214,7 +214,7 @@ def _versions(
             )
     dependencies.add("yuio")
 
-    for dependency in dependencies:
+    for dependency in sorted(dependencies):
         with report_exc(report, dependency):
             report.items.append((dependency, _find_package_version(dependency)))
 
@@ -283,14 +283,10 @@ def _terminal() -> Report:
     report = Report("Terminal and CLI")
 
     term = yuio.io.get_term()
-    report.items.append(
-        ("ostream interactive support", term.ostream_interactive_support.name)
-    )
-    report.items.append(
-        ("istream interactive support", term.istream_interactive_support.name)
-    )
     report.items.append(("color support", term.color_support.name))
-    report.items.append(("detected colors", str(term.terminal_theme is not None)))
+    report.items.append(("interactive output", term.ostream_interactive_support.name))
+    report.items.append(("interactive input", term.istream_interactive_support.name))
+    report.items.append(("has terminal theme", str(term.terminal_theme is not None)))
     report.items.append(("term", os.environ.get("TERM", "")))
     report.items.append(("colorterm", os.environ.get("COLORTERM", "")))
     report.items.append(("shell", os.environ.get("SHELL", "")))
@@ -343,6 +339,8 @@ def print_report(
     """
     if dest is None:
         dest = sys.__stdout__
+    if (settings is None or isinstance(settings, bool)) and app is not None:
+        settings = app.bug_report
     if settings is None or isinstance(settings, bool):
         settings = ReportSettings()
 

@@ -21,7 +21,11 @@ class PathRole(GenericObject):
             self.state.inliner,
         )
         signode += desc_addname(
-            '', '', *nodes[0].children, role=self.name.lower(), classes=["color-path-hl"]
+            "",
+            "",
+            *nodes[0].children,
+            role=self.name.lower(),
+            classes=["color-path-hl"],
         )
         signode += msgs
         return sig

@@ -1298,12 +1298,9 @@ class RefCompleter(yuio.complete.Completer):
 
     def _get_completion_model(
         self, *, is_many: bool = False
-    ) -> yuio.complete._CompleterSerializer.Model:
-        return yuio.complete._CompleterSerializer.Git(
-            {
-                yuio.complete._CompleterSerializer.Git.Mode(mode.value)
-                for mode in self._modes
-            }
+    ) -> yuio.complete._OptionSerializer.Model:
+        return yuio.complete._OptionSerializer.Git(
+            "".join(sorted(list(m.value for m in self._modes)))
         )
 
 

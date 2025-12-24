@@ -218,6 +218,7 @@ from dataclasses import dataclass
 
 import yuio
 import yuio.color
+import yuio.complete
 import yuio.md
 import yuio.parse
 import yuio.string
@@ -227,7 +228,9 @@ from yuio.string import ColorizedString as _ColorizedString
 from yuio.util import _UNPRINTABLE_TRANS
 
 if _t.TYPE_CHECKING:
+    import yuio.app
     import yuio.config
+    import yuio.dbg
 
 __all__ = [
     "ARGS_GROUP",
@@ -237,9 +240,11 @@ __all__ = [
     "Argument",
     "ArgumentError",
     "BoolOption",
+    "BugReportOption",
     "CliParser",
     "CliWarning",
     "Command",
+    "CompletionOption",
     "ConfigNamespace",
     "CountOption",
     "Flag",
@@ -354,7 +359,7 @@ class Argument:
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return _ColorizedString(
             [
-                ctx.get_color("flag"),
+                ctx.get_color("msg/text:code/sh-usage hl/flag:sh-usage"),
                 self.metavar,
             ]
         )
@@ -383,7 +388,7 @@ class Flag:
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return _ColorizedString(
             [
-                ctx.get_color("flag"),
+                ctx.get_color("msg/text:code/sh-usage hl/flag:sh-usage"),
                 self.value,
             ]
         )
@@ -406,6 +411,7 @@ class ArgumentError(yuio.PrettyException, ValueError):
         n_arg: int | None = None,
         pos: tuple[int, int] | None = None,
         path: list[tuple[_t.Any, str | None]] | None = None,
+        option: Option[_t.Any] | None = None,
     ): ...
     @_t.overload
     def __init__(
@@ -418,6 +424,7 @@ class ArgumentError(yuio.PrettyException, ValueError):
         n_arg: int | None = None,
         pos: tuple[int, int] | None = None,
         path: list[tuple[_t.Any, str | None]] | None = None,
+        option: Option[_t.Any] | None = None,
     ): ...
     def __init__(
         self,
@@ -427,6 +434,7 @@ class ArgumentError(yuio.PrettyException, ValueError):
         n_arg: int | None = None,
         pos: tuple[int, int] | None = None,
         path: list[tuple[_t.Any, str | None]] | None = None,
+        option: Option[_t.Any] | None = None,
     ):
         super().__init__(*args)
 
@@ -484,8 +492,15 @@ class ArgumentError(yuio.PrettyException, ValueError):
 
         """
 
+        self.option: Option[_t.Any] | None = option
+        """
+        Option which caused failure.
+
+        """
+
         self.commandline: list[str] | None = None
         self.prog: str | None = None
+        self.subcommands: list[str] | None = None
 
     @classmethod
     def from_parsing_error(
@@ -495,6 +510,7 @@ class ArgumentError(yuio.PrettyException, ValueError):
         *,
         flag: Flag | None = None,
         arguments: Argument | list[Argument] | None = None,
+        option: Option[_t.Any] | None = None,
     ):
         """
         Convert parsing error to argument error.
@@ -508,17 +524,21 @@ class ArgumentError(yuio.PrettyException, ValueError):
             n_arg=e.n_arg,
             pos=e.pos,
             path=e.path,
+            option=option,
         )
 
     def to_colorable(self) -> yuio.string.Colorable:
-        colorable = super().to_colorable()
+        colorable = yuio.string.WithBaseColor(
+            super().to_colorable(),
+            base_color="msg/text:error",
+        )
 
         msg = []
         args = []
         sep = False
 
         if self.flag and self.flag.value:
-            msg.append("in flag <c flag>%s</c>")
+            msg.append("in flag <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>")
             args.append(self.flag.value)
             sep = True
 
@@ -532,29 +552,42 @@ class ArgumentError(yuio.PrettyException, ValueError):
         if argument and argument.metavar:
             if sep:
                 msg.append(", ")
-            msg.append("in <c flag>%s</c>")
+            msg.append("in <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>")
             args.append(argument.metavar)
 
         if self.path:
             if sep:
                 msg.append(", ")
-            msg.append("in <c flag>%s</c>")
+            msg.append("in <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>")
             args.append(yuio.parse._PathRenderer(self.path))
 
         if sep:
             msg.insert(0, "Error ")
-            msg.append(":\n%s")
-            args.append(yuio.string.Indent(colorable))
-        else:
-            msg.append("%s")
-            args.append(colorable)
+            msg.append(":")
 
-        colorable = yuio.string.Format("".join(msg), *args)
+            colorable = yuio.string.Stack(
+                yuio.string.WithBaseColor(
+                    yuio.string.Format("".join(msg), *args),
+                    base_color="msg/text:failure",
+                ),
+                yuio.string.Indent(colorable),
+            )
+        else:
+            colorable = yuio.string.WithBaseColor(
+                colorable,
+                base_color="msg/text:failure",
+            )
 
         if commandline := self._make_commandline():
             colorable = yuio.string.Stack(
                 commandline,
                 colorable,
+            )
+
+        if usage := self._make_usage():
+            colorable = yuio.string.Stack(
+                colorable,
+                usage,
             )
 
         return colorable
@@ -598,12 +631,15 @@ class ArgumentError(yuio.PrettyException, ValueError):
         text += " ".join(_quote(arg) for arg in self.commandline[arg_index + 1 :])
 
         if text:
-            return yuio.string.WithBaseColor(
-                yuio.parse._CodeRenderer(text, pos, as_cli=True),
-                base_color=yuio.color.Color.STYLE_NORMAL,
-            )
+            return yuio.parse._CodeRenderer(text, pos, as_cli=True)
         else:
             return None
+
+    def _make_usage(self):
+        if not self.option or not self.option.help:
+            return None
+        else:
+            return _ShortUsageFormatter(self.subcommands, self.option)
 
 
 class Namespace(_t.Protocol):
@@ -911,7 +947,7 @@ class Option(abc.ABC, _t.Generic[T_cov]):
 
         """
 
-        help = yuio.md.parse(yuio.util.dedent(self.help or ""), allow_headings=False)
+        help = yuio.md.parse(self.help or "", allow_headings=False)
         if help_tail := self.format_help_tail(ctx):
             help.items.append(yuio.md.Raw(raw=help_tail))
 
@@ -1055,6 +1091,9 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         """
 
         return None
+
+    def get_completer(self) -> tuple[yuio.complete.Completer | None, bool]:
+        return None, False
 
     def nth_metavar(self, n: int) -> str:
         """
@@ -1292,33 +1331,33 @@ class BoolOption(ParserOption[bool]):
                 res.end_no_wrap()
                 aliases.append(res)
         if self.pos_flags:
-            primary_pos_flag = None
-            if self.primary_long_flags:
-                primary_pos_flag = self.primary_long_flags[0]
-            elif self.primary_short_flag:
-                primary_pos_flag = self.primary_short_flag
-            elif self.flags:
-                primary_pos_flag = self.flags[0]
-            if primary_pos_flag:
-                punct_color = ctx.get_color("hl/punct:sh-usage")
-                metavar_color = ctx.get_color("hl/metavar:sh-usage")
-                res = _ColorizedString()
-                res.start_no_wrap()
-                res.append_color(flag_color)
-                res.append_str(primary_pos_flag)
-                res.end_no_wrap()
-                res.append_color(punct_color)
-                res.append_str("={")
-                res.append_color(metavar_color)
-                res.append_str("true")
-                res.append_color(punct_color)
-                res.append_str("|")
-                res.append_color(metavar_color)
-                res.append_str("false")
-                res.append_color(punct_color)
-                res.append_str("}")
-                aliases.append(res)
+            primary_pos_flag = self.pos_flags[0]
+            for pos_flag in self.pos_flags:
+                if not _is_short(pos_flag):
+                    primary_pos_flag = pos_flag
+                break
+            punct_color = ctx.get_color("hl/punct:sh-usage")
+            metavar_color = ctx.get_color("hl/metavar:sh-usage")
+            res = _ColorizedString()
+            res.start_no_wrap()
+            res.append_color(flag_color)
+            res.append_str(primary_pos_flag)
+            res.end_no_wrap()
+            res.append_color(punct_color)
+            res.append_str("={")
+            res.append_color(metavar_color)
+            res.append_str("true")
+            res.append_color(punct_color)
+            res.append_str("|")
+            res.append_color(metavar_color)
+            res.append_str("false")
+            res.append_color(punct_color)
+            res.append_str("}")
+            aliases.append(res)
         return aliases
+
+    def get_completer(self) -> tuple[yuio.complete.Completer | None, bool]:
+        return (self.parser.completer(), False)
 
 
 @dataclass(eq=False, kw_only=True)
@@ -1373,9 +1412,15 @@ class ParseOneOption(ParserOption[T], _t.Generic[T]):
             value = self.parser.parse(arguments.value)
         except yuio.parse.ParsingError as e:
             raise ArgumentError.from_parsing_error(
-                e, flag=flag, arguments=arguments
+                e,
+                flag=flag,
+                arguments=arguments,
+                option=self,
             ) from None
         self.set(ns, value)
+
+    def get_completer(self) -> tuple[yuio.complete.Completer | None, bool]:
+        return (self.parser.completer(), False)
 
 
 @dataclass(eq=False, kw_only=True)
@@ -1437,10 +1482,16 @@ class ParseManyOption(ParserOption[T], _t.Generic[T]):
                 value = self.parser.parse(arguments.value)
         except yuio.parse.ParsingError as e:
             raise ArgumentError.from_parsing_error(
-                e, flag=flag, arguments=arguments
+                e,
+                flag=flag,
+                arguments=arguments,
+                option=self,
             ) from None
 
         self.set(ns, value)
+
+    def get_completer(self) -> tuple[yuio.complete.Completer | None, bool]:
+        return (self.parser.completer(), True)
 
 
 @dataclass(eq=False, kw_only=True)
@@ -1664,6 +1715,208 @@ class VersionOption(Option[_t.Never]):
 
 
 @dataclass(eq=False, kw_only=True)
+class BugReportOption(Option[_t.Never]):
+    """
+    An option that prints bug report.
+
+    """
+
+    settings: yuio.dbg.ReportSettings | bool | None
+    """
+    Settings for bug report generation.
+
+    """
+
+    app: yuio.app.App[_t.Any] | None
+    """
+    Main app of the project, used to extract project's version and dependencies.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        settings: yuio.dbg.ReportSettings | bool | None = None,
+        app: yuio.app.App[_t.Any] | None = None,
+        flags: list[str] = ["--bug-report"],
+        usage: yuio.Group | bool = yuio.GROUP,
+        help: str | yuio.Disabled = "Print environment data for bug report and exit.",
+        help_group: HelpGroup | None = MISC_GROUP,
+    ):
+        super().__init__(
+            flags=flags,
+            allow_inline_arg=False,
+            nargs=0,
+            required=False,
+            metavar=(),
+            mutex_group=None,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=True,
+        )
+
+        self.settings = settings
+        self.app = app
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        import yuio.dbg
+
+        yuio.dbg.print_report(settings=self.settings, app=self.app)
+        sys.exit(0)
+
+
+@dataclass(eq=False, kw_only=True)
+class CompletionOption(Option[_t.Never]):
+    """
+    An option that installs autocompletion.
+
+    """
+
+    _SHELLS = [
+        "all",
+        "uninstall",
+        "bash",
+        "zsh",
+        "fish",
+        "pwsh",
+    ]
+
+    def __init__(
+        self,
+        *,
+        flags: list[str] = ["--completions"],
+        usage: yuio.Group | bool = yuio.GROUP,
+        help: str | yuio.Disabled | None = None,
+        help_group: HelpGroup | None = MISC_GROUP,
+    ):
+        if help is None:
+            shells = yuio.string.Or(f"`{shell}`" for shell in self._SHELLS)
+            help = (
+                "Install or update autocompletion scripts and exit.\n\n"
+                f"Supported shells: {shells}."
+            )
+        super().__init__(
+            flags=flags,
+            allow_inline_arg=True,
+            nargs="?",
+            required=False,
+            metavar="<shell>",
+            mutex_group=None,
+            usage=usage,
+            help=help,
+            help_group=help_group,
+            show_if_inherited=False,
+        )
+
+    def process(
+        self,
+        cli_parser: CliParser[Namespace],
+        flag: Flag | None,
+        arguments: Argument | list[Argument],
+        ns: Namespace,
+    ):
+        if isinstance(arguments, list):
+            argument = arguments[0].value if arguments else "all"
+        else:
+            argument = arguments.value
+
+        if argument not in self._SHELLS:
+            raise ArgumentError(
+                "Unknown shell `%r`, should be %s",
+                argument,
+                yuio.string.Or(self._SHELLS),
+                flag=flag,
+                arguments=arguments,
+                n_arg=0,
+            )
+
+        root = cli_parser._root_command
+
+        if argument == "uninstall":
+            compdata = ""
+        else:
+            serializer = yuio.complete._ProgramSerializer()
+            self._dump(root, serializer, [])
+            compdata = serializer.dump()
+
+        yuio.complete._write_completions(compdata, root.name, argument)
+
+        sys.exit(0)
+
+    def _dump(
+        self,
+        command: Command[_t.Any],
+        serializer: yuio.complete._ProgramSerializer,
+        parent_options: list[Option[_t.Any]],
+    ):
+        seen_flags: set[str] = set()
+        seen_options: list[Option[_t.Any]] = []
+
+        # Add command's options, keep track of flags from the current command.
+        for option in command.options:
+            completer, is_many = option.get_completer()
+            serializer.add_option(
+                flags=option.flags,
+                nargs=option.nargs,
+                metavar=option.metavar,
+                help=option.help,
+                completer=completer,
+                is_many=is_many,
+            )
+            if option.flags is not yuio.POSITIONAL:
+                seen_flags |= seen_flags
+                seen_options.append(option)
+
+        # Add parent options if their flags were not shadowed.
+        for option in parent_options:
+            assert option.flags is not yuio.POSITIONAL
+
+            flags = [flag for flag in option.flags if flag not in seen_flags]
+            if not flags:
+                continue
+
+            completer, is_many = option.get_completer()
+            help = option.help
+            if help is not yuio.DISABLED and not option.show_if_inherited:
+                # TODO: not sure if disabling help for inherited options is
+                # the best approach here.
+                # help = yuio.DISABLED
+                pass
+            serializer.add_option(
+                flags=flags,
+                nargs=option.nargs,
+                metavar=option.metavar,
+                help=help,
+                completer=completer,
+                is_many=is_many,
+            )
+
+            seen_flags |= seen_flags
+            seen_options.append(option)
+
+        for name, subcommand in command.subcommands.items():
+            subcommand_serializer = serializer.add_subcommand(
+                name=name, is_alias=name != subcommand.name, help=subcommand.help
+            )
+            self._dump(subcommand, subcommand_serializer, seen_options)
+
+    def get_completer(self) -> tuple[yuio.complete.Completer | None, bool]:
+        return (
+            yuio.complete.Choice(
+                [yuio.complete.Option(shell) for shell in self._SHELLS]
+            ),
+            False,
+        )
+
+
+@dataclass(eq=False, kw_only=True)
 class HelpOption(Option[_t.Never]):
     """
     An option that prints help message and stops the program.
@@ -1680,10 +1933,10 @@ class HelpOption(Option[_t.Never]):
     ):
         super().__init__(
             flags=flags,
-            allow_inline_arg=False,
+            allow_inline_arg=True,
             nargs=0,
             required=False,
-            metavar="<scope>",
+            metavar=(),
             mutex_group=None,
             usage=usage,
             help=help,
@@ -1699,8 +1952,26 @@ class HelpOption(Option[_t.Never]):
         ns: Namespace,
     ):
         import yuio.io
+        import yuio.string
 
-        formatter = _HelpFormatter()
+        if isinstance(arguments, list):
+            argument = arguments[0].value if arguments else ""
+        else:
+            argument = arguments.value
+
+        if argument not in ("all", ""):
+            raise ArgumentError(
+                "Unknown help scope <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>, should be %s",
+                argument,
+                yuio.string.Or(
+                    ["all"], color="msg/text:code/sh-usage hl/flag:sh-usage"
+                ),
+                flag=flag,
+                arguments=arguments,
+                n_arg=0,
+            )
+
+        formatter = _HelpFormatter(all=argument == "all")
         inherited_options = []
         seen_inherited_options = set()
         for opt in cli_parser._inherited_options.values():
@@ -1712,7 +1983,12 @@ class HelpOption(Option[_t.Never]):
             cli_parser._current_command,
             list(inherited_options),
         )
-        yuio.io.info(formatter, add_newline=False, wrap=False)
+
+        ctx = yuio.io.make_repr_context()
+        if ctx.width > ctx.theme.fallback_width:
+            ctx.width = ctx.theme.fallback_width
+
+        yuio.io.raw(ctx.str(formatter), add_newline=True)
         sys.exit(0)
 
 
@@ -1827,11 +2103,17 @@ class _SubCommandOption(ValueOption[str]):
         ns_dest: str,
         ns_ctor: _t.Callable[[], Namespace],
         metavar: str = "<subcommand>",
-        help: str | yuio.Disabled = "",
         help_group: HelpGroup | None = SUBCOMMANDS_GROUP,
         show_if_inherited: bool = False,
         dest: str,
     ):
+        subcommand_names = [
+            f"`{name}`"
+            for name, subcommand in subcommands.items()
+            if name == subcommand.name
+        ]
+        help = f"Available subcommands: {yuio.string.Or(subcommand_names)}"
+
         super().__init__(
             flags=yuio.POSITIONAL,
             allow_inline_arg=False,
@@ -1868,7 +2150,7 @@ class _SubCommandOption(ValueOption[str]):
         subcommand = self.subcommands.get(arguments[0].value)
         if subcommand is None:
             raise ArgumentError(
-                "Unknown subcommand <c flag>%s</c>, can be %s",
+                "Unknown subcommand <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>, can be %s",
                 arguments[0].value,
                 yuio.string.Or(
                     (
@@ -1876,7 +2158,7 @@ class _SubCommandOption(ValueOption[str]):
                         for name, subcommand in self.subcommands.items()
                         if subcommand.help != yuio.DISABLED
                     ),
-                    color="flag",
+                    color="msg/text:code/sh-usage hl/flag:sh-usage",
                 ),
                 arguments=arguments,
             )
@@ -2032,6 +2314,7 @@ class CliParser(_t.Generic[NamespaceT]):
         except ArgumentError as e:
             e.commandline = args
             e.prog = self._root_command.name
+            e.subcommands = self._current_path
             raise
 
     def _parse(self, args: list[str]) -> NamespaceT:
@@ -2084,13 +2367,16 @@ class CliParser(_t.Generic[NamespaceT]):
                     "Either" if len(options) > 1 else "Flag",
                     yuio.string.Or(
                         (option.flags[0] for option in options if option.flags),
-                        color="flag",
+                        color="msg/text:code/sh-usage hl/flag:sh-usage",
                     ),
                 )
 
     def _finalize_unused_flag(self, flag: str, option: _BoundOption):
         if option.required and not option.seen:
-            raise ArgumentError("Missing required flag <c flag>%s</c>", flag)
+            raise ArgumentError(
+                "Missing required flag <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>",
+                flag,
+            )
 
     def _detect_flag(
         self, arg: str
@@ -2138,14 +2424,16 @@ class CliParser(_t.Generic[NamespaceT]):
 
         if candidates:
             raise ArgumentError(
-                "Unknown flag <c flag>%s</c>, can be %s",
+                "Unknown flag <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>, can be %s",
                 flag,
-                yuio.string.Or(candidates, color="flag"),
+                yuio.string.Or(
+                    candidates, color="msg/text:code/sh-usage hl/flag:sh-usage"
+                ),
                 flag=self._make_flag(""),
             )
         else:
             raise ArgumentError(
-                "Unknown flag <c flag>%s</c>",
+                "Unknown flag <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>",
                 flag,
                 flag=self._make_flag(""),
             )
@@ -2192,14 +2480,14 @@ class CliParser(_t.Generic[NamespaceT]):
 
         if unknown_ch and len(arg) > 2:
             raise ArgumentError(
-                "Unknown flag <c flag>-%s</c> in argument <c flag>%s</c>",
+                "Unknown flag <c msg/text:code/sh-usage hl/flag:sh-usage>-%s</c> in argument <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>",
                 unknown_ch,
                 arg,
                 flag=self._make_flag(""),
             )
         else:
             raise ArgumentError(
-                "Unknown flag <c flag>%s</c>",
+                "Unknown flag <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>",
                 arg,
                 flag=self._make_flag(""),
             )
@@ -2240,7 +2528,7 @@ class CliParser(_t.Generic[NamespaceT]):
             # This is an argument for a positional option.
             if self._current_positional >= len(self._positionals):
                 raise ArgumentError(
-                    "Unexpected positional argument <c flag>%r</c>",
+                    "Unexpected positional argument <c msg/text:code/sh-usage hl/flag:sh-usage>%r</c>",
                     arg,
                     arguments=Argument(
                         arg, index=self._current_index, pos=0, metavar="", flag=None
@@ -2325,7 +2613,7 @@ class CliParser(_t.Generic[NamespaceT]):
         if opt.mutex_group is not None:
             if seen := self._seen_mutex_groups.get(opt.mutex_group):
                 raise ArgumentError(
-                    "Flag <c flag>%s</c> can't be given together with flag <c flag>%s</c>",
+                    "Flag <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c> can't be given together with flag <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>",
                     flag or self._make_flag(opt.nth_metavar(0)),
                     seen[1],
                 )
@@ -2338,7 +2626,10 @@ class CliParser(_t.Generic[NamespaceT]):
             _check_nargs(opt, flag, arguments)
         elif not opt.allow_inline_arg:
             raise ArgumentError(
-                "This flag can't have arguments", flag=flag, arguments=arguments
+                "This flag can't have arguments",
+                flag=flag,
+                arguments=arguments,
+                option=opt.wrapped,
             )
 
         opt.seen = True
@@ -2346,8 +2637,18 @@ class CliParser(_t.Generic[NamespaceT]):
             opt.wrapped.process(
                 _t.cast(CliParser[Namespace], self), flag, arguments, opt.ns
             )
+        except ArgumentError as e:
+            if e.flag is None:
+                e.flag = flag
+            if e.arguments is None:
+                e.arguments = arguments
+            if e.option is None:
+                e.option = opt.wrapped
+            raise
         except yuio.parse.ParsingError as e:
-            raise ArgumentError.from_parsing_error(e, flag=flag, arguments=arguments)
+            raise ArgumentError.from_parsing_error(
+                e, flag=flag, arguments=arguments, option=opt.wrapped
+            )
 
 
 def _check_flag(flag: str):
@@ -2372,7 +2673,6 @@ def _make_subcommand(command: Command[Namespace]):
         metavar=command.metavar,
         subcommands=command.subcommands,
         subcommand_required=command.subcommand_required,
-        help=command.help,
         dest=command.dest,
         ns_dest=command.ns_dest,
         ns_ctor=command.ns_ctor,
@@ -2387,21 +2687,24 @@ def _check_nargs(opt: _BoundOption, flag: Flag | None, args: list[Argument]):
             if not args:
                 if opt.flags is yuio.POSITIONAL:
                     raise ArgumentError(
-                        "Missing required positional %s",
+                        "Missing required positional <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>",
                         opt.nth_metavar(0),
                         flag=flag,
+                        option=opt.wrapped,
                     )
                 else:
                     raise ArgumentError(
-                        "Expected at least 1 argument, got 0",
+                        "Expected at least `1` argument, got `0`",
                         flag=flag,
+                        option=opt.wrapped,
                     )
         case "?":
             if len(args) > 1:
                 raise ArgumentError(
-                    "Expected at most 1 argument, got %s",
+                    "Expected at most `1` argument, got `%s`",
                     len(args),
                     flag=flag,
+                    option=opt.wrapped,
                 )
         case n:
             if len(args) < n and (opt.flags is yuio.POSITIONAL):
@@ -2410,18 +2713,21 @@ def _check_nargs(opt: _BoundOption, flag: Flag | None, args: list[Argument]):
                     "Missing required positional%s %s",
                     s,
                     yuio.string.JoinStr(
-                        [opt.nth_metavar(i) for i in range(len(args), n)], color="flag"
+                        [opt.nth_metavar(i) for i in range(len(args), n)],
+                        color="msg/text:code/sh-usage hl/flag:sh-usage",
                     ),
                     flag=flag,
+                    option=opt.wrapped,
                 )
             elif len(args) != n:
                 s = "" if n == 1 else "s"
                 raise ArgumentError(
-                    "Expected %s argument%s, got %s",
+                    "Expected `%s` argument%s, got `%s`",
                     n,
                     s,
                     len(args),
                     flag=flag,
+                    option=opt.wrapped,
                 )
 
 
@@ -2476,9 +2782,12 @@ class _HelpFormatter:
     def format(self, ctx: yuio.string.ReprContext):
         res = _ColorizedString()
         lines = _CliMdFormatter(ctx).format_node(yuio.md.Document(items=self.nodes))
+        sep = False
         for line in lines:
+            if sep:
+                res.append_str("\n")
             res.append_colorized_str(line)
-            res.append_str("\n")
+            sep = True
         return res
 
     def _add_usage(
@@ -2644,7 +2953,12 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
 
     def _format_Usage(self, node: _Usage):
         prefix = _ColorizedString(
-            [self.ctx.get_color("msg/text:heading/section"), node.prefix]
+            [
+                self.ctx.get_color("msg/text:heading/section"),
+                node.prefix,
+                self.base_color,
+                " ",
+            ]
         )
 
         usage = _ColorizedString()
@@ -2877,9 +3191,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         raw = _ColorizedString()
         s = "" if node.n_inherited == 1 else "s"
         raw.append_color(self.ctx.get_color("secondary_color"))
-        raw.append_str(
-            f"  +{node.n_inherited} global option{s}, use --help=all to show"
-        )
+        raw.append_str(f"  +{node.n_inherited} global option{s}, --help=all to show")
         self._line(raw)
 
     def _format_HelpArgGroup(self, node: _HelpArgGroup):
@@ -2889,7 +3201,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         self._separate_paragraphs = True
 
     def _make_lead_padding(self, lead: _ColorizedString):
-        color = self.ctx.get_color("low_priority_color_b")
+        color = self.base_color
         return lead + color + " " * (self._args_column_width - lead.width)
 
 
@@ -2903,7 +3215,7 @@ class _Usage(yuio.md.AstBase):
     prog: str
     cmd: Command[Namespace]
     inherited: list[Option[_t.Any]]
-    prefix: str = "Usage: "
+    prefix: str = "Usage:"
 
 
 @dataclass(eq=False, match_args=False, slots=True)
@@ -2930,3 +3242,69 @@ class _HelpSubCommand(yuio.md.AstBase):
 @dataclass(eq=False, match_args=False, slots=True)
 class _HelpArgGroup(yuio.md.Container[yuio.md.AstBase]):
     pass
+
+
+class _ShortUsageFormatter:
+    def __init__(self, subcommands: list[str] | None, option: Option[_t.Any]):
+        self.subcommands = subcommands
+        self.option = option
+
+    def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
+        note_color = ctx.get_color("msg/text:error/note")
+        heading_color = ctx.get_color("msg/text:heading/note")
+        code_color = ctx.get_color("msg/text:code/sh-usage")
+        punct_color = code_color | ctx.get_color("hl/punct:sh-usage")
+        flag_color = code_color | ctx.get_color("hl/flag:sh-usage")
+
+        res = _ColorizedString()
+        res.append_color(heading_color)
+        res.append_str("Help: ")
+
+        if self.option.flags is not yuio.POSITIONAL:
+            sep = False
+            if self.option.primary_short_flag:
+                res.append_color(flag_color)
+                res.append_str(self.option.primary_short_flag)
+                sep = True
+            for flag in self.option.primary_long_flags or []:
+                if sep:
+                    res.append_color(punct_color)
+                    res.append_str(", ")
+                res.append_color(flag_color)
+                res.append_str(flag)
+                sep = True
+
+        res.append_colorized_str(
+            self.option.format_metavar(ctx).with_base_color(code_color)
+        )
+
+        res.append_color(heading_color)
+        res.append_str("\n")
+        res.append_color(note_color)
+
+        if help := self.option.parse_help(ctx):
+            with ctx.with_settings(width=ctx.width - 2):
+                formatter = _CliMdFormatter(ctx)
+                sep = False
+                for line in formatter.format_node(_HelpArgGroup(items=[help])):
+                    if sep:
+                        res.append_str("\n")
+                    res.append_str("  ")
+                    res.append_colorized_str(line.with_base_color(note_color))
+                    sep = True
+
+        # if self.subcommands:
+        #     prog_color = code_color | ctx.get_color("hl/prog:sh-usage")
+        #     res.append_str("\n")
+        #     res.append_color(heading_color)
+        #     res.append_str("Note: ")
+        #     res.append_color(prog_color)
+        #     res.append_str(" ".join(self.subcommands))
+        #     res.append_color(code_color)
+        #     res.append_str(" ")
+        #     res.append_color(flag_color)
+        #     res.append_str("--help")
+        #     res.append_color(note_color)
+        #     res.append_str(" for usage and details")
+
+        return res

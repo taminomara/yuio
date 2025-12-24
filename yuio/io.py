@@ -2851,18 +2851,14 @@ class _IoManager(abc.ABC):
             self._tasks.append(task)
             self._update_tasks()
         else:
-            self._emit_lines(
-                self._format_task(task).as_code(self._term.color_support)
-            )
+            self._emit_lines(self._format_task(task).as_code(self._term.color_support))
 
     def _start_subtask(self, parent: Task, task: Task):
         if self._term.can_render_widgets:
             parent._subtasks.append(task)
             self._update_tasks()
         else:
-            self._emit_lines(
-                self._format_task(task).as_code(self._term.color_support)
-            )
+            self._emit_lines(self._format_task(task).as_code(self._term.color_support))
 
     def _finish_task(self, task: Task, status: Task._Status):
         if task._status != Task._Status.RUNNING:
@@ -2883,9 +2879,7 @@ class _IoManager(abc.ABC):
             else:
                 self._update_tasks()
         else:
-            self._emit_lines(
-                self._format_task(task).as_code(self._term.color_support)
-            )
+            self._emit_lines(self._format_task(task).as_code(self._term.color_support))
 
     def _clear_tasks(self):
         if self._term.can_render_widgets and self._tasks_printed:
