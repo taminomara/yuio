@@ -190,7 +190,7 @@ into specific files. Just run your app with :flag:`--completions` flag:
 
     $ ./app --completions
 
-.. vhs-inline:
+.. vhs-inline::
     :scale: 40%
 
     Source "docs/source/_tapes/_config.tape"
@@ -201,7 +201,7 @@ into specific files. Just run your app with :flag:`--completions` flag:
     Type "./app --completions"
     Enter
     Wait
-    Sleep 6s
+    Sleep 3s
     Hide
     Type "clear"
     Enter
@@ -219,11 +219,13 @@ into specific files. Just run your app with :flag:`--completions` flag:
     Sleep 250ms
     Tab
     Sleep 500ms
-    Type "rb"
+    Type "b"
     Sleep 250ms
     Tab
     Sleep 500ms
-    Type "a"
+    Type "run"
+    Sleep 250ms
+    Type " a"
     Sleep 100ms
     Type " b"
     Enter
