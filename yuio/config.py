@@ -905,7 +905,7 @@ class Config:
                     f"Note: forward references do not work inside functions "
                     f"(see https://github.com/python/typing/issues/797)"
                 ) from None
-            raise
+            raise  # pragma: no cover
 
         for name, field in cls.__gathered_fields.items():
             if not isinstance(field, _FieldSettings):
