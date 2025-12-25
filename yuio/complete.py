@@ -1592,9 +1592,7 @@ def _write_bash_script(
         return
 
     if install and not shutil.which("bash"):
-        yuio.io.warning(
-            "Skipped <c note>Bash</c>: `bash` command is not available"
-        )
+        yuio.io.warning("Skipped <c note>Bash</c>: `bash` command is not available")
         return
 
     try:
@@ -1635,9 +1633,7 @@ def _write_zsh_script(
         return
 
     if install and not shutil.which("zsh"):
-        yuio.io.warning(
-            "Skipped <c note>Zsh</c>: `zsh` command is not available"
-        )
+        yuio.io.warning("Skipped <c note>Zsh</c>: `zsh` command is not available")
         return
 
     needs_cache_cleanup = False
@@ -1745,9 +1741,7 @@ def _write_fish_script(
         return
 
     if install and not shutil.which("fish"):
-        yuio.io.warning(
-            "Skipped <c note>Fish</c>: `fish` command is not available"
-        )
+        yuio.io.warning("Skipped <c note>Fish</c>: `fish` command is not available")
         return
 
     fish_completions_home = data_home / "fish/vendor_completions.d"
