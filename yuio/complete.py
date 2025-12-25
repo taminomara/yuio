@@ -1591,13 +1591,19 @@ def _write_bash_script(
         )
         return
 
+    if install and not shutil.which("bash"):
+        yuio.io.warning(
+            "Skipped <c note>Bash</c>: `bash` command is not available"
+        )
+        return
+
     try:
         bash_completions_home = yuio.exec.exec(
             "bash",
             "-lc",
             'echo -n "${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions/"',
         ).splitlines()[-1]
-    except (subprocess.CalledProcessError, IndexError):
+    except (subprocess.CalledProcessError, IndexError, FileNotFoundError):
         bash_completions_home = data_home / "bash-completion/completions/"
     bash_completions_home = pathlib.Path(bash_completions_home)
     script_dest = bash_completions_home / true_prog
@@ -1628,6 +1634,12 @@ def _write_zsh_script(
         )
         return
 
+    if install and not shutil.which("zsh"):
+        yuio.io.warning(
+            "Skipped <c note>Zsh</c>: `zsh` command is not available"
+        )
+        return
+
     needs_cache_cleanup = False
 
     zsh_completions_home = data_home / "zsh/completions"
@@ -1653,7 +1665,7 @@ def _write_zsh_script(
             .splitlines()[-1]
             .split(":")
         )
-    except (subprocess.CalledProcessError, IndexError):
+    except (subprocess.CalledProcessError, IndexError, FileNotFoundError):
         fpath = []
 
     try:
@@ -1662,7 +1674,7 @@ def _write_zsh_script(
             "-lc",
             "echo -n ${ZDOTDIR:-$HOME}",
         ).splitlines()[-1]
-    except (subprocess.CalledProcessError, IndexError):
+    except (subprocess.CalledProcessError, IndexError, FileNotFoundError):
         zhome = pathlib.Path.home()
 
     zhome = pathlib.Path(zhome)
@@ -1711,7 +1723,7 @@ def _write_zsh_script(
         # run `compdump`. This is because we can't be sure that the user uses
         # the default cache path (~/.zcompdump).
         yuio.exec.exec("zsh", "-lc", "true")
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
 
@@ -1729,6 +1741,12 @@ def _write_fish_script(
     if os.name == "nt":
         yuio.io.warning(
             "Skipped <c note>Fish</c>: completion script doesn't support windows"
+        )
+        return
+
+    if install and not shutil.which("fish"):
+        yuio.io.warning(
+            "Skipped <c note>Fish</c>: `fish` command is not available"
         )
         return
 
