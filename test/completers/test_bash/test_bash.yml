@@ -369,7 +369,6 @@
   - option_2
   - other_option
   - ​
-  - ​
 - cmd: args --union |
   results:
   - option_1

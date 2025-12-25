@@ -160,6 +160,6 @@ def extract_results(output: str):
     lines = output.splitlines()
     i = lines.index("--BEGIN RESULTS--")
     j = lines.index("--END RESULTS--")
-    res = list(set(lines[i + 1 : j]))
+    res = list(set(filter(lambda x: x, (line.rstrip() for line in lines[i + 1 : j]))))
     res.sort()
     return res

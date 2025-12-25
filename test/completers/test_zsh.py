@@ -14,8 +14,8 @@ def test_zsh(test_cases, data_regression):
     for _, prefix_len, args, orig in test_cases:
         print(args)
         line = " ".join(args)
+        # Repeat left arrow keystroke to get to the desired cursor position.
         line += "\x1b[D" * (len(line) - prefix_len)
-        print(repr(line))
         try:
             result = subprocess.check_output(
                 [

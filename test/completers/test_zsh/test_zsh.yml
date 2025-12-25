@@ -1,7 +1,7 @@
 - cmd: '|'
   results:
-  - 'args -- '
-  - 'hidden -- '
+  - args --
+  - hidden --
 - cmd: -|
   results:
   - --bug-report -- print environment data for bug report and exit
@@ -27,39 +27,39 @@
   - --version -- print program version and exit
 - cmd: a|
   results:
-  - 'args -- '
+  - args --
 - cmd: args |
   results:
-  - '--bool -- '
+  - --bool --
   - --bug-report -- print environment data for bug report and exit
   - --color -- enable or disable ANSI colors
   - '--completions -- install or update autocompletion scripts and exit.  Supported
     shells: all, uninstall, bash, zsh, fish, or pwsh'
-  - '--custom -- '
-  - '--dict -- '
-  - '--dir -- '
-  - '--enum -- '
-  - '--enum-by-name -- '
-  - '--file -- '
-  - '--file-bash -- '
-  - '--git-ref -- '
-  - '--git-tag -- '
+  - --custom --
+  - --dict --
+  - --dir --
+  - --enum --
+  - --enum-by-name --
+  - --file --
+  - --file-bash --
+  - --git-ref --
+  - --git-tag --
   - --help -- print this message and exit
-  - '--int -- '
-  - '--list -- '
-  - '--nested-dict -- '
-  - '--nested-list -- '
-  - '--nested-set -- '
-  - '--nested-tuple -- '
-  - '--no-bool -- '
+  - --int --
+  - --list --
+  - --nested-dict --
+  - --nested-list --
+  - --nested-set --
+  - --nested-tuple --
+  - --no-bool --
   - --no-color -- enable or disable ANSI colors
-  - '--one-of -- '
-  - '--override -- '
-  - '--set -- '
-  - '--special-chars -- '
-  - '--str -- '
-  - '--tuple -- '
-  - '--union -- '
+  - --one-of --
+  - --override --
+  - --set --
+  - --special-chars --
+  - --str --
+  - --tuple --
+  - --union --
   - --verbose -- increase output verbosity
   - --version -- print program version and exit
   - -V -- print program version and exit
@@ -67,36 +67,36 @@
   - -v -- increase output verbosity
 - cmd: args -|
   results:
-  - '--bool -- '
+  - --bool --
   - --bug-report -- print environment data for bug report and exit
   - --color -- enable or disable ANSI colors
   - '--completions -- install or update autocompletion scripts and exit.  Supported
     shells: all, uninstall, bash, zsh, fish, or pwsh'
-  - '--custom -- '
-  - '--dict -- '
-  - '--dir -- '
-  - '--enum -- '
-  - '--enum-by-name -- '
-  - '--file -- '
-  - '--file-bash -- '
-  - '--git-ref -- '
-  - '--git-tag -- '
+  - --custom --
+  - --dict --
+  - --dir --
+  - --enum --
+  - --enum-by-name --
+  - --file --
+  - --file-bash --
+  - --git-ref --
+  - --git-tag --
   - --help -- print this message and exit
-  - '--int -- '
-  - '--list -- '
-  - '--nested-dict -- '
-  - '--nested-list -- '
-  - '--nested-set -- '
-  - '--nested-tuple -- '
-  - '--no-bool -- '
+  - --int --
+  - --list --
+  - --nested-dict --
+  - --nested-list --
+  - --nested-set --
+  - --nested-tuple --
+  - --no-bool --
   - --no-color -- enable or disable ANSI colors
-  - '--one-of -- '
-  - '--override -- '
-  - '--set -- '
-  - '--special-chars -- '
-  - '--str -- '
-  - '--tuple -- '
-  - '--union -- '
+  - --one-of --
+  - --override --
+  - --set --
+  - --special-chars --
+  - --str --
+  - --tuple --
+  - --union --
   - --verbose -- increase output verbosity
   - --version -- print program version and exit
   - -V -- print program version and exit
@@ -104,7 +104,7 @@
   - -v -- increase output verbosity
 - cmd: args --bool|
   results:
-  - '--bool -- '
+  - --bool --
 - cmd: args --bool=|
   results: []
 - cmd: args --bool |
@@ -113,30 +113,30 @@
   - --color -- enable or disable ANSI colors
   - '--completions -- install or update autocompletion scripts and exit.  Supported
     shells: all, uninstall, bash, zsh, fish, or pwsh'
-  - '--custom -- '
-  - '--dict -- '
-  - '--dir -- '
-  - '--enum -- '
-  - '--enum-by-name -- '
-  - '--file -- '
-  - '--file-bash -- '
-  - '--git-ref -- '
-  - '--git-tag -- '
+  - --custom --
+  - --dict --
+  - --dir --
+  - --enum --
+  - --enum-by-name --
+  - --file --
+  - --file-bash --
+  - --git-ref --
+  - --git-tag --
   - --help -- print this message and exit
-  - '--int -- '
-  - '--list -- '
-  - '--nested-dict -- '
-  - '--nested-list -- '
-  - '--nested-set -- '
-  - '--nested-tuple -- '
+  - --int --
+  - --list --
+  - --nested-dict --
+  - --nested-list --
+  - --nested-set --
+  - --nested-tuple --
   - --no-color -- enable or disable ANSI colors
-  - '--one-of -- '
-  - '--override -- '
-  - '--set -- '
-  - '--special-chars -- '
-  - '--str -- '
-  - '--tuple -- '
-  - '--union -- '
+  - --one-of --
+  - --override --
+  - --set --
+  - --special-chars --
+  - --str --
+  - --tuple --
+  - --union --
   - --verbose -- increase output verbosity
   - --version -- print program version and exit
   - -V -- print program version and exit
@@ -144,7 +144,7 @@
   - -v -- increase output verbosity
 - cmd: args --no-b|
   results:
-  - '--no-bool -- '
+  - --no-bool --
 - cmd: args --int |
   results: []
 - cmd: args --str |
@@ -160,31 +160,31 @@
   - option_2
 - cmd: args --override |
   results:
-  - 'option-1 -- '
-  - 'option-2 -- '
+  - option-1 --
+  - option-2 --
   - with-comment -- my comment
-  - 'with\ space -- with space     '
+  - with\ space -- with space
 - cmd: args --override op|
   results:
-  - 'option-1 -- '
-  - 'option-2 -- '
+  - option-1 --
+  - option-2 --
 - cmd: args --custom |
   results:
-  - 'comp_1 -- '
-  - 'comp_2 -- '
-  - 'other_comp -- '
-  - 'with=equals -- '
-  - 'with\ spaces -- with spaces    '
-  - 'with\\:colon -- with:colon     '
+  - comp_1 --
+  - comp_2 --
+  - other_comp --
+  - with=equals --
+  - with\ spaces -- with spaces
+  - with\\:colon -- with:colon
   - with_comment -- my comment
 - cmd: args --custom c|
   results:
-  - 'comp_1 -- '
-  - 'comp_2 -- '
+  - comp_1 --
+  - comp_2 --
 - cmd: args --custom comp_|
   results:
-  - 'comp_1 -- '
-  - 'comp_2 -- '
+  - comp_1 --
+  - comp_2 --
 - cmd: args --one-of |
   results:
   - bar
@@ -212,35 +212,35 @@
   - option_4
 - cmd: args --tuple x y |
   results:
-  - '--bool -- '
+  - --bool --
   - --bug-report -- print environment data for bug report and exit
   - --color -- enable or disable ANSI colors
   - '--completions -- install or update autocompletion scripts and exit.  Supported
     shells: all, uninstall, bash, zsh, fish, or pwsh'
-  - '--custom -- '
-  - '--dict -- '
-  - '--dir -- '
-  - '--enum -- '
-  - '--enum-by-name -- '
-  - '--file -- '
-  - '--file-bash -- '
-  - '--git-ref -- '
-  - '--git-tag -- '
+  - --custom --
+  - --dict --
+  - --dir --
+  - --enum --
+  - --enum-by-name --
+  - --file --
+  - --file-bash --
+  - --git-ref --
+  - --git-tag --
   - --help -- print this message and exit
-  - '--int -- '
-  - '--list -- '
-  - '--nested-dict -- '
-  - '--nested-list -- '
-  - '--nested-set -- '
-  - '--nested-tuple -- '
-  - '--no-bool -- '
+  - --int --
+  - --list --
+  - --nested-dict --
+  - --nested-list --
+  - --nested-set --
+  - --nested-tuple --
+  - --no-bool --
   - --no-color -- enable or disable ANSI colors
-  - '--one-of -- '
-  - '--override -- '
-  - '--set -- '
-  - '--special-chars -- '
-  - '--str -- '
-  - '--union -- '
+  - --one-of --
+  - --override --
+  - --set --
+  - --special-chars --
+  - --str --
+  - --union --
   - --verbose -- increase output verbosity
   - --version -- print program version and exit
   - -V -- print program version and exit
@@ -267,35 +267,35 @@
   results: []
 - cmd: args --list x --one-of |
   results:
-  - '--bool -- '
+  - --bool --
   - --bug-report -- print environment data for bug report and exit
   - --color -- enable or disable ANSI colors
   - '--completions -- install or update autocompletion scripts and exit.  Supported
     shells: all, uninstall, bash, zsh, fish, or pwsh'
-  - '--custom -- '
-  - '--dict -- '
-  - '--dir -- '
-  - '--enum -- '
-  - '--enum-by-name -- '
-  - '--file -- '
-  - '--file-bash -- '
-  - '--git-ref -- '
-  - '--git-tag -- '
+  - --custom --
+  - --dict --
+  - --dir --
+  - --enum --
+  - --enum-by-name --
+  - --file --
+  - --file-bash --
+  - --git-ref --
+  - --git-tag --
   - --help -- print this message and exit
-  - '--int -- '
-  - '--nested-dict -- '
-  - '--nested-list -- '
-  - '--nested-set -- '
-  - '--nested-tuple -- '
-  - '--no-bool -- '
+  - --int --
+  - --nested-dict --
+  - --nested-list --
+  - --nested-set --
+  - --nested-tuple --
+  - --no-bool --
   - --no-color -- enable or disable ANSI colors
-  - '--one-of -- '
-  - '--override -- '
-  - '--set -- '
-  - '--special-chars -- '
-  - '--str -- '
-  - '--tuple -- '
-  - '--union -- '
+  - --one-of --
+  - --override --
+  - --set --
+  - --special-chars --
+  - --str --
+  - --tuple --
+  - --union --
   - --verbose -- increase output verbosity
   - --version -- print program version and exit
   - -V -- print program version and exit
@@ -309,36 +309,36 @@
   results: []
 - cmd: args --list=x |
   results:
-  - '--bool -- '
+  - --bool --
   - --bug-report -- print environment data for bug report and exit
   - --color -- enable or disable ANSI colors
   - '--completions -- install or update autocompletion scripts and exit.  Supported
     shells: all, uninstall, bash, zsh, fish, or pwsh'
-  - '--custom -- '
-  - '--dict -- '
-  - '--dir -- '
-  - '--enum -- '
-  - '--enum-by-name -- '
-  - '--file -- '
-  - '--file-bash -- '
-  - '--git-ref -- '
-  - '--git-tag -- '
+  - --custom --
+  - --dict --
+  - --dir --
+  - --enum --
+  - --enum-by-name --
+  - --file --
+  - --file-bash --
+  - --git-ref --
+  - --git-tag --
   - --help -- print this message and exit
-  - '--int -- '
-  - '--list -- '
-  - '--nested-dict -- '
-  - '--nested-list -- '
-  - '--nested-set -- '
-  - '--nested-tuple -- '
-  - '--no-bool -- '
+  - --int --
+  - --list --
+  - --nested-dict --
+  - --nested-list --
+  - --nested-set --
+  - --nested-tuple --
+  - --no-bool --
   - --no-color -- enable or disable ANSI colors
-  - '--one-of -- '
-  - '--override -- '
-  - '--set -- '
-  - '--special-chars -- '
-  - '--str -- '
-  - '--tuple -- '
-  - '--union -- '
+  - --one-of --
+  - --override --
+  - --set --
+  - --special-chars --
+  - --str --
+  - --tuple --
+  - --union --
   - --verbose -- increase output verbosity
   - --version -- print program version and exit
   - -V -- print program version and exit
