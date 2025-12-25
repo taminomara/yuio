@@ -1,0 +1,522 @@
+- cmd: '|'
+  results:
+  - 'args -- '
+  - 'hidden -- '
+- cmd: -|
+  results:
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - --help -- print this message and exit
+  - --no-color -- enable or disable ANSI colors
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+  - -V -- print program version and exit
+  - -h -- print this message and exit
+  - -v -- increase output verbosity
+- cmd: --|
+  results:
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - --help -- print this message and exit
+  - --no-color -- enable or disable ANSI colors
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+- cmd: a|
+  results:
+  - 'args -- '
+- cmd: args |
+  results:
+  - '--bool -- '
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - '--custom -- '
+  - '--dict -- '
+  - '--dir -- '
+  - '--enum -- '
+  - '--enum-by-name -- '
+  - '--file -- '
+  - '--file-bash -- '
+  - '--git-ref -- '
+  - '--git-tag -- '
+  - --help -- print this message and exit
+  - '--int -- '
+  - '--list -- '
+  - '--nested-dict -- '
+  - '--nested-list -- '
+  - '--nested-set -- '
+  - '--nested-tuple -- '
+  - '--no-bool -- '
+  - --no-color -- enable or disable ANSI colors
+  - '--one-of -- '
+  - '--override -- '
+  - '--set -- '
+  - '--special-chars -- '
+  - '--str -- '
+  - '--tuple -- '
+  - '--union -- '
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+  - -V -- print program version and exit
+  - -h -- print this message and exit
+  - -v -- increase output verbosity
+- cmd: args -|
+  results:
+  - '--bool -- '
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - '--custom -- '
+  - '--dict -- '
+  - '--dir -- '
+  - '--enum -- '
+  - '--enum-by-name -- '
+  - '--file -- '
+  - '--file-bash -- '
+  - '--git-ref -- '
+  - '--git-tag -- '
+  - --help -- print this message and exit
+  - '--int -- '
+  - '--list -- '
+  - '--nested-dict -- '
+  - '--nested-list -- '
+  - '--nested-set -- '
+  - '--nested-tuple -- '
+  - '--no-bool -- '
+  - --no-color -- enable or disable ANSI colors
+  - '--one-of -- '
+  - '--override -- '
+  - '--set -- '
+  - '--special-chars -- '
+  - '--str -- '
+  - '--tuple -- '
+  - '--union -- '
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+  - -V -- print program version and exit
+  - -h -- print this message and exit
+  - -v -- increase output verbosity
+- cmd: args --bool|
+  results:
+  - '--bool -- '
+- cmd: args --bool=|
+  results: []
+- cmd: args --bool |
+  results:
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - '--custom -- '
+  - '--dict -- '
+  - '--dir -- '
+  - '--enum -- '
+  - '--enum-by-name -- '
+  - '--file -- '
+  - '--file-bash -- '
+  - '--git-ref -- '
+  - '--git-tag -- '
+  - --help -- print this message and exit
+  - '--int -- '
+  - '--list -- '
+  - '--nested-dict -- '
+  - '--nested-list -- '
+  - '--nested-set -- '
+  - '--nested-tuple -- '
+  - --no-color -- enable or disable ANSI colors
+  - '--one-of -- '
+  - '--override -- '
+  - '--set -- '
+  - '--special-chars -- '
+  - '--str -- '
+  - '--tuple -- '
+  - '--union -- '
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+  - -V -- print program version and exit
+  - -h -- print this message and exit
+  - -v -- increase output verbosity
+- cmd: args --no-b|
+  results:
+  - '--no-bool -- '
+- cmd: args --int |
+  results: []
+- cmd: args --str |
+  results: []
+- cmd: args --enum |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --enum op|
+  results:
+  - option_1
+  - option_2
+- cmd: args --override |
+  results:
+  - 'option-1 -- '
+  - 'option-2 -- '
+  - with-comment -- my comment
+  - 'with\ space -- with space     '
+- cmd: args --override op|
+  results:
+  - 'option-1 -- '
+  - 'option-2 -- '
+- cmd: args --custom |
+  results:
+  - 'comp_1 -- '
+  - 'comp_2 -- '
+  - 'other_comp -- '
+  - 'with=equals -- '
+  - 'with\ spaces -- with spaces    '
+  - 'with\\:colon -- with:colon     '
+  - with_comment -- my comment
+- cmd: args --custom c|
+  results:
+  - 'comp_1 -- '
+  - 'comp_2 -- '
+- cmd: args --custom comp_|
+  results:
+  - 'comp_1 -- '
+  - 'comp_2 -- '
+- cmd: args --one-of |
+  results:
+  - bar
+  - baz
+  - foo
+- cmd: args --git-ref |
+  results:
+  - HEAD
+  - ORIG_HEAD
+  - main
+  - v1.0.0
+  - v1.1.0
+- cmd: args --git-tag |
+  results:
+  - v1.0.0
+  - v1.1.0
+- cmd: args --tuple |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --tuple x |
+  results:
+  - option_3
+  - option_4
+- cmd: args --tuple x y |
+  results:
+  - '--bool -- '
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - '--custom -- '
+  - '--dict -- '
+  - '--dir -- '
+  - '--enum -- '
+  - '--enum-by-name -- '
+  - '--file -- '
+  - '--file-bash -- '
+  - '--git-ref -- '
+  - '--git-tag -- '
+  - --help -- print this message and exit
+  - '--int -- '
+  - '--list -- '
+  - '--nested-dict -- '
+  - '--nested-list -- '
+  - '--nested-set -- '
+  - '--nested-tuple -- '
+  - '--no-bool -- '
+  - --no-color -- enable or disable ANSI colors
+  - '--one-of -- '
+  - '--override -- '
+  - '--set -- '
+  - '--special-chars -- '
+  - '--str -- '
+  - '--union -- '
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+  - -V -- print program version and exit
+  - -h -- print this message and exit
+  - -v -- increase output verbosity
+- cmd: args --tuple |x y
+  results: []
+- cmd: args --list |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x | y
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x --|
+  results: []
+- cmd: args --list x --one-of |
+  results:
+  - '--bool -- '
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - '--custom -- '
+  - '--dict -- '
+  - '--dir -- '
+  - '--enum -- '
+  - '--enum-by-name -- '
+  - '--file -- '
+  - '--file-bash -- '
+  - '--git-ref -- '
+  - '--git-tag -- '
+  - --help -- print this message and exit
+  - '--int -- '
+  - '--nested-dict -- '
+  - '--nested-list -- '
+  - '--nested-set -- '
+  - '--nested-tuple -- '
+  - '--no-bool -- '
+  - --no-color -- enable or disable ANSI colors
+  - '--one-of -- '
+  - '--override -- '
+  - '--set -- '
+  - '--special-chars -- '
+  - '--str -- '
+  - '--tuple -- '
+  - '--union -- '
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+  - -V -- print program version and exit
+  - -h -- print this message and exit
+  - -v -- increase output verbosity
+- cmd: args --list=|
+  results: []
+- cmd: args --list=op|
+  results: []
+- cmd: args --l|ist=op
+  results: []
+- cmd: args --list=x |
+  results:
+  - '--bool -- '
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - '--custom -- '
+  - '--dict -- '
+  - '--dir -- '
+  - '--enum -- '
+  - '--enum-by-name -- '
+  - '--file -- '
+  - '--file-bash -- '
+  - '--git-ref -- '
+  - '--git-tag -- '
+  - --help -- print this message and exit
+  - '--int -- '
+  - '--list -- '
+  - '--nested-dict -- '
+  - '--nested-list -- '
+  - '--nested-set -- '
+  - '--nested-tuple -- '
+  - '--no-bool -- '
+  - --no-color -- enable or disable ANSI colors
+  - '--one-of -- '
+  - '--override -- '
+  - '--set -- '
+  - '--special-chars -- '
+  - '--str -- '
+  - '--tuple -- '
+  - '--union -- '
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+  - -V -- print program version and exit
+  - -h -- print this message and exit
+  - -v -- increase output verbosity
+- cmd: args --set |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --set option_1 |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --set option_1 o| option_2
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --dict |
+  results:
+  - 'option_1:'
+  - 'option_2:'
+  - 'other_option:'
+- cmd: args --dict opt|
+  results:
+  - 'option_1:'
+  - 'option_2:'
+- cmd: args --dict oth|
+  results:
+  - 'other_option:'
+- cmd: args --dict x:|
+  results:
+  - x:option_3
+  - x:option_4
+- cmd: args --dict opt|:xxx
+  results: []
+- cmd: args --dict oth|:xxx
+  results: []
+- cmd: args --nested-tuple |
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-tuple opt|
+  results:
+  - option_1,
+  - option_2,
+- cmd: args --nested-tuple oth|
+  results:
+  - other_option,
+- cmd: args --nested-tuple x,|
+  results:
+  - x,option_3
+  - x,option_4
+- cmd: args --nested-tuple x,opt|
+  results:
+  - x,option_3
+  - x,option_4
+- cmd: args --nested-tuple opt|,x
+  results: []
+- cmd: args --nested-tuple oth|,x
+  results: []
+- cmd: args --nested-list |
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-list opt|
+  results:
+  - option_1,
+  - option_2,
+- cmd: args --nested-list oth|
+  results:
+  - other_option,
+- cmd: args --nested-list x,|
+  results:
+  - x,option_1,
+  - x,option_2,
+  - x,other_option,
+- cmd: args --nested-list x,|,y
+  results: []
+- cmd: args --nested-list x,oth|,y
+  results: []
+- cmd: args --nested-set |
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-set opt|
+  results:
+  - option_1,
+  - option_2,
+- cmd: args --nested-set oth|
+  results:
+  - other_option,
+- cmd: args --nested-set x,|
+  results:
+  - x,option_1,
+  - x,option_2,
+  - x,other_option,
+- cmd: args --nested-set x,|,y
+  results: []
+- cmd: args --nested-set option_1,|,y
+  results: []
+- cmd: args --nested-set x,oth|,y
+  results: []
+- cmd: args --nested-set option_1,y opt|
+  results:
+  - option_1,
+  - option_2,
+- cmd: args --nested-set option_1,y option_1,opt|
+  results:
+  - option_1,option_2,
+- cmd: args --nested-dict |
+  results:
+  - 'option_1:'
+  - 'option_2:'
+  - 'other_option:'
+- cmd: args --nested-dict oth|
+  results:
+  - 'other_option:'
+- cmd: args --nested-dict x:|
+  results:
+  - x:option_3,
+  - x:option_4,
+- cmd: args --nested-dict x:o|
+  results:
+  - x:option_3,
+  - x:option_4,
+- cmd: args --nested-dict x:y,|
+  results:
+  - 'x:y,option_1:'
+  - 'x:y,option_2:'
+  - 'x:y,other_option:'
+- cmd: args --nested-dict x:y,o|ther:zzz
+  results: []
+- cmd: args --union |
+  results:
+  - option_1
+  - option_2
+  - option_3
+  - option_4
+  - other_option
+- cmd: args --union oth|
+  results:
+  - other_option
+- cmd: args --enum-by-name |
+  results:
+  - option-1
+  - option-2
+  - other-option
+- cmd: args --special-chars |
+  results:
+  - foo:ar
+  - foo:bar
+  - foo\"bar
+  - foo\$bar
+  - foo\'bar
+  - foo\*bar
+- cmd: hidden |
+  results:
+  - option_3
+  - option_4
+- cmd: hidden --|
+  results:
+  - --bug-report -- print environment data for bug report and exit
+  - --color -- enable or disable ANSI colors
+  - '--completions -- install or update autocompletion scripts and exit.  Supported
+    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - --help -- print this message and exit
+  - --no-color -- enable or disable ANSI colors
+  - --verbose -- increase output verbosity
+  - --version -- print program version and exit
+- cmd: hidden --secret |
+  results:
+  - option_3
+  - option_4
+- cmd: hidden --secret x |
+  results: []

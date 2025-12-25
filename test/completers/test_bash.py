@@ -21,6 +21,7 @@ def test_bash(test_cases, data_regression):
 
     results = []
     for cword, prefix_len, args, orig in test_cases:
+        print(args)
         try:
             result = subprocess.check_output(
                 [

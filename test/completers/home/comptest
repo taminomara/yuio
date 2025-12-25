@@ -79,7 +79,7 @@ def args(
             completer=yuio.complete.Choice(
                 [
                     yuio.complete.Option("foo$bar"),
-                    yuio.complete.Option("foo\"bar"),
+                    yuio.complete.Option('foo"bar'),
                     yuio.complete.Option("foo'bar"),
                     yuio.complete.Option("foo\\bar"),
                     yuio.complete.Option("foo*bar"),
