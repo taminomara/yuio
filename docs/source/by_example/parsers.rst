@@ -41,8 +41,9 @@ Or pass it to other Yuio methods:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m parsers_code.ask"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/parsers_ask.py"
     Enter
     Sleep 1s
     Type "-25"
@@ -253,8 +254,9 @@ Or with a nested parser:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m parsers_code.json "
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/parsers_json.py "
     Sleep 100ms
     Type "--data "
     Sleep 250ms

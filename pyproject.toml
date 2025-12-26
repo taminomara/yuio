@@ -178,7 +178,7 @@ reportRedeclaration = "none"
 deprecateTypingAliases = true
 
 [tool.ruff]
-exclude = ["docs/source/by_example/*", "yuio/_vendor/*"]
+exclude = ["examples/docs/*", "yuio/_vendor/*"]
 target-version = "py310"
 
 [tool.ruff.lint]

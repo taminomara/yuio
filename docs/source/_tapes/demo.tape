@@ -1,3 +1,5 @@
+Set FontSize 26
+
 Source "docs/source/_tapes/_config.tape"
 
 Hide

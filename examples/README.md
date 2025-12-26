@@ -35,6 +35,10 @@
 - [widgets/vertical_layout.py] — stack widgets together.
 - [widgets/help.py] — demonstration of built-in help menu.
 
+## Docs
+
+Examples used in [Yuio By Example] manual.
+
 [app]: ./app
 [custom_completer]: ./custom_completer
 [git.py]: ./git.py
@@ -55,3 +59,4 @@
 [widgets/input.py]: ./widgets/input.py
 [widgets/multiselect.py]: ./widgets/multiselect.py
 [widgets/vertical_layout.py]: ./widgets/vertical_layout.py
+[Yuio By Example]: https://yuio.readthedocs.io/en/stable/by_example/index.html

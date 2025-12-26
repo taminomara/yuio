@@ -49,15 +49,17 @@ Set up accent color
 
 The easiest way to customize default theme is to change main colors:
 
-.. literalinclude:: themes_code/accent_colors.py
+.. literalinclude:: /../../examples/docs/themes_accent_colors.py
     :language: python
     :lines: 6-10
 
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example_themes.tape"
-    Type "python -m themes_code.accent_colors"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Env "YUIO_THEME_PATH" "docs/source/_tapes/theme_custom.json"
+    Type "python examples/docs/themes_accent_colors.py"
     Enter
     Wait
     Sleep 1s
@@ -69,7 +71,7 @@ Add new color tags
 Any item added to :class:`Theme.colors <yuio.theme.Theme.colors>` will be available
 for use as color tag:
 
-.. literalinclude:: themes_code/tags.py
+.. literalinclude:: /../../examples/docs/themes_tags.py
     :language: python
     :lines: 5-12
     :emphasize-lines: 3,8
@@ -77,8 +79,10 @@ for use as color tag:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example_themes.tape"
-    Type "python -m themes_code.tags"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Env "YUIO_THEME_PATH" "docs/source/_tapes/theme_custom.json"
+    Type "python examples/docs/themes_tags.py"
     Enter
     Sleep 6s
 
@@ -99,14 +103,16 @@ Set colors dynamically
 in its constructor, allowing you to set colors dynamically depending on the terminal's
 color scheme:
 
-.. literalinclude:: themes_code/dynamic_colors.py
+.. literalinclude:: /../../examples/docs/themes_dynamic_colors.py
     :language: python
 
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example_themes.tape"
-    Type "python -m themes_code.dynamic_colors"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Env "YUIO_THEME_PATH" "docs/source/_tapes/theme_custom.json"
+    Type "python examples/docs/themes_dynamic_colors.py"
     Enter
     Sleep 6s
 
@@ -117,15 +123,17 @@ Configure decorations
 Message decorations
 ~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: themes_code/message_decorations.py
+.. literalinclude:: /../../examples/docs/themes_message_decorations.py
     :language: python
     :lines: 5-14
 
 .. vhs-inline::
     :scale: 40%
 
+    Set FontSize 35
     Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m themes_code.message_decorations"
+    Env "YUIO_THEME_PATH" "docs/source/_tapes/theme_custom.json"
+    Type "python examples/docs/themes_message_decorations.py"
     Enter
     Sleep 6s
 
@@ -133,15 +141,17 @@ Message decorations
 Progress bars and spinners
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: themes_code/progress_bars.py
+.. literalinclude:: /../../examples/docs/themes_progress_bars.py
     :language: python
     :lines: 6-17
 
 .. vhs-inline::
     :scale: 40%
 
+    Set FontSize 35
     Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m themes_code.progress_bars"
+    Env "YUIO_THEME_PATH" "docs/source/_tapes/theme_custom.json"
+    Type "python examples/docs/themes_progress_bars.py"
     Enter
     Wait
     Sleep 1s

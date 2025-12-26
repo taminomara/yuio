@@ -9,14 +9,15 @@ Printing messages
 
 Yuio offers a :mod:`logging`-like functions to print messages:
 
-.. literalinclude:: interactive_things_code/printing.py
+.. literalinclude:: /../../examples/docs/io_printing.py
     :language: python
 
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.printing"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_printing.py"
     Enter
     Sleep 6s
 
@@ -33,15 +34,16 @@ __ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
 - ``#`` enables colors in repr (i.e. ``%#r``);
 - ``+`` splits repr into multiple lines (i.e. ``%+r``, ``%#+r``).
 
-.. literalinclude:: interactive_things_code/repr.py
+.. literalinclude:: /../../examples/docs/io_repr.py
     :language: python
     :emphasize-lines: 13
 
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.repr"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_repr.py"
     Enter
     Sleep 6s
 
@@ -53,7 +55,7 @@ You often need to print lists joined by some separator. Yuio provides
 :class:`~yuio.string.JoinStr`, :class:`~yuio.string.JoinRepr`,
 :class:`~yuio.string.And`, and :class:`~yuio.string.Or` to help with this task:
 
-.. literalinclude:: interactive_things_code/join.py
+.. literalinclude:: /../../examples/docs/io_join.py
     :language: python
     :lines: 6-11
     :dedent:
@@ -61,8 +63,9 @@ You often need to print lists joined by some separator. Yuio provides
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.join"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_join.py"
     Enter
     Sleep 6s
 
@@ -79,7 +82,7 @@ Markdown and inline markup
 If you need something even more complex, you can use :func:`yuio.io.md` to print
 formatted markdown:
 
-.. literalinclude:: interactive_things_code/markdown.py
+.. literalinclude:: /../../examples/docs/io_markdown.py
     :language: python
     :lines: 6-16
     :dedent:
@@ -87,8 +90,8 @@ formatted markdown:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.markdown"
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_markdown.py"
     Enter
     Sleep 6s
 
@@ -98,7 +101,7 @@ Highlighting code
 
 Yuio supports simple :ref:`code highlighting <highlighting-code>`:
 
-.. literalinclude:: interactive_things_code/hl.py
+.. literalinclude:: /../../examples/docs/io_hl.py
     :language: python
     :lines: 6-12
     :dedent:
@@ -106,8 +109,9 @@ Yuio supports simple :ref:`code highlighting <highlighting-code>`:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.hl"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_hl.py"
     Enter
     Sleep 6s
 
@@ -119,7 +123,7 @@ You can use :func:`yuio.io.ask` to get data from the user. It's like :func:`inpu
 but automatically parses the user input, and can use different widgets based
 on the expected value's type:
 
-.. literalinclude:: interactive_things_code/querying.py
+.. literalinclude:: /../../examples/docs/io_querying.py
     :language: python
     :lines: 1-16
     :emphasize-lines: 5,11-15
@@ -127,8 +131,9 @@ on the expected value's type:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.querying"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_querying.py"
     Enter
     Sleep 1s
     Type "Miku"
@@ -147,7 +152,7 @@ Indicating progress
 Suppose you have some long-running job, and you want to indicate that it is running.
 :class:`yuio.io.Task` to the rescue:
 
-.. literalinclude:: interactive_things_code/task.py
+.. literalinclude:: /../../examples/docs/io_task.py
     :language: python
     :lines: 7-8
     :dedent:
@@ -155,7 +160,7 @@ Suppose you have some long-running job, and you want to indicate that it is runn
 
 And if the job can report its progress, we can even show a progressbar:
 
-.. literalinclude:: interactive_things_code/progress.py
+.. literalinclude:: /../../examples/docs/io_progress.py
     :language: python
     :lines: 9-14
     :dedent:
@@ -168,8 +173,9 @@ updates progress as you iterate over a collection.
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.progress"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_progress.py"
     Enter
     Sleep 12s
 
@@ -180,7 +186,7 @@ Opening an external editor
 You know how when you run :flag:`git commit`, it opens an editor and asks you to edit
 a commit message? Yuio can do the same:
 
-.. literalinclude:: interactive_things_code/edit.py
+.. literalinclude:: /../../examples/docs/io_edit.py
     :language: python
     :lines: 6-12
     :dedent:
@@ -194,7 +200,7 @@ The app will automatically perform a basic logging configuration on startup.
 The logging level will depend on how many :flag:`-v` flags are given,
 from ``WARNING`` to ``DEBUG``:
 
-.. literalinclude:: interactive_things_code/logging.py
+.. literalinclude:: /../../examples/docs/io_logging.py
     :language: python
     :emphasize-lines: 4,8-9
 
@@ -203,15 +209,15 @@ This is how verbose output will look like:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.logging -vv"
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_logging.py -vv"
     Enter
     Sleep 6s
 
 If you want to configure logging yourself, set :attr:`yuio.app.App.setup_logging`
 to :data:`False`, and use :class:`yuio.io.Handler` to send logs to :data:`~sys.stderr`:
 
-.. literalinclude:: interactive_things_code/logging_manual.py
+.. literalinclude:: /../../examples/docs/io_logging_manual.py
     :language: python
     :emphasize-lines: 9,10,11,12,17
 
@@ -223,7 +229,7 @@ Sometimes you need to stop all output from your program. Most often this happens
 when you want to hand IO control to a subprocess. :class:`yuio.io.SuspendOutput`
 does just that:
 
-.. literalinclude:: interactive_things_code/suspend.py
+.. literalinclude:: /../../examples/docs/io_suspend.py
     :language: python
     :lines: 7-8
     :emphasize-lines: 2
@@ -243,7 +249,7 @@ on the :class:`yuio.io.SuspendOutput` class.
 
 Here's a more comprehensive example:
 
-.. literalinclude:: interactive_things_code/suspend_complex.py
+.. literalinclude:: /../../examples/docs/io_suspend_complex.py
     :language: python
     :lines: 1-19
     :emphasize-lines: 13,15
@@ -251,7 +257,7 @@ Here's a more comprehensive example:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m interactive_things_code.suspend_complex"
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/io_suspend_complex.py"
     Enter
     Sleep 6s

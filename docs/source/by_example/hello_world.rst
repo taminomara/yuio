@@ -9,7 +9,7 @@ Your first Yuio app
 
 Let's begin by setting up a very simple CLI app:
 
-.. literalinclude:: hello_world_code/first_yuio_app.py
+.. literalinclude:: /../../examples/docs/hw_first_yuio_app.py
     :language: python
 
 
@@ -19,8 +19,12 @@ become CLI arguments, and their type hints are used to parse arguments. Let's ru
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m hello_world_code.first_yuio_app --greeting 'my friend'"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/hw_first_yuio_app.py \"
+    Enter
+    Tab
+    Type "--greeting 'my friend'"
     Enter
     Sleep 6s
 
@@ -30,7 +34,7 @@ Printing something colorful
 
 We want colors, so it's time to switch from bare :func:`print` to :mod:`yuio.io`:
 
-.. literalinclude:: hello_world_code/something_colorful.py
+.. literalinclude:: /../../examples/docs/hw_something_colorful.py
     :language: python
     :lines: 1-7
     :emphasize-lines: 2,6,7
@@ -38,8 +42,9 @@ We want colors, so it's time to switch from bare :func:`print` to :mod:`yuio.io`
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m hello_world_code.something_colorful"
+    Set FontSize 35
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/hw_something_colorful.py"
     Enter
     Sleep 6s
 
@@ -63,7 +68,7 @@ an option to output the greeting to a file.
 
 Well, :func:`yuio.app.field` and :func:`yuio.app.positional` got you there:
 
-.. literalinclude:: hello_world_code/flags.py
+.. literalinclude:: /../../examples/docs/hw_flags.py
     :language: python
     :lines: 1-13
     :emphasize-lines: 1,7,8
@@ -82,7 +87,7 @@ Adding help for CLI arguments
 
 Finally, let's add some help messages to document our CLI options:
 
-.. literalinclude:: hello_world_code/help.py
+.. literalinclude:: /../../examples/docs/hw_help.py
     :language: python
     :lines: 5-13
     :emphasize-lines: 3,5,8
@@ -93,10 +98,12 @@ can be just markdown docstrings!
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m hello_world_code.help -h"
+    Set FontSize 20
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/hw_help.py --help 2>&1 | less -R"
     Enter
-    Sleep 6s
+    Down@1s 6
+    Sleep 4s
 
 You can read about which markdown features Yuio supports
 in the documentation for :mod:`yuio.md`.

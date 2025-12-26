@@ -91,7 +91,7 @@ Argument groups
 You can use :class:`~yuio.config.Config` to group CLI arguments. This can help with
 encapsulation and reduce code duplication:
 
-.. literalinclude:: cli_code/config.py
+.. literalinclude:: /../../examples/docs/cli_config.py
     :language: python
     :lines: 1-19
     :emphasize-lines: 6,15
@@ -103,7 +103,7 @@ field. That is, ``ExecutorConfig.threads`` will be loaded from
 You can override this prefix by passing `flag` to :func:`yuio.app.field`,
 or disable prefixing by using :func:`yuio.app.inline`:
 
-.. literalinclude:: cli_code/config_inline.py
+.. literalinclude:: /../../examples/docs/cli_config_inline.py
     :language: python
     :lines: 11-18
     :emphasize-lines: 4
@@ -118,14 +118,16 @@ Yuio automatically separates CLI options into sections when you use nested
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m cli_code.config_inline -h"
+    Set FontSize 20
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/cli_config_inline.py --help 2>&1 | less -R"
     Enter
-    Sleep 6s
+    Down@1s 6
+    Sleep 4s
 
 You can disable this behavior by setting `help` to an empty string:
 
-.. literalinclude:: cli_code/config_no_group.py
+.. literalinclude:: /../../examples/docs/cli_config_no_group.py
     :language: python
     :lines: 11-17
     :emphasize-lines: 3
@@ -133,7 +135,7 @@ You can disable this behavior by setting `help` to an empty string:
 You can also assign groups for individual fields by passing
 :class:`~yuio.cli.HelpGroup` to :func:`yuio.app.field`:
 
-.. literalinclude:: cli_code/config_explicit_group.py
+.. literalinclude:: /../../examples/docs/cli_config_explicit_group.py
     :language: python
     :emphasize-lines: 4,11,16
 
@@ -144,7 +146,7 @@ Subcommands
 We can easily build apps with multiple subcommands
 by using :meth:`App.subcommand <yuio.app.App.subcommand>`:
 
-.. literalinclude:: cli_code/subcommands.py
+.. literalinclude:: /../../examples/docs/cli_subcommands.py
     :language: python
     :lines: 5-18
     :emphasize-lines: 5,10
@@ -163,7 +165,7 @@ or directly setting app properties.
 For example, let's add aliases for subcommands,
 and also an epilog section to our app's help:
 
-.. literalinclude:: cli_code/settings.py
+.. literalinclude:: /../../examples/docs/cli_settings.py
     :language: python
     :lines: 5-35
     :emphasize-lines: 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,22,27
@@ -173,10 +175,12 @@ This will result in the following help message:
 .. vhs-inline::
     :scale: 40%
 
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Type "python -m cli_code.settings -h"
+    Set FontSize 20
+    Source "docs/source/_tapes/_config.tape"
+    Type "python examples/docs/cli_settings.py --help 2>&1 | less -R"
     Enter
-    Sleep 6s
+    Down@1s 6
+    Sleep 4s
 
 
 Autocompletion
