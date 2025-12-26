@@ -27,7 +27,8 @@ Yuio got you.
 Features
 --------
 
--   Easy to setup CLI apps with autocompletion out of the box:
+-   Easy to setup CLI apps with autocompletion and helpful error messages
+    out of the box:
 
     .. code-block:: python
 
@@ -108,6 +109,9 @@ Contents
 
     internals/index
         For advanced use-cases.
+
+    cookbook/index
+        Recipes for common tasks.
 
     api
         Full Yuio API at a glance.

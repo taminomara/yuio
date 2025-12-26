@@ -864,6 +864,12 @@ class Option(abc.ABC, _t.Generic[T_cov]):
 
     """
 
+    allow_abbrev: bool
+    """
+    Allow abbreviation for this option.
+
+    """
+
     @abc.abstractmethod
     def process(
         self,
@@ -1242,6 +1248,7 @@ class BoolOption(ParserOption[bool]):
         parser: yuio.parse.Parser[bool] | None = None,
         merge: _t.Callable[[bool, bool], bool] | None = None,
         default: bool | yuio.Missing = yuio.MISSING,
+        allow_abbrev: bool = True,
     ):
         self.pos_flags = pos_flags
         self.neg_flags = neg_flags
@@ -1261,6 +1268,7 @@ class BoolOption(ParserOption[bool]):
             merge=merge,
             default=default,
             parser=parser or yuio.parse.Bool(),
+            allow_abbrev=allow_abbrev,
         )
 
     def process(
@@ -1381,6 +1389,7 @@ class ParseOneOption(ParserOption[T], _t.Generic[T]):
         parser: yuio.parse.Parser[T],
         merge: _t.Callable[[T, T], T] | None = None,
         default: T | yuio.Missing = yuio.MISSING,
+        allow_abbrev: bool = True,
     ):
         super().__init__(
             flags=flags,
@@ -1397,6 +1406,7 @@ class ParseOneOption(ParserOption[T], _t.Generic[T]):
             merge=merge,
             default=default,
             parser=parser,
+            allow_abbrev=allow_abbrev,
         )
 
     def process(
@@ -1444,6 +1454,7 @@ class ParseManyOption(ParserOption[T], _t.Generic[T]):
         parser: yuio.parse.Parser[T],
         merge: _t.Callable[[T, T], T] | None = None,
         default: T | yuio.Missing = yuio.MISSING,
+        allow_abbrev: bool = True,
     ):
         assert parser.supports_parse_many()
 
@@ -1466,6 +1477,7 @@ class ParseManyOption(ParserOption[T], _t.Generic[T]):
             merge=merge,
             default=default,
             parser=parser,
+            allow_abbrev=allow_abbrev,
         )
 
     def process(
@@ -1521,6 +1533,7 @@ class StoreConstOption(ValueOption[T], _t.Generic[T]):
         merge: _t.Callable[[T, T], T] | None = None,
         default: T | yuio.Missing = yuio.MISSING,
         const: T,
+        allow_abbrev: bool = True,
     ):
         self.const = const
 
@@ -1538,6 +1551,7 @@ class StoreConstOption(ValueOption[T], _t.Generic[T]):
             dest=dest,
             merge=merge,
             default=default,
+            allow_abbrev=allow_abbrev,
         )
 
     def process(
@@ -1572,6 +1586,7 @@ class CountOption(StoreConstOption[int]):
         show_if_inherited: bool = False,
         dest: str,
         default: int | yuio.Missing = yuio.MISSING,
+        allow_abbrev: bool = True,
     ):
         super().__init__(
             flags=flags,
@@ -1585,6 +1600,7 @@ class CountOption(StoreConstOption[int]):
             merge=lambda x, y: x + y,
             default=default,
             const=1,
+            allow_abbrev=allow_abbrev,
         )
 
     def format_metavar(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
@@ -1610,6 +1626,7 @@ class StoreTrueOption(StoreConstOption[bool]):
         show_if_inherited: bool = False,
         dest: str,
         default: bool | yuio.Missing = yuio.MISSING,
+        allow_abbrev: bool = True,
     ):
         super().__init__(
             flags=flags,
@@ -1623,6 +1640,7 @@ class StoreTrueOption(StoreConstOption[bool]):
             merge=None,
             default=default,
             const=True,
+            allow_abbrev=allow_abbrev,
         )
 
 
@@ -1645,6 +1663,7 @@ class StoreFalseOption(StoreConstOption[bool]):
         show_if_inherited: bool = False,
         dest: str,
         default: bool | yuio.Missing = yuio.MISSING,
+        allow_abbrev: bool = True,
     ):
         super().__init__(
             flags=flags,
@@ -1658,6 +1677,7 @@ class StoreFalseOption(StoreConstOption[bool]):
             merge=None,
             default=default,
             const=False,
+            allow_abbrev=allow_abbrev,
         )
 
 
@@ -1682,6 +1702,7 @@ class VersionOption(Option[_t.Never]):
         usage: yuio.Group | bool = yuio.GROUP,
         help: str | yuio.Disabled = "Print program version and exit.",
         help_group: HelpGroup | None = MISC_GROUP,
+        allow_abbrev: bool = True,
     ):
         super().__init__(
             flags=flags,
@@ -1694,6 +1715,7 @@ class VersionOption(Option[_t.Never]):
             help=help,
             help_group=help_group,
             show_if_inherited=True,
+            allow_abbrev=allow_abbrev,
         )
 
         self.version = version
@@ -1742,6 +1764,7 @@ class BugReportOption(Option[_t.Never]):
         usage: yuio.Group | bool = yuio.GROUP,
         help: str | yuio.Disabled = "Print environment data for bug report and exit.",
         help_group: HelpGroup | None = MISC_GROUP,
+        allow_abbrev: bool = True,
     ):
         super().__init__(
             flags=flags,
@@ -1754,6 +1777,7 @@ class BugReportOption(Option[_t.Never]):
             help=help,
             help_group=help_group,
             show_if_inherited=True,
+            allow_abbrev=allow_abbrev,
         )
 
         self.settings = settings
@@ -1795,6 +1819,7 @@ class CompletionOption(Option[_t.Never]):
         usage: yuio.Group | bool = yuio.GROUP,
         help: str | yuio.Disabled | None = None,
         help_group: HelpGroup | None = MISC_GROUP,
+        allow_abbrev: bool = True,
     ):
         if help is None:
             shells = yuio.string.Or(f"`{shell}`" for shell in self._SHELLS)
@@ -1813,6 +1838,7 @@ class CompletionOption(Option[_t.Never]):
             help=help,
             help_group=help_group,
             show_if_inherited=False,
+            allow_abbrev=allow_abbrev,
         )
 
     def process(
@@ -1929,6 +1955,7 @@ class HelpOption(Option[_t.Never]):
         usage: yuio.Group | bool = yuio.GROUP,
         help: str | yuio.Disabled = "Print this message and exit.",
         help_group: HelpGroup | None = MISC_GROUP,
+        allow_abbrev: bool = True,
     ):
         super().__init__(
             flags=flags,
@@ -1941,6 +1968,7 @@ class HelpOption(Option[_t.Never]):
             help=help,
             help_group=help_group,
             show_if_inherited=True,
+            allow_abbrev=allow_abbrev,
         )
 
     def process(
@@ -1983,11 +2011,7 @@ class HelpOption(Option[_t.Never]):
             list(inherited_options),
         )
 
-        ctx = yuio.io.make_repr_context()
-        if ctx.width > ctx.theme.fallback_width:
-            ctx.width = ctx.theme.fallback_width
-
-        yuio.io.raw(ctx.str(formatter), add_newline=True)
+        yuio.io.raw(formatter, add_newline=True)
         sys.exit(0)
 
 
@@ -2127,6 +2151,7 @@ class _SubCommandOption(ValueOption[str]):
             dest=dest,
             merge=None,
             default=yuio.MISSING,
+            allow_abbrev=False,
         )
 
         self.subcommands = subcommands
@@ -2195,6 +2220,10 @@ class _BoundOption:
     @property
     def required(self):
         return self.wrapped.required
+
+    @property
+    def allow_abbrev(self):
+        return self.wrapped.allow_abbrev
 
     def nth_metavar(self, n: int) -> str:
         return self.wrapped.nth_metavar(n)
@@ -2414,6 +2443,13 @@ class CliParser(_t.Generic[NamespaceT]):
             if len(candidates) == 1:
                 candidate = candidates[0]
                 opt = self._known_long_flags[candidate]
+                if not opt.allow_abbrev:
+                    raise ArgumentError(
+                        "Unknown flag <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>, did you mean %s?",
+                        flag,
+                        candidate,
+                        flag=self._make_flag(""),
+                    )
                 flag = self._make_flag(candidate)
                 if inline_arg is not None:
                     inline_arg = self._make_arg(

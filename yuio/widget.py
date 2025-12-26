@@ -134,7 +134,6 @@ import enum
 import functools
 import math
 import re
-import shutil
 import string
 import sys
 import typing
@@ -1035,9 +1034,9 @@ class RenderContext:
     def make_repr_context(
         self,
         *,
-        multiline: bool = False,
-        highlighted: bool = False,
-        max_depth: int = 5,
+        multiline: bool | None = None,
+        highlighted: bool | None = None,
+        max_depth: int | None = None,
         width: int | None = None,
     ) -> yuio.string.ReprContext:
         """
@@ -1082,7 +1081,9 @@ class RenderContext:
         if self._override_wh:
             width, height = self._override_wh
         else:
-            size = shutil.get_terminal_size()
+            size = yuio.term.get_terminal_size(
+                self._term.ostream, fallback=(self._theme.fallback_width, 24)
+            )
             width = size.columns
             height = size.lines
 

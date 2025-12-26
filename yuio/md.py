@@ -129,11 +129,8 @@ class MdFormatter:
     A simple markdown formatter suitable for displaying rich text in the terminal.
 
     :param ctx:
-        a :class:`~yuio.theme.Theme` or a :class:`~yuio.string.ReprContext`
-        that's used to colorize or wrap rendered markdown.
-    :param width:
-        maximum width for wrapping long paragraphs. If not given, it is inferred
-        via :func:`shutil.get_terminal_size`.
+        a :class:`~yuio.string.ReprContext` that's used to colorize or wrap
+        rendered markdown.
     :param allow_headings:
         if set to :data:`False`, headings are rendered as paragraphs.
 

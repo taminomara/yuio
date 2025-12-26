@@ -39,6 +39,10 @@
 
 Examples used in [Yuio By Example] manual.
 
+## Cook Book
+
+Examples used in [Cook Book] manual.
+
 [app]: ./app
 [custom_completer]: ./custom_completer
 [git.py]: ./git.py
@@ -60,3 +64,4 @@ Examples used in [Yuio By Example] manual.
 [widgets/multiselect.py]: ./widgets/multiselect.py
 [widgets/vertical_layout.py]: ./widgets/vertical_layout.py
 [Yuio By Example]: https://yuio.readthedocs.io/en/stable/by_example/index.html
+[Cook Book]: https://yuio.readthedocs.io/en/stable/cookbook/index.html

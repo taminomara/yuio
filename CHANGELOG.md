@@ -100,7 +100,7 @@ Large refactoring around lower-level APIs, making them more flexible.
   potential issues when Yuio programs running in CI are piped to somewhere else.
 
   To enable colors in GitHub, use `--force-colors` flag or set environment
-  variable `FORCE_COLORS`.
+  variable `FORCE_COLOR`.
 
 - 🔧 Improved `ColorizedString` to support no-wrap sequences and to avoid adding
   unnecessary color changes.

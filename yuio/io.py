@@ -568,12 +568,13 @@ def get_theme() -> yuio.theme.Theme:
 def make_repr_context(
     *,
     term: yuio.term.Term | None = None,
+    file: _t.TextIO | None = None,
     to_stdout: bool = False,
     to_stderr: bool = False,
     theme: yuio.theme.Theme | None = None,
-    multiline: bool = False,
-    highlighted: bool = False,
-    max_depth: int = 5,
+    multiline: bool | None = None,
+    highlighted: bool | None = None,
+    max_depth: int | None = None,
     width: int | None = None,
 ) -> yuio.string.ReprContext:
     """
@@ -582,6 +583,8 @@ def make_repr_context(
     :param term:
         terminal where to print this message. If not given, terminal from
         :func:`get_term` is used.
+    :param file:
+        shortcut for creating non-interactive `term` for a file.
     :param to_stdout:
         shortcut for setting `term` to ``stdout``.
     :param to_stderr:
@@ -592,17 +595,21 @@ def make_repr_context(
     :param multiline:
         sets initial value for
         :attr:`ReprContext.multiline <yuio.string.ReprContext.multiline>`.
+        Default is :data:`False`.
     :param highlighted:
         sets initial value for
         :attr:`ReprContext.highlighted <yuio.string.ReprContext.highlighted>`.
+        Default is :data:`False`.
     :param max_depth:
         sets initial value for
         :attr:`ReprContext.max_depth <yuio.string.ReprContext.max_depth>`.
+        Default is :data:`False`.
     :param width:
         sets initial value for
         :attr:`ReprContext.width <yuio.string.ReprContext.width>`.
         If not given, uses current terminal width or :attr:`Theme.fallback_width`
-        depending on whether `term` is attached to a TTY device.
+        depending on whether `term` is attached to a TTY device and whether colors
+        are supported by the target terminal.
 
     """
 
@@ -613,15 +620,19 @@ def make_repr_context(
 
     theme = manager.theme
     if term is None:
-        if to_stdout:
+        if file is not None:
+            term = yuio.term.get_term_from_stream(
+                file, sys.stdin, allow_env_overrides=False, query_terminal_theme=False
+            )
+        elif to_stdout:
             term = manager.out_term
         elif to_stderr:
             term = manager.err_term
         else:
             term = manager.term
-    if (
-        width is None
-        and term.ostream_interactive_support >= yuio.term.InteractiveSupport.BACKGROUND
+    if width is None and (
+        term.ostream_interactive_support >= yuio.term.InteractiveSupport.BACKGROUND
+        or term.supports_colors
     ):
         width = manager.rc.canvas_width
 
@@ -1085,16 +1096,21 @@ def raw(
     msg: yuio.string.Colorable,
     /,
     *,
-    term: yuio.term.Term | None = None,
-    to_stdout: bool = False,
-    to_stderr: bool = False,
-    theme: yuio.theme.Theme | None = None,
     ignore_suspended: bool = False,
     tag: str | None = None,
     exc_info: ExcInfo | bool | None = None,
     add_newline: bool = False,
     heading: bool = False,
     wrap: bool = False,
+    ctx: yuio.string.ReprContext | None = None,
+    term: yuio.term.Term | None = None,
+    to_stdout: bool = False,
+    to_stderr: bool = False,
+    theme: yuio.theme.Theme | None = None,
+    multiline: bool | None = None,
+    highlighted: bool | None = None,
+    max_depth: int | None = None,
+    width: int | None = None,
 ):
     """
     Print any :class:`~yuio.string.Colorable`.
@@ -1104,16 +1120,6 @@ def raw(
 
     :param msg:
         message to print.
-    :param term:
-        terminal where to print this message. If not given, terminal from
-        :func:`get_term` is used.
-    :param to_stdout:
-        shortcut for setting `term` to ``stdout``.
-    :param to_stderr:
-        shortcut for setting `term` to ``stderr``.
-    :param theme:
-        theme used to format the message. If not given, theme from
-        :func:`get_theme` is used.
     :param ignore_suspended:
         whether to ignore :class:`SuspendOutput` context.
     :param tag:
@@ -1137,6 +1143,35 @@ def raw(
     :param wrap:
         whether to wrap message before printing it.
 
+    :param ctx:
+    :param term:
+        if `ctx` is not given, sets terminal where to print this message. Default is
+        to use :func:`get_term`.
+    :param to_stdout:
+        shortcut for setting `term` to ``stdout``.
+    :param to_stderr:
+        shortcut for setting `term` to ``stderr``.
+    :param theme:
+        if `ctx` is not given, sets theme used to format the message. Default is
+        to use :func:`get_theme`.
+    :param multiline:
+        if `ctx` is not given, sets initial value for
+        :attr:`ReprContext.multiline <yuio.string.ReprContext.multiline>`.
+        Default is :data:`False`.
+    :param highlighted:
+        if `ctx` is not given, sets initial value for
+        :attr:`ReprContext.highlighted <yuio.string.ReprContext.highlighted>`.
+        Default is :data:`False`.
+    :param max_depth:
+        if `ctx` is not given, sets initial value for
+        :attr:`ReprContext.max_depth <yuio.string.ReprContext.max_depth>`.
+        Default is :data:`False`.
+    :param width:
+        if `ctx` is not given, sets initial value for
+        :attr:`ReprContext.width <yuio.string.ReprContext.width>`.
+        If not given, uses current terminal width or :attr:`Theme.fallback_width`
+        if terminal width can't be established.
+
     """
 
     if (term is not None) + to_stdout + to_stderr > 1:
@@ -1144,9 +1179,17 @@ def raw(
 
     manager = _manager()
 
-    ctx = make_repr_context(
-        term=term, to_stdout=to_stdout, to_stderr=to_stderr, theme=theme
-    )
+    if ctx is None:
+        ctx = make_repr_context(
+            term=term,
+            to_stdout=to_stdout,
+            to_stderr=to_stderr,
+            theme=theme,
+            multiline=multiline,
+            highlighted=highlighted,
+            max_depth=max_depth,
+            width=width,
+        )
 
     if tag and (decoration := ctx.get_msg_decoration(tag)):
         indent = yuio.string.ColorizedString(

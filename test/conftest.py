@@ -186,7 +186,8 @@ def setup_io(
     height: int,
 ):
     monkeypatch.setattr(
-        "shutil.get_terminal_size", lambda *_, **__: os.terminal_size((width, height))
+        "yuio.term.get_terminal_size",
+        lambda *_, **__: os.terminal_size((width, height)),
     )
 
     io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=enable_bg_updates)

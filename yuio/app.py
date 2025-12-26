@@ -319,6 +319,7 @@ import yuio.config
 import yuio.dbg
 import yuio.io
 import yuio.parse
+import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.util
@@ -954,17 +955,7 @@ class App(_t.Generic[C]):
             if self.bug_report:
                 options.append(yuio.cli.BugReportOption(app=self))
             options.append(yuio.cli.CompletionOption())
-            options.append(
-                yuio.cli.BoolOption(
-                    pos_flags=["--color"],
-                    neg_flags=["--no-color"],
-                    usage=yuio.GROUP,
-                    help="Enable or disable ANSI colors.",
-                    help_group=yuio.cli.MISC_GROUP,
-                    show_if_inherited=True,
-                    dest="_color",
-                )
-            )
+            options.append(_ColorOption())
 
         subcommands = {}
         for sub_app in self.__sub_apps.values():
@@ -1095,3 +1086,117 @@ def _run_custom_completer(command: yuio.cli.Command[_t.Any], raw_data: str, word
 
     if completer:
         yuio.complete._run_completer_at_index(completer, is_many, index, word)
+
+
+@dataclass(eq=False, kw_only=True)
+class _ColorOption(yuio.cli.Option[_t.Never]):
+    # `yuio.term` will scan `sys.argv` on its own, this option just checks format
+    # and adds help entry.
+
+    _ALLOWED_VALUES = (
+        "y",
+        "yes",
+        "true",
+        "1",
+        "n",
+        "no",
+        "false",
+        "0",
+        "ansi",
+        "ansi-256",
+        "ansi-true",
+    )
+
+    _PUBLIC_VALUES = (
+        ("true", "3-bit colors or higher"),
+        ("false", "disable colors"),
+        ("ansi", "force 3-bit colors"),
+        ("ansi-256", "force 8-bit colors"),
+        ("ansi-true", "force 24-bit colors"),
+    )
+
+    def __init__(self):
+        super().__init__(
+            flags=["--color", "--no-color"],
+            allow_inline_arg=True,
+            nargs=0,
+            required=False,
+            metavar=(),
+            mutex_group=None,
+            usage=yuio.GROUP,
+            help="Enable or disable ANSI colors.",
+            help_group=yuio.cli.MISC_GROUP,
+            show_if_inherited=True,
+            allow_abbrev=False,
+        )
+
+    def process(
+        self,
+        cli_parser: yuio.cli.CliParser[yuio.cli.Namespace],
+        flag: yuio.cli.Flag | None,
+        arguments: yuio.cli.Argument | list[yuio.cli.Argument],
+        ns: yuio.cli.Namespace,
+    ):
+        if isinstance(arguments, yuio.cli.Argument):
+            if flag and flag.value == "--no-color":
+                raise yuio.cli.ArgumentError(
+                    "This flag can't have arguments", flag=flag, arguments=arguments
+                )
+            if arguments.value.casefold() not in self._ALLOWED_VALUES:
+                raise yuio.cli.ArgumentError(
+                    "Can't parse `%r` as color, should be %s",
+                    arguments.value,
+                    yuio.string.Or(value for value, _ in self._PUBLIC_VALUES),
+                    flag=flag,
+                    arguments=arguments,
+                )
+
+    @functools.cached_property
+    def primary_short_flag(self):
+        return None
+
+    @functools.cached_property
+    def primary_long_flags(self):
+        return ["--color", "--no-color"]
+
+    def format_alias_flags(
+        self, ctx: yuio.string.ReprContext
+    ) -> list[yuio.string.ColorizedString] | None:
+        if self.flags is yuio.POSITIONAL:
+            return None
+
+        primary_flags = set(self.primary_long_flags or [])
+        if self.primary_short_flag:
+            primary_flags.add(self.primary_short_flag)
+
+        aliases: list[yuio.string.ColorizedString] = []
+        flag_color = ctx.get_color("hl/flag:sh-usage")
+        punct_color = ctx.get_color("hl/punct:sh-usage")
+        metavar_color = ctx.get_color("hl/metavar:sh-usage")
+        res = yuio.string.ColorizedString()
+        res.start_no_wrap()
+        res.append_color(flag_color)
+        res.append_str("--color")
+        res.end_no_wrap()
+        res.append_color(punct_color)
+        res.append_str("={")
+        sep = False
+        for value, _ in self._PUBLIC_VALUES:
+            if sep:
+                res.append_color(punct_color)
+                res.append_str("|")
+            res.append_color(metavar_color)
+            res.append_str(value)
+            sep = True
+        res.append_color(punct_color)
+        res.append_str("}")
+        aliases.append(res)
+        return aliases
+
+    def get_completer(self) -> tuple[yuio.complete.Completer | None, bool]:
+        return yuio.complete.Choice(
+            [
+                yuio.complete.Option(value, comment)
+                for value, comment in self._PUBLIC_VALUES
+            ]
+        ), False

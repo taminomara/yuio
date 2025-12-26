@@ -2010,13 +2010,14 @@ class ReprContext:
         theme that will be used to format messages.
     :param multiline:
         indicates that values rendered via `rich repr protocol`_
-        should be split into multiple lines.
+        should be split into multiple lines. Default is :data:`False`.
     :param highlighted:
         indicates that values rendered via `rich repr protocol`_
         or via built-in :func:`repr` should be highlighted according to python syntax.
+         Default is :data:`False`.
     :param max_depth:
         maximum depth of nested containers, after which container's contents
-        are not rendered.
+        are not rendered. Default is ``5``.
     :param width:
         maximum width of the content, used when wrapping text, rendering markdown,
         or rendering horizontal rulers. If not given, defaults
@@ -2031,9 +2032,9 @@ class ReprContext:
         *,
         term: yuio.term.Term,
         theme: yuio.theme.Theme,
-        multiline: bool = False,
-        highlighted: bool = False,
-        max_depth: int = 5,
+        multiline: bool | None = None,
+        highlighted: bool | None = None,
+        max_depth: int | None = None,
         width: int | None = None,
     ):
         self.term = term
@@ -2048,26 +2049,26 @@ class ReprContext:
 
         """
 
-        self.multiline = multiline
+        self.multiline: bool = multiline if multiline is not None else False
         """
         Whether values rendered with :meth:`~ReprContext.repr` are split into multiple lines.
 
         """
 
-        self.highlighted = highlighted
+        self.highlighted: bool = highlighted if highlighted is not None else False
         """
         Whether values rendered with :meth:`~ReprContext.repr` are highlighted.
 
         """
 
-        self.max_depth = max_depth
+        self.max_depth: int = max_depth if max_depth is not None else 5
         """
         Maximum depth of nested containers, after which container's contents
         are not rendered.
 
         """
 
-        self.width = max(width or theme.fallback_width, 1)
+        self.width: int = max(width or theme.fallback_width, 1)
         """
         Maximum width of the content, used when wrapping text or rendering markdown.
 

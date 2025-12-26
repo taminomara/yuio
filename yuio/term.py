@@ -41,6 +41,10 @@ However, you can get a :class:`Term` object by using :func:`get_term_from_stream
 Utilities
 ---------
 
+.. autofunction:: stream_is_unicode
+
+.. autofunction:: get_terminal_size
+
 .. autofunction:: detect_ci
 
 .. autofunction:: detect_ci_color_support
@@ -82,6 +86,8 @@ __all__ = [
     "detect_ci",
     "detect_ci_color_support",
     "get_term_from_stream",
+    "get_terminal_size",
+    "stream_is_unicode",
 ]
 
 T = _t.TypeVar("T")
@@ -355,7 +361,12 @@ _CI_ENV_VARS = [
 
 
 def get_term_from_stream(
-    ostream: _t.TextIO, istream: _t.TextIO, /, *, query_terminal_theme: bool = True
+    ostream: _t.TextIO,
+    istream: _t.TextIO,
+    /,
+    *,
+    allow_env_overrides: bool = True,
+    query_terminal_theme: bool = True,
 ) -> Term:
     """
     Query info about a terminal attached to the given stream.
@@ -364,19 +375,23 @@ def get_term_from_stream(
         output stream.
     :param istream:
         input stream.
+    :param allow_env_overrides:
+        scan :data:`sys.argv` and :data:`os.environ` for color support overrides.
+        Note that overrides are always considered if `ostream` is attached to a TTY.
     :param query_terminal_theme:
-        By default, this function queries background, foreground, and text colors
+        by default, this function queries background, foreground, and text colors
         of the terminal if `ostream` and `istream` are connected to a TTY.
 
         Set this parameter to :data:`False` to disable querying.
 
     """
 
-    encoding = getattr(ostream, "encoding", None) or locale.getpreferredencoding()
-    is_unicode = "utf" in encoding or "unicode" in encoding
+    is_unicode = stream_is_unicode(ostream)
 
-    if "__YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ:  # pragma: no cover
-        # For building docs in github
+    if (
+        # For building docs in github.
+        allow_env_overrides and "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ
+    ):  # pragma: no cover
         return Term(
             ostream=ostream,
             istream=istream,
@@ -386,39 +401,31 @@ def get_term_from_stream(
             is_unicode=is_unicode,
         )
 
-    explicit_color_settings = _detect_explicit_color_settings()
-
     output_is_tty = _output_is_tty(ostream)
     output_is_fg = _is_foreground(ostream)
     input_is_tty = _input_is_tty(istream)
     input_is_fg = _is_foreground(istream)
-    term = os.environ.get("TERM", "").lower()
-    colorterm = os.environ.get("COLORTERM", "").lower()
     in_ci = detect_ci()
 
+    if allow_env_overrides or output_is_tty:
+        explicit_color_settings = _detect_explicit_color_settings()
+    else:
+        explicit_color_settings = None
+
     # Detect colors.
-    color_support = ColorSupport.NONE
-    if explicit_color_settings:
-        color_support = ColorSupport.ANSI
-    if output_is_tty and explicit_color_settings is not False:
-        if in_ci:
-            color_support = detect_ci_color_support()
-        elif os.name == "nt":
-            if _enable_vt_processing(ostream, istream):
-                color_support = ColorSupport.ANSI_TRUE
-        elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
-            color_support = ColorSupport.ANSI_TRUE
-        elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
-            if (
-                os.name == "posix"
-                and term == "xterm-256color"
-                and shutil.which("wslinfo")
-            ):
-                color_support = ColorSupport.ANSI_TRUE
-            else:
-                color_support = ColorSupport.ANSI_256
-        elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
-            color_support = ColorSupport.ANSI
+    match explicit_color_settings:
+        case None:
+            color_support = _detect_tty_color_support(
+                output_is_tty, in_ci, ostream, istream, fallback=ColorSupport.NONE
+            )
+        case False:
+            color_support = ColorSupport.NONE
+        case True:
+            color_support = _detect_tty_color_support(
+                output_is_tty, in_ci, ostream, istream, fallback=ColorSupport.ANSI
+            )
+        case _:
+            color_support = explicit_color_settings
 
     # Detect ostream capabilities.
     ostream_interactive_support = InteractiveSupport.NONE
@@ -457,7 +464,7 @@ def get_term_from_stream(
     )
 
 
-def _detect_explicit_color_settings():
+def _detect_explicit_color_settings() -> ColorSupport | bool | None:
     color_support = None
 
     if "FORCE_COLOR" in os.environ:
@@ -474,13 +481,103 @@ def _detect_explicit_color_settings():
         elif arg in ("--no-color", "--force-no-color"):
             color_support = False
         elif arg.startswith(("--color=", "--colors=")):
-            value = arg.split("=", maxsplit=1)[1].casefold()
+            value = (
+                arg.split("=", maxsplit=1)[1]
+                .replace("_", "")
+                .replace("-", "")
+                .casefold()
+            )
             if value in ["1", "yes", "true"]:
                 color_support = True
             elif value in ["0", "no", "false"]:
                 color_support = False
+            elif value == "ansi":
+                color_support = ColorSupport.ANSI
+            elif value == "ansi256":
+                color_support = ColorSupport.ANSI
+            elif value == "ansitrue":
+                color_support = ColorSupport.ANSI
 
     return color_support
+
+
+def _detect_tty_color_support(
+    output_is_tty: bool,
+    in_ci: bool,
+    ostream: _t.TextIO,
+    istream: _t.TextIO,
+    fallback: ColorSupport,
+) -> ColorSupport:
+    if output_is_tty:
+        term = os.environ.get("TERM", "").lower()
+        colorterm = os.environ.get("COLORTERM", "").lower()
+
+        if in_ci:
+            return detect_ci_color_support()
+        elif os.name == "nt":
+            if _enable_vt_processing(ostream, istream):
+                return ColorSupport.ANSI_TRUE
+        elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
+            return ColorSupport.ANSI_TRUE
+        elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
+            if (
+                os.name == "posix"
+                and term == "xterm-256color"
+                and shutil.which("wslinfo")
+            ):
+                return ColorSupport.ANSI_TRUE
+            else:
+                return ColorSupport.ANSI_256
+        elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
+            return ColorSupport.ANSI
+    return fallback
+
+
+def stream_is_unicode(stream: _t.TextIO, /) -> bool:
+    """
+    Determine of stream's encoding is some version of unicode.
+
+    """
+
+    encoding = getattr(stream, "encoding", None) or locale.getpreferredencoding()
+    return "utf" in encoding or "unicode" in encoding
+
+
+def get_terminal_size(stream: _t.TextIO, /, fallback: tuple[int, int] = (80, 24)):
+    """
+    Like :func:`shutil.get_terminal_size`, but uses given stream to query size instead
+    of relying on :data:`sys.stdout`.
+
+    :param stream:
+        stream that will be used to query terminal size.
+    :param fallback:
+        tuple with width and height that will be used if query fails.
+
+    """
+
+    try:
+        columns = int(os.environ["COLUMNS"])
+    except (KeyError, ValueError):
+        columns = 0
+
+    try:
+        lines = int(os.environ["LINES"])
+    except (KeyError, ValueError):
+        lines = 0
+
+    if columns <= 0 or lines <= 0:
+        try:
+            size = os.get_terminal_size(stream.fileno())
+        except (AttributeError, ValueError, OSError):
+            # stream is closed, detached, or not a terminal, or
+            # os.get_terminal_size() is unsupported
+            size = os.terminal_size(fallback)
+        if columns <= 0:
+            columns = size.columns or fallback[0]
+        if lines <= 0:
+            lines = size.lines or fallback[1]
+
+    return os.terminal_size((columns, lines))
 
 
 def detect_ci() -> bool:
