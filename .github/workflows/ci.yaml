@@ -54,10 +54,11 @@ jobs:
             3.13
             3.14
       - name: Install Zsh
-        if: ${{ matrix.type == 'test' }}
+        if: ${{ matrix.type == 'test' && matrix.os == 'ubuntu-latest' }}
         run: |
           sudo apt-get update
           sudo apt-get install zsh
+          sudo chmod -R 755 /usr/share/zsh
       - name: Test package
         if: ${{ matrix.type == 'test' }}
         run: |

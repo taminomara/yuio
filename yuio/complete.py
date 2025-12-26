@@ -1639,6 +1639,13 @@ def _write_zsh_script(
     needs_cache_cleanup = False
 
     zsh_completions_home = data_home / "zsh/completions"
+
+    if not zsh_completions_home.exists():
+        zsh_completions_home.mkdir(parents=True)
+        # Completions home needs rw-r--r--, otherwise zsh will not load
+        # our completion scripts.
+        zsh_completions_home.chmod(mode=0o755)
+
     script_dest = zsh_completions_home / ("_" + true_prog)
 
     if install:
@@ -1886,6 +1893,7 @@ def _write_script(
 
     path.parent.mkdir(exist_ok=True, parents=True)
     path.write_text(script)
+    path.chmod(0x755)
 
 
 def _read_script(script_name: str):
@@ -1930,4 +1938,5 @@ def _write_pwsh_loader(loader_path: pathlib.Path, data_dir: pathlib.Path):
 
     loader_template = loader_template.replace("@data@", str(data_dir))
     loader_path.write_text(loader_template)
+    loader_path.chmod(0x755)
     yuio.io.info("Wrote <c note>PowerShell</c> script to <c path>%s</c>", loader_path)

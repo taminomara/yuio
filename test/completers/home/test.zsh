@@ -16,6 +16,7 @@ setopt rcquotes
     zpty -w z source $1
     repeat 4; do
         zpty -r z line
+        # echo -E - $line >&2
         [[ $line == ok* ]] && return
     done
     echo 'error initializing.' >&2
@@ -26,7 +27,7 @@ PROMPT=
 
 # load completion system
 autoload compinit
-compinit -d "${ZDOTDIR:-~}/.zcompdump_capture"
+compinit -u -d "${ZDOTDIR:-~}/.zcompdump_capture"
 
 # never run a command
 bindkey ''^M'' undefined
