@@ -2,6 +2,8 @@ Set FontSize 26
 
 Source "docs/source/_tapes/_config.tape"
 
+Env "COLUMNS" "68"
+
 Hide
 Type "python"
 Enter
@@ -61,7 +63,7 @@ Ctrl+D
 Ctrl+L
 Show
 
-Sleep 1s
+Sleep 300ms
 Type "python examples/io_tasks_multithreaded.py"
 Enter
 Wait
@@ -71,7 +73,7 @@ Hide
 Ctrl+L
 Show
 
-Sleep 1s
+Sleep 300ms
 Type "python examples/io_prompt.py"
 Enter
 Sleep 1s
@@ -81,3 +83,16 @@ Enter
 Sleep 1s
 Enter
 Sleep 4s
+
+Hide
+Ctrl+L
+Show
+
+Sleep 300ms
+Type "python examples/app some-unknown-subcommand"
+Enter
+Sleep 2s
+Type "python examples/app --help 2>&1 | less -R"
+Enter
+Down@1s 8
+Sleep 2s

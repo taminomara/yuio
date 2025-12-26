@@ -2014,7 +2014,7 @@ class ReprContext:
     :param highlighted:
         indicates that values rendered via `rich repr protocol`_
         or via built-in :func:`repr` should be highlighted according to python syntax.
-         Default is :data:`False`.
+        Default is :data:`False`.
     :param max_depth:
         maximum depth of nested containers, after which container's contents
         are not rendered. Default is ``5``.

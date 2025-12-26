@@ -1169,7 +1169,8 @@ def raw(
     :param width:
         if `ctx` is not given, sets initial value for
         :attr:`ReprContext.width <yuio.string.ReprContext.width>`.
-        If not given, uses current terminal width or :attr:`Theme.fallback_width`
+        If not given, uses current terminal width
+        or :attr:`Theme.fallback_width <yuio.theme.Theme.fallback_width>`
         if terminal width can't be established.
 
     """
