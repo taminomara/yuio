@@ -6,8 +6,7 @@
   results:
   - --bug-report -- print environment data for bug report and exit
   - --color -- enable or disable ANSI colors
-  - '--completions -- install or update autocompletion scripts and exit.  Supported
-    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - --completions -- install or update autocompletion scripts and exit.
   - --help -- print this message and exit
   - --no-color -- enable or disable ANSI colors
   - --verbose -- increase output verbosity
@@ -19,8 +18,7 @@
   results:
   - --bug-report -- print environment data for bug report and exit
   - --color -- enable or disable ANSI colors
-  - '--completions -- install or update autocompletion scripts and exit.  Supported
-    shells: all, uninstall, bash, zsh, fish, or pwsh'
+  - --completions -- install or update autocompletion scripts and exit.
   - --help -- print this message and exit
   - --no-color -- enable or disable ANSI colors
   - --verbose -- increase output verbosity

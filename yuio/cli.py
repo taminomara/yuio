@@ -1888,9 +1888,6 @@ class CompletionOption(Option[_t.Never]):
                 # TODO: not sure if disabling help for inherited options is
                 # the best approach here.
                 help = yuio.DISABLED
-            if help is not yuio.DISABLED and (index := help.find("\n\n") != -1):
-                # Trim help to be one paragraph to keep it reasonably short.
-                help = help[:index]
             serializer.add_option(
                 flags=flags,
                 nargs=option.nargs,

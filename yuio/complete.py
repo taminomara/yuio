@@ -1206,6 +1206,8 @@ class _OptionSerializer(_CustomCompleterRegistrar):
             help = help[0].lower() + help[1:]
         if help.endswith(".") and not help.endswith(".."):
             help = help[:-1]
+        if (index := help.find("\n\n")) != -1:
+            help = help[:index]
         return yuio.string.strip_color_tags(help)
 
     @staticmethod
@@ -1642,7 +1644,7 @@ def _write_zsh_script(
 
     if not zsh_completions_home.exists():
         zsh_completions_home.mkdir(parents=True)
-        # Completions home needs rw-r--r--, otherwise zsh will not load
+        # Completions home needs rwxr-xr-x, otherwise zsh will not load
         # our completion scripts.
         zsh_completions_home.chmod(mode=0o755)
 
@@ -1893,7 +1895,7 @@ def _write_script(
 
     path.parent.mkdir(exist_ok=True, parents=True)
     path.write_text(script)
-    path.chmod(0x755)
+    path.chmod(0o755)
 
 
 def _read_script(script_name: str):
@@ -1938,5 +1940,5 @@ def _write_pwsh_loader(loader_path: pathlib.Path, data_dir: pathlib.Path):
 
     loader_template = loader_template.replace("@data@", str(data_dir))
     loader_path.write_text(loader_template)
-    loader_path.chmod(0x755)
+    loader_path.chmod(0o755)
     yuio.io.info("Wrote <c note>PowerShell</c> script to <c path>%s</c>", loader_path)

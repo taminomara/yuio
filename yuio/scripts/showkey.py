@@ -19,11 +19,11 @@ def main(
     raw: bool = yuio.app.field(default=False, flags=["-r", "--raw"]),
     #: When enabled, puts terminal into bracketed paste mode.
     bracketed_paste: bool = True,
-    #: When enabled, sets `modifyOtherKeys` resource to `2`.
+    #: When enabled, enables Kitty's key disambiguation protocol.
     modify_keyboard: bool = False,
 ):
     """
-    debug how Yuio parses escape sequences coming from the terminal
+    Debug how Yuio parses escape sequences coming from the terminal.
 
     """
 
