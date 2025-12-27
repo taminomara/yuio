@@ -1038,18 +1038,22 @@ class ColorizedString:
 
         """
 
+        nowrap_indent = ColorizedString()
+        nowrap_indent.start_no_wrap()
+        nowrap_continuation_indent = ColorizedString()
+        nowrap_continuation_indent.start_no_wrap()
         if isinstance(indent, int):
-            indent = ColorizedString(" " * indent)
+            nowrap_indent.append_str(" " * indent)
         else:
-            indent = ColorizedString(indent)
+            nowrap_indent += indent
         if continuation_indent is None:
-            continuation_indent = indent
+            nowrap_continuation_indent.append_colorized_str(nowrap_indent)
         elif isinstance(continuation_indent, int):
-            continuation_indent = ColorizedString(" " * continuation_indent)
+            nowrap_continuation_indent.append_str(" " * continuation_indent)
         else:
-            continuation_indent = ColorizedString(continuation_indent)
+            nowrap_continuation_indent += continuation_indent
 
-        if not indent and not continuation_indent:
+        if not nowrap_indent and not nowrap_continuation_indent:
             return self
 
         res = ColorizedString()
@@ -1064,8 +1068,8 @@ class ColorizedString:
                 if not line:
                     continue
                 if needs_indent:
-                    res.append_colorized_str(indent)
-                    indent = continuation_indent
+                    res.append_colorized_str(nowrap_indent)
+                    nowrap_indent = nowrap_continuation_indent
                 res.append_str(line)
                 needs_indent = line.endswith(("\n", "\r", "\v"))
 
@@ -1637,16 +1641,20 @@ class _TextWrapper:
         self.break_long_nowrap_words: bool = break_long_nowrap_words
         self.overflow: _t.Literal[False] | str = overflow
 
+        self.indent = ColorizedString()
+        self.indent.start_no_wrap()
+        self.continuation_indent = ColorizedString()
+        self.continuation_indent.start_no_wrap()
         if isinstance(indent, int):
-            self.indent = ColorizedString(" " * indent)
+            self.indent.append_str(" " * indent)
         else:
-            self.indent = ColorizedString(indent)
+            self.indent += indent
         if continuation_indent is None:
-            self.continuation_indent = self.indent
+            self.continuation_indent.append_colorized_str(self.indent)
         elif isinstance(continuation_indent, int):
-            self.continuation_indent = ColorizedString(" " * continuation_indent)
+            self.continuation_indent.append_str(" " * continuation_indent)
         else:
-            self.continuation_indent = ColorizedString(continuation_indent)
+            self.continuation_indent += continuation_indent
 
         self.lines: list[ColorizedString] = []
 
