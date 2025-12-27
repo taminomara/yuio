@@ -1,4 +1,5 @@
 import io
+import os
 import sys
 import textwrap
 
@@ -17,12 +18,22 @@ from .conftest import IOMocker, RcCompare
 
 class TestSetup:
     @pytest.fixture(autouse=True)
-    def setup(self, monkeypatch: pytest.MonkeyPatch):
+    def setup_io(self, width: int, height: int, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "yuio.term.get_terminal_size",
+            lambda *_, **__: os.terminal_size((width, height)),
+        )
         monkeypatch.setattr("yuio.io._IO_MANAGER", None)
         monkeypatch.setattr("yuio.io._STREAMS_WRAPPED", False)
         monkeypatch.setattr("yuio.io._ORIG_STDERR", None)
         monkeypatch.setattr("yuio.io._ORIG_STDOUT", None)
         monkeypatch.setattr("sys.argv", ["prog"])
+
+        yield
+
+        if yuio.io._IO_MANAGER is not None:
+            yuio.io._IO_MANAGER.stop()
+            yuio.io._IO_MANAGER = None
 
     def test_implicit(self, monkeypatch: pytest.MonkeyPatch):
         stdout = io.StringIO()

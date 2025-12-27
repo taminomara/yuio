@@ -801,6 +801,19 @@ class Option(abc.ABC, _t.Generic[T_cov]):
 
     """
 
+    allow_implicit_inline_arg: bool
+    """
+    Whether to allow specifying argument inline with short flags without equals sign
+    (i.e. :flag:`-fValue`).
+
+    Inline arguments are handled separately from normal arguments,
+    and :attr:`~Option.nargs` setting does not affect them.
+
+    Positional options can't take inline arguments, so this attribute has
+    no effect on them.
+
+    """
+
     nargs: NArgs
     """
     How many arguments this option takes.
@@ -1256,6 +1269,7 @@ class BoolOption(ParserOption[bool]):
         super().__init__(
             flags=pos_flags + neg_flags,
             allow_inline_arg=True,
+            allow_implicit_inline_arg=False,
             nargs=0,
             required=required,
             metavar=(),
@@ -1394,6 +1408,7 @@ class ParseOneOption(ParserOption[T], _t.Generic[T]):
         super().__init__(
             flags=flags,
             allow_inline_arg=True,
+            allow_implicit_inline_arg=True,
             nargs=1,
             required=required,
             metavar=parser.describe_or_def(),
@@ -1465,6 +1480,7 @@ class ParseManyOption(ParserOption[T], _t.Generic[T]):
         super().__init__(
             flags=flags,
             allow_inline_arg=True,
+            allow_implicit_inline_arg=True,
             nargs=nargs,
             required=required,
             metavar=parser.describe_many(),
@@ -1540,6 +1556,7 @@ class StoreConstOption(ValueOption[T], _t.Generic[T]):
         super().__init__(
             flags=flags,
             allow_inline_arg=False,
+            allow_implicit_inline_arg=False,
             nargs=0,
             required=required,
             metavar=(),
@@ -1707,6 +1724,7 @@ class VersionOption(Option[_t.Never]):
         super().__init__(
             flags=flags,
             allow_inline_arg=False,
+            allow_implicit_inline_arg=False,
             nargs=0,
             required=False,
             metavar=(),
@@ -1769,6 +1787,7 @@ class BugReportOption(Option[_t.Never]):
         super().__init__(
             flags=flags,
             allow_inline_arg=False,
+            allow_implicit_inline_arg=False,
             nargs=0,
             required=False,
             metavar=(),
@@ -1830,6 +1849,7 @@ class CompletionOption(Option[_t.Never]):
         super().__init__(
             flags=flags,
             allow_inline_arg=True,
+            allow_implicit_inline_arg=True,
             nargs="?",
             required=False,
             metavar="<shell>",
@@ -1960,6 +1980,7 @@ class HelpOption(Option[_t.Never]):
         super().__init__(
             flags=flags,
             allow_inline_arg=True,
+            allow_implicit_inline_arg=True,
             nargs=0,
             required=False,
             metavar=(),
@@ -2140,6 +2161,7 @@ class _SubCommandOption(ValueOption[str]):
         super().__init__(
             flags=yuio.POSITIONAL,
             allow_inline_arg=False,
+            allow_implicit_inline_arg=False,
             nargs=1 if subcommand_required else "?",
             required=False,
             metavar=metavar,
@@ -2212,6 +2234,10 @@ class _BoundOption:
     @property
     def allow_inline_arg(self):
         return self.wrapped.allow_inline_arg
+
+    @property
+    def allow_implicit_inline_arg(self):
+        return self.wrapped.allow_implicit_inline_arg
 
     @property
     def mutex_group(self):
@@ -2488,7 +2514,8 @@ class CliParser(_t.Generic[NamespaceT]):
                 inline_arg = arg[inline_arg_pos:]
                 break
             elif short_opts and (
-                short_opts[-1][0].allow_inline_arg or short_opts[-1][0].nargs != 0
+                short_opts[-1][0].allow_implicit_inline_arg
+                or short_opts[-1][0].nargs != 0
             ):
                 # Short flag with implicit argument.
                 inline_arg_pos = i + 1

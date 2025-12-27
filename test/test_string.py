@@ -19,7 +19,7 @@ def _touch_width(s: yuio.string.ColorizedString):
 
 
 @pytest.fixture(autouse=True)
-def set_repr_hl(theme):
+def setup_repr_hl(theme):
     theme.set_color("hl/kwd:repr", Color.FORE_RED)
     theme.set_color("hl/str:repr", Color.FORE_GREEN)
     theme.set_color("hl/str/esc:repr", Color.FORE_BLUE)

@@ -835,10 +835,6 @@ class TestMerge:
     class MyConfig(yuio.config.Config):
         x: int = yuio.config.field(default=1, merge=lambda l, r: l + r)
 
-    @pytest.fixture(autouse=True)
-    def setup(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("yuio.io._IO_MANAGER", None)
-
     def test_merge_ctor(self):
         c = self.MyConfig()
         assert c.x == 1

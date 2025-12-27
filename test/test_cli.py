@@ -213,6 +213,8 @@ class TestBoolOption:
             (["--no-verbose"], False),
             (["--verbose=true"], True),
             (["--verbose=false"], False),
+            (["-v=true"], True),
+            (["-v=false"], False),
         ],
     )
     def test_bool_variants(self, args, expected):
@@ -222,6 +224,10 @@ class TestBoolOption:
     def test_explicit_value_with_negative_flag_raises(self):
         with pytest.raises(yuio.cli.ArgumentError):
             parse_args([bool_option()], ["--no-verbose=false"])
+
+    def test_implicit_value_with_short_flag_raises(self):
+        with pytest.raises(yuio.cli.ArgumentError):
+            parse_args([bool_option()], ["-vfalse"])
 
 
 class TestStoreConstOption:
@@ -392,6 +398,17 @@ class TestShortFlagCombinations:
             store_true_option(["-l"], "long"),
             store_true_option(["-a"], "all"),
             store_true_option(["-h"], "human"),
+        ]
+        ns = parse_args(options, ["-lah"])
+        assert ns["long"] is True
+        assert ns["all"] is True
+        assert ns["human"] is True
+
+    def test_combined_bool_flags(self):
+        options = [
+            bool_option(["-l"], [], "long"),
+            bool_option(["-a"], [], "all"),
+            bool_option(["-h"], [], "human"),
         ]
         ns = parse_args(options, ["-lah"])
         assert ns["long"] is True

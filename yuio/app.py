@@ -372,8 +372,8 @@ __all__ = [
     "store_true_option",
 ]
 
-C = _t.TypeVar("C", bound=_t.Callable[..., None])
-C2 = _t.TypeVar("C2", bound=_t.Callable[..., None])
+C = _t.TypeVar("C", bound=_t.Callable[..., None | bool])
+C2 = _t.TypeVar("C2", bound=_t.Callable[..., None | bool])
 
 
 class AppError(yuio.PrettyException, Exception):
@@ -409,7 +409,7 @@ def app(
     is_dev_mode: bool | None = None,
 ) -> App[C]: ...
 def app(
-    command: _t.Callable[..., None] | None = None,
+    command: _t.Callable[..., None | bool] | None = None,
     /,
     *,
     prog: str | None = None,
@@ -806,7 +806,7 @@ class App(_t.Generic[C]):
 
     def subcommand(
         self,
-        cb: _t.Callable[..., None] | None = None,
+        cb: _t.Callable[..., None | bool] | None = None,
         /,
         *,
         name: str | None = None,
@@ -866,7 +866,7 @@ class App(_t.Generic[C]):
         else:
             return registrar(cb)
 
-    def run(self, args: _t.Sequence[str] | None = None) -> _t.NoReturn:
+    def run(self, args: list[str] | None = None) -> _t.NoReturn:
         """
         Parse arguments, set up :mod:`yuio.io` and :mod:`logging`,
         and run the application.
@@ -899,7 +899,7 @@ class App(_t.Generic[C]):
 
         try:
             cli_command = self.__make_cli_command(root=True)
-            namespace = yuio.cli.CliParser(cli_command).parse()
+            namespace = yuio.cli.CliParser(cli_command).parse(args)
 
             if self.is_dev_mode is None:
                 self.is_dev_mode = (
@@ -981,7 +981,9 @@ class App(_t.Generic[C]):
         )
 
 
-def _command_from_callable(cb: _t.Callable[..., None]) -> type[yuio.config.Config]:
+def _command_from_callable(
+    cb: _t.Callable[..., None | bool],
+) -> type[yuio.config.Config]:
     sig = inspect.signature(cb)
 
     dct = {}
@@ -1047,7 +1049,7 @@ def _command_from_callable(cb: _t.Callable[..., None]) -> type[yuio.config.Confi
 
 
 def _command_from_callable_run_impl(
-    cb: _t.Callable[..., None], params: list[str], accepts_command_info
+    cb: _t.Callable[..., None | bool], params: list[str], accepts_command_info
 ):
     def run(self, command_info):
         kw = {name: getattr(self, name) for name in params}
@@ -1119,6 +1121,7 @@ class _ColorOption(yuio.cli.Option[_t.Never]):
         super().__init__(
             flags=["--color", "--no-color"],
             allow_inline_arg=True,
+            allow_implicit_inline_arg=True,
             nargs=0,
             required=False,
             metavar=(),

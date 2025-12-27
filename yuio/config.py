@@ -548,6 +548,12 @@ class _FieldSettings:
 
         help_group = self.help_group
 
+        option_ctor = self.option_ctor
+        if option_ctor is not None and is_subconfig:
+            raise TypeError(
+                f"error in {qualname}: nested configs can't have option constructors"
+            )
+
         return _Field(
             default,
             parser,
@@ -561,6 +567,7 @@ class _FieldSettings:
             mutex_group,
             help_group,
             usage,
+            option_ctor,
         )
 
 
@@ -1623,7 +1630,7 @@ def bool_option(*, neg_flags: list[str] | None = None) -> OptionCtor[bool]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(f"error in {s.name}: BoolOption can't be a positional")
+            raise TypeError(f"error in {s.name}: BoolOption can't be positional")
         if neg_flags is None:
             _neg_flags = []
             for flag in s.flags:
@@ -1746,9 +1753,7 @@ def store_const_option(const: T) -> OptionCtor[T]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(
-                f"error in {s.name}: StoreConstOption can't be a positional"
-            )
+            raise TypeError(f"error in {s.name}: StoreConstOption can't be positional")
 
         return yuio.cli.StoreConstOption(
             flags=s.flags,
@@ -1797,7 +1802,7 @@ def count_option() -> OptionCtor[int]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(f"error in {s.name}: CountOption can't be a positional")
+            raise TypeError(f"error in {s.name}: CountOption can't be positional")
 
         return yuio.cli.CountOption(
             flags=s.flags,
@@ -1824,7 +1829,7 @@ def store_true_option() -> OptionCtor[bool]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(f"error in {s.name}: StoreTrueOption can't be a positional")
+            raise TypeError(f"error in {s.name}: StoreTrueOption can't be positional")
 
         return yuio.cli.StoreTrueOption(
             flags=s.flags,
@@ -1851,9 +1856,7 @@ def store_false_option() -> OptionCtor[bool]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(
-                f"error in {s.name}: StoreFalseOption can't be a positional"
-            )
+            raise TypeError(f"error in {s.name}: StoreFalseOption can't be positional")
 
         return yuio.cli.StoreFalseOption(
             flags=s.flags,
