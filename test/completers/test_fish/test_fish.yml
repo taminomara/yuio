@@ -1,0 +1,528 @@
+- cmd: '|'
+  results:
+  - args
+  - hidden
+- cmd: -|
+  results:
+  - "--bug-report\tprint environment data for bug report and exit"
+  - "--color\tenable or disable ANSI colors"
+  - "--completions\tinstall or update autocompletion scripts and exit."
+  - "--help\tprint this message and exit"
+  - "--no-color\tenable or disable ANSI colors"
+  - "--verbose\tincrease output verbosity"
+  - "--version\tprint program version and exit"
+  - "-V\tprint program version and exit"
+  - "-h\tprint this message and exit"
+  - "-v\tincrease output verbosity"
+  - "c\tsubcommand"
+- cmd: --|
+  results:
+  - "--bug-report\tprint environment data for bug report and exit"
+  - "--color\tenable or disable ANSI colors"
+  - "--completions\tinstall or update autocompletion scripts and exit."
+  - "--help\tprint this message and exit"
+  - "--no-color\tenable or disable ANSI colors"
+  - "--verbose\tincrease output verbosity"
+  - "--version\tprint program version and exit"
+  - "-V\tprint program version and exit"
+  - "-h\tprint this message and exit"
+  - "-v\tincrease output verbosity"
+  - "c\tsubcommand"
+- cmd: a|
+  results:
+  - args
+  - hidden
+- cmd: args |
+  results: []
+- cmd: args -|
+  results:
+  - --bool
+  - "--bug-report\tprint environment data for bug report and exit"
+  - "--color\tenable or disable ANSI colors"
+  - --custom
+  - --dict
+  - --dir
+  - --enum
+  - --enum-by-name
+  - --file
+  - --file-bash
+  - --git-ref
+  - --git-tag
+  - "--help\tprint this message and exit"
+  - --int
+  - --list
+  - --nested-dict
+  - --nested-list
+  - --nested-set
+  - --nested-tuple
+  - --no-bool
+  - "--no-color\tenable or disable ANSI colors"
+  - --one-of
+  - --override
+  - --set
+  - --special-chars
+  - --str
+  - --tuple
+  - --union
+  - "--verbose\tincrease output verbosity"
+  - "--version\tprint program version and exit"
+  - "-V\tprint program version and exit"
+  - "-h\tprint this message and exit"
+  - "-v\tincrease output verbosity"
+- cmd: args --bool|
+  results:
+  - --bool
+  - "--bug-report\tprint environment data for bug report and exit"
+  - "--color\tenable or disable ANSI colors"
+  - --custom
+  - --dict
+  - --dir
+  - --enum
+  - --enum-by-name
+  - --file
+  - --file-bash
+  - --git-ref
+  - --git-tag
+  - "--help\tprint this message and exit"
+  - --int
+  - --list
+  - --nested-dict
+  - --nested-list
+  - --nested-set
+  - --nested-tuple
+  - --no-bool
+  - "--no-color\tenable or disable ANSI colors"
+  - --one-of
+  - --override
+  - --set
+  - --special-chars
+  - --str
+  - --tuple
+  - --union
+  - "--verbose\tincrease output verbosity"
+  - "--version\tprint program version and exit"
+  - "-V\tprint program version and exit"
+  - "-h\tprint this message and exit"
+  - "-v\tincrease output verbosity"
+- cmd: args --bool=|
+  results:
+  - --bool=false
+  - --bool=no
+  - --bool=true
+  - --bool=yes
+- cmd: args --bool |
+  results: []
+- cmd: args --no-b|
+  results:
+  - --bool
+  - "--bug-report\tprint environment data for bug report and exit"
+  - "--color\tenable or disable ANSI colors"
+  - --custom
+  - --dict
+  - --dir
+  - --enum
+  - --enum-by-name
+  - --file
+  - --file-bash
+  - --git-ref
+  - --git-tag
+  - "--help\tprint this message and exit"
+  - --int
+  - --list
+  - --nested-dict
+  - --nested-list
+  - --nested-set
+  - --nested-tuple
+  - --no-bool
+  - "--no-color\tenable or disable ANSI colors"
+  - --one-of
+  - --override
+  - --set
+  - --special-chars
+  - --str
+  - --tuple
+  - --union
+  - "--verbose\tincrease output verbosity"
+  - "--version\tprint program version and exit"
+  - "-V\tprint program version and exit"
+  - "-h\tprint this message and exit"
+  - "-v\tincrease output verbosity"
+- cmd: args --int |
+  results: []
+- cmd: args --str |
+  results: []
+- cmd: args --enum |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --enum op|
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --override |
+  results:
+  - option-1
+  - option-2
+  - with space
+  - "with-comment\tmy comment"
+- cmd: args --override op|
+  results:
+  - option-1
+  - option-2
+  - with space
+  - "with-comment\tmy comment"
+- cmd: args --custom |
+  results:
+  - comp_1
+  - comp_2
+  - other_comp
+  - with spaces
+  - with:colon
+  - with=equals
+  - "with_comment\tmy comment"
+- cmd: args --custom c|
+  results:
+  - comp_
+- cmd: args --custom comp_|
+  results:
+  - comp_1
+  - comp_2
+- cmd: args --one-of |
+  results:
+  - bar
+  - baz
+  - foo
+- cmd: args --git-ref |
+  results:
+  - "main\tlocal branch"
+  - "v1.0.0\ttag"
+  - "v1.1.0\ttag"
+- cmd: args --git-tag |
+  results:
+  - "v1.0.0\ttag"
+  - "v1.1.0\ttag"
+- cmd: args --tuple |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --tuple x |
+  results:
+  - option_1
+  - option_2
+  - option_3
+  - option_4
+  - other_option
+- cmd: args --tuple x y |
+  results: []
+- cmd: args --tuple |x y
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x | y
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --list x --|
+  results:
+  - --bool
+  - "--bug-report\tprint environment data for bug report and exit"
+  - "--color\tenable or disable ANSI colors"
+  - --custom
+  - --dict
+  - --dir
+  - --enum
+  - --enum-by-name
+  - --file
+  - --file-bash
+  - --git-ref
+  - --git-tag
+  - "--help\tprint this message and exit"
+  - --int
+  - --list
+  - --nested-dict
+  - --nested-list
+  - --nested-set
+  - --nested-tuple
+  - --no-bool
+  - "--no-color\tenable or disable ANSI colors"
+  - --one-of
+  - --override
+  - --set
+  - --special-chars
+  - --str
+  - --tuple
+  - --union
+  - "--verbose\tincrease output verbosity"
+  - "--version\tprint program version and exit"
+  - "-V\tprint program version and exit"
+  - "-h\tprint this message and exit"
+  - "-v\tincrease output verbosity"
+- cmd: args --list x --one-of |
+  results:
+  - bar
+  - baz
+  - foo
+- cmd: args --list=|
+  results:
+  - --list=option_1
+  - --list=option_2
+  - --list=other_option
+- cmd: args --list=op|
+  results:
+  - --list=option_1
+  - --list=option_2
+  - --list=other_option
+- cmd: args --l|ist=op
+  results:
+  - --list=option_1
+  - --list=option_2
+  - --list=other_option
+- cmd: args --list=x |
+  results: []
+- cmd: args --set |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --set option_1 |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --set option_1 o| option_2
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: args --dict |
+  results:
+  - 'option_1:'
+  - 'option_2:'
+  - 'other_option:'
+- cmd: args --dict opt|
+  results:
+  - 'option_1:'
+  - 'option_2:'
+  - 'other_option:'
+- cmd: args --dict oth|
+  results:
+  - 'option_1:'
+  - 'option_2:'
+  - 'other_option:'
+- cmd: args --dict x:|
+  results:
+  - x:option_3
+  - x:option_4
+- cmd: args --dict opt|:xxx
+  results:
+  - option_1:xxx
+  - option_2:xxx
+  - other_option:xxx
+- cmd: args --dict oth|:xxx
+  results:
+  - option_1:xxx
+  - option_2:xxx
+  - other_option:xxx
+- cmd: args --nested-tuple |
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-tuple opt|
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-tuple oth|
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-tuple x,|
+  results:
+  - x,option_3
+  - x,option_4
+- cmd: args --nested-tuple x,opt|
+  results:
+  - x,option_3
+  - x,option_4
+- cmd: args --nested-tuple opt|,x
+  results:
+  - option_1,x
+  - option_2,x
+  - other_option,x
+- cmd: args --nested-tuple oth|,x
+  results:
+  - option_1,x
+  - option_2,x
+  - other_option,x
+- cmd: args --nested-list |
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-list opt|
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-list oth|
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-list x,|
+  results:
+  - x,option_1,
+  - x,option_2,
+  - x,other_option,
+- cmd: args --nested-list x,|,y
+  results:
+  - x,option_1,y
+  - x,option_2,y
+  - x,other_option,y
+- cmd: args --nested-list x,oth|,y
+  results:
+  - x,option_1,y
+  - x,option_2,y
+  - x,other_option,y
+- cmd: args --nested-set |
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-set opt|
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-set oth|
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-set x,|
+  results:
+  - x,option_1,
+  - x,option_2,
+  - x,other_option,
+- cmd: args --nested-set x,|,y
+  results:
+  - x,option_1,y
+  - x,option_2,y
+  - x,other_option,y
+- cmd: args --nested-set option_1,|,y
+  results:
+  - option_1,option_1,y
+  - option_1,option_2,y
+  - option_1,other_option,y
+- cmd: args --nested-set x,oth|,y
+  results:
+  - x,option_1,y
+  - x,option_2,y
+  - x,other_option,y
+- cmd: args --nested-set option_1,y opt|
+  results:
+  - option_1,
+  - option_2,
+  - other_option,
+- cmd: args --nested-set option_1,y option_1,opt|
+  results:
+  - option_1,option_1,
+  - option_1,option_2,
+  - option_1,other_option,
+- cmd: args --nested-dict |
+  results:
+  - option_1:,
+  - option_2:,
+  - other_option:,
+- cmd: args --nested-dict oth|
+  results:
+  - option_1:,
+  - option_2:,
+  - other_option:,
+- cmd: args --nested-dict x:|
+  results:
+  - x:option_3,
+  - x:option_4,
+- cmd: args --nested-dict x:o|
+  results:
+  - x:option_3,
+  - x:option_4,
+- cmd: args --nested-dict x:y,|
+  results:
+  - x:y,option_1:,
+  - x:y,option_2:,
+  - x:y,other_option:,
+- cmd: args --nested-dict x:y,o|ther:zzz
+  results:
+  - x:y,option_1:zzz,
+  - x:y,option_2:zzz,
+  - x:y,other_option:zzz,
+- cmd: args --union |
+  results:
+  - "option_1\t{option_1|option_2|other_option}"
+  - "option_2\t{option_1|option_2|other_option}"
+  - "option_3\t{option_3|option_4}"
+  - "option_4\t{option_3|option_4}"
+  - "other_option\t{option_1|option_2|other_option}"
+- cmd: args --union oth|
+  results:
+  - "option_1\t{option_1|option_2|other_option}"
+  - "option_2\t{option_1|option_2|other_option}"
+  - "option_3\t{option_3|option_4}"
+  - "option_4\t{option_3|option_4}"
+  - "other_option\t{option_1|option_2|other_option}"
+- cmd: args --enum-by-name |
+  results:
+  - option-1
+  - option-2
+  - other-option
+- cmd: args --special-chars |
+  results:
+  - foo"bar
+  - foo$bar
+  - foo'bar
+  - foo*bar
+  - foo:bar
+  - foo\bar
+- cmd: hidden |
+  results:
+  - option_3
+  - option_4
+- cmd: hidden --|
+  results:
+  - "--bug-report\tprint environment data for bug report and exit"
+  - "--color\tenable or disable ANSI colors"
+  - "--help\tprint this message and exit"
+  - "--no-color\tenable or disable ANSI colors"
+  - "--verbose\tincrease output verbosity"
+  - "--version\tprint program version and exit"
+  - "-V\tprint program version and exit"
+  - "-h\tprint this message and exit"
+  - "-v\tincrease output verbosity"
+  - '0'
+- cmd: hidden --secret |
+  results:
+  - option_1
+  - option_2
+  - other_option
+- cmd: hidden --secret x |
+  results:
+  - option_3
+  - option_4

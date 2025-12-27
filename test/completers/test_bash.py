@@ -20,13 +20,13 @@ def test_bash(test_cases, data_regression):
     subprocess.check_call(["comptest", "--completions", "bash"])
 
     results = []
-    for cword, prefix_len, args, orig in test_cases:
+    for cword, prefix_len, _, args, orig in test_cases:
         print(args)
         try:
             result = subprocess.check_output(
                 [
                     "bash",
-                    "-lc",
+                    "-c",
                     SCRIPT.format(
                         cword=cword + 1,
                         prefix_len=prefix_len + 9,

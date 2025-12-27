@@ -140,6 +140,7 @@ def _prepare_test_case(args_s: str):
     args = args_s.split()
     cword = 0
     prefix_len = 0
+    token_prefix_len = 0
     for i, arg in enumerate(args):
         if i > 0:
             prefix_len += 1
@@ -147,13 +148,14 @@ def _prepare_test_case(args_s: str):
             cword = i
             l, r = arg.split("|", maxsplit=1)
             prefix_len += len(l)
+            token_prefix_len = len(l)
             args[i] = l + r
             break
         else:
             prefix_len += len(arg)
     else:
         assert False, "can't find cursor"
-    return cword, prefix_len, args, args_s
+    return cword, prefix_len, token_prefix_len, args, args_s
 
 
 def extract_results(output: str):

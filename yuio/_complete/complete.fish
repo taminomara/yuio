@@ -7,7 +7,7 @@
 complete -c '@true_prog@' -f -a '(__yuio_compl__@prog@__complete)'
 
 function __yuio_compl__@prog@__complete
-    set words (commandline -pco; commandline -pct)
+    set words (commandline -pcx; commandline -ct)
 
     if set -q __yuio_compl__@prog@__cache__words \
             && [ "$words" = "$__yuio_compl__@prog@__cache__words" ]
@@ -121,7 +121,7 @@ function __yuio_compl__@prog@__complete
 
     set -g __yuio_compl__@prog@__compspec_i 6
 
-    set cursor (commandline -Cpt)
+    set cursor (commandline -Ct)
     if [ -n $word ]
         set word_prefix ''
         [ $cursor -gt 0 ] && set word_prefix (string sub -e $cursor -- $word)
@@ -259,12 +259,12 @@ function __yuio_compl__@prog@__complete_arg -a word cursor prefix suffix desc
                 end
                 if string match -q -- '*b*' $modes
                     for ref in (git for-each-ref --format='%(refname:short)' refs/heads)
-                        printf '%s\n' $prefix$ref$suffix\t'local Branch'
+                        printf '%s\n' $prefix$ref$suffix\t'local branch'
                     end
                 end
                 if string match -q -- '*r*' $modes
                     for ref in (git for-each-ref --format='%(refname:short)' refs/remotes)
-                        printf '%s\n' $prefix$ref$suffix\t'remote Branch'
+                        printf '%s\n' $prefix$ref$suffix\t'remote branch'
                     end
                 end
                 if string match -q -- '*t*' $modes
@@ -334,7 +334,7 @@ function __yuio_compl__@prog@__complete_arg -a word cursor prefix suffix desc
                 for i in (seq (math $pos - 1))
                     __yuio_compl__@prog@__complete_arg $word $cursor $prefix $suffix $desc --skip || return
                 end
-                [ $pos -lt $len ] && set suffix $delim$suffix
+                [ $pos -lt $len ] && [ -z "$word_suffix_parts[2]" ] && set suffix $delim$suffix
                 __yuio_compl__@prog@__complete_arg $word $cursor $prefix $suffix $desc || return
             end
         case tm
@@ -366,7 +366,7 @@ function __yuio_compl__@prog@__complete_arg -a word cursor prefix suffix desc
             end
         case cc
             # custom completer
-            set words (commandline -pco)
+            set words (commandline -pcx)
             set data (__yuio_compl__@prog@__compspec_pop) || return
             set choices ($words[1] --no-color --yuio-custom-completer-- $data $word) || return
             for choice in $choices
