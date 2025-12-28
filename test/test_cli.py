@@ -193,6 +193,7 @@ def parse_args(
     subcommand_required: bool = False,
     dest: str = "",
     ns_dest: str = "",
+    allow_abbrev: bool = False,
 ) -> dict[str, _t.Any]:
     command = make_command(
         options=options,
@@ -201,7 +202,7 @@ def parse_args(
         dest=dest,
         ns_dest=ns_dest,
     )
-    parser = yuio.cli.CliParser(command)
+    parser = yuio.cli.CliParser(command, allow_abbrev=allow_abbrev)
     return parser.parse(args or [])
 
 
@@ -507,7 +508,7 @@ class TestFlagAbbreviation:
         ],
     )
     def test_abbreviation_works(self, args, expected):
-        ns = parse_args([str_option(["--verbose"], "verbose")], args)
+        ns = parse_args([str_option(["--verbose"], "verbose")], args, allow_abbrev=True)
         assert ns["verbose"] == expected
 
     def test_ambiguous_abbreviation_error(self):
@@ -516,7 +517,12 @@ class TestFlagAbbreviation:
             store_true_option(["--version"], "version"),
         ]
         with pytest.raises(yuio.cli.ArgumentError):
-            parse_args(options, ["--ver"])
+            parse_args(options, ["--ver"], allow_abbrev=True)
+
+    def test_abbreviation_raises_if_disabled(self):
+        options = [str_option(["--verbose"], "verbose")]
+        with pytest.raises(yuio.cli.ArgumentError):
+            parse_args(options, ["--verb"], allow_abbrev=False)
 
 
 class TestPositionalArguments:
