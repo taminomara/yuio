@@ -964,7 +964,7 @@ class App(_t.Generic[C]):
                         usage=yuio.GROUP,
                         help="Increase output verbosity.",
                         help_group=yuio.cli.MISC_GROUP,
-                        show_if_inherited=True,
+                        show_if_inherited=False,
                         dest="_verbosity",
                     )
                 )
@@ -985,7 +985,7 @@ class App(_t.Generic[C]):
         return yuio.cli.Command(
             name=self.prog or pathlib.Path(sys.argv[0]).stem,
             desc=self.description or "",
-            help=self.help or "",
+            help=self.help if self.help is not None else "",
             epilog=self.epilog or "",
             usage=self.usage,
             options=options,
@@ -1145,7 +1145,7 @@ class _ColorOption(yuio.cli.Option[_t.Never]):
             usage=yuio.GROUP,
             help="Enable or disable ANSI colors.",
             help_group=yuio.cli.MISC_GROUP,
-            show_if_inherited=True,
+            show_if_inherited=False,
             allow_abbrev=False,
         )
 
@@ -1179,7 +1179,7 @@ class _ColorOption(yuio.cli.Option[_t.Never]):
         return ["--color", "--no-color"]
 
     def format_alias_flags(
-        self, ctx: yuio.string.ReprContext
+        self, ctx: yuio.string.ReprContext, /, *, all: bool = False,
     ) -> list[yuio.string.ColorizedString] | None:
         if self.flags is yuio.POSITIONAL:
             return None

@@ -960,14 +960,23 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         else:
             return None
 
-    def parse_help(self, ctx: yuio.string.ReprContext, /) -> yuio.md.AstBase | None:
+    def parse_help(
+        self, ctx: yuio.string.ReprContext, /, *, all: bool = False
+    ) -> yuio.md.AstBase | None:
         """
         Parse help for displaying it in LI help.
+
+        :param ctx:
+            repr context for formatting help.
+        :param all:
+            whether :flag:`--help=all` was specified.
+        :returns:
+            markdown AST.
 
         """
 
         help = yuio.md.parse(self.help or "", allow_headings=False)
-        if help_tail := self.format_help_tail(ctx):
+        if help_tail := self.format_help_tail(ctx, all=all):
             help.items.append(yuio.md.Raw(raw=help_tail))
 
         return help if help.items else None
@@ -979,6 +988,12 @@ class Option(abc.ABC, _t.Generic[T_cov]):
     ) -> tuple[_ColorizedString, bool]:
         """
         Allows customizing how this option looks in CLI usage.
+
+        :param ctx:
+            repr context for formatting help.
+        :returns:
+            a string that will be used to represent this option in program's
+            usage section.
 
         """
 
@@ -1006,6 +1021,12 @@ class Option(abc.ABC, _t.Generic[T_cov]):
     ) -> _ColorizedString:
         """
         Allows customizing how this option looks in CLI help.
+
+        :param ctx:
+            repr context for formatting help.
+        :returns:
+            a string that will be appended to the list of option's flags
+            to format an entry for this option in CLI help message.
 
         """
 
@@ -1040,13 +1061,18 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         return res
 
     def format_help_tail(
-        self,
-        ctx: yuio.string.ReprContext,
-        /,
+        self, ctx: yuio.string.ReprContext, /, *, all: bool = False
     ) -> _ColorizedString:
         """
         Format additional content that will be added to the end of the help message,
         such as aliases, default value, etc.
+
+        :param ctx:
+            repr context for formatting help.
+        :param all:
+            whether :flag:`--help=all` was specified.
+        :returns:
+            a string that will be appended to the main help message.
 
         """
 
@@ -1054,7 +1080,7 @@ class Option(abc.ABC, _t.Generic[T_cov]):
 
         base_color = ctx.get_color("msg/text:code/sh-usage")
 
-        if alias_flags := self.format_alias_flags(ctx):
+        if alias_flags := self.format_alias_flags(ctx, all=all):
             es = "" if len(alias_flags) == 1 else "es"
             res.append_str(f"Alias{es}: ")
             sep = False
@@ -1064,7 +1090,7 @@ class Option(abc.ABC, _t.Generic[T_cov]):
                 res.append_colorized_str(alias_flag.with_base_color(base_color))
                 sep = True
 
-        if default := self.format_default(ctx):
+        if default := self.format_default(ctx, all=all):
             if res:
                 res.append_str("; ")
             res.append_str("Default: ")
@@ -1076,11 +1102,18 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         return res
 
     def format_alias_flags(
-        self, ctx: yuio.string.ReprContext, /
+        self, ctx: yuio.string.ReprContext, /, *, all: bool = False
     ) -> list[_ColorizedString] | None:
         """
         Format alias flags that weren't included in :attr:`~Option.primary_short_flag`
         and :attr:`~Option.primary_long_flags`.
+
+        :param ctx:
+            repr context for formatting help.
+        :param all:
+            whether :flag:`--help=all` was specified.
+        :returns:
+            a list of strings, one per each alias.
 
         """
 
@@ -1102,10 +1135,17 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         return aliases
 
     def format_default(
-        self, ctx: yuio.string.ReprContext, /
+        self, ctx: yuio.string.ReprContext, /, *, all: bool = False
     ) -> _ColorizedString | None:
         """
         Format default value that will be included in the CLI help.
+
+        :param ctx:
+            repr context for formatting help.
+        :param all:
+            whether :flag:`--help=all` was specified.
+        :returns:
+            a string that will be appended to the main help message.
 
         """
 
@@ -1333,7 +1373,7 @@ class BoolOption(ParserOption[bool]):
         return flags
 
     def format_alias_flags(
-        self, ctx: yuio.string.ReprContext
+        self, ctx: yuio.string.ReprContext, *, all: bool = False
     ) -> list[_ColorizedString] | None:
         if self.flags is yuio.POSITIONAL:
             return None
@@ -1357,7 +1397,7 @@ class BoolOption(ParserOption[bool]):
             for pos_flag in self.pos_flags:
                 if not _is_short(pos_flag):
                     primary_pos_flag = pos_flag
-                break
+                    break
             punct_color = ctx.get_color("hl/punct:sh-usage")
             metavar_color = ctx.get_color("hl/metavar:sh-usage")
             res = _ColorizedString()
@@ -1517,6 +1557,31 @@ class ParseManyOption(ParserOption[T], _t.Generic[T]):
             ) from None
 
         self.set(ns, value)
+
+    def format_alias_flags(
+        self, ctx: yuio.string.ReprContext, /, *, all: bool = False
+    ) -> list[_ColorizedString] | None:
+        aliases = super().format_alias_flags(ctx, all=all) or []
+        if all:
+            flag = self.primary_short_flag
+            if not flag and self.primary_long_flags:
+                flag = self.primary_long_flags[0]
+            if not flag and self.flags:
+                flag = self.flags[0]
+            if flag:
+                res = _ColorizedString()
+                res.start_no_wrap()
+                res.append_color(ctx.get_color("hl/flag:sh-usage"))
+                res.append_str(flag)
+                res.end_no_wrap()
+                res.append_color(ctx.get_color("hl/punct:sh-usage"))
+                res.append_str("=")
+                res.append_color(ctx.get_color("hl/str:sh-usage"))
+                res.append_str("'")
+                res.append_str(self.parser.describe_or_def())
+                res.append_str("'")
+                aliases.append(res)
+        return aliases
 
     def get_completer(self) -> tuple[yuio.complete.Completer | None, bool]:
         return (self.parser.completer(), True)
@@ -1732,7 +1797,7 @@ class VersionOption(Option[_t.Never]):
             usage=usage,
             help=help,
             help_group=help_group,
-            show_if_inherited=True,
+            show_if_inherited=False,
             allow_abbrev=allow_abbrev,
         )
 
@@ -1795,7 +1860,7 @@ class BugReportOption(Option[_t.Never]):
             usage=usage,
             help=help,
             help_group=help_group,
-            show_if_inherited=True,
+            show_if_inherited=False,
             allow_abbrev=allow_abbrev,
         )
 
@@ -2851,7 +2916,9 @@ class _HelpFormatter:
 
     def format(self, ctx: yuio.string.ReprContext):
         res = _ColorizedString()
-        lines = _CliMdFormatter(ctx).format_node(yuio.md.Document(items=self.nodes))
+        lines = _CliMdFormatter(ctx, all=self.all).format_node(
+            yuio.md.Document(items=self.nodes)
+        )
         sep = False
         for line in lines:
             if sep:
@@ -2966,16 +3033,24 @@ def _format_metavar(metavar: str, ctx: yuio.string.ReprContext):
     return res
 
 
-_MAX_ARGS_COLUMN_WIDTH = 26
+_ARGS_COLUMN_WIDTH = 26
+_ARGS_COLUMN_WIDTH_NARROW = 8
 
 
 class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
     def __init__(
         self,
         ctx: yuio.string.ReprContext,
+        /,
+        *,
+        all: bool = False,
     ):
+        self.all = all
+
         self._heading_indent = contextlib.ExitStack()
-        self._args_column_width = _MAX_ARGS_COLUMN_WIDTH
+        self._args_column_width = (
+            _ARGS_COLUMN_WIDTH if ctx.width >= 80 else _ARGS_COLUMN_WIDTH_NARROW
+        )
 
         super().__init__(ctx, allow_headings=True)
 
@@ -3196,7 +3271,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             node.arg.format_metavar(self.ctx).with_base_color(self.base_color)
         )
 
-        help = node.arg.parse_help(self.ctx)
+        help = node.arg.parse_help(self.ctx, all=self.all)
 
         if help is None:
             self._line(self._indent + lead)
