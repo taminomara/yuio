@@ -390,7 +390,8 @@ def get_term_from_stream(
 
     if (
         # For building docs in github.
-        allow_env_overrides and "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ
+        allow_env_overrides
+        and "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ
     ):  # pragma: no cover
         return Term(
             ostream=ostream,
@@ -416,13 +417,13 @@ def get_term_from_stream(
     match explicit_color_settings:
         case None:
             color_support = _detect_tty_color_support(
-                output_is_tty, in_ci, ostream, istream, fallback=ColorSupport.NONE
+                output_is_tty, in_ci, ostream, istream, colors_explicitly_enabled=False
             )
         case False:
             color_support = ColorSupport.NONE
         case True:
             color_support = _detect_tty_color_support(
-                output_is_tty, in_ci, ostream, istream, fallback=ColorSupport.ANSI
+                output_is_tty, in_ci, ostream, istream, colors_explicitly_enabled=True
             )
         case _:
             color_support = explicit_color_settings
@@ -494,9 +495,9 @@ def _detect_explicit_color_settings() -> ColorSupport | bool | None:
             elif value == "ansi":
                 color_support = ColorSupport.ANSI
             elif value == "ansi256":
-                color_support = ColorSupport.ANSI
+                color_support = ColorSupport.ANSI_256
             elif value == "ansitrue":
-                color_support = ColorSupport.ANSI
+                color_support = ColorSupport.ANSI_TRUE
 
     return color_support
 
@@ -506,31 +507,33 @@ def _detect_tty_color_support(
     in_ci: bool,
     ostream: _t.TextIO,
     istream: _t.TextIO,
-    fallback: ColorSupport,
+    colors_explicitly_enabled: bool,
 ) -> ColorSupport:
-    if output_is_tty:
-        term = os.environ.get("TERM", "").lower()
-        colorterm = os.environ.get("COLORTERM", "").lower()
+    if not (output_is_tty or colors_explicitly_enabled):
+        return ColorSupport.NONE
 
-        if in_ci:
-            return detect_ci_color_support()
-        elif os.name == "nt":
-            if _enable_vt_processing(ostream, istream):
-                return ColorSupport.ANSI_TRUE
-        elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
+    term = os.environ.get("TERM", "").lower()
+    colorterm = os.environ.get("COLORTERM", "").lower()
+
+    if in_ci:
+        return detect_ci_color_support()
+    elif os.name == "nt":
+        if output_is_tty and _enable_vt_processing(ostream, istream):
             return ColorSupport.ANSI_TRUE
-        elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
-            if (
-                os.name == "posix"
-                and term == "xterm-256color"
-                and shutil.which("wslinfo")
-            ):
-                return ColorSupport.ANSI_TRUE
-            else:
-                return ColorSupport.ANSI_256
-        elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
-            return ColorSupport.ANSI
-    return fallback
+    elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
+        return ColorSupport.ANSI_TRUE
+    elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
+        if os.name == "posix" and term == "xterm-256color" and shutil.which("wslinfo"):
+            return ColorSupport.ANSI_TRUE
+        else:
+            return ColorSupport.ANSI_256
+    elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
+        return ColorSupport.ANSI
+
+    if colors_explicitly_enabled:
+        return ColorSupport.ANSI
+    else:
+        return ColorSupport.NONE
 
 
 def stream_is_unicode(stream: _t.TextIO, /) -> bool:

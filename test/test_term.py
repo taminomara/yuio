@@ -462,10 +462,33 @@ def test_term_capabilities(kwargs, can_query, can_render, can_run):
         ),
         (
             {
+                "env": {"TERM": "xterm", "COLORTERM": "truecolor"},
+            },
+            {
+                "color_support": yuio.color.ColorSupport.NONE,
+                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "terminal_theme": None,
+            },
+        ),
+        (
+            {
                 "args": ["--color"],
             },
             {
                 "color_support": yuio.color.ColorSupport.ANSI,
+                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "terminal_theme": None,
+            },
+        ),
+        (
+            {
+                "args": ["--color"],
+                "env": {"TERM": "xterm", "COLORTERM": "truecolor"},
+            },
+            {
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
@@ -501,6 +524,39 @@ def test_term_capabilities(kwargs, can_query, can_render, can_run):
             },
             {
                 "color_support": yuio.color.ColorSupport.ANSI,
+                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "terminal_theme": None,
+            },
+        ),
+        (
+            {
+                "args": ["--color=ansi"],
+            },
+            {
+                "color_support": yuio.color.ColorSupport.ANSI,
+                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "terminal_theme": None,
+            },
+        ),
+        (
+            {
+                "args": ["--color=ansi-256"],
+            },
+            {
+                "color_support": yuio.color.ColorSupport.ANSI_256,
+                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+                "terminal_theme": None,
+            },
+        ),
+        (
+            {
+                "args": ["--color=ansi-true"],
+            },
+            {
+                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
                 "terminal_theme": None,
