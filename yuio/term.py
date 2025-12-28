@@ -390,8 +390,7 @@ def get_term_from_stream(
 
     if (
         # For building docs in github.
-        allow_env_overrides
-        and "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ
+        allow_env_overrides and "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ
     ):  # pragma: no cover
         return Term(
             ostream=ostream,

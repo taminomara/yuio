@@ -786,7 +786,14 @@ def inline(
 
     """
 
-    return field(help=help, env="", flags="", usage=usage, show_if_inherited=show_if_inherited, help_group=help_group)
+    return field(
+        help=help,
+        env="",
+        flags="",
+        usage=usage,
+        show_if_inherited=show_if_inherited,
+        help_group=help_group,
+    )
 
 
 @_t.overload
