@@ -345,7 +345,7 @@ class MdFormatter:
             self.width,
             indent=self._indent,
             continuation_indent=self._continuation_indent,
-            preserve_newlines=False,
+            break_long_nowrap_words=True,
         ):
             self._line(line)
 
@@ -360,6 +360,7 @@ class MdFormatter:
             indent=self._indent,
             continuation_indent=self._continuation_indent,
             preserve_newlines=False,
+            break_long_nowrap_words=True,
         ):
             self._line(line)
 
@@ -1329,18 +1330,15 @@ SyntaxHighlighter.register_highlighter(
                     esac|coproc|select|function
                   )\b)
                 | (?P<prog>%\(prog\)s)                      # prog
-                | (?P<a0__punct>(?:^|\|\|?|&&|\$\())        # chaining operator: pipe or logic
-                  (?P<a1__>\s*)
-                  (?P<a2__prog>[\w./~]([\w.@/-]|\\.)+)      # prog
-                | (?P<metavar><[^>]+>)                      # metavar
                 | (?P<str>
                       '[^']*'                               # singly-quoted string
                     | "(?:\\.|[^\\"])*")                    # doubly-quoted string
                 | (?P<comment>\#.*$)                        # comment
                 | (?P<flag>(?<![\w-])
-                      -[-a-zA-Z0-9_]+\b                     # flag
+                      -[-\w]+\b                             # flag
                     | <options>                             # options
                   )
+                | (?P<metavar><[^>]+>)                      # metavar
                 | (?P<punct>[{}()\[\]\\;!&|])               # punctuation
             """,
             re.MULTILINE | re.VERBOSE,
