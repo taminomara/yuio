@@ -31,8 +31,6 @@
 - cmd: args -|
   results:
   - --bool
-  - --bug-report
-  - --color
   - --custom
   - --dict
   - --dir
@@ -50,7 +48,6 @@
   - --nested-set
   - --nested-tuple
   - --no-bool
-  - --no-color
   - --one-of
   - --override
   - --set
@@ -58,11 +55,7 @@
   - --str
   - --tuple
   - --union
-  - --verbose
-  - --version
-  - -V
   - -h
-  - -v
 - cmd: args --bool|
   results:
   - --bool
@@ -164,8 +157,6 @@
 - cmd: args --list x --|
   results:
   - --bool
-  - --bug-report
-  - --color
   - --custom
   - --dict
   - --dir
@@ -183,7 +174,6 @@
   - --nested-set
   - --nested-tuple
   - --no-bool
-  - --no-color
   - --one-of
   - --override
   - --set
@@ -191,8 +181,6 @@
   - --str
   - --tuple
   - --union
-  - --verbose
-  - --version
 - cmd: args --list x --one-of |
   results:
   - bar
@@ -396,12 +384,7 @@
   - option_4
 - cmd: hidden --|
   results:
-  - --bug-report
-  - --color
   - --help
-  - --no-color
-  - --verbose
-  - --version
 - cmd: hidden --secret |
   results:
   - option_1

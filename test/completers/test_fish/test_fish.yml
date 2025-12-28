@@ -37,8 +37,6 @@
 - cmd: args -|
   results:
   - --bool
-  - "--bug-report\tprint environment data for bug report and exit"
-  - "--color\tenable or disable ANSI colors"
   - --custom
   - --dict
   - --dir
@@ -56,7 +54,6 @@
   - --nested-set
   - --nested-tuple
   - --no-bool
-  - "--no-color\tenable or disable ANSI colors"
   - --one-of
   - --override
   - --set
@@ -64,16 +61,10 @@
   - --str
   - --tuple
   - --union
-  - "--verbose\tincrease output verbosity"
-  - "--version\tprint program version and exit"
-  - "-V\tprint program version and exit"
   - "-h\tprint this message and exit"
-  - "-v\tincrease output verbosity"
 - cmd: args --bool|
   results:
   - --bool
-  - "--bug-report\tprint environment data for bug report and exit"
-  - "--color\tenable or disable ANSI colors"
   - --custom
   - --dict
   - --dir
@@ -91,7 +82,6 @@
   - --nested-set
   - --nested-tuple
   - --no-bool
-  - "--no-color\tenable or disable ANSI colors"
   - --one-of
   - --override
   - --set
@@ -99,11 +89,7 @@
   - --str
   - --tuple
   - --union
-  - "--verbose\tincrease output verbosity"
-  - "--version\tprint program version and exit"
-  - "-V\tprint program version and exit"
   - "-h\tprint this message and exit"
-  - "-v\tincrease output verbosity"
 - cmd: args --bool=|
   results:
   - --bool=false
@@ -115,8 +101,6 @@
 - cmd: args --no-b|
   results:
   - --bool
-  - "--bug-report\tprint environment data for bug report and exit"
-  - "--color\tenable or disable ANSI colors"
   - --custom
   - --dict
   - --dir
@@ -134,7 +118,6 @@
   - --nested-set
   - --nested-tuple
   - --no-bool
-  - "--no-color\tenable or disable ANSI colors"
   - --one-of
   - --override
   - --set
@@ -142,11 +125,7 @@
   - --str
   - --tuple
   - --union
-  - "--verbose\tincrease output verbosity"
-  - "--version\tprint program version and exit"
-  - "-V\tprint program version and exit"
   - "-h\tprint this message and exit"
-  - "-v\tincrease output verbosity"
 - cmd: args --int |
   results: []
 - cmd: args --str |
@@ -240,8 +219,6 @@
 - cmd: args --list x --|
   results:
   - --bool
-  - "--bug-report\tprint environment data for bug report and exit"
-  - "--color\tenable or disable ANSI colors"
   - --custom
   - --dict
   - --dir
@@ -259,7 +236,6 @@
   - --nested-set
   - --nested-tuple
   - --no-bool
-  - "--no-color\tenable or disable ANSI colors"
   - --one-of
   - --override
   - --set
@@ -267,11 +243,7 @@
   - --str
   - --tuple
   - --union
-  - "--verbose\tincrease output verbosity"
-  - "--version\tprint program version and exit"
-  - "-V\tprint program version and exit"
   - "-h\tprint this message and exit"
-  - "-v\tincrease output verbosity"
 - cmd: args --list x --one-of |
   results:
   - bar
@@ -507,15 +479,8 @@
   - option_4
 - cmd: hidden --|
   results:
-  - "--bug-report\tprint environment data for bug report and exit"
-  - "--color\tenable or disable ANSI colors"
   - "--help\tprint this message and exit"
-  - "--no-color\tenable or disable ANSI colors"
-  - "--verbose\tincrease output verbosity"
-  - "--version\tprint program version and exit"
-  - "-V\tprint program version and exit"
   - "-h\tprint this message and exit"
-  - "-v\tincrease output verbosity"
   - '0'
 - cmd: hidden --secret |
   results:

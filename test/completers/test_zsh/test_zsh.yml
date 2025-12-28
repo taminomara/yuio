@@ -29,8 +29,6 @@
 - cmd: args |
   results:
   - --bool --
-  - --bug-report -- print environment data for bug report and exit
-  - --color -- enable or disable ANSI colors
   - --custom --
   - --dict --
   - --dir --
@@ -48,7 +46,6 @@
   - --nested-set --
   - --nested-tuple --
   - --no-bool --
-  - --no-color -- enable or disable ANSI colors
   - --one-of --
   - --override --
   - --set --
@@ -56,16 +53,10 @@
   - --str --
   - --tuple --
   - --union --
-  - --verbose -- increase output verbosity
-  - --version -- print program version and exit
-  - -V -- print program version and exit
   - -h -- print this message and exit
-  - -v -- increase output verbosity
 - cmd: args -|
   results:
   - --bool --
-  - --bug-report -- print environment data for bug report and exit
-  - --color -- enable or disable ANSI colors
   - --custom --
   - --dict --
   - --dir --
@@ -83,7 +74,6 @@
   - --nested-set --
   - --nested-tuple --
   - --no-bool --
-  - --no-color -- enable or disable ANSI colors
   - --one-of --
   - --override --
   - --set --
@@ -91,11 +81,7 @@
   - --str --
   - --tuple --
   - --union --
-  - --verbose -- increase output verbosity
-  - --version -- print program version and exit
-  - -V -- print program version and exit
   - -h -- print this message and exit
-  - -v -- increase output verbosity
 - cmd: args --bool|
   results:
   - --bool --
@@ -103,8 +89,6 @@
   results: []
 - cmd: args --bool |
   results:
-  - --bug-report -- print environment data for bug report and exit
-  - --color -- enable or disable ANSI colors
   - --custom --
   - --dict --
   - --dir --
@@ -121,7 +105,6 @@
   - --nested-list --
   - --nested-set --
   - --nested-tuple --
-  - --no-color -- enable or disable ANSI colors
   - --one-of --
   - --override --
   - --set --
@@ -129,11 +112,7 @@
   - --str --
   - --tuple --
   - --union --
-  - --verbose -- increase output verbosity
-  - --version -- print program version and exit
-  - -V -- print program version and exit
   - -h -- print this message and exit
-  - -v -- increase output verbosity
 - cmd: args --no-b|
   results:
   - --no-bool --
@@ -205,8 +184,6 @@
 - cmd: args --tuple x y |
   results:
   - --bool --
-  - --bug-report -- print environment data for bug report and exit
-  - --color -- enable or disable ANSI colors
   - --custom --
   - --dict --
   - --dir --
@@ -224,18 +201,13 @@
   - --nested-set --
   - --nested-tuple --
   - --no-bool --
-  - --no-color -- enable or disable ANSI colors
   - --one-of --
   - --override --
   - --set --
   - --special-chars --
   - --str --
   - --union --
-  - --verbose -- increase output verbosity
-  - --version -- print program version and exit
-  - -V -- print program version and exit
   - -h -- print this message and exit
-  - -v -- increase output verbosity
 - cmd: args --tuple |x y
   results: []
 - cmd: args --list |
@@ -258,8 +230,6 @@
 - cmd: args --list x --one-of |
   results:
   - --bool --
-  - --bug-report -- print environment data for bug report and exit
-  - --color -- enable or disable ANSI colors
   - --custom --
   - --dict --
   - --dir --
@@ -276,7 +246,6 @@
   - --nested-set --
   - --nested-tuple --
   - --no-bool --
-  - --no-color -- enable or disable ANSI colors
   - --one-of --
   - --override --
   - --set --
@@ -284,11 +253,7 @@
   - --str --
   - --tuple --
   - --union --
-  - --verbose -- increase output verbosity
-  - --version -- print program version and exit
-  - -V -- print program version and exit
   - -h -- print this message and exit
-  - -v -- increase output verbosity
 - cmd: args --list=|
   results: []
 - cmd: args --list=op|
@@ -298,8 +263,6 @@
 - cmd: args --list=x |
   results:
   - --bool --
-  - --bug-report -- print environment data for bug report and exit
-  - --color -- enable or disable ANSI colors
   - --custom --
   - --dict --
   - --dir --
@@ -317,7 +280,6 @@
   - --nested-set --
   - --nested-tuple --
   - --no-bool --
-  - --no-color -- enable or disable ANSI colors
   - --one-of --
   - --override --
   - --set --
@@ -325,11 +287,7 @@
   - --str --
   - --tuple --
   - --union --
-  - --verbose -- increase output verbosity
-  - --version -- print program version and exit
-  - -V -- print program version and exit
   - -h -- print this message and exit
-  - -v -- increase output verbosity
 - cmd: args --set |
   results:
   - option_1
@@ -492,12 +450,7 @@
   - option_4
 - cmd: hidden --|
   results:
-  - --bug-report -- print environment data for bug report and exit
-  - --color -- enable or disable ANSI colors
   - --help -- print this message and exit
-  - --no-color -- enable or disable ANSI colors
-  - --verbose -- increase output verbosity
-  - --version -- print program version and exit
 - cmd: hidden --secret |
   results:
   - option_3
