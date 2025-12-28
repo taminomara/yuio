@@ -11,7 +11,7 @@ from yuio.app import App, CommandInfo, app, field, inline, positional
 @pytest.fixture(autouse=True)
 def setup_io(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        "yuio.term.get_terminal_size",
+        "yuio.term.get_tty_size",
         lambda *_, **__: os.terminal_size((120, 24)),
     )
     monkeypatch.setattr(

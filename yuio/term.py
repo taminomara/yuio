@@ -43,7 +43,7 @@ Utilities
 
 .. autofunction:: stream_is_unicode
 
-.. autofunction:: get_terminal_size
+.. autofunction:: get_tty_size
 
 .. autofunction:: detect_ci
 
@@ -86,7 +86,7 @@ __all__ = [
     "detect_ci",
     "detect_ci_color_support",
     "get_term_from_stream",
-    "get_terminal_size",
+    "get_tty_size",
     "stream_is_unicode",
 ]
 
@@ -543,9 +543,9 @@ def stream_is_unicode(stream: _t.TextIO, /) -> bool:
     return "utf" in encoding or "unicode" in encoding
 
 
-def get_terminal_size(stream: _t.TextIO, /, fallback: tuple[int, int] = (80, 24)):
+def get_tty_size(stream: _t.TextIO, /, fallback: tuple[int, int] = (80, 24)):
     """
-    Like :func:`shutil.get_terminal_size`, but uses given stream to query size instead
+    Like :func:`shutil.get_tty_size`, but uses given stream to query size instead
     of relying on :data:`sys.stdout`.
 
     :param stream:
@@ -570,7 +570,7 @@ def get_terminal_size(stream: _t.TextIO, /, fallback: tuple[int, int] = (80, 24)
             size = os.get_terminal_size(stream.fileno())
         except (AttributeError, ValueError, OSError):
             # stream is closed, detached, or not a terminal, or
-            # os.get_terminal_size() is unsupported
+            # os.get_tty_size() is unsupported
             size = os.terminal_size(fallback)
         if columns <= 0:
             columns = size.columns or fallback[0]

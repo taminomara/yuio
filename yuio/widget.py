@@ -1081,7 +1081,7 @@ class RenderContext:
         if self._override_wh:
             width, height = self._override_wh
         else:
-            size = yuio.term.get_terminal_size(
+            size = yuio.term.get_tty_size(
                 self._term.ostream, fallback=(self._theme.fallback_width, 24)
             )
             width = size.columns

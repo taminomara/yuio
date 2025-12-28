@@ -186,7 +186,7 @@ def setup_io(
     height: int,
 ):
     monkeypatch.setattr(
-        "yuio.term.get_terminal_size",
+        "yuio.term.get_tty_size",
         lambda *_, **__: os.terminal_size((width, height)),
     )
 
