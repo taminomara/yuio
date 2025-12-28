@@ -187,15 +187,19 @@ class PrettyException(Exception):
 
 
 _logger = _logging.getLogger("yuio.internal")
+_logger.setLevel(_logging.DEBUG)
 _logger.propagate = False
 
 __stderr_handler = _logging.StreamHandler(_sys.__stderr__)
-__stderr_handler.setLevel("CRITICAL")
+__stderr_handler.setLevel(_logging.CRITICAL)
 _logger.addHandler(__stderr_handler)
 
 
 def enable_internal_logging(
-    path: str | None = None, level: str | int | None = None, propagate=None
+    path: str | None = None,
+    level: str | int | None = None,
+    propagate=None,
+    add_handler: bool = False,
 ):  # pragma: no cover
     """
     Enable Yuio's internal logging.
@@ -211,8 +215,13 @@ def enable_internal_logging(
     :param propagate:
         if given, enables or disables log message propagation from ``yuio.internal``
         and ``py.warning`` to the root logger.
+    :param add_handler:
+        if :data:`True`, adds yuio handler to the logging. This is useful if you wish
+        to see yuio log before main setup.
 
     """
+
+    warn_logger = _logging.getLogger("py.warnings")
 
     if path:
         if level is None:
@@ -225,20 +234,30 @@ def enable_internal_logging(
         )
         file_handler.setLevel(level)
         _logger.addHandler(file_handler)
-        _logging.getLogger("py.warnings").addHandler(file_handler)
+        warn_logger.addHandler(file_handler)
 
     _logging.captureWarnings(True)
     warnings.simplefilter("default", category=YuioWarning)
 
     if propagate is not None:
-        _logging.getLogger("py.warnings").propagate = propagate
+        warn_logger.propagate = propagate
         _logger.propagate = propagate
+
+    if add_handler:
+        import yuio.io
+
+        if not any(
+            isinstance(handler, yuio.io.Handler) for handler in _logger.handlers
+        ):
+            _logger.addHandler(yuio.io.Handler())
+        if not any(
+            isinstance(handler, yuio.io.Handler) for handler in warn_logger.handlers
+        ):
+            warn_logger.addHandler(yuio.io.Handler())
 
 
 _debug = "YUIO_DEBUG" in _os.environ or "YUIO_DEBUG_FILE" in _os.environ
 if _debug:  # pragma: no cover
-    enable_internal_logging(
-        path=_os.environ.get("YUIO_DEBUG_FILE") or "yuio.log", propagate=False
-    )
+    enable_internal_logging(path=_os.environ.get("YUIO_DEBUG_FILE") or "yuio.log")
 else:
     warnings.simplefilter("ignore", category=YuioWarning, append=True)

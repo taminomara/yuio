@@ -898,15 +898,15 @@ class App(_t.Generic[C]):
         yuio.io.setup(theme=self.theme, wrap_stdio=True)
 
         try:
-            cli_command = self.__make_cli_command(root=True)
-            namespace = yuio.cli.CliParser(cli_command).parse(args)
-
             if self.is_dev_mode is None:
                 self.is_dev_mode = (
                     self.version is not None and "dev" in self.version.casefold()
                 )
             if self.is_dev_mode:
-                yuio.enable_internal_logging(propagate=True)
+                yuio.enable_internal_logging(add_handler=True)
+
+            cli_command = self.__make_cli_command(root=True)
+            namespace = yuio.cli.CliParser(cli_command).parse(args)
 
             if self.setup_logging:
                 logging_level = {
