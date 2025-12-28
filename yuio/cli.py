@@ -2261,31 +2261,20 @@ class CliParser(_t.Generic[NamespaceT]):
 
     :param command:
         root command.
+    :param allow_abbrev:
+        allow abbreviating CLI flags if that doesn't create ambiguity.
 
     """
 
-    def __init__(self, command: Command[NamespaceT]) -> None:
+    def __init__(
+        self,
+        command: Command[NamespaceT],
+        /,
+        *,
+        allow_abbrev: bool = False,
+    ):
         self._root_command = command
-        self._current_command = command
-        self._current_path: list[str] = []
-        self._inherited_options: dict[str, Option[_t.Any]] = {}
-        self._allow_abbrev = True
-
-        self._seen_mutex_groups: dict[
-            MutuallyExclusiveGroup, tuple[_BoundOption, Flag]
-        ] = {}
-        self._mutex_groups: dict[MutuallyExclusiveGroup, list[Option[_t.Any]]] = {}
-
-        self._current_index = 0
-
-        self._known_long_flags: dict[str, _BoundOption] = {}
-        self._known_short_flags: dict[str, _BoundOption] = {}
-        self._positionals: list[_BoundOption] = []
-        self._current_positional: int = 0
-
-        self._current_flag: tuple[_BoundOption, Flag] | None = None
-        self._current_flag_args: list[Argument] = []
-        self._current_positional_args: list[Argument] = []
+        self._allow_abbrev = allow_abbrev
 
     def _load_command(self, command: Command[_t.Any], ns: Namespace):
         # All pending flags and positionals should've been flushed by now.
@@ -2372,7 +2361,26 @@ class CliParser(_t.Generic[NamespaceT]):
             raise
 
     def _parse(self, args: list[str]) -> NamespaceT:
-        self.__init__(self._root_command)
+        self._current_command = self._root_command
+        self._current_path: list[str] = []
+        self._inherited_options: dict[str, Option[_t.Any]] = {}
+
+        self._seen_mutex_groups: dict[
+            MutuallyExclusiveGroup, tuple[_BoundOption, Flag]
+        ] = {}
+        self._mutex_groups: dict[MutuallyExclusiveGroup, list[Option[_t.Any]]] = {}
+
+        self._current_index = 0
+
+        self._known_long_flags: dict[str, _BoundOption] = {}
+        self._known_short_flags: dict[str, _BoundOption] = {}
+        self._positionals: list[_BoundOption] = []
+        self._current_positional: int = 0
+
+        self._current_flag: tuple[_BoundOption, Flag] | None = None
+        self._current_flag_args: list[Argument] = []
+        self._current_positional_args: list[Argument] = []
+
         root_ns = self._root_command.ns_ctor()
         self._load_command(self._root_command, root_ns)
 
