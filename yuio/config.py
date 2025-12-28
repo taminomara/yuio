@@ -402,6 +402,7 @@ class _FieldSettings:
     mutex_group: MutuallyExclusiveGroup | None = None
     help_group: HelpGroup | None = None
     usage: yuio.Group | bool | None = None
+    show_if_inherited: bool | None = None
     option_ctor: _t.Callable[[OptionSettings], _t.Any] | None = None
 
     def _update_defaults(
@@ -543,8 +544,8 @@ class _FieldSettings:
             )
 
         usage = self.usage
-        if usage is None:
-            usage = True
+
+        show_if_inherited = self.show_if_inherited
 
         help_group = self.help_group
 
@@ -567,6 +568,7 @@ class _FieldSettings:
             mutex_group,
             help_group,
             usage,
+            show_if_inherited,
             option_ctor,
         )
 
@@ -585,6 +587,7 @@ class _Field:
     mutex_group: MutuallyExclusiveGroup | None
     help_group: HelpGroup | None
     usage: yuio.Group | bool | None
+    show_if_inherited: bool | None = None
     option_ctor: _t.Callable[[OptionSettings], _t.Any] | None = None
 
 
@@ -599,6 +602,7 @@ def field(
     required: bool | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
     help_group: HelpGroup | None = None,
+    show_if_inherited: bool | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> _t.Any: ...
 @_t.overload
@@ -616,6 +620,7 @@ def field(
     mutex_group: MutuallyExclusiveGroup | None = None,
     help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
+    show_if_inherited: bool | None = None,
     option_ctor: OptionCtor[T] | None = None,
 ) -> T | None: ...
 @_t.overload
@@ -633,6 +638,7 @@ def field(
     mutex_group: MutuallyExclusiveGroup | None = None,
     help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
+    show_if_inherited: bool | None = None,
     option_ctor: OptionCtor[T] | None = None,
 ) -> T: ...
 def field(
@@ -649,6 +655,7 @@ def field(
     mutex_group: MutuallyExclusiveGroup | None = None,
     help_group: HelpGroup | None = None,
     usage: yuio.Group | bool | None = None,
+    show_if_inherited: bool | None = None,
     option_ctor: _t.Callable[..., _t.Any] | None = None,
 ) -> _t.Any:
     """
@@ -760,6 +767,7 @@ def field(
         mutex_group=mutex_group,
         help_group=help_group,
         usage=usage,
+        show_if_inherited=show_if_inherited,
         option_ctor=option_ctor,
     )
 
@@ -767,6 +775,7 @@ def field(
 def inline(
     help: str | yuio.Disabled | None = None,
     usage: yuio.Group | bool | None = None,
+    show_if_inherited: bool | None = None,
     help_group: HelpGroup | None = None,
 ) -> _t.Any:
     """
@@ -777,7 +786,7 @@ def inline(
 
     """
 
-    return field(help=help, env="", flags="", usage=usage, help_group=help_group)
+    return field(help=help, env="", flags="", usage=usage, show_if_inherited=show_if_inherited, help_group=help_group)
 
 
 @_t.overload
@@ -1051,7 +1060,7 @@ class Config:
 
     @classmethod
     def _build_options(cls):
-        return cls.__build_options("", "", None, True)
+        return cls.__build_options("", "", None, True, False)
 
     @classmethod
     def __build_options(
@@ -1060,6 +1069,7 @@ class Config:
         dest_prefix: str,
         help_group: yuio.cli.HelpGroup | None,
         usage: yuio.Group | bool,
+        show_if_inherited: bool,
     ) -> list[yuio.cli.Option[_t.Any]]:
         options: list[yuio.cli.Option[_t.Any]] = []
 
@@ -1077,6 +1087,14 @@ class Config:
                 flags = [prefix + flag.lstrip("-") for flag in field.flags]
             else:
                 flags = field.flags
+
+            field_usage = field.usage
+            if field_usage is None:
+                field_usage = usage
+
+            field_show_if_inherited = field.show_if_inherited
+            if field_show_if_inherited is None:
+                field_show_if_inherited = show_if_inherited
 
             if field.is_subconfig:
                 assert flags is not yuio.POSITIONAL
@@ -1098,7 +1116,8 @@ class Config:
                         flags[0],
                         dest + ".",
                         subgroup,
-                        field.usage if field.usage is not None else usage,
+                        field_usage,
+                        field_show_if_inherited,
                     )
                 )
                 continue
@@ -1113,10 +1132,10 @@ class Config:
                     flags=flags,
                     required=field.required,
                     mutex_group=field.mutex_group,
-                    usage=field.usage if field.usage is not None else usage,
+                    usage=field_usage,
                     help=field.help,
                     help_group=field.help_group or help_group,
-                    show_if_inherited=False,  # TODO
+                    show_if_inherited=field_show_if_inherited,
                     merge=field.merge,
                     dest=dest,
                     default=field.default,
