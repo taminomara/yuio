@@ -121,41 +121,6 @@ with :func:`field` or :func:`inline`:
     only in apps.
 
 
-.. _custom-cli-options:
-
-Creating custom CLI options
----------------------------
-
-You can override default behavior and presentation of a CLI option by passing
-custom `option_ctor` to :func:`field`. Furthermore, you can create your own
-implementation of :class:`yuio.cli.Option` to further fine-tune how an option
-is parsed, presented in CLI help, etc.
-
-.. autofunction:: bool_option
-
-.. autofunction:: parse_one_option
-
-.. autofunction:: parse_many_option
-
-.. autofunction:: store_const_option
-
-.. autofunction:: count_option
-
-.. autofunction:: store_true_option
-
-.. autofunction:: store_false_option
-
-.. type:: OptionCtor
-    :canonical: typing.Callable[[OptionSettings], yuio.cli.Option[T]]
-
-    CLI option constructor. Takes a single positional argument
-    of type :class:`OptionSettings`, and returns an instance
-    of :class:`yuio.cli.Option`.
-
-.. autoclass:: OptionSettings
-    :members:
-
-
 App settings
 ------------
 
@@ -268,6 +233,139 @@ from the main function:
 
 .. autoclass:: CommandInfo
    :members:
+
+
+.. _flags-with-multiple-values:
+
+Handling options with multiple values
+-------------------------------------
+
+When you create an option with a container type, Yuio enables passing its values
+by specifying multiple arguments. For example:
+
+.. code-block:: python
+
+    @yuio.app.app
+    def main(list: list[int]):
+        print(list)
+
+Here, you can pass values to :flag:`--list` as separate arguments:
+
+.. code-block:: console
+
+    $ app --list 1 2 3
+    [1, 2, 3]
+
+If you specify value for :flag:`--list` inline, it will be handled as
+a delimiter-separated list:
+
+.. code-block:: console
+
+    $ app --list='1 2 3'
+    [1, 2, 3]
+
+This allows resolving ambiguities between flags and positional arguments:
+
+.. code-block:: console
+
+    $ app --list='1 2 3' subcommand
+
+Technically, :flag:`--list 1 2 3` causes Yuio to invoke
+``list_parser.parse_many(["1", "2", "3"])``, while :flag:`--list='1 2 3'` causes Yuio
+to invoke ``list_parser.parse("1 2 3")``.
+
+
+.. _flags-with-optional-values:
+
+Handling flags with optional values
+-----------------------------------
+
+When designing a CLI, one important question is how to handle flags with optional
+values, if at all. There are several things to consider:
+
+1.  Does a flag have clear and predictable behavior when its value is not specified?
+
+    For boolean flags the default behavior is obvious: :flag:`--use-gpu` will enable
+    GPU, i.e. it is equivalent to :flag:`--use-gpu=true`.
+
+    For flags that accept non-boolean values, though, things get messier. What will
+    a flag like :flag:`--n-threads` do? Will it calculate number of threads based on
+    available CPU cores? Will it use some default value?
+
+    In these cases, it is usually better to require a sentinel value:
+    :flag:`--n-threads=auto`.
+
+2.  Where should flag's value go, it it's provided?
+
+    We can only allow passing value inline, i.e. :flag:`--use-gpu=true`. Or we can
+    greedily take the following argument as flag's value, i.e. :flag:`--use-gpu true`.
+
+    The later approach has a significant downside: we don't know
+    whether the next argument was intended for the flag or for a free-standing option.
+
+    For example:
+
+    .. code-block:: console
+
+        $ my-renderer --color true  # is `true` meant for `--color`,
+        $                           # or is it a subcommand for `my-renderer`?
+
+Here's how Yuio handles this dilemma:
+
+1.  High level API does not allow creating flags with optional values.
+
+    To create one, you have to make a custom implementation of :class:`yuio.cli.Option`
+    and set its :attr:`~yuio.cli.Option.nargs` to ``"?"``. This will correspond
+    to the greedy approach.
+
+2.  Boolean flags allow specifying value inline, but not as a separate argument.
+
+3.  Yuio does not allow passing inline values to short boolean flags
+    without adding an equals sign. For example, :flag:`-ftrue` will not work,
+    while :flag:`-f=true` will.
+
+    This is done to enable grouping short flags: :flag:`ls -laH` should be parsed
+    as :flag:`ls -l -a -H`, not as :flag:`ls -l=aH`.
+
+4.  On lower levels of API, Yuio allows precise control over these behavior
+    by setting :attr:`Option.nargs <yuio.cli.Option.nargs>`,
+    :attr:`Option.allow_inline_arg <yuio.cli.Option.allow_inline_arg>`,
+    and :attr:`Option.allow_implicit_inline_arg <yuio.cli.Option.allow_implicit_inline_arg>`
+
+
+.. _custom-cli-options:
+
+Creating custom CLI options
+---------------------------
+
+You can override default behavior and presentation of a CLI option by passing
+custom `option_ctor` to :func:`field`. Furthermore, you can create your own
+implementation of :class:`yuio.cli.Option` to further fine-tune how an option
+is parsed, presented in CLI help, etc.
+
+.. autofunction:: bool_option
+
+.. autofunction:: parse_one_option
+
+.. autofunction:: parse_many_option
+
+.. autofunction:: store_const_option
+
+.. autofunction:: count_option
+
+.. autofunction:: store_true_option
+
+.. autofunction:: store_false_option
+
+.. type:: OptionCtor
+    :canonical: typing.Callable[[OptionSettings], yuio.cli.Option[T]]
+
+    CLI option constructor. Takes a single positional argument
+    of type :class:`OptionSettings`, and returns an instance
+    of :class:`yuio.cli.Option`.
+
+.. autoclass:: OptionSettings
+    :members:
 
 
 Re-imports
@@ -436,6 +534,10 @@ def app(
         overrides program's name, see :attr:`App.prog`.
     :param usage:
         overrides program's usage description, see :attr:`App.usage`.
+    :param description:
+        overrides program's description, see :attr:`App.description`.
+    :param epilog:
+        overrides program's epilog, see :attr:`App.epilog`.
     :param allow_abbrev:
         whether to allow abbreviating unambiguous flags, see :attr:`App.allow_abbrev`.
     :param subcommand_required:
@@ -447,10 +549,6 @@ def app(
     :param theme:
         overrides theme that will be used when setting up :mod:`yuio.io`,
         see :attr:`App.theme`.
-    :param description:
-        overrides program's description, see :attr:`App.description`.
-    :param epilog:
-        overrides program's epilog, see :attr:`App.epilog`.
     :param version:
         program's version, will be displayed using the :flag:`--version` flag.
     :param bug_report:

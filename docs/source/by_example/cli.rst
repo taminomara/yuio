@@ -45,6 +45,10 @@ We can invoke the original main function using :meth:`~yuio.app.App.wrapped`:
 
     main.wrapped(greeting="sunshine")
 
+.. tip::
+
+    Set :attr:`App.is_dev_mode <yuio.app.App.is_dev_mode>` to :data:`True`
+
 
 Positional arguments
 --------------------

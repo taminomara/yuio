@@ -17,18 +17,18 @@ classes and pass them to :class:`CliParser`.
 This module is inspired by :mod:`argparse`, but there are differences:
 
 -   all flags should start with ``-``, other symbols are not supported (at least
-    for now).
+    for now);
 
 -   unlike :mod:`argparse`, this module doesn't rely on partial parsing and sub-parses.
     Instead, it operates like a regular state machine, and any unmatched flags
-    or arguments are reported right away.
+    or arguments are reported right away;
 
 -   it uses nested namespaces, one namespace per subcommand. When a subcommand
     is encountered, a new namespace is created and assigned to the corresponding
-    :attr:`~ValueOption.dest` in the parent namespace.
+    :attr:`~ValueOption.dest` in the parent namespace;
 
 -   namespaces are abstracted away by the :class:`Namespace` protocol, which has an
-    interface similar to :class:`dict`.
+    interface similar to :class:`dict`;
 
 -   options from base command can be specified after a subcommand argument, unless
     subcommand shadows them. This is possible because we don't do partial parsing.
@@ -56,47 +56,19 @@ This module is inspired by :mod:`argparse`, but there are differences:
     supply arguments for options with ``nargs=0``, getting rid of ambiguity introduced
     by ``nargs="?"``.
 
-    Consider:
-
-    .. code-block:: console
-
-        $ prog --json subcommand
-
-    If :flag:`--json` has ``nargs="?"``, is :flag:`subcommand` an argument
-    for :flag:`--json`, or a free argument?
-
-    To avoid this dilemma, we don't use ``nargs="?"``. Instead, we set
-    :attr:`~Option.nargs` to ``"0"`` and :attr:`~Option.allow_inline_arg`
-    to :data:`True`:
-
-    .. code-block:: console
-
-        $ prog --json subcommand  # Equivalent to --json=true
-        $ prog --json=true subcommand
-        $ prog --json=false subcommand
-        $ prog --no-json subcommand  # Equivalent to --json=false
+    See :ref:`flags-with-optional-values` for details;
 
 -   the above point also allows us to disambiguate positional arguments
-    and arguments with ``nargs="*"``.
-
-    Here, :flag:`subcommand` will become an argument for :flag:`--array`:
+    and arguments with ``nargs="*"``:
 
     .. code-block:: console
 
-        $ prog --array a b c subcommand
+        $ prog --array='a b c' subcommand
 
-
-    We can pass arguments for :flag:`--array` inline, disambiguating them.
-    Yuio will see that argument for :flag:`--array` was passed inline, and will
-    use :meth:`~yuio.parse.Parser.parse` instead of :meth:`~yuio.parse.Parser.parse_many`
-    to split them:
-
-    .. code-block:: console
-
-        $ prog --array="a b c" subcommand
+    See :ref:`flags-with-multiple-values` for details;
 
 -   this parser tracks information about argument positions and offsets, allowing
-    it to display rich error messages.
+    it to display rich error messages;
 
 -   we expose more knobs to tweak help formatting; see functions on :class:`Option`
     for details.
