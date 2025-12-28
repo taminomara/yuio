@@ -3080,7 +3080,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
 
         usage = _ColorizedString()
         if node.cmd.usage:
-            usage = yuio.util.dedent(node.cmd.usage.strip())
+            usage = yuio.util.dedent(node.cmd.usage).rstrip()
             sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
 
             usage = sh_usage_highlighter.highlight(
