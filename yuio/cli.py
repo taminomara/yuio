@@ -1748,9 +1748,9 @@ class VersionOption(Option[_t.Never]):
         import yuio.io
 
         if self.version:
-            yuio.io.info(self.version)
+            yuio.io.raw(self.version, add_newline=True, to_stdout=True)
         else:
-            yuio.io.info("<unknown version>")
+            yuio.io.raw("<unknown version>", add_newline=True, to_stdout=True)
         sys.exit(0)
 
 
@@ -2032,7 +2032,7 @@ class HelpOption(Option[_t.Never]):
             list(inherited_options),
         )
 
-        yuio.io.raw(formatter, add_newline=True)
+        yuio.io.raw(formatter, add_newline=True, to_stdout=True)
         sys.exit(0)
 
 
