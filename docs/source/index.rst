@@ -27,14 +27,14 @@ Yuio got you.
 Features
 --------
 
--   Easy to setup CLI apps with autocompletion and helpful error messages
-    out of the box:
+-   Easy to setup CLI apps with autocompletion, helpful error messages,
+    and lots of customization points:
 
     .. code-block:: python
 
         @yuio.app.app
         def main(
-            #: input files for the program.
+            #: Input files for the program.
             inputs: list[pathlib.Path] = yuio.app.positional(),
         ):
             ...
@@ -62,13 +62,6 @@ Features
 
 -   User interactions, input parsing and simple widgets:
 
-    .. invisible-code-block: python
-
-        ostream = yuio.io.get_term().ostream
-        ostream.write("foobar\n")
-        ostream.seek(0)
-        del ostream
-
     .. code-block:: python
 
         answer = yuio.io.ask("What's your favorite treat?", default="waffles")
@@ -79,9 +72,11 @@ Features
 
     .. code-block:: python
 
+        from typing import Annotated
+
         class AppConfig(yuio.config.Config):
-            #: number of threads to use, default is auto-detect.
-            n_threads: int | None = None
+            #: Number of threads to use, default is auto-detect.
+            n_threads: Annotated[int, yuio.parse.Ge(1)] | None = None
 
         config = AppConfig()
         config.update(AppConfig.load_from_toml_file(path))
@@ -121,6 +116,8 @@ Contents
     :caption: Links
 
     GitHub <https://github.com/taminomara/yuio>
+    Issues <https://github.com/taminomara/yuio/issues>
+    Changelog <https://github.com/taminomara/yuio/blob/main/CHANGELOG.md>
 
 
 More examples

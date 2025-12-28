@@ -16,66 +16,74 @@ and run `pre-commit run clk` to replace:
 
 Large refactoring around lower-level APIs, making them more flexible.
 
-### Io
-
-- ✨ Added `yuio.io.hl`, `yuio.io.hr`.
-- ✨ Added underline, italic, inverse and blink text styles.
-- ✨ Supported colorized multiline repr.
-- ✨ Supported colorized string interpolation in `%` formatting.
-- ✨ Added formatting utilities like `yuio.string.Format` and others.
-- ✨ Added colorized log formatter (`yuio.io.Formatter`) that allows tweaking
-  logs appearance.
-- 🔧 Changed `yuio.io.edit`'s `comment_marker` parameter now defaults to `None`
-  to avoid confusion.
-- ⚡ Moved message formatting outside of IO lock, now `yuio.io.raw` and
-  `yuio.io.Format` handle all formatting and wrapping.
-- 🐛 Fixed quoting when invoking editor command from `$VISUAL` or `$EDITOR`.
-
-### App
+- 💥 Moved utility functions from top level to `yuio.util`.
 
 - 💥 Renamed `App.command` to `App.wrapped` to avoid confusion between
   `App.command` and `App.subcommand`.
+
+- 💥 Renamed `--force-color` to `--color`, allowed specifying exact level of
+  color support via e.g. `--color=ansi-256`.
+
+- 💥 Ditched `argparse` in favour of custom CLI parsing library `yuio.cli`.
+  Behavior of CLI parser could've changed.
+
+- 💥 Renamed and simplified parser methods.
+
+- 💥 Removed `yuio.exec.sh`, it's really not going to be portable.
+
+- 💥 Removed `skip_checks` parameter from constructor of `Repo`.
+
+- 💥 Split `yuio.term` into `yuio.term`, `yuio.color`, and `yuio.string`; renamed
+  a bunch of things.
+
+- 💥 Split `Theme.msg_decorations` into `Theme.msg_decorations_unicode` and
+  `Theme.msg_decorations_ascii`. One of them will be used depending on output
+  stream encoding.
+
+- ✨ Supported colorized multiline `str` and `repr`, supported Rich repr
+  protocol.
+
+- ✨ Added `yuio.PrettyException`.
+
+- ✨ Added `yuio.io.hl`, `yuio.io.hr`.
+
+- ✨ Added underline, italic, inverse and blink text styles.
+
+- ✨ Supported colorized string interpolation in `%` formatting.
+
+- ✨ Added formatting utilities like `yuio.string.Format` and others.
+
+- ✨ Added colorized log formatter (`yuio.io.Formatter`) that allows tweaking
+  logs appearance.
+
+- ✨ Improved recognition of color support, added additional setting for ASCII
+  message decorations for terminals that don't use unicode.
+
+- ✨ Added support for reading secret data without echoing it back to user.
+
+- ✨ Added support for formatting hyperlinks (for terminals that support them).
+
+- ✨ Added more control over CLI configuration, including a mechanism for
+  overriding behavior of CLI options via subclassing `yuio.cli.Option`.
+
 - ✨ Added `--bug-report` flag.
+
 - ✨ Added `is_dev_mode` setting, exposed function to configure Yuio's internal
   logging.
 
-### Config
+- ✨ Added tracking of source location when parsing. Parsing errors now know
+  where exactly an error has occurred.
 
-- ✨ Added a check to defect config fields without type annotations.
+- ✨ Added a check to detect config fields without type annotations.
+
 - ✨ Added `yuio.config.Config.to_json_value`.
-- 🔧 Field markers are now replaced with defaults upon config class creation, not
-  lazily like it was before.
-- 🔧 Improved error messages when loading configs from files.
 
-### Exec
-
-- 💥 Removed `yuio.exec.sh`, it's really not going to be portable.
 - ✨ Added `capture_io` and `logger` options to `yuio.io.exec`.
-- ⚡ Implemented communication with subprocesses using `select` call on unix
-  operating systems.
 
-### Git
-
-- 💥 Removed `skip_checks` parameter from constructor of `yuio.git.Repo`.
 - ✨ Added `GitExecError`, `GitUnavailableError`, `GitUnavailableError`.
-- 🔧 Allowed initializing `yuio.git.RefCompleter` without explicitly providing a
-  `Repo` class.
-- 🔧 Re-implemented `yuio.git.Repo.git` using `yuio.exec.exec`; renamed its
-  `capture_output` parameter ro `capture_io`.
-
-### Json Schema
 
 - ✨ Json schema for Enums now includes documentation for each member if it can
   be parsed.
-- 🔧 Switched from draft-2020 to draft-07 because VSCode still struggles with
-  some of 2020's features.
-
-### Term
-
-- 💥 Split `yuio.term` into `yuio.term`, `yuio.color`, and `yuio.string`.
-
-- 💥 Renamed `Term.terminal_colors` to `Term.terminal_theme`. Rename also affects
-  keyword arguments of `get_term_from_stream`
 
 - ✨ Markdown formatter and code highlighters will remove common indentation from
   source markdown by default. This can be disabled by setting flag
@@ -94,6 +102,27 @@ Large refactoring around lower-level APIs, making them more flexible.
 
 - ✨ Added `Term.is_unicode` flag.
 
+- ✨ Added warnings for recursive color definitions in a theme.
+
+- ✨ Added `Theme.check` that checks theme for consistency.
+
+- 🔧 Changed `yuio.io.edit`'s `comment_marker` parameter now defaults to `None`
+  to avoid confusion.
+
+- 🔧 Field markers are now replaced with defaults upon config class creation, not
+  lazily like it was before.
+
+- 🔧 Improved error messages when loading configs from files and envs.
+
+- 🔧 Allowed initializing `yuio.git.RefCompleter` without explicitly providing a
+  `Repo` class.
+
+- 🔧 Re-implemented `yuio.git.Repo.git` using `yuio.exec.exec`; renamed its
+  `capture_output` parameter ro `capture_io`.
+
+- 🔧 Switched from draft-2020 to draft-07 because VSCode still struggles with
+  some of 2020's features.
+
 - 🔧 Changed detection of terminal capabilities in CI to respect terminal's
   `isatty` output. This will disable colored output in GitHub Actions because
   [GitHub uses pipes instead of TTY emulation]. However, this will prevent
@@ -105,6 +134,16 @@ Large refactoring around lower-level APIs, making them more flexible.
 - 🔧 Improved `ColorizedString` to support no-wrap sequences and to avoid adding
   unnecessary color changes.
 
+- 🔧 Documented available message decorations and color paths.
+
+- ⚡ Moved message formatting outside of IO lock, now `yuio.io.raw` and
+  `yuio.io.Format` handle all formatting and wrapping.
+
+- ⚡ Implemented communication with subprocesses using `select` call on unix
+  operating systems.
+
+- 🐛 Fixed quoting when invoking editor command from `$VISUAL` or `$EDITOR`.
+
 - 🐛 Fixed highlighting of escape sequences in strings.
 
 - 🐛 Fixed a bug when pressing enter during Yuio initialization would cause
@@ -112,13 +151,11 @@ Large refactoring around lower-level APIs, making them more flexible.
 
 - 🐛 Improved parsing of ANSI escape codes that come from terminals.
 
-### Theme
-
-- ✨ Added warnings for recursive color definitions in a theme.
-- ✨ Added `Theme.check` that checks theme for consistency.
-- 🔧 Documented available message decorations and color paths.
 - 🐛 Improved loading themes from files, bringing this functionality closer to
   being stable.
+
+- 🐛 Fixed small bugs in fish and bash autocompletion scripts. Zsh is still a
+  mess, though.
 
 ## [2.0.0-rc0] - 2025-10-28
 
