@@ -416,6 +416,10 @@ def app(
     usage: str | None = None,
     description: str | None = None,
     epilog: str | None = None,
+    allow_abbrev: bool = False,
+    subcommand_required: bool = True,
+    setup_logging: bool = True,
+    theme: yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None = None,
     version: str | None = None,
     bug_report: yuio.dbg.ReportSettings | bool = False,
     is_dev_mode: bool | None = None,
@@ -432,6 +436,17 @@ def app(
         overrides program's name, see :attr:`App.prog`.
     :param usage:
         overrides program's usage description, see :attr:`App.usage`.
+    :param allow_abbrev:
+        whether to allow abbreviating unambiguous flags, see :attr:`App.allow_abbrev`.
+    :param subcommand_required:
+        whether this app requires a subcommand,
+        see :attr:`App.subcommand_required`.
+    :param setup_logging:
+        whether to perform basic logging setup on startup,
+        see :attr:`App.setup_logging`.
+    :param theme:
+        overrides theme that will be used when setting up :mod:`yuio.io`,
+        see :attr:`App.theme`.
     :param description:
         overrides program's description, see :attr:`App.description`.
     :param epilog:
@@ -455,6 +470,10 @@ def app(
             usage=usage,
             description=description,
             epilog=epilog,
+            allow_abbrev=allow_abbrev,
+            subcommand_required=subcommand_required,
+            setup_logging=setup_logging,
+            theme=theme,
             version=version,
             bug_report=bug_report,
             is_dev_mode=is_dev_mode,
@@ -556,18 +575,24 @@ class App(_t.Generic[C]):
         help: str | yuio.Disabled | None = None,
         description: str | None = None,
         epilog: str | None = None,
+        allow_abbrev: bool = False,
+        subcommand_required: bool = True,
+        setup_logging: bool = True,
+        theme: yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None = None,
         version: str | None = None,
         bug_report: yuio.dbg.ReportSettings | bool = False,
         is_dev_mode: bool | None = None,
     ):
         self.prog: str | None = prog
         """
-        Program or subcommand display name.
+        Program or subcommand's primary name.
 
-        By default, inferred from :data:`sys.argv` and subcommand names.
+        For main app, this controls its display name and generation of shell completion
+        scripts.
 
-        See `prog <https://docs.python.org/3/library/argparse.html#prog>`_
-        in :mod:`argparse`.
+        For subcommands, this is always equal to subcommand's main name.
+
+        By default, inferred from :data:`sys.argv` and subcommand name.
 
         """
 
@@ -615,11 +640,11 @@ class App(_t.Generic[C]):
            def main(): ...
 
            main.description = \"""
-           this command does a thing.
+           This command does a thing.
 
-           # different ways to do a thing
+           # Different ways to do a thing:
 
-           this command can apply multiple algorithms to achieve
+           This command can apply multiple algorithms to achieve
            a necessary state in which a thing can be done. This includes:
 
            - randomly turning the screen on and off;
@@ -635,9 +660,6 @@ class App(_t.Generic[C]):
 
         By default, inferred from command's docstring.
 
-        See `description <https://docs.python.org/3/library/argparse.html#description>`_
-        in :mod:`argparse`.
-
         """
 
         if help is None and description:
@@ -649,10 +671,7 @@ class App(_t.Generic[C]):
         """
         Short help message that is shown when listing subcommands.
 
-        By default, inferred from command's docstring.
-
-        See `help <https://docs.python.org/3/library/argparse.html#help>`_
-        in :mod:`argparse`.
+        By default, uses first paragraph of description.
 
         """
 
@@ -662,23 +681,17 @@ class App(_t.Generic[C]):
 
         Text format is identical to the one for :attr:`~App.description`.
 
-        See `epilog <https://docs.python.org/3/library/argparse.html#epilog>`_
-        in :mod:`argparse`.
-
         """
 
-        self.allow_abbrev: bool = False
+        self.allow_abbrev: bool = allow_abbrev
         """
         Allow abbreviating CLI flags if that doesn't create ambiguity.
 
         Disabled by default.
 
-        See `allow_abbrev <https://docs.python.org/3/library/argparse.html#allow-abbrev>`_
-        in :mod:`argparse`.
-
         """
 
-        self.subcommand_required: bool = True
+        self.subcommand_required: bool = subcommand_required
         """
         Require the user to provide a subcommand for this command.
 
@@ -688,7 +701,7 @@ class App(_t.Generic[C]):
 
         """
 
-        self.setup_logging: bool = True
+        self.setup_logging: bool = setup_logging
         """
         If :data:`True`, the app will call :func:`logging.basicConfig` during
         its initialization. Disable this if you want to customize
@@ -700,7 +713,7 @@ class App(_t.Generic[C]):
 
         self.theme: (
             yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
-        ) = None
+        ) = theme
         """
         A custom theme that will be passed to :func:`yuio.io.setup`
         on application startup.
@@ -815,6 +828,7 @@ class App(_t.Generic[C]):
         help: str | yuio.Disabled | None = None,
         description: str | None = None,
         epilog: str | None = None,
+        subcommand_required: bool = True,
     ) -> _t.Any:
         """
         Register a subcommand for the given app.
@@ -834,6 +848,9 @@ class App(_t.Generic[C]):
             overrides subcommand's description, see :attr:`App.description`.
         :param epilog:
             overrides subcommand's epilog, see :attr:`App.epilog`.
+        :param subcommand_required:
+            whether this subcommand requires another subcommand,
+            see :attr:`App.subcommand_required`.
         :returns:
             a new :class:`App` object for a subcommand.
 
@@ -848,9 +865,8 @@ class App(_t.Generic[C]):
                 help=help,
                 description=description,
                 epilog=epilog,
+                subcommand_required=subcommand_required,
             )
-
-            app.allow_abbrev = self.allow_abbrev
 
             self.__sub_apps[main_name] = App._SubApp(
                 app, main_name, aliases, is_primary=True
