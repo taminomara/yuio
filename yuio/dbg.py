@@ -282,15 +282,10 @@ def _terminal() -> Report:
 
     report = Report("Terminal and CLI")
 
-    term = yuio.io.get_term()
-    report.items.append(("color support", term.color_support.name))
-    report.items.append(("interactive output", term.ostream_interactive_support.name))
-    report.items.append(("interactive input", term.istream_interactive_support.name))
-    report.items.append(("has terminal theme", str(term.terminal_theme is not None)))
     report.items.append(("term", os.environ.get("TERM", "")))
     report.items.append(("colorterm", os.environ.get("COLORTERM", "")))
     report.items.append(("shell", os.environ.get("SHELL", "")))
-    report.items.append(("ci", str(yuio.term.detect_ci())))
+    report.items.append(("ci", repr(yuio.term.detect_ci())))
 
     if os.name != "nt":  # pragma: no cover
         with report_exc(report, "wsl"):
@@ -299,6 +294,26 @@ def _terminal() -> Report:
             except FileNotFoundError:
                 wslinfo = "None"
             report.items.append(("wsl", wslinfo))
+
+    report.items.append("Term")
+
+    term = yuio.io.get_term()
+    report.items.append(("color support", repr(term.color_support)))
+    report.items.append(("ostream", repr(term.ostream)))
+    report.items.append(("ostream is tty", repr(term.ostream_is_tty)))
+    report.items.append(("istream", repr(term.istream)))
+    report.items.append(("istream is tty", repr(term.istream_is_tty)))
+    report.items.append(("has terminal theme", repr(term.terminal_theme is not None)))
+
+    report.items.append("TTY")
+
+    yuio.term.get_tty()
+    report.items.append(("tty output", repr(getattr(yuio.term, "_TTY_OUTPUT", None))))
+    report.items.append(("tty input", repr(getattr(yuio.term, "_TTY_INPUT", None))))
+    report.items.append(
+        ("explicit colors", repr(getattr(yuio.term, "_EXPLICIT_COLOR_SUPPORT", None)))
+    )
+    report.items.append(("colors", repr(getattr(yuio.term, "_COLOR_SUPPORT", None))))
 
     return report
 

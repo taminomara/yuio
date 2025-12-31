@@ -1232,20 +1232,21 @@ _PY_SYNTAX = re.compile(
             )\b)
         | (?P<str>
             [rfut]*(                                # string prefix
-                '(?:\\.|[^\\'])*(?:'|\n)            # singly-quoted string
+                  '(?:\\.|[^\\'])*(?:'|\n)          # singly-quoted string
                 | "(?:\\.|[^\\"])*(?:"|\n)          # doubly-quoted string
                 | \"""(\\.|[^\\]|\n)*?\"""          # long singly-quoted string
                 | '''(\\.|[^\\]|\n)*?'''))          # long doubly-quoted string
         | (?P<lit>
-              [+-]?\d+(?:\.\d*(?:e[+-]?\d+)?)?      # int or float
-            | [+-]?\.\d+(?:e[+-]?\d+)?              # float that starts with dot
-            | [+-]?0x[0-9a-fA-F]+                   # hex
-            | [+-]?0b[01]+                          # bin
-            | \b(?!<\.)(?:None|True|False)\b)       # bool or none
+            (?<![\.\w])(
+                  [+-]?\d+(?:\.\d*(?:e[+-]?\d+)?)?  # int or float
+                | [+-]?\.\d+(?:e[+-]?\d+)?          # float that starts with dot
+                | [+-]?0x[0-9a-fA-F]+               # hex
+                | [+-]?0b[01]+                      # bin
+                | \b(?:None|True|False)\b))         # bool or none
         | (?P<type>
             \b(?:                                   # type
                 str|int|float|complex|list|tuple|range|dict|set|frozenset|bool|
-                bytes|bytearray|memoryview|(?:[A-Z](?:[a-z]\w*)?)
+                bytes|bytearray|memoryview|(?:[A-Z](?:[A-Z0-9_]*+[a-z]\w*)?)
             )\b)
         | (?P<punct>[{}()\[\]\\;,])                 # punctuation
         | (?P<comment>\#.*$)                        # comment

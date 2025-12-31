@@ -9,18 +9,24 @@ from sybil.parsers.codeblock import PythonCodeBlockParser
 from sybil.parsers.doctest import DocTestParser
 from sybil.parsers.rest import SkipParser
 
+import yuio.io
+import yuio.term
+
+_ORIG_FIND_TTY = yuio.term._find_tty
+
+
+def _find_tty():
+    yuio.term._TTY_OUTPUT = yuio.term._TTY_INPUT = None
+
 
 def _setup(*_args, **_kwargs):
-    import yuio.io
-    import yuio.term
-
+    yuio.term._find_tty = _find_tty
     yuio.io.setup(term=yuio.term.Term(io.StringIO(), io.StringIO()))
 
 
 def _teardown(*_args, **_kwargs):
-    import yuio.io
-
     yuio.io.restore_streams()
+    yuio.term._find_tty = _ORIG_FIND_TTY
 
 
 pytest_collect_file = Sybil(

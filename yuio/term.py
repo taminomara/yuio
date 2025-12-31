@@ -25,6 +25,8 @@ However, you can get a :class:`Term` object by using :func:`get_term_from_stream
 
 .. autofunction:: get_term_from_stream
 
+.. autofunction:: get_tty
+
 .. autoclass:: Term
    :members:
 
@@ -32,9 +34,6 @@ However, you can get a :class:`Term` object by using :func:`get_term_from_stream
    :members:
 
 .. autoclass:: Lightness
-   :members:
-
-.. autoclass:: InteractiveSupport
    :members:
 
 
@@ -62,14 +61,17 @@ Re-imports
 
 from __future__ import annotations
 
+import atexit
 import contextlib
 import dataclasses
 import enum
+import io
 import locale
 import os
 import re
 import shutil
 import sys
+import threading
 from dataclasses import dataclass
 
 import yuio
@@ -79,18 +81,35 @@ from yuio.color import ColorSupport
 
 __all__ = [
     "ColorSupport",
-    "InteractiveSupport",
     "Lightness",
     "Term",
     "TerminalTheme",
     "detect_ci",
     "detect_ci_color_support",
     "get_term_from_stream",
+    "get_tty",
     "get_tty_size",
     "stream_is_unicode",
 ]
 
 T = _t.TypeVar("T")
+
+
+_LOCK = threading.Lock()
+
+# These variables are set in `_prepare_tty`.
+_TTY_SETUP_PERFORMED: bool = False
+_TTY_OUTPUT: _t.TextIO | None
+_TTY_INPUT: _t.TextIO | None
+_TERMINAL_THEME: TerminalTheme | None
+_EXPLICIT_COLOR_SUPPORT: ColorSupport | bool | None
+_COLOR_SUPPORT: ColorSupport
+
+
+# Redefine canonical streams so that we don't monkeypatch `sys.__std*__` in tests.
+__stdin = sys.__stdin__
+__stdout = sys.__stdout__
+__stderr = sys.__stderr__
 
 
 class Lightness(enum.Enum):
@@ -117,33 +136,6 @@ class Lightness(enum.Enum):
     LIGHT = enum.auto()
     """
     Terminal background is light.
-
-    """
-
-
-class InteractiveSupport(enum.IntEnum):
-    """
-    Interactive capabilities of some input or output stream.
-
-    """
-
-    NONE = 0
-    """
-    Stream is not interactive, probably redirected to a file.
-
-    """
-
-    BACKGROUND = 1
-    """
-    Stream is not interactive. It's attached to a TTY, but this process runs
-    in background, or we're in CI.
-
-    """
-
-    INTERACTIVE = 2
-    """
-    Stream is user-facing, it's attached to a TTY, this process runs in foreground,
-    and we're not in CI.
 
     """
 
@@ -251,19 +243,21 @@ class Term:
 
     """
 
-    ostream_interactive_support: InteractiveSupport = dataclasses.field(
-        default=InteractiveSupport.NONE, kw_only=True
-    )
+    ostream_is_tty: bool = dataclasses.field(default=False, kw_only=True)
     """
-    Output's interactive capabilities.
+    Output is connecter to a terminal, and we're not in CI.
+
+    Note that output being connected to a TTY doesn't mean that it's interactive:
+    this process can be in background.
 
     """
 
-    istream_interactive_support: InteractiveSupport = dataclasses.field(
-        default=InteractiveSupport.NONE, kw_only=True
-    )
+    istream_is_tty: bool = dataclasses.field(default=False, kw_only=True)
     """
-    Input's interactive capabilities.
+    Output is connecter to a terminal, and we're not in CI.
+
+    Note that output being connected to a TTY doesn't mean that it's interactive:
+    this process can be in background.
 
     """
 
@@ -307,31 +301,14 @@ class Term:
         return self.color_support >= ColorSupport.ANSI_TRUE
 
     @property
-    def can_query_user(self) -> bool:
+    def is_tty(self) -> bool:
         """
-        Return :data:`True` if input and output is interactive. In this mode we can
-        interact with the user by writing and reading lines of text.
-
-        """
-
-        return (
-            self.istream_interactive_support >= InteractiveSupport.INTERACTIVE
-            and self.ostream_interactive_support >= InteractiveSupport.INTERACTIVE
-        )
-
-    @property
-    def can_render_widgets(self) -> bool:
-        """
-        Return :data:`True` if output is interactive and colors are supported. In this
-        mode we can show live widgets (i.e. progress bars and such) to the user,
-        but not necessarily read keystrokes.
+        Return :data:`True` if input and output are connected to a TTY. In this mode
+        we can interact with the user by writing and reading lines of text.
 
         """
 
-        return (
-            self.color_support >= ColorSupport.ANSI
-            and self.ostream_interactive_support >= InteractiveSupport.INTERACTIVE
-        )
+        return self.istream_is_tty and self.ostream_is_tty
 
     @property
     def can_run_widgets(self) -> bool:
@@ -341,11 +318,7 @@ class Term:
 
         """
 
-        return (
-            self.color_support >= ColorSupport.ANSI
-            and self.ostream_interactive_support >= InteractiveSupport.INTERACTIVE
-            and self.istream_interactive_support >= InteractiveSupport.INTERACTIVE
-        )
+        return self.color_support >= ColorSupport.ANSI and self.is_tty
 
 
 _CI_ENV_VARS = [
@@ -360,181 +333,6 @@ _CI_ENV_VARS = [
 ]
 
 
-def get_term_from_stream(
-    ostream: _t.TextIO,
-    istream: _t.TextIO,
-    /,
-    *,
-    allow_env_overrides: bool = True,
-    query_terminal_theme: bool = True,
-) -> Term:
-    """
-    Query info about a terminal attached to the given stream.
-
-    :param ostream:
-        output stream.
-    :param istream:
-        input stream.
-    :param allow_env_overrides:
-        scan :data:`sys.argv` and :data:`os.environ` for color support overrides.
-        Note that overrides are always considered if `ostream` is attached to a TTY.
-    :param query_terminal_theme:
-        by default, this function queries background, foreground, and text colors
-        of the terminal if `ostream` and `istream` are connected to a TTY.
-
-        Set this parameter to :data:`False` to disable querying.
-
-    """
-
-    is_unicode = stream_is_unicode(ostream)
-
-    if (
-        # For building docs in github.
-        allow_env_overrides and "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ
-    ):  # pragma: no cover
-        return Term(
-            ostream=ostream,
-            istream=istream,
-            color_support=ColorSupport.ANSI_TRUE,
-            ostream_interactive_support=InteractiveSupport.INTERACTIVE,
-            istream_interactive_support=InteractiveSupport.INTERACTIVE,
-            is_unicode=is_unicode,
-        )
-
-    output_is_tty = _output_is_tty(ostream)
-    output_is_fg = _is_foreground(ostream)
-    input_is_tty = _input_is_tty(istream)
-    input_is_fg = _is_foreground(istream)
-    in_ci = detect_ci()
-
-    if allow_env_overrides or output_is_tty:
-        explicit_color_settings = _detect_explicit_color_settings()
-    else:
-        explicit_color_settings = None
-
-    # Detect colors.
-    match explicit_color_settings:
-        case None:
-            color_support = _detect_tty_color_support(
-                output_is_tty, in_ci, ostream, istream, colors_explicitly_enabled=False
-            )
-        case False:
-            color_support = ColorSupport.NONE
-        case True:
-            color_support = _detect_tty_color_support(
-                output_is_tty, in_ci, ostream, istream, colors_explicitly_enabled=True
-            )
-        case _:
-            color_support = explicit_color_settings
-
-    # Detect ostream capabilities.
-    ostream_interactive_support = InteractiveSupport.NONE
-    if output_is_tty:
-        ostream_interactive_support = InteractiveSupport.BACKGROUND
-        if output_is_fg and not in_ci:
-            ostream_interactive_support = InteractiveSupport.INTERACTIVE
-
-    # Detect istream capabilities.
-    istream_interactive_support = InteractiveSupport.NONE
-    if input_is_tty:
-        istream_interactive_support = InteractiveSupport.BACKGROUND
-        if input_is_fg and not in_ci:
-            istream_interactive_support = InteractiveSupport.INTERACTIVE
-
-    # Query terminal theme.
-    if (
-        query_terminal_theme
-        and color_support >= ColorSupport.ANSI
-        and ostream_interactive_support >= InteractiveSupport.INTERACTIVE
-        and istream_interactive_support >= InteractiveSupport.INTERACTIVE
-        and "YUIO_DISABLE_OSC_QUERIES" not in os.environ
-    ):
-        theme = _get_standard_colors(ostream, istream)
-    else:
-        theme = None
-
-    return Term(
-        ostream=ostream,
-        istream=istream,
-        color_support=color_support,
-        ostream_interactive_support=ostream_interactive_support,
-        istream_interactive_support=istream_interactive_support,
-        terminal_theme=theme,
-        is_unicode=is_unicode,
-    )
-
-
-def _detect_explicit_color_settings() -> ColorSupport | bool | None:
-    color_support = None
-
-    if "FORCE_COLOR" in os.environ:
-        color_support = True
-
-    if "NO_COLOR" in os.environ or "FORCE_NO_COLOR" in os.environ:
-        color_support = False
-
-    # Note: we don't rely on argparse to parse flags and send them to us
-    # because these functions can be called before parsing arguments.
-    for arg in sys.argv[1:]:
-        if arg in ("--color", "--force-color"):
-            color_support = True
-        elif arg in ("--no-color", "--force-no-color"):
-            color_support = False
-        elif arg.startswith(("--color=", "--colors=")):
-            value = (
-                arg.split("=", maxsplit=1)[1]
-                .replace("_", "")
-                .replace("-", "")
-                .casefold()
-            )
-            if value in ["1", "yes", "true"]:
-                color_support = True
-            elif value in ["0", "no", "false"]:
-                color_support = False
-            elif value == "ansi":
-                color_support = ColorSupport.ANSI
-            elif value == "ansi256":
-                color_support = ColorSupport.ANSI_256
-            elif value == "ansitrue":
-                color_support = ColorSupport.ANSI_TRUE
-
-    return color_support
-
-
-def _detect_tty_color_support(
-    output_is_tty: bool,
-    in_ci: bool,
-    ostream: _t.TextIO,
-    istream: _t.TextIO,
-    colors_explicitly_enabled: bool,
-) -> ColorSupport:
-    if not (output_is_tty or colors_explicitly_enabled):
-        return ColorSupport.NONE
-
-    term = os.environ.get("TERM", "").lower()
-    colorterm = os.environ.get("COLORTERM", "").lower()
-
-    if in_ci:
-        return detect_ci_color_support()
-    elif os.name == "nt":
-        if output_is_tty and _enable_vt_processing(ostream, istream):
-            return ColorSupport.ANSI_TRUE
-    elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
-        return ColorSupport.ANSI_TRUE
-    elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
-        if os.name == "posix" and term == "xterm-256color" and shutil.which("wslinfo"):
-            return ColorSupport.ANSI_TRUE
-        else:
-            return ColorSupport.ANSI_256
-    elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
-        return ColorSupport.ANSI
-
-    if colors_explicitly_enabled:
-        return ColorSupport.ANSI
-    else:
-        return ColorSupport.NONE
-
-
 def stream_is_unicode(stream: _t.TextIO, /) -> bool:
     """
     Determine of stream's encoding is some version of unicode.
@@ -545,17 +343,16 @@ def stream_is_unicode(stream: _t.TextIO, /) -> bool:
     return "utf" in encoding or "unicode" in encoding
 
 
-def get_tty_size(stream: _t.TextIO, /, fallback: tuple[int, int] = (80, 24)):
+def get_tty_size(fallback: tuple[int, int] = (80, 24)):
     """
-    Like :func:`shutil.get_tty_size`, but uses given stream to query size instead
-    of relying on :data:`sys.stdout`.
+    Like :func:`shutil.get_terminal_size`, but uses TTY stream if it's available.
 
-    :param stream:
-        stream that will be used to query terminal size.
     :param fallback:
         tuple with width and height that will be used if query fails.
 
     """
+
+    _prepare_tty()
 
     try:
         columns = int(os.environ["COLUMNS"])
@@ -569,7 +366,7 @@ def get_tty_size(stream: _t.TextIO, /, fallback: tuple[int, int] = (80, 24)):
 
     if columns <= 0 or lines <= 0:
         try:
-            size = os.get_terminal_size(stream.fileno())
+            size = os.get_terminal_size(_TTY_OUTPUT.fileno())  # type: ignore
         except (AttributeError, ValueError, OSError):
             # stream is closed, detached, or not a terminal, or
             # os.get_tty_size() is unsupported
@@ -608,9 +405,210 @@ def detect_ci_color_support() -> ColorSupport:
         return ColorSupport.NONE
 
 
+def get_tty() -> Term:
+    """
+    Query info about TTY.
+
+    On Unix, this returns terminal connected to ``/dev/tty``. On Windows, this returns
+    terminal connected to ``CONIN$``/``CONOUT$``.
+
+    If opening any of these fails, returns :class:`Term` with ``stdin``/``stdout``
+    as a fallback.
+
+    .. note::
+
+        Prefer using ``stderr`` for normal IO: your users expect to be able to redirect
+        messages from your program.
+
+        Only use ``/dev/tty`` for querying passwords or other things that must not
+        be redirected.
+
+    """
+
+    _prepare_tty()
+    ostream = _TTY_OUTPUT or __stderr
+    istream = _TTY_INPUT or __stdin
+    assert ostream is not None
+    assert istream is not None
+    return get_term_from_stream(ostream, istream)
+
+
+def get_term_from_stream(
+    ostream: _t.TextIO,
+    istream: _t.TextIO,
+    /,
+) -> Term:
+    """
+    Query info about a terminal attached to the given stream.
+
+    :param ostream:
+        output stream.
+    :param istream:
+        input stream.
+
+    """
+
+    is_unicode = stream_is_unicode(ostream)
+
+    if (
+        # For building docs in github.
+        "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ
+    ):  # pragma: no cover
+        return Term(
+            ostream=ostream,
+            istream=istream,
+            color_support=ColorSupport.ANSI_TRUE,
+            ostream_is_tty=True,
+            istream_is_tty=True,
+            is_unicode=is_unicode,
+        )
+
+    _prepare_tty()
+
+    output_is_tty = _output_is_tty(ostream)
+    input_is_tty = _input_is_tty(istream)
+    in_ci = detect_ci()
+
+    # Detect colors.
+    if output_is_tty or _EXPLICIT_COLOR_SUPPORT is not None:
+        color_support = _COLOR_SUPPORT
+    else:
+        color_support = ColorSupport.NONE
+
+    return Term(
+        ostream=ostream,
+        istream=istream,
+        color_support=color_support,
+        ostream_is_tty=output_is_tty and not in_ci,
+        istream_is_tty=input_is_tty and not in_ci,
+        terminal_theme=_TERMINAL_THEME,
+        is_unicode=is_unicode,
+    )
+
+
+def _prepare_tty():
+    if not _TTY_SETUP_PERFORMED:
+        with _LOCK:
+            if not _TTY_SETUP_PERFORMED:
+                _do_prepare_tty()
+
+
+def _do_prepare_tty():
+    global \
+        _TTY_SETUP_PERFORMED, \
+        _TERMINAL_THEME, \
+        _EXPLICIT_COLOR_SUPPORT, \
+        _COLOR_SUPPORT
+
+    _find_tty()
+
+    _TTY_SETUP_PERFORMED = True
+
+    # Theme is `None` for now, will query it later.
+    _TERMINAL_THEME = None
+
+    # Find out if user specified `--color` or `FORCE_COLOR`.
+    _EXPLICIT_COLOR_SUPPORT = _detect_explicit_color_settings()
+
+    # Check user preferences.
+    if _EXPLICIT_COLOR_SUPPORT is False:
+        # Colors disabled, nothing more to do.
+        _COLOR_SUPPORT = ColorSupport.NONE
+        return
+    elif _EXPLICIT_COLOR_SUPPORT is True:
+        # At least ANSI. Might improve later.
+        _COLOR_SUPPORT = max(ColorSupport.ANSI, _detect_color_support_from_env())
+    elif _EXPLICIT_COLOR_SUPPORT is None:
+        # At least NONE. Might improve later.
+        _COLOR_SUPPORT = _detect_color_support_from_env()
+    else:
+        # Exact color support is given.
+        _COLOR_SUPPORT = _EXPLICIT_COLOR_SUPPORT
+
+    if _TTY_OUTPUT is None:
+        # Can't find attached TTY output, hence can't improve color support.
+        return
+
+    if os.name == "nt":
+        # Try enabling true colors.
+        if _enable_vt_processing(_TTY_OUTPUT):
+            # Success, can improve color support.
+            if _EXPLICIT_COLOR_SUPPORT is None or _EXPLICIT_COLOR_SUPPORT is True:
+                _COLOR_SUPPORT = ColorSupport.ANSI_TRUE
+        else:
+            # Failure, this version of Windows does not support colors.
+            return
+
+    if _TTY_INPUT is None:
+        # Can't find attached TTY input, hence can't improve color support.
+        return
+
+    if not _is_foreground(_TTY_OUTPUT) or not _is_foreground(_TTY_INPUT):
+        # We're not a foreground process, we won't be able to fetch colors.
+        # We also can't query colors if stdin is redirected because
+        return
+    if detect_ci():
+        # We're in CI, we won't be able to fetch colors.
+        return
+    if not _is_tty(__stdin):
+        # We don't want to query colors if our stdin is redirected: this is a sign
+        # that this program runs in some sort of a pipeline, and multiple instances
+        # of it might run at the same time. If this happens, several processes/threads
+        # can interact with the same TTY, leading to garbled output.
+        return
+
+    if _COLOR_SUPPORT >= ColorSupport.ANSI:
+        # We were able to find TTY, and colors are supported.
+        # Try fetching terminal theme.
+        _TERMINAL_THEME = _get_standard_colors(_TTY_OUTPUT, _TTY_INPUT)
+
+
+def _find_tty():
+    global _TTY_OUTPUT, _TTY_INPUT
+
+    _TTY_OUTPUT = _TTY_INPUT = None
+
+    closer = contextlib.ExitStack()
+    try:
+        if os.name == "nt":
+            file_io_in = io._WindowsConsoleIO("CONIN$", "r")  # type: ignore
+            tty_in = closer.enter_context(
+                io.TextIOWrapper(file_io_in, encoding="utf-8")
+            )
+            file_io_out = io._WindowsConsoleIO("CONOUT$", "w")  # type: ignore
+            tty_out = closer.enter_context(
+                io.TextIOWrapper(file_io_out, encoding="utf-8")
+            )
+        else:
+            fd = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)
+            file_io = io.FileIO(fd, "w+")
+            file_io.name = "/dev/tty"
+            tty_in = tty_out = closer.enter_context(io.TextIOWrapper(file_io))
+    except (OSError, AttributeError):
+        closer.close()
+    except:
+        closer.close()
+        raise
+    else:
+        atexit.register(closer.close)
+        _TTY_INPUT = tty_in
+        _TTY_OUTPUT = tty_out
+        return
+
+    for stream in (__stderr, __stdout):
+        if stream is not None and _output_is_tty(stream):
+            _TTY_OUTPUT = stream
+            break
+    if __stdin is not None and _input_is_tty(__stdin):
+        _TTY_INPUT = __stdin
+
+
 def _get_standard_colors(
     ostream: _t.TextIO, istream: _t.TextIO
 ) -> TerminalTheme | None:
+    if "YUIO_DISABLE_OSC_QUERIES" in os.environ:
+        return None
+
     try:
         query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join(
             [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
@@ -713,14 +711,14 @@ def _query_term(ostream: _t.TextIO, istream: _t.TextIO, query: str) -> str | Non
                 ostream.write(query + "\x1b[c")
                 ostream.flush()
 
-                buf = _read_keycode(ostream, istream)
+                buf = _read_keycode(ostream, istream, timeout=0.250)
                 if not buf.startswith("\x1b"):
                     yuio._logger.warning("_query_term invalid response: %r", buf)
                     return None
 
                 # Read till we find a DA1 response.
                 while not re.search(r"\x1b\[\?.*?c", buf):
-                    buf += _read_keycode(ostream, istream)
+                    buf += _read_keycode(ostream, istream, timeout=0.250)
 
                 return buf[: buf.index("\x1b[?")]
             finally:
@@ -734,29 +732,68 @@ def _query_term(ostream: _t.TextIO, istream: _t.TextIO, query: str) -> str | Non
         return None
 
 
+def _detect_explicit_color_settings() -> ColorSupport | bool | None:
+    color_support = None
+
+    if "FORCE_COLOR" in os.environ:
+        color_support = True
+
+    if "NO_COLOR" in os.environ or "FORCE_NO_COLOR" in os.environ:
+        color_support = False
+
+    # Note: we don't rely on argparse to parse flags and send them to us
+    # because these functions can be called before parsing arguments.
+    for arg in sys.argv[1:]:
+        if arg in ("--color", "--force-color"):
+            color_support = True
+        elif arg in ("--no-color", "--force-no-color"):
+            color_support = False
+        elif arg.startswith(("--color=", "--colors=")):
+            value = (
+                arg.split("=", maxsplit=1)[1]
+                .replace("_", "")
+                .replace("-", "")
+                .casefold()
+            )
+            if value in ["1", "yes", "true"]:
+                color_support = True
+            elif value in ["0", "no", "false"]:
+                color_support = False
+            elif value == "ansi":
+                color_support = ColorSupport.ANSI
+            elif value == "ansi256":
+                color_support = ColorSupport.ANSI_256
+            elif value == "ansitrue":
+                color_support = ColorSupport.ANSI_TRUE
+
+    return color_support
+
+
+def _detect_color_support_from_env() -> ColorSupport:
+    term = os.environ.get("TERM", "").lower()
+    colorterm = os.environ.get("COLORTERM", "").lower()
+
+    if detect_ci():
+        return detect_ci_color_support()
+    elif os.name == "nt":
+        return ColorSupport.NONE
+    elif colorterm in ("truecolor", "24bit") or term == "xterm-kitty":
+        return ColorSupport.ANSI_TRUE
+    elif colorterm in ("yes", "true") or "256color" in term or term == "screen":
+        if os.name == "posix" and term == "xterm-256color" and shutil.which("wslinfo"):
+            return ColorSupport.ANSI_TRUE
+        else:
+            return ColorSupport.ANSI_256
+    elif "linux" in term or "color" in term or "ansi" in term or "xterm" in term:
+        return ColorSupport.ANSI
+
+    return ColorSupport.NONE
+
+
 def _is_tty(stream: _t.TextIO | None) -> bool:
     try:
         return stream is not None and stream.isatty()
     except Exception:  # pragma: no cover
-        return False
-
-
-if os.name == "posix":
-
-    def _is_foreground(stream: _t.TextIO | None) -> bool:
-        try:
-            return stream is not None and os.getpgrp() == os.tcgetpgrp(stream.fileno())
-        except Exception:  # pragma: no cover
-            return False
-
-elif os.name == "nt":
-
-    def _is_foreground(stream: _t.TextIO | None) -> bool:
-        return True
-
-else:  # pragma: no cover
-
-    def _is_foreground(stream: _t.TextIO | None) -> bool:
         return False
 
 
@@ -803,8 +840,15 @@ def _modify_keyboard(
 # Platform-specific code for working with terminals.
 if os.name == "posix":
     import select
+    import signal
     import termios
     import tty
+
+    def _is_foreground(stream: _t.TextIO | None) -> bool:
+        try:
+            return stream is not None and os.getpgrp() == os.tcgetpgrp(stream.fileno())
+        except Exception:  # pragma: no cover
+            return False
 
     @contextlib.contextmanager
     def _enter_raw_mode(
@@ -831,7 +875,11 @@ if os.name == "posix":
         finally:
             termios.tcsetattr(istream, termios.TCSAFLUSH, prev_mode)
 
-    def _read_keycode(ostream: _t.TextIO, istream: _t.TextIO) -> str:
+    def _read_keycode(
+        ostream: _t.TextIO, istream: _t.TextIO, timeout: float = 0
+    ) -> str:
+        if timeout and not bool(select.select([istream], [], [], timeout)[0]):
+            raise TimeoutError()
         key = os.read(istream.fileno(), 128)
         while bool(select.select([istream], [], [], 0)[0]):
             key += os.read(istream.fileno(), 128)
@@ -841,8 +889,11 @@ if os.name == "posix":
     def _flush_input_buffer(ostream: _t.TextIO, istream: _t.TextIO):
         pass
 
-    def _enable_vt_processing(ostream: _t.TextIO, istream: _t.TextIO) -> bool:
+    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
         return False  # This is a windows functionality
+
+    def _pause():
+        os.kill(os.getpid(), signal.SIGTSTP)
 
 elif os.name == "nt":
     import ctypes
@@ -861,6 +912,14 @@ elif os.name == "nt":
     _SetConsoleMode.argtypes = [ctypes.wintypes.HANDLE, ctypes.wintypes.DWORD]
     _SetConsoleMode.restype = ctypes.wintypes.BOOL
 
+    _GetConsoleWindow = ctypes.windll.kernel32.GetConsoleWindow
+    _GetConsoleWindow.argtypes = []
+    _GetConsoleWindow.restype = ctypes.wintypes.HWND
+
+    _IsWindowVisible = ctypes.windll.user32.IsWindowVisible
+    _IsWindowVisible.argtypes = [ctypes.wintypes.HWND]
+    _SetConsoleMode.restype = ctypes.wintypes.BOOL
+
     _ReadConsoleW = ctypes.windll.kernel32.ReadConsoleW
     _ReadConsoleW.argtypes = [
         ctypes.wintypes.HANDLE,
@@ -876,10 +935,13 @@ elif os.name == "nt":
     _ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
     _ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200
 
-    if sys.__stdin__ is not None:  # TODO: don't rely on sys.__stdin__?
-        _ISTREAM_HANDLE = msvcrt.get_osfhandle(sys.__stdin__.fileno())
-    else:
-        _ISTREAM_HANDLE = None
+    _ISTREAM_HANDLE = None
+
+    def _is_foreground(stream: _t.TextIO | None) -> bool:
+        window = _GetConsoleWindow()
+        if not window:
+            return False
+        return _IsWindowVisible(window)
 
     @contextlib.contextmanager
     def _enter_raw_mode(
@@ -888,7 +950,11 @@ elif os.name == "nt":
         bracketed_paste: bool = False,
         modify_keyboard: bool = False,
     ):
-        assert _ISTREAM_HANDLE is not None
+        global _ISTREAM_HANDLE
+
+        if _ISTREAM_HANDLE is None:
+            _prepare_tty()
+            _ISTREAM_HANDLE = msvcrt.get_osfhandle((_TTY_INPUT or __stdin).fileno())  # type: ignore
 
         mode = ctypes.wintypes.DWORD()
         success = _GetConsoleMode(_ISTREAM_HANDLE, ctypes.byref(mode))
@@ -906,7 +972,9 @@ elif os.name == "nt":
             if not success:
                 raise ctypes.WinError()
 
-    def _read_keycode(ostream: _t.TextIO, istream: _t.TextIO) -> str:
+    def _read_keycode(
+        ostream: _t.TextIO, istream: _t.TextIO, timeout: float = 0
+    ) -> str:
         assert _ISTREAM_HANDLE is not None
 
         CHAR16 = ctypes.wintypes.WCHAR * 16
@@ -933,7 +1001,7 @@ elif os.name == "nt":
         if not success:
             raise ctypes.WinError()
 
-    def _enable_vt_processing(ostream: _t.TextIO, istream: _t.TextIO) -> bool:
+    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
         try:
             version = sys.getwindowsversion()
             if version.major < 10 or version.build < 14931:
@@ -951,7 +1019,13 @@ elif os.name == "nt":
         except Exception:  # pragma: no cover
             return False
 
+    def _pause():
+        pass
+
 else:  # pragma: no cover
+
+    def _is_foreground(stream: _t.TextIO | None) -> bool:
+        return False
 
     @contextlib.contextmanager
     def _enter_raw_mode(
@@ -963,11 +1037,16 @@ else:  # pragma: no cover
         raise OSError("not supported")
         yield
 
-    def _read_keycode(ostream: _t.TextIO, istream: _t.TextIO) -> str:
+    def _read_keycode(
+        ostream: _t.TextIO, istream: _t.TextIO, timeout: float = 0
+    ) -> str:
         raise OSError("not supported")
 
     def _flush_input_buffer(ostream: _t.TextIO, istream: _t.TextIO):
         raise OSError("not supported")
 
-    def _enable_vt_processing(ostream: _t.TextIO, istream: _t.TextIO) -> bool:
+    def _enable_vt_processing(ostream: _t.TextIO) -> bool:
+        raise OSError("not supported")
+
+    def _pause():
         raise OSError("not supported")

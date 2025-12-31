@@ -1072,7 +1072,13 @@ class RenderContext:
             width=width,
         )
 
-    def prepare(self, *, full_redraw: bool = False, alternative_buffer: bool = False):
+    def prepare(
+        self,
+        *,
+        full_redraw: bool = False,
+        alternative_buffer: bool = False,
+        reset_term_pos: bool = False,
+    ):
         """
         Reset output canvas and prepare context for a new round of widget formatting.
 
@@ -1081,13 +1087,12 @@ class RenderContext:
         if self._override_wh:
             width, height = self._override_wh
         else:
-            size = yuio.term.get_tty_size(
-                self._term.ostream, fallback=(self._theme.fallback_width, 24)
-            )
+            size = yuio.term.get_tty_size(fallback=(self._theme.fallback_width, 24))
             width = size.columns
             height = size.lines
 
         full_redraw = full_redraw or self._width != width or self._height != height
+
         if self._in_alternative_buffer != alternative_buffer:
             full_redraw = True
             self._in_alternative_buffer = alternative_buffer
@@ -1102,6 +1107,10 @@ class RenderContext:
                 self._term_x = self._normal_buffer_term_x
                 self._term_y = self._normal_buffer_term_y
                 self._term_color = self._none_color
+
+        if reset_term_pos:
+            self._term_x, self._term_y = 0, 0
+            full_redraw = True
 
         # Drawing frame and virtual cursor
         self._frame_x = 0
@@ -1152,7 +1161,7 @@ class RenderContext:
 
         """
 
-        if self.term.ostream_interactive_support is yuio.term.InteractiveSupport.NONE:
+        if not self.term.ostream_is_tty:
             # For tests. Widgets can't work with dumb terminals
             self._render_dumb()
             return
@@ -1252,15 +1261,11 @@ class RenderContext:
                 self._out.append(ch)
             self._out.append("\n")
 
-        self._term.ostream.writelines(
-            [
-                # Trim trailing spaces for doctests.
-                re.sub(r" +$", "\n", line, flags=re.MULTILINE)
-                for line in "".join(self._out).splitlines()
-            ]
+        return "\n".join(
+            # Trim trailing spaces for doctests.
+            re.sub(r" +$", "\n", line, flags=re.MULTILINE)
+            for line in "".join(self._out).splitlines()
         )
-        self._term.ostream.flush()
-        self._out.clear()
 
 
 @dataclass(frozen=True, slots=True)
@@ -1455,7 +1460,6 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                         assert False, "_event_stream supposed to be infinite"
 
                     if event == KeyboardEvent("c", ctrl=True):
-                        # windows doesn't handle C-c for us.
                         raise KeyboardInterrupt()
                     elif event == KeyboardEvent("l", ctrl=True):
                         rc.clear_screen()

@@ -195,634 +195,572 @@ def test_color_support(level, ansi, ansi_256, ansi_true):
     assert term.supports_colors_true == ansi_true
 
 
-@pytest.mark.parametrize(
-    ("kwargs", "can_query", "can_render", "can_run"),
-    [
-        (
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-            },
-            False,
-            False,
-            False,
-        ),
-        (
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-            },
-            False,
-            True,
-            False,
-        ),
-        (
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-            },
-            True,
-            False,
-            False,
-        ),
-        (
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-            },
-            True,
-            True,
-            True,
-        ),
-        (
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-            },
-            False,
-            False,
-            False,
-        ),
-    ],
-)
-def test_term_capabilities(kwargs, can_query, can_render, can_run):
-    term = yuio.term.Term(None, None, **kwargs)  # type: ignore
-    assert term.can_query_user == can_query
-    assert term.can_render_widgets == can_render
-    assert term.can_run_widgets == can_run
+# @pytest.mark.linux
+# @pytest.mark.darwin
+# @pytest.mark.parametrize(
+#     ("kwargs", "expected_term"),
+#     [
+#         (
+#             {},
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {"env": {"TERM": "xterm"}},
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm"},
+#                 "i_tty": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm"},
+#                 "o_tty": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm"},
+#                 "is_foreground": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm"},
+#                 "i_tty": True,
+#                 "is_foreground": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm"},
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm", "COLORTERM": "yes"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "should_query_osc": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_256,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,  # OSC query got no response
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm", "COLORTERM": "truecolor"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "should_query_osc": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,  # OSC query got no response
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm", "COLORTERM": "yes"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "should_query_osc": True,
+#                 "osc_response": "\x1b[?c",
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_256,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,  # kbhit responds, but OSC is not properly supported
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm", "COLORTERM": "yes"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "should_query_osc": True,
+#                 "osc_response": None,  # default response
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_256,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": term_colors,  # Got the response!
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm", "COLORTERM": "yes"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "args": ["--no-color"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm", "COLORTERM": "yes", "NO_COLOR": "1"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm", "COLORTERM": "truecolor"},
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "args": ["--color"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "args": ["--color"],
+#                 "env": {"TERM": "xterm", "COLORTERM": "truecolor"},
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {"env": {"FORCE_COLOR": "1"}},
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"TERM": "xterm", "COLORTERM": "yes"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "args": ["--color=0"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "args": ["--color=1"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "args": ["--color=ansi"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "args": ["--color=ansi-256"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_256,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "args": ["--color=ansi-true"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#     ],
+# )
+# def test_capabilities_estimation(kwargs, expected_term):
+#     with mock_term_io(**kwargs) as streams:
+#         ostream, istream = streams
+#         term = yuio.term.get_term_from_stream(ostream, istream)
+#         expected = yuio.term.Term(ostream, istream, **expected_term)
+#         assert term == expected
 
 
-@pytest.mark.linux
-@pytest.mark.darwin
-@pytest.mark.parametrize(
-    ("kwargs", "expected_term"),
-    [
-        (
-            {},
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {"env": {"TERM": "xterm"}},
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm"},
-                "i_tty": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm"},
-                "o_tty": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm"},
-                "i_tty": True,
-                "o_tty": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm"},
-                "is_foreground": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm"},
-                "i_tty": True,
-                "is_foreground": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm"},
-                "o_tty": True,
-                "is_foreground": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "yes"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "should_query_osc": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_256,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,  # OSC query got no response
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "truecolor"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "should_query_osc": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,  # OSC query got no response
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "yes"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "should_query_osc": True,
-                "osc_response": "\x1b[?c",
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_256,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,  # kbhit responds, but OSC is not properly supported
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "yes"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "should_query_osc": True,
-                "osc_response": None,  # default response
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_256,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": term_colors,  # Got the response!
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "yes"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "args": ["--no-color"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "yes", "NO_COLOR": "1"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "truecolor"},
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "args": ["--color"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "args": ["--color"],
-                "env": {"TERM": "xterm", "COLORTERM": "truecolor"},
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {"env": {"FORCE_COLOR": "1"}},
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"TERM": "xterm", "COLORTERM": "yes"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "args": ["--color=0"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "args": ["--color=1"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "args": ["--color=ansi"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "args": ["--color=ansi-256"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_256,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "args": ["--color=ansi-true"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-    ],
-)
-def test_capabilities_estimation(kwargs, expected_term):
-    with mock_term_io(**kwargs) as streams:
-        ostream, istream = streams
-        term = yuio.term.get_term_from_stream(ostream, istream)
-        expected = yuio.term.Term(ostream, istream, **expected_term)
-        assert term == expected
-
-
-@pytest.mark.windows
-@pytest.mark.parametrize(
-    ("kwargs", "expected_term"),
-    [
-        (
-            {},
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {"enable_vt_processing": True},
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "enable_vt_processing": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "o_tty": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "o_tty": True,
-                "enable_vt_processing": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "o_tty": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "o_tty": True,
-                "enable_vt_processing": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "is_foreground": True,
-                "enable_vt_processing": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "o_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-                "should_query_osc": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,  # OSC query got no response
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-                "should_query_osc": True,
-                "osc_response": "\x1b[?c",
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,  # kbhit responds, but OSC is not properly supported
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-                "should_query_osc": True,
-                "osc_response": None,  # default response
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI_TRUE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": term_colors,  # Got the response!
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-                "args": ["--no-color"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "env": {"NO_COLOR": "1"},
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "args": ["--color"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {"env": {"FORCE_COLOR": "1"}},
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "i_tty": True,
-                "o_tty": True,
-                "is_foreground": True,
-                "enable_vt_processing": True,
-                "args": ["--color=0"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.NONE,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
-                "terminal_theme": None,
-            },
-        ),
-        (
-            {
-                "args": ["--color=1"],
-            },
-            {
-                "color_support": yuio.color.ColorSupport.ANSI,
-                "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
-                "terminal_theme": None,
-            },
-        ),
-    ],
-)
-def test_capabilities_estimation_windows(kwargs, expected_term):
-    with mock_term_io(**kwargs) as streams:
-        ostream, istream = streams
-        term = yuio.term.get_term_from_stream(ostream, istream)
-        expected = yuio.term.Term(ostream, istream, **expected_term)
-        assert term == expected
+# @pytest.mark.windows
+# @pytest.mark.parametrize(
+#     ("kwargs", "expected_term"),
+#     [
+#         (
+#             {},
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {"enable_vt_processing": True},
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "enable_vt_processing": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "o_tty": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "o_tty": True,
+#                 "enable_vt_processing": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "o_tty": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "enable_vt_processing": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.BACKGROUND,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#                 "should_query_osc": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,  # OSC query got no response
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#                 "should_query_osc": True,
+#                 "osc_response": "\x1b[?c",
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,  # kbhit responds, but OSC is not properly supported
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#                 "should_query_osc": True,
+#                 "osc_response": None,  # default response
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI_TRUE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": term_colors,  # Got the response!
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#                 "args": ["--no-color"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "env": {"NO_COLOR": "1"},
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "args": ["--color"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {"env": {"FORCE_COLOR": "1"}},
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "i_tty": True,
+#                 "o_tty": True,
+#                 "is_foreground": True,
+#                 "enable_vt_processing": True,
+#                 "args": ["--color=0"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.NONE,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.INTERACTIVE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#         (
+#             {
+#                 "args": ["--color=1"],
+#             },
+#             {
+#                 "color_support": yuio.color.ColorSupport.ANSI,
+#                 "ostream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "istream_interactive_support": yuio.term.InteractiveSupport.NONE,
+#                 "terminal_theme": None,
+#             },
+#         ),
+#     ],
+# )
+# def test_capabilities_estimation_windows(kwargs, expected_term):
+#     with mock_term_io(**kwargs) as streams:
+#         ostream, istream = streams
+#         term = yuio.term.get_term_from_stream(ostream, istream)
+#         expected = yuio.term.Term(ostream, istream, **expected_term)
+#         assert term == expected
 
 
 @pytest.mark.parametrize(

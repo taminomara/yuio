@@ -128,6 +128,16 @@ on the expected value's type:
     :lines: 1-16
     :emphasize-lines: 5,11-15
 
+.. note::
+
+    :func:`yuio.io.ask` is designed to interact with users, not to read data. It uses
+    ``/dev/tty`` on Unix, and console API on Windows, so it will read from
+    an actual TTY even if ``stdin`` is redirected.
+
+    When designing your program, make sure that users have alternative means
+    to provide values: use configs or CLI arguments, allow passing passwords
+    via environment variables, etc.
+
 .. vhs-inline::
     :scale: 40%
 

@@ -60,6 +60,8 @@ Features
             for source in task.iter(sources):
                 ...
 
+    They even hide themselves when you send process to background!
+
 -   User interactions, input parsing and simple widgets:
 
     .. code-block:: python

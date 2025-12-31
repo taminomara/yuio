@@ -787,6 +787,9 @@ class ColorSupport(enum.IntEnum):
 
     """
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 def _rgb_to_256(r: int, g: int, b: int) -> int:
     closest_idx = lambda x, vals: min((abs(x - v), i) for i, v in enumerate(vals))[1]

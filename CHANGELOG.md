@@ -139,7 +139,7 @@ Large refactoring around lower-level APIs, making them more flexible.
 - ⚡ Moved message formatting outside of IO lock, now `yuio.io.raw` and
   `yuio.io.Format` handle all formatting and wrapping.
 
-- ⚡ Implemented communication with subprocesses using `select` call on unix
+- ⚡ Implemented communication with subprocesses using `select` call on Unix
   operating systems.
 
 - 🐛 Fixed quoting when invoking editor command from `$VISUAL` or `$EDITOR`.

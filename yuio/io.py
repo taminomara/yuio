@@ -621,8 +621,8 @@ def make_repr_context(
     theme = manager.theme
     if term is None:
         if file is not None:
-            term = yuio.term.get_term_from_stream(
-                file, sys.stdin, allow_env_overrides=False, query_terminal_theme=False
+            term = yuio.term.Term(
+                file, sys.stdin, is_unicode=yuio.term.stream_is_unicode(file)
             )
         elif to_stdout:
             term = manager.out_term
@@ -630,10 +630,7 @@ def make_repr_context(
             term = manager.err_term
         else:
             term = manager.term
-    if width is None and (
-        term.ostream_interactive_support >= yuio.term.InteractiveSupport.BACKGROUND
-        or term.supports_colors
-    ):
+    if width is None and (term.ostream_is_tty or term.supports_colors):
         width = manager.rc.canvas_width
 
     return yuio.string.ReprContext(
@@ -1361,6 +1358,16 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
     which will determine the widget that is displayed to the user,
     the way autocompletion works, etc.
 
+    .. note::
+
+        :func:`ask` is designed to interact with users, not to read data. It uses
+        ``/dev/tty`` on Unix, and console API on Windows, so it will read from
+        an actual TTY even if ``stdin`` is redirected.
+
+        When designing your program, make sure that users have alternative means
+        to provide values: use configs or CLI arguments, allow passing passwords
+        via environment variables, etc.
+
     :param msg:
         prompt to display to user.
     :param args:
@@ -1381,6 +1388,9 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
         description of the `default` value.
     :returns:
         parsed user input.
+    :raises:
+        raises :class:`UserIoError` if we're not in interactive environment, and there
+        is no default to return.
     :example:
         .. code-block:: python
 
@@ -1405,9 +1415,10 @@ def _ask(
     input_description: str | None = None,
     default_description: str | None = None,
 ) -> _t.Any:
-    ctx = make_repr_context()
+    ctx = make_repr_context(term=yuio.term.get_tty())
 
-    if not ctx.term.can_query_user:
+    if not _can_query_user(ctx.term):
+        # TTY is not available.
         if default_non_interactive is yuio.MISSING:
             default_non_interactive = default
         if default_non_interactive is yuio.MISSING:
@@ -1435,6 +1446,14 @@ def _ask(
             default_description = parser.describe_value(default)
         except TypeError:
             default_description = str(default)
+
+    if not yuio.term._is_foreground(ctx.term.ostream):
+        warning(
+            "User input is requested in background process, use `fg %s` to resume",
+            os.getpid(),
+            ctx=ctx,
+        )
+        yuio.term._pause()
 
     if ctx.term.can_run_widgets:
         # Use widget.
@@ -1472,7 +1491,7 @@ def _ask(
             prompt.append_color(base_color | ctx.get_color("code"))
             prompt.append_str(result_desc)
 
-            s.info(prompt, tag="question", term=ctx.term, theme=ctx.theme)
+            s.info(prompt, tag="question", ctx=ctx)
             return result
     else:
         # Use raw input.
@@ -1502,27 +1521,31 @@ def _ask(
                 if not answer and default is not yuio.MISSING:
                     return default
                 elif not answer:
-                    s.error("Input is required.", term=ctx.term, theme=ctx.theme)
+                    s.error("Input is required.", ctx=ctx)
                 else:
                     try:
                         return parser.parse(answer)
                     except yuio.parse.ParsingError as e:
-                        s.error(e, term=ctx.term, theme=ctx.theme)
-
-
-def _read(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
-    info(prompt, add_newline=False, tag="question", term=term, ignore_suspended=True)
-    return term.istream.readline().rstrip("\r\n")
-
-
-def _getpass_fallback(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
-    warning("Warning: Password input may be echoed.", term=term, ignore_suspended=True)
-    return _read(term, prompt)
+                        s.error(e, ctx=ctx)
 
 
 if os.name == "posix":
     # Getpass implementation is based on the standard `getpass` module, with a few
     # Yuio-specific modifications.
+
+    def _getpass_fallback(
+        term: yuio.term.Term, prompt: yuio.string.ColorizedString
+    ) -> str:
+        warning(
+            "Warning: Password input may be echoed.", term=term, ignore_suspended=True
+        )
+        return _read(term, prompt)
+
+    def _read(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+        info(
+            prompt, add_newline=False, tag="question", term=term, ignore_suspended=True
+        )
+        return term.istream.readline().rstrip("\r\n")
 
     def _getpass(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
         import termios
@@ -1568,40 +1591,83 @@ if os.name == "posix":
 
 elif os.name == "nt":
 
-    def _getpass(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+    def _do_read(
+        term: yuio.term.Term, prompt: yuio.string.ColorizedString, echo: bool
+    ) -> str:
         import msvcrt
 
-        info(
-            prompt, add_newline=False, tag="question", term=term, ignore_suspended=True
-        )
+        if term.ostream_is_tty:
+            info(
+                prompt,
+                add_newline=False,
+                tag="question",
+                term=term,
+                ignore_suspended=True,
+            )
+        else:
+            for c in str(prompt):
+                msvcrt.putwch(c)
 
-        result = ""
-        while 1:
-            c = msvcrt.getwch()
-            if c == "\0" or c == "\xe0":
-                # Read key scan code and ignore it.
-                msvcrt.getwch()
-                continue
-            if c == "\r" or c == "\n":
-                break
-            if c == "\x03":
-                raise KeyboardInterrupt
-            if c == "\b":
-                if result:
-                    msvcrt.putwch("\b")
-                    msvcrt.putwch(" ")
-                    msvcrt.putwch("\b")
-                    result = result[:-1]
-            else:
-                result = result + c
-                msvcrt.putwch("*")
-        msvcrt.putwch("\r")
-        msvcrt.putwch("\n")
+        if term.ostream_is_tty and echo:
+            return term.istream.readline().rstrip("\r\n")
+        else:
+            result = ""
+            while 1:
+                c = msvcrt.getwch()
+                if c == "\0" or c == "\xe0":
+                    # Read key scan code and ignore it.
+                    msvcrt.getwch()
+                    continue
+                if c == "\r" or c == "\n":
+                    break
+                if c == "\x03":
+                    raise KeyboardInterrupt
+                if c == "\b":
+                    if result:
+                        msvcrt.putwch("\b")
+                        msvcrt.putwch(" ")
+                        msvcrt.putwch("\b")
+                        result = result[:-1]
+                else:
+                    result = result + c
+                    if echo:
+                        msvcrt.putwch(c)
+                    else:
+                        msvcrt.putwch("*")
+            msvcrt.putwch("\r")
+            msvcrt.putwch("\n")
 
         return result
 
+    def _read(term: yuio.term.Term, prompt: yuio.string.ColorizedString):
+        return _do_read(term, prompt, echo=True)
+
+    def _getpass(term: yuio.term.Term, prompt: yuio.string.ColorizedString):
+        return _do_read(term, prompt, echo=False)
+
 else:
-    _getpass = _getpass_fallback  # pragma: no cover
+
+    def _getpass(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+        warning(
+            "Warning: Password input may be echoed.", term=term, ignore_suspended=True
+        )
+        return _read(term, prompt)
+
+    def _read(term: yuio.term.Term, prompt: yuio.string.ColorizedString) -> str:
+        info(
+            prompt, add_newline=False, tag="question", term=term, ignore_suspended=True
+        )
+        return term.istream.readline().rstrip("\r\n")
+
+
+def _can_query_user(term: yuio.term.Term):
+    return (
+        # We're attached to a TTY.
+        term.is_tty
+        # On Windows, there is no way to bring a process to foreground (AFAIK?).
+        # Thus, we need to check if there's a console window.
+        and (os.name != "nt" or yuio.term._is_foreground(None))
+    )
 
 
 class _WaitForUserWidget(yuio.widget.Widget[None]):
@@ -1639,23 +1705,35 @@ def wait_for_user(
 
     """
 
-    ctx = make_repr_context()
+    ctx = make_repr_context(term=yuio.term.get_tty())
 
-    if not ctx.term.can_query_user:
+    if not _can_query_user(ctx.term):
+        # TTY is not available.
         return
+
+    if not yuio.term._is_foreground(ctx.term.ostream):
+        if os.name == "nt":
+            # AFAIK there's no way to bring job to foreground in Windows.
+            return
+
+        warning(
+            "User input is requested in background process, use `fg %s` to resume",
+            os.getpid(),
+            ctx=ctx,
+        )
+        yuio.term._pause()
 
     prompt = yuio.string.colorize(
         msg.rstrip(), *args, default_color="msg/text:question", ctx=ctx
     )
     prompt += yuio.string.Esc(" ")
 
-    with SuspendOutput() as s:
+    with SuspendOutput():
         try:
             if ctx.term.can_run_widgets:
                 _WaitForUserWidget(prompt).run(ctx.term, ctx.theme)
             else:
-                s.info(prompt, add_newline=False, tag="question")
-                ctx.term.istream.readline()
+                _read(ctx.term, prompt)
         except (OSError, EOFError):  # pragma: no cover
             return
 
@@ -1672,7 +1750,7 @@ def detect_editor(fallbacks: list[str] | None = None) -> str | None:
         list of fallback editors to try. By default, we try "nano", "vim", "vi",
         "msedit", "edit", "notepad", "gedit".
     :returns:
-        on Windows, returns an executable name; on unix, may return a shell command
+        on Windows, returns an executable name; on Unix, may return a shell command
         or an executable name.
 
     """
@@ -1708,12 +1786,6 @@ def edit(
     and opens it in an editor. After editing is done, it strips away
     all lines that start with `comment_marker`, if one is given.
 
-    If editor is not available or returns a non-zero exit code,
-    a :class:`UserIoError` is raised.
-
-    If launched in a non-interactive environment, returns the text
-    unedited (comments are still removed, though).
-
     :param text:
         text to edit.
     :param comment_marker:
@@ -1721,8 +1793,8 @@ def edit(
     :param editor:
         overrides editor.
 
-        On unix, this should be a shell command, file path will be appended to it;
-        on windows, this should be an executable path.
+        On Unix, this should be a shell command, file path will be appended to it;
+        on Windows, this should be an executable path.
     :param file_ext:
         extension for the temporary file, can be used to enable syntax highlighting
         in editors that support it.
@@ -1732,7 +1804,15 @@ def edit(
         remove leading indentation from text before opening an editor.
     :returns:
         an edited string with comments removed.
+    :raises:
+        If editor is not available, returns a non-zero exit code, or launched in
+        a non-interactive environment, a :class:`UserIoError` is raised.
+
+        Also raises :class:`UserIoError` if ``stdin`` or ``stderr`` is piped
+        or redirected to a file (virtually no editors can work when this happens).
     :example:
+        .. skip: next
+
         .. code-block:: python
 
             message = yuio.io.edit(
@@ -1746,83 +1826,97 @@ def edit(
 
     """
 
+    term = yuio.term.get_tty()
+
+    if not _can_query_user(term):
+        raise UserIoError("Can't run editor in non-interactive environment")
+
+    if editor is None:
+        editor = detect_editor(fallbacks)
+
+    if editor is None:
+        if os.name == "nt":
+            raise UserIoError("Can't find a usable editor")
+        else:
+            raise UserIoError(
+                "Can't find a usable editor. Ensure that `$VISUAL` and `$EDITOR` "
+                "environment variables contain correct path to an editor executable"
+            )
+
     if dedent:
         text = _dedent(text)
 
-    manager = _manager()
-    term = manager.term
+    if not yuio.term._is_foreground(term.ostream):
+        warning(
+            "Background process is waiting for user, use `fg %s` to resume",
+            os.getpid(),
+            term=term,
+        )
+        yuio.term._pause()
 
-    if term.can_run_widgets:
-        if editor is None:
-            editor = detect_editor(fallbacks)
+    fd, filepath = tempfile.mkstemp(text=True, suffix=file_ext)
+    try:
+        with open(fd, "w") as file:
+            file.write(text)
 
-        if editor is None:
-            if os.name == "nt":
-                raise UserIoError("Can't find a usable editor")
-            else:
-                raise UserIoError(
-                    "Can't find a usable editor. Ensure that `$VISUAL` and `$EDITOR` "
-                    "environment variables contain correct path to an editor executable"
-                )
+        if os.name == "nt":
+            # Windows doesn't use $VISUAL/$EDITOR, so shell execution is not needed.
+            # Plus, quoting arguments for CMD.exe is hard af.
+            args = [editor, filepath]
+            shell = False
+        else:
+            # $VISUAL/$EDITOR can include flags, so we need to use shell instead.
+            try:
+                from shlex import quote
+            except ImportError:
+                from pipes import quote
+            args = f"{editor} {quote(filepath)}"
+            shell = True
 
-        fd, filepath = tempfile.mkstemp(text=True, suffix=file_ext)
         try:
-            with open(fd, "w") as file:
-                file.write(text)
+            with SuspendOutput():
+                res = subprocess.run(
+                    args,
+                    shell=shell,
+                    stdin=term.istream.fileno(),
+                    stdout=term.ostream.fileno(),
+                )
+        except FileNotFoundError:
+            raise UserIoError(
+                "Can't use editor `%r`: no such file or directory",
+                editor,
+            )
 
-            if os.name == "nt":
-                # Windows doesn't use $VISUAL/$EDITOR, so shell execution is not needed.
-                # Plus, quoting arguments for CMD.exe is hard af.
-                args = [editor, filepath]
-                shell = False
-            else:
-                # $VISUAL/$EDITOR can include flags, so we need to use shell instead.
+        if res.returncode != 0:
+            if res.returncode < 0:
+                import signal
+
                 try:
-                    from shlex import quote
-                except ImportError:
-                    from pipes import quote
-                args = f"{editor} {quote(filepath)}"
-                shell = True
-
-            try:
-                with SuspendOutput():
-                    res = subprocess.run(args, shell=shell)
-            except FileNotFoundError:
-                raise UserIoError(
-                    "Can't use editor `%r`: no such file or directory",
-                    editor,
-                )
-
-            if res.returncode != 0:
-                if res.returncode < 0:
-                    import signal
-
-                    try:
-                        action = "died with"
-                        code = signal.Signals(-res.returncode).name
-                    except ValueError:
-                        action = "died with unknown signal"
-                        code = res.returncode
-                else:
-                    action = "returned exit code"
+                    action = "died with"
+                    code = signal.Signals(-res.returncode).name
+                except ValueError:
+                    action = "died with unknown signal"
                     code = res.returncode
-                raise UserIoError(
-                    "Editing failed: editor `%r` %s `%s`",
-                    editor,
-                    action,
-                    code,
-                )
-
-            if not os.path.exists(filepath):
-                raise UserIoError("Editing failed: can't read back edited file")
             else:
-                with open(filepath) as file:
-                    text = file.read()
-        finally:
-            try:
-                os.remove(filepath)
-            except OSError:
-                pass
+                action = "returned exit code"
+                code = res.returncode
+            raise UserIoError(
+                "Editing failed: editor `%r` %s `%s`",
+                editor,
+                action,
+                code,
+            )
+
+        if not os.path.exists(filepath):
+            raise UserIoError("Editing failed: can't read back edited file")
+        else:
+            with open(filepath) as file:
+                text = file.read()
+    finally:
+        try:
+            os.remove(filepath)
+        except OSError:
+            pass
 
     if comment_marker is not None:
         text = re.sub(
@@ -2636,6 +2730,14 @@ class Handler(logging.Handler):
 
 
 class _IoManager(abc.ABC):
+    # If we see that it took more than this time to render progress bars,
+    # we assume that the process was suspended, meaning that we might've been moved
+    # from foreground to background or back. In either way, we should assume that the
+    # screen was changed, and re-render all tasks accordingly. We have to track time
+    # because Python might take significant time to call `SIGCONT` handler, so we can't
+    # rely on it.
+    TASK_RENDER_TIMEOUT_NS = 250_000_000
+
     def __init__(
         self,
         term: yuio.term.Term | None = None,
@@ -2644,14 +2746,10 @@ class _IoManager(abc.ABC):
         ) = None,
         enable_bg_updates: bool = True,
     ):
-        self._out_term = yuio.term.get_term_from_stream(
-            orig_stdout(), sys.stdin, query_terminal_theme=False
-        )
-        self._err_term = yuio.term.get_term_from_stream(
-            orig_stderr(), sys.stdin, query_terminal_theme=False
-        )
+        self._out_term = yuio.term.get_term_from_stream(orig_stdout(), sys.stdin)
+        self._err_term = yuio.term.get_term_from_stream(orig_stderr(), sys.stdin)
 
-        self._term = term or yuio.term.get_term_from_stream(orig_stderr(), sys.stdin)
+        self._term = term or self._err_term
 
         self._theme_ctor = theme
         if isinstance(theme, yuio.theme.Theme):
@@ -2678,7 +2776,12 @@ class _IoManager(abc.ABC):
         self._thread: threading.Thread | None = None
 
         self._enable_bg_updates = enable_bg_updates
+        self._prev_sigcont_handler: (
+            None | yuio.Missing | int | _t.Callable[[int, types.FrameType | None], None]
+        ) = yuio.MISSING
+        self._seen_sigcont: bool = False
         if enable_bg_updates:
+            self._setup_sigcont()
             self._thread = threading.Thread(
                 target=self._bg_update, name="yuio_io_task_refresh", daemon=True
             )
@@ -2733,21 +2836,50 @@ class _IoManager(abc.ABC):
             self.__dict__.pop("_update_rate_us", None)
             self._update_tasks()
 
+    def _setup_sigcont(self):
+        import signal
+
+        if not hasattr(signal, "SIGCONT"):
+            return
+
+        self._prev_sigcont_handler = signal.getsignal(signal.SIGCONT)
+        signal.signal(signal.SIGCONT, self._on_sigcont)
+
+    def _reset_sigcont(self):
+        import signal
+
+        if not hasattr(signal, "SIGCONT"):
+            return
+
+        if self._prev_sigcont_handler is not yuio.MISSING:
+            signal.signal(signal.SIGCONT, self._prev_sigcont_handler)
+
+    def _on_sigcont(self, sig: int, frame: types.FrameType | None):
+        self._seen_sigcont = True
+        if self._prev_sigcont_handler and not isinstance(
+            self._prev_sigcont_handler, int
+        ):
+            self._prev_sigcont_handler(sig, frame)
+
     def _bg_update(self):
         while True:
             try:
                 with _IO_LOCK:
                     while True:
                         update_rate_us = self._update_rate_us
-                        now_us = time.monotonic_ns() // 1_000
+                        start_ns = time.monotonic_ns()
+                        now_us = start_ns // 1_000
                         sleep_us = update_rate_us - now_us % update_rate_us
+                        deadline_ns = (
+                            start_ns + 2 * sleep_us * 1000 + self.TASK_RENDER_TIMEOUT_NS
+                        )
 
                         if self._stop_condition.wait_for(
                             lambda: self._stop, timeout=sleep_us / 1_000_000
                         ):
                             return
 
-                        self._show_tasks()
+                        self._show_tasks(deadline_ns=deadline_ns)
             except Exception:
                 yuio._logger.critical("exception in bg updater", exc_info=True)
 
@@ -2761,6 +2893,9 @@ class _IoManager(abc.ABC):
 
         if self._thread:
             self._thread.join()
+
+        if self._prev_sigcont_handler is not yuio.MISSING:
+            self._reset_sigcont()
 
     def print(
         self,
@@ -2890,16 +3025,36 @@ class _IoManager(abc.ABC):
             yuio._logger.warning("unequal number of suspends and resumes")
             self._suspended = 0
 
+    def _should_draw_interactive_tasks(self):
+        should_draw_interactive_tasks = (
+            self._term.color_support >= yuio.term.ColorSupport.ANSI
+            and self._term.ostream_is_tty
+            and yuio.term._is_foreground(self._term.ostream)
+        )
+
+        if (
+            not should_draw_interactive_tasks and self._tasks_printed
+        ) or self._seen_sigcont:
+            # We were moved from foreground to background. There's no point in hiding
+            # tasks now (shell printed something when user sent C-z), but we need
+            # to make sure that we'll start rendering tasks from scratch whenever
+            # user brings us to foreground again.
+            self.rc.prepare(reset_term_pos=True)
+            self._tasks_printed = 0
+            self._seen_sigcont = False
+
+        return should_draw_interactive_tasks
+
     def _start_task(self, task: Task):
-        if self._term.can_render_widgets:
-            self._tasks.append(task)
+        self._tasks.append(task)
+        if self._should_draw_interactive_tasks():
             self._update_tasks()
         else:
             self._emit_lines(self._format_task(task).as_code(self._term.color_support))
 
     def _start_subtask(self, parent: Task, task: Task):
-        if self._term.can_render_widgets:
-            parent._subtasks.append(task)
+        parent._subtasks.append(task)
+        if self._should_draw_interactive_tasks():
             self._update_tasks()
         else:
             self._emit_lines(self._format_task(task).as_code(self._term.color_support))
@@ -2914,7 +3069,7 @@ class _IoManager(abc.ABC):
             if subtask._status == Task._Status.RUNNING:
                 self._finish_task(subtask, status)
 
-        if self._term.can_render_widgets:
+        if self._should_draw_interactive_tasks():
             if task in self._tasks:
                 self._tasks.remove(task)
                 self._emit_lines(
@@ -2923,10 +3078,12 @@ class _IoManager(abc.ABC):
             else:
                 self._update_tasks()
         else:
+            if task in self._tasks:
+                self._tasks.remove(task)
             self._emit_lines(self._format_task(task).as_code(self._term.color_support))
 
     def _clear_tasks(self):
-        if self._term.can_render_widgets and self._tasks_printed:
+        if self._should_draw_interactive_tasks() and self._tasks_printed:
             self._rc.finalize()
             self._tasks_printed = 0
 
@@ -2935,13 +3092,18 @@ class _IoManager(abc.ABC):
         if immediate_render or not self._enable_bg_updates:
             self._show_tasks(immediate_render)
 
-    def _show_tasks(self, immediate_render: bool = False):
+    def _show_tasks(
+        self, immediate_render: bool = False, deadline_ns: int | None = None
+    ):
         if (
-            self._term.can_render_widgets
+            self._should_draw_interactive_tasks()
             and not self._suspended
             and (self._tasks or self._tasks_printed)
         ):
-            now_us = time.monotonic_ns() // 1000
+            start_ns = time.monotonic_ns()
+            if deadline_ns is None:
+                deadline_ns = start_ns + self.TASK_RENDER_TIMEOUT_NS
+            now_us = start_ns // 1000
             now_us -= now_us % self._update_rate_us
 
             if not immediate_render and self._enable_bg_updates:
@@ -2967,7 +3129,15 @@ class _IoManager(abc.ABC):
                 self._draw_task(task, 0)
             self._renders += 1
             self._rc.set_final_pos(0, self._tasks_printed)
-            self._rc.render()
+
+            now_ns = time.monotonic_ns()
+            if not self._seen_sigcont and now_ns < deadline_ns:
+                self._rc.render()
+            else:
+                # We have to skip this render: the process was suspended while we were
+                # formatting tasks. Because of this, te position of the cursor
+                # could've changed, so we need to reset rendering context and re-render.
+                self._seen_sigcont = True
 
     def _prepare_for_rendering_tasks(self):
         self._rc.prepare()

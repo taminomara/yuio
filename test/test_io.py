@@ -825,8 +825,8 @@ class TestAskNoColor:
             ostream,
             istream,
             color_support=yuio.term.ColorSupport.NONE,
-            ostream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
-            istream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+            ostream_is_tty=True,
+            istream_is_tty=True,
             is_unicode=True,
         )
 
@@ -1298,8 +1298,8 @@ class TestAskNonInteractive:
             ostream,
             istream,
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            ostream_interactive_support=yuio.term.InteractiveSupport.NONE,
-            istream_interactive_support=yuio.term.InteractiveSupport.NONE,
+            ostream_is_tty=False,
+            istream_is_tty=False,
             is_unicode=True,
         )
 
@@ -1367,8 +1367,8 @@ class TestWaitForUserNoColor:
             ostream,
             istream,
             color_support=yuio.term.ColorSupport.NONE,
-            ostream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
-            istream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+            ostream_is_tty=True,
+            istream_is_tty=True,
             is_unicode=True,
         )
 
@@ -1451,8 +1451,8 @@ class TestWaitForUserNonInteractive:
             ostream,
             istream,
             color_support=yuio.term.ColorSupport.ANSI_TRUE,
-            ostream_interactive_support=yuio.term.InteractiveSupport.NONE,
-            istream_interactive_support=yuio.term.InteractiveSupport.NONE,
+            ostream_is_tty=False,
+            istream_is_tty=False,
             is_unicode=True,
         )
 
@@ -2482,6 +2482,196 @@ class TestTask:
                 io_mocker.mark()
                 task.progress(0.50)
                 io_mocker.mark()
+
+
+class TestTaskNonInteractive:
+    pass
+
+
+class TestTaskBackground:
+    is_foreground = False
+
+    @pytest.fixture
+    def width(self):
+        return 40
+
+    @pytest.fixture(autouse=True)
+    def setup_is_foreground(self, monkeypatch: pytest.MonkeyPatch):
+        def is_foreground(*_, **__):
+            return self.is_foreground
+
+        monkeypatch.setattr("yuio.term._is_foreground", is_foreground)
+
+    def test_background(self, io_mocker):
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "> task - done                           ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.progress(0.5)
+                io_mocker.mark()
+
+    def test_background_switch(self, io_mocker):
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "■■□□□ task - 50.00%                     ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "■■□□□ task - 50.00%                     ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "■■□□□ task - 50.00%                     ",
+                "> task - done                           ",
+            ]
+        )
+
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                task.progress(0.5)
+                io_mocker.mark()
+                self.is_foreground = True
+                task.progress(0.5)
+                io_mocker.mark()
+                self.is_foreground = False
+                task.progress(0.5)
+                io_mocker.mark()
+
+    def test_background_switch_with_subtasks(self, io_mocker):
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "> a - running                           ",
+                "> b - running                           ",
+                "> c - running                           ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "> a - running                           ",
+                "> b - running                           ",
+                "> c - running                           ",
+                "⣿ task                                  ",
+                "  ⣿ a - comment                         ",
+                "  ⣿ b                                   ",
+                "  ⣿ c                                   ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "> a - running                           ",
+                "> b - running                           ",
+                "> c - running                           ",
+                "⣿ task                                  ",
+                "  ⣿ a - done                            ",
+                "  ⣿ b                                   ",
+                "  ⣿ c                                   ",
+                "> b - done                              ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "> a - running                           ",
+                "> b - running                           ",
+                "> c - running                           ",
+                "⣿ task                                  ",
+                "  ⣿ a - done                            ",
+                "  ⣿ b                                   ",
+                "  ⣿ c                                   ",
+                "> b - done                              ",
+                "⣿ task                                  ",
+                "  ⣿ a - done                            ",
+                "  ⣿ b - done                            ",
+                "  ⣿ c - done                            ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "> task - running                        ",
+                "> a - running                           ",
+                "> b - running                           ",
+                "> c - running                           ",
+                "⣿ task                                  ",
+                "  ⣿ a - done                            ",
+                "  ⣿ b                                   ",
+                "  ⣿ c                                   ",
+                "> b - done                              ",
+                "⣿ task                                  ",
+                "  ⣿ a - done                            ",
+                "  ⣿ b - done                            ",
+                "  ⣿ c - done                            ",
+                "> task - done                           ",
+            ]
+        )
+        with io_mocker.mock():
+            with yuio.io.Task("task") as task:
+                io_mocker.mark()
+                a = task.subtask("a")
+                b = task.subtask("b")
+                c = task.subtask("c")
+                io_mocker.mark()
+                self.is_foreground = True
+                a.comment("comment")
+                io_mocker.mark()
+                a.done()
+                self.is_foreground = False
+                b.done()
+                io_mocker.mark()
+                self.is_foreground = True
+                c.done()
+                io_mocker.mark()
+                self.is_foreground = False
 
 
 class TestSuspendOutput:

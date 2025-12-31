@@ -360,7 +360,7 @@ function __yuio_compl__@prog@__complete_arg -a word cursor prefix suffix desc
             set len (__yuio_compl__@prog@__compspec_pop) || return
             __yuio_compl__@prog@__assert_int $len || return
             set i
-            for i in seq $len
+            for i in (seq $len)
                 set desc (__yuio_compl__@prog@__compspec_pop)
                 __yuio_compl__@prog@__complete_arg $word $cursor $prefix $suffix $desc || return
             end

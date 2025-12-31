@@ -517,9 +517,9 @@ def app(
     allow_abbrev: bool = False,
     subcommand_required: bool = True,
     setup_logging: bool = True,
-    theme: yuio.theme.Theme
-    | _t.Callable[[yuio.term.Term], yuio.theme.Theme]
-    | None = None,
+    theme: (
+        yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
+    ) = None,
     version: str | None = None,
     bug_report: yuio.dbg.ReportSettings | bool = False,
     is_dev_mode: bool | None = None,
@@ -678,9 +678,9 @@ class App(_t.Generic[C]):
         allow_abbrev: bool = False,
         subcommand_required: bool = True,
         setup_logging: bool = True,
-        theme: yuio.theme.Theme
-        | _t.Callable[[yuio.term.Term], yuio.theme.Theme]
-        | None = None,
+        theme: (
+            yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
+        ) = None,
         version: str | None = None,
         bug_report: yuio.dbg.ReportSettings | bool = False,
         is_dev_mode: bool | None = None,

@@ -106,8 +106,8 @@ def term(ostream: io.StringIO, istream: _t.TextIO) -> yuio.term.Term:
         ostream,
         istream,
         color_support=yuio.term.ColorSupport.ANSI_TRUE,
-        ostream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
-        istream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+        ostream_is_tty=True,
+        istream_is_tty=True,
         is_unicode=True,
     )
 
@@ -192,6 +192,9 @@ def setup_io(
 
     io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=enable_bg_updates)
     monkeypatch.setattr("yuio.io._IO_MANAGER", io_manager)
+    monkeypatch.setattr("yuio.term._is_foreground", lambda *_, **__: True)
+    monkeypatch.setattr("yuio.term.get_tty", lambda: term)
+    monkeypatch.setattr("yuio.term._prepare_tty", lambda: None)
 
     yield
 
@@ -755,8 +758,8 @@ class WidgetChecker(IOMocker, _t.Generic[W]):
            _ostream,
            _istream,
            color_support=yuio.term.ColorSupport.ANSI_TRUE,
-           ostream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
-           istream_interactive_support=yuio.term.InteractiveSupport.INTERACTIVE,
+           ostream_is_tty=True,
+           istream_is_tty=True,
        )
        _theme = yuio.theme.Theme()
        test_something(_term, _theme, 20, 5)
@@ -873,7 +876,7 @@ class _MockedIStream(_t.TextIO):
         return self._closed
 
     def fileno(self) -> int:
-        raise io.UnsupportedOperation("fileno")
+        return 0
 
     def flush(self):
         self._assert_not_closed()
@@ -953,6 +956,9 @@ class _MockedOStream(io.StringIO):
 
     def isatty(self) -> bool:
         return True
+
+    def fileno(self) -> int:
+        return 1
 
 
 def pytest_assertrepr_compare(op, left, right):
