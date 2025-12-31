@@ -12,21 +12,25 @@ from sybil.parsers.codeblock import PythonCodeBlockParser
 from sybil.parsers.doctest import DocTestParser
 from sybil.parsers.rest import SkipParser
 
-_ORIG_FIND_TTY = yuio.term._find_tty
-
-
-def _find_tty():
-    yuio.term._TTY_OUTPUT = yuio.term._TTY_INPUT = None
-
 
 def _setup(*_args, **_kwargs):
-    yuio.term._find_tty = _find_tty
+    yuio.term._TTY_SETUP_PERFORMED = True
+    yuio.term._TTY_OUTPUT = None
+    yuio.term._TTY_INPUT = None
+    yuio.term._TERMINAL_THEME = None
+    yuio.term._EXPLICIT_COLOR_SUPPORT = yuio.term.ColorSupport.NONE
+    yuio.term._COLOR_SUPPORT = yuio.term.ColorSupport.NONE
     yuio.io.setup(term=yuio.term.Term(io.StringIO(), io.StringIO()))
 
 
 def _teardown(*_args, **_kwargs):
     yuio.io.restore_streams()
-    yuio.term._find_tty = _ORIG_FIND_TTY
+    yuio.term._TTY_SETUP_PERFORMED = True
+    yuio.term._TTY_OUTPUT = None
+    yuio.term._TTY_INPUT = None
+    yuio.term._TERMINAL_THEME = None
+    yuio.term._EXPLICIT_COLOR_SUPPORT = yuio.term.ColorSupport.NONE
+    yuio.term._COLOR_SUPPORT = yuio.term.ColorSupport.NONE
 
 
 pytest_collect_file = Sybil(

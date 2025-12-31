@@ -2,12 +2,13 @@
 
 import logging
 import pathlib
-from typing import Annotated
 
 import yuio.app
 import yuio.config
 import yuio.io
 import yuio.parse
+
+from typing import Annotated
 
 _logger = logging.getLogger(__name__)
 

@@ -1253,7 +1253,7 @@ _PY_SYNTAX = re.compile(
         | (?P<type>
             \b(?:                                   # type
                 str|int|float|complex|list|tuple|range|dict|set|frozenset|bool|
-                bytes|bytearray|memoryview|(?:[A-Z](?:[A-Z0-9_]*+[a-z]\w*)?)
+                bytes|bytearray|memoryview|(?:[A-Z](?:[A-Z0-9_]*?[a-z]\w*)?)
             )\b)
         | (?P<punct>[{}()\[\]\\;,])                 # punctuation
         | (?P<comment>\#.*$)                        # comment

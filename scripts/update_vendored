@@ -7,15 +7,15 @@ import pathlib
 import shutil
 import tempfile
 
-import github
-import requests
-import requests.adapters
-from packaging.version import Version
-
 import yuio.app
 import yuio.config
 import yuio.io
 import yuio.parse
+
+import github
+import requests
+import requests.adapters
+from packaging.version import Version
 
 TEMPLATE = """# TYPING EXTENSIONS
 #

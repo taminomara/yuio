@@ -1902,6 +1902,7 @@ def edit(
         else:
             # $VISUAL/$EDITOR can include flags, so we need to use shell instead.
             from shlex import quote
+
             args = f"{editor} {quote(filepath)}"
             shell = True
 

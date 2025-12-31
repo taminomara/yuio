@@ -1,13 +1,14 @@
 #! /usr/bin/env python
 
 import pathlib
-import typing
 from enum import Enum
 
 import yuio.app
 import yuio.complete
 import yuio.git
 import yuio.parse
+
+import typing
 
 
 class E(Enum):
