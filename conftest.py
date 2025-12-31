@@ -3,14 +3,14 @@ from __future__ import annotations
 import io
 import platform
 
+import yuio.io
+import yuio.term
+
 import pytest
 from sybil import Sybil
 from sybil.parsers.codeblock import PythonCodeBlockParser
 from sybil.parsers.doctest import DocTestParser
 from sybil.parsers.rest import SkipParser
-
-import yuio.io
-import yuio.term
 
 _ORIG_FIND_TTY = yuio.term._find_tty
 

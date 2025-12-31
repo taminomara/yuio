@@ -370,7 +370,6 @@ import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
-from yuio import _typing as _t
 from yuio.string import (
     And,
     ColorizedString,
@@ -390,6 +389,14 @@ from yuio.string import (
     Wrap,
 )
 from yuio.util import dedent as _dedent
+
+import yuio._typing_ext as _tx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "And",
@@ -1333,7 +1340,7 @@ class _AskMeta(type):
         if cls.__hint is None:
             return cls.__name__
         else:
-            return f"{cls.__name__}[{_t.type_repr(cls.__hint)}]"
+            return f"{cls.__name__}[{_tx.type_repr(cls.__hint)}]"
 
 
 @_t.final
@@ -1403,6 +1410,34 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
             answer = yuio.io.ask[Level]("Choose a logging level", default=Level.INFO)
 
     """
+
+    if TYPE_CHECKING:
+
+        @_t.overload
+        def __new__(
+            cls: type[ask[S]],
+            msg: _t.LiteralString,
+            /,
+            *args,
+            default: M | yuio.Missing = yuio.MISSING,
+            default_non_interactive: _t.Any = yuio.MISSING,
+            parser: yuio.parse.Parser[S] | None = None,
+            input_description: str | None = None,
+            default_description: str | None = None,
+        ) -> S | M: ...
+        @_t.overload
+        def __new__(
+            cls: type[ask[S]],
+            msg: str,
+            /,
+            *,
+            default: M | yuio.Missing = yuio.MISSING,
+            default_non_interactive: _t.Any = yuio.MISSING,
+            parser: yuio.parse.Parser[S] | None = None,
+            input_description: str | None = None,
+            default_description: str | None = None,
+        ) -> S | M: ...
+        def __new__(cls: _t.Any, *_, **__) -> _t.Any: ...
 
 
 def _ask(
@@ -1612,7 +1647,7 @@ elif os.name == "nt":
             return term.istream.readline().rstrip("\r\n")
         else:
             result = ""
-            while 1:
+            while True:
                 c = msvcrt.getwch()
                 if c == "\0" or c == "\xe0":
                     # Read key scan code and ignore it.
@@ -1866,10 +1901,7 @@ def edit(
             shell = False
         else:
             # $VISUAL/$EDITOR can include flags, so we need to use shell instead.
-            try:
-                from shlex import quote
-            except ImportError:
-                from pipes import quote
+            from shlex import quote
             args = f"{editor} {quote(filepath)}"
             shell = True
 
@@ -2979,7 +3011,7 @@ class _IoManager(abc.ABC):
         while update_rate_ms < 50:
             update_rate_ms *= 2
         while update_rate_ms > 250:
-            update_rate_ms /= 2
+            update_rate_ms //= 2
         return int(update_rate_ms * 1000)
 
     @property

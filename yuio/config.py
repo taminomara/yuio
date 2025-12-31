@@ -353,7 +353,6 @@ import yuio.complete
 import yuio.json_schema
 import yuio.parse
 import yuio.string
-from yuio import _typing as _t
 from yuio.cli import (
     MISC_GROUP,
     OPTS_GROUP,
@@ -362,6 +361,14 @@ from yuio.cli import (
     MutuallyExclusiveGroup,
 )
 from yuio.util import _find_docs
+
+import yuio._typing_ext as _tx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "MISC_GROUP",
@@ -504,7 +511,7 @@ class _FieldSettings:
             origin = _t.get_origin(ty)
             args = _t.get_args(ty)
             is_optional = (
-                default is None or _t.is_union(origin) and types.NoneType in args
+                default is None or _tx.is_union(origin) and types.NoneType in args
             )
             if is_optional and not yuio.parse._is_optional_parser(parser):
                 parser = yuio.parse.Optional(parser)
@@ -1264,7 +1271,7 @@ class Config:
             import toml
         except ImportError:
             try:
-                import tomllib as toml  # type: ignore
+                import tomllib as toml
             except ImportError:
                 raise ImportError("toml is not available")
 
@@ -1437,7 +1444,7 @@ class Config:
 
         """
 
-        return ctx.add_type(cls, _t.type_repr(cls), lambda: cls.__to_json_schema(ctx))
+        return ctx.add_type(cls, _tx.type_repr(cls), lambda: cls.__to_json_schema(ctx))
 
     def to_json_value(
         self, *, include_defaults: bool = True

@@ -81,12 +81,19 @@ import shutil
 import string
 import subprocess
 import sys
-import typing
 from dataclasses import dataclass
 
 import yuio
 import yuio.string
-from yuio import _typing as _t
+
+import typing
+import yuio._typing_ext as _tx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "Alternative",
@@ -161,7 +168,7 @@ class Completion:
 
     """
 
-    group_id: _t.SupportsLt[_t.Any] = dataclasses.field(repr=False)
+    group_id: _tx.SupportsLt[_t.Any] = dataclasses.field(repr=False)
     """
     Group id, used to sort completions.
 

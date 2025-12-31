@@ -8,14 +8,20 @@ from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
 
-import jsonschema
-import pytest
-
 import yuio.json_schema
 import yuio.parse
 import yuio.secret
 import yuio.widget
-from yuio import _typing as _t
+
+import jsonschema
+import pytest
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 
 class TestStrParsingContext:

@@ -1,9 +1,9 @@
-from typing import NoReturn
-
 import yuio.io
 import yuio.string
 import yuio.widget
 from yuio.widget import KeyboardEvent, RenderContext, VerticalLayout, Widget
+
+from typing import NoReturn
 
 
 # Let's build a simple widget that displays an input box with a heading

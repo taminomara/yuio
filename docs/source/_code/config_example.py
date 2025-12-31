@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import enum
-from typing import Annotated
 
 import yuio.config
 import yuio.parse
+
+from typing import Annotated
 
 
 class LogLevel(enum.Enum):

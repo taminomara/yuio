@@ -227,12 +227,19 @@ import yuio
 import yuio.color
 import yuio.term
 import yuio.theme
-from yuio import _typing as _t
 from yuio.color import Color as _Color
 from yuio.util import UserString as _UserString
 from yuio.util import dedent as _dedent
 
-if _t.TYPE_CHECKING:
+import yuio._typing_ext as _tx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
+
+if TYPE_CHECKING:
     import yuio.md
 
 __all__ = [
@@ -1218,7 +1225,7 @@ def _percent_format(
 
 
 def _percent_format_repl(
-    match: _t.StrReMatch,
+    match: _tx.StrReMatch,
     args: object,
     arg_index: int,
     base_color: _Color,
@@ -1283,7 +1290,7 @@ def _unwrap_base_color(x, theme: yuio.theme.Theme):
 
 
 def _percent_format_repl_str(
-    match: _t.StrReMatch,
+    match: _tx.StrReMatch,
     args: object,
     arg_index: int,
     base_color: _Color,
@@ -1579,7 +1586,7 @@ class Link(_UserString):
         return ColorizedString(self)
 
 
-def _split_keep_link(s: str, r: _t.StrRePattern):
+def _split_keep_link(s: str, r: _tx.StrRePattern):
     if isinstance(s, Link):
         url = s.url
         ctor = lambda x: Link(x, url=url)
@@ -2361,7 +2368,7 @@ class ReprContext:
             yuio._logger.exception("error in repr context")
             res = ColorizedString()
             res.append_color(_Color.STYLE_INVERSE | _Color.FORE_RED)
-            res.append_str(f"{_t.type_repr(type(e))}: {e}")
+            res.append_str(f"{_tx.type_repr(type(e))}: {e}")
             return res
         finally:
             self._line = old_line
@@ -2386,7 +2393,7 @@ class ReprContext:
     def _print_nested_as_str(self, value):
         if isinstance(value, type):
             # This is a type.
-            self._print_plain(value, convert=_t.type_repr)
+            self._print_plain(value, convert=_tx.type_repr)
         elif hasattr(value, "__colorized_str__"):
             # Has `__colorized_str__`.
             self._print_colorized_str(value)
@@ -2400,7 +2407,7 @@ class ReprContext:
     def _print_nested_as_repr(self, value):
         if isinstance(value, type):
             # This is a type.
-            self._print_plain(value, convert=_t.type_repr)
+            self._print_plain(value, convert=_tx.type_repr)
         elif hasattr(value, "__colorized_repr__"):
             # Has `__colorized_repr__`.
             self._print_colorized_repr(value)
@@ -2538,7 +2545,7 @@ class ReprContext:
         res = value.__colorized_repr__(self)
         if not isinstance(res, ColorizedString):
             raise TypeError(
-                f"__colorized_repr__ returned non-colorized-string (type {_t.type_repr(type(res))})"
+                f"__colorized_repr__ returned non-colorized-string (type {_tx.type_repr(type(res))})"
             )
         self._line += res
 
@@ -2550,7 +2557,7 @@ class ReprContext:
         res = value.__colorized_str__(self)
         if not isinstance(res, ColorizedString):
             raise TypeError(
-                f"__colorized_str__ returned non-colorized-string (type {_t.type_repr(type(res))})"
+                f"__colorized_str__ returned non-colorized-string (type {_tx.type_repr(type(res))})"
             )
         self._line += res
         self._state = _ReprContextState.NORMAL
@@ -2632,7 +2639,7 @@ def _to_colorable(msg: _t.Any, args: tuple[_t.Any, ...] | None = None) -> Colora
     else:
         if args:
             raise TypeError(
-                f"non-string type {_t.type_repr(type(msg))} can't have format arguments"
+                f"non-string type {_tx.type_repr(type(msg))} can't have format arguments"
             )
         return msg
 
@@ -2771,7 +2778,7 @@ class TypeRepr(_StrBase):
         ):
             return ColorizedString(self._ty)
         else:
-            return ctx.hl(_t.type_repr(self._ty), highlighted=self._highlighted)
+            return ctx.hl(_tx.type_repr(self._ty), highlighted=self._highlighted)
 
 
 @repr_from_rich

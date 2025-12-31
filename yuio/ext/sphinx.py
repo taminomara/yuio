@@ -387,7 +387,12 @@ import functools
 import json
 import operator
 import re
-import typing as _t
+
+import yuio
+import yuio.config
+import yuio.json_schema
+import yuio.parse
+import yuio.util
 
 import docutils.nodes
 import sphinx.addnodes
@@ -401,11 +406,7 @@ from sphinx.util.docstrings import separate_metadata
 from sphinx.util.docutils import SphinxRole
 from sphinx.util.inspect import isenumattribute, object_description
 
-import yuio
-import yuio.config
-import yuio.json_schema
-import yuio.parse
-import yuio.util
+import typing as _t
 
 _TYPE_PARSE_RE = re.compile(
     r"""

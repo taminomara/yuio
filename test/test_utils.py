@@ -1,8 +1,8 @@
-import pytest
-
 import yuio
 import yuio.color
 import yuio.util
+
+import pytest
 
 
 @pytest.mark.parametrize(

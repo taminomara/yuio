@@ -3,8 +3,6 @@ import os
 import sys
 import textwrap
 
-import pytest
-
 import yuio.io
 import yuio.parse
 import yuio.string
@@ -14,6 +12,8 @@ import yuio.widget
 from yuio import _t
 
 from .conftest import IOMocker, RcCompare
+
+import pytest
 
 
 class TestSetup:

@@ -43,9 +43,15 @@ import traceback
 import types
 from dataclasses import dataclass
 
-from yuio import _typing as _t
+import yuio._typing_ext as _tx
+from typing import TYPE_CHECKING
 
-if _t.TYPE_CHECKING:
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
+
+if TYPE_CHECKING:
     import yuio.app
 
 __all__ = [
@@ -198,7 +204,7 @@ def _versions(
     else:
         report.items.append(
             "TypeError: expected str or ModuleType, "
-            f"got {_t.type_repr(type(package))}: {package!r}"
+            f"got {_tx.type_repr(type(package))}: {package!r}"
         )
         dependencies = set()
 
@@ -210,7 +216,7 @@ def _versions(
         else:
             report.items.append(
                 "TypeError: expected str or ModuleType, "
-                f"got {_t.type_repr(type(dependency))}: {dependency!r}"
+                f"got {_tx.type_repr(type(dependency))}: {dependency!r}"
             )
     dependencies.add("yuio")
 

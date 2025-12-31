@@ -462,7 +462,6 @@ import re
 import threading
 import traceback
 import types
-import typing
 
 import yuio
 import yuio.color
@@ -470,11 +469,19 @@ import yuio.complete
 import yuio.json_schema
 import yuio.string
 import yuio.widget
-from yuio import _typing as _t
 from yuio.json_schema import JsonValue
 from yuio.secret import SecretString, SecretValue
 from yuio.util import _find_docs
 from yuio.util import to_dash_case as _to_dash_case
+
+import typing
+import yuio._typing_ext as _tx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "Apply",
@@ -548,7 +555,7 @@ V = _t.TypeVar("V")
 C = _t.TypeVar("C", bound=_t.Collection[object])
 C2 = _t.TypeVar("C2", bound=_t.Collection[object])
 Sz = _t.TypeVar("Sz", bound=_t.Sized)
-Cmp = _t.TypeVar("Cmp", bound=_t.SupportsLt[_t.Any])
+Cmp = _t.TypeVar("Cmp", bound=_tx.SupportsLt[_t.Any])
 E = _t.TypeVar("E", bound=enum.Enum)
 TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
@@ -1052,7 +1059,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         if not self.check_type(value):
             raise TypeError(
-                f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
+                f"parser {self} can't handle value of type {_tx.type_repr(type(value))}"
             )
         return True
 
@@ -1333,7 +1340,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
         if not isinstance(self, parser.__class__):
             with self._patch_stack_summary():
                 raise TypeError(
-                    f"annotating {_t.type_repr(typehint)} with {self.__class__.__name__}"
+                    f"annotating {_tx.type_repr(typehint)} with {self.__class__.__name__}"
                     " conflicts with default parser for this type, which is"
                     f" {parser.__class__.__name__}.\n\n"
                     "Example:\n"
@@ -1431,7 +1438,7 @@ class WrappingParser(Parser[T], _t.Generic[T, U]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(cls, inner: U, /) -> WrappingParser[T, U]: ...
@@ -1507,7 +1514,7 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(cls, inner: Parser[U], /) -> MappingParser[T, U]: ...
@@ -1595,7 +1602,7 @@ class Map(MappingParser[T, U], _t.Generic[T, U]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(cls, inner: Parser[T], fn: _t.Callable[[T], T], /) -> Map[T, T]: ...
@@ -1769,14 +1776,14 @@ def Strip(*args) -> _t.Any:
 @_t.overload
 def Regex(
     inner: Parser[str],
-    regex: str | _t.StrRePattern,
+    regex: str | _tx.StrRePattern,
     /,
     *,
     group: int | str = 0,
 ) -> Parser[str]: ...
 @_t.overload
 def Regex(
-    regex: str | _t.StrRePattern, /, *, group: int | str = 0
+    regex: str | _tx.StrRePattern, /, *, group: int | str = 0
 ) -> PartialParser: ...
 def Regex(*args, group: int | str = 0) -> _t.Any:
     """Regex(inner: Parser[str], regex: str | re.Pattern[str], /, *, group: int | str = 0)
@@ -1794,7 +1801,7 @@ def Regex(*args, group: int | str = 0) -> _t.Any:
     """
 
     inner: Parser[str] | None
-    regex: str | _t.StrRePattern
+    regex: str | _tx.StrRePattern
     if len(args) == 1:
         inner, regex = None, args[0]
     elif len(args) == 2:
@@ -1841,7 +1848,7 @@ class Apply(MappingParser[T, T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -1952,7 +1959,7 @@ class ValidatingParser(Apply[T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(cls, inner: Parser[T], /) -> ValidatingParser[T]: ...
@@ -2205,7 +2212,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -2389,7 +2396,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         else:
             return ctx.add_type(
                 Enum._TyWrapper(self._inner, self._by_name, self._to_dash_case),
-                _t.type_repr(self._inner),
+                _tx.type_repr(self._inner),
                 lambda: yuio.json_schema.Meta(
                     yuio.json_schema.Enum(items, descriptions),
                     title=self._inner.__name__,
@@ -2590,7 +2597,7 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(cls, inner: Parser[T], /) -> Json[T]: ...
@@ -2654,7 +2661,7 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
         assert self.assert_type(value)
         if self._inner_raw is not None:
             return self._inner_raw.to_json_value(value)
-        return value
+        return value  # type: ignore
 
     def __repr__(self):
         if self._inner_raw is not None:
@@ -3181,7 +3188,7 @@ class Secret(Map[SecretValue[T], T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(cls, inner: Parser[T], /) -> Secret[T]: ...
@@ -3455,7 +3462,7 @@ class List(CollectionParser[list[T], T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -3501,7 +3508,7 @@ class Set(CollectionParser[set[T], T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -3564,7 +3571,7 @@ class FrozenSet(CollectionParser[frozenset[T], T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -3618,7 +3625,7 @@ class Dict(CollectionParser[dict[K, V], tuple[K, V]], _t.Generic[K, V]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -3720,7 +3727,7 @@ class Tuple(
     # See the links below for an explanation of shy this is so ugly:
     # https://github.com/python/typing/discussions/1450
     # https://github.com/python/typing/issues/1216
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
         T1 = _t.TypeVar("T1")
         T2 = _t.TypeVar("T2")
         T3 = _t.TypeVar("T3")
@@ -4105,7 +4112,7 @@ class Optional(MappingParser[T | None, T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(cls, inner: Parser[T], /) -> Optional[T]: ...
@@ -4193,7 +4200,7 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
     # See the links below for an explanation of shy this is so ugly:
     # https://github.com/python/typing/discussions/1450
     # https://github.com/python/typing/issues/1216
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
         T1 = _t.TypeVar("T1")
         T2 = _t.TypeVar("T2")
         T3 = _t.TypeVar("T3")
@@ -4420,7 +4427,7 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
                 pass
 
         raise TypeError(
-            f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
+            f"parser {self} can't handle value of type {_tx.type_repr(type(value))}"
         )
 
     def options(self) -> _t.Collection[yuio.widget.Option[T]] | None:
@@ -4462,7 +4469,7 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
                 pass
 
         raise TypeError(
-            f"parser {self} can't handle value of type {_t.type_repr(type(value))}"
+            f"parser {self} can't handle value of type {_tx.type_repr(type(value))}"
         )
 
     def is_secret(self) -> bool:
@@ -4596,7 +4603,7 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -4665,7 +4672,7 @@ class Bound(_BoundImpl[Cmp, Cmp], _t.Generic[Cmp]):
 @_t.overload
 def Gt(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
-def Gt(bound: _t.SupportsLt[_t.Any], /) -> PartialParser: ...
+def Gt(bound: _tx.SupportsLt[_t.Any], /) -> PartialParser: ...
 def Gt(*args) -> _t.Any:
     """Gt(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4689,7 +4696,7 @@ def Gt(*args) -> _t.Any:
 @_t.overload
 def Ge(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
-def Ge(bound: _t.SupportsLt[_t.Any], /) -> PartialParser: ...
+def Ge(bound: _tx.SupportsLt[_t.Any], /) -> PartialParser: ...
 def Ge(*args) -> _t.Any:
     """Ge(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4713,7 +4720,7 @@ def Ge(*args) -> _t.Any:
 @_t.overload
 def Lt(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
-def Lt(bound: _t.SupportsLt[_t.Any], /) -> PartialParser: ...
+def Lt(bound: _tx.SupportsLt[_t.Any], /) -> PartialParser: ...
 def Lt(*args) -> _t.Any:
     """Lt(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4737,7 +4744,7 @@ def Lt(*args) -> _t.Any:
 @_t.overload
 def Le(inner: Parser[Cmp], bound: Cmp, /) -> Bound[Cmp]: ...
 @_t.overload
-def Le(bound: _t.SupportsLt[_t.Any], /) -> PartialParser: ...
+def Le(bound: _tx.SupportsLt[_t.Any], /) -> PartialParser: ...
 def Le(*args) -> _t.Any:
     """Le(inner: Parser[Cmp], bound: Cmp, /)
 
@@ -4788,7 +4795,7 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -4990,7 +4997,7 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(cls, inner: Parser[T], values: _t.Collection[T], /) -> OneOf[T]: ...
@@ -5091,7 +5098,7 @@ class WithMeta(MappingParser[T, T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @_t.overload
         def __new__(
@@ -5772,7 +5779,7 @@ def _from_type_hint(ty: _t.Any, /) -> Parser[object]:
             _FROM_TYPE_HINT_DEPTH.uses_delim = prev_uses_delim
             _FROM_TYPE_HINT_DEPTH.depth -= uses_delim
 
-    if _t.is_union(origin):
+    if _tx.is_union(origin):
         if is_optional := (type(None) in args):
             args = list(args)
             args.remove(type(None))
@@ -5784,7 +5791,7 @@ def _from_type_hint(ty: _t.Any, /) -> Parser[object]:
             p = Optional(p)
         return p
     else:
-        raise TypeError(f"unsupported type {_t.type_repr(ty)}")
+        raise TypeError(f"unsupported type {_tx.type_repr(ty)}")
 
 
 @_t.overload

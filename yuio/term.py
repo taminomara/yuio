@@ -76,8 +76,14 @@ from dataclasses import dataclass
 
 import yuio
 import yuio.color
-from yuio import _typing as _t
 from yuio.color import ColorSupport
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "ColorSupport",

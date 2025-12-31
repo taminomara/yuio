@@ -1,8 +1,8 @@
 import re
 
-import pytest
-
 import yuio.md
+
+import pytest
 
 
 class TestParser:

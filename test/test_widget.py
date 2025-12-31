@@ -1,17 +1,23 @@
 import io
 import string
 
-import pytest
-
 import yuio.color
 import yuio.complete
 import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
-from yuio import _typing as _t
 
 from .conftest import RcCompare, WidgetChecker
+
+import pytest
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 
 class TestRenderContext:

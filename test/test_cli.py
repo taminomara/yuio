@@ -1,10 +1,16 @@
-import pytest
-
 import yuio
 import yuio.cli
 import yuio.config
 import yuio.parse
-from yuio import _typing as _t
+
+import pytest
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 
 def make_command(

@@ -421,7 +421,6 @@ import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.util
-from yuio import _typing as _t
 from yuio.cli import (
     MISC_GROUP,
     OPTS_GROUP,
@@ -445,6 +444,13 @@ from yuio.config import (
 )
 from yuio.util import _find_docs
 from yuio.util import to_dash_case as _to_dash_case
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "MISC_GROUP",

@@ -1,11 +1,11 @@
 import os
 
-import pytest
-
 import yuio
 import yuio.app
 import yuio.config
 from yuio.app import App, CommandInfo, app, field, inline, positional
+
+import pytest
 
 
 @pytest.fixture(autouse=True)

@@ -15,7 +15,12 @@ from __future__ import annotations
 import re as _re
 import textwrap as _textwrap
 
-from yuio import _typing as _t
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "UserString",
@@ -238,7 +243,7 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
     return docs
 
 
-if _t.TYPE_CHECKING:
+if TYPE_CHECKING:
 
     class _FormatMapMapping(_t.Protocol):
         def __getitem__(self, key: str, /) -> _t.Any: ...

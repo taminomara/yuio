@@ -1,9 +1,9 @@
 import importlib.util
 import io
 
-import pytest
-
 import yuio.dbg
+
+import pytest
 
 __version__ = "1.1.2.2"
 

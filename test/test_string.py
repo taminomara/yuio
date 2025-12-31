@@ -2,13 +2,20 @@ import collections
 import dataclasses
 from dataclasses import dataclass
 
-import pytest
-
 import yuio.string
 import yuio.term
-from yuio import _typing as _t
 from yuio.color import Color
 from yuio.string import NO_WRAP_END, NO_WRAP_START, Esc
+
+import pytest
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
+
 
 _s = yuio.string.ColorizedString
 

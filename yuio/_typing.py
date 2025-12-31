@@ -8,10 +8,8 @@
 # pyright: reportDeprecated=false
 # ruff: noqa: F403, F405, I002
 
-import abc as _abc
-import re as _re
 import sys as _sys
-import types as _types
+
 import typing as _typing
 from typing import *  # type: ignore
 
@@ -35,53 +33,3 @@ assert _typing.Annotated is _typing_extensions.Annotated
 # if they're re-exported from typing.
 # See https://github.com/python/cpython/issues/133956.
 del ClassVar  # noqa: F821
-
-
-def is_union(origin):
-    return origin is Union or origin is _types.UnionType
-
-
-if TYPE_CHECKING:
-    StrRePattern: TypeAlias = _re.Pattern[str]
-    StrReMatch: TypeAlias = _re.Match[str]
-
-else:
-    try:
-        StrRePattern = _re.Pattern[str]
-        StrReMatch = _re.Match[str]
-    except TypeError:
-        StrRePattern = _re.Pattern
-        StrReMatch = _re.Match
-
-
-if _sys.version_info < (3, 11):
-
-    def type_repr(obj: Any) -> str:
-        # Better `type_repr` for older pythons.
-        if origin := get_origin(obj):
-            return type_repr(origin) + type_repr(get_args(obj))
-        if isinstance(obj, (type, _types.FunctionType, _types.BuiltinFunctionType)):
-            if obj.__module__ == "builtins":
-                return obj.__qualname__
-            return f"{obj.__module__}.{obj.__qualname__}"
-        if obj is ...:
-            return "..."
-        if isinstance(obj, _types.FunctionType):
-            return obj.__name__
-        if isinstance(obj, tuple):
-            # Special case for `repr` of types with `ParamSpec`:
-            return "[" + ", ".join(type_repr(t) for t in obj) + "]"
-        return repr(obj)
-
-
-_T_contra = TypeVar("_T_contra", contravariant=True)
-
-
-class SupportsLt(Protocol[_T_contra]):
-    """
-    Protocol for objects that can be compared to each other.
-
-    """
-
-    @_abc.abstractmethod
-    def __lt__(self, other: _T_contra, /) -> bool: ...

@@ -160,7 +160,7 @@ exclude = [
     "yuio/_vendor/*",
 ]
 typeCheckingMode = "strict"
-pythonVersion = "3.10"
+pythonVersion = "3.14"
 pythonPlatform = "All"
 
 reportMissingParameterType = "none"
@@ -175,6 +175,7 @@ reportPrivateUsage = "none"
 reportUnusedFunction = "none"
 reportConstantRedefinition = "none"
 reportRedeclaration = "none"
+reportDeprecated = "none"
 deprecateTypingAliases = true
 
 [tool.ruff]
@@ -216,6 +217,17 @@ future-annotations = true
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
+section-order = [
+    "future",
+    "standard-library",
+    "first-party",
+    "local-folder",
+    "third-party",
+    "typing",
+]
+
+[tool.ruff.lint.isort.sections]
+typing = ["typing", "yuio._typing_ext", "yuio._typing"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -238,8 +250,8 @@ exclude_also = [
     "if yuio._debug:",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
-    "if _t.TYPE_CHECKING:",
-    "@(abc.)?abstractmethod",
+    "if (|_t\\.|typing\\.)TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
     "except ImportError:",
     "assert False",
 ]

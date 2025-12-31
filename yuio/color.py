@@ -30,10 +30,15 @@ import colorsys
 import dataclasses
 import enum
 import re
-import typing
 from dataclasses import dataclass
 
-from yuio import _typing as _t
+from typing import TYPE_CHECKING
+from typing import ClassVar as _ClassVar
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "Color",
@@ -562,49 +567,49 @@ class Color:
         res += ">"
         return res
 
-    NONE: typing.ClassVar[Color] = dict()  # type: ignore
+    NONE: _ClassVar[Color] = dict()  # type: ignore
     """
     No color.
 
     """
 
-    STYLE_BOLD: typing.ClassVar[Color] = dict(bold=True)  # type: ignore
+    STYLE_BOLD: _ClassVar[Color] = dict(bold=True)  # type: ignore
     """
     Bold font style.
 
     """
 
-    STYLE_DIM: typing.ClassVar[Color] = dict(dim=True)  # type: ignore
+    STYLE_DIM: _ClassVar[Color] = dict(dim=True)  # type: ignore
     """
     Dim font style.
 
     """
 
-    STYLE_ITALIC: typing.ClassVar[Color] = dict(italic=True)  # type: ignore
+    STYLE_ITALIC: _ClassVar[Color] = dict(italic=True)  # type: ignore
     """
     Italic font style.
 
     """
 
-    STYLE_UNDERLINE: typing.ClassVar[Color] = dict(underline=True)  # type: ignore
+    STYLE_UNDERLINE: _ClassVar[Color] = dict(underline=True)  # type: ignore
     """
     Underline font style.
 
     """
 
-    STYLE_INVERSE: typing.ClassVar[Color] = dict(inverse=True)  # type: ignore
+    STYLE_INVERSE: _ClassVar[Color] = dict(inverse=True)  # type: ignore
     """
     Swaps foreground and background colors.
 
     """
 
-    STYLE_BLINK: typing.ClassVar[Color] = dict(blink=True)  # type: ignore
+    STYLE_BLINK: _ClassVar[Color] = dict(blink=True)  # type: ignore
     """
     Makes the text blink.
 
     """
 
-    STYLE_NORMAL: typing.ClassVar[Color] = dict(
+    STYLE_NORMAL: _ClassVar[Color] = dict(
         bold=False,
         dim=False,
         underline=False,
@@ -617,13 +622,13 @@ class Color:
 
     """
 
-    FORE_NORMAL: typing.ClassVar[Color] = dict(fore=ColorValue(9))  # type: ignore
+    FORE_NORMAL: _ClassVar[Color] = dict(fore=ColorValue(9))  # type: ignore
     """
     Normal foreground color.
 
     """
 
-    FORE_NORMAL_DIM: typing.ClassVar[Color] = dict(fore=ColorValue("2"))  # type: ignore
+    FORE_NORMAL_DIM: _ClassVar[Color] = dict(fore=ColorValue("2"))  # type: ignore
     """
     Normal foreground color rendered with dim setting.
 
@@ -632,7 +637,7 @@ class Color:
 
     """
 
-    FORE_BLACK: typing.ClassVar[Color] = dict(fore=ColorValue(0))  # type: ignore
+    FORE_BLACK: _ClassVar[Color] = dict(fore=ColorValue(0))  # type: ignore
     """
     Black foreground color.
 
@@ -643,43 +648,43 @@ class Color:
 
     """
 
-    FORE_RED: typing.ClassVar[Color] = dict(fore=ColorValue(1))  # type: ignore
+    FORE_RED: _ClassVar[Color] = dict(fore=ColorValue(1))  # type: ignore
     """
     Red foreground color.
 
     """
 
-    FORE_GREEN: typing.ClassVar[Color] = dict(fore=ColorValue(2))  # type: ignore
+    FORE_GREEN: _ClassVar[Color] = dict(fore=ColorValue(2))  # type: ignore
     """
     Green foreground color.
 
     """
 
-    FORE_YELLOW: typing.ClassVar[Color] = dict(fore=ColorValue(3))  # type: ignore
+    FORE_YELLOW: _ClassVar[Color] = dict(fore=ColorValue(3))  # type: ignore
     """
     Yellow foreground color.
 
     """
 
-    FORE_BLUE: typing.ClassVar[Color] = dict(fore=ColorValue(4))  # type: ignore
+    FORE_BLUE: _ClassVar[Color] = dict(fore=ColorValue(4))  # type: ignore
     """
     Blue foreground color.
 
     """
 
-    FORE_MAGENTA: typing.ClassVar[Color] = dict(fore=ColorValue(5))  # type: ignore
+    FORE_MAGENTA: _ClassVar[Color] = dict(fore=ColorValue(5))  # type: ignore
     """
     Magenta foreground color.
 
     """
 
-    FORE_CYAN: typing.ClassVar[Color] = dict(fore=ColorValue(6))  # type: ignore
+    FORE_CYAN: _ClassVar[Color] = dict(fore=ColorValue(6))  # type: ignore
     """
     Cyan foreground color.
 
     """
 
-    FORE_WHITE: typing.ClassVar[Color] = dict(fore=ColorValue(7))  # type: ignore
+    FORE_WHITE: _ClassVar[Color] = dict(fore=ColorValue(7))  # type: ignore
     """
     White foreground color.
 
@@ -690,55 +695,55 @@ class Color:
 
     """
 
-    BACK_NORMAL: typing.ClassVar[Color] = dict(back=ColorValue(9))  # type: ignore
+    BACK_NORMAL: _ClassVar[Color] = dict(back=ColorValue(9))  # type: ignore
     """
     Normal background color.
 
     """
 
-    BACK_BLACK: typing.ClassVar[Color] = dict(back=ColorValue(0))  # type: ignore
+    BACK_BLACK: _ClassVar[Color] = dict(back=ColorValue(0))  # type: ignore
     """
     Black background color.
 
     """
 
-    BACK_RED: typing.ClassVar[Color] = dict(back=ColorValue(1))  # type: ignore
+    BACK_RED: _ClassVar[Color] = dict(back=ColorValue(1))  # type: ignore
     """
     Red background color.
 
     """
 
-    BACK_GREEN: typing.ClassVar[Color] = dict(back=ColorValue(2))  # type: ignore
+    BACK_GREEN: _ClassVar[Color] = dict(back=ColorValue(2))  # type: ignore
     """
     Green background color.
 
     """
 
-    BACK_YELLOW: typing.ClassVar[Color] = dict(back=ColorValue(3))  # type: ignore
+    BACK_YELLOW: _ClassVar[Color] = dict(back=ColorValue(3))  # type: ignore
     """
     Yellow background color.
 
     """
 
-    BACK_BLUE: typing.ClassVar[Color] = dict(back=ColorValue(4))  # type: ignore
+    BACK_BLUE: _ClassVar[Color] = dict(back=ColorValue(4))  # type: ignore
     """
     Blue background color.
 
     """
 
-    BACK_MAGENTA: typing.ClassVar[Color] = dict(back=ColorValue(5))  # type: ignore
+    BACK_MAGENTA: _ClassVar[Color] = dict(back=ColorValue(5))  # type: ignore
     """
     Magenta background color.
 
     """
 
-    BACK_CYAN: typing.ClassVar[Color] = dict(back=ColorValue(6))  # type: ignore
+    BACK_CYAN: _ClassVar[Color] = dict(back=ColorValue(6))  # type: ignore
     """
     Cyan background color.
 
     """
 
-    BACK_WHITE: typing.ClassVar[Color] = dict(back=ColorValue(7))  # type: ignore
+    BACK_WHITE: _ClassVar[Color] = dict(back=ColorValue(7))  # type: ignore
     """
     White background color.
 

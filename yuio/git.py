@@ -158,8 +158,15 @@ from datetime import datetime
 import yuio.complete
 import yuio.exec
 import yuio.parse
-from yuio import _typing as _t
 from yuio.util import dedent as _dedent
+
+import yuio._typing_ext as _tx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "Branch",
@@ -1330,7 +1337,7 @@ def CommitParser(*, repo: Repo) -> yuio.parse.Parser[Commit]:
             return str(value)
         else:
             raise TypeError(
-                f"parser Commit can't handle value of type {_t.type_repr(type(value))}"
+                f"parser Commit can't handle value of type {_tx.type_repr(type(value))}"
             )
 
     return yuio.parse.WithMeta(

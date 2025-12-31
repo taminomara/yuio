@@ -115,12 +115,18 @@ from __future__ import annotations
 import abc
 import json
 import os
-import typing
 from dataclasses import dataclass
 
 import yuio
-from yuio import _typing as _t
 from yuio.util import dedent as _dedent
+
+from typing import TYPE_CHECKING
+from typing import ClassVar as _ClassVar
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "AllOf",
@@ -257,7 +263,7 @@ class JsonSchemaType(abc.ABC):
 
     """
 
-    precedence: typing.ClassVar[int] = 3
+    precedence: _ClassVar[int] = 3
     """
     Precedence, used for pretty-printing types.
 

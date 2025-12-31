@@ -87,8 +87,15 @@ from dataclasses import dataclass
 import yuio.color
 import yuio.string
 import yuio.theme
-from yuio import _typing as _t
 from yuio.util import dedent as _dedent
+
+import yuio._typing_ext as _tx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "AstBase",
@@ -1162,8 +1169,8 @@ class _ReSyntaxHighlighter(SyntaxHighlighter):
     def __init__(
         self,
         syntaxes: list[str],
-        pattern: _t.StrRePattern,
-        str_esc_pattern: _t.StrRePattern | None = None,
+        pattern: _tx.StrRePattern,
+        str_esc_pattern: _tx.StrRePattern | None = None,
     ):
         self._syntaxes = syntaxes
         self._pattern = pattern

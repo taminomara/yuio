@@ -3,11 +3,11 @@ import pathlib
 import subprocess
 import tempfile
 
-import pytest
-
 import yuio.complete
 import yuio.git
 import yuio.json_schema
+
+import pytest
 
 
 class EqualsToAnything:

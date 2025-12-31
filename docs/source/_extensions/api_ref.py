@@ -1,5 +1,3 @@
-import typing as _t
-
 from docutils.nodes import Element, bullet_list, inline, list_item, paragraph, strong
 from sphinx.addnodes import pending_xref
 from sphinx.application import Sphinx
@@ -7,6 +5,8 @@ from sphinx.domains.python import PythonDomain
 from sphinx.environment import BuildEnvironment
 from sphinx.transforms.post_transforms import SphinxPostTransform
 from sphinx.util.docutils import SphinxDirective
+
+import typing as _t
 
 
 class ApiRefNode(Element):

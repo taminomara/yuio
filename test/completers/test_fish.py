@@ -1,9 +1,9 @@
 import shlex
 import subprocess
 
-import pytest
-
 from .conftest import extract_results
+
+import pytest
 
 # We mock `commandline` instead of using `complete --do-complete` because the later
 # doesn't give precise control over cursor position.

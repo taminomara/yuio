@@ -10,8 +10,6 @@ import sys
 import traceback
 from dataclasses import dataclass
 
-import pytest
-
 import yuio
 import yuio.color
 import yuio.io
@@ -19,7 +17,16 @@ import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
-from yuio import _typing as _t
+
+import pytest
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
+
 
 T = _t.TypeVar("T")
 W = _t.TypeVar("W", bound=yuio.widget.Widget[object])

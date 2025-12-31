@@ -18,7 +18,15 @@ import os as _os
 import sys as _sys
 import warnings
 
-from yuio import _typing as _t
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
+
+if TYPE_CHECKING:
+    import yuio.string
 
 try:
     from yuio._version import *  # noqa: F403
@@ -27,9 +35,6 @@ except ImportError:
         "yuio._version not found. if you are developing locally, "
         "run `pip install -e .` to generate it"
     )
-
-if _t.TYPE_CHECKING:
-    import yuio.string
 
 __all__ = [
     "DISABLED",

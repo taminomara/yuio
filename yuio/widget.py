@@ -136,7 +136,6 @@ import math
 import re
 import string
 import sys
-import typing
 from dataclasses import dataclass
 
 import yuio.color
@@ -144,7 +143,6 @@ import yuio.complete
 import yuio.md
 import yuio.string
 import yuio.term
-from yuio import _typing as _t
 from yuio.color import Color as _Color
 from yuio.string import ColorizedString as _ColorizedString
 from yuio.string import Esc as _Esc
@@ -152,6 +150,14 @@ from yuio.string import line_width as _line_width
 from yuio.term import Term as _Term
 from yuio.theme import Theme as _Theme
 from yuio.util import _UNPRINTABLE_RE, _UNPRINTABLE_RE_WITHOUT_NL, _UNPRINTABLE_TRANS
+
+import typing
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "Action",
@@ -1261,7 +1267,7 @@ class RenderContext:
                 self._out.append(ch)
             self._out.append("\n")
 
-        return "\n".join(
+        self._term.ostream.writelines(
             # Trim trailing spaces for doctests.
             re.sub(r" +$", "\n", line, flags=re.MULTILINE)
             for line in "".join(self._out).splitlines()
@@ -2278,7 +2284,7 @@ class VerticalLayoutBuilder(_t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         def __new__(cls) -> VerticalLayoutBuilder[_t.Never]: ...
 
@@ -2357,7 +2363,7 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
 
     """
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         def __new__(cls, *widgets: Widget[object]) -> VerticalLayout[_t.Never]: ...
 

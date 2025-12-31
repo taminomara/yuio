@@ -475,7 +475,13 @@ from enum import IntFlag
 
 import yuio.color
 import yuio.term
-from yuio import _typing as _t
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
 
 __all__ = [
     "BaseTheme",

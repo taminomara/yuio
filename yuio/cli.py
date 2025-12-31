@@ -195,11 +195,17 @@ import yuio.md
 import yuio.parse
 import yuio.string
 import yuio.util
-from yuio import _typing as _t
 from yuio.string import ColorizedString as _ColorizedString
 from yuio.util import _UNPRINTABLE_TRANS
 
-if _t.TYPE_CHECKING:
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import typing as _t
+else:
+    from yuio import _typing as _t
+
+if TYPE_CHECKING:
     import yuio.app
     import yuio.config
     import yuio.dbg
