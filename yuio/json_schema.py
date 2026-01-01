@@ -124,7 +124,7 @@ from typing import TYPE_CHECKING
 from typing import ClassVar as _ClassVar
 
 if TYPE_CHECKING:
-    import typing as _t
+    import typing_extensions as _t
 else:
     from yuio import _typing as _t
 

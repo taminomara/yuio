@@ -9,7 +9,7 @@ import pytest
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import typing as _t
+    import typing_extensions as _t
 else:
     from yuio import _typing as _t
 
@@ -29,7 +29,7 @@ def test_export_consistency(file: pathlib.Path):
     module = importlib.import_module(path)
     all = set(module.__all__)
     missing = set()
-    annotations = _t.get_annotations(module)  # type: ignore
+    annotations = _t.get_annotations(module)
     for name, value in module.__dict__.items():
         if name.startswith("_") or name in all or name in allowlist:
             continue

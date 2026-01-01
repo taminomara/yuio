@@ -119,11 +119,11 @@ class TypeAliasForwardRef(inspect.TypeAliasForwardRef):
 
     def __or__(self, value):
         import typing
-        return typing.Union[self, value]  # type: ignore
+        return typing.Union[self, value]
 
     def __ror__(self, value):
         import typing
-        return typing.Union[value, self]  # type: ignore
+        return typing.Union[value, self]
 
 inspect.TypeAliasForwardRef = TypeAliasForwardRef
 del TypeAliasForwardRef

@@ -406,7 +406,7 @@ from sphinx.util.docstrings import separate_metadata
 from sphinx.util.docutils import SphinxRole
 from sphinx.util.inspect import isenumattribute, object_description
 
-import typing as _t
+import typing_extensions as _t
 
 _TYPE_PARSE_RE = re.compile(
     r"""

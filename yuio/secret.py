@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import typing as _t
+    import typing_extensions as _t
 else:
     from yuio import _typing as _t
 

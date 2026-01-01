@@ -6,7 +6,7 @@ from sphinx.environment import BuildEnvironment
 from sphinx.transforms.post_transforms import SphinxPostTransform
 from sphinx.util.docutils import SphinxDirective
 
-import typing as _t
+import typing_extensions as _t
 
 
 class ApiRefNode(Element):
