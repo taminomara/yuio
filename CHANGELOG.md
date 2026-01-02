@@ -51,6 +51,8 @@ Large refactoring around lower-level APIs, making them more flexible.
 
 - ✨ Supported colorized string interpolation in `%` formatting.
 
+- ✨ Supported passing template strings to `yuio.io.info` and others.
+
 - ✨ Added formatting utilities like `yuio.string.Format` and others.
 
 - ✨ Added colorized log formatter (`yuio.io.Formatter`) that allows tweaking
