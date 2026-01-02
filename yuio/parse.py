@@ -612,7 +612,7 @@ class ParsingError(yuio.PrettyException, ValueError, argparse.ArgumentTypeError)
     @_t.overload
     def __init__(
         self,
-        msg: yuio.string.Colorable | None | yuio.Missing = yuio.MISSING,
+        msg: yuio.string.ToColorable | None | yuio.Missing = yuio.MISSING,
         /,
         *,
         fallback_msg: _t.LiteralString | None = None,
@@ -3223,7 +3223,9 @@ class Secret(Map[SecretValue[T], T], _t.Generic[T]):
         except ParsingError as e:
             # Error messages can contain secret value, hide them.
             raise ParsingError(
-                e.fallback_msg or "Error when parsing secret data",
+                yuio.string.Printable(
+                    e.fallback_msg or "Error when parsing secret data"
+                ),
                 pos=e.pos,
                 path=e.path,
                 n_arg=e.n_arg,

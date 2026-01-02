@@ -44,7 +44,8 @@ Printing messages
 
 To print messages for the user, there are functions with an interface similar
 to the one from :mod:`logging`. Messages are highlighted using
-:ref:`color tags <color-tags>` and formatted using :ref:`%-formatting <percent-format>`:
+:ref:`color tags <color-tags>` and formatted using either
+:ref:`%-formatting or template strings <percent-format>`.
 
 .. autofunction:: info
 
@@ -78,21 +79,71 @@ to the one from :mod:`logging`. Messages are highlighted using
 Formatting the output
 ---------------------
 
-Messages are formatted using `printf-style formatting`__, similar to :mod:`logging`.
+Yuio supports `printf-style formatting`__, similar to :mod:`logging`. If you're using
+Python 3.14 or later, you can also use `template strings`__.
 
 __ https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting
+__ https://docs.python.org/3/library/string.html#template-strings
 
-``%s`` and ``%r`` specifiers are handled to respect colors and `rich repr protocol`__.
-Additionally, they allow specifying flags to control whether rendered values should
-be colorized, and should they be rendered in multiple lines:
+.. invisible-code-block: python
 
-__ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
+    config = ...
 
-- ``#`` enables colors in repr (i.e. ``%#r``);
-- ``+`` splits repr into multiple lines (i.e. ``%+r``, ``%#+r``).
+.. tab-set::
+    :sync-group: formatting-method
 
-To support colorized formatting, define ``__colorized_str__``
-and ``__colorized_repr__`` on your class. See :ref:`pretty-protocol` for implementation
+    .. tab-item:: Printf-style formatting
+        :sync: printf
+
+        ``%s`` and ``%r`` specifiers are handled to respect colors and `rich repr protocol`__.
+        Additionally, they allow specifying flags to control whether rendered values should
+        be highlighted, and should they be rendered in multiple lines:
+
+        __ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
+
+        -   ``#`` enables colors in repr (i.e. ``%#r``);
+        -   ``+`` splits repr into multiple lines (i.e. ``%+r``, ``%#+r``).
+
+        .. code-block:: python
+
+            yuio.io.info("Loaded config: %#+r", config)
+
+    .. tab-item:: Template strings
+        :sync: template
+
+        When formatting template strings, default format specification is extended
+        to respect colors and `rich repr protocol`__. Additionally, it allows
+        specifying flags to control whether rendered values should be highlighted,
+        and should they be rendered in multiple lines:
+
+        __ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
+
+        -   ``#`` enables colors in repr (i.e. ``{var:#}``);
+        -   ``+`` splits repr into multiple lines (i.e. ``{var:+}``, ``{var:#+}``);
+        -   unless explicit conversion is given (i.e. ``!s``, ``!r``, or ``!a``),
+            this format specification applies to objects that don't define
+            custom ``__format__`` method;
+        -   full format specification is available :ref:`here <t-string-spec>`.
+
+        .. code-block:: python
+
+            yuio.io.info(t"Loaded config: {config!r:#+}")
+
+        .. note::
+
+            The formatting algorithm is as follows:
+
+            1.  if formatting conversion is specified (i.e. ``!s``, ``!r``, or ``!a``),
+                the object is passed to
+                :meth:`ReprContext.convert() <yuio.string.ReprContext.convert>`;
+            2.  otherwise, if object defines custom ``__format__`` method,
+                this method is used;
+            3.  otherwise, we fall back to
+                :meth:`ReprContext.convert() <yuio.string.ReprContext.convert>`
+                with assumed conversion flag ``"s"``.
+
+To support highlighted formatting, define ``__colorized_str__``
+or ``__colorized_repr__`` on your class. See :ref:`pretty-protocol` for implementation
 details.
 
 To support rich repr protocol, define function ``__rich_repr__`` on your class.
@@ -698,7 +749,7 @@ def restore_streams():
 
     """
 
-    global _STREAMS_WRAPPED
+    global _STREAMS_WRAPPED, _ORIG_STDOUT, _ORIG_STDERR
 
     if not _STREAMS_WRAPPED:
         return
@@ -709,8 +760,10 @@ def restore_streams():
 
         if _ORIG_STDOUT is not None:
             sys.stdout = _ORIG_STDOUT
+            _ORIG_STDOUT = None
         if _ORIG_STDERR is not None:
             sys.stderr = _ORIG_STDERR
+            _ORIG_STDERR = None
         _STREAMS_WRAPPED = False
 
 
@@ -748,10 +801,11 @@ def orig_stdout() -> _t.TextIO:
 @_t.overload
 def info(msg: _t.LiteralString, /, *args, **kwargs): ...
 @_t.overload
-def info(msg: yuio.string.Colorable, /, **kwargs): ...
-def info(msg: yuio.string.Colorable, /, *args, **kwargs):
+def info(msg: yuio.string.ToColorable, /, **kwargs): ...
+def info(msg: yuio.string.ToColorable, /, *args, **kwargs):
     """info(msg: typing.LiteralString, /, *args, **kwargs)
-    info(msg: ~yuio.string.Colorable, /, **kwargs) ->
+    info(msg: ~string.templatelib.Template, /, **kwargs) ->
+    info(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
     Print an info message.
 
@@ -764,20 +818,21 @@ def info(msg: yuio.string.Colorable, /, *args, **kwargs):
 
     """
 
-    msg = yuio.string._to_colorable(msg, args)
+    msg_colorable = yuio.string._to_colorable(msg, args)
     kwargs.setdefault("tag", "info")
     kwargs.setdefault("wrap", True)
     kwargs.setdefault("add_newline", True)
-    raw(msg, **kwargs)
+    raw(msg_colorable, **kwargs)
 
 
 @_t.overload
 def warning(msg: _t.LiteralString, /, *args, **kwargs): ...
 @_t.overload
-def warning(msg: yuio.string.Colorable, /, **kwargs): ...
-def warning(msg: yuio.string.Colorable, /, *args, **kwargs):
+def warning(msg: yuio.string.ToColorable, /, **kwargs): ...
+def warning(msg: yuio.string.ToColorable, /, *args, **kwargs):
     """warning(msg: typing.LiteralString, /, *args, **kwargs)
-    warning(msg: ~yuio.string.Colorable, /, **kwargs) ->
+    warning(msg: ~string.templatelib.Template, /, **kwargs) ->
+    warning(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
     Print a warning message.
 
@@ -790,20 +845,21 @@ def warning(msg: yuio.string.Colorable, /, *args, **kwargs):
 
     """
 
-    msg = yuio.string._to_colorable(msg, args)
+    msg_colorable = yuio.string._to_colorable(msg, args)
     kwargs.setdefault("tag", "warning")
     kwargs.setdefault("wrap", True)
     kwargs.setdefault("add_newline", True)
-    raw(msg, **kwargs)
+    raw(msg_colorable, **kwargs)
 
 
 @_t.overload
 def success(msg: _t.LiteralString, /, *args, **kwargs): ...
 @_t.overload
-def success(msg: yuio.string.Colorable, /, **kwargs): ...
-def success(msg: yuio.string.Colorable, /, *args, **kwargs):
+def success(msg: yuio.string.ToColorable, /, **kwargs): ...
+def success(msg: yuio.string.ToColorable, /, *args, **kwargs):
     """success(msg: typing.LiteralString, /, *args, **kwargs)
-    success(msg: ~yuio.string.Colorable, /, **kwargs) ->
+    success(msg: ~string.templatelib.Template, /, **kwargs) ->
+    success(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
     Print a success message.
 
@@ -816,20 +872,21 @@ def success(msg: yuio.string.Colorable, /, *args, **kwargs):
 
     """
 
-    msg = yuio.string._to_colorable(msg, args)
+    msg_colorable = yuio.string._to_colorable(msg, args)
     kwargs.setdefault("tag", "success")
     kwargs.setdefault("wrap", True)
     kwargs.setdefault("add_newline", True)
-    raw(msg, **kwargs)
+    raw(msg_colorable, **kwargs)
 
 
 @_t.overload
 def error(msg: _t.LiteralString, /, *args, **kwargs): ...
 @_t.overload
-def error(msg: yuio.string.Colorable, /, **kwargs): ...
-def error(msg: yuio.string.Colorable, /, *args, **kwargs):
+def error(msg: yuio.string.ToColorable, /, **kwargs): ...
+def error(msg: yuio.string.ToColorable, /, *args, **kwargs):
     """error(msg: typing.LiteralString, /, *args, **kwargs)
-    error(msg: ~yuio.string.Colorable, /, **kwargs) ->
+    error(msg: ~string.templatelib.Template, /, **kwargs) ->
+    error(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
     Print an error message.
 
@@ -842,20 +899,21 @@ def error(msg: yuio.string.Colorable, /, *args, **kwargs):
 
     """
 
-    msg = yuio.string._to_colorable(msg, args)
+    msg_colorable = yuio.string._to_colorable(msg, args)
     kwargs.setdefault("tag", "error")
     kwargs.setdefault("wrap", True)
     kwargs.setdefault("add_newline", True)
-    raw(msg, **kwargs)
+    raw(msg_colorable, **kwargs)
 
 
 @_t.overload
 def error_with_tb(msg: _t.LiteralString, /, *args, **kwargs): ...
 @_t.overload
-def error_with_tb(msg: yuio.string.Colorable, /, **kwargs): ...
-def error_with_tb(msg: yuio.string.Colorable, /, *args, **kwargs):
+def error_with_tb(msg: yuio.string.ToColorable, /, **kwargs): ...
+def error_with_tb(msg: yuio.string.ToColorable, /, *args, **kwargs):
     """error_with_tb(msg: typing.LiteralString, /, *args, **kwargs)
-    error_with_tb(msg: ~yuio.string.Colorable, /, **kwargs) ->
+    error_with_tb(msg: ~string.templatelib.Template, /, **kwargs) ->
+    error_with_tb(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
     Print an error message and capture the current exception.
 
@@ -872,21 +930,22 @@ def error_with_tb(msg: yuio.string.Colorable, /, *args, **kwargs):
 
     """
 
-    msg = yuio.string._to_colorable(msg, args)
+    msg_colorable = yuio.string._to_colorable(msg, args)
     kwargs.setdefault("tag", "error")
     kwargs.setdefault("wrap", True)
     kwargs.setdefault("add_newline", True)
     kwargs.setdefault("exc_info", True)
-    raw(msg, **kwargs)
+    raw(msg_colorable, **kwargs)
 
 
 @_t.overload
 def failure(msg: _t.LiteralString, /, *args, **kwargs): ...
 @_t.overload
-def failure(msg: yuio.string.Colorable, /, **kwargs): ...
-def failure(msg: yuio.string.Colorable, /, *args, **kwargs):
+def failure(msg: yuio.string.ToColorable, /, **kwargs): ...
+def failure(msg: yuio.string.ToColorable, /, *args, **kwargs):
     """failure(msg: typing.LiteralString, /, *args, **kwargs)
-    failure(msg: ~yuio.string.Colorable, /, **kwargs) ->
+    failure(msg: ~string.templatelib.Template, /, **kwargs) ->
+    failure(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
     Print a failure message.
 
@@ -899,20 +958,21 @@ def failure(msg: yuio.string.Colorable, /, *args, **kwargs):
 
     """
 
-    msg = yuio.string._to_colorable(msg, args)
+    msg_colorable = yuio.string._to_colorable(msg, args)
     kwargs.setdefault("tag", "failure")
     kwargs.setdefault("wrap", True)
     kwargs.setdefault("add_newline", True)
-    raw(msg, **kwargs)
+    raw(msg_colorable, **kwargs)
 
 
 @_t.overload
 def failure_with_tb(msg: _t.LiteralString, /, *args, **kwargs): ...
 @_t.overload
-def failure_with_tb(msg: yuio.string.Colorable, /, **kwargs): ...
-def failure_with_tb(msg: yuio.string.Colorable, /, *args, **kwargs):
+def failure_with_tb(msg: yuio.string.ToColorable, /, **kwargs): ...
+def failure_with_tb(msg: yuio.string.ToColorable, /, *args, **kwargs):
     """failure_with_tb(msg: typing.LiteralString, /, *args, **kwargs)
-    failure_with_tb(msg: ~yuio.string.Colorable, /, **kwargs) ->
+    failure_with_tb(msg: ~string.templatelib.Template, /, **kwargs) ->
+    failure_with_tb(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
     Print a failure message and capture the current exception.
 
@@ -929,21 +989,22 @@ def failure_with_tb(msg: yuio.string.Colorable, /, *args, **kwargs):
 
     """
 
-    msg = yuio.string._to_colorable(msg, args)
+    msg_colorable = yuio.string._to_colorable(msg, args)
     kwargs.setdefault("tag", "failure")
     kwargs.setdefault("wrap", True)
     kwargs.setdefault("add_newline", True)
     kwargs.setdefault("exc_info", True)
-    raw(msg, **kwargs)
+    raw(msg_colorable, **kwargs)
 
 
 @_t.overload
 def heading(msg: _t.LiteralString, /, *args, level: int = 1, **kwargs): ...
 @_t.overload
-def heading(msg: yuio.string.Colorable, /, *, level: int = 1, **kwargs): ...
-def heading(msg: yuio.string.Colorable, /, *args, level: int = 1, **kwargs):
+def heading(msg: yuio.string.ToColorable, /, *, level: int = 1, **kwargs): ...
+def heading(msg: yuio.string.ToColorable, /, *args, level: int = 1, **kwargs):
     """heading(msg: typing.LiteralString, /, *args, level: int = 1, **kwargs)
-    heading(msg: ~yuio.string.Colorable, /, *, level: int = 1, **kwargs) ->
+    heading(msg: ~string.templatelib.Template, /, *, level: int = 1, **kwargs) ->
+    heading(msg: ~yuio.string.ToColorable, /, *, level: int = 1, **kwargs) ->
 
     Print a heading message.
 
@@ -958,13 +1019,13 @@ def heading(msg: yuio.string.Colorable, /, *args, level: int = 1, **kwargs):
 
     """
 
-    msg = yuio.string._to_colorable(msg, args)
+    msg_colorable = yuio.string._to_colorable(msg, args)
     level = kwargs.pop("level", 1)
     kwargs.setdefault("heading", True)
     kwargs.setdefault("tag", f"heading/{level}")
     kwargs.setdefault("wrap", True)
     kwargs.setdefault("add_newline", True)
-    raw(msg, **kwargs)
+    raw(msg_colorable, **kwargs)
 
 
 @_t.overload
@@ -1021,10 +1082,11 @@ def br(**kwargs):
 @_t.overload
 def hr(msg: _t.LiteralString = "", /, *args, weight: int | str = 1, **kwargs): ...
 @_t.overload
-def hr(msg: yuio.string.Colorable, /, *, weight: int | str = 1, **kwargs): ...
-def hr(msg: yuio.string.Colorable = "", /, *args, weight: int | str = 1, **kwargs):
+def hr(msg: yuio.string.ToColorable, /, *, weight: int | str = 1, **kwargs): ...
+def hr(msg: yuio.string.ToColorable = "", /, *args, weight: int | str = 1, **kwargs):
     """hr(msg: typing.LiteralString = "", /, *args, weight: int | str = 1, **kwargs)
-    hr(msg: ~yuio.string.Colorable, /, *, weight: int | str = 1, **kwargs) ->
+    hr(msg: ~string.templatelib.Template, /, *, weight: int | str = 1, **kwargs) ->
+    hr(msg: ~yuio.string.ToColorable, /, *, weight: int | str = 1, **kwargs) ->
 
     Print a horizontal ruler.
 
@@ -1117,7 +1179,7 @@ def raw(
     width: int | None = None,
 ):
     """
-    Print any :class:`~yuio.string.Colorable`.
+    Print any :class:`~yuio.string.ToColorable`.
 
     This is a bridge between :mod:`yuio.io` and lower-level
     modules like :mod:`yuio.string`.
@@ -1992,10 +2054,11 @@ class SuspendOutput:
     @_t.overload
     def info(self, msg: _t.LiteralString, /, *args, **kwargs): ...
     @_t.overload
-    def info(self, err: yuio.string.Colorable, /, **kwargs): ...
-    def info(self, msg: yuio.string.Colorable, /, *args, **kwargs):
+    def info(self, err: yuio.string.ToColorable, /, **kwargs): ...
+    def info(self, msg: yuio.string.ToColorable, /, *args, **kwargs):
         """info(msg: typing.LiteralString, /, *args, **kwargs)
-        info(msg: ~yuio.string.Colorable, /, **kwargs) ->
+        info(msg: ~string.templatelib.Template, /, **kwargs) ->
+        info(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
         Log an :func:`info` message, ignore suspended status.
 
@@ -2007,10 +2070,11 @@ class SuspendOutput:
     @_t.overload
     def warning(self, msg: _t.LiteralString, /, *args, **kwargs): ...
     @_t.overload
-    def warning(self, err: yuio.string.Colorable, /, **kwargs): ...
-    def warning(self, msg: yuio.string.Colorable, /, *args, **kwargs):
+    def warning(self, err: yuio.string.ToColorable, /, **kwargs): ...
+    def warning(self, msg: yuio.string.ToColorable, /, *args, **kwargs):
         """warning(msg: typing.LiteralString, /, *args, **kwargs)
-        warning(msg: ~yuio.string.Colorable, /, **kwargs) ->
+        warning(msg: ~string.templatelib.Template, /, **kwargs) ->
+        warning(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
         Log a :func:`warning` message, ignore suspended status.
 
@@ -2022,10 +2086,11 @@ class SuspendOutput:
     @_t.overload
     def success(self, msg: _t.LiteralString, /, *args, **kwargs): ...
     @_t.overload
-    def success(self, err: yuio.string.Colorable, /, **kwargs): ...
-    def success(self, msg: yuio.string.Colorable, /, *args, **kwargs):
+    def success(self, err: yuio.string.ToColorable, /, **kwargs): ...
+    def success(self, msg: yuio.string.ToColorable, /, *args, **kwargs):
         """success(msg: typing.LiteralString, /, *args, **kwargs)
-        success(msg: ~yuio.string.Colorable, /, **kwargs) ->
+        success(msg: ~string.templatelib.Template, /, **kwargs) ->
+        success(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
         Log a :func:`success` message, ignore suspended status.
 
@@ -2037,10 +2102,11 @@ class SuspendOutput:
     @_t.overload
     def error(self, msg: _t.LiteralString, /, *args, **kwargs): ...
     @_t.overload
-    def error(self, err: yuio.string.Colorable, /, **kwargs): ...
-    def error(self, msg: yuio.string.Colorable, /, *args, **kwargs):
+    def error(self, err: yuio.string.ToColorable, /, **kwargs): ...
+    def error(self, msg: yuio.string.ToColorable, /, *args, **kwargs):
         """error(msg: typing.LiteralString, /, *args, **kwargs)
-        error(msg: ~yuio.string.Colorable, /, **kwargs) ->
+        error(msg: ~string.templatelib.Template, /, **kwargs) ->
+        error(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
         Log an :func:`error` message, ignore suspended status.
 
@@ -2061,7 +2127,7 @@ class SuspendOutput:
     @_t.overload
     def error_with_tb(
         self,
-        msg: yuio.string.Colorable,
+        msg: yuio.string.ToColorable,
         /,
         *,
         exc_info: ExcInfo | bool | None = True,
@@ -2069,14 +2135,15 @@ class SuspendOutput:
     ): ...
     def error_with_tb(
         self,
-        msg: yuio.string.Colorable,
+        msg: yuio.string.ToColorable,
         /,
         *args,
         exc_info: ExcInfo | bool | None = True,
         **kwargs,
     ):
         """error_with_tb(msg: typing.LiteralString, /, *args, **kwargs)
-        error_with_tb(msg: ~yuio.string.Colorable, /, **kwargs) ->
+        error_with_tb(msg: ~string.templatelib.Template, /, **kwargs) ->
+        error_with_tb(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
         Log an :func:`error_with_tb` message, ignore suspended status.
 
@@ -2088,10 +2155,11 @@ class SuspendOutput:
     @_t.overload
     def failure(self, msg: _t.LiteralString, /, *args, **kwargs): ...
     @_t.overload
-    def failure(self, err: yuio.string.Colorable, /, **kwargs): ...
-    def failure(self, msg: yuio.string.Colorable, /, *args, **kwargs):
+    def failure(self, err: yuio.string.ToColorable, /, **kwargs): ...
+    def failure(self, msg: yuio.string.ToColorable, /, *args, **kwargs):
         """failure(msg: typing.LiteralString, /, *args, **kwargs)
-        failure(msg: ~yuio.string.Colorable, /, **kwargs) ->
+        failure(msg: ~string.templatelib.Template, /, **kwargs) ->
+        failure(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
         Log a :func:`failure` message, ignore suspended status.
 
@@ -2112,7 +2180,7 @@ class SuspendOutput:
     @_t.overload
     def failure_with_tb(
         self,
-        msg: yuio.string.Colorable,
+        msg: yuio.string.ToColorable,
         /,
         *,
         exc_info: ExcInfo | bool | None = True,
@@ -2120,14 +2188,15 @@ class SuspendOutput:
     ): ...
     def failure_with_tb(
         self,
-        msg: yuio.string.Colorable,
+        msg: yuio.string.ToColorable,
         /,
         *args,
         exc_info: ExcInfo | bool | None = True,
         **kwargs,
     ):
         """failure_with_tb(msg: typing.LiteralString, /, *args, **kwargs)
-        failure_with_tb(msg: ~yuio.string.Colorable, /, **kwargs) ->
+        failure_with_tb(msg: ~string.templatelib.Template, /, **kwargs) ->
+        failure_with_tb(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
         Log a :func:`failure_with_tb` message, ignore suspended status.
 
@@ -2139,10 +2208,11 @@ class SuspendOutput:
     @_t.overload
     def heading(self, msg: _t.LiteralString, /, *args, **kwargs): ...
     @_t.overload
-    def heading(self, msg: yuio.string.Colorable, /, **kwargs): ...
-    def heading(self, msg: yuio.string.Colorable, /, *args, **kwargs):
+    def heading(self, msg: yuio.string.ToColorable, /, **kwargs): ...
+    def heading(self, msg: yuio.string.ToColorable, /, *args, **kwargs):
         """heading(msg: typing.LiteralString, /, *args, **kwargs)
-        heading(msg: ~yuio.string.Colorable, /, **kwargs)
+        heading(msg: ~string.templatelib.Template, /, **kwargs)
+        heading(msg: ~yuio.string.ToColorable, /, **kwargs)
 
         Log a :func:`heading` message, ignore suspended status.
 
@@ -2194,10 +2264,11 @@ class SuspendOutput:
     @_t.overload
     def hr(self, msg: _t.LiteralString = "", /, *args, **kwargs): ...
     @_t.overload
-    def hr(self, msg: yuio.string.Colorable, /, **kwargs): ...
-    def hr(self, msg: yuio.string.Colorable = "", /, *args, **kwargs):
+    def hr(self, msg: yuio.string.ToColorable, /, **kwargs): ...
+    def hr(self, msg: yuio.string.ToColorable = "", /, *args, **kwargs):
         """hr(msg: typing.LiteralString = "", /, *args, weight: int | str = 1, **kwargs)
-        hr(msg: ~yuio.string.Colorable, /, *, weight: int | str = 1, **kwargs) ->
+        hr(msg: ~string.templatelib.Template, /, *, weight: int | str = 1, **kwargs) ->
+        hr(msg: ~yuio.string.ToColorable, /, *, weight: int | str = 1, **kwargs) ->
 
         Log an :func:`hr` message, ignore suspended status.
 
@@ -2917,6 +2988,9 @@ class _IoManager(abc.ABC):
                 yuio._logger.critical("exception in bg updater", exc_info=True)
 
     def stop(self):
+        if self._stop:
+            return
+
         with _IO_LOCK:
             atexit.unregister(self.stop)
 

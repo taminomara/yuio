@@ -102,6 +102,7 @@ can be just markdown docstrings!
     Source "docs/source/_tapes/_config.tape"
     Type "python examples/docs/hw_help.py --help 2>&1 | less -R"
     Enter
+    Sleep 1s
     Down@1s 6
     Sleep 4s
 

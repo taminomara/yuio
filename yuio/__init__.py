@@ -159,7 +159,7 @@ class PrettyException(Exception):
     @_t.overload
     def __init__(self, msg: _t.LiteralString, /, *args): ...
     @_t.overload
-    def __init__(self, msg: yuio.string.Colorable | None = None, /): ...
+    def __init__(self, msg: yuio.string.ToColorable | None = None, /): ...
     def __init__(self, *args):
         self.args = args
 
@@ -182,13 +182,10 @@ class PrettyException(Exception):
 
         if not self.args:
             return ""
-        msg, *args = self.args
-        if isinstance(msg, str):
-            import yuio.string
 
-            return yuio.string.Format(_t.cast(_t.LiteralString, msg), *(args or ()))
-        else:
-            return msg
+        import yuio.string
+
+        return yuio.string._to_colorable(self.args[0], self.args[1:])
 
 
 _logger = _logging.getLogger("yuio.internal")
@@ -263,6 +260,8 @@ def enable_internal_logging(
 
 _debug = "YUIO_DEBUG" in _os.environ or "YUIO_DEBUG_FILE" in _os.environ
 if _debug:  # pragma: no cover
-    enable_internal_logging(path=_os.environ.get("YUIO_DEBUG_FILE") or "yuio.log")
+    enable_internal_logging(path=_os.environ.get("YUIO_DEBUG_FILE"), add_handler=True)
+elif hasattr(_sys, "ps1"):
+    enable_internal_logging(add_handler=True)
 else:
     warnings.simplefilter("ignore", category=YuioWarning, append=True)

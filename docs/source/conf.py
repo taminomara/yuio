@@ -27,6 +27,7 @@ extensions = [
     "yuio.ext.sphinx",
     "sphinx_design",
     "sphinx_vhs",
+    "sphinx_syntax",
     "nice_toc",
     "api_ref",
     "yuio_objects",
@@ -87,6 +88,8 @@ autodoc_type_aliases = {
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
 vhs_min_version = "0.7.2"
 vhs_n_jobs_read_the_docs = 4
+# vhs_repo = "agentstation/vhs"
+# vhs_format = "svg"
 
 toc_object_entries_show_parents = "hide"
 

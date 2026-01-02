@@ -16,7 +16,7 @@ def main(
     #: File to process.
     input: pathlib.Path = yuio.app.positional(),
 ):
-    yuio.io.info("executor config: `%r`", executor_config)
+    yuio.io.info("Executor config: `%#+r`", executor_config)
 
 if __name__ == "__main__":
     main.run()

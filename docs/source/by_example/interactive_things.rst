@@ -21,22 +21,53 @@ Yuio offers a :mod:`logging`-like functions to print messages:
     Enter
     Sleep 6s
 
+Starting from Python 3.14, Yuio also supports template strings as an alternative
+to printf-style formatting:
+
+.. invisible-code-block: python
+
+    import yuio.io
+
+.. code-block:: python
+
+    formatted_content = ["a", "b", "c"]
+    yuio.io.info(t"Messages can have `{formatted_content}`")
+
 
 Pretty-printing Python objects
 ------------------------------
 
 Yuio supports `rich repr protocol`__, which enables you to pretty-print
 Python objects. Pretty-printing is controlled through format flags for ``%r``
-and ``%s``:
+and ``%s``, as well as through formatting flags for template strings:
 
 __ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
 
-- ``#`` enables colors in repr (i.e. ``%#r``);
-- ``+`` splits repr into multiple lines (i.e. ``%+r``, ``%#+r``).
+.. tab-set::
+    :sync-group: formatting-method
 
-.. literalinclude:: /../../examples/docs/io_repr.py
-    :language: python
-    :emphasize-lines: 13
+    .. tab-item:: Printf-style formatting
+        :sync: printf
+
+        -   ``#`` enables colors in repr (i.e. ``%#r``);
+        -   ``+`` splits repr into multiple lines (i.e. ``%+r``, ``%#+r``).
+
+        .. literalinclude:: /../../examples/docs/io_repr.py
+            :language: python
+            :emphasize-lines: 13
+
+    .. tab-item:: Template strings
+        :sync: template
+
+        -   ``#`` enables colors in repr (i.e. ``{var:#}``);
+        -   ``+`` splits repr into multiple lines (i.e. ``{var:+}``, ``{var:#+}``);
+        -   these flags work when you format strings or :ref:`colorable objects <pretty-protocol>`:
+            you'll have to explicitly convert objects of other types to strings
+            by specifying conversion operator, i.e. ``{var!r:#}``.
+
+        .. literalinclude:: /../../examples/docs/io_repr_t.py
+            :language: python
+            :emphasize-lines: 13
 
 .. vhs-inline::
     :scale: 40%

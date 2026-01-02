@@ -94,5 +94,6 @@ Enter
 Sleep 2s
 Type "python examples/app --help 2>&1 | less -R"
 Enter
+Sleep 1s
 Down@1s 8
 Sleep 2s

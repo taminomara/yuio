@@ -192,6 +192,21 @@ def setup_io(
     width: int,
     height: int,
 ):
+    assert yuio.term._TTY_SETUP_PERFORMED is False, "previous test didn't clean up"
+    assert not hasattr(yuio.term, "_TTY_OUTPUT"), "previous test didn't clean up"
+    assert not hasattr(yuio.term, "_TTY_INPUT"), "previous test didn't clean up"
+    assert not hasattr(yuio.term, "_TERMINAL_THEME"), "previous test didn't clean up"
+    assert not hasattr(yuio.term, "_EXPLICIT_COLOR_SUPPORT"), (
+        "previous test didn't clean up"
+    )
+    assert not hasattr(yuio.term, "_COLOR_SUPPORT"), "previous test didn't clean up"
+    assert yuio.io._STREAMS_WRAPPED is False, "previous test didn't clean up"
+    assert yuio.io._IO_MANAGER is None, "previous test didn't clean up"
+    assert yuio.io._ORIG_STDERR is None, "previous test didn't clean up"
+    assert yuio.io._ORIG_STDOUT is None, "previous test didn't clean up"
+
+    monkeypatch.setattr("sys.argv", ["prog"])
+
     monkeypatch.setattr(
         "yuio.term.get_tty_size",
         lambda *_, **__: os.terminal_size((width, height)),
@@ -206,6 +221,26 @@ def setup_io(
     yield
 
     io_manager.stop()
+
+    yuio.term._TTY_SETUP_PERFORMED = False
+    if hasattr(yuio.term, "_TTY_OUTPUT"):
+        del yuio.term._TTY_OUTPUT
+    if hasattr(yuio.term, "_TTY_INPUT"):
+        del yuio.term._TTY_INPUT
+    if hasattr(yuio.term, "_TERMINAL_THEME"):
+        del yuio.term._TERMINAL_THEME
+    if hasattr(yuio.term, "_EXPLICIT_COLOR_SUPPORT"):
+        del yuio.term._EXPLICIT_COLOR_SUPPORT
+    if hasattr(yuio.term, "_COLOR_SUPPORT"):
+        del yuio.term._COLOR_SUPPORT
+    try:
+        assert yuio.io._STREAMS_WRAPPED is False, "this test didn't clean up"
+        assert yuio.io._ORIG_STDERR is None, "this test didn't clean up"
+        assert yuio.io._ORIG_STDOUT is None, "this test didn't clean up"
+    finally:
+        yuio.io._STREAMS_WRAPPED = False
+        yuio.io._ORIG_STDERR = None
+        yuio.io._ORIG_STDOUT = None
 
 
 @dataclass

@@ -121,9 +121,20 @@ that defines one of the following special methods:
     However, we don't use :class:`typing.Any` to avoid potential errors.
 
 .. type:: Colorable
-    :canonical: Printable | ColorizedStrProtocol | ColorizedReprProtocol | RichReprProtocol | str | BaseException
+    :canonical: Printable | ColorizedStrProtocol | ColorizedReprProtocol | RichReprProtocol | ~typing.LiteralString | BaseException
 
     An object that supports colorized printing.
+
+    This can be a string, and exception, or any object that follows
+    :class:`ColorableProtocol`. Additionally, you can pass any object that has
+    ``__repr__``, but you'll have to wrap it into :type:`Printable` to confirm
+    your intent to print it.
+
+.. type:: ToColorable
+    :canonical: Colorable | ~string.templatelib.Template
+
+    Any object that can be converted to a :type:`Colorable` by formatting it via
+    :class:`Format`.
 
 .. autofunction:: repr_from_rich
 
@@ -219,6 +230,7 @@ import pathlib
 import re
 import reprlib
 import string
+import sys
 import types
 import unicodedata
 from enum import Enum
@@ -241,6 +253,23 @@ else:
 
 if TYPE_CHECKING:
     import yuio.md
+
+if sys.version_info >= (3, 14):
+    from string.templatelib import Interpolation as _Interpolation
+    from string.templatelib import Template as _Template
+else:
+
+    class _Interpolation: ...
+
+    class _Template: ...
+
+    _Interpolation.__module__ = "string.templatelib"
+    _Interpolation.__name__ = "Interpolation"
+    _Interpolation.__qualname__ = "Interpolation"
+    _Template.__module__ = "string.templatelib"
+    _Template.__name__ = "Template"
+    _Template.__qualname__ = "Template"
+
 
 __all__ = [
     "NO_WRAP_END",
@@ -270,6 +299,7 @@ __all__ = [
     "RichReprProtocol",
     "RichReprResult",
     "Stack",
+    "ToColorable",
     "TypeRepr",
     "WithBaseColor",
     "Wrap",
@@ -402,6 +432,13 @@ This can be a string, and exception, or any object that follows
 :class:`ColorableProtocol`. Additionally, you can pass any object that has
 ``__repr__``, but you'll have to wrap it into :type:`Printable` to confirm
 your intent to print it.
+
+"""
+
+ToColorable: _t.TypeAlias = Colorable | _Template
+"""
+Any object that can be converted to a :type:`Colorable` by formatting it via
+:class:`Format`.
 
 """
 
@@ -1184,6 +1221,34 @@ _S_SYNTAX = re.compile(
     re.VERBOSE,
 )
 
+_F_SYNTAX = re.compile(
+    r"""
+        ^
+        (?: # Options
+            (?:
+                (?P<fill>.)?
+                (?P<align>[<>=^])
+            )?
+            (?P<flags>[+#]*)
+            (?P<zero>0)?
+        )
+        (?: # Width
+            (?P<width>\d+)?
+            (?P<width_grouping>[,_])?
+        )
+        (?: # Precision
+            \.
+            (?P<precision>\d+)?
+            (?P<precision_grouping>[,_])?
+        )?
+        (?: # Type
+            (?P<type>.)
+        )?
+        $
+    """,
+    re.VERBOSE,
+)
+
 
 def _percent_format(
     s: ColorizedString, args: object, ctx: ReprContext
@@ -1236,7 +1301,7 @@ def _percent_format_repl(
             raise ValueError("unsupported format character '%'")
         return arg_index, "%"
 
-    if match.group("format") in "rs":
+    if match.group("format") in "rsa":
         return _percent_format_repl_str(match, args, arg_index, base_color, ctx)
 
     if mapping := match.group("mapping"):
@@ -1348,14 +1413,51 @@ def _percent_format_repl_str(
     flag = match.group("flag")
     multiline = "+" in flag
     highlighted = "#" in flag
-    if match.group("format") == "r":
-        res = ctx.repr(fmt_arg, multiline=multiline, highlighted=highlighted)
-    else:
-        res = ctx.str(fmt_arg, multiline=multiline, highlighted=highlighted)
 
-    if precision is not None and res.width > precision:
+    res = ctx.convert(
+        fmt_arg,
+        match.group("format"),  # type: ignore
+        multiline=multiline,
+        highlighted=highlighted,
+    )
+
+    align = match.group("flag")
+    if width is not None and width < 0:
+        width = -width
+        align = "<"
+    elif align == "-":
+        align = "<"
+    else:
+        align = ">"
+    res = _apply_format(res, width, precision, align, " ")
+
+    return arg_index, res.with_base_color(base_color)
+
+
+def _format_interpolation(interp: _Interpolation, ctx: ReprContext) -> ColorizedString:
+    value = interp.value
+    if (
+        interp.conversion is not None
+        or getattr(type(value), "__format__", None) is object.__format__
+        or isinstance(value, (str, ColorizedString))
+    ):
+        value = ctx.convert(value, interp.conversion, interp.format_spec)
+    else:
+        value = ColorizedString(format(value, interp.format_spec))
+
+    return value
+
+
+def _apply_format(
+    value: ColorizedString,
+    width: int | None,
+    precision: int | None,
+    align: str | None,
+    fill: str | None,
+):
+    if precision is not None and value.width > precision:
         cut = ColorizedString()
-        for part in res:
+        for part in value:
             if precision <= 0:
                 break
             if isinstance(part, str):
@@ -1379,17 +1481,25 @@ def _percent_format_repl_str(
                     break
             else:
                 cut += part
-        res = cut
+        value = cut
 
-    if width is not None:
-        spacing = " " * (abs(width) - res.width)
-        if spacing:
-            if match.group("flag") == "-" or width < 0:
-                res = res + spacing
-            else:
-                res = spacing + res
+    if width is not None and width > value.width:
+        fill = fill or " "
+        fill_width = line_width(fill)
+        spacing = width - value.width
+        spacing_fill = spacing // fill_width
+        spacing_space = spacing - spacing_fill * fill_width
+        value.append_color(_Color.NONE)
+        if not align or align == "<":
+            value = value + fill * spacing_fill + " " * spacing_space
+        elif align == ">":
+            value = fill * spacing_fill + " " * spacing_space + value
+        else:
+            left = spacing_fill // 2
+            right = spacing_fill - left
+            value = fill * left + value + fill * right + " " * spacing_space
 
-    return arg_index, res.with_base_color(base_color)
+    return value
 
 
 __TAG_RE = re.compile(
@@ -1407,14 +1517,16 @@ __FLAG_RE = re.compile(r"^-[-a-zA-Z0-9_]*$")
 
 
 def colorize(
-    line: str,
+    template: str | _Template,
     /,
     *args: _t.Any,
     ctx: ReprContext,
     default_color: _Color | str = _Color.NONE,
     parse_cli_flags_in_backticks: bool = False,
 ) -> ColorizedString:
-    """
+    """colorize(line: str, /, *args: typing.Any, ctx: ReprContext, default_color: ~yuio.color.Color | str = Color.NONE, parse_cli_flags_in_backticks: bool = False) -> ColorizedString
+    colorize(line: ~string.templatelib.Template, /, *, ctx: ReprContext, default_color: ~yuio.color.Color | str = Color.NONE, parse_cli_flags_in_backticks: bool = False) -> ColorizedString
+
     Parse color tags and produce a colorized string.
 
     Apply ``default_color`` to the entire paragraph, and process color tags
@@ -1424,9 +1536,10 @@ def colorize(
         text to colorize.
     :param args:
         if given, string will be ``%``-formatted after parsing.
+        Can't be given if `line` is :class:`~string.templatelib.Template`.
     :param ctx:
         :class:`ReprContext` that will be used to look up color tags
-        and format colorables.
+        and format arguments.
     :param default_color:
         color or color tag to apply to the entire text.
     :returns:
@@ -1434,15 +1547,55 @@ def colorize(
 
     """
 
+    interpolations: list[tuple[int, _Interpolation]] = []
+    if isinstance(template, _Template):
+        if args:
+            raise TypeError("args can't be given with template")
+        line = ""
+        index = 0
+        for part, interp in zip(template.strings, template.interpolations):
+            line += part
+            # Each interpolation is replaced by a zero byte so that our regex knows
+            # there is something.
+            line += "\0"
+            index += len(part) + 1
+            interpolations.append((index, interp))
+        line += template.strings[-1]
+    else:
+        line = template
+
     default_color = ctx.to_color(default_color)
 
     res = ColorizedString(default_color)
-
     stack = [default_color]
-
     last_pos = 0
+    last_interp = 0
+
+    def append_to_res(s: str, start: int):
+        nonlocal last_interp
+
+        index = 0
+        while (
+            last_interp < len(interpolations)
+            and start + len(s) >= interpolations[last_interp][0]
+        ):
+            interp_start, interp = interpolations[last_interp]
+            res.append_str(
+                s[
+                    index : interp_start
+                    - start
+                    - 1  # This compensates for that `\0` we added above.
+                ]
+            )
+            res.append_colorized_str(
+                _format_interpolation(interp, ctx).with_base_color(res.active_color)
+            )
+            index = interp_start - start
+            last_interp += 1
+        res.append_str(s[index:])
+
     for tag in __TAG_RE.finditer(line):
-        res.append_str(line[last_pos : tag.start()])
+        append_to_res(line[last_pos : tag.start()], last_pos)
         last_pos = tag.end()
 
         if name := tag.group("tag_open"):
@@ -1451,8 +1604,10 @@ def colorize(
             stack.append(color)
         elif code := tag.group("code"):
             code = code.replace("\n", " ")
+            code_pos = tag.start("code")
             if code.startswith(" ") and code.endswith(" ") and not code.isspace():
                 code = code[1:-1]
+                code_pos += 1
             if (
                 parse_cli_flags_in_backticks
                 and __FLAG_RE.match(code)
@@ -1462,16 +1617,16 @@ def colorize(
             else:
                 res.append_color(stack[-1] | ctx.get_color("code"))
             res.start_no_wrap()
-            res.append_str(code)
+            append_to_res(code, code_pos)
             res.end_no_wrap()
             res.append_color(stack[-1])
         elif punct := tag.group("punct"):
-            res.append_str(punct)
+            append_to_res(punct, tag.start("punct"))
         elif len(stack) > 1:
             stack.pop()
             res.append_color(stack[-1])
 
-    res.append_str(line[last_pos:])
+    append_to_res(line[last_pos:], last_pos)
 
     if args:
         return res.percent_format(args, ctx)
@@ -2265,6 +2420,190 @@ class ReprContext:
             max_depth=max_depth,
         )
 
+    def convert(
+        self,
+        value: _t.Any,
+        conversion: _t.Literal["a", "r", "s"] | None,
+        format_spec: str | None = None,
+        /,
+        *,
+        multiline: bool | None = None,
+        highlighted: bool | None = None,
+        width: int | None = None,
+        max_depth: int | None = None,
+    ):
+        """
+        Perform string conversion, similar to :func:`string.templatelib.convert`,
+        and format the object with respect to the given `format_spec`.
+
+        :param value:
+            value to be converted.
+        :param conversion:
+            string conversion method:
+
+            -   ``'s'`` calls :meth:`~ReprContext.str`,
+            -   ``'r'`` calls :meth:`~ReprContext.repr`,
+            -   ``'a'`` calls :meth:`~ReprContext.repr` and escapes non-ascii
+                characters.
+        :param format_spec:
+            formatting spec can override `multiline` and `highlighted`, and controls
+            width, alignment, fill chars, etc. See its syntax below.
+        :param multiline:
+            if given, overrides settings passed to :class:`ReprContext` for this call.
+        :param highlighted:
+            if given, overrides settings passed to :class:`ReprContext` for this call.
+        :param width:
+            if given, overrides settings passed to :class:`ReprContext` for this call.
+        :param max_depth:
+            if given, overrides settings passed to :class:`ReprContext` for this call.
+        :returns:
+            a colorized string containing string representation of the `value`.
+        :raises:
+            :class:`ValueError` if `conversion` or `format_spec` are invalid.
+
+        .. _t-string-spec:
+
+        **Format specification**
+
+        .. syntax:diagram::
+
+            stack:
+            - optional:
+              - optional:
+                - optional:
+                  - non_terminal: "fill"
+                    href: "#t-string-spec-fill"
+                - non_terminal: "align"
+                  href: "#t-string-spec-align"
+              - non_terminal: "flags"
+                href: "#t-string-spec-flags"
+            - optional:
+              - comment: "width"
+                href: "#t-string-spec-width"
+              - "[0-9]+"
+            - optional:
+              - comment: "precision"
+                href: "#t-string-spec-precision"
+              - "'.'"
+              - "[0-9]+"
+            - optional:
+              - comment: "conversion type"
+                href: "#t-string-spec-conversion-type"
+              - "'s'"
+              skip_bottom: true
+              skip: true
+
+        .. _t-string-spec-fill:
+
+        ``fill``
+            Any character that will be used to extend string to the desired width.
+
+        .. _t-string-spec-align:
+
+        ``align``
+            Controls alignment of a string when `width` is given: ``"<"`` for flushing
+            string left, ``">"`` for flushing string right, ``"^"`` for centering.
+
+        .. _t-string-spec-flags:
+
+        ``flags``
+            One or several flags: ``"#"`` to enable highlighting, ``"+"`` to enable
+            multiline repr.
+
+        .. _t-string-spec-width:
+
+        ``width``
+            If formatted string is narrower than this value, it will be extended and
+            aligned using `fill` and `align` settings.
+
+        .. _t-string-spec-precision:
+
+        ``precision``
+            If formatted string is wider that this value, it will be cropped to this
+            width.
+
+        .. _t-string-spec-conversion-type:
+
+        ``conversion type``
+            The only supported conversion type is ``"s"``.
+
+        """
+
+        if format_spec:
+            match = _F_SYNTAX.match(format_spec)
+            if not match:
+                raise ValueError(f"invalid format specifier {format_spec!r}")
+            fill = match.group("fill")
+            align = match.group("align")
+            if align == "=":
+                raise ValueError("'=' alignment not allowed in string format specifier")
+            flags = match.group("flags")
+            if "#" in flags:
+                highlighted = True
+            if "+" in flags:
+                multiline = True
+            zero = match.group("zero")
+            if zero and not fill:
+                fill = zero
+            format_width = match.group("width")
+            if format_width:
+                format_width = int(format_width)
+            else:
+                format_width = None
+            format_width_grouping = match.group("width_grouping")
+            if format_width_grouping:
+                raise ValueError(f"cannot specify {format_width_grouping!r} with 's'")
+            format_precision = match.group("precision")
+            if format_precision:
+                format_precision = int(format_precision)
+            else:
+                format_precision = None
+            type = match.group("type")
+            if type and type != "s":
+                raise ValueError(f"unknown format code {type!r}")
+        else:
+            format_width = format_precision = align = fill = None
+
+        if conversion == "r":
+            res = self.repr(
+                value,
+                multiline=multiline,
+                highlighted=highlighted,
+                width=width,
+                max_depth=max_depth,
+            )
+        elif conversion == "a":
+            res = ColorizedString()
+            for part in self.repr(
+                value,
+                multiline=multiline,
+                highlighted=highlighted,
+                width=width,
+                max_depth=max_depth,
+            ):
+                if isinstance(part, _UserString):
+                    res += part._wrap(
+                        part.encode(encoding="unicode_escape").decode("ascii")
+                    )
+                elif isinstance(part, str):
+                    res += part.encode(encoding="unicode_escape").decode("ascii")
+                else:
+                    res += part
+        elif not conversion or conversion == "s":
+            res = self.str(
+                value,
+                multiline=multiline,
+                highlighted=highlighted,
+                width=width,
+                max_depth=max_depth,
+            )
+        else:
+            raise ValueError(
+                f"unknown conversion {conversion!r}, should be 'a', 'r', or 's'"
+            )
+
+        return _apply_format(res, format_width, format_precision, align, fill)
+
     def hl(
         self,
         value: str,
@@ -2634,7 +2973,7 @@ def _to_colorable(msg: _t.Any, args: tuple[_t.Any, ...] | None = None) -> Colora
 
     """
 
-    if isinstance(msg, str):
+    if isinstance(msg, (str, _Template)):
         return Format(_t.cast(_t.LiteralString, msg), *(args or ()))
     else:
         if args:
@@ -2658,12 +2997,14 @@ class _StrBase(abc.ABC):
 @repr_from_rich
 class Format(_StrBase):
     """Format(msg: typing.LiteralString, /, *args: typing.Any)
-    Format(msg: str, /)
+    Format(msg: ~string.templatelib.Template, /)
 
-    Lazy wrapper that ``%``-formats the given message.
+    Lazy wrapper that ``%``-formats the given message,
+    or formats a :class:`~string.templatelib.Template`.
 
-    This utility allows saving ``%``-formatted messages and performing actual
-    formatting lazily when requested. Color tags and backticks are handled as usual.
+    This utility allows saving ``%``-formatted messages and templates and performing
+    actual formatting lazily when requested. Color tags and backticks
+    are handled as usual.
 
     :param msg:
         message to format.
@@ -2681,9 +3022,9 @@ class Format(_StrBase):
     @_t.overload
     def __init__(self, msg: _t.LiteralString, /, *args: _t.Any): ...
     @_t.overload
-    def __init__(self, msg: str, /): ...
-    def __init__(self, msg: str, /, *args: _t.Any):
-        self._msg: str = msg
+    def __init__(self, msg: _Template, /): ...
+    def __init__(self, msg: str | _Template, /, *args: _t.Any):
+        self._msg: str | _Template = msg
         self._args: tuple[_t.Any, ...] = args
 
     def __rich_repr__(self) -> RichReprResult:

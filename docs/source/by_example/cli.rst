@@ -126,6 +126,7 @@ Yuio automatically separates CLI options into sections when you use nested
     Source "docs/source/_tapes/_config.tape"
     Type "python examples/docs/cli_config_inline.py --help 2>&1 | less -R"
     Enter
+    Sleep 1s
     Down@1s 6
     Sleep 4s
 
@@ -183,6 +184,7 @@ This will result in the following help message:
     Source "docs/source/_tapes/_config.tape"
     Type "python examples/docs/cli_settings.py --help 2>&1 | less -R"
     Enter
+    Sleep 1s
     Down@1s 6
     Sleep 4s
 

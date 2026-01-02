@@ -1,5 +1,4 @@
 import io
-import os
 import sys
 import textwrap
 
@@ -18,19 +17,12 @@ import pytest
 
 class TestSetup:
     @pytest.fixture(autouse=True)
-    def setup_io(self, width: int, height: int, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "yuio.term.get_tty_size",
-            lambda *_, **__: os.terminal_size((width, height)),
-        )
+    def setup_io_fresh(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("yuio.io._IO_MANAGER", None)
-        monkeypatch.setattr("yuio.io._STREAMS_WRAPPED", False)
-        monkeypatch.setattr("yuio.io._ORIG_STDERR", None)
-        monkeypatch.setattr("yuio.io._ORIG_STDOUT", None)
-        monkeypatch.setattr("sys.argv", ["prog"])
 
         yield
 
+        yuio.io.restore_streams()
         if yuio.io._IO_MANAGER is not None:
             yuio.io._IO_MANAGER.stop()
             yuio.io._IO_MANAGER = None
@@ -2675,10 +2667,6 @@ class TestTaskBackground:
 
 
 class TestSuspendOutput:
-    @pytest.fixture
-    def wrap_streams(self) -> bool:
-        return True
-
     @pytest.mark.parametrize(
         ("meth", "args", "expected"),
         [

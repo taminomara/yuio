@@ -32,6 +32,6 @@ if __name__ == "__main__":
     yuio.io.br()
 
     if result:
-        yuio.io.info(result)
+        yuio.io.info("%s", result)
     else:
         yuio.io.info("...\n\n... nothing! You've deleted it! How could you 〈◕﹏◕〉")

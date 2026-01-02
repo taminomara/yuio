@@ -1,5 +1,3 @@
-import os
-
 import yuio
 import yuio.app
 import yuio.config
@@ -8,12 +6,13 @@ from yuio.app import App, CommandInfo, app, field, inline, positional
 import pytest
 
 
+@pytest.fixture
+def width():
+    return 120
+
+
 @pytest.fixture(autouse=True)
-def setup_io(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "yuio.term.get_tty_size",
-        lambda *_, **__: os.terminal_size((120, 24)),
-    )
+def setup_argv(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "sys.argv", ["prog", "app should not use sys.argv if explicit args are given!"]
     )
