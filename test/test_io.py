@@ -163,7 +163,7 @@ class TestMessage:
                 "baz foo bar baz!    ",
             ],
             [
-                "ccccccccccccccccccc ",
+                "cccccccccccccccccccc",
                 "cccccccccccccccc    ",
             ],
         )
@@ -1030,7 +1030,7 @@ class TestAskNoColor:
         io_mocker.expect_screen(
             [
                 "> Enter some numbers",
-                "  (<int>[ <int>[    ",
+                "   (<int>[ <int>[   ",
                 "  ...]]):           ",
             ],
         )

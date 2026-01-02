@@ -1047,13 +1047,13 @@ class App(_t.Generic[C]):
             yuio.io.raw(e, add_newline=True)
             sys.exit(1)
         except (AppError, yuio.cli.ArgumentError, yuio.parse.ParsingError) as e:
-            yuio.io.failure(e, wrap=False)
+            yuio.io.failure(e)
             sys.exit(1)
         except KeyboardInterrupt:
-            yuio.io.failure("Received Keyboard Interrupt, stopping now", wrap=False)
+            yuio.io.failure("Received Keyboard Interrupt, stopping now")
             sys.exit(130)
         except Exception as e:
-            yuio.io.failure_with_tb("Error: %s", e, wrap=False)
+            yuio.io.failure_with_tb("Error: %s", e)
             sys.exit(3)
         finally:
             yuio.io.restore_streams()
