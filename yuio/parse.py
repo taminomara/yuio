@@ -1004,8 +1004,8 @@ class Parser(PartialParser, _t.Generic[T_co]):
 
         :returns:
             `nargs` as defined by argparse. If :meth:`~Parser.supports_parse_many`
-            returns :data:`True`, value should be ``"+"``, ``"*"``, ``"?"``,
-            or an integer. Otherwise, value should be :data:`None`.
+            returns :data:`True`, value should be ``"+"`` or an integer. Otherwise,
+            value should be ``1``.
 
         """
 

@@ -315,8 +315,13 @@ Here's how Yuio handles this dilemma:
 1.  High level API does not allow creating flags with optional values.
 
     To create one, you have to make a custom implementation of :class:`yuio.cli.Option`
-    and set its :attr:`~yuio.cli.Option.nargs` to ``"?"``. This will correspond
-    to the greedy approach.
+    and set its :attr:`~yuio.cli.Option.allow_no_args` to :data:`True`. This will
+    correspond to the greedy approach.
+
+    .. note::
+
+        Positionals with defaults are treated as optional because they don't
+        create ambiguities.
 
 2.  Boolean flags allow specifying value inline, but not as a separate argument.
 
@@ -329,8 +334,9 @@ Here's how Yuio handles this dilemma:
 
 4.  On lower levels of API, Yuio allows precise control over these behavior
     by setting :attr:`Option.nargs <yuio.cli.Option.nargs>`,
+    :attr:`Option.allow_no_args <yuio.cli.Option.allow_no_args>`,
     :attr:`Option.allow_inline_arg <yuio.cli.Option.allow_inline_arg>`,
-    and :attr:`Option.allow_implicit_inline_arg <yuio.cli.Option.allow_implicit_inline_arg>`
+    and :attr:`Option.allow_implicit_inline_arg <yuio.cli.Option.allow_implicit_inline_arg>`.
 
 
 .. _custom-cli-options:
@@ -856,8 +862,7 @@ class App(_t.Generic[C]):
             You can always enable full debug logging by setting environment
             variable ``YUIO_DEBUG``.
 
-            If enabled, full log will be saved to ``YUIO_DEBUG_FILE``
-            (default is ``./yuio.log``).
+            If enabled, full log will be saved to ``YUIO_DEBUG_FILE``.
 
         """
 

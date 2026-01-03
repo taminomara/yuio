@@ -1710,7 +1710,7 @@ def parse_one_option() -> OptionCtor[_t.Any]:
         to use :func:`parse_one_option` instead.
 
         .. code-block:: python
-            :emphasize-lines: 5
+            :emphasize-lines: 6
 
             @yuio.app.app
             def main(

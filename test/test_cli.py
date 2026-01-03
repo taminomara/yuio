@@ -576,13 +576,23 @@ class TestNargs:
             ("+", False, ["a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
         ],
     )
-    def test_nargs_star_and_plus(self, nargs, allow_no_args, args, expected):
-        ns = parse_args([list_option(yuio.POSITIONAL, "files", nargs=nargs, allow_no_args=allow_no_args)], args)
+    def test_nargs_and_allow_no_args(self, nargs, allow_no_args, args, expected):
+        ns = parse_args(
+            [
+                list_option(
+                    yuio.POSITIONAL, "files", nargs=nargs, allow_no_args=allow_no_args
+                )
+            ],
+            args,
+        )
         assert ns["files"] == expected
 
     def test_nargs_plus_requires_one(self):
         with pytest.raises(yuio.cli.ArgumentError):
-            parse_args([list_option(yuio.POSITIONAL, "files", nargs="+", allow_no_args=False)], [])
+            parse_args(
+                [list_option(yuio.POSITIONAL, "files", nargs="+", allow_no_args=False)],
+                [],
+            )
 
     def test_nargs_integer_exact_count(self):
         ns = parse_args([tuple_option(flags=yuio.POSITIONAL)], ["10", "20"])
@@ -617,7 +627,12 @@ class TestNargs:
     )
     def test_nargs_allow_no_args_1(self, args, expected):
         ns = parse_args(
-            [list_option(nargs=1, allow_no_args=True, dest="config", flags=yuio.POSITIONAL)], args
+            [
+                list_option(
+                    nargs=1, allow_no_args=True, dest="config", flags=yuio.POSITIONAL
+                )
+            ],
+            args,
         )
         assert ns["config"] == expected
 
@@ -630,7 +645,12 @@ class TestNargs:
     )
     def test_nargs_allow_no_args_n(self, args, expected):
         ns = parse_args(
-            [list_option(nargs=3, allow_no_args=True, dest="config", flags=yuio.POSITIONAL)], args
+            [
+                list_option(
+                    nargs=3, allow_no_args=True, dest="config", flags=yuio.POSITIONAL
+                )
+            ],
+            args,
         )
         assert ns["config"] == expected
 
@@ -641,12 +661,22 @@ class TestNargsFlag:
         [
             ("+", True, ["--files"], []),
             ("+", True, ["--files", "a.txt"], ["a.txt"]),
-            ("+", True, ["--files", "a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
+            (
+                "+",
+                True,
+                ["--files", "a.txt", "b.txt", "c.txt"],
+                ["a.txt", "b.txt", "c.txt"],
+            ),
             ("+", False, ["--files", "a.txt"], ["a.txt"]),
-            ("+", False, ["--files", "a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
+            (
+                "+",
+                False,
+                ["--files", "a.txt", "b.txt", "c.txt"],
+                ["a.txt", "b.txt", "c.txt"],
+            ),
         ],
     )
-    def test_nargs_star_and_plus(self, nargs, allow_no_args, args, expected):
+    def test_nargs_and_allow_no_args(self, nargs, allow_no_args, args, expected):
         ns = parse_args([list_option(nargs=nargs, allow_no_args=allow_no_args)], args)
         assert ns["files"] == expected
 
@@ -819,7 +849,9 @@ class TestFlagsAndPositionalsInteraction:
             tuple_option(),  # Nargs 2
             list_option(["--configs"], "configs"),  # Nargs *
             list_option(["--patches"], "patches", nargs="+"),  # Nargs +
-            list_option(["--protocol"], "protocol", nargs=1, allow_no_args=True),  # Nargs ?
+            list_option(
+                ["--protocol"], "protocol", nargs=1, allow_no_args=True
+            ),  # Nargs ?
         ]
         ns = parse_args(options, args)
         assert ns == expected

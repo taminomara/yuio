@@ -53,8 +53,7 @@ This module is inspired by :mod:`argparse`, but there are differences:
 
 -   there's no distinction between ``nargs=None`` and ``nargs=1``; however, there is
     a distinction between argument being specified inline or not. This allows us to
-    supply arguments for options with ``nargs=0``, getting rid of ambiguity introduced
-    by ``nargs="?"``.
+    supply arguments for options with ``nargs=0``.
 
     See :ref:`flags-with-optional-values` for details;
 
@@ -152,9 +151,14 @@ CLI parser
     :members:
 
 .. type:: NArgs
-    :canonical: int | typing.Literal["?", "*", "+"]
+    :canonical: int | typing.Literal["+"]
 
     Type alias for :attr:`~Option.nargs`.
+
+    .. note::
+
+        ``"*"`` from argparse is equivalent to ``nargs="+"`` with ``allow_no_args=True``;
+        ``"?"`` from argparse is equivalent to ``nargs=1`` with ``allow_no_args=True``.
 
 
 Option grouping
