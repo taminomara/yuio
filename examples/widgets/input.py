@@ -7,7 +7,6 @@ if __name__ == "__main__":
 
     widget = yuio.widget.Input(
         placeholder="Enter something nice?",
-        decoration=">",
         allow_multiline=True,
         allow_special_characters=True,
     )

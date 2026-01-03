@@ -345,7 +345,8 @@ def stream_is_unicode(stream: _t.TextIO, /) -> bool:
 
     """
 
-    encoding = getattr(stream, "encoding", None) or locale.getpreferredencoding()
+    encoding = getattr(stream, "encoding", None) or locale.getpreferredencoding() or ""
+    encoding = encoding.casefold()
     return "utf" in encoding or "unicode" in encoding
 
 

@@ -461,6 +461,33 @@ Decorations
         </div>
         </div>
 
+.. color-path:: input widget
+
+    Decorations for :class:`yuio.widget.Input`:
+
+    -   ``menu/input/decoration``: decoration before an input box,
+    -   ``menu/input/decoration_search``: decoration before a search input box.
+
+.. color-path:: choice and multiselect widget
+
+    Decorations for :class:`yuio.widget.Choice` and :class:`yuio.widget.Multiselect`:
+
+    -   ``menu/choice/decoration/active_item``: current item,
+    -   ``menu/choice/decoration/selected_item``: selected item in multiselect widget,
+    -   ``menu/choice/decoration/deselected_item``: deselected item in multiselect widget.
+
+.. color-path:: inline help and help menu
+
+    Decorations for widget help:
+
+    -   ``menu/help/decoration``: decoration at the bottom of the help menu,
+    -   :samp:`menu/help/key/{key}`: text for functional keys.
+
+        ``key`` can be one of ``ctrl``, ``shift``, ``enter``, ``escape``, ``insert``,
+        ``delete``, ``backspace``, ``tab``, ``home``, ``end``, ``page_up``,
+        ``page_down``, ``arrow_up``, ``arrow_down``, ``arrow_left``, ``arrow_right``,
+        ``space``, ``f1``...\\ ``f12``.
+
 """
 
 from __future__ import annotations
@@ -1252,12 +1279,41 @@ class DefaultTheme(BaseTheme):
         "hr/2/right_start": " ",
         "hr/2/right_middle": "=",
         "hr/2/right_end": "=",
-        # TODO: support these in widgets
-        # 'menu/current_item': '>',
-        # 'menu/selected_item': '*',
-        # 'menu/default_item': '*',
-        # 'menu/select': '#',
-        # 'menu/search': '/',
+        "menu/choice/decoration/active_item": "> ",
+        "menu/choice/decoration/deselected_item": "- ",
+        "menu/choice/decoration/selected_item": "* ",
+        "menu/input/decoration_search": "/ ",
+        "menu/input/decoration": "> ",
+        "menu/help/key/alt": "M-",
+        "menu/help/key/ctrl": "C-",
+        "menu/help/key/shift": "S-",
+        "menu/help/key/enter": "ret",
+        "menu/help/key/escape": "esc",
+        "menu/help/key/insert": "ins",
+        "menu/help/key/delete": "del",
+        "menu/help/key/backspace": "bsp",
+        "menu/help/key/tab": "tab",
+        "menu/help/key/home": "home",
+        "menu/help/key/end": "end",
+        "menu/help/key/page_up": "pgup",
+        "menu/help/key/page_down": "pgdn",
+        "menu/help/key/arrow_up": "up",
+        "menu/help/key/arrow_down": "down",
+        "menu/help/key/arrow_left": "left",
+        "menu/help/key/arrow_right": "right",
+        "menu/help/key/space": "space",
+        "menu/help/key/f1": "f1",
+        "menu/help/key/f2": "f2",
+        "menu/help/key/f3": "f3",
+        "menu/help/key/f4": "f4",
+        "menu/help/key/f5": "f5",
+        "menu/help/key/f6": "f6",
+        "menu/help/key/f7": "f7",
+        "menu/help/key/f8": "f8",
+        "menu/help/key/f9": "f9",
+        "menu/help/key/f10": "f10",
+        "menu/help/key/f11": "f11",
+        "menu/help/key/f12": "f12",
     }
 
     msg_decorations_unicode = {
@@ -1296,12 +1352,42 @@ class DefaultTheme(BaseTheme):
         "progress_bar/transition_pattern": "",  # "█▉▊▋▌▍▎▏ ",
         "spinner/pattern": "⣤⣤⣤⠶⠛⠛⠛⠶",
         "spinner/static_symbol": "⣿",
-        # TODO: support these in widgets
-        # 'menu/current_item': '▶︎',
-        # 'menu/selected_item': '★',
-        # 'menu/default_item': '★',
-        # 'menu/select': '#',
-        # 'menu/search': '/',
+        "menu/input/decoration": "> ",
+        "menu/input/decoration_search": "/ ",
+        "menu/choice/decoration/active_item": "> ",
+        "menu/choice/decoration/selected_item": "* ",
+        "menu/choice/decoration/deselected_item": "- ",
+        "menu/help/decoration": ":",
+        "menu/help/key/alt": "M-",
+        "menu/help/key/ctrl": "C-",
+        "menu/help/key/shift": "S-",
+        "menu/help/key/enter": "ret",
+        "menu/help/key/escape": "esc",
+        "menu/help/key/insert": "ins",
+        "menu/help/key/delete": "del",
+        "menu/help/key/backspace": "bsp",
+        "menu/help/key/tab": "tab",
+        "menu/help/key/home": "home",
+        "menu/help/key/end": "end",
+        "menu/help/key/page_up": "pgup",
+        "menu/help/key/page_down": "pgdn",
+        "menu/help/key/arrow_up": "↑",
+        "menu/help/key/arrow_down": "↓",
+        "menu/help/key/arrow_left": "←",
+        "menu/help/key/arrow_right": "→",
+        "menu/help/key/space": "␣",
+        "menu/help/key/f1": "f1",
+        "menu/help/key/f2": "f2",
+        "menu/help/key/f3": "f3",
+        "menu/help/key/f4": "f4",
+        "menu/help/key/f5": "f5",
+        "menu/help/key/f6": "f6",
+        "menu/help/key/f7": "f7",
+        "menu/help/key/f8": "f8",
+        "menu/help/key/f9": "f9",
+        "menu/help/key/f10": "f10",
+        "menu/help/key/f11": "f11",
+        "menu/help/key/f12": "f12",
     }
 
     colors = {
@@ -1464,9 +1550,10 @@ class DefaultTheme(BaseTheme):
         "menu/text:choice/status_line/number": "low_priority_color_a",
         "menu/text/placeholder": "secondary_color",
         "menu/decoration": "accent_color",
-        "menu/decoration/quick-select": "secondary_color",
         "menu/decoration/comment": "secondary_color",
         "menu/decoration:choice/normal": "menu/text",
+        "menu/decoration:choice/normal/selected": "accent_color_2 bold",
+        "menu/decoration:choice/active/selected": "bold",
     }
     """
     Colors for default theme are separated into several sections.

@@ -821,6 +821,14 @@ class RenderContext:
 
         self._frame_cursor_color = self._none_color
 
+    def get_msg_decoration(self, name: str, /) -> str:
+        """
+        Get message decoration by name.
+
+        """
+
+        return self.theme.get_msg_decoration(name, is_unicode=self.term.is_unicode)
+
     def write(self, text: yuio.string.AnyString, /, *, max_width: int | None = None):
         """
         Write string at the current position using the current color.
@@ -1594,7 +1602,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             self.__help_menu_line -= self.__height
         elif not self.__help_menu_search and e == KeyboardEvent("/"):
             self.__help_menu_search = True
-            self.__help_menu_search_widget = Input(decoration="/")
+            self.__help_menu_search_widget = Input(
+                decoration_path="menu/input/decoration_search"
+            )
         elif self.__help_menu_search:
             if e == KeyboardEvent(Key.ESCAPE) or (
                 e == KeyboardEvent(Key.BACKSPACE)
@@ -1623,9 +1633,9 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         if self.__last_help_data != self.help_data:
             self.__last_help_data = self.help_data
-            self.__prepared_groups = self.__prepare_groups(self.__last_help_data)
+            self.__prepared_groups = self.__prepare_groups(self.__last_help_data, rc)
             self.__prepared_inline_help = self.__prepare_inline_help(
-                self.__last_help_data
+                self.__last_help_data, rc
             )
             self.__has_help = bool(
                 self.__last_help_data.inline_help or self.__last_help_data.groups
@@ -1701,7 +1711,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                 self.__help_menu_search_widget.draw(rc)
             else:
                 rc.set_color_path("menu/decoration:help_menu")
-                rc.write(":")
+                rc.write(rc.get_msg_decoration("menu/help/decoration"))
                 rc.reset_color()
                 rc.write(" " * (rc.width - 1))
                 rc.set_final_pos(1, 0)
@@ -1732,7 +1742,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         if not self.__has_help:
             return
 
-        used_width = _line_width(self._KEY_SYMBOLS[Key.F1]) + 5
+        used_width = _line_width(rc.get_msg_decoration("menu/help/key/f1")) + 5
         col_sep = ""
 
         for keys, title, keys_width in self.__colorized_inline_help:
@@ -1760,71 +1770,47 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         rc.set_color_path("menu/text/help_sep:help")
         rc.write(col_sep)
         rc.set_color_path("menu/text/help_key:help")
-        rc.write(self._KEY_SYMBOLS[Key.F1])
+        rc.write(rc.get_msg_decoration("menu/help/key/f1"))
         rc.move_pos(1, 0)
         rc.set_color_path("menu/text/help_msg:help")
         rc.write("help")
 
-    _ALT = "M-"
-    _CTRL = "C-"
-    _SHIFT = "S-"
-
-    _KEY_SYMBOLS = {
-        Key.ENTER: "ret",
-        Key.ESCAPE: "esc",
-        Key.DELETE: "del",
-        Key.BACKSPACE: "bsp",
-        Key.TAB: "tab",
-        Key.HOME: "home",
-        Key.END: "end",
-        Key.PAGE_UP: "pgup",
-        Key.PAGE_DOWN: "pgdn",
-        Key.ARROW_UP: "↑",
-        Key.ARROW_DOWN: "↓",
-        Key.ARROW_LEFT: "←",
-        Key.ARROW_RIGHT: "→",
-        Key.F1: "f1",
-        Key.F2: "f2",
-        Key.F3: "f3",
-        Key.F4: "f4",
-        " ": "␣",
-    }
-
     def __prepare_inline_help(
-        self, data: WidgetHelp
+        self, data: WidgetHelp, rc: RenderContext
     ) -> list[tuple[list[str], str, str, int]]:
         return [
             prepared_action
             for action in data.inline_help
-            if (prepared_action := self.__prepare_action(action)) and prepared_action[1]
+            if (prepared_action := self.__prepare_action(action, rc))
+            and prepared_action[1]
         ]
 
     def __prepare_groups(
-        self, data: WidgetHelp
+        self, data: WidgetHelp, rc: RenderContext
     ) -> dict[str, list[tuple[list[str], str, str, int]]]:
         help_data = (
             data.with_action(
-                self._KEY_SYMBOLS[Key.F1],
+                rc.get_msg_decoration("menu/help/key/f1"),
                 group="Other Actions",
                 long_msg="toggle help menu",
             )
             .with_action(
-                self._CTRL + "l",
+                rc.get_msg_decoration("menu/help/key/ctrl") + "l",
                 group="Other Actions",
                 long_msg="refresh screen",
             )
             .with_action(
-                self._CTRL + "c",
+                rc.get_msg_decoration("menu/help/key/ctrl") + "c",
                 group="Other Actions",
                 long_msg="send interrupt signal",
             )
             .with_action(
-                "C-...",
+                rc.get_msg_decoration("menu/help/key/ctrl") + "...",
                 group="Legend",
                 long_msg="means `Ctrl+...`",
             )
             .with_action(
-                "M-...",
+                rc.get_msg_decoration("menu/help/key/alt") + "...",
                 group="Legend",
                 long_msg=(
                     "means `Option+...`"
@@ -1833,17 +1819,17 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                 ),
             )
             .with_action(
-                "S-...",
+                rc.get_msg_decoration("menu/help/key/shift") + "...",
                 group="Legend",
                 long_msg="means `Shift+...`",
             )
             .with_action(
-                "ret",
+                rc.get_msg_decoration("menu/help/key/enter"),
                 group="Legend",
                 long_msg="means `Return` or `Enter`",
             )
             .with_action(
-                "bsp",
+                rc.get_msg_decoration("menu/help/key/backspace"),
                 group="Legend",
                 long_msg="means `Backspace`",
             )
@@ -1860,7 +1846,7 @@ class Widget(abc.ABC, _t.Generic[T_co]):
                     prepared_actions := [
                         prepared_action
                         for action in actions
-                        if (prepared_action := self.__prepare_action(action))
+                        if (prepared_action := self.__prepare_action(action, rc))
                         and prepared_action[1]
                     ]
                 )
@@ -1881,11 +1867,11 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         return groups
 
     def __prepare_action(
-        self, action: Action
+        self, action: Action, rc: RenderContext
     ) -> tuple[list[str], str, str, int] | None:
         if isinstance(action, tuple):
             action_keys, msg = action
-            prepared_keys = self.__prepare_keys(action_keys)
+            prepared_keys = self.__prepare_keys(action_keys, rc)
         else:
             prepared_keys = []
             msg = action
@@ -1898,13 +1884,13 @@ class Widget(abc.ABC, _t.Generic[T_co]):
         title = msg.split("\n\n", maxsplit=1)[0]
         return prepared_keys, title, msg, _line_width("/".join(prepared_keys))
 
-    def __prepare_keys(self, action_keys: ActionKeys) -> list[str]:
+    def __prepare_keys(self, action_keys: ActionKeys, rc: RenderContext) -> list[str]:
         if isinstance(action_keys, (str, Key, KeyboardEvent)):
-            return [self.__prepare_key(action_keys)]
+            return [self.__prepare_key(action_keys, rc)]
         else:
-            return [self.__prepare_key(action_key) for action_key in action_keys]
+            return [self.__prepare_key(action_key, rc) for action_key in action_keys]
 
-    def __prepare_key(self, action_key: ActionKey) -> str:
+    def __prepare_key(self, action_key: ActionKey, rc: RenderContext) -> str:
         if isinstance(action_key, str):
             return action_key
         elif isinstance(action_key, KeyboardEvent):
@@ -1919,20 +1905,25 @@ class Widget(abc.ABC, _t.Generic[T_co]):
 
         symbol = ""
 
-        if isinstance(key, str) and key.lower() != key:
-            shift = True
-            key = key.lower()
+        if isinstance(key, str):
+            if key.lower() != key:
+                shift = True
+                key = key.lower()
+            elif key == " ":
+                key = "space"
+        else:
+            key = key.name.lower()
 
         if shift:
-            symbol += self._SHIFT
+            symbol += rc.get_msg_decoration("menu/help/key/shift")
 
         if ctrl:
-            symbol += self._CTRL
+            symbol += rc.get_msg_decoration("menu/help/key/ctrl")
 
         if alt:
-            symbol += self._ALT
+            symbol += rc.get_msg_decoration("menu/help/key/alt")
 
-        return symbol + (self._KEY_SYMBOLS.get(key) or str(key))
+        return symbol + (rc.get_msg_decoration(f"menu/help/key/{key}") or key)
 
 
 Widget.__init_subclass__()
@@ -2683,8 +2674,8 @@ class Input(Widget[str]):
         Should be ``0 <= pos <= len(text)``.
     :param placeholder:
         placeholder text, shown when input is empty.
-    :param decoration:
-        decoration printed before the input box.
+    :param decoration_path:
+        path that will be used to look up decoration printed before the input box.
     :param allow_multiline:
         if `True`, :kbd:`Enter` key makes a new line, otherwise it accepts input.
         In this mode, newlines in pasted text are also preserved.
@@ -2738,14 +2729,14 @@ class Input(Widget[str]):
         text: str = "",
         pos: int | None = None,
         placeholder: str = "",
-        decoration: str = ">",
+        decoration_path: str = "menu/input/decoration",
         allow_multiline: bool = False,
         allow_special_characters: bool = False,
     ):
         self.__text: str = text
         self.__pos: int = len(text) if pos is None else max(0, min(pos, len(text)))
         self.__placeholder: str = placeholder
-        self.__decoration: str = decoration
+        self.__decoration_path: str = decoration_path
         self.__allow_multiline: bool = allow_multiline
         self.__allow_special_characters: bool = allow_special_characters
 
@@ -3161,15 +3152,9 @@ class Input(Widget[str]):
         self.text = self.text[: self.pos] + s + self.text[self.pos :]
         self.pos += len(s)
 
-    @property
-    def _decoration_width(self):
-        if self.__decoration:
-            return _line_width(self.__decoration) + 1
-        else:
-            return 0
-
     def layout(self, rc: RenderContext, /) -> tuple[int, int]:
-        decoration_width = self._decoration_width
+        decoration = rc.get_msg_decoration(self.__decoration_path)
+        decoration_width = _line_width(decoration)
         text_width = rc.width - decoration_width
         if text_width < 2:
             self.__wrapped_text_width = max(text_width, 0)
@@ -3215,10 +3200,9 @@ class Input(Widget[str]):
         return height, height
 
     def draw(self, rc: RenderContext, /):
-        if self.__decoration:
+        if decoration := rc.get_msg_decoration(self.__decoration_path):
             rc.set_color_path("menu/decoration:input")
-            rc.write(self.__decoration)
-            rc.move_pos(1, 0)
+            rc.write(decoration)
 
         if self.__wrapped_text is not None:
             rc.write_text(self.__wrapped_text)
@@ -3292,13 +3276,13 @@ class SecretInput(Input):
         text: str = "",
         pos: int | None = None,
         placeholder: str = "",
-        decoration: str = ">",
+        decoration_path: str = "menu/input/decoration",
     ):
         super().__init__(
             text=text,
             pos=pos,
             placeholder=placeholder,
-            decoration=decoration,
+            decoration_path=decoration_path,
             allow_multiline=False,
             allow_special_characters=False,
         )
@@ -3360,6 +3344,12 @@ class Option(_t.Generic[T_co]):
 
     """
 
+    selected: bool = dataclasses.field(default=False, kw_only=True)
+    """
+    For multi-choice widgets, whether this option is chosen or not.
+
+    """
+
 
 class Grid(Widget[_t.Never], _t.Generic[T]):
     """
@@ -3388,19 +3378,23 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         options: list[Option[T]],
         /,
         *,
-        decoration: str = ">",
+        active_item_decoration_path: str = "menu/choice/decoration/active_item",
+        selected_item_decoration_path: str = "",
+        deselected_item_decoration_path: str = "",
         default_index: int | None = 0,
         min_rows: int | None = 5,
     ):
         self.__options: list[Option[T]]
         self.__index: int | None
         self.__min_rows: int | None = min_rows
-        self.__max_column_width: int
+        self.__max_column_width: int | None
         self.__column_width: int
         self.__num_rows: int
         self.__num_columns: int
 
-        self.__decoration = decoration
+        self.__active_item_decoration_path = active_item_decoration_path
+        self.__selected_item_decoration_path = selected_item_decoration_path
+        self.__deselected_item_decoration_path = deselected_item_decoration_path
 
         self.set_options(options)
         self.index = default_index
@@ -3463,9 +3457,7 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         """
 
         self.__options = options
-        self.__max_column_width = max(
-            0, _MIN_COLUMN_WIDTH, *map(self._get_option_width, options)
-        )
+        self.__max_column_width = None
         self.index = default_index
 
     _NAVIGATE = "Navigate"
@@ -3604,6 +3596,30 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
                     break
 
     def layout(self, rc: RenderContext, /) -> tuple[int, int]:
+        active_item_decoration = rc.get_msg_decoration(
+            self.__active_item_decoration_path
+        )
+        selected_item_decoration = rc.get_msg_decoration(
+            self.__selected_item_decoration_path
+        )
+        deselected_item_decoration = rc.get_msg_decoration(
+            self.__deselected_item_decoration_path
+        )
+
+        decoration_width = _line_width(active_item_decoration) + max(
+            _line_width(selected_item_decoration),
+            _line_width(deselected_item_decoration),
+        )
+
+        if self.__max_column_width is None:
+            self.__max_column_width = max(
+                0,
+                _MIN_COLUMN_WIDTH,
+                *(
+                    self._get_option_width(option, decoration_width)
+                    for option in self.__options
+                ),
+            )
         self.__column_width = max(1, min(self.__max_column_width, rc.width))
         self.__num_columns = num_columns = max(1, rc.width // self.__column_width)
         self.__num_rows = max(
@@ -3668,10 +3684,10 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
             rc.set_color_path("menu/text:choice/status_line/number")
             rc.write(f"{pages}")
 
-    def _get_option_width(self, option: Option[object]):
+    def _get_option_width(self, option: Option[object], decoration_width: int):
         return (
             _SPACE_BETWEEN_COLUMNS
-            + (_line_width(self.__decoration) + 1 if self.__decoration else 0)
+            + decoration_width
             + (_line_width(option.display_text_prefix))
             + (_line_width(option.display_text))
             + (_line_width(option.display_text_suffix))
@@ -3686,12 +3702,28 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         option: Option[object],
         is_active: bool,
     ):
+        active_item_decoration = rc.get_msg_decoration(
+            self.__active_item_decoration_path
+        )
+        active_item_decoration_width = _line_width(active_item_decoration)
+        selected_item_decoration = rc.get_msg_decoration(
+            self.__selected_item_decoration_path
+        )
+        selected_item_decoration_width = _line_width(selected_item_decoration)
+        deselected_item_decoration = rc.get_msg_decoration(
+            self.__deselected_item_decoration_path
+        )
+        deselected_item_decoration_width = _line_width(deselected_item_decoration)
+        item_selection_decoration_width = max(
+            selected_item_decoration_width, deselected_item_decoration_width
+        )
+
         left_prefix_width = _line_width(option.display_text_prefix)
         left_main_width = _line_width(option.display_text)
         left_suffix_width = _line_width(option.display_text_suffix)
         left_width = left_prefix_width + left_main_width + left_suffix_width
         left_decoration_width = (
-            _line_width(self.__decoration) + 1 if self.__decoration else 0
+            active_item_decoration_width + item_selection_decoration_width
         )
 
         right = option.comment or ""
@@ -3723,25 +3755,42 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
         else:
             status_tag = "normal"
 
-        if self.__decoration and is_active:
-            rc.set_color_path(f"menu/decoration:choice/{status_tag}/{option.color_tag}")
-            rc.write(self.__decoration)
-            rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
-            rc.write(" ")
-        elif self.__decoration:
-            rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
-            rc.write(" " * left_decoration_width)
+        if option.selected:
+            color_tag = "selected"
+        else:
+            color_tag = option.color_tag
 
-        rc.set_color_path(f"menu/text/prefix:choice/{status_tag}/{option.color_tag}")
+        if is_active:
+            rc.set_color_path(f"menu/decoration:choice/{status_tag}/{color_tag}")
+            rc.write(active_item_decoration)
+        else:
+            rc.set_color_path(f"menu/text:choice/{status_tag}/{color_tag}")
+            rc.write(" " * active_item_decoration_width)
+
+        if option.selected:
+            rc.set_color_path(f"menu/decoration:choice/{status_tag}/{color_tag}")
+            rc.write(selected_item_decoration)
+            rc.write(
+                " " * (item_selection_decoration_width - selected_item_decoration_width)
+            )
+        else:
+            rc.set_color_path(f"menu/decoration:choice/{status_tag}/{color_tag}")
+            rc.write(deselected_item_decoration)
+            rc.write(
+                " "
+                * (item_selection_decoration_width - deselected_item_decoration_width)
+            )
+
+        rc.set_color_path(f"menu/text/prefix:choice/{status_tag}/{color_tag}")
         rc.write(option.display_text_prefix, max_width=left_width)
-        rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
+        rc.set_color_path(f"menu/text:choice/{status_tag}/{color_tag}")
         rc.write(option.display_text, max_width=left_width - left_prefix_width)
-        rc.set_color_path(f"menu/text/suffix:choice/{status_tag}/{option.color_tag}")
+        rc.set_color_path(f"menu/text/suffix:choice/{status_tag}/{color_tag}")
         rc.write(
             option.display_text_suffix,
             max_width=left_width - left_prefix_width - left_main_width,
         )
-        rc.set_color_path(f"menu/text:choice/{status_tag}/{option.color_tag}")
+        rc.set_color_path(f"menu/text:choice/{status_tag}/{color_tag}")
         rc.write(
             " "
             * (
@@ -3755,15 +3804,13 @@ class Grid(Widget[_t.Never], _t.Generic[T]):
 
         if right:
             rc.set_color_path(
-                f"menu/decoration/comment:choice/{status_tag}/{option.color_tag}"
+                f"menu/decoration/comment:choice/{status_tag}/{color_tag}"
             )
             rc.write(" [")
-            rc.set_color_path(
-                f"menu/text/comment:choice/{status_tag}/{option.color_tag}"
-            )
+            rc.set_color_path(f"menu/text/comment:choice/{status_tag}/{color_tag}")
             rc.write(right, max_width=right_width)
             rc.set_color_path(
-                f"menu/decoration/comment:choice/{status_tag}/{option.color_tag}"
+                f"menu/decoration/comment:choice/{status_tag}/{color_tag}"
             )
             rc.write("]")
 
@@ -3809,6 +3856,8 @@ class Choice(Widget[T], _t.Generic[T]):
             x.display_text or str(x.value)
         ),
         default_index: int = 0,
+        search_bar_decoration_path: str = "menu/input/decoration_search",
+        active_item_decoration_path: str = "menu/choice/decoration/active_item",
     ): ...
 
     @_t.overload
@@ -3819,6 +3868,8 @@ class Choice(Widget[T], _t.Generic[T]):
         *,
         filter: _t.Callable[[Option[T], str], bool],
         default_index: int = 0,
+        search_bar_decoration_path: str = "menu/input/decoration_search",
+        active_item_decoration_path: str = "menu/choice/decoration/active_item",
     ): ...
 
     def __init__(
@@ -3830,6 +3881,8 @@ class Choice(Widget[T], _t.Generic[T]):
         or str(x.value),
         filter: _t.Callable[[Option[T], str], bool] | None = None,
         default_index: int = 0,
+        search_bar_decoration_path: str = "menu/input/decoration_search",
+        active_item_decoration_path: str = "menu/choice/decoration/active_item",
     ):
         self.__options = options
 
@@ -3840,8 +3893,12 @@ class Choice(Widget[T], _t.Generic[T]):
 
         self.__default_index = default_index
 
-        self.__input = Input(placeholder="Filter options...", decoration="/")
-        self.__grid = Grid[T]([])
+        self.__input = Input(
+            placeholder="Filter options...", decoration_path=search_bar_decoration_path
+        )
+        self.__grid = Grid[T](
+            [], active_item_decoration_path=active_item_decoration_path
+        )
 
         self.__enable_search = False
 
@@ -3980,27 +4037,27 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
         mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
         or str(x.value),
         filter: _t.Callable[[Option[T], str], bool] | None = None,
+        search_bar_decoration_path: str = "menu/input/decoration_search",
+        active_item_decoration_path: str = "menu/choice/decoration/active_item",
+        selected_item_decoration_path: str = "menu/choice/decoration/selected_item",
+        deselected_item_decoration_path: str = "menu/choice/decoration/deselected_item",
     ):
-        self.__options = [
-            _t.cast(
-                Option[tuple[T, bool]],
-                dataclasses.replace(
-                    option,
-                    value=(option.value, False),
-                    display_text_prefix="- " + option.display_text_prefix,
-                    color_tag=None,
-                ),
-            )
-            for option in options
-        ]
+        self.__options = options
 
         if filter is None:
             filter = lambda x, q: mapper(x).lstrip().startswith(q)
 
         self.__filter = filter
 
-        self.__input = Input(placeholder="Filter options...", decoration="/")
-        self.__grid = Grid[tuple[T, bool]]([])
+        self.__input = Input(
+            placeholder="Filter options...", decoration_path=search_bar_decoration_path
+        )
+        self.__grid = Grid[tuple[T, bool]](
+            [],
+            active_item_decoration_path=active_item_decoration_path,
+            selected_item_decoration_path=selected_item_decoration_path,
+            deselected_item_decoration_path=deselected_item_decoration_path,
+        )
 
         self.__enable_search = False
 
@@ -4018,18 +4075,14 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
             return
         option = self.__grid.get_option()
         if option is not None:
-            option.value = (option.value[0], not option.value[1])
-            option.display_text_prefix = (
-                "*" if option.value[1] else "-"
-            ) + option.display_text_prefix[1:]
-            option.color_tag = "selected" if option.value[1] else None
+            option.selected = not option.selected
         self.__update_completion()
 
     @bind(Key.ENTER, alt=True)
     @bind("d", ctrl=True, show_in_inline_help=True)
     def enter(self) -> Result[list[T]] | None:
         """accept"""
-        return Result([option.value[0] for option in self.__options if option.value[1]])
+        return Result([option.value for option in self.__options if option.selected])
 
     @bind("/")
     def search(self):
@@ -4073,10 +4126,7 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
         options = []
         cur_option = self.__grid.get_option()
         for option in self.__options:
-            if not query or self.__filter(
-                _t.cast(Option[T], dataclasses.replace(option, value=option.value[0])),
-                query,
-            ):
+            if not query or self.__filter(option, query):
                 if option is cur_option:
                     index = len(options)
                 options.append(option)
@@ -4117,14 +4167,14 @@ class InputWithCompletion(Widget[str]):
         /,
         *,
         placeholder: str = "",
-        decoration: str = ">",
-        completion_item_decoration: str = ">",
+        decoration_path: str = "menu/input/decoration",
+        active_item_decoration_path: str = "menu/choice/decoration/active_item",
     ):
         self.__completer = completer
 
-        self.__input = Input(placeholder=placeholder, decoration=decoration)
+        self.__input = Input(placeholder=placeholder, decoration_path=decoration_path)
         self.__grid = Grid[yuio.complete.Completion](
-            [], decoration=completion_item_decoration, min_rows=None
+            [], active_item_decoration_path=active_item_decoration_path, min_rows=None
         )
         self.__grid_active = False
 

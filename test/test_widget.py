@@ -726,7 +726,8 @@ class TestInput:
 
         widget_checker.check(yuio.widget.Input(placeholder="type something"))
 
-    def test_decoration(self, widget_checker: WidgetChecker[yuio.widget.Input]):
+    def test_decoration(self, widget_checker: WidgetChecker[yuio.widget.Input], theme):
+        theme.set_msg_decoration_unicode("custom_decoration", "//= ")
         widget_checker.expect_screen(
             [
                 "//=                 ",
@@ -738,7 +739,7 @@ class TestInput:
         )
         widget_checker.expect_widget_to_continue()
 
-        widget_checker.check(yuio.widget.Input(decoration="//="))
+        widget_checker.check(yuio.widget.Input(decoration_path="custom_decoration"))
 
     def test_no_decoration(self, widget_checker: WidgetChecker[yuio.widget.Input]):
         widget_checker.expect_screen(
@@ -762,7 +763,7 @@ class TestInput:
         )
         widget_checker.expect_widget_to_continue()
 
-        widget_checker.check(yuio.widget.Input(decoration=""))
+        widget_checker.check(yuio.widget.Input(decoration_path=""))
 
     def test_single_line(self, widget_checker: WidgetChecker[yuio.widget.Input]):
         widget_checker.expect_screen(
@@ -2005,7 +2006,10 @@ class TestGrid:
             )
         )
 
-    def test_decoration(self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]):
+    def test_decoration(
+        self, widget_checker: WidgetChecker[yuio.widget.Grid[str]], theme
+    ):
+        theme.set_msg_decoration_unicode("custom_decoration", "=/ ")
         widget_checker.expect_screen(
             [
                 "=/ a                ",
@@ -2024,13 +2028,14 @@ class TestGrid:
                     yuio.widget.Option("b", "b"),
                     yuio.widget.Option("c", "c"),
                 ],
-                decoration="=/",
+                active_item_decoration_path="custom_decoration",
             )
         )
 
     def test_long_decoration(
-        self, widget_checker: WidgetChecker[yuio.widget.Grid[str]]
+        self, widget_checker: WidgetChecker[yuio.widget.Grid[str]], theme
     ):
+        theme.set_msg_decoration_unicode("custom_decoration", "~" * 20)
         widget_checker.expect_screen(
             [
                 "~~~~~~~~~~~~~~~~~~~~",
@@ -2049,7 +2054,7 @@ class TestGrid:
                     yuio.widget.Option("b", "b"),
                     yuio.widget.Option("c", "c"),
                 ],
-                decoration="~" * 20,
+                active_item_decoration_path="custom_decoration",
             )
         )
 
