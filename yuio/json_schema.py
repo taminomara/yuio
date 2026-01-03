@@ -382,6 +382,8 @@ class Tuple(JsonSchemaType):
         return {
             "type": "array",
             "items": [item.render() for item in self.items],
+            "minItems": len(self.items),
+            "maxItems": len(self.items),
             "additionalItems": False,
         }
 

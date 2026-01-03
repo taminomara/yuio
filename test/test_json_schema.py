@@ -94,6 +94,8 @@ class TestTuple:
         assert tup.render() == {
             "type": "array",
             "items": [{"type": "string"}, {"type": "integer"}],
+            "minItems": 2,
+            "maxItems": 2,
             "additionalItems": False,
         }
 
@@ -479,6 +481,8 @@ class TestEdgeCases:
         assert tup.render() == {
             "type": "array",
             "items": [],
+            "minItems": 0,
+            "maxItems": 0,
             "additionalItems": False,
         }
         assert tup.pprint() == "[]"
