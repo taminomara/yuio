@@ -171,9 +171,21 @@ class TerminalTheme:
 
     """
 
+    bright_black: yuio.color.ColorValue
+    """
+    Color value for the default "bright black" color.
+
+    """
+
     red: yuio.color.ColorValue
     """
     Color value for the default "red" color.
+
+    """
+
+    bright_red: yuio.color.ColorValue
+    """
+    Color value for the default "bright red" color.
 
     """
 
@@ -183,9 +195,21 @@ class TerminalTheme:
 
     """
 
+    bright_green: yuio.color.ColorValue
+    """
+    Color value for the default "bright green" color.
+
+    """
+
     yellow: yuio.color.ColorValue
     """
     Color value for the default "yellow" color.
+
+    """
+
+    bright_yellow: yuio.color.ColorValue
+    """
+    Color value for the default "bright yellow" color.
 
     """
 
@@ -195,9 +219,21 @@ class TerminalTheme:
 
     """
 
+    bright_blue: yuio.color.ColorValue
+    """
+    Color value for the default "bright blue" color.
+
+    """
+
     magenta: yuio.color.ColorValue
     """
     Color value for the default "magenta" color.
+
+    """
+
+    bright_magenta: yuio.color.ColorValue
+    """
+    Color value for the default "bright magenta" color.
 
     """
 
@@ -207,9 +243,21 @@ class TerminalTheme:
 
     """
 
+    bright_cyan: yuio.color.ColorValue
+    """
+    Color value for the default "bright cyan" color.
+
+    """
+
     white: yuio.color.ColorValue
     """
     Color value for the default "white" color.
+
+    """
+
+    bright_white: yuio.color.ColorValue
+    """
+    Color value for the default "bright white" color.
 
     """
 
@@ -618,7 +666,7 @@ def _get_standard_colors(
 
     try:
         query = "\x1b]10;?\x1b\\\x1b]11;?\x1b\\" + "".join(
-            [f"\x1b]4;{i};?\x1b\\" for i in range(8)]
+            [f"\x1b]4;{i};?\x1b\\" for i in range(16)]
         )
         response = _query_term(ostream, istream, query)
         if not response:
@@ -681,21 +729,30 @@ def _get_standard_colors(
 
             response = response[match.end() :]
 
-        if set(colors.keys()) != {0, 1, 2, 3, 4, 5, 6, 7}:  # pragma: no cover
-            return None
+        for k in range(8):
+            if k not in colors:
+                return None
 
         # return colors
         return TerminalTheme(
             background=background,
             foreground=foreground,
             black=colors[0],
+            bright_black=colors.get(8 + 0, colors[0]),
             red=colors[1],
+            bright_red=colors.get(8 + 1, colors[1]),
             green=colors[2],
+            bright_green=colors.get(8 + 2, colors[2]),
             yellow=colors[3],
+            bright_yellow=colors.get(8 + 3, colors[3]),
             blue=colors[4],
+            bright_blue=colors.get(8 + 4, colors[4]),
             magenta=colors[5],
+            bright_magenta=colors.get(8 + 5, colors[5]),
             cyan=colors[6],
+            bright_cyan=colors.get(8 + 6, colors[6]),
             white=colors[7],
+            bright_white=colors.get(8 + 7, colors[7]),
             lightness=lightness,
         )
 

@@ -8,6 +8,22 @@
     "blue": "#5555ff",
     "magenta": "#ff55ff",
     "cyan": "#55ffff",
-    "white": "#bbbbbb"
+    "white": "#bbbbbb",
+    "term/black": "#000000",
+    "term/bright_black": "#000000",
+    "term/red": "#ff5555",
+    "term/bright_red": "#ff5555",
+    "term/green": "#55ff55",
+    "term/bright_green": "#55ff55",
+    "term/yellow": "#ffff55",
+    "term/bright_yellow": "#ffff55",
+    "term/blue": "#5555ff",
+    "term/bright_blue": "#5555ff",
+    "term/magenta": "#ff55ff",
+    "term/bright_magenta": "#ff55ff",
+    "term/cyan": "#55ffff",
+    "term/bright_cyan": "#55ffff",
+    "term/white": "#bbbbbb",
+    "term/bright_white": "#bbbbbb"
   }
 }

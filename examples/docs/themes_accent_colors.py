@@ -6,7 +6,8 @@ import yuio.app
 class Theme(yuio.theme.DefaultTheme):
     colors = {
         "accent_color": "red",
-        "accent_color_2": "blue",
+        "task/progressbar/done/start": "term/bright_yellow",
+        "task/progressbar/done/end": "term/bright_red",
     }
 
 @yuio.app.app

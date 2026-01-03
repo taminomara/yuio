@@ -118,6 +118,19 @@ Color paths
     -   ``low_priority_color_b``: for auxiliary elements such as help widget,
         even lower priority.
 
+.. _term-colors:
+
+.. color-path:: `term/{color}`
+
+    :class:`DefaultTheme` will export default colors for the attached terminal
+    as :samp:`term/{color}`. This is useful when defining gradients for progress bars,
+    as they require exact color values for interpolation.
+
+    ``color`` can be one ``background``, ``foreground``, ``black``, ``bright_black``,
+    ``red``, ``bright_red``, ``green``, ``bright_green``, ``yellow``, ``bright_yellow``,
+    ``blue``, ``bright_blue``, ``magenta``, ``bright_magenta``,
+    ``cyan``, ``bright_cyan``, ``white``, or ``bright_white``.
+
 .. color-path:: `msg/decoration:{tag}`
 
     Color for decorations in front of messages:
@@ -461,14 +474,14 @@ Decorations
         </div>
         </div>
 
-.. color-path:: input widget
+.. decoration-path:: input widget
 
     Decorations for :class:`yuio.widget.Input`:
 
     -   ``menu/input/decoration``: decoration before an input box,
     -   ``menu/input/decoration_search``: decoration before a search input box.
 
-.. color-path:: choice and multiselect widget
+.. decoration-path:: choice and multiselect widget
 
     Decorations for :class:`yuio.widget.Choice` and :class:`yuio.widget.Multiselect`:
 
@@ -476,7 +489,7 @@ Decorations
     -   ``menu/choice/decoration/selected_item``: selected item in multiselect widget,
     -   ``menu/choice/decoration/deselected_item``: deselected item in multiselect widget.
 
-.. color-path:: inline help and help menu
+.. decoration-path:: inline help and help menu
 
     Decorations for widget help:
 
@@ -532,6 +545,28 @@ class RecursiveThemeWarning(ThemeWarning):
     pass
 
 
+_COLOR_NAMES = [
+    "background",
+    "foreground",
+    "black",
+    "bright_black",
+    "red",
+    "bright_red",
+    "green",
+    "bright_green",
+    "yellow",
+    "bright_yellow",
+    "blue",
+    "bright_blue",
+    "magenta",
+    "bright_magenta",
+    "cyan",
+    "bright_cyan",
+    "white",
+    "bright_white",
+]
+
+
 @_t.final
 class _ImmutableDict(_t.Mapping[K, V], _t.Generic[K, V]):
     def __init__(
@@ -578,7 +613,7 @@ class _ImmutableDict(_t.Mapping[K, V], _t.Generic[K, V]):
             self.__attr,
         )
 
-    def _set(self, key: K, value: V, source: type[Theme] | None = None):
+    def _set(self, key: K, value: V, source: type[Theme]):
         self.__data[key] = value
         self.__sources[key] = source
 
@@ -589,7 +624,7 @@ class _ImmutableDict(_t.Mapping[K, V], _t.Generic[K, V]):
                 "outside of __init__"
             )
         prev_source = self.__sources.get(key)
-        if prev_source is not None and issubclass(source, prev_source):
+        if prev_source is None or issubclass(source, prev_source):
             self._set(key, value, source)
 
 
@@ -885,7 +920,7 @@ class Theme(metaclass=_ThemeMeta):
         proxy._set(
             name,
             msg_decoration,
-            self.__expected_source,
+            self.__expected_source or type(self),
         )
 
     def _set_msg_decoration_ascii_if_not_overridden(
@@ -926,7 +961,7 @@ class Theme(metaclass=_ThemeMeta):
         proxy._set(
             name,
             msg_decoration,
-            self.__expected_source,
+            self.__expected_source or type(self),
         )
 
     def get_msg_decoration(self, key: str, /, *, is_unicode: bool) -> str:
@@ -979,7 +1014,7 @@ class Theme(metaclass=_ThemeMeta):
         proxy._set(
             path,
             color,
-            self.__expected_source,
+            self.__expected_source or type(self),
         )
         self.__color_cache.clear()
         self.__dict__.pop("_Theme__color_tree", None)
@@ -1475,8 +1510,8 @@ class DefaultTheme(BaseTheme):
         "task/decoration:done": "success_color",
         "task/decoration:error": "error_color",
         "task/progressbar/done": "accent_color",
-        "task/progressbar/done/start": "blue",
-        "task/progressbar/done/end": "accent_color",
+        "task/progressbar/done/start": "term/bright_blue",
+        "task/progressbar/done/end": "term/bright_magenta",
         "task/progressbar/pending": "secondary_color",
         "task/heading": "heading_color",
         "task/progress": "secondary_color",
@@ -1554,6 +1589,7 @@ class DefaultTheme(BaseTheme):
         "menu/decoration:choice/normal": "menu/text",
         "menu/decoration:choice/normal/selected": "accent_color_2 bold",
         "menu/decoration:choice/active/selected": "bold",
+        **{f"term/{name}": yuio.color.Color.NONE for name in _COLOR_NAMES},
     }
     """
     Colors for default theme are separated into several sections.
@@ -1571,34 +1607,10 @@ class DefaultTheme(BaseTheme):
 
         # Gradients look bad in other modes.
         if term.supports_colors_true:
-            self._set_color_if_not_overridden(
-                "normal", yuio.color.Color(fore=colors.foreground)
-            )
-            self._set_color_if_not_overridden(
-                "black", yuio.color.Color(fore=colors.black)
-            )
-            self._set_color_if_not_overridden(
-                "red",
-                yuio.color.Color(fore=colors.red),
-            )
-            self._set_color_if_not_overridden(
-                "green", yuio.color.Color(fore=colors.green)
-            )
-            self._set_color_if_not_overridden(
-                "yellow", yuio.color.Color(fore=colors.yellow)
-            )
-            self._set_color_if_not_overridden(
-                "blue", yuio.color.Color(fore=colors.blue)
-            )
-            self._set_color_if_not_overridden(
-                "magenta", yuio.color.Color(fore=colors.magenta)
-            )
-            self._set_color_if_not_overridden(
-                "cyan", yuio.color.Color(fore=colors.cyan)
-            )
-            self._set_color_if_not_overridden(
-                "white", yuio.color.Color(fore=colors.white)
-            )
+            for name in _COLOR_NAMES:
+                self._set_color_if_not_overridden(
+                    f"term/{name}", yuio.color.Color(fore=getattr(colors, name))
+                )
 
         if colors.lightness == yuio.term.Lightness.UNKNOWN:
             return

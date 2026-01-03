@@ -51,7 +51,7 @@ The easiest way to customize default theme is to change main colors:
 
 .. literalinclude:: /../../examples/docs/themes_accent_colors.py
     :language: python
-    :lines: 6-10
+    :lines: 6-11
 
 .. vhs-inline::
     :scale: 40%
@@ -131,8 +131,7 @@ Message decorations
     :scale: 40%
 
     Set FontSize 35
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Env "YUIO_THEME_PATH" "docs/source/_tapes/theme_custom.json"
+    Source "docs/source/_tapes/_config.tape"
     Type "python examples/docs/themes_message_decorations.py"
     Enter
     Sleep 6s
@@ -149,8 +148,7 @@ Progress bars and spinners
     :scale: 40%
 
     Set FontSize 35
-    Source "docs/source/_tapes/_config_by_example.tape"
-    Env "YUIO_THEME_PATH" "docs/source/_tapes/theme_custom.json"
+    Source "docs/source/_tapes/_config.tape"
     Type "python examples/docs/themes_progress_bars.py"
     Enter
     Wait

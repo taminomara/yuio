@@ -1,8 +1,6 @@
 {
   "include": ["theme.json"],
   "colors": {
-    "accent_color": "red",
-    "accent_color_2": "blue",
     "dark_magenta_bg": "bg#321032"
   }
 }
