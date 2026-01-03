@@ -14,6 +14,8 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+## [2.0.0-rc1] - 2026-01-03
+
 Large refactoring around lower-level APIs, making them more flexible.
 
 - 💥 Moved utility functions from top level to `yuio.util`.
@@ -164,5 +166,6 @@ Large refactoring around lower-level APIs, making them more flexible.
 Release candidate for version 2.
 
 [2.0.0-rc0]: https://github.com/taminomara/yuio/releases/tag/v2.0.0-rc0
+[2.0.0-rc1]: https://github.com/taminomara/yuio/compare/v2.0.0-rc0...v2.0.0-rc1
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-rc0...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-rc1...HEAD
