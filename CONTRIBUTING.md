@@ -23,6 +23,7 @@
    pre-commit install
    ```
 
+
 ## Run tests
 
 To run tests, simply run `pytest`:
@@ -77,7 +78,7 @@ After that, just run `sphinx` as usual:
 
 ```shell
 cd docs/
-make html
+make watch
 ```
 
 The first build will take a couple of minutes to record terminal GIFs.
