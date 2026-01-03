@@ -998,7 +998,7 @@ class Parser(PartialParser, _t.Generic[T_co]):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*"] | int:
         """
         Generate ``nargs`` for argparse.
 
@@ -1359,8 +1359,8 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
     def supports_parse_many(self) -> bool:
         return False
 
-    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
-        return None
+    def get_nargs(self) -> _t.Literal["+", "*"] | int:
+        return 1
 
     def check_type(self, value: object, /) -> _t.TypeGuard[T]:
         return isinstance(value, self._value_type)
@@ -1534,7 +1534,7 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
     def supports_parse_many(self) -> bool:
         return self._inner.supports_parse_many()
 
-    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*"] | int:
         return self._inner.get_nargs()
 
     def describe(self) -> str | None:
@@ -3381,7 +3381,7 @@ class CollectionParser(
             for i, item in enumerate(self._config_type_iter(value))
         )
 
-    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*"] | int:
         return "*"
 
     def describe(self) -> str | None:
@@ -3980,7 +3980,7 @@ class Tuple(
     def supports_parse_many(self) -> bool:
         return True
 
-    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*"] | int:
         return len(self._inner)
 
     def describe(self) -> str | None:
@@ -4844,7 +4844,7 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
             desc="Length of value",
         )
 
-    def get_nargs(self) -> _t.Literal["+", "*", "?"] | int | None:
+    def get_nargs(self) -> _t.Literal["+", "*"] | int:
         if not self._inner.supports_parse_many():
             # somebody bound len of a string?
             return self._inner.get_nargs()

@@ -260,9 +260,14 @@ _NUM_RE = r"""(?x)
     $
 """
 
-NArgs: _t.TypeAlias = int | _t.Literal["?", "*", "+"]
+NArgs: _t.TypeAlias = int | _t.Literal["+"]
 """
 Type alias for nargs.
+
+.. note::
+
+    ``"*"`` from argparse is equivalent to ``nargs="+"`` with ``allow_no_args=True``;
+    ``"?"`` from argparse is equivalent to ``nargs=1`` with ``allow_no_args=True``.
 
 """
 
@@ -798,6 +803,12 @@ class Option(abc.ABC, _t.Generic[T_cov]):
 
     """
 
+    allow_no_args: bool
+    """
+    Whether to allow passing no arguments even if :attr:`~Option.nargs` requires some.
+
+    """
+
     required: bool
     """
     Makes this option required. The parsing will fail if this option is not
@@ -1017,24 +1028,27 @@ class Option(abc.ABC, _t.Generic[T_cov]):
         if self.flags:
             res.append_str(" ")
 
-        if self.nargs == "?":
-            res += "["
-            res += _format_metavar(self.nth_metavar(0), ctx)
-            res += "]"
-        elif self.nargs == "*":
-            res += "["
-            res += _format_metavar(self.nth_metavar(0), ctx)
-            res += " ...]"
-        elif self.nargs == "+":
-            res += _format_metavar(self.nth_metavar(0), ctx)
-            res += " [...]"
-        elif isinstance(self.nargs, int):
+        if self.nargs == "+":
+            if self.allow_no_args:
+                res.append_str("[")
+            res.append_colorized_str(_format_metavar(self.nth_metavar(0), ctx))
+            if self.allow_no_args:
+                res.append_str(" ...]")
+            else:
+                res.append_str(" [")
+                res.append_colorized_str(_format_metavar(self.nth_metavar(0), ctx))
+                res.append_str(" ...]")
+        elif isinstance(self.nargs, int) and self.nargs:
+            if self.allow_no_args:
+                res.append_str("[")
             sep = False
             for i in range(self.nargs):
                 if sep:
-                    res += " "
-                res += _format_metavar(self.nth_metavar(i), ctx)
+                    res.append_str(" ")
+                res.append_colorized_str(_format_metavar(self.nth_metavar(i), ctx))
                 sep = True
+            if self.allow_no_args:
+                res.append_str("]")
 
         return res
 
@@ -1289,6 +1303,7 @@ class BoolOption(ParserOption[bool]):
             allow_inline_arg=True,
             allow_implicit_inline_arg=False,
             nargs=0,
+            allow_no_args=True,
             required=required,
             metavar=(),
             mutex_group=mutex_group,
@@ -1428,6 +1443,7 @@ class ParseOneOption(ParserOption[T], _t.Generic[T]):
             allow_inline_arg=True,
             allow_implicit_inline_arg=True,
             nargs=1,
+            allow_no_args=default is not yuio.MISSING and flags is yuio.POSITIONAL,
             required=required,
             metavar=parser.describe_or_def(),
             mutex_group=mutex_group,
@@ -1450,6 +1466,8 @@ class ParseOneOption(ParserOption[T], _t.Generic[T]):
         ns: Namespace,
     ):
         if isinstance(arguments, list):
+            if not arguments and self.allow_no_args:
+                return  # Don't set value so that app falls back to default.
             arguments = arguments[0]
         try:
             value = self.parser.parse(arguments.value)
@@ -1492,14 +1510,17 @@ class ParseManyOption(ParserOption[T], _t.Generic[T]):
         assert parser.supports_parse_many()
 
         nargs = parser.get_nargs()
-        if nargs is None:  # TODO: remove after App migrates to this module.
-            nargs = 1
+        allow_no_args = default is not yuio.MISSING and flags is yuio.POSITIONAL
+        if nargs == "*":
+            nargs = "+"
+            allow_no_args = True
 
         super().__init__(
             flags=flags,
             allow_inline_arg=True,
             allow_implicit_inline_arg=True,
             nargs=nargs,
+            allow_no_args=allow_no_args,
             required=required,
             metavar=parser.describe_many(),
             mutex_group=mutex_group,
@@ -1521,6 +1542,13 @@ class ParseManyOption(ParserOption[T], _t.Generic[T]):
         arguments: Argument | list[Argument],
         ns: Namespace,
     ):
+        if (
+            not arguments
+            and self.allow_no_args
+            and self.default is not yuio.MISSING
+            and self.flags is yuio.POSITIONAL
+        ):
+            return  # Don't set value so that app falls back to default.
         try:
             if isinstance(arguments, list):
                 value = self.parser.parse_many([arg.value for arg in arguments])
@@ -1601,6 +1629,7 @@ class StoreConstOption(ValueOption[T], _t.Generic[T]):
             allow_inline_arg=False,
             allow_implicit_inline_arg=False,
             nargs=0,
+            allow_no_args=True,
             required=required,
             metavar=(),
             mutex_group=mutex_group,
@@ -1769,6 +1798,7 @@ class VersionOption(Option[_t.Never]):
             allow_inline_arg=False,
             allow_implicit_inline_arg=False,
             nargs=0,
+            allow_no_args=True,
             required=False,
             metavar=(),
             mutex_group=None,
@@ -1832,6 +1862,7 @@ class BugReportOption(Option[_t.Never]):
             allow_inline_arg=False,
             allow_implicit_inline_arg=False,
             nargs=0,
+            allow_no_args=True,
             required=False,
             metavar=(),
             mutex_group=None,
@@ -1893,7 +1924,8 @@ class CompletionOption(Option[_t.Never]):
             flags=flags,
             allow_inline_arg=True,
             allow_implicit_inline_arg=True,
-            nargs="?",
+            nargs=1,
+            allow_no_args=True,
             required=False,
             metavar="<shell>",
             mutex_group=None,
@@ -1977,9 +2009,15 @@ class CompletionOption(Option[_t.Never]):
                 # TODO: not sure if disabling help for inherited options is
                 # the best approach here.
                 help = yuio.DISABLED
+            nargs = option.nargs
+            if option.allow_no_args:
+                if nargs == 1:
+                    nargs = "?"
+                elif nargs == "+":
+                    nargs = "*"
             serializer.add_option(
                 flags=flags,
-                nargs=option.nargs,
+                nargs=nargs,
                 metavar=option.metavar,
                 help=help,
                 completer=completer,
@@ -2025,6 +2063,7 @@ class HelpOption(Option[_t.Never]):
             allow_inline_arg=True,
             allow_implicit_inline_arg=True,
             nargs=0,
+            allow_no_args=True,
             required=False,
             metavar=(),
             mutex_group=None,
@@ -2205,7 +2244,8 @@ class _SubCommandOption(ValueOption[str]):
             flags=yuio.POSITIONAL,
             allow_inline_arg=False,
             allow_implicit_inline_arg=False,
-            nargs=1 if subcommand_required else "?",
+            nargs=1,
+            allow_no_args=not subcommand_required,
             required=False,
             metavar=metavar,
             mutex_group=None,
@@ -2273,6 +2313,10 @@ class _BoundOption:
     @property
     def nargs(self):
         return self.wrapped.nargs
+
+    @property
+    def allow_no_args(self):
+        return self.wrapped.allow_no_args
 
     @property
     def allow_inline_arg(self):
@@ -2633,9 +2677,7 @@ class CliParser(_t.Generic[NamespaceT]):
                 )
             )
             nargs = opt.nargs
-            if nargs == "?" or (
-                isinstance(nargs, int) and len(self._current_flag_args) == nargs
-            ):
+            if isinstance(nargs, int) and len(self._current_flag_args) == nargs:
                 self._flush_flag()  # This flag is full.
         else:
             # This is an argument for a positional option.
@@ -2660,9 +2702,7 @@ class CliParser(_t.Generic[NamespaceT]):
                 )
             )
             nargs = current_positional.nargs
-            if nargs == "?" or (
-                isinstance(nargs, int) and len(self._current_positional_args) == nargs
-            ):
+            if isinstance(nargs, int) and len(self._current_positional_args) == nargs:
                 self._flush_positional()  # This positional is full.
 
     def _handle_flags(
@@ -2793,9 +2833,9 @@ def _make_subcommand(command: Command[Namespace]):
 
 
 def _check_nargs(opt: _BoundOption, flag: Flag | None, args: list[Argument]):
+    if not args and opt.allow_no_args:
+        return
     match opt.nargs:
-        case "*":
-            pass
         case "+":
             if not args:
                 if opt.flags is yuio.POSITIONAL:
@@ -2811,14 +2851,6 @@ def _check_nargs(opt: _BoundOption, flag: Flag | None, args: list[Argument]):
                         flag=flag,
                         option=opt.wrapped,
                     )
-        case "?":
-            if len(args) > 1:
-                raise ArgumentError(
-                    "Expected at most `1` argument, got `%s`",
-                    len(args),
-                    flag=flag,
-                    option=opt.wrapped,
-                )
         case n:
             if len(args) < n and (opt.flags is yuio.POSITIONAL):
                 s = "" if n - len(args) == 1 else "s"

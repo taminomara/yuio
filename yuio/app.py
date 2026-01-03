@@ -1247,6 +1247,7 @@ class _ColorOption(yuio.cli.Option[_t.Never]):
             allow_inline_arg=True,
             allow_implicit_inline_arg=True,
             nargs=0,
+            allow_no_args=True,
             required=False,
             metavar=(),
             mutex_group=None,

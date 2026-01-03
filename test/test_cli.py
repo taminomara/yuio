@@ -143,7 +143,8 @@ def count_option(
 def list_option(
     flags: list[str] | yuio.Positional = ["--files"],
     dest: str = "files",
-    nargs: yuio.cli.NArgs = "*",
+    nargs: yuio.cli.NArgs = "+",
+    allow_no_args: bool = True,
     required: bool = False,
     **kwargs,
 ) -> yuio.cli.ParseManyOption[list[str]]:
@@ -155,6 +156,7 @@ def list_option(
         **kwargs,
     )
     opt.nargs = nargs  # Override parser's nargs for tests.
+    opt.allow_no_args = allow_no_args
     return opt
 
 
@@ -311,6 +313,17 @@ class TestParseOneOption:
         ns = parse_args([option], ["--count", "10", "--count", "5"])
         assert ns["count"] == 15
 
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        [
+            (["10"], 10),
+            ([], None),
+        ],
+    )
+    def test_optional_positional(self, args, expected):
+        ns = parse_args([int_option(yuio.POSITIONAL, default=None)], args)
+        assert ns.get("count") == expected
+
 
 class TestParseManyOption:
     @pytest.mark.parametrize(
@@ -321,7 +334,7 @@ class TestParseManyOption:
         ],
     )
     def test_basic(self, args, expected):
-        ns = parse_args([list_option(nargs="*")], args)
+        ns = parse_args([list_option(nargs="+", allow_no_args=True)], args)
         assert ns["files"] == expected
 
     @pytest.mark.parametrize(
@@ -333,13 +346,24 @@ class TestParseManyOption:
         ],
     )
     def test_short_flag_variants(self, args, expected):
-        ns = parse_args([list_option(["-f"], nargs="*")], args)
+        ns = parse_args([list_option(["-f"], nargs="+", allow_no_args=True)], args)
         assert ns["files"] == expected
 
     def test_merge_function(self):
         option = list_option(merge=lambda old, new: old + new)
         ns = parse_args([option], ["--files", "a.txt", "--files", "b.txt", "c.txt"])
         assert ns["files"] == ["a.txt", "b.txt", "c.txt"]
+
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        [
+            ([], None),
+            (["10", "20"], (10, 20)),
+        ],
+    )
+    def test_optional_positional(self, args, expected):
+        ns = parse_args([tuple_option(flags=yuio.POSITIONAL, default=None)], args)
+        assert ns.get("coords") == expected
 
 
 class TestMutuallyExclusiveGroups:
@@ -474,7 +498,7 @@ class TestNumericArguments:
 
     def test_flag_takes_precedence_over_negative_numbers(self):
         options = [
-            list_option(yuio.POSITIONAL, "numbers", nargs="*"),
+            list_option(yuio.POSITIONAL, "numbers", nargs="+", allow_no_args=True),
             const_option(2, ["-4"], "meaning"),
         ]
         ns = parse_args(options, ["-4"])
@@ -543,33 +567,43 @@ class TestPositionalArguments:
 
 class TestNargs:
     @pytest.mark.parametrize(
-        ("nargs", "args", "expected"),
+        ("nargs", "allow_no_args", "args", "expected"),
         [
-            ("*", [], []),
-            ("*", ["a.txt"], ["a.txt"]),
-            ("*", ["a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
-            ("+", ["a.txt"], ["a.txt"]),
-            ("+", ["a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
+            ("+", True, [], []),
+            ("+", True, ["a.txt"], ["a.txt"]),
+            ("+", True, ["a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
+            ("+", False, ["a.txt"], ["a.txt"]),
+            ("+", False, ["a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
         ],
     )
-    def test_nargs_star_and_plus(self, nargs, args, expected):
-        ns = parse_args([list_option(yuio.POSITIONAL, "files", nargs=nargs)], args)
+    def test_nargs_star_and_plus(self, nargs, allow_no_args, args, expected):
+        ns = parse_args([list_option(yuio.POSITIONAL, "files", nargs=nargs, allow_no_args=allow_no_args)], args)
         assert ns["files"] == expected
 
     def test_nargs_plus_requires_one(self):
         with pytest.raises(yuio.cli.ArgumentError):
-            parse_args([list_option(yuio.POSITIONAL, "files", nargs="+")], [])
+            parse_args([list_option(yuio.POSITIONAL, "files", nargs="+", allow_no_args=False)], [])
 
     def test_nargs_integer_exact_count(self):
         ns = parse_args([tuple_option(flags=yuio.POSITIONAL)], ["10", "20"])
         assert ns["coords"] == (10, 20)
 
     def test_nargs_integer_too_few_arguments(self):
-        option = tuple_option(
-            yuio.parse.Int(),
-            yuio.parse.Int(),
-            yuio.parse.Int(),
-            flags=yuio.POSITIONAL,
+        option = list_option(
+            yuio.POSITIONAL,
+            "files",
+            nargs=3,
+            allow_no_args=False,
+        )
+        with pytest.raises(yuio.cli.ArgumentError):
+            parse_args([option], ["10", "20"])
+
+    def test_nargs_integer_too_few_arguments_allow_no_arguments(self):
+        option = list_option(
+            yuio.POSITIONAL,
+            "files",
+            nargs=3,
+            allow_no_args=True,
         )
         with pytest.raises(yuio.cli.ArgumentError):
             parse_args([option], ["10", "20"])
@@ -581,31 +615,44 @@ class TestNargs:
             (["myconfig.yaml"], ["myconfig.yaml"]),
         ],
     )
-    def test_nargs_question_mark(self, args, expected):
+    def test_nargs_allow_no_args_1(self, args, expected):
         ns = parse_args(
-            [list_option(nargs="?", dest="config", flags=yuio.POSITIONAL)], args
+            [list_option(nargs=1, allow_no_args=True, dest="config", flags=yuio.POSITIONAL)], args
+        )
+        assert ns["config"] == expected
+
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        [
+            ([], []),
+            (["a.yaml", "b.yaml", "c.yaml"], ["a.yaml", "b.yaml", "c.yaml"]),
+        ],
+    )
+    def test_nargs_allow_no_args_n(self, args, expected):
+        ns = parse_args(
+            [list_option(nargs=3, allow_no_args=True, dest="config", flags=yuio.POSITIONAL)], args
         )
         assert ns["config"] == expected
 
 
 class TestNargsFlag:
     @pytest.mark.parametrize(
-        ("nargs", "args", "expected"),
+        ("nargs", "allow_no_args", "args", "expected"),
         [
-            ("*", ["--files"], []),
-            ("*", ["--files", "a.txt"], ["a.txt"]),
-            ("*", ["--files", "a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
-            ("+", ["--files", "a.txt"], ["a.txt"]),
-            ("+", ["--files", "a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
+            ("+", True, ["--files"], []),
+            ("+", True, ["--files", "a.txt"], ["a.txt"]),
+            ("+", True, ["--files", "a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
+            ("+", False, ["--files", "a.txt"], ["a.txt"]),
+            ("+", False, ["--files", "a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt", "c.txt"]),
         ],
     )
-    def test_nargs_star_and_plus(self, nargs, args, expected):
-        ns = parse_args([list_option(nargs=nargs)], args)
+    def test_nargs_star_and_plus(self, nargs, allow_no_args, args, expected):
+        ns = parse_args([list_option(nargs=nargs, allow_no_args=allow_no_args)], args)
         assert ns["files"] == expected
 
     def test_nargs_plus_requires_one(self):
         with pytest.raises(yuio.cli.ArgumentError):
-            parse_args([list_option(nargs="+")], ["--files"])
+            parse_args([list_option(nargs="+", allow_no_args=False)], ["--files"])
 
     def test_nargs_integer_exact_count(self):
         ns = parse_args([tuple_option()], ["--coords", "10", "20"])
@@ -627,8 +674,8 @@ class TestNargsFlag:
             (["--files", "myconfig.yaml"], ["myconfig.yaml"]),
         ],
     )
-    def test_nargs_question_mark(self, args, expected):
-        ns = parse_args([list_option(nargs="?")], args)
+    def test_nargs_allow_no_args(self, args, expected):
+        ns = parse_args([list_option(nargs=1, allow_no_args=True)], args)
         assert ns["files"] == expected
 
 
@@ -663,7 +710,7 @@ class TestFlagsAndPositionalsInteraction:
     def test_multiple_positionals_different_nargs(self):
         options = [
             str_option(yuio.POSITIONAL, "cmd"),
-            list_option(yuio.POSITIONAL, "args", nargs="*"),
+            list_option(yuio.POSITIONAL, "args", nargs="+", allow_no_args=True),
         ]
         ns = parse_args(options, ["run", "arg1", "arg2"])
         assert ns["cmd"] == "run"
@@ -772,7 +819,7 @@ class TestFlagsAndPositionalsInteraction:
             tuple_option(),  # Nargs 2
             list_option(["--configs"], "configs"),  # Nargs *
             list_option(["--patches"], "patches", nargs="+"),  # Nargs +
-            list_option(["--protocol"], "protocol", nargs="?"),  # Nargs ?
+            list_option(["--protocol"], "protocol", nargs=1, allow_no_args=True),  # Nargs ?
         ]
         ns = parse_args(options, args)
         assert ns == expected
@@ -782,7 +829,7 @@ class TestDoubleDash:
     def test_double_dash_separates_flags_from_positionals(self):
         options = [
             store_true_option(["--verbose"], "verbose"),
-            list_option(yuio.POSITIONAL, "files", nargs="*"),
+            list_option(yuio.POSITIONAL, "files", nargs="+", allow_no_args=True),
         ]
         ns = parse_args(options, ["--", "--verbose", "-x", "file.txt"])
         assert "verbose" not in ns

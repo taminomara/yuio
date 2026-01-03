@@ -718,7 +718,7 @@ class TestCommitParser:
     def test_basics(self, repo):
         parser = yuio.git.CommitParser(repo=repo)
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() is None
+        assert parser.get_nargs() == 1
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["HEAD"])
         assert parser.describe() == "<commit>"
@@ -784,7 +784,7 @@ class TestRefParser:
     )
     def test_basics(self, parser, name, modes):
         assert not parser.supports_parse_many()
-        assert parser.get_nargs() is None
+        assert parser.get_nargs() == 1
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["HEAD"])
         assert parser.describe() == name
