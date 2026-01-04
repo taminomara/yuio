@@ -600,7 +600,6 @@ def _do_prepare_tty():
 
     if not _is_foreground(_TTY_OUTPUT) or not _is_foreground(_TTY_INPUT):
         # We're not a foreground process, we won't be able to fetch colors.
-        # We also can't query colors if stdin is redirected because
         return
     if detect_ci():
         # We're in CI, we won't be able to fetch colors.
@@ -762,10 +761,11 @@ def _get_standard_colors(
 
 def _query_term(ostream: _t.TextIO, istream: _t.TextIO, query: str) -> str | None:
     try:
+        # Lock the keyboard.
+        ostream.write("\x1b[2h")
+        ostream.flush()
+
         with _enter_raw_mode(ostream, istream):
-            # Lock the keyboard.
-            ostream.write("\x1b[2h")
-            ostream.flush()
             _flush_input_buffer(ostream, istream)
 
             # It is important that we unlock keyboard before exiting `cbreak`,
@@ -794,6 +794,10 @@ def _query_term(ostream: _t.TextIO, istream: _t.TextIO, query: str) -> str | Non
     except Exception:  # pragma: no cover
         yuio._logger.warning("_query_term error", exc_info=True)
         return None
+    finally:
+        # Release the keyboard.
+        ostream.write("\x1b[2i")
+        ostream.flush()
 
 
 def _detect_explicit_color_settings() -> ColorSupport | bool | None:

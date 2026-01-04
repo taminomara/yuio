@@ -212,27 +212,27 @@ def setup_io(
         lambda *_, **__: os.terminal_size((width, height)),
     )
 
+    monkeypatch.setattr("yuio.term._is_foreground", lambda *_, **__: True)
+    yuio.term._TTY_SETUP_PERFORMED = True
+    yuio.term._TTY_OUTPUT = term.ostream
+    yuio.term._TTY_INPUT = term.istream
+    yuio.term._TERMINAL_THEME = None
+    yuio.term._EXPLICIT_COLOR_SUPPORT = None
+    yuio.term._COLOR_SUPPORT = term.color_support
+
     io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=enable_bg_updates)
     monkeypatch.setattr("yuio.io._IO_MANAGER", io_manager)
-    monkeypatch.setattr("yuio.term._is_foreground", lambda *_, **__: True)
-    monkeypatch.setattr("yuio.term.get_tty", lambda: term)
-    monkeypatch.setattr("yuio.term._prepare_tty", lambda: None)
 
     yield
 
     io_manager.stop()
 
     yuio.term._TTY_SETUP_PERFORMED = False
-    if hasattr(yuio.term, "_TTY_OUTPUT"):
-        del yuio.term._TTY_OUTPUT
-    if hasattr(yuio.term, "_TTY_INPUT"):
-        del yuio.term._TTY_INPUT
-    if hasattr(yuio.term, "_TERMINAL_THEME"):
-        del yuio.term._TERMINAL_THEME
-    if hasattr(yuio.term, "_EXPLICIT_COLOR_SUPPORT"):
-        del yuio.term._EXPLICIT_COLOR_SUPPORT
-    if hasattr(yuio.term, "_COLOR_SUPPORT"):
-        del yuio.term._COLOR_SUPPORT
+    del yuio.term._TTY_OUTPUT
+    del yuio.term._TTY_INPUT
+    del yuio.term._TERMINAL_THEME
+    del yuio.term._EXPLICIT_COLOR_SUPPORT
+    del yuio.term._COLOR_SUPPORT
     try:
         assert yuio.io._STREAMS_WRAPPED is False, "this test didn't clean up"
         assert yuio.io._ORIG_STDERR is None, "this test didn't clean up"
