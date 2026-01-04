@@ -1347,16 +1347,6 @@ def test_format_error(text, args, exc, match, ctx):
             id="explicit-newlines-not-honored-but-vertical-tab-creates-break-anyways",
         ),
         pytest.param(
-            ["hello     world!     this     will     wrap"],
-            15,
-            {},
-            [
-                [Color.NONE, "hello", " ", "world!"],
-                [Color.NONE, "this", " ", "will", " ", "wrap"],
-            ],
-            id="multiple-spaces-collapsed",
-        ),
-        pytest.param(
             ["hello world!     this will wrap"],
             15,
             {},
@@ -1404,6 +1394,15 @@ def test_format_error(text, args, exc, match, ctx):
                 [Color.NONE, "hello", "   ", "world!"],
             ],
             id="multiple-spaces-preserved",
+        ),
+        pytest.param(
+            ["hello   world!"],
+            15,
+            {"preserve_spaces": False},
+            [
+                [Color.NONE, "hello", "   ", "world!"],
+            ],
+            id="multiple-spaces-preserved-when-no-line-boundary-happened",
         ),
         pytest.param(
             ["hello     world!"],
@@ -2560,10 +2559,10 @@ def test_format_error(text, args, exc, match, ctx):
         ),
         pytest.param(
             ["word", Esc("some-long-esc-word"), "    x"],
-            7,
+            10,
             {"break_long_words": False, "overflow": "…"},
             [
-                [Color.NONE, "word", "…", " ", "x"],
+                [Color.NONE, "word", "…", "    ", "x"],
             ],
             id="ellipsis-esc-indent",
         ),

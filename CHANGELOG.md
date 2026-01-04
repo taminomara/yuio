@@ -14,6 +14,9 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+- 🔧 `preserve_spaces=False` no longer collapses all consecutive spaces when
+  wrapping a paragraph. Spaces are collapsed only when line break occurs.
+
 ## [2.0.0-rc2] - 2026-01-04
 
 - 🔧 Don't override all colors with their RGB values. This ensures that we

@@ -1827,7 +1827,7 @@ class _TextWrapper:
         self.at_line_start: bool = True
         self.at_line_start_or_indent: bool = True
         self.has_ellipsis: bool = False
-        self.needs_space_before_word = False
+        self.add_spaces_before_word: int = 0
         self.space_before_word_url = None
 
         self.nowrap_start_index = None
@@ -1850,7 +1850,7 @@ class _TextWrapper:
         self.nowrap_start_index = None
         self.nowrap_start_width = 0
         self.nowrap_start_added_space = False
-        self.needs_space_before_word = False
+        self.add_spaces_before_word = 0
         self.space_before_word_url = None
 
     def _flush_line_part(self):
@@ -1906,12 +1906,12 @@ class _TextWrapper:
             self.has_ellipsis = False
 
     def _append_space(self):
-        if self.needs_space_before_word:
-            word = " "
+        if self.add_spaces_before_word:
+            word = " " * self.add_spaces_before_word
             if self.space_before_word_url:
                 word = Link(word, url=self.space_before_word_url)
             self._append_word(word, 1)
-            self.needs_space_before_word = False
+            self.add_spaces_before_word = 0
             self.space_before_word_url = None
 
     def _add_ellipsis(self):
@@ -1969,15 +1969,15 @@ class _TextWrapper:
         for part in text:
             if isinstance(part, _Color):
                 if (
-                    self.needs_space_before_word
-                    and self.current_line_width + self.needs_space_before_word
+                    self.add_spaces_before_word
+                    and self.current_line_width + self.add_spaces_before_word
                     < self.width
                 ):
                     # Make sure any whitespace that was added before color
                     # is flushed. If it doesn't fit, we just forget it: the line
                     # will be wrapped soon anyways.
                     self._append_space()
-                self.needs_space_before_word = False
+                self.add_spaces_before_word = 0
                 self.space_before_word_url = None
                 self.current_line.append_color(part)
                 continue
@@ -1985,8 +1985,8 @@ class _TextWrapper:
                 if nowrap:  # pragma: no cover
                     continue
                 if (
-                    self.needs_space_before_word
-                    and self.current_line_width + self.needs_space_before_word
+                    self.add_spaces_before_word
+                    and self.current_line_width + self.add_spaces_before_word
                     < self.width
                 ):
                     # Make sure any whitespace that was added before no-wrap
@@ -1996,7 +1996,7 @@ class _TextWrapper:
                     self.nowrap_start_added_space = True
                 else:
                     self.nowrap_start_added_space = False
-                self.needs_space_before_word = False
+                self.add_spaces_before_word = 0
                 self.space_before_word_url = None
                 if self.at_line_start:
                     self.nowrap_start_index = None
@@ -2054,7 +2054,7 @@ class _TextWrapper:
                     ):
                         word = word.translate(_SPACE_TRANS)
                     else:
-                        self.needs_space_before_word = True
+                        self.add_spaces_before_word = len(word)
                         self.space_before_word_url = (
                             word.url if isinstance(word, Link) else None
                         )
@@ -2102,7 +2102,7 @@ class _TextWrapper:
                         and (
                             self.has_ellipsis
                             or self.current_line_width
-                            + self.needs_space_before_word
+                            + self.add_spaces_before_word
                             + 1
                             <= self.width
                         )
@@ -2132,7 +2132,7 @@ class _TextWrapper:
 
     def _try_fit_word(self, word: str, word_width: int):
         if (
-            self.current_line_width + word_width + self.needs_space_before_word
+            self.current_line_width + word_width + self.add_spaces_before_word
             <= self.width
         ):
             self._append_space()
@@ -3619,7 +3619,7 @@ class Wrap(_StrBase):
         if given, overrides settings passed to :class:`ReprContext` for this call.
     :param preserve_spaces:
         if set to :data:`True`, all spaces are preserved.
-        Otherwise, consecutive spaces are collapsed into a single space.
+        Otherwise, consecutive spaces are collapsed when newline break occurs.
 
         Note that tabs always treated as a single whitespace.
     :param preserve_newlines:
