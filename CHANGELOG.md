@@ -14,6 +14,10 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+- 🔧 Don't override all colors with their RGB values. This ensures that we
+  respect user settings for using bright colors for bold text.
+- 🔧 Export RGB colors in theme under `term/` path.
+
 ## [2.0.0-rc1] - 2026-01-03
 
 Large refactoring around lower-level APIs, making them more flexible.
