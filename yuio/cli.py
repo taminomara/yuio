@@ -2241,6 +2241,7 @@ class _SubCommandOption(ValueOption[str]):
             f"`{name}`"
             for name, subcommand in subcommands.items()
             if name == subcommand.name
+            and subcommand.help is not yuio.DISABLED
         ]
         help = f"Available subcommands: {yuio.string.Or(subcommand_names)}"
 

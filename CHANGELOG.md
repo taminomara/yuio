@@ -19,6 +19,7 @@ and run `pre-commit run clk` to replace:
 - 🔧 Don't override all colors with their RGB values. This ensures that we
   respect user settings for using bright colors for bold text.
 - 🔧 Export RGB colors in theme under `term/` path.
+- 🐛 Don't display hidden subcommands in CLI help messages.
 
 ## [2.0.0-rc1] - 2026-01-03
 
