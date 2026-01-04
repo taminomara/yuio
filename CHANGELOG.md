@@ -14,6 +14,8 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+## [2.0.0-rc2] - 2026-01-04
+
 - 🔧 Don't override all colors with their RGB values. This ensures that we
   respect user settings for using bright colors for bold text.
 - 🔧 Export RGB colors in theme under `term/` path.
@@ -171,5 +173,6 @@ Release candidate for version 2.
 
 [2.0.0-rc0]: https://github.com/taminomara/yuio/releases/tag/v2.0.0-rc0
 [2.0.0-rc1]: https://github.com/taminomara/yuio/compare/v2.0.0-rc0...v2.0.0-rc1
+[2.0.0-rc2]: https://github.com/taminomara/yuio/compare/v2.0.0-rc1...v2.0.0-rc2
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-rc1...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-rc2...HEAD
