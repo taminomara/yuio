@@ -2101,9 +2101,7 @@ class _TextWrapper:
                         and self.continuation_indent.width + word_width > self.width
                         and (
                             self.has_ellipsis
-                            or self.current_line_width
-                            + self.add_spaces_before_word
-                            + 1
+                            or self.current_line_width + self.add_spaces_before_word + 1
                             <= self.width
                         )
                     )
