@@ -3178,9 +3178,9 @@ class TestMultiselect:
     def test_simple(self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]):
         widget_checker.expect_screen(
             [
-                "> - a               ",
-                "  - b               ",
-                "  - c               ",
+                "> ○ a               ",
+                "  ○ b               ",
+                "  ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3188,9 +3188,9 @@ class TestMultiselect:
         widget_checker.key(yuio.widget.Key.ENTER)
         widget_checker.expect_screen(
             [
-                "> * a               ",
-                "  - b               ",
-                "  - c               ",
+                "> ◉ a               ",
+                "  ○ b               ",
+                "  ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3209,14 +3209,43 @@ class TestMultiselect:
 
         assert result == [1]
 
+    def test_decorations(
+        self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]], theme
+    ):
+        theme.set_msg_decoration_unicode("menu/choice/decoration/active_item", ">> ")
+        theme.set_msg_decoration_unicode("menu/choice/decoration/selected_item", "@@ ")
+        theme.set_msg_decoration_unicode("menu/choice/decoration/deselected_item", "-")
+        widget_checker.expect_screen(
+            [
+                ">> -  a             ",
+                "   -  b             ",
+                "   @@ c             ",
+                "C-d accept • f1 help",
+                "                    ",
+            ]
+        )
+        widget_checker.key("d", ctrl=True)
+
+        result = widget_checker.check(
+            yuio.widget.Multiselect(
+                [
+                    yuio.widget.Option(1, "a"),
+                    yuio.widget.Option(2, "b"),
+                    yuio.widget.Option(3, "c", selected=True),
+                ]
+            )
+        )
+
+        assert result == [3]
+
     def test_select_many(
         self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]
     ):
         widget_checker.expect_screen(
             [
-                "> - a               ",
-                "  - b               ",
-                "  - c               ",
+                "> ○ a               ",
+                "  ○ b               ",
+                "  ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3225,9 +3254,9 @@ class TestMultiselect:
         widget_checker.key("c")
         widget_checker.expect_screen(
             [
-                "  * a               ",
-                "  - b               ",
-                "> - c               ",
+                "  ◉ a               ",
+                "  ○ b               ",
+                "> ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3252,9 +3281,9 @@ class TestMultiselect:
     ):
         widget_checker.expect_screen(
             [
-                "> - a               ",
-                "  - b               ",
-                "  - c               ",
+                "> ○ a               ",
+                "  ○ b               ",
+                "  ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3263,9 +3292,9 @@ class TestMultiselect:
         widget_checker.key(yuio.widget.Key.TAB)
         widget_checker.expect_screen(
             [
-                "  * a               ",
-                "> - b               ",
-                "  - c               ",
+                "  ◉ a               ",
+                "> ○ b               ",
+                "  ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3290,9 +3319,9 @@ class TestMultiselect:
     ):
         widget_checker.expect_screen(
             [
-                "> - a               ",
-                "  - b               ",
-                "  - c               ",
+                "> ○ a               ",
+                "  ○ b               ",
+                "  ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3315,9 +3344,9 @@ class TestMultiselect:
     def test_search(self, widget_checker: WidgetChecker[yuio.widget.Multiselect[int]]):
         widget_checker.expect_screen(
             [
-                "> - a               ",
-                "  - b               ",
-                "  - c               ",
+                "> ○ a               ",
+                "  ○ b               ",
+                "  ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3325,9 +3354,9 @@ class TestMultiselect:
         widget_checker.key("/")
         widget_checker.expect_screen(
             [
-                "> - a               ",
-                "  - b               ",
-                "  - c               ",
+                "> ○ a               ",
+                "  ○ b               ",
+                "  ○ c               ",
                 "/ Filter options... ",
                 "C-d accept • f1 help",
             ]
@@ -3335,7 +3364,7 @@ class TestMultiselect:
         widget_checker.key("a")
         widget_checker.expect_screen(
             [
-                "> - a               ",
+                "> ○ a               ",
                 "/ a                 ",
                 "C-d accept • f1 help",
             ]
@@ -3360,7 +3389,7 @@ class TestMultiselect:
         widget_checker.key(yuio.widget.Key.BACKSPACE)
         widget_checker.expect_screen(
             [
-                "> - a               ",
+                "> ○ a               ",
                 "/ a                 ",
                 "C-d accept • f1 help",
             ]
@@ -3368,7 +3397,7 @@ class TestMultiselect:
         widget_checker.key(yuio.widget.Key.ENTER)
         widget_checker.expect_screen(
             [
-                "> * a               ",
+                "> ◉ a               ",
                 "/ a                 ",
                 "C-d accept • f1 help",
             ]
@@ -3376,9 +3405,9 @@ class TestMultiselect:
         widget_checker.key(yuio.widget.Key.BACKSPACE)
         widget_checker.expect_screen(
             [
-                "> * a               ",
-                "  - b               ",
-                "  - c               ",
+                "> ◉ a               ",
+                "  ○ b               ",
+                "  ○ c               ",
                 "/ Filter options... ",
                 "C-d accept • f1 help",
             ]
@@ -3386,9 +3415,9 @@ class TestMultiselect:
         widget_checker.key(yuio.widget.Key.TAB)
         widget_checker.expect_screen(
             [
-                "  * a               ",
-                "> - b               ",
-                "  - c               ",
+                "  ◉ a               ",
+                "> ○ b               ",
+                "  ○ c               ",
                 "/ Filter options... ",
                 "C-d accept • f1 help",
             ]
@@ -3396,9 +3425,9 @@ class TestMultiselect:
         widget_checker.key(yuio.widget.Key.BACKSPACE)
         widget_checker.expect_screen(
             [
-                "  * a               ",
-                "> - b               ",
-                "  - c               ",
+                "  ◉ a               ",
+                "> ○ b               ",
+                "  ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3406,7 +3435,7 @@ class TestMultiselect:
         widget_checker.text("/c")
         widget_checker.expect_screen(
             [
-                "> - c               ",
+                "> ○ c               ",
                 "/ c                 ",
                 "C-d accept • f1 help",
             ]
@@ -3414,9 +3443,9 @@ class TestMultiselect:
         widget_checker.key(yuio.widget.Key.ESCAPE)
         widget_checker.expect_screen(
             [
-                "  * a               ",
-                "  - b               ",
-                "> - c               ",
+                "  ◉ a               ",
+                "  ○ b               ",
+                "> ○ c               ",
                 "C-d accept • f1 help",
                 "                    ",
             ]
@@ -3441,7 +3470,7 @@ class TestMultiselect:
         widget_checker.text("/1")
         widget_checker.expect_screen(
             [
-                "> - a               ",
+                "> ○ a               ",
                 "/ 1                 ",
                 "C-d accept • f1 help",
             ]
@@ -3475,7 +3504,7 @@ class TestMultiselect:
         widget_checker.key("A")
         widget_checker.expect_screen(
             [
-                "> - a               ",
+                "> ○ a               ",
                 "/ A                 ",
                 "C-d accept • f1 help",
             ]
