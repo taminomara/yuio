@@ -1239,10 +1239,10 @@ _PY_SYNTAX = re.compile(
             )\b)
         | (?P<str>
             [rfut]*(                                # string prefix
-                  '(?:\\.|[^\\'])*(?:'|\n)          # singly-quoted string
-                | "(?:\\.|[^\\"])*(?:"|\n)          # doubly-quoted string
-                | \"""(\\.|[^\\]|\n)*?\"""          # long singly-quoted string
-                | '''(\\.|[^\\]|\n)*?'''))          # long doubly-quoted string
+                  \"""(\\.|[^\\]|\n)*?\"""          # long singly-quoted string
+                | '''(\\.|[^\\]|\n)*?'''            # long doubly-quoted string
+                | '(?:\\.|[^\\'])*(?:'|\n)          # singly-quoted string
+                | "(?:\\.|[^\\"])*(?:"|\n)))        # doubly-quoted string
         | (?P<lit>
             (?<![\.\w])(
                   [+-]?\d+(?:\.\d*(?:e[+-]?\d+)?)?  # int or float
