@@ -1,0 +1,12 @@
+code: '[x and x]'
+highlighted:
+- color: <Color>
+- '['
+- color: <Color fore=<RED>>
+- x
+- color: <Color fore=<GREEN>>
+- ' and '
+- color: <Color fore=<RED>>
+- x
+- color: <Color>
+- ']'

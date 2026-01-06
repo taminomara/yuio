@@ -1,0 +1,6 @@
+code: import os
+highlighted:
+- color: <Color fore=<RED>>
+- import
+- color: <Color>
+- ' os'

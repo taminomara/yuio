@@ -195,6 +195,7 @@ from dataclasses import dataclass
 import yuio
 import yuio.color
 import yuio.complete
+import yuio.hl
 import yuio.md
 import yuio.parse
 import yuio.string
@@ -3123,11 +3124,14 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         usage = _ColorizedString()
         if node.cmd.usage:
             usage = yuio.util.dedent(node.cmd.usage).rstrip()
-            sh_usage_highlighter = yuio.md.SyntaxHighlighter.get_highlighter("sh-usage")
+            sh_usage_highlighter, sh_usage_syntax_name = yuio.hl.get_highlighter(
+                "sh-usage"
+            )
 
             usage = sh_usage_highlighter.highlight(
-                self.ctx.theme,
                 usage,
+                theme=self.ctx.theme,
+                syntax=sh_usage_syntax_name,
             ).percent_format({"prog": node.prog}, self.ctx)
         else:
             usage = self._build_usage(node)

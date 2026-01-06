@@ -1,0 +1,4 @@
+code: str
+highlighted:
+- color: <Color fore=<MAGENTA>>
+- str

@@ -1,0 +1,15 @@
+code: 'async def bar():'
+highlighted:
+- color: <Color fore=<RED>>
+- async
+- color: <Color>
+- ' '
+- color: <Color fore=<RED>>
+- def
+- color: <Color>
+- ' bar'
+- color: <Color fore=<WHITE>>
+- (
+- )
+- color: <Color>
+- ':'

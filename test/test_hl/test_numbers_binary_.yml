@@ -1,0 +1,6 @@
+code: '0b101'
+highlighted:
+- color: <Color fore=<YELLOW>>
+- '0'
+- color: <Color>
+- b101

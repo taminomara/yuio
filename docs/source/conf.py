@@ -52,13 +52,9 @@ autodoc_member_order = "bysource"
 autodoc_inherit_docstrings = False
 # autodoc_typehints = "description"  # maybe sphinx 9 fixes this mess?
 autodoc_type_aliases = {
-    "yuio.Disabled": "~yuio.DISABLED",
     "DISABLED": "~yuio.DISABLED",
-    "yuio.Missing": "~yuio.MISSING",
     "MISSING": "~yuio.MISSING",
-    "yuio.Positional": "~yuio.POSITIONAL",
     "POSITIONAL": "~yuio.POSITIONAL",
-    "yuio.Group": "~yuio.GROUP",
     "GROUP": "~yuio.GROUP",
     **{
         name: path
@@ -139,6 +135,12 @@ from sphinx.domains.python._annotations import parse_reftarget as _parse_reftarg
 
 def parse_reftarget(*args, **kwargs):
     _, reftarget, title, refspecific = _parse_reftarget(*args, **kwargs)
+    if reftarget in ["yuio.Positional", "yuio.Group", "yuio.Disabled", "yuio.Missing"]:
+        reftarget = "yuio." + reftarget.removeprefix("yuio.").upper()
+    elif reftarget.startswith("_t."):
+        reftarget = "typing." + reftarget.removeprefix("_t.")
+        if title.startswith("_t."):
+            title = title.removeprefix("_t.")
     return "obj", reftarget, title, refspecific
 sphinx.domains.python._annotations.parse_reftarget = parse_reftarget
 # fmt: on

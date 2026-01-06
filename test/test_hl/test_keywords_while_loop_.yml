@@ -1,0 +1,20 @@
+code: while true; do sleep 1; done
+highlighted:
+- color: <Color fore=<RED>>
+- while
+- color: <Color>
+- ' true'
+- color: <Color fore=<WHITE>>
+- ;
+- color: <Color>
+- ' '
+- color: <Color fore=<RED>>
+- do
+- color: <Color>
+- ' sleep 1'
+- color: <Color fore=<WHITE>>
+- ;
+- color: <Color>
+- ' '
+- color: <Color fore=<RED>>
+- done

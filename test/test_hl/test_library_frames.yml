@@ -1,0 +1,31 @@
+code: "Traceback (most recent call last):\n  File \"/lib/site-packages/module.py\"\
+  , line 10, in foo\n    x = 1\nValueError: error"
+highlighted:
+- color: <Color fore=<RED>>
+- 'Traceback (most recent call last):
+
+  '
+- color: <Color>
+- '  '
+- color: <Color fore=<BLACK>>
+- 'File '
+- '"/lib/site-packages/module.py"'
+- ', line '
+- '10'
+- ', in '
+- foo
+- '
+
+  '
+- color: <Color>
+- '  '
+- color: <Color fore=<BLACK>>
+- '  x = '
+- color: <Color fore=<YELLOW>>
+- '1'
+- color: <Color fore=<BLACK>>
+- '
+
+  '
+- color: <Color fore=<RED>>
+- 'ValueError: error'

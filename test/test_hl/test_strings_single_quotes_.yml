@@ -1,0 +1,4 @@
+code: '''single quotes'''
+highlighted:
+- color: <Color fore=<GREEN>>
+- '''single quotes'''

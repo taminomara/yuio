@@ -1,0 +1,8 @@
+code: b"bytes"
+highlighted:
+- color: <Color>
+- b
+- color: <Color fore=<GREEN>>
+- '"'
+- bytes
+- '"'

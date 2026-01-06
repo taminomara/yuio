@@ -1,0 +1,8 @@
+code: ls -la
+highlighted:
+- color: <Color fore=<CYAN>>
+- ls
+- color: <Color>
+- ' '
+- color: <Color fore=<YELLOW>>
+- -la

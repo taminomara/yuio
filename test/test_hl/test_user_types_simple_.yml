@@ -1,0 +1,4 @@
+code: MyClass
+highlighted:
+- color: <Color fore=<MAGENTA>>
+- MyClass

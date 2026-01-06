@@ -1,0 +1,4 @@
+code: +++ b/file.py
+highlighted:
+- color: <Color fore=<CYAN>>
+- +++ b/file.py

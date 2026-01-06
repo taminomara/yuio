@@ -1,0 +1,6 @@
+code: '''world'''
+highlighted:
+- color: <Color fore=<GREEN>>
+- ''''
+- world
+- ''''

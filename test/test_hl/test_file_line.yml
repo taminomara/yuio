@@ -1,0 +1,24 @@
+code: "Traceback (most recent call last):\n  File \"test.py\", line 10, in foo"
+highlighted:
+- color: <Color fore=<RED>>
+- 'Traceback (most recent call last):
+
+  '
+- color: <Color>
+- '  '
+- color: <Color fore=<WHITE>>
+- 'File '
+- color: <Color fore=<CYAN>>
+- '"test.py"'
+- color: <Color fore=<WHITE>>
+- ', line '
+- color: <Color fore=<YELLOW>>
+- '10'
+- color: <Color fore=<WHITE>>
+- ', in '
+- color: <Color fore=<MAGENTA>>
+- foo
+- color: <Color fore=<WHITE>>
+- '
+
+  '

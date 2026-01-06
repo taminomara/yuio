@@ -1,0 +1,11 @@
+code: 'def foo():'
+highlighted:
+- color: <Color fore=<RED>>
+- def
+- color: <Color>
+- ' foo'
+- color: <Color fore=<WHITE>>
+- (
+- )
+- color: <Color>
+- ':'

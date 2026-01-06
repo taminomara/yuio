@@ -1,0 +1,4 @@
+code: ' context line'
+highlighted:
+- color: <Color>
+- ' context line'

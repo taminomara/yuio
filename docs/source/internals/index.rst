@@ -20,6 +20,9 @@ APIs for advanced use-cases.
    md
       Simple Markdown parser and renderer.
 
+   hl
+      Syntax highlighting.
+
    string
       Colorized strings and formatting utilities.
 

@@ -1,0 +1,9 @@
+code: '"backslash\\"'
+highlighted:
+- color: <Color fore=<GREEN>>
+- '"'
+- backslash
+- color: <Color fore=<BLUE>>
+- \\
+- color: <Color fore=<GREEN>>
+- '"'

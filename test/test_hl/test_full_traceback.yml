@@ -1,0 +1,46 @@
+code: "Traceback (most recent call last):\n  File \"test.py\", line 10, in foo\n \
+  \   x = 1 / 0\n        ~~^~~\nZeroDivisionError: division by zero"
+highlighted:
+- color: <Color fore=<RED>>
+- 'Traceback (most recent call last):
+
+  '
+- color: <Color>
+- '  '
+- color: <Color fore=<WHITE>>
+- 'File '
+- color: <Color fore=<CYAN>>
+- '"test.py"'
+- color: <Color fore=<WHITE>>
+- ', line '
+- color: <Color fore=<YELLOW>>
+- '10'
+- color: <Color fore=<WHITE>>
+- ', in '
+- color: <Color fore=<MAGENTA>>
+- foo
+- color: <Color fore=<WHITE>>
+- '
+
+  '
+- color: <Color>
+- '  '
+- color: <Color fore=<WHITE>>
+- '  x = '
+- color: <Color fore=<YELLOW>>
+- '1'
+- color: <Color fore=<WHITE>>
+- ' / '
+- color: <Color fore=<YELLOW>>
+- '0'
+- color: <Color fore=<WHITE>>
+- '
+
+  '
+- color: <Color>
+- '  '
+- color: <Color fore=<RED>>
+- '      ~~^~~
+
+  '
+- 'ZeroDivisionError: division by zero'

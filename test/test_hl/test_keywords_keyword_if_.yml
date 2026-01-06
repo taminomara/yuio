@@ -1,0 +1,10 @@
+code: 'if True:'
+highlighted:
+- color: <Color fore=<RED>>
+- if
+- color: <Color>
+- ' '
+- color: <Color fore=<CYAN>>
+- 'True'
+- color: <Color>
+- ':'

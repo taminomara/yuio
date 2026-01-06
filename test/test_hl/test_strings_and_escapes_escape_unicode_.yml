@@ -1,0 +1,10 @@
+code: '"with\u0041unicode"'
+highlighted:
+- color: <Color fore=<GREEN>>
+- '"'
+- with
+- color: <Color fore=<BLUE>>
+- \u0041
+- color: <Color fore=<GREEN>>
+- unicode
+- '"'

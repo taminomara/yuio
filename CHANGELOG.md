@@ -16,6 +16,7 @@ and run `pre-commit run clk` to replace:
 
 - 🔧 `preserve_spaces=False` no longer collapses all consecutive spaces when
   wrapping a paragraph. Spaces are collapsed only when line break occurs.
+- 🔧 Refactor code highlighters and move them into a separate module.
 
 ## [2.0.0-rc2] - 2026-01-04
 

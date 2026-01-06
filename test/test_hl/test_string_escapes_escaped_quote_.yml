@@ -1,0 +1,10 @@
+code: '"quote\"here"'
+highlighted:
+- color: <Color fore=<GREEN>>
+- '"'
+- quote
+- color: <Color fore=<BLUE>>
+- \"
+- color: <Color fore=<GREEN>>
+- here
+- '"'

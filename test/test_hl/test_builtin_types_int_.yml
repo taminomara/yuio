@@ -1,0 +1,4 @@
+code: int
+highlighted:
+- color: <Color fore=<MAGENTA>>
+- int

@@ -1,0 +1,7 @@
+code: r"raw"
+highlighted:
+- color: <Color fore=<GREEN>>
+- r
+- '"'
+- raw
+- '"'

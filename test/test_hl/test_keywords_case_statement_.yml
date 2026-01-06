@@ -1,0 +1,12 @@
+code: case $x in esac
+highlighted:
+- color: <Color fore=<RED>>
+- case
+- color: <Color>
+- ' $x '
+- color: <Color fore=<RED>>
+- in
+- color: <Color>
+- ' '
+- color: <Color fore=<RED>>
+- esac

@@ -415,7 +415,7 @@ import types
 from logging import LogRecord
 
 import yuio.color
-import yuio.md
+import yuio.hl
 import yuio.parse
 import yuio.string
 import yuio.term
@@ -1116,7 +1116,7 @@ def hl(
     msg: _t.LiteralString,
     /,
     *args,
-    syntax: str | yuio.md.SyntaxHighlighter,
+    syntax: str,
     dedent: bool = True,
     **kwargs,
 ): ...
@@ -1125,7 +1125,7 @@ def hl(
     msg: str,
     /,
     *,
-    syntax: str | yuio.md.SyntaxHighlighter,
+    syntax: str,
     dedent: bool = True,
     **kwargs,
 ): ...
@@ -1133,12 +1133,12 @@ def hl(
     msg: str,
     /,
     *args,
-    syntax: str | yuio.md.SyntaxHighlighter,
+    syntax: str,
     dedent: bool = True,
     **kwargs,
 ):
-    """hl(msg: typing.LiteralString, /, *args, syntax: str | yuio.md.SyntaxHighlighter, dedent: bool = True, **kwargs)
-    hl(msg: str, /, *, syntax: str | yuio.md.SyntaxHighlighter, dedent: bool = True, **kwargs) ->
+    """hl(msg: typing.LiteralString, /, *args, syntax: str, dedent: bool = True, **kwargs)
+    hl(msg: str, /, *, syntax: str, dedent: bool = True, **kwargs) ->
 
     Print highlighted code. See :mod:`yuio.md` for more info.
 
@@ -1302,8 +1302,8 @@ def raw(
         raise ValueError(f"invalid exc_info {exc_info!r}")
     if exc_info is not None and exc_info != (None, None, None):
         tb = "".join(traceback.format_exception(*exc_info))
-        highlighter = yuio.md.SyntaxHighlighter.get_highlighter("python-traceback")
-        msg += highlighter.highlight(ctx.theme, tb).indent()
+        highlighter, syntax_name = yuio.hl.get_highlighter("python-traceback")
+        msg += highlighter.highlight(tb, theme=ctx.theme, syntax=syntax_name).indent()
 
     manager.print(
         msg.as_code(ctx.term.color_support),
@@ -2252,8 +2252,8 @@ class SuspendOutput:
     @_t.overload
     def hl(self, msg: str, /, **kwargs): ...
     def hl(self, msg: str, /, *args, **kwargs):
-        """hl(msg: typing.LiteralString, /, *args, syntax: str | yuio.md.SyntaxHighlighter, dedent: bool = True, **kwargs)
-        hl(msg: str, /, *, syntax: str | yuio.md.SyntaxHighlighter, dedent: bool = True, **kwargs)
+        """hl(msg: typing.LiteralString, /, *args, syntax: str, dedent: bool = True, **kwargs)
+        hl(msg: str, /, *, syntax: str, dedent: bool = True, **kwargs)
 
         Log an :func:`hl` message, ignore suspended status.
 
@@ -2811,9 +2811,9 @@ class Formatter(logging.Formatter):
         manager = _manager()
         theme = manager.theme
         term = manager.term
-        highlighter = yuio.md.SyntaxHighlighter.get_highlighter("python-traceback")
+        highlighter, syntax_name = yuio.hl.get_highlighter("python-traceback")
         return "".join(
-            highlighter.highlight(theme, stack_info)
+            highlighter.highlight(stack_info, theme=theme, syntax=syntax_name)
             .indent()
             .as_code(term.color_support)
         )

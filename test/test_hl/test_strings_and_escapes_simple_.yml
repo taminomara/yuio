@@ -1,0 +1,6 @@
+code: '"hello"'
+highlighted:
+- color: <Color fore=<GREEN>>
+- '"'
+- hello
+- '"'

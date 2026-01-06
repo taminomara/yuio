@@ -1,0 +1,8 @@
+code: '"{}"'
+highlighted:
+- color: <Color fore=<GREEN>>
+- '"'
+- color: <Color fore=<BLUE>>
+- '{}'
+- color: <Color fore=<GREEN>>
+- '"'

@@ -1,0 +1,6 @@
+code: The answer is 42
+highlighted:
+- color: <Color>
+- 'The answer is '
+- color: <Color fore=<YELLOW>>
+- '42'

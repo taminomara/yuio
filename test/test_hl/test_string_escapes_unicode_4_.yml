@@ -1,0 +1,8 @@
+code: '"\u0041"'
+highlighted:
+- color: <Color fore=<GREEN>>
+- '"'
+- color: <Color fore=<BLUE>>
+- \u0041
+- color: <Color fore=<GREEN>>
+- '"'

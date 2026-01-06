@@ -1,0 +1,4 @@
+code: 'ValueError: invalid value'
+highlighted:
+- color: <Color fore=<RED>>
+- 'ValueError: invalid value'

@@ -1,0 +1,6 @@
+code: grep pattern
+highlighted:
+- color: <Color fore=<CYAN>>
+- grep
+- color: <Color>
+- ' pattern'

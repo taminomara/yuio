@@ -1,0 +1,4 @@
+code: '# comment'
+highlighted:
+- color: <Color fore=<BLACK>>
+- '# comment'

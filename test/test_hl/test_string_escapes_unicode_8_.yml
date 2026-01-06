@@ -1,0 +1,8 @@
+code: '"\U00000041"'
+highlighted:
+- color: <Color fore=<GREEN>>
+- '"'
+- color: <Color fore=<BLUE>>
+- \U00000041
+- color: <Color fore=<GREEN>>
+- '"'

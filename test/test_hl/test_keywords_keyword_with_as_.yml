@@ -1,0 +1,15 @@
+code: 'with open() as f:'
+highlighted:
+- color: <Color fore=<RED>>
+- with
+- color: <Color>
+- ' open'
+- color: <Color fore=<WHITE>>
+- (
+- )
+- color: <Color>
+- ' '
+- color: <Color fore=<RED>>
+- as
+- color: <Color>
+- ' f:'

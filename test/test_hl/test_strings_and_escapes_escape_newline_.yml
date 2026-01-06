@@ -1,0 +1,10 @@
+code: '"with\nnewline"'
+highlighted:
+- color: <Color fore=<GREEN>>
+- '"'
+- with
+- color: <Color fore=<BLUE>>
+- \n
+- color: <Color fore=<GREEN>>
+- newline
+- '"'

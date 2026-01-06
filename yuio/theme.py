@@ -181,17 +181,26 @@ Color paths
 
     ``status`` can be ``running``, ``done``, or ``error``.
 
-.. color-path:: `hl/{part}:{syntax}`
+.. color-path:: `hl/{token}:{syntax}`
 
     Color for highlighted part of code:
 
     -   ``hl/comment``: code comments,
     -   ``hl/kwd``: keyword,
     -   ``hl/lit``: non-string literals,
+    -   ``hl/lit/builtin``: built-in literals, i.e. ``None``, ``True``, ``False``,
+    -   ``hl/lit/num``: numeric literals,
+    -   ``hl/lit/num/bin``: binary numeric literals,
+    -   ``hl/lit/num/oct``: octal numeric literals,
+    -   ``hl/lit/num/dec``: decimal numeric literals,
+    -   ``hl/lit/num/hex``: hexadecimal numeric literals,
     -   ``hl/punct``: punctuation,
     -   ``hl/str``: string literals,
     -   ``hl/str/esc``: escape sequences in strings,
+    -   ``hl/str/prefix``: string prefix, i.e. ``f`` in ``f"str"``,
     -   ``hl/type``: type names,
+    -   ``hl/type/builtin``: type names for builtin types,
+    -   ``hl/type/user``: type names for user-defined types,
     -   ``hl/meta``: diff meta info for diff highlighting,
     -   ``hl/added``: added lines in diff highlighting,
     -   ``hl/removed``: removed lines in diff highlighting,

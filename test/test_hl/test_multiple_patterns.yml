@@ -1,0 +1,16 @@
+code: abc 123 def 456
+highlighted:
+- color: <Color fore=<CYAN>>
+- abc
+- color: <Color>
+- ' '
+- color: <Color fore=<YELLOW>>
+- '123'
+- color: <Color>
+- ' '
+- color: <Color fore=<CYAN>>
+- def
+- color: <Color>
+- ' '
+- color: <Color fore=<YELLOW>>
+- '456'

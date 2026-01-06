@@ -1,0 +1,7 @@
+code: u"unicode"
+highlighted:
+- color: <Color fore=<GREEN>>
+- u
+- '"'
+- unicode
+- '"'

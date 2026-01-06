@@ -1,0 +1,10 @@
+code: 'x = 1  # inline comment'
+highlighted:
+- color: <Color>
+- 'x = '
+- color: <Color fore=<YELLOW>>
+- '1'
+- color: <Color>
+- '  '
+- color: <Color fore=<BLACK>>
+- '# inline comment'

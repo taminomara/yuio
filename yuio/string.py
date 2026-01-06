@@ -126,7 +126,7 @@ that defines one of the following special methods:
     An object that supports colorized printing.
 
     This can be a string, and exception, or any object that follows
-    :class:`ColorableProtocol`. Additionally, you can pass any object that has
+    :class:`ColorizedStrProtocol`. Additionally, you can pass any object that has
     ``__repr__``, but you'll have to wrap it into :type:`Printable` to confirm
     your intent to print it.
 
@@ -250,9 +250,6 @@ if TYPE_CHECKING:
     import typing_extensions as _t
 else:
     from yuio import _typing as _t
-
-if TYPE_CHECKING:
-    import yuio.md
 
 if sys.version_info >= (3, 14):
     from string.templatelib import Interpolation as _Interpolation
@@ -429,7 +426,7 @@ Colorable: _t.TypeAlias = (
 Any object that supports colorized printing.
 
 This can be a string, and exception, or any object that follows
-:class:`ColorableProtocol`. Additionally, you can pass any object that has
+:class:`ColorizedStrProtocol`. Additionally, you can pass any object that has
 ``__repr__``, but you'll have to wrap it into :type:`Printable` to confirm
 your intent to print it.
 
@@ -2248,9 +2245,9 @@ class ReprContext:
         self._state = _ReprContextState.START
         self._pending_sep = None
 
-        import yuio.md
+        import yuio.hl
 
-        self._hl = yuio.md.SyntaxHighlighter.get_highlighter("repr")
+        self._hl, _ = yuio.hl.get_highlighter("repr")
         self._base_color = theme.get_color("msg/text:code/repr")
 
     def get_color(self, paths: str, /) -> yuio.color.Color:
@@ -2625,7 +2622,9 @@ class ReprContext:
         highlighted = highlighted if highlighted is not None else self.highlighted
 
         if highlighted:
-            return self._hl.highlight(self.theme, value, default_color=self._base_color)
+            return self._hl.highlight(
+                value, theme=self.theme, syntax="repr", default_color=self._base_color
+            )
         else:
             return ColorizedString(value)
 
@@ -2774,7 +2773,10 @@ class ReprContext:
 
         if hl and self.highlighted:
             self._line += self._hl.highlight(
-                self.theme, convert(value), default_color=self._base_color
+                convert(value),
+                theme=self.theme,
+                syntax="repr",
+                default_color=self._base_color,
             )
         else:
             self._line.append_str(convert(value))
@@ -3525,8 +3527,8 @@ class Md(_StrBase):
 @_t.final
 @repr_from_rich
 class Hl(_StrBase):
-    """Hl(code: typing.LiteralString, /, *args, syntax: str | yuio.md.SyntaxHighlighter, dedent: bool = True)
-    Hl(code: str, /, *, syntax: str | yuio.md.SyntaxHighlighter, dedent: bool = True)
+    """Hl(code: typing.LiteralString, /, *args, syntax: str, dedent: bool = True)
+    Hl(code: str, /, *, syntax: str, dedent: bool = True)
 
     Lazy wrapper that highlights code during formatting.
 
@@ -3535,7 +3537,7 @@ class Hl(_StrBase):
     :param args:
         arguments for ``%``-formatting the highlighted code.
     :param syntax:
-        name of syntax or a :class:`~yuio.md.SyntaxHighlighter` instance.
+        name of syntax or a :class:`~yuio.hl.SyntaxHighlighter` instance.
     :param dedent:
         whether to remove leading indent from code.
 
@@ -3547,7 +3549,7 @@ class Hl(_StrBase):
         code: _t.LiteralString,
         /,
         *args: _t.Any,
-        syntax: str | yuio.md.SyntaxHighlighter,
+        syntax: str,
         dedent: bool = True,
     ): ...
     @_t.overload
@@ -3556,7 +3558,7 @@ class Hl(_StrBase):
         code: str,
         /,
         *,
-        syntax: str | yuio.md.SyntaxHighlighter,
+        syntax: str,
         dedent: bool = True,
     ): ...
     def __init__(
@@ -3564,12 +3566,12 @@ class Hl(_StrBase):
         code: str,
         /,
         *args: _t.Any,
-        syntax: str | yuio.md.SyntaxHighlighter,
+        syntax: str,
         dedent: bool = True,
     ):
         self._code: str = code
         self._args: tuple[_t.Any, ...] = args
-        self._syntax: str | yuio.md.SyntaxHighlighter = syntax
+        self._syntax: str = syntax
         self._dedent: bool = dedent
 
     def __rich_repr__(self) -> RichReprResult:
@@ -3579,13 +3581,9 @@ class Hl(_StrBase):
         yield "dedent", self._dedent, True
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
-        import yuio.md
+        import yuio.hl
 
-        syntax = (
-            self._syntax
-            if isinstance(self._syntax, yuio.md.SyntaxHighlighter)
-            else yuio.md.SyntaxHighlighter.get_highlighter(self._syntax)
-        )
+        highlighter, syntax_name = yuio.hl.get_highlighter(self._syntax)
         code = self._code
         if self._dedent:
             code = _dedent(code)
@@ -3593,7 +3591,7 @@ class Hl(_StrBase):
 
         res = ColorizedString()
         res.start_no_wrap()
-        res += syntax.highlight(ctx.theme, code)
+        res += highlighter.highlight(code, theme=ctx.theme, syntax=syntax_name)
         res.end_no_wrap()
         if self._args:
             res = res.percent_format(self._args, ctx)
