@@ -862,10 +862,13 @@ class ColorizedString:
         if self._active_url:
             # Current url overrides appended urls.
             parts = filter(lambda part: not isinstance(part, LinkMarker), parts)
-            # Ensure that current url marker is added to the string.
-            if self._last_url != self._active_url:
-                self._parts.append(LinkMarker(self._active_url))
-                self._last_url = self._active_url
+
+        # Ensure that current url marker is added to the string.
+        # We don't need to do this with colors because `parts` already starts with
+        # a correct color.
+        if self._last_url != self._active_url:
+            self._parts.append(LinkMarker(self._active_url))
+            self._last_url = self._active_url
 
         self._parts.extend(parts)
 
@@ -1173,7 +1176,10 @@ class ColorizedString:
                 if not line:
                     continue
                 if needs_indent:
+                    url = res.active_link
+                    res.end_link()
                     res.append_colorized_str(nowrap_indent)
+                    res.append_link(url)
                     nowrap_indent = nowrap_continuation_indent
                 res.append_str(line)
                 needs_indent = line.endswith(("\n", "\r", "\v"))

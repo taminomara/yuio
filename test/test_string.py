@@ -3,8 +3,10 @@ import dataclasses
 from dataclasses import dataclass
 
 import yuio.string
+import yuio.term
+import yuio.theme
 from yuio.color import Color
-from yuio.string import NO_WRAP_END, NO_WRAP_START, Esc
+from yuio.string import NO_WRAP_END, NO_WRAP_START, Esc, LinkMarker, ReprContext
 
 import pytest
 
@@ -159,6 +161,12 @@ def setup_repr_hl(theme):
             4,
             id="cached-width-sum",
         ),
+        pytest.param(
+            _s(LinkMarker("https://example.com"), "link"),
+            4,
+            4,
+            id="link-marker",
+        ),
     ],
 )
 def test_width_and_len(text, width, length):
@@ -206,6 +214,31 @@ def test_eq(l, r, expected):
             [Color.FORE_RED, "abc"],
             [Color.FORE_RED, "abc"],
             id="color",
+        ),
+        pytest.param(
+            [LinkMarker("https://example.com"), "link"],
+            [LinkMarker("https://example.com"), Color.NONE, "link"],
+            id="link",
+        ),
+        pytest.param(
+            ["abc", LinkMarker("https://example.com")],
+            [Color.NONE, "abc"],
+            id="link-tail",
+        ),
+        pytest.param(
+            ["abc", LinkMarker("https://example.com"), "def"],
+            [Color.NONE, "abc", LinkMarker("https://example.com"), "def"],
+            id="link-tail-string",
+        ),
+        pytest.param(
+            [LinkMarker("https://a.com"), LinkMarker("https://b.com"), "abc"],
+            [LinkMarker("https://b.com"), Color.NONE, "abc"],
+            id="link-change",
+        ),
+        pytest.param(
+            [LinkMarker("https://a.com"), LinkMarker(None), "abc"],
+            [Color.NONE, "abc"],
+            id="link-none",
         ),
         pytest.param(
             ["abc", Color.FORE_GREEN],
@@ -315,6 +348,26 @@ def test_eq(l, r, expected):
                 "xxx",
             ],
             id="col-string-active-color-did-not-change",
+        ),
+        pytest.param(
+            [LinkMarker("https://a.com"), _s("abc")],
+            [LinkMarker("https://a.com"), Color.NONE, "abc"],
+            id="col-string-with-active-link",
+        ),
+        pytest.param(
+            [_s(LinkMarker("https://a.com"), "abc"), "def"],
+            [LinkMarker("https://a.com"), Color.NONE, "abc", LinkMarker(None), "def"],
+            id="col-string-with-link-preserves-link-context",
+        ),
+        pytest.param(
+            [_s(LinkMarker("https://a.com"), "abc"), _s("def")],
+            [LinkMarker("https://a.com"), Color.NONE, "abc", LinkMarker(None), "def"],
+            id="col-string-with-link-preserves-link-context",
+        ),
+        pytest.param(
+            [LinkMarker("https://a.com"), _s(LinkMarker("https://b.com"), "abc")],
+            [LinkMarker("https://a.com"), Color.NONE, "abc"],
+            id="active-link-overrides-appended-links",
         ),
         pytest.param(
             [_s(NO_WRAP_START, "asd", NO_WRAP_END)],
@@ -1987,6 +2040,64 @@ def test_format_error(text, args, exc, match, ctx):
             id="no-wrap-break-long-multi-parts",
         ),
         pytest.param(
+            [LinkMarker("https://a.com"), "hello world"],
+            15,
+            {},
+            [
+                [LinkMarker("https://a.com"), Color.NONE, "hello", " ", "world"],
+            ],
+            id="link-no-wrap",
+        ),
+        pytest.param(
+            [LinkMarker("https://a.com"), "this will wrap and keep link"],
+            15,
+            {},
+            [
+                [
+                    LinkMarker("https://a.com"),
+                    Color.NONE,
+                    "this",
+                    " ",
+                    "will",
+                    " ",
+                    "wrap",
+                ],
+                [
+                    LinkMarker("https://a.com"),
+                    Color.NONE,
+                    "and",
+                    " ",
+                    "keep",
+                    " ",
+                    "link",
+                ],
+            ],
+            id="link-wrap",
+        ),
+        pytest.param(
+            [LinkMarker("https://a.com"), "link wrap indent"],
+            10,
+            {"continuation_indent": "  "},
+            [
+                [
+                    LinkMarker("https://a.com"),
+                    Color.NONE,
+                    "link",
+                    " ",
+                    "wrap",
+                ],
+                [
+                    NO_WRAP_START,
+                    Color.NONE,
+                    "  ",
+                    NO_WRAP_END,
+                    LinkMarker("https://a.com"),
+                    "indent",
+                ],
+            ],
+            id="link-wrap-indent-isolation",
+        ),
+        pytest.param(
             [Esc("xxx")],
             7,
             {},
@@ -2950,6 +3061,25 @@ def test_wrap(text, width, kwargs, expect):
                 NO_WRAP_END,
                 Color.FORE_YELLOW,
                 "ghi",
+            ],
+        ),
+        (
+            _s(LinkMarker("https://a.com"), "abc\ndef"),
+            _s(">>"),
+            None,
+            [
+                NO_WRAP_START,
+                Color.NONE,
+                ">>",
+                NO_WRAP_END,
+                LinkMarker("https://a.com"),
+                "abc\n",
+                LinkMarker(None),
+                NO_WRAP_START,
+                ">>",
+                NO_WRAP_END,
+                LinkMarker("https://a.com"),
+                "def",
             ],
         ),
     ],
@@ -5601,6 +5731,48 @@ class TestWithBaseColor:
             expected
         )
         assert str(r) == "".join(part for part in expected if isinstance(part, str))
+
+    class TestLink:
+        @pytest.mark.parametrize(
+            ("value", "url", "expected"),
+            [
+                ("", "https://a.com", []),
+                (
+                    "foo",
+                    "https://a.com",
+                    [LinkMarker("https://a.com"), Color.NONE, "foo"],
+                ),
+                (
+                    _s(Color.FORE_RED, "red"),
+                    "https://a.com",
+                    [LinkMarker("https://a.com"), Color.FORE_RED, "red"],
+                ),
+            ],
+        )
+        def test_link(self, value, url, expected, ctx):
+            r = yuio.string.Link(value, url=url)
+            assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+                expected
+            )
+            assert str(r) == "".join(part for part in expected if isinstance(part, str))
+
+        def test_link_no_colors(self, ostream, istream):
+            ctx = ReprContext(
+                term=yuio.term.Term(ostream, istream), theme=yuio.theme.Theme()
+            )
+            r = yuio.string.Link("foo", url="https://a.com")
+            # When colors/links are not supported, Link appends the URL in brackets.
+            expected = [
+                LinkMarker("https://a.com"),
+                Color.NONE,
+                "foo",
+                NO_WRAP_START,
+                " [https://a.com]",
+                NO_WRAP_END,
+            ]
+            assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+                expected
+            )
 
 
 class TestHr:
