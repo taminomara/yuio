@@ -511,76 +511,152 @@ _PY_STRING_ESCAPES = ReSyntaxHighlighter(
 )
 
 
+_PY_HIGHLIGHTER_INNER = ReSyntaxHighlighter(
+    [
+        (
+            r"\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except"
+            r"|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise"
+            r"|return|try|while|with|yield)\b",
+            "kwd",
+        ),
+        (
+            r'([rfut]*)(""")((?:\\.|[^\\]|\n)*?)(?:(""")|($))',
+            ("str/prefix", "str", _PY_STRING_ESCAPES, "str", "error"),
+        ),
+        (
+            r"([rfut]*)(''')((?:\\.|[^\\]|\n)*?)(?:(''')|($))",
+            ("str/prefix", "str", _PY_STRING_ESCAPES, "str", "error"),
+        ),
+        (
+            r'([rfut]*)(")((?:\\.|[^\\"])*)(?:(")|(\n|$))',
+            ("str/prefix", "str", _PY_STRING_ESCAPES, "str", "error"),
+        ),
+        (
+            r"([rfut]*)(')((?:\\.|[^\\'])*)(?:(')|(\n|$))",
+            ("str/prefix", "str", _PY_STRING_ESCAPES, "str", "error"),
+        ),
+        (
+            r"(?<![\.\w])[+-]?\d+(?:\.\d*(?:e[+-]?\d+)?)?",
+            "lit/num/dec",
+        ),
+        (
+            r"(?<![\.\w])[+-]?\.\d+(?:e[+-]?\d+)?",
+            "lit/num/dec",
+        ),
+        (
+            r"(?<![\.\w])[+-]?0x[0-9a-fA-F]+",
+            "lit/num/hex",
+        ),
+        (
+            r"(?<![\.\w])[+-]?0o[0-7]+",
+            "lit/num/oct",
+        ),
+        (
+            r"(?<![\.\w])[+-]?0b[01]+",
+            "lit/num/bin",
+        ),
+        (
+            r"(?<![\.\w])\b(?:None|True|False)\b",
+            "lit/builtin",
+        ),
+        (
+            r"\b(?:str|int|float|complex|list|tuple|range|dict|set|frozenset|bool"
+            r"|bytes|bytearray|memoryview)\b",
+            "type/builtin",
+        ),
+        (
+            r"\b(?:[A-Z](?:[A-Z0-9_]*?[a-z]\w*)?)\b",
+            "type/user",
+        ),
+        (
+            r"[{}()\[\]\\;,]",
+            "punct",
+        ),
+        (
+            r"\#.*$",
+            "comment",
+        ),
+    ],
+)
+
+
+class _PyHighlighter(SyntaxHighlighter):
+    def highlight(
+        self,
+        code: str,
+        /,
+        *,
+        theme: yuio.theme.Theme,
+        syntax: str,
+        default_color: yuio.color.Color | str | None = None,
+    ) -> yuio.string.ColorizedString:
+        if not code.startswith(">>>"):
+            return _PY_HIGHLIGHTER_INNER.highlight(
+                code, theme=theme, syntax=syntax, default_color=default_color
+            )
+
+        default_color = theme.to_color(default_color)
+
+        blocks = []
+
+        PLAIN_TEXT, CODE = 1, 2
+        state = PLAIN_TEXT
+
+        block: list[str] = []
+        results: list[str] = []
+        for line in code.splitlines(keepends=True):
+            if state == PLAIN_TEXT:
+                if line.startswith(">>>"):
+                    if block:
+                        blocks.append((block, results))
+                    state = CODE
+                    block = [line[3:]]
+                    results = []
+                else:
+                    results.append(line)
+            else:
+                if line.startswith("..."):
+                    block.append(line[3:])
+                else:
+                    results.append(line)
+                    state = PLAIN_TEXT
+        if block:
+            blocks.append((block, results))
+
+        res = yuio.string.ColorizedString(default_color)
+        indent_a = yuio.string.ColorizedString(
+            [
+                default_color | theme.get_color(f"hl/doctest_marker/start:{syntax}"),
+                ">>>",
+            ]
+        )
+        indent_b = yuio.string.ColorizedString(
+            [
+                default_color | theme.get_color(f"hl/doctest_marker/continue:{syntax}"),
+                "...",
+            ]
+        )
+
+        for block, results in blocks:
+            code = "".join(block)
+            res.append_colorized_str(
+                _PY_HIGHLIGHTER_INNER.highlight(
+                    code,
+                    theme=theme,
+                    syntax=syntax,
+                    default_color=default_color,
+                ).indent(indent_a, indent_b)
+            )
+            res.append_str("".join(results))
+
+        return res
+
+
 register_highlighter(
     ["py", "py3", "py-3", "python", "python3", "python-3", "repr"],
-    ReSyntaxHighlighter(
-        [
-            (
-                r"\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except"
-                r"|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise"
-                r"|return|try|while|with|yield)\b",
-                "kwd",
-            ),
-            (
-                r'([rfut]*)(""")((?:\\.|[^\\]|\n)*?)(?:(""")|($))',
-                ("str/prefix", "str", _PY_STRING_ESCAPES, "str", "error"),
-            ),
-            (
-                r"([rfut]*)(''')((?:\\.|[^\\]|\n)*?)(?:(''')|($))",
-                ("str/prefix", "str", _PY_STRING_ESCAPES, "str", "error"),
-            ),
-            (
-                r'([rfut]*)(")((?:\\.|[^\\"])*)(?:(")|(\n|$))',
-                ("str/prefix", "str", _PY_STRING_ESCAPES, "str", "error"),
-            ),
-            (
-                r"([rfut]*)(')((?:\\.|[^\\'])*)(?:(')|(\n|$))",
-                ("str/prefix", "str", _PY_STRING_ESCAPES, "str", "error"),
-            ),
-            (
-                r"(?<![\.\w])[+-]?\d+(?:\.\d*(?:e[+-]?\d+)?)?",
-                "lit/num/dec",
-            ),
-            (
-                r"(?<![\.\w])[+-]?\.\d+(?:e[+-]?\d+)?",
-                "lit/num/dec",
-            ),
-            (
-                r"(?<![\.\w])[+-]?0x[0-9a-fA-F]+",
-                "lit/num/hex",
-            ),
-            (
-                r"(?<![\.\w])[+-]?0o[0-7]+",
-                "lit/num/oct",
-            ),
-            (
-                r"(?<![\.\w])[+-]?0b[01]+",
-                "lit/num/bin",
-            ),
-            (
-                r"(?<![\.\w])\b(?:None|True|False)\b",
-                "lit/builtin",
-            ),
-            (
-                r"\b(?:str|int|float|complex|list|tuple|range|dict|set|frozenset|bool"
-                r"|bytes|bytearray|memoryview)\b",
-                "type/builtin",
-            ),
-            (
-                r"\b(?:[A-Z](?:[A-Z0-9_]*?[a-z]\w*)?)\b",
-                "type/user",
-            ),
-            (
-                r"[{}()\[\]\\;,]",
-                "punct",
-            ),
-            (
-                r"\#.*$",
-                "comment",
-            ),
-        ],
-    ),
+    _PyHighlighter(),
 )
+
 
 register_highlighter(
     ["sh", "bash"],

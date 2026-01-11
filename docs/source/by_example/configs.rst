@@ -20,11 +20,16 @@ Let's create a config for our :doc:`hello world app <hello_world>`:
     import yuio.config
 
     class Config(yuio.config.Config):
-        #: What kind of greeting does a user want?
+        #: What kind of greeting does a user want?  [1]_
         use_formal_greeting: bool = False
 
         #: Who the greeting is coming from?
         sender_name: str | None = None
+
+.. code-annotations::
+
+    1.  Yuio can parse comments above config fields or
+        docstrings below them, similar to Sphinx.
 
 
 Configs are similar to dataclasses, but designed specifically for being loaded
@@ -54,14 +59,29 @@ Let's load our config. We can load it from a file, from environment variables,
 and from CLI arguments:
 
 .. code-block:: python
-    :emphasize-lines: 4-6
+    :emphasize-lines: 8-11
 
     @yuio.app.app
-    def main(cli_config: Config = yuio.app.field(flags=["--cfg"])):
+    def main(
+        #: Configuration options [1]_
+        cli_config: Config = yuio.app.field(
+            flags=["--cfg"]  # [2]_
+        )
+    ):
         config = Config()
         config.update(Config.load_from_json_file(".greet_cfg.json"))
         config.update(Config.load_from_env(prefix="GREET"))
         config.update(cli_config)
+
+.. code-annotations::
+
+    1.  If you provide a documentation comment, or your config has a docstring,
+        then all of its fields will be grouped together.
+
+        See details in the :ref:`next section <argument-groups>`.
+    2.  All flags from config will be prefixed with ``--cfg-...``.
+
+        Use :func:`yuio.config.inline <yuio.app.inline>` to disable prefixing.
 
 We simply load configs from all available sources and merge them together.
 
@@ -79,30 +99,6 @@ to merge configs in such a way::
     >>> config_1.update(Config(a="custom a 2"))
     >>> config_1
     Config(a='custom a 2', b='custom b')
-
-
-Adding verification
--------------------
-
-You can add additional verification method to your config. It will be called
-every time a new config is loaded from a new source:
-
-.. code-block:: python
-    :emphasize-lines: 10-13
-
-    class Config(yuio.config.Config):
-        #: What kind of greeting does a user want?
-        use_formal_greeting: bool = False
-
-        #: Who the greeting is coming from?
-        sender_name: str | None = None
-
-        def validate_config(self):
-            if self.sender_name == "guest":
-                raise yuio.parse.ParsingError(
-                    "Sending greetings from `%r` is not allowed",
-                    self.sender_name,
-                )
 
 
 Complex field merging

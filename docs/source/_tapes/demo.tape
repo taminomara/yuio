@@ -1,8 +1,8 @@
 Set FontSize 26
 
-Source "docs/source/_tapes/_config.tape"
-
 Env "COLUMNS" "68"
+
+Source "docs/source/_tapes/_config.tape"
 
 Hide
 Type "python"

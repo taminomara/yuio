@@ -112,54 +112,6 @@ def dedent(msg: str, /):
 
 
 _COMMENT_RE = _re.compile(r"^\s*#:(.*)\r?\n?$")
-_RST_ROLE_RE = _re.compile(
-    r"(?::[\w+.:-]+:|__?)?`((?:[^`\n\\]|\\.)+)`(?::[\w+.:-]+:|__?)?", _re.DOTALL
-)
-_RST_ROLE_TITLE_RE = _re.compile(
-    r"^((?:[^`\n\\]|\\.)*) <(?:[^`\n\\]|\\.)*>$", _re.DOTALL
-)
-_ESC_RE = _re.compile(r"\\(.)", _re.DOTALL)
-
-
-def _rst_esc_repl(match: _re.Match[str]):
-    symbol = match.group(1)
-    if symbol in "\n\r\t\v\b":
-        return " "
-    return symbol
-
-
-def _rst_repl(match: _re.Match[str]):
-    full: str = match.group(0)
-    text: str = match.group(1)
-    if full.startswith(":") or full.endswith(":"):
-        if title_match := _RST_ROLE_TITLE_RE.match(text):
-            text = title_match.group(1)
-        elif text.startswith("~"):
-            text = text.rsplit(".", maxsplit=1)[-1]
-    text = _ESC_RE.sub(_rst_esc_repl, text)
-    n_backticks = 0
-    cur_n_backticks = 0
-    for ch in text:
-        if ch == "`":
-            cur_n_backticks += 1
-        else:
-            n_backticks = max(cur_n_backticks, n_backticks)
-            cur_n_backticks = 0
-    n_backticks = max(cur_n_backticks, n_backticks)
-    if not n_backticks:
-        return f"`{text}`"
-    else:
-        bt = "`" * (n_backticks + 1)
-        return f"{bt} {text} {bt}"
-
-
-def _process_docstring(msg: str, /, only_first_paragraph: bool = True):
-    value = dedent(msg).removesuffix("\n")
-
-    if only_first_paragraph and (index := value.find("\n\n")) != -1:
-        value = value[:index]
-
-    return _RST_ROLE_RE.sub(_rst_repl, value)
 
 
 def _find_docs(obj: _t.Any, /) -> dict[str, str]:
@@ -210,7 +162,7 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
                 and isinstance(stmt.value, ast.Constant)
                 and isinstance(stmt.value.value, str)
             ):
-                docs[last_field] = _process_docstring(stmt.value.value)
+                docs[last_field] = dedent(stmt.value.value).removesuffix("\n")
             last_field = None
             if isinstance(stmt, ast.AnnAssign):
                 target = stmt.target
@@ -238,7 +190,7 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
                 break
 
         if comment_lines:
-            docs[name] = _process_docstring("\n".join(reversed(comment_lines)))
+            docs[name] = dedent("\n".join(reversed(comment_lines))).removesuffix("\n")
 
     return docs
 

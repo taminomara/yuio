@@ -38,7 +38,7 @@ docstring will become app's :attr:`~App.description`.
 
 Help messages for the flags are parsed from line comments
 right above the field definition (comments must start with ``#:``).
-They are all formatted using Markdown (see :mod:`yuio.md`).
+They are all formatted using Markdown or RST depending on :attr:`App.doc_format`.
 
 Parsers for CLI argument values are derived from type hints.
 Use the `parser` parameter of the :func:`field` function to override them.
@@ -153,6 +153,8 @@ help formatting using its arguments:
     .. autoattribute:: bug_report
 
     .. autoattribute:: is_dev_mode
+
+    .. autoattribute:: doc_format
 
 
 Creating sub-commands
@@ -421,6 +423,7 @@ import yuio.cli
 import yuio.complete
 import yuio.config
 import yuio.dbg
+import yuio.doc
 import yuio.io
 import yuio.parse
 import yuio.string
@@ -504,6 +507,7 @@ def app(
     version: str | None = None,
     bug_report: yuio.dbg.ReportSettings | bool = False,
     is_dev_mode: bool | None = None,
+    doc_format: _t.Literal["md", "rst"] | yuio.doc.DocParser | None = None,
 ) -> _t.Callable[[C], App[C]]: ...
 @_t.overload
 def app(
@@ -517,6 +521,7 @@ def app(
     version: str | None = None,
     bug_report: yuio.dbg.ReportSettings | bool = False,
     is_dev_mode: bool | None = None,
+    doc_format: _t.Literal["md", "rst"] | yuio.doc.DocParser | None = None,
 ) -> App[C]: ...
 def app(
     command: _t.Callable[..., None | bool] | None = None,
@@ -535,6 +540,7 @@ def app(
     version: str | None = None,
     bug_report: yuio.dbg.ReportSettings | bool = False,
     is_dev_mode: bool | None = None,
+    doc_format: _t.Literal["md", "rst"] | yuio.doc.DocParser | None = None,
 ) -> _t.Any:
     """
     Create an application.
@@ -570,6 +576,8 @@ def app(
         adds the :flag:`--bug-report` flag.
     :param is_dev_mode:
         enables additional logging, see :attr:`App.is_dev_mode`.
+    :param doc_format:
+        overrides program's documentation format, see :attr:`App.doc_format`.
     :returns:
         an :class:`App` object that wraps the original function.
 
@@ -589,6 +597,7 @@ def app(
             version=version,
             bug_report=bug_report,
             is_dev_mode=is_dev_mode,
+            doc_format=doc_format,
         )
 
     if command is None:
@@ -696,6 +705,7 @@ class App(_t.Generic[C]):
         version: str | None = None,
         bug_report: yuio.dbg.ReportSettings | bool = False,
         is_dev_mode: bool | None = None,
+        doc_format: _t.Literal["md", "rst"] | yuio.doc.DocParser | None = None,
     ):
         self.prog: str | None = prog
         """
@@ -737,26 +747,25 @@ class App(_t.Generic[C]):
         """
 
         if not description and command.__doc__:
-            description = yuio.util._process_docstring(
-                command.__doc__, only_first_paragraph=False
-            )
+            description = yuio.util.dedent(command.__doc__).removesuffix("\n")
 
         self.description: str | None = description
         """
         Text that is shown before CLI flags help, usually contains
         short description of the program or subcommand.
 
-        The text should be formatted using markdown. For example:
+        The text should be formatted using Markdown or RST,
+        depending on :attr:`~App.doc_format`. For example:
 
         .. code-block:: python
 
-           @app
+           @yuio.app.app(doc_format="md")
            def main(): ...
 
            main.description = \"""
            This command does a thing.
 
-           # Different ways to do a thing:
+           # Different ways to do a thing
 
            This command can apply multiple algorithms to achieve
            a necessary state in which a thing can be done. This includes:
@@ -793,7 +802,8 @@ class App(_t.Generic[C]):
         """
         Text that is shown after the main portion of the help message.
 
-        Text format is identical to the one for :attr:`~App.description`.
+        The text should be formatted using Markdown or RST,
+        depending on :attr:`~App.doc_format`.
 
         """
 
@@ -863,6 +873,14 @@ class App(_t.Generic[C]):
             variable ``YUIO_DEBUG``.
 
             If enabled, full log will be saved to ``YUIO_DEBUG_FILE``.
+
+        """
+
+        self.doc_format: _t.Literal["md", "rst"] | yuio.doc.DocParser = (
+            doc_format or "rst"
+        )
+        """
+        Format or parser that will be used to interpret documentation.
 
         """
 
@@ -1034,8 +1052,20 @@ class App(_t.Generic[C]):
             if self.is_dev_mode:
                 yuio.enable_internal_logging(add_handler=True)
 
+            help_parser = self.doc_format
+            if help_parser == "md":
+                from yuio.md import MdParser
+
+                help_parser = MdParser()
+            elif help_parser == "rst":
+                from yuio.rst import RstParser
+
+                help_parser = RstParser()
+
             cli_command = self.__make_cli_command(root=True)
-            namespace = yuio.cli.CliParser(cli_command).parse(args)
+            namespace = yuio.cli.CliParser(
+                cli_command, help_parser=help_parser, allow_abbrev=self.allow_abbrev
+            ).parse(args)
 
             if self.setup_logging:
                 logging_level = {

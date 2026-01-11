@@ -12,9 +12,14 @@ Let's begin by setting up a very simple CLI app:
 .. literalinclude:: /../../examples/docs/hw_first_yuio_app.py
     :language: python
 
+.. code-annotations::
 
-This is it! You now have a CLI app that greets you. Main function's parameters
-become CLI arguments, and their type hints are used to parse arguments. Let's run it:
+    1.  :func:`~yuio.app.app` accepts useful settings in its constructor.
+    2.  Function arguments become CLI flags.
+    3.  :meth:`~yuio.app.App.run` parses CLI arguments and invokes ``main``.
+
+
+This is it! You now have a CLI app that greets you. Let's run it:
 
 .. vhs-inline::
     :scale: 40%
@@ -37,7 +42,14 @@ We want colors, so it's time to switch from bare :func:`print` to :mod:`yuio.io`
 .. literalinclude:: /../../examples/docs/hw_something_colorful.py
     :language: python
     :lines: 1-7
-    :emphasize-lines: 2,6,7
+
+.. code-annotations::
+
+    1.  :mod:`yuio.io` has everything for interacting with users.
+    2.  ``<c ...>`` is a color tag. Read about its syntax
+        in :ref:`yuio.io <color-tags>`, see full list of tags in
+        :ref:`yuio.theme <common-tags>`.
+    3.  Backticks work like in Markdown.
 
 .. vhs-inline::
     :scale: 40%
@@ -48,38 +60,27 @@ We want colors, so it's time to switch from bare :func:`print` to :mod:`yuio.io`
     Enter
     Sleep 6s
 
-Tada, now our greeting is ✨colorful✨! Yuio parses :ref:`color tags <color-tags>`
-and backticks in messages. Here's the list of color tags available from the box:
-
--   ``code``, ``note``, ``path``: highlights,
--   ``bold``, ``b``, ``dim``, ``d``, ``italic``, ``i``,
-    ``underline``, ``u``, ``inverse``: font style,
--   ``normal``, ``muted``, ``red``, ``green``, ``yellow``, ``blue``,
-    ``magenta``, ``cyan``: colors.
-
-You can add more with :doc:`themes </internals/theme>`.
+Tada, now our greeting is ✨colorful✨!
 
 
 Flags and positional arguments
 ------------------------------
 
-This is good, but we want a shorter flag for :flag:`--greeting`. And we'd like to add
-an option to output the greeting to a file.
-
-Well, :func:`yuio.app.field` and :func:`yuio.app.positional` got you there:
+Let's add a shorter flag for :flag:`--greeting`, and add an option to output
+the greeting to a file:
 
 .. literalinclude:: /../../examples/docs/hw_flags.py
     :language: python
     :lines: 1-13
-    :emphasize-lines: 1,7,8
 
-We've added a short flag for :flag:`--greeting` using :func:`yuio.app.field`.
-We've also added an optional positional argument for output file
-using :func:`yuio.app.positional`.
+.. code-annotations::
 
-Note that we use :class:`pathlib.Path` instead of :class:`str`.
-This will tell Yuio that we're expecting a path, so the library
-will handle it accordingly.
+    1.  We use :class:`pathlib.Path` instead of :class:`str`. This tells Yuio
+        that you expect a file path, which affects autocompletion.
+    2.  :func:`yuio.app.field` allows customizing settings for app arguments
+        and config fields.
+    3.  :func:`yuio.app.positional` is a convenience shortcut
+        for :func:`yuio.app.field`.
 
 
 Adding help for CLI arguments
@@ -89,11 +90,16 @@ Finally, let's add some help messages to document our CLI options:
 
 .. literalinclude:: /../../examples/docs/hw_help.py
     :language: python
-    :lines: 5-13
-    :emphasize-lines: 3,5,8
+    :lines: 5-16
+
+.. code-annotations::
+
+    1.  Default format is RST, but you can use Markdown instead.
+    2.  Help for individual parameters can be added with documentation comments.
+    3.  Function's docstring becomes the main help message.
 
 Yuio parses comments of your python files, so help messages
-can be just markdown docstrings!
+can be just RST or Markdown docstrings!
 
 .. vhs-inline::
     :scale: 40%
@@ -105,6 +111,3 @@ can be just markdown docstrings!
     Sleep 1s
     Down@1s 6
     Sleep 4s
-
-You can read about which markdown features Yuio supports
-in the documentation for :mod:`yuio.md`.

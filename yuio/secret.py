@@ -8,6 +8,13 @@
 """
 Utility types for working with secret data.
 
+Using these types ensures that their values don't end up in error messages
+or logs. This also causes :func:`yuio.io.ask` to use special widgets that don't
+print entered text:
+
+.. vhs:: /_tapes/secrets.tape
+    :alt: Demonstration of the `ask` function with secret data.
+    :scale: 40%
 
 .. autoclass:: SecretValue
     :members:

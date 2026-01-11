@@ -65,6 +65,8 @@ to the one from :mod:`logging`. Messages are highlighted using
 
 .. autofunction:: md
 
+.. autofunction:: rst
+
 .. autofunction:: hl
 
 .. autofunction:: br
@@ -174,9 +176,23 @@ You can combine multiple colors in the same tag:
 
 Only tags that appear in the message itself are processed:
 
-.. code-block:: python
+.. tab-set::
+    :sync-group: formatting-method
 
-    yuio.io.info("Tags in this message --> %s are printed as-is", "<c color>")
+    .. tab-item:: Printf-style formatting
+        :sync: printf
+
+        .. code-block:: python
+
+            yuio.io.info("Tags in this message --> %s are printed as-is", "<c color>")
+
+    .. tab-item:: Template strings
+        :sync: template
+
+        .. code-block:: python
+
+            value = "<c color>"
+            yuio.io.info(t"Tags in this message --> {value} are printed as-is")
 
 For highlighting inline code, Yuio supports parsing CommonMark's backticks:
 
@@ -185,15 +201,13 @@ For highlighting inline code, Yuio supports parsing CommonMark's backticks:
     yuio.io.info("Using the `backticks`.")
     yuio.io.info("Using the `` nested `backticks` ``")
 
-List of all tags that are available by default:
+Any punctuation symbol can be escaped with backslash:
 
--   ``code``, ``note``, ``path``: highlights,
--   ``bold``, ``b``, ``dim``, ``d``, ``italic``, ``i``,
-    ``underline``, ``u``, ``inverse``: font style,
--   ``normal``, ``muted``, ``red``, ``green``, ``yellow``, ``blue``,
-    ``magenta``, ``cyan``: colors.
+.. code-block:: python
 
-You can add more with :doc:`themes </internals/theme>`.
+    yuio.io.info("\\`\\<c red> this is normal text \\</c>\\`.")
+
+See full list of tags in :ref:`yuio.theme <common-tags>`.
 
 
 Formatting utilities
@@ -278,6 +292,8 @@ using the :class:`SuspendOutput` context manager.
 
     .. automethod:: md
 
+    .. automethod:: rst
+
     .. automethod:: hl
 
     .. automethod:: br
@@ -298,8 +314,8 @@ you can add a :class:`Handler`:
 .. autoclass:: Formatter
 
 
-Helper types
-------------
+Helpers
+-------
 
 .. type:: ExcInfo
     :canonical: tuple[type[BaseException] | None, BaseException | None, types.TracebackType | None]
@@ -359,6 +375,11 @@ Re-imports
     :no-index:
 
     Alias of :obj:`yuio.string.Md`.
+
+.. type:: Rst
+    :no-index:
+
+    Alias of :obj:`yuio.string.Rst`.
 
 .. type:: Or
     :no-index:
@@ -434,6 +455,7 @@ from yuio.string import (
     Md,
     Or,
     Repr,
+    Rst,
     Stack,
     TypeRepr,
     WithBaseColor,
@@ -465,6 +487,7 @@ __all__ = [
     "Md",
     "Or",
     "Repr",
+    "Rst",
     "Stack",
     "SuspendOutput",
     "Task",
@@ -492,6 +515,7 @@ __all__ = [
     "orig_stdout",
     "raw",
     "restore_streams",
+    "rst",
     "setup",
     "streams_wrapped",
     "success",
@@ -1045,15 +1069,15 @@ def md(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **k
 
     Print a markdown-formatted text.
 
-    Yuio supports all CommonMark block markup except tables. Inline markup is limited
-    to backticks and color tags. See :mod:`yuio.md` for more info.
+    Yuio supports all CommonMark block markup except tables.
+    See :mod:`yuio.md` for more info.
 
     :param msg:
         message to print.
     :param args:
         arguments for ``%``\\ -formatting the message.
     :param dedent:
-        whether to remove leading indent from markdown.
+        whether to remove leading indent from `msg`.
     :param allow_headings:
         whether to render headings as actual headings or as paragraphs.
     :param kwargs:
@@ -1063,6 +1087,45 @@ def md(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **k
 
     info(
         yuio.string.Md(msg, *args, dedent=dedent, allow_headings=allow_headings),
+        **kwargs,
+    )
+
+
+@_t.overload
+def rst(
+    msg: _t.LiteralString,
+    /,
+    *args,
+    dedent: bool = True,
+    allow_headings: bool = True,
+    **kwargs,
+): ...
+@_t.overload
+def rst(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs): ...
+def rst(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs):
+    """rst(msg: typing.LiteralString, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs)
+    rst(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs) ->
+
+    Print a RST-formatted text.
+
+    Yuio supports all RST block markup except tables and field lists.
+    See :mod:`yuio.rst` for more info.
+
+    :param msg:
+        message to print.
+    :param args:
+        arguments for ``%``\\ -formatting the message.
+    :param dedent:
+        whether to remove leading indent from `msg`.
+    :param allow_headings:
+        whether to render headings as actual headings or as paragraphs.
+    :param kwargs:
+        any additional keyword arguments will be passed to :func:`raw`.
+
+    """
+
+    info(
+        yuio.string.Rst(msg, *args, dedent=dedent, allow_headings=allow_headings),
         **kwargs,
     )
 
@@ -1140,16 +1203,16 @@ def hl(
     """hl(msg: typing.LiteralString, /, *args, syntax: str, dedent: bool = True, **kwargs)
     hl(msg: str, /, *, syntax: str, dedent: bool = True, **kwargs) ->
 
-    Print highlighted code. See :mod:`yuio.md` for more info.
+    Print highlighted code. See :mod:`yuio.hl` for more info.
 
     :param msg:
         code to highlight.
     :param args:
         arguments for ``%``-formatting the highlighted code.
     :param syntax:
-        name of syntax or a :class:`~yuio.md.SyntaxHighlighter` instance.
+        name of syntax or a :class:`~yuio.hl.SyntaxHighlighter` instance.
     :param dedent:
-        whether to remove leading indent from code.
+        whether to remove leading indent from `msg`.
     :param kwargs:
         any additional keyword arguments will be passed to :func:`raw`.
 
@@ -2236,6 +2299,21 @@ class SuspendOutput:
 
         kwargs.setdefault("ignore_suspended", True)
         md(msg, *args, **kwargs)
+
+    @_t.overload
+    def rst(self, msg: _t.LiteralString, /, *args, **kwargs): ...
+    @_t.overload
+    def rst(self, msg: str, /, **kwargs): ...
+    def rst(self, msg: str, /, *args, **kwargs):
+        """rst(msg: typing.LiteralString, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs)
+        rst(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs)
+
+        Log an :func:`rst` message, ignore suspended status.
+
+        """
+
+        kwargs.setdefault("ignore_suspended", True)
+        rst(msg, *args, **kwargs)
 
     def br(self, **kwargs):
         """br()

@@ -2,6 +2,7 @@ import yuio
 import yuio.cli
 import yuio.config
 import yuio.parse
+import yuio.rst
 
 import pytest
 
@@ -210,7 +211,9 @@ def parse_args(
         dest=dest,
         ns_dest=ns_dest,
     )
-    parser = yuio.cli.CliParser(command, allow_abbrev=allow_abbrev)
+    parser = yuio.cli.CliParser(
+        command, allow_abbrev=allow_abbrev, help_parser=yuio.rst.RstParser()
+    )
     return parser.parse(args or [])
 
 
@@ -979,7 +982,9 @@ class TestRequiredAndShadowedFlags:
             dest="subcommand",
             ns_dest="sub_ns",
         )
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with pytest.warns(yuio.cli.CliWarning, match="shadows"):
             ns = parser.parse(["sub", "--name", "value"])
         assert ns["sub_ns"]["sub_name"] == "value"
@@ -998,7 +1003,9 @@ class TestRequiredAndShadowedFlags:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with pytest.raises(yuio.cli.ArgumentError, match="required"):
             parser.parse([])
 
@@ -1026,7 +1033,9 @@ class TestRequiredAndShadowedFlags:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(args)
         assert ns["required"] == "value"
         assert ns["subcommand"] == "sub"
@@ -1053,7 +1062,9 @@ class TestRequiredAndShadowedFlags:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with (
             pytest.warns(yuio.cli.CliWarning, match="shadows"),
             pytest.raises(yuio.cli.ArgumentError, match="required"),
@@ -1088,7 +1099,9 @@ class TestRequiredAndShadowedFlags:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with pytest.warns(yuio.cli.CliWarning, match="shadows"):
             ns = parser.parse(["--name", "parent_value", "sub", "--name", "sub_value"])
         assert ns["parent_name"] == "parent_value"
@@ -1109,7 +1122,9 @@ class TestRequiredAndShadowedFlags:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with pytest.raises(yuio.cli.ArgumentError, match="required"):
             parser.parse(["sub"])
 
@@ -1128,7 +1143,9 @@ class TestRequiredAndShadowedFlags:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["sub", "--required-sub", "value"])
         assert ns["sub_ns"]["required_sub"] == "value"
 
@@ -1147,7 +1164,9 @@ class TestRequiredAndShadowedFlags:
         )
         command = make_command(options=[opt1, opt2])
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with pytest.raises(yuio.cli.ArgumentError, match="required"):
             parser.parse([])
 
@@ -1168,7 +1187,9 @@ class TestRequiredAndShadowedFlags:
             options=[opt1, opt2],
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with pytest.raises(yuio.cli.ArgumentError, match="required"):
             parser.parse(["--req1", "val1"])
 
@@ -1189,7 +1210,9 @@ class TestRequiredAndShadowedFlags:
             options=[opt1, opt2],
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["--req1", "val1", "--req2", "val2"])
         assert ns["req1"] == "val1"
         assert ns["req2"] == "val2"
@@ -1209,7 +1232,9 @@ class TestRequiredAndShadowedFlags:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         # No subcommand given - should succeed even though sub has required flag
         ns = parser.parse([])
         assert "subcommand" not in ns
@@ -1231,7 +1256,9 @@ class TestRequiredAndShadowedFlags:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         # Using sub2 - should succeed even though sub1 has required flag
         ns = parser.parse(["sub2"])
         assert ns["subcommand"] == "sub2"
@@ -1247,7 +1274,9 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with pytest.raises(yuio.cli.ArgumentError):
             parser.parse([])
 
@@ -1260,7 +1289,9 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["sub"])
         assert ns["subcommand"] == "sub"
 
@@ -1279,7 +1310,9 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["--flag"])
         assert ns["flag"] is True
         assert "subcommand" not in ns
@@ -1299,7 +1332,9 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["--flag", "sub"])
         assert ns["flag"] is True
         assert ns["subcommand"] == "sub"
@@ -1324,7 +1359,9 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="sub_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["cmd", "--sub", "--root"])
         assert ns["root"] is True
         assert ns["subcommand"] == "cmd"
@@ -1341,16 +1378,22 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="action_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
 
         ns = parser.parse(["build"])
         assert ns["action"] == "build"
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["test"])
         assert ns["action"] == "test"
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["deploy"])
         assert ns["action"] == "deploy"
 
@@ -1364,11 +1407,15 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="action_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["build"])
         assert ns["action"] == "build"
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["b"])
         assert ns["action"] == "build"  # Should resolve to canonical name
 
@@ -1388,19 +1435,25 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="outer_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         # No subcommand
         ns = parser.parse([])
         assert "outer_cmd" not in ns
 
         # Just outer
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["outer"])
         assert ns["outer_cmd"] == "outer"
         assert "inner_cmd" not in ns["outer_ns"]
 
         # Both outer and inner
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["outer", "inner"])
         assert ns["outer_cmd"] == "outer"
         assert ns["outer_ns"]["inner_cmd"] == "inner"
@@ -1421,18 +1474,24 @@ class TestOptionalVsRequiredSubcommands:
             ns_dest="outer_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         # No subcommand - OK since outer is optional
         ns = parser.parse([])
         assert "outer_cmd" not in ns
 
         # Just outer without inner - should fail
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         with pytest.raises(yuio.cli.ArgumentError):
             parser.parse(["outer"])
 
         # Both outer and inner - OK
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["outer", "inner"])
         assert ns["outer_cmd"] == "outer"
         assert ns["outer_ns"]["inner_cmd"] == "inner"
@@ -1455,7 +1514,9 @@ class TestSubcommandEdgeCases:
             ns_dest="cmd_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         # --mode takes "fast" as argument, "run" is subcommand
         ns = parser.parse(["--mode", "fast", "run"])
         assert ns["mode"] == "fast"
@@ -1477,7 +1538,9 @@ class TestSubcommandEdgeCases:
             ns_dest="cmd_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         ns = parser.parse(["config.yaml", "run"])
         assert ns["config"] == "config.yaml"
         assert ns["cmd"] == "run"
@@ -1498,7 +1561,9 @@ class TestSubcommandEdgeCases:
             ns_dest="cmd_ns",
         )
 
-        parser = yuio.cli.CliParser(command)
+        parser = yuio.cli.CliParser(
+            command, allow_abbrev=False, help_parser=yuio.rst.RstParser()
+        )
         # Using -- to force "--weird-name" to be treated as positional/subcommand
         ns = parser.parse(["--", "--weird-name"])
         assert ns["cmd"] == "--weird-name"

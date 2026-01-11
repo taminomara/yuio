@@ -6,8 +6,7 @@ def main():
     ALLOWED_VALUES = ["foo", "bar", "baz"]
 
     yuio.io.info(
-        "Allowed values: %s",
-        yuio.io.JoinRepr(ALLOWED_VALUES, color="magenta"),  # [1]_
+        t"Allowed values: {yuio.io.JoinRepr(ALLOWED_VALUES, color='magenta')}",  # [1]_
     )
 
 if __name__ == "__main__":

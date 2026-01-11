@@ -10,7 +10,7 @@ class CoordinateSystem:
 @yuio.app.app
 def main():
     coordinates = CoordinateSystem()
-    yuio.io.info(t"Main coordinate system:\n{coordinates!r:#+}")
+    yuio.io.info(t"Main coordinate system: {coordinates!r:#+}")
 
 if __name__ == "__main__":
     main.run()

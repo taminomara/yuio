@@ -29,6 +29,7 @@ extensions = [
     "sphinx_vhs",
     "sphinx_syntax",
     "nice_toc",
+    "code_annotations",
     "api_ref",
     "yuio_objects",
 ]
@@ -100,6 +101,7 @@ html_js_files = [
         "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js",
         {"defer": "defer"},
     ),
+    "code-annotations.js",
 ]
 html_theme_options = {
     "source_repository": "https://github.com/taminomara/yuio",

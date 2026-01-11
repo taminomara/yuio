@@ -1,0 +1,4 @@
+Doc
+===
+
+.. automodule:: yuio.doc

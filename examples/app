@@ -14,18 +14,25 @@ _logger = logging.getLogger(__name__)
 
 
 class Config(yuio.config.Config):
-    """Global options.
+    """
+    Global options
 
     Global options are loaded from ``./app_config.json``,
     from environment variables, and from CLI arguments.
 
     """
 
-    #: Number of threads to use for executing model.
     threads: Annotated[int, yuio.parse.Ge(1)] = 4
+    """
+    Number of threads to use for executing model.
 
-    #: Enable or disable gpu.
+    """
+
     gpu: bool = True
+    """
+    Enable or disable gpu.
+
+    """
 
 
 # We will load values into this variable once the program starts.
@@ -40,7 +47,10 @@ CONFIG = Config()
 def main(
     config: Config = yuio.config.inline(),
 ):
-    """Some ml stuff idk im not into ml."""
+    """
+    Some ml stuff idk im not into ml.
+
+    """
 
     # Load global config:
 
@@ -58,31 +68,73 @@ def main(
 
 
 main.epilog = """
-# Formatting:
+Formatting
+----------
 
-Prolog is formatted using the standard markdown. All markdown blocks are supported.
-Inline markup is not, though: you can only use backticks and color tags.
+Prolog is formatted using ReStructuredText. Yuio supports all RST formatting except
+tables and option lists. It also doesn't have access to all RST directives and roles,
+so only a limited subset of them is available.
 
 Example of what we can do:
 
-- quotes:
 
-  > Beautiful python\v
-  > Explicit and simple form\v
-  > Winding through clouds
-  >
-  >     -- from heroku art
+Quotes
+~~~~~~
 
-- code blocks:
+    | Beautiful python
+    | Explicit and simple form
+    | Winding through clouds
+    |
+    | -- from heroku art
 
-  ```py
-  for i in range(10):
-      print(f"Hello, {i}!")
-  ```
 
-- color tags are supported, as well as `backticks`! Btw, backticks highlight
-  `--flags` with appropriate color too!
+Numbered lists
+~~~~~~~~~~~~~~
 
+1.  First item,
+#.  second item,
+
+a.  or using letters,
+#.  continues.
+
+
+Code blocks
+~~~~~~~~~~~
+
+.. code-block:: python
+
+    for i in range(10):
+        print(f"Hello, {i}!")
+
+
+Admonitions
+~~~~~~~~~~~
+
+.. note::
+
+    This is an admonition.
+
+
+Definition and field lists
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+term
+    Definition of the term.
+
+:field: Contents of the field.
+
+
+Inline markup
+~~~~~~~~~~~~~
+
+- **strong**,
+- *emphasis*,
+- flag role: :flag:`--flag`,
+- python roles: :class:`~yuio.app.App`,
+- footnotes [#]_ and hyperlinks__.
+
+__ https://example.com
+.. [#] This is a footnote.
 """
 
 

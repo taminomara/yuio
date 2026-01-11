@@ -1,7 +1,6 @@
 import pathlib
 import yuio.app
 import yuio.config
-import yuio.io
 
 class ExecutorConfig(yuio.config.Config):
     #: Number of threads to use.
@@ -16,7 +15,7 @@ def main(
     #: File to process.
     input: pathlib.Path = yuio.app.positional(),
 ):
-    yuio.io.info("Executor config: `%#+r`", executor_config)
+    ...
 
 if __name__ == "__main__":
     main.run()

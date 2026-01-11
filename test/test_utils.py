@@ -145,33 +145,6 @@ def test_find_docs(obj, expected):
 @pytest.mark.parametrize(
     ("doc", "expected"),
     [
-        ("Simple doc.", "Simple doc."),
-        ("HTTP header.", "HTTP header."),
-        ("something...", "something..."),
-        ("A beautiful string", "A beautiful string"),
-        ("A.2", "A.2"),
-        ("Paragraph 1\nline 2\n\nparagraph 2", "Paragraph 1\nline 2"),
-        ("some :class:`Foo.bar` method", "some `Foo.bar` method"),
-        ("some `Foo.bar`:class: method", "some `Foo.bar` method"),
-        ("some :py:some-role:`title <Foo.bar>` method", "some `title` method"),
-        ("`rst link`_", "`rst link`"),
-        ("`rst link`__", "`rst link`"),
-        ("`~Foo.bar.baz`", "`~Foo.bar.baz`"),
-        ("``~Foo.bar.baz``", "``~Foo.bar.baz``"),
-        (":class:`~Foo.bar.baz`", "`baz`"),
-        ("`~Foo.bar.baz`:class:", "`baz`"),
-        ("`literal \\` with \\` backticks`", "`` literal ` with ` backticks ``"),
-        ("`literal \\`\\`with\\`\\` backticks`", "``` literal ``with`` backticks ```"),
-        ("`literal\\\nwith\\\nnewline`", "`literal with newline`"),
-    ],
-)
-def test_process_docstring(doc, expected):
-    assert yuio.util._process_docstring(doc) == expected
-
-
-@pytest.mark.parametrize(
-    ("doc", "expected"),
-    [
         ("", ""),
         ("foo", "foo\n"),
         ("foo\n\n", "foo\n"),

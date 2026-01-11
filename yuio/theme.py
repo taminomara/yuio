@@ -1241,8 +1241,11 @@ class BaseTheme(Theme):
         #
         # Common tags
         # -----------
-        "code": "italic",
+        "code": "underline",
         "note": "cyan",
+        "strong": "note",
+        "em": "italic",
+        "footnote": "muted",
         "path": "code",
         "flag": "note",
         #
@@ -1300,7 +1303,9 @@ class DefaultTheme(BaseTheme):
         "thematic_break": "-" * 8,
         "list": "*   ",
         "quote": ">   ",
-        "code": " " * 8,
+        "code": "    ",
+        "admonition/title": "",
+        "admonition/body": "    ",
         "overflow": "~",
         "progress_bar/start_symbol": "[",
         "progress_bar/end_symbol": "]",
@@ -1373,7 +1378,9 @@ class DefaultTheme(BaseTheme):
         "thematic_break": "╌╌╌╌╌╌╌╌",
         "list": "•   ",
         "quote": ">   ",
-        "code": " " * 8,
+        "code": "    ",
+        "admonition/title": "",
+        "admonition/body": "    ",
         "overflow": "…",
         "hr/1/left_start": "─",
         "hr/1/left_middle": "─",
@@ -1436,6 +1443,7 @@ class DefaultTheme(BaseTheme):
 
     colors = {
         "note": "accent_color_2",
+        "footnote": "secondary_color",
         #
         # Main settings
         # -------------
@@ -1471,6 +1479,24 @@ class DefaultTheme(BaseTheme):
         "msg/text:failure": "heading_color error_color",
         "msg/text:info": "primary_color",
         "msg/text:thematic_break": "secondary_color",
+        "admonition": "blue",
+        "admonition/title": "bold",
+        "admonition:attention": "warning_color",
+        "admonition:caution": "warning_color",
+        "admonition:danger": "error_color",
+        "admonition:error": "error_color",
+        "admonition:hint": "success_color",
+        "admonition:important": "warning_color",
+        "admonition:seealso": "success_color",
+        "admonition:tip": "success_color",
+        "admonition:warning": "warning_color",
+        "admonition:versionadded": "success_color",
+        "admonition:versionchanged": "warning_color",
+        "admonition:deprecated": "error_color",
+        "admonition/title:definition": "heading_color",
+        "admonition/title:field": "heading_color",
+        "admonition:definition": "primary_color",
+        "admonition:field": "primary_color",
         #
         # Log messages
         # ------------
@@ -1541,6 +1567,8 @@ class DefaultTheme(BaseTheme):
         "hl/added": "green",
         "hl/removed": "red",
         "hl/error": "bold error_color",
+        "hl/doctest_marker": "accent_color",
+        "hl/doctest_marker/continue": "secondary_color",
         "tb/heading": "bold error_color",
         "tb/message": "tb/heading",
         "tb/frame/usr/file/module": "accent_color",

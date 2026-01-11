@@ -187,16 +187,14 @@ import contextlib
 import dataclasses
 import functools
 import re
-import string
 import sys
 import warnings
 from dataclasses import dataclass
 
 import yuio
-import yuio.color
 import yuio.complete
+import yuio.doc
 import yuio.hl
-import yuio.md
 import yuio.parse
 import yuio.string
 import yuio.util
@@ -489,6 +487,7 @@ class ArgumentError(yuio.PrettyException, ValueError):
         self.commandline: list[str] | None = None
         self.prog: str | None = None
         self.subcommands: list[str] | None = None
+        self.help_parser: yuio.doc.DocParser | None = None
 
     @classmethod
     def from_parsing_error(
@@ -624,10 +623,10 @@ class ArgumentError(yuio.PrettyException, ValueError):
             return None
 
     def _make_usage(self):
-        if not self.option or not self.option.help:
+        if not self.option or not self.option.help or not self.help_parser:
             return None
         else:
-            return _ShortUsageFormatter(self.subcommands, self.option)
+            return _ShortUsageFormatter(self.help_parser, self.subcommands, self.option)
 
 
 class Namespace(_t.Protocol):
@@ -712,13 +711,6 @@ class HelpGroup:
     Help message for an option.
 
     """
-
-    @property
-    def title_lines(self) -> list[str]:
-        title = self.title
-        if title and "\n" not in title and title[-1] not in string.punctuation:
-            title += ":"
-        return title.splitlines()
 
 
 ARGS_GROUP = HelpGroup("Arguments:")
@@ -953,27 +945,6 @@ class Option(abc.ABC, _t.Generic[T_cov]):
             return [long_flags[0]]
         else:
             return None
-
-    def parse_help(
-        self, ctx: yuio.string.ReprContext, /, *, all: bool = False
-    ) -> yuio.md.AstBase | None:
-        """
-        Parse help for displaying it in LI help.
-
-        :param ctx:
-            repr context for formatting help.
-        :param all:
-            whether :flag:`--help=all` was specified.
-        :returns:
-            markdown AST.
-
-        """
-
-        help = yuio.md.parse(self.help or "", allow_headings=False)
-        if help_tail := self.format_help_tail(ctx, all=all):
-            help.items.append(yuio.md.Raw(raw=help_tail))
-
-        return help if help.items else None
 
     def format_usage(
         self,
@@ -1920,7 +1891,7 @@ class CompletionOption(Option[_t.Never]):
         allow_abbrev: bool = True,
     ):
         if help is None:
-            shells = yuio.string.Or(f"`{shell}`" for shell in self._SHELLS)
+            shells = yuio.string.Or(f"``{shell}``" for shell in self._SHELLS)
             help = (
                 "Install or update autocompletion scripts and exit.\n\n"
                 f"Supported shells: {shells}."
@@ -2106,7 +2077,7 @@ class HelpOption(Option[_t.Never]):
                 n_arg=0,
             )
 
-        formatter = _HelpFormatter(all=argument == "all")
+        formatter = _HelpFormatter(cli_parser._help_parser, all=argument == "all")
         inherited_options = []
         seen_inherited_options = set()
         for opt in cli_parser._inherited_options.values():
@@ -2239,7 +2210,7 @@ class _SubCommandOption(ValueOption[str]):
         dest: str,
     ):
         subcommand_names = [
-            f"`{name}`"
+            f"``{name}``"
             for name, subcommand in subcommands.items()
             if name == subcommand.name and subcommand.help is not yuio.DISABLED
         ]
@@ -2355,6 +2326,9 @@ class CliParser(_t.Generic[NamespaceT]):
         root command.
     :param allow_abbrev:
         allow abbreviating CLI flags if that doesn't create ambiguity.
+    :param help_parser:
+        help parser that will be used to parse and display help for options
+        that've failed to parse.
 
     """
 
@@ -2363,10 +2337,12 @@ class CliParser(_t.Generic[NamespaceT]):
         command: Command[NamespaceT],
         /,
         *,
-        allow_abbrev: bool = False,
+        help_parser: yuio.doc.DocParser,
+        allow_abbrev: bool,
     ):
         self._root_command = command
         self._allow_abbrev = allow_abbrev
+        self._help_parser = help_parser
 
     def _load_command(self, command: Command[_t.Any], ns: Namespace):
         # All pending flags and positionals should've been flushed by now.
@@ -2450,6 +2426,7 @@ class CliParser(_t.Generic[NamespaceT]):
             e.commandline = args
             e.prog = self._root_command.name
             e.subcommands = self._current_path
+            e.help_parser = self._help_parser
             raise
 
     def _parse(self, args: list[str]) -> NamespaceT:
@@ -2909,8 +2886,9 @@ def _quote(s: str):
 
 
 class _HelpFormatter:
-    def __init__(self, all: bool = False) -> None:
-        self.nodes: list[yuio.md.AstBase] = []
+    def __init__(self, parser: yuio.doc.DocParser, all: bool = False) -> None:
+        self.nodes: list[yuio.doc.AstBase] = []
+        self.parser = parser
         self.all = all
 
     def add_command(
@@ -2918,21 +2896,21 @@ class _HelpFormatter:
     ):
         self._add_usage(prog, cmd, inherited)
         if cmd.desc:
-            self.nodes.extend(yuio.md.parse(cmd.desc).items)
+            self.nodes.extend(self.parser.parse(cmd.desc).items)
         self._add_options(cmd)
         self._add_subcommands(cmd)
         self._add_flags(cmd, inherited)
         if cmd.epilog:
             self.nodes.append(_ResetIndentation())
-            self.nodes.extend(yuio.md.parse(cmd.epilog).items)
+            self.nodes.extend(self.parser.parse(cmd.epilog).items)
 
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return self.format(ctx)
 
     def format(self, ctx: yuio.string.ReprContext):
         res = _ColorizedString()
-        lines = _CliMdFormatter(ctx, all=self.all).format_node(
-            yuio.md.Document(items=self.nodes)
+        lines = _CliFormatter(self.parser, ctx, all=self.all).format(
+            yuio.doc.Document(items=self.nodes)
         )
         sep = False
         for line in lines:
@@ -2962,9 +2940,15 @@ class _HelpFormatter:
             groups[group].append(opt)
         for group, options in groups.items():
             assert group.help is not yuio.DISABLED
-            self.nodes.append(yuio.md.Heading(lines=group.title_lines, level=1))
+            self.nodes.append(
+                yuio.doc.Heading(
+                    items=self.parser.parse_paragraph(group.title), level=1
+                )
+            )
             if group.help:
-                self.nodes.extend(yuio.md.parse(group.help, allow_headings=False).items)
+                self.nodes.append(
+                    yuio.doc.NoHeadings(items=self.parser.parse(group.help).items)
+                )
             arg_group = _HelpArgGroup(items=[])
             for opt in options:
                 assert opt.help is not yuio.DISABLED
@@ -2983,9 +2967,13 @@ class _HelpFormatter:
         if not subcommands:
             return
         group = SUBCOMMANDS_GROUP
-        self.nodes.append(yuio.md.Heading(lines=group.title_lines, level=1))
+        self.nodes.append(
+            yuio.doc.Heading(items=self.parser.parse_paragraph(group.title), level=1)
+        )
         if group.help:
-            self.nodes.extend(yuio.md.parse(group.help, allow_headings=False).items)
+            self.nodes.append(
+                yuio.doc.NoHeadings(items=self.parser.parse(group.help).items)
+            )
         arg_group = _HelpArgGroup(items=[])
         for subcommand, names in subcommands.items():
             assert subcommand.help is not yuio.DISABLED
@@ -3016,9 +3004,15 @@ class _HelpFormatter:
                 groups[group][1].append(opt)
         for group, (required, optional, n_inherited) in groups.items():
             assert group.help is not yuio.DISABLED
-            self.nodes.append(yuio.md.Heading(lines=group.title_lines, level=1))
+            self.nodes.append(
+                yuio.doc.Heading(
+                    items=self.parser.parse_paragraph(group.title), level=1
+                )
+            )
             if group.help:
-                self.nodes.extend(yuio.md.parse(group.help, allow_headings=False).items)
+                self.nodes.append(
+                    yuio.doc.NoHeadings(items=self.parser.parse(group.help).items)
+                )
             arg_group = _HelpArgGroup(items=[])
             for opt in required:
                 assert opt.help is not yuio.DISABLED
@@ -3052,14 +3046,16 @@ _ARGS_COLUMN_WIDTH = 26
 _ARGS_COLUMN_WIDTH_NARROW = 8
 
 
-class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
+class _CliFormatter(yuio.doc.Formatter):  # type: ignore
     def __init__(
         self,
+        parser: yuio.doc.DocParser,
         ctx: yuio.string.ReprContext,
         /,
         *,
         all: bool = False,
     ):
+        self.parser = parser
         self.all = all
 
         self._heading_indent = contextlib.ExitStack()
@@ -3075,23 +3071,19 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
         self.metavar_color = self.base_color | self.ctx.get_color("hl/metavar:sh-usage")
         self.flag_color = self.base_color | self.ctx.get_color("hl/flag:sh-usage")
 
-    def colorize(
-        self,
-        s: str,
-        /,
-        *,
-        default_color: yuio.color.Color | str = yuio.color.Color.NONE,
-    ):
-        return yuio.string.colorize(
-            s,
-            default_color=default_color,
-            parse_cli_flags_in_backticks=True,
-            ctx=self.ctx,
-        )
+    def _format_Heading(self, node: yuio.doc.Heading):
+        if not self._allow_headings:
+            self._format_Text(
+                node, default_color=self.ctx.get_color("msg/text:paragraph")
+            )
+            return
 
-    def _format_Heading(self, node: yuio.md.Heading):
         if node.level == 1:
             self._heading_indent.close()
+
+            raw_heading = "".join(map(str, node.items))
+            if raw_heading and raw_heading[-1].isalnum():
+                node.items.append(":")
 
         decoration = self.ctx.get_msg_decoration("heading/section")
         with self._with_indent("msg/decoration:heading/section", decoration):
@@ -3102,7 +3094,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
 
         if node.level == 1:
             self._heading_indent.enter_context(self._with_indent(None, "  "))
-        else:
+        elif self._separate_paragraphs:
             self._line(self._indent)
 
         self._is_first_line = True
@@ -3289,7 +3281,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             node.arg.format_metavar(self.ctx).with_base_color(self.base_color)
         )
 
-        help = node.arg.parse_help(self.ctx, all=self.all)
+        help = _parse_option_help(node.arg, self.parser, self.ctx, all=self.all)
 
         if help is None:
             self._line(self._indent + lead)
@@ -3309,7 +3301,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             self.base_color
         )
 
-        help = node.arg.parse_help(self.ctx)
+        help = _parse_option_help(node.arg, self.parser, self.ctx, all=self.all)
 
         if help is None:
             self._line(self._indent + lead)
@@ -3348,7 +3340,7 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
             indent_ctx = self._with_indent(None, self._make_lead_padding(lead))
 
         with indent_ctx:
-            self._format(yuio.md.parse(help, allow_headings=False))
+            self._format(self.parser.parse(help))
 
     def _format_InheritedOpts(self, node: _InheritedOpts):
         raw = _ColorizedString()
@@ -3359,9 +3351,10 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
 
     def _format_HelpArgGroup(self, node: _HelpArgGroup):
         self._separate_paragraphs = False
-        for item in node.items:
-            self._format(item)
+        self._allow_headings = False
+        self._format_Container(node)
         self._separate_paragraphs = True
+        self._allow_headings = True
 
     def _make_lead_padding(self, lead: _ColorizedString):
         color = self.base_color
@@ -3369,12 +3362,12 @@ class _CliMdFormatter(yuio.md.MdFormatter):  # type: ignore
 
 
 @dataclass(eq=False, match_args=False, slots=True)
-class _ResetIndentation(yuio.md.AstBase):
+class _ResetIndentation(yuio.doc.AstBase):
     pass
 
 
 @dataclass(eq=False, match_args=False, slots=True)
-class _Usage(yuio.md.AstBase):
+class _Usage(yuio.doc.AstBase):
     prog: str
     cmd: Command[Namespace]
     inherited: list[Option[_t.Any]]
@@ -3382,33 +3375,39 @@ class _Usage(yuio.md.AstBase):
 
 
 @dataclass(eq=False, match_args=False, slots=True)
-class _HelpOpt(yuio.md.AstBase):
+class _HelpOpt(yuio.doc.AstBase):
     arg: Option[_t.Any]
 
 
 @dataclass(eq=False, match_args=False, slots=True)
-class _HelpArg(yuio.md.AstBase):
+class _HelpArg(yuio.doc.AstBase):
     arg: Option[_t.Any]
 
 
 @dataclass(eq=False, match_args=False, slots=True)
-class _InheritedOpts(yuio.md.AstBase):
+class _InheritedOpts(yuio.doc.AstBase):
     n_inherited: int
 
 
 @dataclass(eq=False, match_args=False, slots=True)
-class _HelpSubCommand(yuio.md.AstBase):
+class _HelpSubCommand(yuio.doc.AstBase):
     names: list[str]
     help: str | None
 
 
 @dataclass(eq=False, match_args=False, slots=True)
-class _HelpArgGroup(yuio.md.Container[yuio.md.AstBase]):
+class _HelpArgGroup(yuio.doc.Container[yuio.doc.AstBase]):
     pass
 
 
 class _ShortUsageFormatter:
-    def __init__(self, subcommands: list[str] | None, option: Option[_t.Any]):
+    def __init__(
+        self,
+        parser: yuio.doc.DocParser,
+        subcommands: list[str] | None,
+        option: Option[_t.Any],
+    ):
+        self.parser = parser
         self.subcommands = subcommands
         self.option = option
 
@@ -3445,29 +3444,30 @@ class _ShortUsageFormatter:
         res.append_str("\n")
         res.append_color(note_color)
 
-        if help := self.option.parse_help(ctx):
+        if help := _parse_option_help(self.option, self.parser, ctx):
             with ctx.with_settings(width=ctx.width - 2):
-                formatter = _CliMdFormatter(ctx)
+                formatter = _CliFormatter(self.parser, ctx)
                 sep = False
-                for line in formatter.format_node(_HelpArgGroup(items=[help])):
+                for line in formatter.format(_HelpArgGroup(items=[help])):
                     if sep:
                         res.append_str("\n")
                     res.append_str("  ")
                     res.append_colorized_str(line.with_base_color(note_color))
                     sep = True
 
-        # if self.subcommands:
-        #     prog_color = code_color | ctx.get_color("hl/prog:sh-usage")
-        #     res.append_str("\n")
-        #     res.append_color(heading_color)
-        #     res.append_str("Note: ")
-        #     res.append_color(prog_color)
-        #     res.append_str(" ".join(self.subcommands))
-        #     res.append_color(code_color)
-        #     res.append_str(" ")
-        #     res.append_color(flag_color)
-        #     res.append_str("--help")
-        #     res.append_color(note_color)
-        #     res.append_str(" for usage and details")
-
         return res
+
+
+def _parse_option_help(
+    option: Option[_t.Any],
+    parser: yuio.doc.DocParser,
+    ctx: yuio.string.ReprContext,
+    /,
+    *,
+    all: bool = False,
+) -> yuio.doc.AstBase | None:
+    help = parser.parse(option.help or "")
+    if help_tail := option.format_help_tail(ctx, all=all):
+        help.items.append(yuio.doc.Raw(raw=help_tail))
+
+    return help if help.items else None

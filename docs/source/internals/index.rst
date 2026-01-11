@@ -17,8 +17,14 @@ APIs for advanced use-cases.
    json_schema
       Building JSON schemas for configs.
 
+   doc
+      Documentation rendered.
+
    md
-      Simple Markdown parser and renderer.
+      Markdown parser.
+
+   rst
+      ReStructuredText parser.
 
    hl
       Syntax highlighting.

@@ -1,11 +1,11 @@
-import pathlib
+import pathlib  # [1]_
 import yuio.app
 import yuio.io
 
-@yuio.app.app
+@yuio.app.app()
 def main(
-    greeting: str = yuio.app.field(default="world", flags=["-g", "--greeting"]),
-    output: pathlib.Path | None = yuio.app.positional(default=None),
+    greeting: str = yuio.app.field(default="world", flags=["-g", "--greeting"]),  # [2]_
+    output: pathlib.Path | None = yuio.app.positional(default=None),  # [3]_
 ):
     if output:
         output.write_text(f"Hello, {greeting}!\n")

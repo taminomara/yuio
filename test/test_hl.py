@@ -79,7 +79,7 @@ def setup_hl_colors(theme):
 class TestGetHighlighter:
     def test_get_python_highlighter(self):
         highlighter, syntax = yuio.hl.get_highlighter("python")
-        assert isinstance(highlighter, yuio.hl.ReSyntaxHighlighter)
+        assert isinstance(highlighter, yuio.hl._PyHighlighter)
         assert syntax == "py"
 
     def test_get_unknown_highlighter_returns_dummy(self):
@@ -100,7 +100,7 @@ class TestGetHighlighter:
     )
     def test_python_highlighter_variations(self, name, expected_syntax):
         highlighter, syntax = yuio.hl.get_highlighter(name)
-        assert isinstance(highlighter, yuio.hl.ReSyntaxHighlighter)
+        assert isinstance(highlighter, yuio.hl._PyHighlighter)
         assert syntax == expected_syntax
 
     @pytest.mark.parametrize(

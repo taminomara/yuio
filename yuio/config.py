@@ -15,13 +15,13 @@ define config fields using type annotations, just like :mod:`dataclasses`:
 .. code-block:: python
 
     class AppConfig(Config):
-        #: trained model to execute
+        #: Trained model to execute.
         model: pathlib.Path
 
-        #: input data for the model
+        #: Input data for the model.
         data: pathlib.Path
 
-        #: enable or disable gpu
+        #: Enable or disable gpu.
         use_gpu: bool = True
 
 Then use config's constructors and the :meth:`~Config.update` method
@@ -66,18 +66,18 @@ You can nest configs to achieve modularity:
 .. code-block:: python
 
     class ExecutorConfig(Config):
-        #: number of threads to use
+        #: Number of threads to use.
         threads: int
 
-        #: enable or disable gpu
+        #: Enable or disable gpu.
         use_gpu: bool = True
 
 
     class AppConfig(Config):
-        #: executor parameters
+        #: Executor parameters.
         executor: ExecutorConfig
 
-        #: trained model to execute
+        #: Trained model to execute.
         model: pathlib.Path
 
 To initialise a nested config, pass either an instance of if
@@ -177,25 +177,6 @@ In this example, contents of the above config would be:
 
 Note that, unlike with environment variables,
 there is no way to inline nested configs.
-
-
-Additional config validation
-----------------------------
-
-If you have invariants that can't be captured with type system,
-you can override :meth:`~Config.validate_config`. This method will be called
-every time you load a config from file, arguments or environment:
-
-.. code-block:: python
-
-    class DocGenConfig(Config):
-        categories: list[str] = ["quickstart", "api_reference"]
-        category_names: dict[str, str] = {"deep_dive": "Deep Dive"}
-
-        def validate_config(self):
-            for category in self.category_names:
-                if category not in self.categories:
-                    raise yuio.parse.ParsingError(f"unknown category {category}")
 
 
 Merging configs
@@ -361,6 +342,7 @@ from yuio.cli import (
     MutuallyExclusiveGroup,
 )
 from yuio.util import _find_docs
+from yuio.util import dedent as _dedent
 
 import yuio._typing_ext as _tx
 from typing import TYPE_CHECKING
@@ -407,7 +389,7 @@ class _FieldSettings:
     required: bool | None = None
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None
     mutex_group: MutuallyExclusiveGroup | None = None
-    help_group: HelpGroup | None = None
+    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING
     usage: yuio.Group | bool | None = None
     show_if_inherited: bool | None = None
     option_ctor: _t.Callable[[OptionSettings], _t.Any] | None = None
@@ -431,7 +413,7 @@ class _FieldSettings:
         elif parsed_help is not None:
             help = parsed_help
         elif is_subconfig and ty.__doc__:
-            help = ty.__doc__
+            help = _dedent(ty.__doc__).strip()
         else:
             help = ""
 
@@ -592,7 +574,7 @@ class _Field:
     required: bool
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
     mutex_group: MutuallyExclusiveGroup | None
-    help_group: HelpGroup | None
+    help_group: HelpGroup | None | yuio.Missing
     usage: yuio.Group | bool | None
     show_if_inherited: bool | None = None
     option_ctor: _t.Callable[[OptionSettings], _t.Any] | None = None
@@ -608,7 +590,7 @@ def field(
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     required: bool | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
-    help_group: HelpGroup | None = None,
+    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
     show_if_inherited: bool | None = None,
     usage: yuio.Group | bool | None = None,
 ) -> _t.Any: ...
@@ -625,7 +607,7 @@ def field(
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
-    help_group: HelpGroup | None = None,
+    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
     usage: yuio.Group | bool | None = None,
     show_if_inherited: bool | None = None,
     option_ctor: OptionCtor[T] | None = None,
@@ -643,7 +625,7 @@ def field(
     metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
-    help_group: HelpGroup | None = None,
+    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
     usage: yuio.Group | bool | None = None,
     show_if_inherited: bool | None = None,
     option_ctor: OptionCtor[T] | None = None,
@@ -660,7 +642,7 @@ def field(
     metavar: str | None = None,
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
-    help_group: HelpGroup | None = None,
+    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
     usage: yuio.Group | bool | None = None,
     show_if_inherited: bool | None = None,
     option_ctor: _t.Callable[..., _t.Any] | None = None,
@@ -675,12 +657,10 @@ def field(
         parser that will be used to parse config values and CLI options.
     :param help:
         help message that will be used in CLI option description,
-        formatted using Markdown (see :mod:`yuio.md`).
+        formatted using RST or Markdown
+        (see :attr:`App.doc_format <yuio.app.App.doc_format>`).
 
         Pass :data:`yuio.DISABLED` to remove this field from CLI help.
-
-        In sub-config fields, controls grouping of fields; pass an empty string
-        to disable grouping.
     :param env:
         specifies name of environment variable that will be used if loading config
         from environment.
@@ -783,7 +763,7 @@ def inline(
     help: str | yuio.Disabled | None = None,
     usage: yuio.Group | bool | None = None,
     show_if_inherited: bool | None = None,
-    help_group: HelpGroup | None = None,
+    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
 ) -> _t.Any:
     """
     A shortcut for inlining nested configs.
@@ -882,6 +862,12 @@ class Config:
     and don't have defaults are considered missing.
     Accessing them will raise :class:`AttributeError`.
 
+    .. note::
+
+        Unlike dataclasses, Yuio does not provide an option to create new instances
+        of default values upon config instantiation. This is done so that default
+        values don't override non-default ones when you update one config from another.
+
     .. automethod:: update
 
     .. automethod:: load_from_env
@@ -897,8 +883,6 @@ class Config:
     .. automethod:: to_json_schema
 
     .. automethod:: to_json_value
-
-    .. automethod:: validate_config
 
     """
 
@@ -1040,9 +1024,7 @@ class Config:
 
         """
 
-        result = cls.__load_from_env(prefix)
-        result.validate_config()
-        return result
+        return cls.__load_from_env(prefix)
 
     @classmethod
     def __load_from_env(cls, prefix: str = "") -> _t.Self:
@@ -1113,13 +1095,13 @@ class Config:
             if field.is_subconfig:
                 assert flags is not yuio.POSITIONAL
                 assert issubclass(field.ty, Config)
-                if field.help_group is None:
-                    if field.help is yuio.DISABLED:
-                        subgroup = yuio.cli.HelpGroup("", help=yuio.DISABLED)
-                    elif field.help:
+                if field.help is yuio.DISABLED:
+                    subgroup = yuio.cli.HelpGroup("", help=yuio.DISABLED)
+                elif field.help_group is yuio.MISSING:
+                    if field.help:
                         lines = field.help.split("\n\n", 1)
-                        title = lines[0].replace("\n", " ").rstrip(".") or name
-                        help = textwrap.dedent(lines[1]) if len(lines) > 1 else ""
+                        title = lines[0].replace("\n", " ").rstrip(".").strip() or name
+                        help = lines[1] if len(lines) > 1 else ""
                         subgroup = yuio.cli.HelpGroup(title=title, help=help)
                     else:
                         subgroup = help_group
@@ -1148,7 +1130,11 @@ class Config:
                     mutex_group=field.mutex_group,
                     usage=field_usage,
                     help=field.help,
-                    help_group=field.help_group or help_group,
+                    help_group=(
+                        field.help_group
+                        if field.help_group is not yuio.MISSING
+                        else help_group
+                    ),
                     show_if_inherited=field_show_if_inherited,
                     merge=field.merge,
                     dest=dest,
@@ -1340,11 +1326,9 @@ class Config:
         """
 
         try:
-            result = cls.__load_from_parsed_file(
+            return cls.__load_from_parsed_file(
                 yuio.parse.ConfigParsingContext(parsed), ignore_unknown_fields, ""
             )
-            result.validate_config()
-            return result
         except yuio.parse.ParsingError as e:
             if path is None:
                 raise
@@ -1412,19 +1396,6 @@ class Config:
     def __rich_repr__(self):
         for name in self.__get_fields():
             yield name, getattr(self, name, yuio.MISSING)
-
-    def validate_config(self):
-        """
-        Perform config validation.
-
-        This function is called every time a config is loaded from CLI arguments,
-        file, or environment variables. It should check that config is correct,
-        and raise :class:`yuio.parse.ParsingError` if it's not.
-
-        :raises:
-            :class:`~yuio.parse.ParsingError`.
-
-        """
 
     @classmethod
     def to_json_schema(

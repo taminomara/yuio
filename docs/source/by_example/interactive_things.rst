@@ -9,8 +9,20 @@ Printing messages
 
 Yuio offers a :mod:`logging`-like functions to print messages:
 
-.. literalinclude:: /../../examples/docs/io_printing.py
-    :language: python
+.. tab-set::
+    :sync-group: formatting-method
+
+    .. tab-item:: Printf-style formatting
+        :sync: printf
+
+        .. literalinclude:: /../../examples/docs/io_printing.py
+            :language: python
+
+    .. tab-item:: Template strings
+        :sync: template
+
+        .. literalinclude:: /../../examples/docs/io_printing_t.py
+            :language: python
 
 .. vhs-inline::
     :scale: 40%
@@ -21,17 +33,35 @@ Yuio offers a :mod:`logging`-like functions to print messages:
     Enter
     Sleep 6s
 
-Starting from Python 3.14, Yuio also supports template strings as an alternative
-to printf-style formatting:
+These functions accept format strings that can have :ref:`color tags <color-tags>`
+and backticks:
 
-.. invisible-code-block: python
+.. tab-set::
+    :sync-group: formatting-method
 
-    import yuio.io
+    .. tab-item:: Printf-style formatting
+        :sync: printf
 
-.. code-block:: python
+        .. literalinclude:: /../../examples/docs/io_colors.py
+            :language: python
+            :lines: 4-
+            :dedent:
 
-    formatted_content = ["a", "b", "c"]
-    yuio.io.info(t"Messages can have `{formatted_content}`")
+        .. code-annotations::
+
+            1.  See full list of tags in :ref:`yuio.theme <common-tags>`.
+
+    .. tab-item:: Template strings
+        :sync: template
+
+        .. literalinclude:: /../../examples/docs/io_colors_t.py
+            :language: python
+            :lines: 4-
+            :dedent:
+
+        .. code-annotations::
+
+            1.  See full list of tags in :ref:`yuio.theme <common-tags>`.
 
 
 Pretty-printing Python objects
@@ -86,10 +116,34 @@ You often need to print lists joined by some separator. Yuio provides
 :class:`~yuio.string.JoinStr`, :class:`~yuio.string.JoinRepr`,
 :class:`~yuio.string.And`, and :class:`~yuio.string.Or` to help with this task:
 
-.. literalinclude:: /../../examples/docs/io_join.py
-    :language: python
-    :lines: 6-11
-    :dedent:
+.. tab-set::
+    :sync-group: formatting-method
+
+    .. tab-item:: Printf-style formatting
+        :sync: printf
+
+        .. literalinclude:: /../../examples/docs/io_join.py
+            :language: python
+            :lines: 6-11
+            :dedent:
+
+        .. code-annotations::
+
+            1.  You can pass multiple color tags in the same string, just separate
+                them with spaces.
+
+    .. tab-item:: Template strings
+        :sync: template
+
+        .. literalinclude:: /../../examples/docs/io_join_t.py
+            :language: python
+            :lines: 6-10
+            :dedent:
+
+        .. code-annotations::
+
+            1.  You can pass multiple color tags in the same string, just separate
+                them with spaces.
 
 .. vhs-inline::
     :scale: 40%
@@ -100,31 +154,51 @@ You often need to print lists joined by some separator. Yuio provides
     Enter
     Sleep 6s
 
-:class:`~yuio.string.JoinStr` will call :class:`str() <str>`
-(:class:`~yuio.string.JoinRepr` calls :func:`repr`)
-on collection values, then join them with the given separator.
-Not only that, it will also highlight joined values (but not separators!) using
-the given color tag (``code`` by default).
 
+RST and Markdown
+----------------
 
-Markdown and inline markup
---------------------------
+Yuio also supports basic RST and Markdown formatting. It's mostly used for generating
+CLI help, but you can print messages with it as well:
 
-If you need something even more complex, you can use :func:`yuio.io.md` to print
-formatted markdown:
+.. tab-set::
+    :sync-group: docs-lang
 
-.. literalinclude:: /../../examples/docs/io_markdown.py
-    :language: python
-    :lines: 6-16
-    :dedent:
+    .. tab-item:: RST
+        :sync: rst
 
-.. vhs-inline::
-    :scale: 40%
+        .. literalinclude:: /../../examples/docs/io_rst.py
+            :language: python
+            :lines: 6-26
+            :dedent:
 
-    Source "docs/source/_tapes/_config.tape"
-    Type "python examples/docs/io_markdown.py"
-    Enter
-    Sleep 6s
+        .. vhs-inline::
+            :scale: 40%
+
+            Source "docs/source/_tapes/_config.tape"
+            Type "python examples/docs/io_rst.py 2>&1 | less -R"
+            Enter
+            Sleep 1s
+            Down@1s 6
+            Sleep 4s
+
+    .. tab-item:: Markdown
+        :sync: markdown
+
+        .. literalinclude:: /../../examples/docs/io_markdown.py
+            :language: python
+            :lines: 6-24
+            :dedent:
+
+        .. vhs-inline::
+            :scale: 40%
+
+            Source "docs/source/_tapes/_config.tape"
+            Type "python examples/docs/io_markdown.py 2>&1 | less -R"
+            Enter
+            Sleep 1s
+            Down@1s 6
+            Sleep 4s
 
 
 Highlighting code
@@ -134,8 +208,12 @@ Yuio supports simple :ref:`code highlighting <highlighting-code>`:
 
 .. literalinclude:: /../../examples/docs/io_hl.py
     :language: python
-    :lines: 6-12
+    :lines: 6-15
     :dedent:
+
+.. code-annotations::
+
+    1.  See full list of supported languages in :mod:`yuio.hl`.
 
 .. vhs-inline::
     :scale: 40%
@@ -157,7 +235,13 @@ on the expected value's type:
 .. literalinclude:: /../../examples/docs/io_querying.py
     :language: python
     :lines: 1-16
-    :emphasize-lines: 5,11-15
+
+.. code-annotations::
+
+    1.  We use :class:`~enum.Enum` so that Yuio knows which values to expect.
+        It will change input widget accordingly.
+    2.  :func:`~yuio.io.ask` accepts type parameter which determines its result.
+        Default is :class:`str`.
 
 .. note::
 
@@ -197,7 +281,6 @@ Suppose you have some long-running job, and you want to indicate that it is runn
     :language: python
     :lines: 7-8
     :dedent:
-    :emphasize-lines: 1
 
 And if the job can report its progress, we can even show a progressbar:
 
@@ -205,11 +288,13 @@ And if the job can report its progress, we can even show a progressbar:
     :language: python
     :lines: 9-14
     :dedent:
-    :emphasize-lines: 1,3-4
 
-:class:`~yuio.io.Task` has lots of helper methods on it. For example, the above code
-can be simplified using :meth:`Task.iter() <yuio.io.Task.iter>`: a function that automatically
-updates progress as you iterate over a collection.
+.. code-annotations::
+
+    1.  :class:`~yuio.io.Task` has lots of helper methods on it.
+
+        For example, this code can be simplified using
+        :meth:`Task.iter() <yuio.io.Task.iter>` instead of :func:`enumerate`.
 
 .. vhs-inline::
     :scale: 40%
@@ -231,7 +316,10 @@ a commit message? Yuio can do the same:
     :language: python
     :lines: 6-12
     :dedent:
-    :emphasize-lines: 1-5
+
+.. code-annotations::
+
+    1.  All lines that start with this marker will be removed after editing.
 
 
 Logging

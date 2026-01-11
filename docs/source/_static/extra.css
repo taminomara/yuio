@@ -69,3 +69,99 @@ pre.ascii-graphics {
 .api-ref-prefix {
   color: var(--color-foreground-muted);
 }
+
+.annotate + ol {
+  display: none;
+}
+
+.annotation-trigger {
+  /* Reset button styles */
+  background: none;
+  border: none;
+  margin: 0 12px;
+  cursor: pointer;
+
+  /* Visual styling */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--color-background-item);
+  text-align: center;
+  color: var(--color-content-foreground);
+  font-size: 14px;
+  line-height: 18px;
+  vertical-align: baseline;
+
+  transition: background-color 0.15s ease;
+}
+
+/* Plus icon (default state) */
+.annotation-trigger::before {
+  content: '+';
+}
+
+/* Cross icon (expanded state) */
+.annotation-trigger[aria-expanded="true"]::before {
+  content: '×';
+}
+
+.annotation-trigger:hover {
+  background-color: var(--color-toc-item-text--active);
+}
+
+.annotation-tooltip {
+  /* Hidden by default */
+  display: none;
+
+  /* Positioning - appended to body */
+  position: absolute;
+  z-index: 10000;
+
+  /* Sizing */
+  min-width: 200px;
+  max-width: 350px;
+
+  /* Visual styling */
+  background-color: var(--color-background-primary);
+  color: var(--color-content-foreground);
+  padding: 0.5rem 1rem;
+  border-radius: 0.2rem;
+  font-size: var(--admonition-font-size);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+  /* Smooth transition */
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+/* Visible state */
+.annotation-tooltip.visible {
+  display: block;
+  opacity: 1;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .annotation-trigger {
+    text-decoration: underline;
+  }
+
+  .annotation-trigger:focus {
+    outline-width: 3px;
+  }
+
+  .annotation-tooltip {
+    border: 2px solid #fff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .annotation-trigger,
+  .annotation-tooltip {
+    transition: none;
+  }
+}

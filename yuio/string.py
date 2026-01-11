@@ -174,6 +174,9 @@ Formatting utilities
 .. autoclass:: Md
     :members:
 
+.. autoclass:: Rst
+    :members:
+
 .. autoclass:: Hl
     :members:
 
@@ -295,6 +298,7 @@ __all__ = [
     "ReprContext",
     "RichReprProtocol",
     "RichReprResult",
+    "Rst",
     "Stack",
     "ToColorable",
     "TypeRepr",
@@ -959,26 +963,24 @@ class ColorizedString:
             return [part for part in self._parts if isinstance(part, str)]
         else:
             parts: list[str] = []
-            cur_link: Link | None = None
+            cur_url: str | None = None
             for part in self:
                 if isinstance(part, Link):
-                    if not cur_link:
-                        cur_link = part
-                    elif cur_link.url == part.url:
-                        cur_link += part
-                    else:
-                        parts.append(cur_link.as_code(color_support))
-                        cur_link = part
-                    continue
-                elif cur_link:
-                    parts.append(cur_link.as_code(color_support))
-                cur_link = None
-                if isinstance(part, _Color):
-                    parts.append(part.as_code(color_support))
-                elif isinstance(part, str):
+                    if cur_url != part.url:
+                        parts.append("\x1b]8;;")
+                        parts.append(part.url)
+                        parts.append("\x1b\\")
+                        cur_url = part.url
                     parts.append(part)
-            if cur_link:
-                parts.append(cur_link)
+                elif isinstance(part, str):
+                    if cur_url is not None:
+                        parts.append("\x1b]8;;\x1b\\")
+                        cur_url = None
+                    parts.append(part)
+                elif isinstance(part, _Color):
+                    parts.append(part.as_code(color_support))
+            if cur_url is not None:
+                parts.append("\x1b]8;;\x1b\\")
             if self._last_color != _Color.NONE:
                 parts.append(_Color.NONE.as_code(color_support))
             return parts
@@ -1519,7 +1521,6 @@ def colorize(
     *args: _t.Any,
     ctx: ReprContext,
     default_color: _Color | str = _Color.NONE,
-    parse_cli_flags_in_backticks: bool = False,
 ) -> ColorizedString:
     """colorize(line: str, /, *args: typing.Any, ctx: ReprContext, default_color: ~yuio.color.Color | str = Color.NONE, parse_cli_flags_in_backticks: bool = False) -> ColorizedString
     colorize(line: ~string.templatelib.Template, /, *, ctx: ReprContext, default_color: ~yuio.color.Color | str = Color.NONE, parse_cli_flags_in_backticks: bool = False) -> ColorizedString
@@ -1605,11 +1606,7 @@ def colorize(
             if code.startswith(" ") and code.endswith(" ") and not code.isspace():
                 code = code[1:-1]
                 code_pos += 1
-            if (
-                parse_cli_flags_in_backticks
-                and __FLAG_RE.match(code)
-                and not __NEG_NUM_RE.match(code)
-            ):
+            if __FLAG_RE.match(code) and not __NEG_NUM_RE.match(code):
                 res.append_color(stack[-1] | ctx.get_color("flag"))
             else:
                 res.append_color(stack[-1] | ctx.get_color("code"))
@@ -1723,7 +1720,7 @@ class Link(_UserString):
 
         """
 
-        if color_support < yuio.color.ColorSupport.ANSI_TRUE:
+        if color_support is yuio.color.ColorSupport.NONE:
             return str(self)
         else:
             return f"\x1b]8;;{self.__url}\x1b\\{self}\x1b]8;;\x1b\\"
@@ -3445,13 +3442,13 @@ class Md(_StrBase):
     Lazy wrapper that renders markdown during formatting.
 
     :param md:
-        markdown to format.
+        text to format.
     :param args:
-        arguments for ``%``-formatting the rendered markdown.
+        arguments for ``%``-formatting the rendered text.
     :param width:
         if given, overrides settings passed to :class:`ReprContext` for this call.
     :param dedent:
-        whether to remove leading indent from markdown.
+        whether to remove leading indent from text.
     :param allow_headings:
         whether to render headings as actual headings or as paragraphs.
 
@@ -3500,11 +3497,12 @@ class Md(_StrBase):
         yield "allow_headings", self._allow_headings, True
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
+        import yuio.doc
         import yuio.md
 
         width = self._width or ctx.width
         with ctx.with_settings(width=width):
-            formatter = yuio.md.MdFormatter(
+            formatter = yuio.doc.Formatter(
                 ctx,
                 allow_headings=self._allow_headings,
             )
@@ -3512,7 +3510,98 @@ class Md(_StrBase):
             res = ColorizedString()
             res.start_no_wrap()
             sep = False
-            for line in formatter.format(self._md, dedent=self._dedent):
+            for line in formatter.format(yuio.md.parse(self._md, dedent=self._dedent)):
+                if sep:
+                    res += "\n"
+                res += line
+                sep = True
+            res.end_no_wrap()
+            if self._args:
+                res = res.percent_format(self._args, ctx)
+
+            return res
+
+
+@_t.final
+@repr_from_rich
+class Rst(_StrBase):
+    """Rst(msg: typing.LiteralString, /, *args, width: int | None | yuio.Missing = yuio.MISSING, dedent: bool = True, allow_headings: bool = True)
+    Rst(msg: str, /, *, width: int | None | yuio.Missing = yuio.MISSING, dedent: bool = True, allow_headings: bool = True)
+
+    Lazy wrapper that renders ReStructuredText during formatting.
+
+    :param rst:
+        text to format.
+    :param args:
+        arguments for ``%``-formatting the rendered text.
+    :param width:
+        if given, overrides settings passed to :class:`ReprContext` for this call.
+    :param dedent:
+        whether to remove leading indent from text.
+    :param allow_headings:
+        whether to render headings as actual headings or as paragraphs.
+
+    """
+
+    @_t.overload
+    def __init__(
+        self,
+        rst: _t.LiteralString,
+        /,
+        *args: _t.Any,
+        width: int | None = None,
+        dedent: bool = True,
+        allow_headings: bool = True,
+    ): ...
+    @_t.overload
+    def __init__(
+        self,
+        rst: str,
+        /,
+        *,
+        width: int | None = None,
+        dedent: bool = True,
+        allow_headings: bool = True,
+    ): ...
+    def __init__(
+        self,
+        rst: str,
+        /,
+        *args: _t.Any,
+        width: int | None = None,
+        dedent: bool = True,
+        allow_headings: bool = True,
+    ):
+        self._rst: str = rst
+        self._args: tuple[_t.Any, ...] = args
+        self._width: int | None = width
+        self._dedent: bool = dedent
+        self._allow_headings: bool = allow_headings
+
+    def __rich_repr__(self) -> RichReprResult:
+        yield None, self._rst
+        yield from ((None, arg) for arg in self._args)
+        yield "width", self._width, yuio.MISSING
+        yield "dedent", self._dedent, True
+        yield "allow_headings", self._allow_headings, True
+
+    def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
+        import yuio.doc
+        import yuio.rst
+
+        width = self._width or ctx.width
+        with ctx.with_settings(width=width):
+            formatter = yuio.doc.Formatter(
+                ctx,
+                allow_headings=self._allow_headings,
+            )
+
+            res = ColorizedString()
+            res.start_no_wrap()
+            sep = False
+            for line in formatter.format(
+                yuio.rst.parse(self._rst, dedent=self._dedent)
+            ):
                 if sep:
                     res += "\n"
                 res += line

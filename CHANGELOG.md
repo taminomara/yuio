@@ -14,6 +14,8 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+- 💥 Add RST parser and make syntax for docstrings configurable; split `yuio.md`
+  into `yuio.doc`, `yuio.md`, and `yuio.rst`.
 - 🔧 `preserve_spaces=False` no longer collapses all consecutive spaces when
   wrapping a paragraph. Spaces are collapsed only when line break occurs.
 - 🔧 Refactor code highlighters and move them into a separate module.

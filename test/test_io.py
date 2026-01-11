@@ -386,14 +386,12 @@ class TestMessage:
                 "⣿ Foo!              ",
                 "                    ",
                 "•   bar             ",
-                "                    ",
                 "•   baz             ",
             ],
             [
                 "mmCCCC              ",
                 "                    ",
                 "mmmmccc             ",
-                "                    ",
                 "mmmmccc             ",
             ],
         )

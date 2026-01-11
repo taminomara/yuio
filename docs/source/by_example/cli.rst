@@ -29,7 +29,7 @@ you can configure them the same way as you configure config fields:
 Decorated functions should only have named arguments; `*args` and `**kwargs`
 are not supported.
 
-We can run the app with method :meth:`~yuio.app.App.run`:
+You can run the app with method :meth:`~yuio.app.App.run`:
 
 .. code-block:: python
 
@@ -39,7 +39,7 @@ We can run the app with method :meth:`~yuio.app.App.run`:
 :meth:`~yuio.app.App.run` sets up Yuio and logging, parses CLI arguments, and invokes
 the main function.
 
-We can invoke the original main function using :meth:`~yuio.app.App.wrapped`:
+You can invoke the original main function using :meth:`~yuio.app.App.wrapped`:
 
 .. code-block:: python
 
@@ -48,6 +48,7 @@ We can invoke the original main function using :meth:`~yuio.app.App.wrapped`:
 .. tip::
 
     Set :attr:`App.is_dev_mode <yuio.app.App.is_dev_mode>` to :data:`True`
+    to see helpful warnings from Yuio.
 
 
 Positional arguments
@@ -89,16 +90,16 @@ such arguments:
         ...
 
 
-Argument groups
----------------
+Using configs in CLI
+--------------------
 
 You can use :class:`~yuio.config.Config` to group CLI arguments. This can help with
 encapsulation and reduce code duplication:
 
 .. literalinclude:: /../../examples/docs/cli_config.py
     :language: python
-    :lines: 1-19
-    :emphasize-lines: 6,15
+    :lines: 1-18
+    :emphasize-lines: 5,14
 
 By default, Yuio will prefix all flags in the nested config with flag of config's
 field. That is, ``ExecutorConfig.threads`` will be loaded from
@@ -113,29 +114,54 @@ or disable prefixing by using :func:`yuio.app.inline`:
     :emphasize-lines: 4
 
 
-Splitting help into sections
-----------------------------
+.. _argument-groups:
 
-Yuio automatically separates CLI options into sections when you use nested
-:class:`~yuio.config.Config`\ s; config's help message becomes group's title:
+Argument groups
+---------------
 
-.. vhs-inline::
-    :scale: 40%
+Yuio automatically groups CLI options when you use
+nested :class:`~yuio.config.Config`\ s:
 
-    Set FontSize 20
-    Source "docs/source/_tapes/_config.tape"
-    Type "python examples/docs/cli_config_inline.py --help 2>&1 | less -R"
-    Enter
-    Sleep 1s
-    Down@1s 6
-    Sleep 4s
+.. literalinclude:: /../../examples/docs/cli_config_help.py
+    :language: python
+    :lines: 4-24
 
-You can disable this behavior by setting `help` to an empty string:
+.. code-annotations::
+
+    1.  First paragraph becomes group's title.
+    2.  All consequent paragraphs are shown in group's help section.
+    3.  This documentation comment will override config's docstring.
+
+CLI options are not grouped when no docstring and no documentation comment
+is available. Additionally, you can disable grouping
+by setting `help_group` to :data:`None`:
 
 .. literalinclude:: /../../examples/docs/cli_config_no_group.py
     :language: python
-    :lines: 11-17
-    :emphasize-lines: 3
+    :lines: 10-16
+
+.. code-annotations::
+
+    1.  This moves config's fields to the main group.
+
+For nested configs, though, it can be useful to set `help` to an empty string
+to force default group inference:
+
+.. literalinclude:: /../../examples/docs/cli_config_nested_group.py
+    :language: python
+    :lines: 4-35
+
+.. code-annotations::
+
+    1.  Sometimes we want to add docstring to a config, but don't want it
+        to affect CLI help. We'll have to override it down below.
+    2.  This comment doesn't do anything: setting `help` overrides it.
+    3.  Setting help to an empty string will prevent Yuio from creating
+        separate group for ``GpuConfig``, so its options will end up
+        in the group for ``ExecutorConfig``.
+    4.  Setting `help_group` to :data:`None` will put options
+        from ``GpuConfig`` to the main group
+        (*not* the ``ExecutorConfig`` group).
 
 You can also assign groups for individual fields by passing
 :class:`~yuio.cli.HelpGroup` to :func:`yuio.app.field`:
@@ -172,8 +198,8 @@ and also an epilog section to our app's help:
 
 .. literalinclude:: /../../examples/docs/cli_settings.py
     :language: python
-    :lines: 5-35
-    :emphasize-lines: 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,22,27
+    :lines: 5-51
+    :emphasize-lines: 11-27,29,39
 
 This will result in the following help message:
 
@@ -184,8 +210,8 @@ This will result in the following help message:
     Source "docs/source/_tapes/_config.tape"
     Type "python examples/docs/cli_settings.py --help 2>&1 | less -R"
     Enter
-    Sleep 1s
-    Down@1s 6
+    Sleep 4s
+    Down@250ms 15
     Sleep 4s
 
 

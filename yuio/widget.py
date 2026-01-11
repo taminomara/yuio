@@ -140,7 +140,6 @@ from dataclasses import dataclass
 
 import yuio.color
 import yuio.complete
-import yuio.md
 import yuio.string
 import yuio.term
 from yuio.color import Color as _Color
@@ -1651,18 +1650,16 @@ class Widget(abc.ABC, _t.Generic[T_co]):
             return rc.height, rc.height
 
         self.__key_width = 10
-        formatter = yuio.md.MdFormatter(
-            rc.make_repr_context(
-                width=min(rc.width, 90) - self.__key_width - 2,
-            ),
-            allow_headings=False,
+        ctx = rc.make_repr_context(
+            width=min(rc.width, 90) - self.__key_width - 2,
         )
 
         self.__wrapped_groups = []
         for title, actions in self.__prepared_groups.items():
             wrapped_actions: list[tuple[list[str], list[_ColorizedString], int]] = []
             for keys, _, msg, key_width in actions:
-                wrapped_actions.append((keys, formatter.format(msg), key_width))
+                lines = yuio.string.colorize(msg, ctx=ctx).wrap(ctx.width)
+                wrapped_actions.append((keys, lines, key_width))
             self.__wrapped_groups.append((title, wrapped_actions))
 
         return rc.height, rc.height

@@ -2,14 +2,14 @@ import enum
 import yuio.app
 import yuio.io
 
-class GreetingType(enum.Enum):
+class GreetingType(enum.Enum):  # [1]_
     FORMAL = "Formal"
     INFORMAL = "Informal"
 
 @yuio.app.app
 def main():
     name = yuio.io.ask("What's your name?")
-    greeting_type = yuio.io.ask[GreetingType](
+    greeting_type = yuio.io.ask[GreetingType](  # [2]_
         "What kind of greeting do you want?",
         default=GreetingType.FORMAL,
     )

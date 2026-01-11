@@ -9,7 +9,7 @@ def main():
     with yuio.io.Task("Sending greetings") as task:
         for i, email in enumerate(emails):
             task.comment(email)
-            task.progress(i, len(emails))
+            task.progress(i, len(emails))  # [1]_
 
             send_greeting()
 

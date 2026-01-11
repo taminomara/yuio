@@ -371,24 +371,7 @@ def test_extend(text, expected):
         ),
         pytest.param(
             "`--foo` `-10`",
-            {"parse_cli_flags_in_backticks": False},
-            [
-                NO_WRAP_START,
-                Color.FORE_MAGENTA,
-                "--foo",
-                NO_WRAP_END,
-                Color.NONE,
-                " ",
-                NO_WRAP_START,
-                Color.FORE_MAGENTA,
-                "-10",
-                NO_WRAP_END,
-            ],
-            id="code-no-flags",
-        ),
-        pytest.param(
-            "`--foo` `-10`",
-            {"parse_cli_flags_in_backticks": True},
+            {},
             [
                 NO_WRAP_START,
                 Color.FORE_CYAN,
@@ -4445,7 +4428,7 @@ class TestLink:
             l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
             == "\x1b]8;;https://example.com\x1b\\text\x1b]8;;\x1b\\"
         )
-        assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
+        assert l.as_code(yuio.term.ColorSupport.NONE) == "text"
 
     @pytest.mark.linux
     @pytest.mark.darwin
@@ -4457,21 +4440,21 @@ class TestLink:
             l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
             == "\x1b]8;;file:///foo/bar\x1b\\text\x1b]8;;\x1b\\"
         )
-        assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
+        assert l.as_code(yuio.term.ColorSupport.NONE) == "text"
 
         l = yuio.string.Link.from_path("text", path="bar")
         assert (
             l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
             == "\x1b]8;;file:///bar\x1b\\text\x1b]8;;\x1b\\"
         )
-        assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
+        assert l.as_code(yuio.term.ColorSupport.NONE) == "text"
 
         l = yuio.string.Link.from_path("text", path="a b c")
         assert (
             l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
             == "\x1b]8;;file:///a%20b%20c\x1b\\text\x1b]8;;\x1b\\"
         )
-        assert l.as_code(yuio.term.ColorSupport.ANSI_256) == "text"
+        assert l.as_code(yuio.term.ColorSupport.NONE) == "text"
 
 
 @yuio.string.repr_from_rich
@@ -5318,7 +5301,7 @@ class TestMd:
             (
                 ("# Hello, world!",),
                 {"allow_headings": False},
-                [NO_WRAP_START, Color.NONE, "# Hello, world!", NO_WRAP_END],
+                [NO_WRAP_START, Color.NONE, "Hello, world!", NO_WRAP_END],
             ),
             (
                 ("Some paragraph that will be wrapped at 20 characters",),
@@ -5356,7 +5339,7 @@ class TestMd:
                 [
                     NO_WRAP_START,
                     Color.FORE_MAGENTA,
-                    "        ",
+                    "    ",
                     Color.NONE,
                     "Code",
                     NO_WRAP_END,
@@ -5384,6 +5367,105 @@ class TestMd:
     )
     def test_md(self, args, kwargs, expected, ctx):
         r = yuio.string.Md(*args, **kwargs)
+        assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
+            expected
+        )
+        assert str(r) == "".join(part for part in expected if isinstance(part, str))
+
+
+class TestRst:
+    @pytest.mark.parametrize(
+        ("args", "kwargs", "expected"),
+        [
+            (("",), {}, []),
+            (
+                ("Hello, world!",),
+                {},
+                [NO_WRAP_START, Color.NONE, "Hello, world!", NO_WRAP_END],
+            ),
+            (
+                ("Hello, world!\n--------------",),
+                {},
+                [
+                    NO_WRAP_START,
+                    Color.FORE_MAGENTA,
+                    "⣿ ",
+                    Color.STYLE_BOLD,
+                    "Hello, world!",
+                    Color.NONE,
+                    "\n",
+                    NO_WRAP_END,
+                ],
+            ),
+            (
+                ("Hello, world!\n--------------",),
+                {"allow_headings": False},
+                [NO_WRAP_START, Color.NONE, "Hello, world!", NO_WRAP_END],
+            ),
+            (
+                ("Some paragraph that will be wrapped at 20 characters",),
+                {},
+                [
+                    NO_WRAP_START,
+                    Color.NONE,
+                    "Some paragraph that\nwill be wrapped at\n20 characters",
+                    NO_WRAP_END,
+                ],
+            ),
+            (
+                ("Some paragraph that will be wrapped at 10 characters",),
+                {"width": 10},
+                [
+                    NO_WRAP_START,
+                    Color.NONE,
+                    "Some\nparagraph\nthat will\nbe wrapped\nat 10\ncharacters",
+                    NO_WRAP_END,
+                ],
+            ),
+            (
+                ("    Code",),
+                {},
+                [
+                    NO_WRAP_START,
+                    Color.NONE,
+                    "Code",
+                    NO_WRAP_END,
+                ],
+            ),
+            (
+                ("    Quote",),
+                {"dedent": False},
+                [
+                    NO_WRAP_START,
+                    Color.FORE_MAGENTA,
+                    ">   ",
+                    Color.NONE,
+                    "Quote",
+                    NO_WRAP_END,
+                ],
+            ),
+            (
+                ("Hello, %s!\n----------", _s([Color.FORE_RED, "world"])),
+                {},
+                [
+                    NO_WRAP_START,
+                    Color.FORE_MAGENTA,
+                    "⣿ ",
+                    Color.STYLE_BOLD,
+                    "Hello, ",
+                    Color.STYLE_BOLD | Color.FORE_RED,
+                    "world",
+                    Color.STYLE_BOLD,
+                    "!",
+                    Color.NONE,
+                    "\n",
+                    NO_WRAP_END,
+                ],
+            ),
+        ],
+    )
+    def test_rst(self, args, kwargs, expected, ctx):
+        r = yuio.string.Rst(*args, **kwargs)
         assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
             expected
         )

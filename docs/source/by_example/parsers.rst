@@ -18,7 +18,6 @@ Parser classes are located in :mod:`yuio.parse`. Let's make a simple parser
 for positive integers:
 
 .. code-block:: python
-    :emphasize-lines: 3
 
     import yuio.parse
 
@@ -85,21 +84,6 @@ Here, we've created a parser for dictionaries that map strings to *positive ints
 Technically, Yuio will derive a parser from :class:`int`, then it will apply
 ``yuio.parse.Gt(0)`` on top of it.
 
-Notice that we didn't specify inner parser for :class:`~yuio.parse.Gt`.
-This is because its inner parser will be derived from type hint,
-so we only care about :class:`~yuio.parse.Gt`'s settings.
-
-Parsers created in such a way are called "partial". You can't use a partial parser
-on its own because it doesn't have full information about the object's type.
-You can only use partial parsers in type hints::
-
-    >>> partial_parser = yuio.parse.List(delimiter=",")
-    >>> partial_parser.parse("1,2,3")  # doctest: +ELLIPSIS
-    Traceback (most recent call last):
-    ...
-    TypeError: List requires an inner parser
-    ...
-
 
 Customizing parsers for CLI arguments and config fields
 -------------------------------------------------------
@@ -121,11 +105,15 @@ Now that we know how to use parsers, we can customize CLI arguments and config f
             @yuio.app.app
             def main(
                 n_threads: int | None = yuio.app.field(
-                    default = None,
-                    parser = yuio.parse.Gt(yuio.parse.Int(), 0),
+                    default=None,
+                    parser=yuio.parse.Gt(yuio.parse.Int(), 0),  # [1]_
                 )
             ):
                 ...
+
+        .. code-annotations::
+
+            1.  Parser type must always match field type.
 
     .. tab-item:: Annotations
         :sync: annotations
@@ -295,11 +283,15 @@ For example, let's make a parser that checks if the input is even:
             def assert_is_even(value: int):
                 if value % 2 != 0:
                     raise yuio.parse.ParsingError(
-                        "Expected an even value: `%r`",
+                        "Expected an even value: `%r`", # [1]_
                         value,
                     )
 
             parser = yuio.parse.Apply(yuio.parse.Int(), assert_is_even)
+
+        .. code-annotations::
+
+            1.  t-strings are also supported here.
 
     .. tab-item:: Annotations
         :sync: annotations
@@ -310,13 +302,17 @@ For example, let's make a parser that checks if the input is even:
             def assert_is_even(value: int):
                 if value % 2 != 0:
                     raise yuio.parse.ParsingError(
-                        "Expected an even value: `%r`",
+                        "Expected an even value: `%r`",  # [1]_
                         value,
                     )
 
             parser = yuio.parse.from_type_hint(
                 Annotated[int, yuio.parse.Apply(assert_is_even)]
             )
+
+        .. code-annotations::
+
+            1.  t-strings are also supported here.
 
 The parser will apply our ``assert_is_even`` to all values that it returns::
 
@@ -378,12 +374,17 @@ to undo the change:
             >>> parser = yuio.parse.Map(
             ...     yuio.parse.Int(),
             ...     lambda x: 2 ** x,
-            ...     lambda x: int(math.log2(x)),
+            ...     lambda x: int(math.log2(x)),  # [1]_
             ... )
             >>> parser.parse("10")
             1024
             >>> parser.describe_value(1024)
             '10'
+
+        .. code-annotations::
+
+            1.  Reverse mapper is used when rendering documentation
+                or converting values to JSON.
 
     .. tab-item:: Annotations
         :sync: annotations
@@ -392,12 +393,19 @@ to undo the change:
 
             >>> parser = yuio.parse.from_type_hint(Annotated[
             ...     int,
-            ...     yuio.parse.Map(lambda x: 2 ** x, lambda x: int(math.log2(x))),
+            ...     yuio.parse.Map(
+            ...         lambda x: 2 ** x,
+            ...         lambda x: int(math.log2(x))),  # [1]_
             ... ])
             >>> parser.parse("10")
             1024
             >>> parser.describe_value(1024)
             '10'
+
+        .. code-annotations::
+
+            1.  Reverse mapper is used when rendering documentation
+                or converting values to JSON.
 
 
 Union parsers

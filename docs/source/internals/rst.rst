@@ -1,0 +1,4 @@
+Rst
+===
+
+.. automodule:: yuio.rst
