@@ -594,8 +594,12 @@ class MdParser(yuio.doc.DocParser):
         assert type(self._state) is _Anchor
         line = line.strip()
         if line:
-            self._anchors.setdefault(self._state.anchor, (line, ""))  # TODO!
-        self._state = _Default()
+            url, _ = _InlineParser.parse_link(line)
+            if url:
+                self._anchors.setdefault(self._state.anchor, (line, ""))
+                self._state = _Default()
+                return
+        self._state = _Paragraph(lines=[f"[{self._state.anchor}]:", line])
 
     def _handle_lazy_line_Anchor(self, line: str):
         assert type(self._state) is _Anchor
@@ -615,12 +619,16 @@ class MdParser(yuio.doc.DocParser):
             href = match.group("href").strip()
             if not anchor:
                 self._state = _Paragraph(lines=[line])
+            elif href:
+                url, _ = _InlineParser.parse_link(href)
+                if url:
+                    anchor = _InlineParser.norm_anchor(anchor)
+                    self._anchors.setdefault(anchor, (url, ""))
+                else:
+                    self._state = _Paragraph(lines=[line])
             else:
                 anchor = _InlineParser.norm_anchor(anchor)
-                if href:
-                    self._anchors.setdefault(anchor, (href, ""))  # TODO!
-                else:
-                    self._state = _Anchor(anchor=anchor)
+                self._state = _Anchor(anchor=anchor)
         elif _THEMATIC_BREAK_RE.match(line):
             self._nodes.append(yuio.doc.ThematicBreak())
         elif match := _HEADING_RE.match(line):
@@ -682,6 +690,9 @@ class MdParser(yuio.doc.DocParser):
         return result
 
 
+_UNESCAPE_RE = re.compile(rf"\\([{re.escape(string.punctuation)}])")
+
+
 class _InlineParser:
     # Based on https://spec.commonmark.org/0.31.2/#phase-2-inline-structure
 
@@ -698,13 +709,17 @@ class _InlineParser:
     def norm_anchor(anchor: str) -> str:
         return re.sub(r"\s+", " ", anchor.strip()).casefold()
 
+    @staticmethod
+    def unescape(text: str) -> str:
+        return _UNESCAPE_RE.sub("\1", text)
+
     def run(self) -> list[str | yuio.doc.TextRegion]:
         while self._fits(self._pos):
             self._run()
         self._process_delims()
 
         res: list[str | yuio.doc.TextRegion] = []
-        href: str | None = None
+        url: str | None = None
         em = 0
         strong = 0
         for token in self._tokens:
@@ -712,9 +727,9 @@ class _InlineParser:
                 em += token.data.get("em", 0)
                 strong += token.data.get("strong", 0)
             elif token.kind == "link_start":
-                href = token.data.get("href")
+                url = token.data.get("url")
             elif token.kind == "link_end":
-                href = None
+                url = None
             text = self._text[token.start : token.start + token.len]
             if token.kind == "escape" and text == "\n":
                 text = "\v\n"  # Vertical tab forces wrapper to make a line break.
@@ -732,21 +747,22 @@ class _InlineParser:
                             colors.append("code")
                     if content := token.data.get("content"):
                         text = content
+                    color = " ".join(colors)
                     res.append(
                         yuio.doc.TextRegion(
-                            content=text, colors=colors, no_wrap=True, href=href
+                            content=text, color=color, no_wrap=True, url=url
                         )
                     )
-                elif href:
-                    res.append(
-                        yuio.doc.TextRegion(
-                            content=text, colors=[], no_wrap=False, href=href
-                        )
-                    )
+                elif url:
+                    res.append(yuio.doc.TextRegion(content=text, url=url))
                 else:
                     res.append(text)
 
         return res
+
+    @classmethod
+    def parse_link(cls, link: str):
+        return cls(link, {})._parse_link()
 
     def _fits(self, i):
         return i < len(self._text)
@@ -911,7 +927,7 @@ class _InlineParser:
 
         if self._ch_eq(self._pos, "("):
             self._pos += 1
-            href, title = self._parse_link()
+            url, title = self._parse_link()
         else:
             if self._ch_eq(self._pos, "["):
                 self._pos += 1
@@ -919,11 +935,11 @@ class _InlineParser:
             else:
                 anchor = self._text[opener_token.end : self._pos - 1]
             if anchor:
-                href, title = self._anchors.get(self.norm_anchor(anchor), (None, None))
+                url, title = self._anchors.get(self.norm_anchor(anchor), (None, None))
             else:
-                href, title = None, None
+                url, title = None, None
 
-        if href is None:
+        if url is None:
             self._tokens.append(_Token(start, start + 1, "text"))
             self._pos = start + 1
             return
@@ -933,10 +949,10 @@ class _InlineParser:
             self._link_opener_indices.clear()  # Prevent nested links.
         else:
             close_token = _Token(start, self._pos, "image_end")
-        opener_token.data["href"] = href
+        opener_token.data["url"] = url
         opener_token.data["title"] = title
         opener_token.len = 0
-        close_token.data["href"] = None
+        close_token.data["url"] = None
         close_token.data["title"] = None
         close_token.len = 0
         self._tokens.append(close_token)
@@ -945,17 +961,18 @@ class _InlineParser:
     def _parse_link(self):
         if self._ch_eq(self._pos, "<"):
             self._pos += 1
-            href = self._parse_href_angled()
+            url = self._parse_href_angled()
         else:
-            href = self._parse_href_bare()
-        if href is None:
+            url = self._parse_href_bare()
+        if url is None:
             return None, None  # Href parsing failed.
         if self._ch_in(self._pos, " )"):
             title = self._parse_title()
             if title is None:
                 return None, None  # Title parsing failed.
             else:
-                return href, title
+                url = self.unescape(url)  # Normal escaping rules apply.
+                return url, title
         else:
             return None, None  # Href does not end with expected symbol.
 
@@ -977,7 +994,7 @@ class _InlineParser:
     def _parse_href_bare(self):
         start = self._pos
         paren_level = 1
-        href = None
+        url = None
         while self._fits(self._pos):
             match self._text[self._pos]:
                 case "\\" if self._ch_in(self._pos + 1, string.punctuation):
@@ -987,7 +1004,7 @@ class _InlineParser:
                 case "\x7f":
                     break
                 case " ":
-                    href = self._text[start : self._pos]
+                    url = self._text[start : self._pos]
                     break
                 case "(":
                     paren_level += 1
@@ -995,16 +1012,16 @@ class _InlineParser:
                 case ")":
                     paren_level -= 1
                     if paren_level == 0:
-                        href = self._text[start : self._pos]
+                        url = self._text[start : self._pos]
                         break
                     else:
                         self._pos += 1
                 case _:
                     self._pos += 1
-        if not href:
-            # Empty href is not allowed in this case.
-            href = None
-        return href
+        if not url:
+            # Empty url is not allowed in this case.
+            url = None
+        return url
 
     def _parse_title(self):
         self._eat(" ")

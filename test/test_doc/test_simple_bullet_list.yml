@@ -1,0 +1,3 @@
+ast: "(List None None\n  (ListItem None\n    (Paragraph\n      'Item 1')))"
+lines:
+- •   Item 1

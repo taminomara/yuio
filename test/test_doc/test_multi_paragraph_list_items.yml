@@ -1,0 +1,9 @@
+ast: "(List <ListEnumeratorKind.NUMBER: 'NUMBER'> None\n  (ListItem 1\n    (Paragraph\n\
+  \      'First')\n    (Paragraph\n      'Second'))\n  (ListItem 2\n    (Paragraph\n\
+  \      'Third')))"
+lines:
+- 1.  First
+- '    '
+- '    Second'
+- ''
+- 2.  Third

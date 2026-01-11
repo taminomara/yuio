@@ -2,9 +2,9 @@ import yuio.app
 import yuio.io
 
 @yuio.app.app
-def main(greeting: str = "world"):
+def main():
     yuio.io.md("""
-        # Dear %s,
+        # Greetings!
 
         -   You can use *inline formatting*, `backticks`,
             and {py:class}`MySt roles <yuio.md.MdParser>`.
@@ -21,7 +21,7 @@ def main(greeting: str = "world"):
             ```
 
         [also work]: https://yuio.readthedocs.io/
-    """, greeting)
+    """)
 
 if __name__ == "__main__":
     main.run()

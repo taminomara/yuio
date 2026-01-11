@@ -1,0 +1,4 @@
+ast: "(Admonition 'warning'\n  (Paragraph\n    'Content'))"
+lines:
+- Title
+- '    Content'

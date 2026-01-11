@@ -1,0 +1,4 @@
+ast: "(Paragraph\n  'normal '\n  TextRegion(content='code', color='code', no_wrap=True,\
+  \ url=None)\n  ' text')"
+lines:
+- normal code text

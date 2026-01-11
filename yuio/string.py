@@ -288,6 +288,7 @@ __all__ = [
     "Indent",
     "JoinRepr",
     "JoinStr",
+    "Link",
     "LinkMarker",
     "Md",
     "NoWrapEnd",
@@ -724,7 +725,7 @@ class ColorizedString:
         return self._active_color
 
     @property
-    def active_link(self) -> str | None:
+    def active_url(self) -> str | None:
         """
         Last url appended to this string.
 
@@ -1176,7 +1177,7 @@ class ColorizedString:
                 if not line:
                     continue
                 if needs_indent:
-                    url = res.active_link
+                    url = res.active_url
                     res.end_link()
                     res.append_colorized_str(nowrap_indent)
                     res.append_link(url)
@@ -1828,7 +1829,7 @@ class _TextWrapper:
             next_line += self.continuation_indent
 
         next_line.append_color(self.current_line.active_color)
-        next_line.append_link(self.current_line.active_link)
+        next_line.append_link(self.current_line.active_url)
 
         self.current_line = next_line
         self.current_line_width: int = self.continuation_indent.width
@@ -1854,7 +1855,7 @@ class _TextWrapper:
         self._flush_line()
         self.current_line += tail
         self.current_line.append_color(tail.active_color)
-        self.current_line.append_link(tail.active_link)
+        self.current_line.append_link(tail.active_url)
         self.current_line_width += tail_width
 
     def _append_str(self, s: str):
@@ -3494,8 +3495,6 @@ class Md(_StrBase):
 
     :param md:
         text to format.
-    :param args:
-        arguments for ``%``-formatting the rendered text.
     :param width:
         if given, overrides settings passed to :class:`ReprContext` for this call.
     :param dedent:
@@ -3505,17 +3504,6 @@ class Md(_StrBase):
 
     """
 
-    @_t.overload
-    def __init__(
-        self,
-        md: _t.LiteralString,
-        /,
-        *args: _t.Any,
-        width: int | None = None,
-        dedent: bool = True,
-        allow_headings: bool = True,
-    ): ...
-    @_t.overload
     def __init__(
         self,
         md: str,
@@ -3524,25 +3512,14 @@ class Md(_StrBase):
         width: int | None = None,
         dedent: bool = True,
         allow_headings: bool = True,
-    ): ...
-    def __init__(
-        self,
-        md: str,
-        /,
-        *args: _t.Any,
-        width: int | None = None,
-        dedent: bool = True,
-        allow_headings: bool = True,
     ):
         self._md: str = md
-        self._args: tuple[_t.Any, ...] = args
         self._width: int | None = width
         self._dedent: bool = dedent
         self._allow_headings: bool = allow_headings
 
     def __rich_repr__(self) -> RichReprResult:
         yield None, self._md
-        yield from ((None, arg) for arg in self._args)
         yield "width", self._width, yuio.MISSING
         yield "dedent", self._dedent, True
         yield "allow_headings", self._allow_headings, True
@@ -3567,8 +3544,6 @@ class Md(_StrBase):
                 res += line
                 sep = True
             res.end_no_wrap()
-            if self._args:
-                res = res.percent_format(self._args, ctx)
 
             return res
 
@@ -3583,8 +3558,6 @@ class Rst(_StrBase):
 
     :param rst:
         text to format.
-    :param args:
-        arguments for ``%``-formatting the rendered text.
     :param width:
         if given, overrides settings passed to :class:`ReprContext` for this call.
     :param dedent:
@@ -3594,17 +3567,6 @@ class Rst(_StrBase):
 
     """
 
-    @_t.overload
-    def __init__(
-        self,
-        rst: _t.LiteralString,
-        /,
-        *args: _t.Any,
-        width: int | None = None,
-        dedent: bool = True,
-        allow_headings: bool = True,
-    ): ...
-    @_t.overload
     def __init__(
         self,
         rst: str,
@@ -3613,25 +3575,14 @@ class Rst(_StrBase):
         width: int | None = None,
         dedent: bool = True,
         allow_headings: bool = True,
-    ): ...
-    def __init__(
-        self,
-        rst: str,
-        /,
-        *args: _t.Any,
-        width: int | None = None,
-        dedent: bool = True,
-        allow_headings: bool = True,
     ):
         self._rst: str = rst
-        self._args: tuple[_t.Any, ...] = args
         self._width: int | None = width
         self._dedent: bool = dedent
         self._allow_headings: bool = allow_headings
 
     def __rich_repr__(self) -> RichReprResult:
         yield None, self._rst
-        yield from ((None, arg) for arg in self._args)
         yield "width", self._width, yuio.MISSING
         yield "dedent", self._dedent, True
         yield "allow_headings", self._allow_headings, True
@@ -3658,8 +3609,6 @@ class Rst(_StrBase):
                 res += line
                 sep = True
             res.end_no_wrap()
-            if self._args:
-                res = res.percent_format(self._args, ctx)
 
             return res
 

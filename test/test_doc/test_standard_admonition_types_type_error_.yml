@@ -1,0 +1,4 @@
+ast: "(Admonition 'error'\n  (Paragraph\n    'Content'))"
+lines:
+- Title
+- '    Content'

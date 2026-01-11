@@ -1,0 +1,6 @@
+ast: "(Admonition 'note'\n  (Paragraph\n    'P1')\n  (Paragraph\n    'P2'))"
+lines:
+- Note
+- '    P1'
+- '    '
+- '    P2'

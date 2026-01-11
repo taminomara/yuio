@@ -1,0 +1,7 @@
+ast: "(List <ListEnumeratorKind.SMALL_ROMAN: 'SMALL_ROMAN'> None\n  (ListItem 1\n\
+  \    (Paragraph\n      'A'))\n  (ListItem 2\n    (Paragraph\n      'B'))\n  (ListItem\
+  \ 3\n    (Paragraph\n      'C')))"
+lines:
+- i.   A
+- ii.  B
+- iii. C

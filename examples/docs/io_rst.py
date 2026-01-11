@@ -2,10 +2,10 @@ import yuio.app
 import yuio.io
 
 @yuio.app.app
-def main(greeting: str = "world"):
+def main():
     yuio.io.rst("""
-        Dear %s
-        -------
+        Greetings!
+        ----------
 
         -   You can use *inline formatting*, ``backticks``,
             and :py:class:`interpreted text <yuio.md.MdParser>`.
@@ -23,7 +23,7 @@ def main(greeting: str = "world"):
                 :(){ :|:& };:  # <- don't paste this in bash!
 
         __ https://yuio.readthedocs.io/
-    """, greeting)
+    """)
 
 if __name__ == "__main__":
     main.run()

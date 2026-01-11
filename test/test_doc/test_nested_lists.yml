@@ -1,0 +1,6 @@
+ast: "(List None None\n  (ListItem None\n    (Paragraph\n      'Outer')\n    (List\
+  \ None None\n      (ListItem None\n        (Paragraph\n          'Inner')))))"
+lines:
+- •   Outer
+- '    '
+- '    •   Inner'

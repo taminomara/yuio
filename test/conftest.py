@@ -243,6 +243,21 @@ def setup_io(
         yuio.io._ORIG_STDOUT = None
 
 
+def serialize_colorized_string(code: str, s: yuio.string.ColorizedString):
+    result = []
+    for part in s._parts:
+        if isinstance(part, yuio.color.Color):
+            result.append({"color": repr(part)})
+        elif isinstance(part, str):
+            result.append(part)
+        else:
+            result.append({"marker": str(part)})
+    return {
+        "code": code,
+        "highlighted": result,
+    }
+
+
 @dataclass
 class _KeyboardEventStreamDone(BaseException):
     def __str__(self):

@@ -1,23 +1,9 @@
 import yuio.hl
 from yuio.color import Color
-from yuio.string import ColorizedString
+
+from .conftest import serialize_colorized_string
 
 import pytest
-
-
-def serialize_colorized_string(code: str, s: ColorizedString):
-    result = []
-    for part in s._parts:
-        if isinstance(part, Color):
-            result.append({"color": repr(part)})
-        elif isinstance(part, str):
-            result.append(part)
-        else:
-            result.append({"marker": str(part)})
-    return {
-        "code": code,
-        "highlighted": result,
-    }
 
 
 @pytest.fixture(autouse=True)

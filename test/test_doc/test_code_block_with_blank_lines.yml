@@ -1,0 +1,3 @@
+ast: "(Code ''\n  'line1'\n  ''\n  ''\n  'line2')"
+lines:
+- "    line1\n    \n    \n    line2"

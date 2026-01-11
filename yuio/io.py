@@ -1052,21 +1052,8 @@ def heading(msg: yuio.string.ToColorable, /, *args, level: int = 1, **kwargs):
     raw(msg_colorable, **kwargs)
 
 
-@_t.overload
-def md(
-    msg: _t.LiteralString,
-    /,
-    *args,
-    dedent: bool = True,
-    allow_headings: bool = True,
-    **kwargs,
-): ...
-@_t.overload
-def md(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs): ...
-def md(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs):
-    """md(msg: typing.LiteralString, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs)
-    md(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs) ->
-
+def md(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs):
+    """
     Print a markdown-formatted text.
 
     Yuio supports all CommonMark block markup except tables.
@@ -1074,8 +1061,6 @@ def md(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **k
 
     :param msg:
         message to print.
-    :param args:
-        arguments for ``%``\\ -formatting the message.
     :param dedent:
         whether to remove leading indent from `msg`.
     :param allow_headings:
@@ -1086,26 +1071,13 @@ def md(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **k
     """
 
     info(
-        yuio.string.Md(msg, *args, dedent=dedent, allow_headings=allow_headings),
+        yuio.string.Md(msg, dedent=dedent, allow_headings=allow_headings),
         **kwargs,
     )
 
 
-@_t.overload
-def rst(
-    msg: _t.LiteralString,
-    /,
-    *args,
-    dedent: bool = True,
-    allow_headings: bool = True,
-    **kwargs,
-): ...
-@_t.overload
-def rst(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs): ...
-def rst(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs):
-    """rst(msg: typing.LiteralString, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs)
-    rst(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs) ->
-
+def rst(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs):
+    """
     Print a RST-formatted text.
 
     Yuio supports all RST block markup except tables and field lists.
@@ -1113,8 +1085,6 @@ def rst(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **
 
     :param msg:
         message to print.
-    :param args:
-        arguments for ``%``\\ -formatting the message.
     :param dedent:
         whether to remove leading indent from `msg`.
     :param allow_headings:
@@ -1125,7 +1095,7 @@ def rst(msg: str, /, *args, dedent: bool = True, allow_headings: bool = True, **
     """
 
     info(
-        yuio.string.Rst(msg, *args, dedent=dedent, allow_headings=allow_headings),
+        yuio.string.Rst(msg, dedent=dedent, allow_headings=allow_headings),
         **kwargs,
     )
 
@@ -2285,35 +2255,23 @@ class SuspendOutput:
         kwargs.setdefault("ignore_suspended", True)
         heading(msg, *args, **kwargs)
 
-    @_t.overload
-    def md(self, msg: _t.LiteralString, /, *args, **kwargs): ...
-    @_t.overload
-    def md(self, msg: str, /, **kwargs): ...
-    def md(self, msg: str, /, *args, **kwargs):
-        """md(msg: typing.LiteralString, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs)
-        md(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs)
-
+    def md(self, msg: str, /, **kwargs):
+        """
         Log an :func:`md` message, ignore suspended status.
 
         """
 
         kwargs.setdefault("ignore_suspended", True)
-        md(msg, *args, **kwargs)
+        md(msg, **kwargs)
 
-    @_t.overload
-    def rst(self, msg: _t.LiteralString, /, *args, **kwargs): ...
-    @_t.overload
-    def rst(self, msg: str, /, **kwargs): ...
-    def rst(self, msg: str, /, *args, **kwargs):
-        """rst(msg: typing.LiteralString, /, *args, dedent: bool = True, allow_headings: bool = True, **kwargs)
-        rst(msg: str, /, *, dedent: bool = True, allow_headings: bool = True, **kwargs)
-
+    def rst(self, msg: str, /, **kwargs):
+        """
         Log an :func:`rst` message, ignore suspended status.
 
         """
 
         kwargs.setdefault("ignore_suspended", True)
-        rst(msg, *args, **kwargs)
+        rst(msg, **kwargs)
 
     def br(self, **kwargs):
         """br()

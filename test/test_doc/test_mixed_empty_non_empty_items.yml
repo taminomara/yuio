@@ -1,0 +1,7 @@
+ast: "(Document\n  (Paragraph)\n  (Paragraph\n    'Text')\n  (Paragraph))"
+lines:
+- ''
+- ''
+- Text
+- ''
+- ''

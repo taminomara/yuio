@@ -1,0 +1,5 @@
+ast: "(Quote\n  (Paragraph\n    'P1')\n  (Paragraph\n    'P2'))"
+lines:
+- '>   P1'
+- '>   '
+- '>   P2'

@@ -256,11 +256,10 @@ class Formatter:
         try:
             yield
         finally:
-            self._indent = (
-                old_indent
-                if self._indent == first_line_indent
-                else old_continuation_indent
-            )
+            if self._indent == first_line_indent:
+                self._indent = old_indent
+            else:
+                self._indent = old_continuation_indent
             self._continuation_indent = old_continuation_indent
 
     def _line(self, line: yuio.string.ColorizedString, /):
@@ -292,21 +291,21 @@ class Formatter:
                 s.append_str(item)
             else:
                 color = default_color
-                for path in item.colors:
-                    color |= self.ctx.get_color(path)
+                if item.color:
+                    color |= self.ctx.get_color(item.color)
                 s.append_color(color)
                 if item.no_wrap:
                     s.start_no_wrap()
-                if item.href:
-                    s.start_link(item.href)
+                if item.url:
+                    s.start_link(item.url)
                 s.append_str(item.content)
-                if item.href:
+                if item.url:
                     s.end_link()
                 if item.no_wrap:
                     s.end_no_wrap()
-                if item.href and not self.ctx.term.supports_colors:
+                if item.url and not self.ctx.term.supports_colors:
                     s.append_str(" [")
-                    s.append_str(item.href)
+                    s.append_str(item.url)
                     s.append_str("]")
 
         for line in s.wrap(
@@ -321,15 +320,18 @@ class Formatter:
     def _format_Text(self, node: Text, /, *, default_color: yuio.color.Color):
         self._format_inline(node.items, default_color=default_color)
 
-    def _format_Container(self, node: Container[TAst], /):
+    def _format_Container(self, node: Container[TAst], /, *, allow_empty: bool = False):
         self._is_first_line = True
-        for item in node.items:
+        items = node.items
+        if not items and not allow_empty:
+            items = [Paragraph(items=[""])]
+        for item in items:
             if not self._is_first_line and self._separate_paragraphs:
                 self._line(self._indent)
             self._format(item)
 
     def _format_Document(self, node: Document, /):
-        self._format_Container(node)
+        self._format_Container(node, allow_empty=True)
 
     def _format_ThematicBreak(self, _: ThematicBreak):
         decoration = self.ctx.get_msg_decoration("thematic_break")
@@ -385,23 +387,25 @@ class Formatter:
             self._format_Container(node)
 
     def _format_Admonition(self, node: Admonition, /):
-        decoration = self.ctx.get_msg_decoration("admonition/title")
-        with self._with_indent(
-            f"admonition/decoration/title:{node.type}",
-            decoration,
-            continue_with_spaces=False,
-        ):
-            self._format_inline(
-                node.title,
-                default_color=self.ctx.get_color(f"admonition/title:{node.type}"),
-            )
-        decoration = self.ctx.get_msg_decoration("admonition/body")
-        with self._with_indent(
-            f"admonition/decoration/body:{node.type}",
-            decoration,
-            continue_with_spaces=False,
-        ):
-            self._format_Container(node)
+        if node.title:
+            decoration = self.ctx.get_msg_decoration("admonition/title")
+            with self._with_indent(
+                f"admonition/decoration/title:{node.type}",
+                decoration,
+                continue_with_spaces=False,
+            ):
+                self._format_inline(
+                    node.title,
+                    default_color=self.ctx.get_color(f"admonition/title:{node.type}"),
+                )
+        if node.items:
+            decoration = self.ctx.get_msg_decoration("admonition/body")
+            with self._with_indent(
+                f"admonition/decoration/body:{node.type}",
+                decoration,
+                continue_with_spaces=False,
+            ):
+                self._format_Container(node)
 
     def _format_Footnote(self, node: Footnote, /):
         if yuio.string.line_width(node.marker) > 2:
@@ -413,6 +417,9 @@ class Formatter:
             self._format_Container(node)
 
     def _format_FootnoteContainer(self, node: FootnoteContainer, /):
+        if not node.items:
+            return
+
         prev_separate_paragraphs = self._separate_paragraphs
         self._separate_paragraphs = False
         try:
@@ -422,6 +429,9 @@ class Formatter:
             self._separate_paragraphs = prev_separate_paragraphs
 
     def _format_Code(self, node: Code, /):
+        if not node.lines:
+            return
+
         highlighter, syntax_name = yuio.hl.get_highlighter(node.syntax)
         s = highlighter.highlight(
             "\n".join(node.lines),
@@ -567,9 +577,9 @@ class TextRegion:
 
     """
 
-    colors: list[str]
+    color: str | None = None
     """
-    Color paths to be applied.
+    Color path to be applied to the string.
 
     """
 
@@ -579,9 +589,9 @@ class TextRegion:
 
     """
 
-    href: str | None = None
+    url: str | None = None
     """
-
+    Makes this region into a hyperlink.
 
     """
 
@@ -668,7 +678,7 @@ class Admonition(Container[AstBase]):
 
     """
 
-    title: list[str | TextRegion]
+    title: list[str | TextRegion] = dataclasses.field(repr=False)
     """
     Main title.
 
@@ -716,6 +726,12 @@ class Code(AstBase):
 
     """
 
+    syntax: str
+    """
+    Syntax indicator as parsed form the original document.
+
+    """
+
     def dump(self, indent: str = "") -> str:
         s = f"{indent}({self._dump_params()}"
         indent += "  "
@@ -724,12 +740,6 @@ class Code(AstBase):
             s += repr(line)
         s += ")"
         return s
-
-    syntax: str
-    """
-    Syntax indicator as parsed form the original document.
-
-    """
 
 
 class ListEnumeratorKind(Enum):
@@ -981,10 +991,10 @@ _CROSSREF_RE = re.compile(
 )
 
 
-def _split_crossref(href: str):
-    match = _CROSSREF_RE.match(href)
+def _split_crossref(text: str):
+    match = _CROSSREF_RE.match(text)
     if not match:
-        return href, href
+        return text, text
     title = match.group("title")
     target = match.group("target")
     if not target:
@@ -997,8 +1007,8 @@ def _split_crossref(href: str):
     return target, title
 
 
-def _split_link(href: str):
-    match = _CROSSREF_RE.match(href)
+def _split_link(text: str):
+    match = _CROSSREF_RE.match(text)
     if not match:
-        return None, href
+        return None, text
     return match.group("target"), match.group("title")

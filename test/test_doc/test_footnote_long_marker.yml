@@ -1,0 +1,4 @@
+ast: "(Footnote '[note-123]'\n  (Paragraph\n    'Text'))"
+lines:
+- '[note-123]'
+- '    Text'

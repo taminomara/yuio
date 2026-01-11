@@ -1,0 +1,7 @@
+ast: "(Paragraph\n  'This is a long paragraph that will wrap')"
+lines:
+- This is a
+- long
+- paragraph
+- that will
+- wrap

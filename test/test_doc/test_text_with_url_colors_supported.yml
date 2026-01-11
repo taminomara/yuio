@@ -1,0 +1,3 @@
+ast: "(Paragraph\n  TextRegion(content='link', color=None, no_wrap=False, url='https://example.com'))"
+lines:
+- link

@@ -1176,42 +1176,42 @@ class _InlineParser:
         res: list[str | yuio.doc.TextRegion] = []
         for token in self._tokens:
             text = self._text[token.start : token.end]
-            colors = []
+            color = None
             no_wrap = False
-            href = None
+            url = None
             match token.kind:
                 case "em":
-                    colors = ["em"]
+                    color = "em"
                 case "strong":
-                    colors = ["strong"]
+                    color = "strong"
                 case "code":
                     role = token.data.get("role", "code")
                     if role == "flag":
-                        colors = ["flag"]
+                        color = "flag"
                     elif role == "default":
-                        colors = ["em"]
+                        color = "em"
                     else:
-                        colors = ["code"]
+                        color = "code"
                     if title := token.data.get("title"):
                         text = title
                     no_wrap = True
                 case "link":
                     if title := token.data.get("title"):
                         text = title
-                    href = token.data.get("href")
+                    url = token.data.get("url")
                 case "footnote":
                     if content := token.data.get("content"):
                         text = content
                     text = f"[{text}]"
-                    colors = ["footnote"]
+                    color = "footnote"
                     no_wrap = True
                 case _:
                     pass
             text = _unescape(text)
-            if colors or no_wrap or href:
+            if color or no_wrap or url:
                 res.append(
                     yuio.doc.TextRegion(
-                        content=text, colors=colors, no_wrap=no_wrap, href=href
+                        content=text, color=color, no_wrap=no_wrap, url=url
                     )
                 )
             else:
@@ -1493,7 +1493,7 @@ class _InlineParser:
                     token = self._emit(
                         token_start, content_start, content_end, token_end, "link"
                     )
-                    token.data["href"] = target
+                    token.data["url"] = target
                     token.data["title"] = title
                 else:
                     _, title = yuio.doc._split_crossref(
@@ -1774,11 +1774,11 @@ class _InlineParser:
             is_anonymous=n_underscores == 2,
         )
         if target and target.type == "link":
-            href = target.content
+            url = target.content
         else:
-            href = None
+            url = None
         token = self._emit(token_start, content_start, content_end, token_end, "link")
-        token.data["href"] = href
+        token.data["url"] = url
         token.data["title"] = title
 
 
