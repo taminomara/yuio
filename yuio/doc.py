@@ -297,9 +297,17 @@ class Formatter:
                 s.append_color(color)
                 if item.no_wrap:
                     s.start_no_wrap()
+                if item.href:
+                    s.start_link(item.href)
                 s.append_str(item.content)
+                if item.href:
+                    s.end_link()
                 if item.no_wrap:
                     s.end_no_wrap()
+                if item.href and not self.ctx.term.supports_colors:
+                    s.append_str(" [")
+                    s.append_str(item.href)
+                    s.append_str("]")
 
         for line in s.wrap(
             self.width,
@@ -568,6 +576,12 @@ class TextRegion:
     no_wrap: bool = False
     """
     Whether to wrap contents.
+
+    """
+
+    href: str | None = None
+    """
+
 
     """
 

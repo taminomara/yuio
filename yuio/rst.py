@@ -83,7 +83,6 @@ from dataclasses import dataclass
 from enum import Enum
 
 import yuio.doc
-import yuio.string
 from yuio.util import dedent as _dedent
 
 import yuio._typing_ext as _tx
@@ -1209,11 +1208,11 @@ class _InlineParser:
                 case _:
                     pass
             text = _unescape(text)
-            if href:
-                text = yuio.string.Link(text, url=href)
-            if colors or no_wrap:
+            if colors or no_wrap or href:
                 res.append(
-                    yuio.doc.TextRegion(content=text, colors=colors, no_wrap=no_wrap)
+                    yuio.doc.TextRegion(
+                        content=text, colors=colors, no_wrap=no_wrap, href=href
+                    )
                 )
             else:
                 res.append(text)

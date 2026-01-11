@@ -610,7 +610,9 @@ class TestLine:
         widget_checker.check(
             yuio.widget.Line(
                 yuio.string.ColorizedString(
-                    ["Text ", yuio.color.Color.FORE_BLUE, "blue"]
+                    "Text ",
+                    yuio.color.Color.FORE_BLUE,
+                    "blue",
                 )
             )
         )
@@ -681,7 +683,9 @@ class TestText:
         widget_checker.check(
             yuio.widget.Text(
                 yuio.string.ColorizedString(
-                    ["Text ", yuio.color.Color.FORE_BLUE, "blue"]
+                    "Text ",
+                    yuio.color.Color.FORE_BLUE,
+                    "blue",
                 )
             )
         )

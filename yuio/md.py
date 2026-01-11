@@ -80,7 +80,6 @@ import string
 from dataclasses import dataclass
 
 import yuio.doc
-import yuio.string
 from yuio.util import dedent as _dedent
 
 from typing import TYPE_CHECKING
@@ -720,8 +719,6 @@ class _InlineParser:
             if token.kind == "escape" and text == "\n":
                 text = "\v\n"  # Vertical tab forces wrapper to make a line break.
             if text:
-                if href:
-                    text = yuio.string.Link(text, url=href)
                 if em or strong or token.kind == "code":
                     colors = []
                     if em:
@@ -736,7 +733,15 @@ class _InlineParser:
                     if content := token.data.get("content"):
                         text = content
                     res.append(
-                        yuio.doc.TextRegion(content=text, colors=colors, no_wrap=True)
+                        yuio.doc.TextRegion(
+                            content=text, colors=colors, no_wrap=True, href=href
+                        )
+                    )
+                elif href:
+                    res.append(
+                        yuio.doc.TextRegion(
+                            content=text, colors=[], no_wrap=False, href=href
+                        )
                     )
                 else:
                     res.append(text)

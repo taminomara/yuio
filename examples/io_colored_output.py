@@ -21,12 +21,16 @@ if __name__ == "__main__":
 
     yuio.io.heading("Links")
     yuio.io.info(
-        "Visit %s (if your terminal supports hyperlinks, that is.)",
-        yuio.io.Link("example.com", url="https://example.com"),
+        "Visit %s.",
+        yuio.io.Link("example link", url="https://example.com"),
     )
     yuio.io.info(
-        "Or open %s in a text editor.",
-        yuio.io.Link.from_path("this example", path=__file__),
+        "Or %s in a text editor.",
+        yuio.io.Link.from_path("open this example", path=__file__),
+    )
+    yuio.io.info(
+        "Note: if your terminal doesn't support hyperlinks, "
+        "run this example with `--no-color` to see them."
     )
 
     yuio.io.heading("Exceptions")
@@ -76,17 +80,16 @@ if __name__ == "__main__":
                     "This part uses `yuio.io`, `yuio.string`, `yuio.theme` and other "
                     "low-level modules. You can do some %s things with them!",
                     yuio.io.ColorizedString(
-                        [
-                            yuio.color.Color.STYLE_INVERSE
-                            | yuio.color.Color.STYLE_BLINK
-                            | yuio.color.Color.FORE_MAGENTA,
-                            "advanced",
-                        ]
+                        yuio.color.Color.STYLE_INVERSE
+                        | yuio.color.Color.STYLE_BLINK
+                        | yuio.color.Color.FORE_MAGENTA,
+                        "advanced",
                     ),
                 ),
                 width=40,
                 indent=yuio.io.ColorizedString(
-                    [yuio.io.get_theme().get_color("msg/decoration"), "> "]
+                    yuio.io.get_theme().get_color("msg/decoration"),
+                    "> ",
                 ),
             ),
             yuio.io.Hr(

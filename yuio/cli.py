@@ -344,10 +344,8 @@ class Argument:
 
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return _ColorizedString(
-            [
-                ctx.get_color("msg/text:code/sh-usage hl/flag:sh-usage"),
-                self.metavar,
-            ]
+            ctx.get_color("msg/text:code/sh-usage hl/flag:sh-usage"),
+            self.metavar,
         )
 
 
@@ -373,10 +371,8 @@ class Flag:
 
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
         return _ColorizedString(
-            [
-                ctx.get_color("msg/text:code/sh-usage hl/flag:sh-usage"),
-                self.value,
-            ]
+            ctx.get_color("msg/text:code/sh-usage hl/flag:sh-usage"),
+            self.value,
         )
 
 
@@ -3105,12 +3101,10 @@ class _CliFormatter(yuio.doc.Formatter):  # type: ignore
 
     def _format_Usage(self, node: _Usage):
         prefix = _ColorizedString(
-            [
-                self.ctx.get_color("msg/text:heading/section"),
-                node.prefix,
-                self.base_color,
-                " ",
-            ]
+            self.ctx.get_color("msg/text:heading/section"),
+            node.prefix,
+            self.base_color,
+            " ",
         )
 
         usage = _ColorizedString()

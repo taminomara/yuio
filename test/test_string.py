@@ -3,7 +3,6 @@ import dataclasses
 from dataclasses import dataclass
 
 import yuio.string
-import yuio.term
 from yuio.color import Color
 from yuio.string import NO_WRAP_END, NO_WRAP_START, Esc
 
@@ -41,121 +40,121 @@ def setup_repr_hl(theme):
     ("text", "width", "length"),
     [
         pytest.param(
-            _s([]),
+            _s(),
             0,
             0,
             id="empty",
         ),
         pytest.param(
-            _s([Color.FORE_RED]),
+            _s(Color.FORE_RED),
             0,
             0,
             id="color",
         ),
         pytest.param(
-            _s([NO_WRAP_START]),
+            _s(NO_WRAP_START),
             0,
             0,
             id="no-wrap-marker",
         ),
         pytest.param(
-            _s([""]),
+            _s(""),
             0,
             0,
             id="empty-string",
         ),
         pytest.param(
-            _s(["abc"]),
+            _s("abc"),
             3,
             3,
             id="ascii",
         ),
         pytest.param(
-            _s(["абв"]),
+            _s("абв"),
             3,
             3,
             id="cyrillic",
         ),
         pytest.param(
-            _s(["a\nb"]),
+            _s("a\nb"),
             3,
             3,
             id="newline",
         ),
         pytest.param(
-            _s(["👻"]),
+            _s("👻"),
             2,
             1,
             id="wide",
         ),
         pytest.param(
-            _s(["abc", ""]),
+            _s("abc", ""),
             3,
             3,
             id="empty-string",
         ),
         pytest.param(
-            _s(["abc", "def"]),
+            _s("abc", "def"),
             6,
             6,
             id="ascii",
         ),
         pytest.param(
-            _s(["abc", "👻"]),
+            _s("abc", "👻"),
             5,
             4,
             id="wide",
         ),
         pytest.param(
-            _s([_s([])]),
+            _s(_s()),
             0,
             0,
             id="col-string-empty",
         ),
         pytest.param(
-            _s([_s(["asd"])]),
+            _s(_s("asd")),
             3,
             3,
             id="col-string-non-empty",
         ),
         pytest.param(
-            _s([_s(["asd", "👻"])]),
+            _s(_s("asd", "👻")),
             5,
             4,
             id="col-string-wide",
         ),
         pytest.param(
-            _s([_touch_width(_s([]))]),
+            _s(_touch_width(_s())),
             0,
             0,
             id="col-string-empty-with-cached-width",
         ),
         pytest.param(
-            _s([_touch_width(_s(["asd"]))]),
+            _s(_touch_width(_s("asd"))),
             3,
             3,
             id="col-string-non-empty-with-cached-width",
         ),
         pytest.param(
-            _s([_touch_width(_s(["asd", "👻"]))]),
+            _s(_touch_width(_s("asd", "👻"))),
             5,
             4,
             id="col-string-wide-with-cached-width",
         ),
         pytest.param(
-            _touch_width(_s(["asd"])) + "👻",
+            _touch_width(_s("asd")) + "👻",
             5,
             4,
             id="cached-width-resets",
         ),
         pytest.param(
-            _touch_width(_s(["asd"])) + _s("👻"),
+            _touch_width(_s("asd")) + _s("👻"),
             5,
             4,
             id="cached-width-resets",
         ),
         pytest.param(
-            _touch_width(_s(["asd"])) + _touch_width(_s("👻")),
+            _touch_width(_s("asd")) + _touch_width(_s("👻")),
             5,
             4,
             id="cached-width-sum",
@@ -175,9 +174,9 @@ def test_width_and_len(text, width, length):
         (_s("asd"), "asd", False),
         (_s(), _s(), True),
         (_s("foo"), _s("foo"), True),
-        (_s([Color.NONE, "foo"]), _s("foo"), True),
-        (_s([Color.FORE_RED, "foo"]), _s("foo"), False),
-        (_s(["foo", "bar"]), _s("foobar"), False),
+        (_s(Color.NONE, "foo"), _s("foo"), True),
+        (_s(Color.FORE_RED, "foo"), _s("foo"), False),
+        (_s("foo", "bar"), _s("foobar"), False),
     ],
 )
 def test_eq(l, r, expected):
@@ -264,47 +263,47 @@ def test_eq(l, r, expected):
             id="no-wrap-nested",
         ),
         pytest.param(
-            [_s(["abc"])],
+            [_s("abc")],
             [Color.NONE, "abc"],
             id="col-string-simple",
         ),
         pytest.param(
-            [_s(["abc", "def"])],
+            [_s("abc", "def")],
             [Color.NONE, "abc", "def"],
             id="col-string-multi",
         ),
         pytest.param(
-            [_s(["abc", Color.FORE_RED, "def"])],
+            [_s("abc", Color.FORE_RED, "def")],
             [Color.NONE, "abc", Color.FORE_RED, "def"],
             id="col-string-colors",
         ),
         pytest.param(
-            ["xxx", _s(["abc"])],
+            ["xxx", _s("abc")],
             [Color.NONE, "xxx", "abc"],
             id="col-string-prefix",
         ),
         pytest.param(
-            ["xxx", _s([Color.FORE_RED, "abc"])],
+            ["xxx", _s(Color.FORE_RED, "abc")],
             [Color.NONE, "xxx", Color.FORE_RED, "abc"],
             id="col-string-prefix-different-color",
         ),
         pytest.param(
-            [Color.FORE_RED, "xxx", _s(["abc"])],
+            [Color.FORE_RED, "xxx", _s("abc")],
             [Color.FORE_RED, "xxx", Color.NONE, "abc"],
             id="col-string-prefix-different-color",
         ),
         pytest.param(
-            [_s(["abc", Color.FORE_RED, "def"]), "xxx"],
+            [_s("abc", Color.FORE_RED, "def"), "xxx"],
             [Color.NONE, "abc", Color.FORE_RED, "def", Color.NONE, "xxx"],
             id="col-string-active-color-did-not-change",
         ),
         pytest.param(
-            [Color.FORE_GREEN, _s(["abc", Color.FORE_RED, "def"]), "xxx"],
+            [Color.FORE_GREEN, _s("abc", Color.FORE_RED, "def"), "xxx"],
             [Color.NONE, "abc", Color.FORE_RED, "def", Color.FORE_GREEN, "xxx"],
             id="col-string-active-color-did-not-change",
         ),
         pytest.param(
-            [Color.FORE_GREEN, "xxx", _s(["abc", Color.FORE_RED, "def"]), "xxx"],
+            [Color.FORE_GREEN, "xxx", _s("abc", Color.FORE_RED, "def"), "xxx"],
             [
                 Color.FORE_GREEN,
                 "xxx",
@@ -318,27 +317,27 @@ def test_eq(l, r, expected):
             id="col-string-active-color-did-not-change",
         ),
         pytest.param(
-            [_s([NO_WRAP_START, "asd", NO_WRAP_END])],
+            [_s(NO_WRAP_START, "asd", NO_WRAP_END)],
             [NO_WRAP_START, Color.NONE, "asd", NO_WRAP_END],
             id="col-string-with-no-wraps",
         ),
         pytest.param(
-            [_s(["asd", NO_WRAP_START])],
+            [_s("asd", NO_WRAP_START)],
             [Color.NONE, "asd"],
             id="col-string-with-no-wraps-made-empty",
         ),
         pytest.param(
-            [_s([NO_WRAP_START, "asd"])],
+            [_s(NO_WRAP_START, "asd")],
             [NO_WRAP_START, Color.NONE, "asd", NO_WRAP_END],
             id="col-string-with-unterminated-no-wraps",
         ),
         pytest.param(
-            [NO_WRAP_START, _s(["asd", "xyz"])],
+            [NO_WRAP_START, _s("asd", "xyz")],
             [NO_WRAP_START, Color.NONE, "asd", "xyz"],
             id="col-string-in-no-wrap",
         ),
         pytest.param(
-            [NO_WRAP_START, "x", _s([NO_WRAP_START, "asd", NO_WRAP_END]), "y"],
+            [NO_WRAP_START, "x", _s(NO_WRAP_START, "asd", NO_WRAP_END), "y"],
             [NO_WRAP_START, Color.NONE, "x", "asd", "y"],
             id="col-string-with-no-wraps-in-no-wrap",
         ),
@@ -787,25 +786,25 @@ def test_strip_color_tags(text, expect):
         ),
         pytest.param(
             ["%.5s"],
-            _s(["123", "456"]),
+            _s("123", "456"),
             [Color.NONE, "123", "45"],
             id="str-cut-col-string-multiple-parts",
         ),
         pytest.param(
             ["%.5s"],
-            _s(["123"]),
+            _s("123"),
             [Color.NONE, "123"],
             id="str-cut-col-string",
         ),
         pytest.param(
             ["%.5s"],
-            _s(["123", "4💥"]),
+            _s("123", "4💥"),
             [Color.NONE, "123", "4", " "],
             id="str-cut-col-string-multiple-parts-wide-overflow",
         ),
         pytest.param(
             ["%.5s"],
-            _s(["123", "💥6"]),
+            _s("123", "💥6"),
             [Color.NONE, "123", "💥"],
             id="str-cut-col-string-multiple-parts-wide",
         ),
@@ -823,7 +822,7 @@ def test_strip_color_tags(text, expect):
         ),
         pytest.param(
             [Color.STYLE_BOLD, "x %s y"],
-            _s(["foo", Color.FORE_RED, "bar"]),
+            _s("foo", Color.FORE_RED, "bar"),
             [
                 Color.STYLE_BOLD,
                 "x ",
@@ -837,7 +836,7 @@ def test_strip_color_tags(text, expect):
         ),
         pytest.param(
             [Color.STYLE_BOLD, "x %.3s y"],
-            _s(["foo", Color.FORE_RED, "bar"]),
+            _s("foo", Color.FORE_RED, "bar"),
             [
                 Color.STYLE_BOLD,
                 "x ",
@@ -848,7 +847,7 @@ def test_strip_color_tags(text, expect):
         ),
         pytest.param(
             [Color.STYLE_BOLD, "x %.5s y"],
-            _s(["foo", Color.FORE_RED, "bar"]),
+            _s("foo", Color.FORE_RED, "bar"),
             [
                 Color.STYLE_BOLD,
                 "x ",
@@ -871,7 +870,7 @@ def test_strip_color_tags(text, expect):
             id="non-str-format-with-base-color",
         ),
         pytest.param(
-            _s([Color.STYLE_BOLD, "%d"]),
+            _s(Color.STYLE_BOLD, "%d"),
             (
                 yuio.string.WithBaseColor(
                     yuio.string.Printable(10), base_color=Color.FORE_BLUE
@@ -2346,8 +2345,8 @@ def test_format_error(text, args, exc, match, ctx):
             [Color.FORE_BLUE, "single string"],
             13,
             {
-                "indent": _s([Color.FORE_MAGENTA, ">>"]),
-                "continuation_indent": _s([Color.FORE_BLUE, ".."]),
+                "indent": _s(Color.FORE_MAGENTA, ">>"),
+                "continuation_indent": _s(Color.FORE_BLUE, ".."),
             },
             [
                 [
@@ -2653,7 +2652,7 @@ def test_wrap(text, width, kwargs, expect):
             [NO_WRAP_START, Color.NONE, "1", NO_WRAP_END, "abc\n"],
         ),
         (
-            _s(["abc", "def"]),
+            _s("abc", "def"),
             _s("1"),
             _s("2"),
             [NO_WRAP_START, Color.NONE, "1", NO_WRAP_END, "abc", "def"],
@@ -2675,7 +2674,7 @@ def test_wrap(text, width, kwargs, expect):
             ],
         ),
         (
-            _s(["abc\n", "def"]),
+            _s("abc\n", "def"),
             _s("1"),
             _s("2"),
             [
@@ -2691,7 +2690,7 @@ def test_wrap(text, width, kwargs, expect):
             ],
         ),
         (
-            _s(["abc", "\n", "def"]),
+            _s("abc", "\n", "def"),
             _s("1"),
             _s("2"),
             [
@@ -2864,9 +2863,9 @@ def test_wrap(text, width, kwargs, expect):
             [Color.NONE, "abc\n", NO_WRAP_START, "2", NO_WRAP_END, "def"],
         ),
         (
-            _s(["abc\ndef"]),
-            _s([Color.FORE_RED, "1"]),
-            _s([Color.FORE_BLUE, "2"]),
+            _s("abc\ndef"),
+            _s(Color.FORE_RED, "1"),
+            _s(Color.FORE_BLUE, "2"),
             [
                 NO_WRAP_START,
                 Color.FORE_RED,
@@ -2883,9 +2882,9 @@ def test_wrap(text, width, kwargs, expect):
             ],
         ),
         (
-            _s([Color.FORE_YELLOW, "abc\ndef"]),
-            _s([Color.FORE_RED, "1"]),
-            _s([Color.FORE_BLUE, "2"]),
+            _s(Color.FORE_YELLOW, "abc\ndef"),
+            _s(Color.FORE_RED, "1"),
+            _s(Color.FORE_BLUE, "2"),
             [
                 NO_WRAP_START,
                 Color.FORE_RED,
@@ -2902,9 +2901,9 @@ def test_wrap(text, width, kwargs, expect):
             ],
         ),
         (
-            _s(["abc\n", Color.FORE_YELLOW, "def\nghi"]),
-            _s([Color.FORE_RED, "1"]),
-            _s([Color.FORE_BLUE, "2"]),
+            _s("abc\n", Color.FORE_YELLOW, "def\nghi"),
+            _s(Color.FORE_RED, "1"),
+            _s(Color.FORE_BLUE, "2"),
             [
                 NO_WRAP_START,
                 Color.FORE_RED,
@@ -2927,9 +2926,9 @@ def test_wrap(text, width, kwargs, expect):
             ],
         ),
         (
-            _s(["abc", Color.FORE_YELLOW, "\ndef\nghi"]),
-            _s([Color.FORE_RED, "1"]),
-            _s([Color.FORE_BLUE, "2"]),
+            _s("abc", Color.FORE_YELLOW, "\ndef\nghi"),
+            _s(Color.FORE_RED, "1"),
+            _s(Color.FORE_BLUE, "2"),
             [
                 NO_WRAP_START,
                 Color.FORE_RED,
@@ -2963,10 +2962,10 @@ def test_indent(text, indent, continuation_indent, expect):
 
 class ColorfulObject:
     def __colorized_str__(self, ctx):
-        return _s([Color.FORE_RED | Color.BACK_WHITE, "boop"])
+        return _s(Color.FORE_RED | Color.BACK_WHITE, "boop")
 
     def __colorized_repr__(self, ctx):
-        return _s([Color.FORE_RED | Color.BACK_WHITE, "repr"])
+        return _s(Color.FORE_RED | Color.BACK_WHITE, "repr")
 
 
 class NotSoColorfulObject:
@@ -2987,10 +2986,10 @@ class ColorfulObjectBroken:
 
 class ColorfulObjectTheme:
     def __colorized_str__(self, ctx):
-        return _s([ctx.theme.get_color("red") | Color.BACK_WHITE, "boop"])
+        return _s(ctx.theme.get_color("red") | Color.BACK_WHITE, "boop")
 
     def __colorized_repr__(self, ctx):
-        return _s([ctx.theme.get_color("red") | Color.BACK_WHITE, "repr"])
+        return _s(ctx.theme.get_color("red") | Color.BACK_WHITE, "repr")
 
 
 class ColorfulObjectError:
@@ -3062,7 +3061,7 @@ class ColorfulObjectDeep:
             id="object",
         ),
         pytest.param(
-            _s([Color.FORE_RED, "boop"]),
+            _s(Color.FORE_RED, "boop"),
             [
                 Color.FORE_RED,
                 "boop",
@@ -4401,14 +4400,12 @@ class Str:
 def test_colorized_repr(value, expected, multiline, highlighted, max_depth, ctx):
     if not highlighted:
         expected = _s(
-            [
-                (
-                    part
-                    if isinstance(part, str) or part.back is not None or part.inverse
-                    else Color.NONE
-                )
-                for part in expected
-            ]
+            (
+                part
+                if isinstance(part, str) or part.back is not None or part.inverse
+                else Color.NONE
+            )
+            for part in expected
         )._parts
 
     assert _join_consecutive_strings(
@@ -4419,42 +4416,6 @@ def test_colorized_repr(value, expected, multiline, highlighted, max_depth, ctx)
             max_depth=max_depth,
         )._parts
     ) == _join_consecutive_strings(expected)
-
-
-class TestLink:
-    def test_simple(self):
-        l = yuio.string.Link("text", url="https://example.com")
-        assert (
-            l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
-            == "\x1b]8;;https://example.com\x1b\\text\x1b]8;;\x1b\\"
-        )
-        assert l.as_code(yuio.term.ColorSupport.NONE) == "text"
-
-    @pytest.mark.linux
-    @pytest.mark.darwin
-    def test_path(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.chdir("/")
-
-        l = yuio.string.Link.from_path("text", path="/foo/bar")
-        assert (
-            l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
-            == "\x1b]8;;file:///foo/bar\x1b\\text\x1b]8;;\x1b\\"
-        )
-        assert l.as_code(yuio.term.ColorSupport.NONE) == "text"
-
-        l = yuio.string.Link.from_path("text", path="bar")
-        assert (
-            l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
-            == "\x1b]8;;file:///bar\x1b\\text\x1b]8;;\x1b\\"
-        )
-        assert l.as_code(yuio.term.ColorSupport.NONE) == "text"
-
-        l = yuio.string.Link.from_path("text", path="a b c")
-        assert (
-            l.as_code(yuio.term.ColorSupport.ANSI_TRUE)
-            == "\x1b]8;;file:///a%20b%20c\x1b\\text\x1b]8;;\x1b\\"
-        )
-        assert l.as_code(yuio.term.ColorSupport.NONE) == "text"
 
 
 @yuio.string.repr_from_rich
@@ -4540,7 +4501,7 @@ class TestFormat:
             (("%s",), [Color.NONE, "%s"]),
             (("%s", 10), [Color.NONE, "10"]),
             (("%s %r", 10, "asd"), [Color.NONE, "10 'asd'"]),
-            (("%s", _s([Color.FORE_BLUE, "qux"])), [Color.FORE_BLUE, "qux"]),
+            (("%s", _s(Color.FORE_BLUE, "qux")), [Color.FORE_BLUE, "qux"]),
         ],
     )
     def test_format(self, args, expected, ctx):
@@ -4816,7 +4777,7 @@ class TestJoinStr:
                 ],
             ),
             (
-                ("foo", _s([Color.FORE_RED, "bar"]), "baz"),
+                ("foo", _s(Color.FORE_RED, "bar"), "baz"),
                 {},
                 [
                     Color.FORE_MAGENTA,
@@ -5118,7 +5079,7 @@ class TestStack:
             (("a"), [Color.NONE, "a"]),
             (("a", "b"), [Color.NONE, "a\nb"]),
             (
-                (_s([Color.FORE_RED, "a"]), "x", _s([Color.FORE_GREEN, "b"])),
+                (_s(Color.FORE_RED, "a"), "x", _s(Color.FORE_GREEN, "b")),
                 [
                     Color.FORE_RED,
                     "a",
@@ -5214,10 +5175,10 @@ class TestIndent:
                 ],
             ),
             (
-                _s(["abc\n", Color.FORE_YELLOW, "def\nghi"]),
+                _s("abc\n", Color.FORE_YELLOW, "def\nghi"),
                 {
-                    "indent": _s([Color.FORE_RED, "1"]),
-                    "continuation_indent": _s([Color.FORE_BLUE, "2"]),
+                    "indent": _s(Color.FORE_RED, "1"),
+                    "continuation_indent": _s(Color.FORE_BLUE, "2"),
                 },
                 [
                     NO_WRAP_START,
@@ -5346,7 +5307,7 @@ class TestMd:
                 ],
             ),
             (
-                ("# Hello, %s!", _s([Color.FORE_RED, "world"])),
+                ("# Hello, %s!", _s(Color.FORE_RED, "world")),
                 {},
                 [
                     NO_WRAP_START,
@@ -5445,7 +5406,7 @@ class TestRst:
                 ],
             ),
             (
-                ("Hello, %s!\n----------", _s([Color.FORE_RED, "world"])),
+                ("Hello, %s!\n----------", _s(Color.FORE_RED, "world")),
                 {},
                 [
                     NO_WRAP_START,
@@ -5513,7 +5474,7 @@ class TestWrap:
         [
             ("", {}, []),
             (
-                _s(["foo", Color.FORE_RED, "bar"]),
+                _s("foo", Color.FORE_RED, "bar"),
                 {},
                 [
                     NO_WRAP_START,
@@ -5618,17 +5579,17 @@ class TestWithBaseColor:
             ("foo", Color.FORE_RED, [Color.FORE_RED, "foo"]),
             ("foo", "code", [Color.FORE_MAGENTA, "foo"]),
             (
-                _s([Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"]),
+                _s(Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"),
                 None,
                 [Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"],
             ),
             (
-                _s([Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"]),
+                _s(Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"),
                 Color.FORE_RED,
                 [Color.FORE_RED | Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"],
             ),
             (
-                _s([Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"]),
+                _s(Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"),
                 "code",
                 [Color.FORE_MAGENTA | Color.STYLE_BOLD, "bold", Color.FORE_RED, "red"],
             ),

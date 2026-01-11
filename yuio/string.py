@@ -13,9 +13,6 @@ these strings are parsed and transformed to :class:`ColorizedString`\\ s.
 .. autoclass:: ColorizedString
    :members:
 
-.. autoclass:: Link
-   :members:
-
 
 .. _pretty-protocol:
 
@@ -168,6 +165,9 @@ Formatting utilities
 .. autoclass:: Stack
     :members:
 
+.. autoclass:: Link
+   :members:
+
 .. autoclass:: Indent
     :members:
 
@@ -236,6 +236,7 @@ import string
 import sys
 import types
 import unicodedata
+from dataclasses import dataclass
 from enum import Enum
 
 import yuio
@@ -287,7 +288,7 @@ __all__ = [
     "Indent",
     "JoinRepr",
     "JoinStr",
-    "Link",
+    "LinkMarker",
     "Md",
     "NoWrapEnd",
     "NoWrapMarker",
@@ -529,7 +530,7 @@ def _repr_from_rich_impl(self: RichReprProtocol):
     return "".join(res)
 
 
-class _NoWrapMarker(Enum):
+class NoWrapMarker(Enum):
     """
     Type for a no-wrap marker.
 
@@ -545,42 +546,52 @@ class _NoWrapMarker(Enum):
         return self.value  # pragma: no cover
 
 
-NoWrapStart: _t.TypeAlias = _t.Literal[_NoWrapMarker.NO_WRAP_START]
+NoWrapStart: _t.TypeAlias = _t.Literal[NoWrapMarker.NO_WRAP_START]
 """
 Type of the :data:`NO_WRAP_START` placeholder.
 
 """
 
-NO_WRAP_START: NoWrapStart = _NoWrapMarker.NO_WRAP_START
+NO_WRAP_START: NoWrapStart = NoWrapMarker.NO_WRAP_START
 """
 Indicates start of a no-wrap region in a :class:`ColorizedString`.
 
 """
 
 
-NoWrapEnd: _t.TypeAlias = _t.Literal[_NoWrapMarker.NO_WRAP_END]
+NoWrapEnd: _t.TypeAlias = _t.Literal[NoWrapMarker.NO_WRAP_END]
 """
 Type of the :data:`NO_WRAP_END` placeholder.
 
 """
 
-NO_WRAP_END: NoWrapEnd = _NoWrapMarker.NO_WRAP_END
+NO_WRAP_END: NoWrapEnd = NoWrapMarker.NO_WRAP_END
 """
 Indicates end of a no-wrap region in a :class:`ColorizedString`.
 
 """
 
-NoWrapMarker: _t.TypeAlias = NoWrapStart | NoWrapEnd
-"""
-Type of a no-wrap marker.
 
-"""
+@dataclass(slots=True, frozen=True, unsafe_hash=True)
+class LinkMarker:
+    """
+    Indicates start or end of a hyperlink in a colorized string.
+
+    """
+
+    url: str | None
+    """
+    Hyperlink's url.
+
+    """
 
 
 @_t.final
 @repr_from_rich
 class ColorizedString:
-    """ColorizedString(content: AnyString = '', /)
+    """ColorizedString()
+    ColorizedString(rhs: ColorizedString, /)
+    ColorizedString(*args: AnyString, /)
 
     A string with colors.
 
@@ -595,9 +606,11 @@ class ColorizedString:
     Unlike :class:`str`, :class:`ColorizedString` is mutable through
     the ``+=`` operator and ``append``/``extend`` methods.
 
-    :param content:
-        initial content of the string. Can be :class:`str`, color, no-wrap marker,
-        or another colorized string.
+    :param rhs:
+        when constructor gets a single :class:`ColorizedString`, it makes a copy.
+    :param args:
+        when constructor gets multiple arguments, it creates an empty string
+        and appends arguments to it.
 
 
     **String combination semantics**
@@ -607,11 +620,11 @@ class ColorizedString:
 
     When you append another :class:`ColorizedString`, it will not change its colors
     based on the last appended color, nor will it affect colors of the consequent
-    strings. If appended :class:`ColorizedString` had an unterminated no-wrap region,
-    this region will be terminated after appending.
+    strings. If appended :class:`ColorizedString` had an unterminated no-wrap region
+    or link region, this region will be terminated after appending.
 
-    Thus, appending a colorized string does not change current color
-    or no-wrap setting::
+    Thus, appending a colorized string does not change current color, no-wrap
+    or link setting::
 
         >>> s1 = yuio.string.ColorizedString()
         >>> s1 += yuio.color.Color.FORE_RED
@@ -651,29 +664,33 @@ class ColorizedString:
     #   except for the last `start-no-wrap`, which may have no corresponding
     #   `end-no-wrap` yet.
     # - no-wrap regions can't be nested.
-    # - fo every pair of (start-no-wrap, end-no-wrap) markers, there is a string
+    # - for every pair of (start-no-wrap, end-no-wrap) markers, there is a string
     #   between them (i.e. no empty no-wrap regions).
 
     def __init__(
         self,
-        content: AnyString = "",
         /,
-        *,
+        *args: AnyString,
         _isolate_colors: bool = True,
     ):
-        if isinstance(content, ColorizedString):
+        if len(args) == 1 and isinstance(args[0], ColorizedString):
+            content = args[0]
             self._parts = content._parts.copy()
             self._last_color = content._last_color
             self._active_color = content._active_color
+            self._last_url = content._last_url
+            self._active_url = content._active_url
             self._explicit_newline = content._explicit_newline
             self._len = content._len
             self._has_no_wrap = content._has_no_wrap
             if (width := content.__dict__.get("width", None)) is not None:
                 self.__dict__["width"] = width
         else:
-            self._parts: list[_Color | NoWrapMarker | str] = []
+            self._parts: list[_Color | NoWrapMarker | LinkMarker | str] = []
             self._active_color = _Color.NONE
             self._last_color: _Color | None = None
+            self._last_url: str | None = None
+            self._active_url: str | None = None
             self._explicit_newline: str = ""
             self._len = 0
             self._has_no_wrap = False
@@ -682,8 +699,8 @@ class ColorizedString:
                 # Prevent adding `_Color.NONE` to the front of the string.
                 self._last_color = self._active_color
 
-            if content:
-                self += content
+            for arg in args:
+                self += arg
 
     @property
     def explicit_newline(self) -> str:
@@ -705,6 +722,15 @@ class ColorizedString:
         """
 
         return self._active_color
+
+    @property
+    def active_link(self) -> str | None:
+        """
+        Last url appended to this string.
+
+        """
+
+        return self._active_url
 
     @functools.cached_property
     def width(self) -> int:
@@ -740,6 +766,39 @@ class ColorizedString:
 
         self._active_color = color
 
+    def append_link(self, url: str | None, /):
+        """
+        Append new link marker to this string.
+
+        This operation is lazy, the link marker will be appended if a non-empty string
+        is appended after it.s
+
+        :param url:
+            link url.
+
+        """
+
+        self._active_url = url
+
+    def start_link(self, url: str, /):
+        """
+        Start hyperlink with the given url.
+
+        :param url:
+            link url.
+
+        """
+
+        self._active_url = url
+
+    def end_link(self):
+        """
+        End hyperlink.
+
+        """
+
+        self._active_url = None
+
     def append_str(self, s: str, /):
         """
         Append new plain string to this string.
@@ -751,6 +810,9 @@ class ColorizedString:
 
         if not s:
             return
+        if self._last_url != self._active_url:
+            self._parts.append(LinkMarker(self._active_url))
+            self._last_url = self._active_url
         if self._last_color != self._active_color:
             self._parts.append(self._active_color)
             self._last_color = self._active_color
@@ -774,7 +836,7 @@ class ColorizedString:
 
         # Cleanup color at the beginning of the string.
         for i, part in enumerate(parts):
-            if part in (NO_WRAP_START, NO_WRAP_END):
+            if part in (NO_WRAP_START, NO_WRAP_END) or isinstance(part, LinkMarker):
                 continue
             elif isinstance(part, str):  # pragma: no cover
                 # We never hit this branch in normal conditions because colorized
@@ -795,17 +857,23 @@ class ColorizedString:
 
         if self._has_no_wrap:
             # We're in a no-wrap sequence, we don't need any more markers.
-            self._parts.extend(
-                part for part in parts if part not in (NO_WRAP_START, NO_WRAP_END)
-            )
-        else:
-            # We're not in a no-wrap sequence. We preserve no-wrap regions from the
-            # appended string, but we make sure that they don't affect anything
-            # appended after.
-            self._parts.extend(parts)
-            if s._has_no_wrap:
-                self._has_no_wrap = True
-                self.end_no_wrap()
+            parts = filter(lambda part: part not in (NO_WRAP_START, NO_WRAP_END), parts)
+
+        if self._active_url:
+            # Current url overrides appended urls.
+            parts = filter(lambda part: not isinstance(part, LinkMarker), parts)
+            # Ensure that current url marker is added to the string.
+            if self._last_url != self._active_url:
+                self._parts.append(LinkMarker(self._active_url))
+                self._last_url = self._active_url
+
+        self._parts.extend(parts)
+
+        if not self._has_no_wrap and s._has_no_wrap:
+            self._has_no_wrap = True
+            self.end_no_wrap()
+        if not self._active_url and s._last_url:
+            self._last_url = s._last_url
 
         self._last_color = s._last_color
         self._len += s._len
@@ -866,7 +934,7 @@ class ColorizedString:
 
     def extend(
         self,
-        parts: _t.Iterable[str | ColorizedString | _Color | NoWrapMarker],
+        parts: _t.Iterable[str | ColorizedString | _Color | NoWrapMarker | LinkMarker],
         /,
     ):
         """
@@ -895,7 +963,8 @@ class ColorizedString:
         l, r = ColorizedString(), ColorizedString()
         l.extend(self._parts[:i])
         r._active_color = l._active_color
-        r._has_no_wrap = l._has_no_wrap
+        r._active_url = l._active_url
+        r._has_no_wrap = l._has_no_wrap  # TODO: waat???
         r.extend(self._parts[i:])
         r._active_color = self._active_color
         return l, r
@@ -963,26 +1032,19 @@ class ColorizedString:
             return [part for part in self._parts if isinstance(part, str)]
         else:
             parts: list[str] = []
-            cur_url: str | None = None
             for part in self:
-                if isinstance(part, Link):
-                    if cur_url != part.url:
-                        parts.append("\x1b]8;;")
-                        parts.append(part.url)
-                        parts.append("\x1b\\")
-                        cur_url = part.url
-                    parts.append(part)
+                if isinstance(part, LinkMarker):
+                    parts.append("\x1b]8;;")
+                    parts.append(part.url or "")
+                    parts.append("\x1b\\")
                 elif isinstance(part, str):
-                    if cur_url is not None:
-                        parts.append("\x1b]8;;\x1b\\")
-                        cur_url = None
                     parts.append(part)
                 elif isinstance(part, _Color):
                     parts.append(part.as_code(color_support))
-            if cur_url is not None:
-                parts.append("\x1b]8;;\x1b\\")
             if self._last_color != _Color.NONE:
                 parts.append(_Color.NONE.as_code(color_support))
+            if self._last_url is not None:
+                parts.append("\x1b]8;;\x1b\\")
             return parts
 
     def wrap(
@@ -1107,7 +1169,7 @@ class ColorizedString:
                 res += part
                 continue
 
-            for line in _split_keep_link(part, _WORDSEP_NL_RE):
+            for line in _WORDSEP_NL_RE.split(part):
                 if not line:
                     continue
                 if needs_indent:
@@ -1147,7 +1209,7 @@ class ColorizedString:
     def __bool__(self) -> bool:
         return self.len > 0
 
-    def __iter__(self) -> _t.Iterator[_Color | NoWrapMarker | str]:
+    def __iter__(self) -> _t.Iterator[_Color | NoWrapMarker | LinkMarker | str]:
         return self._parts.__iter__()
 
     def __add__(self, rhs: AnyString) -> ColorizedString:
@@ -1169,6 +1231,8 @@ class ColorizedString:
             self.append_color(rhs)
         elif rhs in (NO_WRAP_START, NO_WRAP_END):
             self.append_no_wrap(rhs)
+        elif isinstance(rhs, LinkMarker):
+            self.append_link(rhs.url)
         else:
             self.extend(rhs)
 
@@ -1199,7 +1263,8 @@ AnyString: _t.TypeAlias = (
     | ColorizedString
     | _Color
     | NoWrapMarker
-    | _t.Iterable[str | ColorizedString | _Color | NoWrapMarker]
+    | LinkMarker
+    | _t.Iterable[str | ColorizedString | _Color | NoWrapMarker | LinkMarker]
 )
 """
 Any string (i.e. a :class:`str`, a raw colorized string, or a normal colorized string).
@@ -1664,86 +1729,6 @@ class Esc(_UserString):
     __slots__ = ()
 
 
-class Link(_UserString):
-    """
-    A :class:`str` wrapper with an attached hyperlink.
-
-    :param args:
-        arguments for :class:`str` constructor.
-    :param url:
-        link, should be properly urlencoded.
-
-    """
-
-    __slots__ = ("__url",)
-
-    def __new__(cls, *args, url: str, **kwargs):
-        res = super().__new__(cls, *args, **kwargs)
-        res.__url = url
-        return res
-
-    @classmethod
-    def from_path(cls, *args, path: str | pathlib.Path) -> _t.Self:
-        """
-        Create a link to a local file.
-
-        Ensures that file path is absolute and properly formatted.
-
-        :param args:
-            arguments for :class:`str` constructor.
-        :param path:
-            path to a file.
-
-        """
-
-        path = pathlib.Path(path).expanduser().absolute().as_uri()
-        return cls(*args, url=path)
-
-    @property
-    def url(self):
-        """
-        Target link.
-
-        """
-
-        return self.__url
-
-    def as_code(self, color_support: yuio.color.ColorSupport):
-        """
-        Convert this link into an ANSI escape code with respect to the given
-        terminal capabilities.
-
-        :param color_support:
-            level of color support of a terminal.
-        :returns:
-            string text with ANSI codes that add a hyperlink to it.
-
-        """
-
-        if color_support is yuio.color.ColorSupport.NONE:
-            return str(self)
-        else:
-            return f"\x1b]8;;{self.__url}\x1b\\{self}\x1b]8;;\x1b\\"
-
-    def _wrap(self, data: str):
-        return self.__class__(data, url=self.__url)
-
-    def __repr__(self) -> str:
-        return f"Link({super().__repr__()}, url={self.url!r})"
-
-    def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
-        return ColorizedString(self)
-
-
-def _split_keep_link(s: str, r: _tx.StrRePattern):
-    if isinstance(s, Link):
-        url = s.url
-        ctor = lambda x: Link(x, url=url)
-    else:
-        ctor = s.__class__
-    return [ctor(part) for part in r.split(s)]
-
-
 _SPACE_TRANS = str.maketrans("\r\n\t\v\b\f", "      ")
 
 _WORD_PUNCT = r'[\w!"\'&.,?]'
@@ -1822,7 +1807,6 @@ class _TextWrapper:
         self.at_line_start_or_indent: bool = True
         self.has_ellipsis: bool = False
         self.add_spaces_before_word: int = 0
-        self.space_before_word_url = None
 
         self.nowrap_start_index = None
         self.nowrap_start_width = 0
@@ -1832,11 +1816,15 @@ class _TextWrapper:
         self.current_line._explicit_newline = explicit_newline
         self.lines.append(self.current_line)
 
-        self.current_line = ColorizedString(self.current_line.active_color)
+        next_line = ColorizedString()
 
         if self.continuation_indent:
-            self.current_line += self.continuation_indent
+            next_line += self.continuation_indent
 
+        next_line.append_color(self.current_line.active_color)
+        next_line.append_link(self.current_line.active_link)
+
+        self.current_line = next_line
         self.current_line_width: int = self.continuation_indent.width
         self.at_line_start = True
         self.at_line_start_or_indent = True
@@ -1845,7 +1833,6 @@ class _TextWrapper:
         self.nowrap_start_width = 0
         self.nowrap_start_added_space = False
         self.add_spaces_before_word = 0
-        self.space_before_word_url = None
 
     def _flush_line_part(self):
         assert self.nowrap_start_index is not None
@@ -1861,6 +1848,7 @@ class _TextWrapper:
         self._flush_line()
         self.current_line += tail
         self.current_line.append_color(tail.active_color)
+        self.current_line.append_link(tail.active_link)
         self.current_line_width += tail_width
 
     def _append_str(self, s: str):
@@ -1902,11 +1890,8 @@ class _TextWrapper:
     def _append_space(self):
         if self.add_spaces_before_word:
             word = " " * self.add_spaces_before_word
-            if self.space_before_word_url:
-                word = Link(word, url=self.space_before_word_url)
             self._append_word(word, 1)
             self.add_spaces_before_word = 0
-            self.space_before_word_url = None
 
     def _add_ellipsis(self):
         if self.has_ellipsis:
@@ -1924,7 +1909,7 @@ class _TextWrapper:
             for i in range(len(parts) - 1, -1, -1):
                 part = parts[i]
                 if isinstance(part, str):
-                    if not isinstance(part, (Esc, Link)):
+                    if not isinstance(part, Esc):
                         parts[i] = f"{part[:-1]}{self.overflow}"
                         self.has_ellipsis = True
                     return
@@ -1972,8 +1957,20 @@ class _TextWrapper:
                     # will be wrapped soon anyways.
                     self._append_space()
                 self.add_spaces_before_word = 0
-                self.space_before_word_url = None
                 self.current_line.append_color(part)
+                continue
+            elif isinstance(part, LinkMarker):
+                if (
+                    self.add_spaces_before_word
+                    and self.current_line_width + self.add_spaces_before_word
+                    < self.width
+                ):
+                    # Make sure any whitespace that was added before color
+                    # is flushed. If it doesn't fit, we just forget it: the line
+                    # will be wrapped soon anyways.
+                    self._append_space()
+                self.add_spaces_before_word = 0
+                self.current_line.append_link(part.url)
                 continue
             elif part is NO_WRAP_START:
                 if nowrap:  # pragma: no cover
@@ -1991,7 +1988,6 @@ class _TextWrapper:
                 else:
                     self.nowrap_start_added_space = False
                 self.add_spaces_before_word = 0
-                self.space_before_word_url = None
                 if self.at_line_start:
                     self.nowrap_start_index = None
                     self.nowrap_start_width = 0
@@ -2012,9 +2008,9 @@ class _TextWrapper:
                 words = [Esc(part.translate(_SPACE_TRANS))]
                 esc = True
             elif nowrap:
-                words = _split_keep_link(part, _WORDSEP_NL_RE)
+                words = _WORDSEP_NL_RE.split(part)
             else:
-                words = _split_keep_link(part, _WORDSEP_RE)
+                words = _WORDSEP_RE.split(part)
 
             for word in words:
                 if not word:
@@ -2049,9 +2045,6 @@ class _TextWrapper:
                         word = word.translate(_SPACE_TRANS)
                     else:
                         self.add_spaces_before_word = len(word)
-                        self.space_before_word_url = (
-                            word.url if isinstance(word, Link) else None
-                        )
                         continue
 
                 word_width = line_width(word)
@@ -3367,6 +3360,58 @@ class Stack(_StrBase):
                 res.append_str("\n")
             res += ctx.str(arg)
             sep = True
+        return res
+
+
+@_t.final
+@repr_from_rich
+class Link(_StrBase):
+    """
+    Lazy wrapper that adds a hyperlink to whatever is passed to it.
+
+    :param msg:
+        link body.
+    :param url:
+        link url, should be properly urlencoded.
+
+    """
+
+    def __init__(self, msg: Colorable, /, *, url: str):
+        self._msg = msg
+        self._url = url
+
+    @classmethod
+    def from_path(cls, msg: Colorable, /, *, path: str | pathlib.Path) -> _t.Self:
+        """
+        Create a link to a local file.
+
+        Ensures that file path is absolute and properly formatted.
+
+        :param msg:
+            link body.
+        :param path:
+            path to a file.
+
+        """
+
+        url = pathlib.Path(path).expanduser().absolute().as_uri()
+        return cls(msg, url=url)
+
+    def __rich_repr__(self) -> RichReprResult:
+        yield None, self._msg
+        yield "url", self._url
+
+    def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
+        res = ColorizedString()
+        res.start_link(self._url)
+        res.append_colorized_str(ctx.str(self._msg))
+        if not ctx.term.supports_colors:
+            res.start_no_wrap()
+            res.append_str(" [")
+            res.append_str(self._url)
+            res.append_str("]")
+            res.end_no_wrap()
+        res.end_link()
         return res
 
 

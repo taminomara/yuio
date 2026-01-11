@@ -286,11 +286,9 @@ class _DummySyntaxHighlighter(SyntaxHighlighter):
         default_color: yuio.color.Color | str | None = None,
     ) -> yuio.string.ColorizedString:
         return yuio.string.ColorizedString(
-            [
-                self._get_default_color(theme, default_color, syntax),
-                code,
-                yuio.color.Color.NONE,
-            ]
+            self._get_default_color(theme, default_color, syntax),
+            code,
+            yuio.color.Color.NONE,
         )
 
 
@@ -625,16 +623,12 @@ class _PyHighlighter(SyntaxHighlighter):
 
         res = yuio.string.ColorizedString(default_color)
         indent_a = yuio.string.ColorizedString(
-            [
-                default_color | theme.get_color(f"hl/doctest_marker/start:{syntax}"),
-                ">>>",
-            ]
+            default_color | theme.get_color(f"hl/doctest_marker/start:{syntax}"),
+            ">>>",
         )
         indent_b = yuio.string.ColorizedString(
-            [
-                default_color | theme.get_color(f"hl/doctest_marker/continue:{syntax}"),
-                "...",
-            ]
+            default_color | theme.get_color(f"hl/doctest_marker/continue:{syntax}"),
+            "...",
         )
 
         for block, results in blocks:

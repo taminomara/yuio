@@ -908,6 +908,8 @@ class RenderContext:
                 continue
             elif s in (yuio.string.NO_WRAP_START, yuio.string.NO_WRAP_END):
                 continue
+            elif isinstance(s, yuio.string.LinkMarker):
+                continue
 
             s = s.translate(_UNPRINTABLE_TRANS)
 
@@ -3178,10 +3180,8 @@ class Input(Widget[str]):
                 self.__pos_after_wrap = None
             else:
                 self.__wrapped_text = _ColorizedString(
-                    [
-                        rc.theme.get_color("menu/text/placeholder:input"),
-                        self.__placeholder,
-                    ]
+                    rc.theme.get_color("menu/text/placeholder:input"),
+                    self.__placeholder,
                 ).wrap(
                     text_width,
                     preserve_newlines=False,
