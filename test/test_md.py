@@ -457,4 +457,4 @@ COMMONMARK_TEST_CASES = [
 )
 def test_commonmark_compatibility(src, file_regression):
     ast = yuio.md.MdParser().parse(src)
-    file_regression.check(f"{src}\n\n----------\n\n{ast.dump()}\n")
+    file_regression.check(f"{src}\n\n----------\n\n{ast.dump()}\n", encoding="utf-8")
