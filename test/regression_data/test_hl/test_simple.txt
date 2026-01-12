@@ -1,0 +1,9 @@
+Foo bar!
+Bar baz!
+
+
+----------
+
+<Color>Foo bar!
+Bar baz!
+

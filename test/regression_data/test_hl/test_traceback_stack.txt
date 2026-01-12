@@ -1,0 +1,29 @@
+Traceback (most recent call last):
+  File "test.py", line 10, in foo
+    x = 1 / 0
+        ~~^~~
+ZeroDivisionError: division by zero
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "test2.py", line 4, in bar
+    assert False
+           ^^^^^
+AssertionError
+
+----------
+
+<Color fore=<RED>>Traceback (most recent call last):
+<Color>  <Color fore=<WHITE>>File <Color fore=<CYAN>>"test.py"<Color fore=<WHITE>>, line <Color fore=<YELLOW>>10<Color fore=<WHITE>>, in <Color fore=<MAGENTA>>foo<Color fore=<WHITE>>
+<Color>  <Color fore=<WHITE>>  x = <Color fore=<YELLOW>>1<Color fore=<WHITE>> / <Color fore=<YELLOW>>0<Color fore=<WHITE>>
+<Color>  <Color fore=<RED>>      ~~^~~
+ZeroDivisionError: division by zero
+<Color>
+During handling of the above exception, another exception occurred:
+
+<Color fore=<RED>>Traceback (most recent call last):
+<Color>  <Color fore=<WHITE>>File <Color fore=<CYAN>>"test2.py"<Color fore=<WHITE>>, line <Color fore=<YELLOW>>4<Color fore=<WHITE>>, in <Color fore=<MAGENTA>>bar<Color fore=<WHITE>>
+<Color>  <Color fore=<WHITE>>  <Color fore=<RED>>assert<Color fore=<WHITE>> <Color fore=<CYAN>>False<Color fore=<WHITE>>
+<Color>  <Color fore=<RED>>         ^^^^^
+AssertionError

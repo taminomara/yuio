@@ -2,4 +2,4 @@
 
 ----------
 
-<Color>[<Color fore=<RED>>x<Color fore=<GREEN>> and <Color fore=<RED>>x<Color>]
+<Color fore=<GREEN>>[<Color fore=<RED>>x<Color fore=<GREEN>> and <Color fore=<RED>>x<Color fore=<GREEN>>]

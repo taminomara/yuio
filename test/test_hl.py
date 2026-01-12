@@ -151,6 +151,16 @@ class TestRegisterHighlighter:
         assert s1 == s2 == s3 == "custom1"
 
 
+class TestTextHighlighter:
+    def test_simple(self, theme, file_regression):
+        code = "Foo bar!\nBar baz!\n"
+        highlighter, syntax = yuio.hl.get_highlighter("text")
+        result = highlighter.highlight(code, theme=theme, syntax=syntax)
+        file_regression.check(
+            serialize_colorized_string(code, result), encoding="utf-8"
+        )
+
+
 class TestPythonHighlighter:
     @pytest.mark.parametrize(
         "code",
@@ -302,6 +312,22 @@ class TestPythonHighlighter:
         code = (
             'def foo(x: int) -> str:\n    """Docstring."""\n    return f"result: {x}"'
         )
+        highlighter, syntax = yuio.hl.get_highlighter("python")
+        result = highlighter.highlight(code, theme=theme, syntax=syntax)
+        file_regression.check(
+            serialize_colorized_string(code, result), encoding="utf-8"
+        )
+
+    def test_doctests(self, theme, file_regression):
+        code = ">>> for i in x:\n...     print(i)\n1\n2\n3\nNone\n"
+        highlighter, syntax = yuio.hl.get_highlighter("python")
+        result = highlighter.highlight(code, theme=theme, syntax=syntax)
+        file_regression.check(
+            serialize_colorized_string(code, result), encoding="utf-8"
+        )
+
+    def test_doctests_multiple_statements(self, theme, file_regression):
+        code = ">>> for i in x:\n...     print(i)\n1\n2\n3\n>>> print('hello!')\n'hello!'\n"
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
         file_regression.check(
@@ -525,8 +551,35 @@ ValueError: error"""
         result = highlighter.highlight(tb, theme=theme, syntax=syntax)
         file_regression.check(serialize_colorized_string(tb, result), encoding="utf-8")
 
+    def test_traceback_stack(self, theme, file_regression):
+        tb = """Traceback (most recent call last):
+  File "test.py", line 10, in foo
+    x = 1 / 0
+        ~~^~~
+ZeroDivisionError: division by zero
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "test2.py", line 4, in bar
+    assert False
+           ^^^^^
+AssertionError"""
+        highlighter, syntax = yuio.hl.get_highlighter("traceback")
+        result = highlighter.highlight(tb, theme=theme, syntax=syntax)
+        file_regression.check(serialize_colorized_string(tb, result), encoding="utf-8")
+
 
 class TestReSyntaxHighlighter:
+    def test_no_color(self, theme, file_regression):
+        highlighter = yuio.hl.ReSyntaxHighlighter([(r"\d+", None)])
+        theme.set_color("hl/number:test", Color.FORE_YELLOW)
+        code = "The answer is 42"
+        result = highlighter.highlight(code, theme=theme, syntax="test")
+        file_regression.check(
+            serialize_colorized_string(code, result), encoding="utf-8"
+        )
+
     def test_basic_pattern(self, theme, file_regression):
         highlighter = yuio.hl.ReSyntaxHighlighter([(r"\d+", "number")])
         theme.set_color("hl/number:test", Color.FORE_YELLOW)
@@ -572,9 +625,22 @@ class TestReSyntaxHighlighter:
             serialize_colorized_string(code, result), encoding="utf-8"
         )
 
+    def test_overlapping_capturing_groups(self, theme, file_regression):
+        highlighter = yuio.hl.ReSyntaxHighlighter(
+            [(r'(")(hello (world))(")', ("quote", "content", "content2", "quote"))]
+        )
+        theme.set_color("hl/quote:test", Color.FORE_RED)
+        theme.set_color("hl/content:test", Color.FORE_GREEN)
+        theme.set_color("hl/content2:test", Color.FORE_RED)
+        code = '"hello world"'
+        result = highlighter.highlight(code, theme=theme, syntax="test")
+        file_regression.check(
+            serialize_colorized_string(code, result), encoding="utf-8"
+        )
+
     def test_nested_highlighter(self, theme, file_regression):
         inner = yuio.hl.ReSyntaxHighlighter([(r"x", "x")], base_color="inner")
-        outer = yuio.hl.ReSyntaxHighlighter([(r"(\[)(.*?)(\])", (None, inner, None))])
+        outer = yuio.hl.ReSyntaxHighlighter([(r"(\[)(.*?)(\])", inner)])
         theme.set_color("hl/inner:test", Color.FORE_GREEN)
         theme.set_color("hl/x:test", Color.FORE_RED)
         code = "[x and x]"
@@ -584,22 +650,13 @@ class TestReSyntaxHighlighter:
         )
 
 
-class TestDefaultColor:
-    def test_default_color_as_color(self, theme, file_regression):
-        highlighter, syntax = yuio.hl.get_highlighter("python")
-        result = highlighter.highlight(
-            "test", theme=theme, syntax=syntax, default_color=Color.FORE_RED
-        )
+    def test_nested_highlighter_for_group(self, theme, file_regression):
+        inner = yuio.hl.ReSyntaxHighlighter([(r"x", "x")], base_color="inner")
+        outer = yuio.hl.ReSyntaxHighlighter([(r"(\[)(.*?)(\])", (None, inner, None))])
+        theme.set_color("hl/inner:test", Color.FORE_GREEN)
+        theme.set_color("hl/x:test", Color.FORE_RED)
+        code = "[x and x]"
+        result = outer.highlight(code, theme=theme, syntax="test")
         file_regression.check(
-            serialize_colorized_string("test", result), encoding="utf-8"
-        )
-
-    def test_default_color_as_string(self, theme, file_regression):
-        theme.set_color("custom/color", Color.FORE_BLUE)
-        highlighter, syntax = yuio.hl.get_highlighter("python")
-        result = highlighter.highlight(
-            "test", theme=theme, syntax=syntax, default_color="custom/color"
-        )
-        file_regression.check(
-            serialize_colorized_string("test", result), encoding="utf-8"
+            serialize_colorized_string(code, result), encoding="utf-8"
         )

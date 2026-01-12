@@ -1,0 +1,19 @@
+>>> for i in x:
+...     print(i)
+1
+2
+3
+>>> print('hello!')
+'hello!'
+
+
+----------
+
+<no_wrap_start><Color>>>><no_wrap_end> <Color fore=<RED>>for<Color> i <Color fore=<RED>>in<Color> x:
+<no_wrap_start>...<no_wrap_end>     print<Color fore=<WHITE>>(<Color>i<Color fore=<WHITE>>)<Color>
+1
+2
+3
+<no_wrap_start>>>><no_wrap_end> print<Color fore=<WHITE>>(<Color fore=<GREEN>>'hello!'<Color fore=<WHITE>>)<Color>
+'hello!'
+
