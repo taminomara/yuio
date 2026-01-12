@@ -1,0 +1,11 @@
+## foo ##
+  ###   bar    ###
+
+
+----------
+
+(Document
+  (Heading 2
+    'foo')
+  (Heading 3
+    'bar'))

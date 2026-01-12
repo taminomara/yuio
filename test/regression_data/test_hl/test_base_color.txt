@@ -1,0 +1,5 @@
+text 42 more
+
+----------
+
+<Color fore=<RED>>text <Color fore=<YELLOW>>42<Color fore=<RED>> more

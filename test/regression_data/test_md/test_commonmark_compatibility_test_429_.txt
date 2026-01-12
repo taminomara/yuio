@@ -1,0 +1,12 @@
+<a
+> quoted text
+
+
+----------
+
+(Document
+  (Paragraph
+    '<a')
+  (Quote
+    (Paragraph
+      'quoted text')))

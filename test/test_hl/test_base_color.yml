@@ -1,8 +1,0 @@
-code: text 42 more
-highlighted:
-- color: <Color fore=<RED>>
-- 'text '
-- color: <Color fore=<YELLOW>>
-- '42'
-- color: <Color fore=<RED>>
-- ' more'

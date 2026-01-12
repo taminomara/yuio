@@ -1,0 +1,14 @@
+> ```
+foo
+```
+
+
+----------
+
+(Document
+  (Quote
+    (Code ''))
+  (Paragraph
+    'foo')
+  (Code ''
+    ''))

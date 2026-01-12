@@ -1,6 +1,0 @@
-code: echo hello
-highlighted:
-- color: <Color fore=<CYAN>>
-- echo
-- color: <Color>
-- ' hello'

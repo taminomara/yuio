@@ -1,0 +1,7 @@
+(Quote
+  (Paragraph
+    'Quoted text'))
+
+----------
+
+>   Quoted text

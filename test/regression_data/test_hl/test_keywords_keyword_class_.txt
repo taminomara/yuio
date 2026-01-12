@@ -1,0 +1,5 @@
+class MyClass:
+
+----------
+
+<Color fore=<RED>>class<Color> <Color fore=<MAGENTA>>MyClass<Color>:

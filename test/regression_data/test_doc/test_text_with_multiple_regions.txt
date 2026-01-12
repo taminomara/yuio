@@ -1,0 +1,8 @@
+(Paragraph
+  'normal '
+  TextRegion(content='code', color='code', no_wrap=True, url=None)
+  ' text')
+
+----------
+
+normal code text

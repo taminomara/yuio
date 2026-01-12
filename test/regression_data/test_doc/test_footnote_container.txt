@@ -1,0 +1,13 @@
+(FootnoteContainer
+  (Footnote '1'
+    (Paragraph
+      'A'))
+  (Footnote '2'
+    (Paragraph
+      'B')))
+
+----------
+
+╌╌╌╌╌╌╌╌
+1   A
+2   B

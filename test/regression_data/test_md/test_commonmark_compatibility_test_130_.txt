@@ -1,0 +1,9 @@
+[foo]: /url
+"title" ok
+
+
+----------
+
+(Document
+  (Paragraph
+    '"title" ok'))

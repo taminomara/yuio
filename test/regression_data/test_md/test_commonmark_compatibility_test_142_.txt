@@ -1,0 +1,10 @@
+aaa
+             bbb
+                                       ccc
+
+
+----------
+
+(Document
+  (Paragraph
+    'aaa\n             bbb\n                                       ccc'))

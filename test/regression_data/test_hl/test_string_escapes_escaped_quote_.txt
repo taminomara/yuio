@@ -1,0 +1,5 @@
+"quote\"here"
+
+----------
+
+<Color fore=<GREEN>>"quote<Color fore=<BLUE>>\"<Color fore=<GREEN>>here"

@@ -1,0 +1,18 @@
+A paragraph
+with two lines.
+
+    indented code
+
+> A block quote.
+
+
+----------
+
+(Document
+  (Paragraph
+    'A paragraph\nwith two lines.')
+  (Code ''
+    'indented code')
+  (Quote
+    (Paragraph
+      'A block quote.')))

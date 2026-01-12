@@ -38,9 +38,9 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: "^test/test_regression/.*|sphinx_syntax/ext/syntax/gen/.*$"
+        exclude: "^test/regression_data/.*$"
       - id: end-of-file-fixer
-        exclude: "^test/test_regression/.*|sphinx_syntax/ext/syntax/gen/.*$"
+        exclude: "^test/regression_data/.*$"
       - id: fix-byte-order-marker
       - id: mixed-line-ending
         args: [--fix=lf]

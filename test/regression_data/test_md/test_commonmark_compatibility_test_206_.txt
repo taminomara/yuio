@@ -1,0 +1,20 @@
+   1.  A paragraph
+       with two lines.
+
+           indented code
+
+       > A block quote.
+
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+    (ListItem 1
+      (Paragraph
+        'A paragraph\nwith two lines.')
+      (Code ''
+        'indented code')
+      (Quote
+        (Paragraph
+          'A block quote.')))))

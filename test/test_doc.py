@@ -8,10 +8,8 @@ import pytest
 def serialize_formatter_output(
     ast: yuio.doc.AstBase, lines: list[yuio.string.ColorizedString]
 ):
-    return {
-        "ast": ast.dump(),
-        "lines": [str(line) for line in lines],
-    }
+    result = '\n'.join(map(str, lines))
+    return f"{ast.dump()}\n\n----------\n\n{result}\n"
 
 
 @pytest.fixture
@@ -25,17 +23,17 @@ def formatter_no_headings(ctx):
 
 
 class TestFormatterBasicText:
-    def test_empty_document(self, formatter, data_regression):
+    def test_empty_document(self, formatter, file_regression):
         node = yuio.doc.Document(items=[])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_single_paragraph(self, formatter, data_regression):
+    def test_single_paragraph(self, formatter, file_regression):
         node = yuio.doc.Paragraph(items=["Simple text"])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_multiple_paragraphs(self, formatter, data_regression):
+    def test_multiple_paragraphs(self, formatter, file_regression):
         node = yuio.doc.Document(
             items=[
                 yuio.doc.Paragraph(items=["First paragraph"]),
@@ -43,34 +41,34 @@ class TestFormatterBasicText:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
     @pytest.mark.parametrize(
         "text_length",
         [50, 100, 200],
         ids=["short_wrap", "medium_wrap", "long_wrap"],
     )
-    def test_paragraph_wrapping(self, formatter, text_length, data_regression):
+    def test_paragraph_wrapping(self, formatter, text_length, file_regression):
         text = "A" * text_length
         node = yuio.doc.Paragraph(items=[text])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_empty_paragraph(self, formatter, data_regression):
+    def test_empty_paragraph(self, formatter, file_regression):
         node = yuio.doc.Paragraph(items=[])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterTextRegions:
-    def test_text_with_emphasis(self, formatter, data_regression):
+    def test_text_with_emphasis(self, formatter, file_regression):
         node = yuio.doc.Paragraph(
             items=[yuio.doc.TextRegion(content="emphasized", color="em")]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_text_with_multiple_regions(self, formatter, data_regression):
+    def test_text_with_multiple_regions(self, formatter, file_regression):
         node = yuio.doc.Paragraph(
             items=[
                 "normal ",
@@ -79,17 +77,17 @@ class TestFormatterTextRegions:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_text_with_url_colors_supported(self, ctx, data_regression):
+    def test_text_with_url_colors_supported(self, ctx, file_regression):
         formatter = yuio.doc.Formatter(ctx)
         node = yuio.doc.Paragraph(
             items=[yuio.doc.TextRegion(content="link", url="https://example.com")]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_text_with_url_no_colors(self, term, theme, data_regression):
+    def test_text_with_url_no_colors(self, term, theme, file_regression):
         term_no_colors = yuio.term.Term(
             term.ostream,
             term.istream,
@@ -103,43 +101,43 @@ class TestFormatterTextRegions:
             items=[yuio.doc.TextRegion(content="link", url="https://example.com")]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_empty_text_region(self, formatter, data_regression):
+    def test_empty_text_region(self, formatter, file_regression):
         node = yuio.doc.Paragraph(items=[yuio.doc.TextRegion(content="", color="em")])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterHeadings:
     @pytest.mark.parametrize("level", [1, 2, 3, 4, 5, 6], ids=lambda x: f"level_{x}")
-    def test_heading_levels(self, formatter, level, data_regression):
+    def test_heading_levels(self, formatter, level, file_regression):
         node = yuio.doc.Heading(items=["Heading"], level=level)
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
     def test_heading_with_allow_headings_false(
-        self, formatter_no_headings, data_regression
+        self, formatter_no_headings, file_regression
     ):
         node = yuio.doc.Heading(items=["Title"], level=1)
         result = formatter_no_headings.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_empty_heading(self, formatter, data_regression):
+    def test_empty_heading(self, formatter, file_regression):
         node = yuio.doc.Heading(items=[], level=1)
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_heading_with_inline_formatting(self, formatter, data_regression):
+    def test_heading_with_inline_formatting(self, formatter, file_regression):
         node = yuio.doc.Heading(
             items=[yuio.doc.TextRegion(content="Bold Title", color="strong")], level=1
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterLists:
-    def test_simple_bullet_list(self, formatter, data_regression):
+    def test_simple_bullet_list(self, formatter, file_regression):
         node = yuio.doc.List(
             items=[
                 yuio.doc.ListItem(
@@ -148,9 +146,9 @@ class TestFormatterLists:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_simple_numbered_list(self, formatter, data_regression):
+    def test_simple_numbered_list(self, formatter, file_regression):
         node = yuio.doc.List(
             items=[
                 yuio.doc.ListItem(items=[yuio.doc.Paragraph(items=["Item"])], number=1)
@@ -158,19 +156,19 @@ class TestFormatterLists:
             enumerator_kind=yuio.doc.ListEnumeratorKind.NUMBER,
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_empty_list(self, formatter, data_regression):
+    def test_empty_list(self, formatter, file_regression):
         node = yuio.doc.List(items=[])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_list_with_empty_items(self, formatter, data_regression):
+    def test_list_with_empty_items(self, formatter, file_regression):
         node = yuio.doc.List(items=[yuio.doc.ListItem(items=[], number=None)])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_nested_lists(self, formatter, data_regression):
+    def test_nested_lists(self, formatter, file_regression):
         node = yuio.doc.List(
             items=[
                 yuio.doc.ListItem(
@@ -190,9 +188,9 @@ class TestFormatterLists:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_nested_lists_indent(self, formatter, data_regression):
+    def test_nested_lists_indent(self, formatter, file_regression):
         node = yuio.doc.List(
             items=[
                 yuio.doc.ListItem(
@@ -216,7 +214,7 @@ class TestFormatterLists:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
     @pytest.mark.parametrize(
         "enumerator_kind",
@@ -236,7 +234,7 @@ class TestFormatterLists:
         ],
     )
     def test_different_enumerator_kinds(
-        self, formatter, enumerator_kind, data_regression
+        self, formatter, enumerator_kind, file_regression
     ):
         node = yuio.doc.List(
             items=[
@@ -247,9 +245,9 @@ class TestFormatterLists:
             enumerator_kind=enumerator_kind,
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_list_starting_non_one(self, formatter, data_regression):
+    def test_list_starting_non_one(self, formatter, file_regression):
         node = yuio.doc.List(
             items=[
                 yuio.doc.ListItem(items=[yuio.doc.Paragraph(items=["A"])], number=5),
@@ -258,9 +256,9 @@ class TestFormatterLists:
             enumerator_kind=yuio.doc.ListEnumeratorKind.NUMBER,
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_multi_paragraph_list_items(self, formatter, data_regression):
+    def test_multi_paragraph_list_items(self, formatter, file_regression):
         node = yuio.doc.List(
             items=[
                 yuio.doc.ListItem(
@@ -280,9 +278,9 @@ class TestFormatterLists:
             enumerator_kind=yuio.doc.ListEnumeratorKind.NUMBER,
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_list_with_wide_markers(self, formatter, data_regression):
+    def test_list_with_wide_markers(self, formatter, file_regression):
         items = [
             yuio.doc.ListItem(items=[yuio.doc.Paragraph(items=[f"Item {i}"])], number=i)
             for i in range(98, 102)
@@ -291,28 +289,28 @@ class TestFormatterLists:
             items=items, enumerator_kind=yuio.doc.ListEnumeratorKind.NUMBER
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterQuotes:
-    def test_simple_quote(self, formatter, data_regression):
+    def test_simple_quote(self, formatter, file_regression):
         node = yuio.doc.Quote(items=[yuio.doc.Paragraph(items=["Quoted text"])])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_empty_quote(self, formatter, data_regression):
+    def test_empty_quote(self, formatter, file_regression):
         node = yuio.doc.Quote(items=[])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_nested_quotes(self, formatter, data_regression):
+    def test_nested_quotes(self, formatter, file_regression):
         node = yuio.doc.Quote(
             items=[yuio.doc.Quote(items=[yuio.doc.Paragraph(items=["Inner quote"])])]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_quote_with_multiple_paragraphs(self, formatter, data_regression):
+    def test_quote_with_multiple_paragraphs(self, formatter, file_regression):
         node = yuio.doc.Quote(
             items=[
                 yuio.doc.Paragraph(items=["P1"]),
@@ -320,7 +318,7 @@ class TestFormatterQuotes:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterAdmonitions:
@@ -330,7 +328,7 @@ class TestFormatterAdmonitions:
         ids=lambda x: f"type_{x}",
     )
     def test_standard_admonition_types(
-        self, formatter, admonition_type, data_regression
+        self, formatter, admonition_type, file_regression
     ):
         node = yuio.doc.Admonition(
             title=["Title"],
@@ -338,30 +336,30 @@ class TestFormatterAdmonitions:
             type=admonition_type,
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_admonition_with_custom_title(self, formatter, data_regression):
+    def test_admonition_with_custom_title(self, formatter, file_regression):
         node = yuio.doc.Admonition(
             title=["Custom Title"],
             items=[yuio.doc.Paragraph(items=["Content"])],
             type="note",
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_empty_admonition(self, formatter, data_regression):
+    def test_empty_admonition(self, formatter, file_regression):
         node = yuio.doc.Admonition(title=["Title"], items=[], type="note")
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_admonition_empty_title(self, formatter, data_regression):
+    def test_admonition_empty_title(self, formatter, file_regression):
         node = yuio.doc.Admonition(
             title=[], items=[yuio.doc.Paragraph(items=["Content"])], type="note"
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_admonition_multiple_paragraphs(self, formatter, data_regression):
+    def test_admonition_multiple_paragraphs(self, formatter, file_regression):
         node = yuio.doc.Admonition(
             title=["Note"],
             items=[
@@ -371,52 +369,52 @@ class TestFormatterAdmonitions:
             type="note",
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterCodeBlocks:
-    def test_simple_code_block(self, formatter, data_regression):
+    def test_simple_code_block(self, formatter, file_regression):
         node = yuio.doc.Code(lines=["def foo():", "    pass"], syntax="python")
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_code_block_unknown_syntax(self, formatter, data_regression):
+    def test_code_block_unknown_syntax(self, formatter, file_regression):
         node = yuio.doc.Code(lines=["code"], syntax="unknown-lang")
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_empty_code_block(self, formatter, data_regression):
+    def test_empty_code_block(self, formatter, file_regression):
         node = yuio.doc.Code(lines=[], syntax="python")
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_code_block_with_blank_lines(self, formatter, data_regression):
+    def test_code_block_with_blank_lines(self, formatter, file_regression):
         node = yuio.doc.Code(lines=["line1", "", "", "line2"], syntax="")
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_very_long_code_line(self, formatter, data_regression):
+    def test_very_long_code_line(self, formatter, file_regression):
         node = yuio.doc.Code(lines=["x" * 200], syntax="")
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterFootnotes:
-    def test_simple_footnote(self, formatter, data_regression):
+    def test_simple_footnote(self, formatter, file_regression):
         node = yuio.doc.Footnote(
             marker="1", items=[yuio.doc.Paragraph(items=["Note text"])]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_footnote_long_marker(self, formatter, data_regression):
+    def test_footnote_long_marker(self, formatter, file_regression):
         node = yuio.doc.Footnote(
             marker="[note-123]", items=[yuio.doc.Paragraph(items=["Text"])]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_footnote_container(self, formatter, data_regression):
+    def test_footnote_container(self, formatter, file_regression):
         node = yuio.doc.FootnoteContainer(
             items=[
                 yuio.doc.Footnote(marker="1", items=[yuio.doc.Paragraph(items=["A"])]),
@@ -424,47 +422,47 @@ class TestFormatterFootnotes:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_empty_footnote(self, formatter, data_regression):
+    def test_empty_footnote(self, formatter, file_regression):
         node = yuio.doc.Footnote(marker="1", items=[])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterOtherElements:
-    def test_thematic_break(self, formatter, data_regression):
+    def test_thematic_break(self, formatter, file_regression):
         node = yuio.doc.ThematicBreak()
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_raw_colorized_string(self, formatter, data_regression):
+    def test_raw_colorized_string(self, formatter, file_regression):
         node = yuio.doc.Raw(raw=yuio.string.ColorizedString("pre-formatted text"))
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_no_headings_wrapper(self, formatter, data_regression):
+    def test_no_headings_wrapper(self, formatter, file_regression):
         node = yuio.doc.NoHeadings(items=[yuio.doc.Heading(items=["Title"], level=1)])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterIndentationAndWidth:
-    def test_very_narrow_width(self, term, theme, data_regression):
+    def test_very_narrow_width(self, term, theme, file_regression):
         ctx = yuio.string.ReprContext(term=term, theme=theme, width=10)
         formatter = yuio.doc.Formatter(ctx)
         node = yuio.doc.Paragraph(items=["This is a long paragraph that will wrap"])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_very_wide_width(self, term, theme, data_regression):
+    def test_very_wide_width(self, term, theme, file_regression):
         ctx = yuio.string.ReprContext(term=term, theme=theme, width=1000)
         formatter = yuio.doc.Formatter(ctx)
         node = yuio.doc.Paragraph(items=["This is a normal paragraph"])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_complex_nested_indentation(self, formatter, data_regression):
+    def test_complex_nested_indentation(self, formatter, file_regression):
         node = yuio.doc.Quote(
             items=[
                 yuio.doc.List(
@@ -482,23 +480,23 @@ class TestFormatterIndentationAndWidth:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_long_nowrap_text(self, formatter, data_regression):
+    def test_long_nowrap_text(self, formatter, file_regression):
         node = yuio.doc.Paragraph(
             items=[yuio.doc.TextRegion(content="x" * 200, no_wrap=True)]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterSeparatorLogic:
-    def test_first_element_in_document(self, formatter, data_regression):
+    def test_first_element_in_document(self, formatter, file_regression):
         node = yuio.doc.Document(items=[yuio.doc.Heading(items=["Title"], level=1)])
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_multiple_headings_succession(self, formatter, data_regression):
+    def test_multiple_headings_succession(self, formatter, file_regression):
         node = yuio.doc.Document(
             items=[
                 yuio.doc.Heading(items=["First"], level=1),
@@ -506,9 +504,9 @@ class TestFormatterSeparatorLogic:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
-    def test_mixed_empty_non_empty_items(self, formatter, data_regression):
+    def test_mixed_empty_non_empty_items(self, formatter, file_regression):
         node = yuio.doc.Document(
             items=[
                 yuio.doc.Paragraph(items=[]),
@@ -517,11 +515,11 @@ class TestFormatterSeparatorLogic:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))
 
 
 class TestFormatterIntegration:
-    def test_complete_document_structure(self, formatter, data_regression):
+    def test_complete_document_structure(self, formatter, file_regression):
         node = yuio.doc.Document(
             items=[
                 yuio.doc.Heading(items=["Document Title"], level=1),
@@ -559,4 +557,4 @@ class TestFormatterIntegration:
             ]
         )
         result = formatter.format(node)
-        data_regression.check(serialize_formatter_output(node, result))
+        file_regression.check(serialize_formatter_output(node, result))

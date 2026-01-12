@@ -1,0 +1,7 @@
+(Admonition 'note'
+  (Paragraph
+    'Content'))
+
+----------
+
+    Content

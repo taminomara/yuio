@@ -1,0 +1,8 @@
+*
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None)))

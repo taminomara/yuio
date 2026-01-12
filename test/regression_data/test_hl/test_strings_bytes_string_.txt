@@ -1,0 +1,5 @@
+b"bytes"
+
+----------
+
+<Color>b<Color fore=<GREEN>>"bytes"

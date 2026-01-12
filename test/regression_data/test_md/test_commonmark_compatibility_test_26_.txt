@@ -1,0 +1,17 @@
+- foo
+***
+- bar
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Paragraph
+        'foo')))
+  (ThematicBreak)
+  (List None None
+    (ListItem None
+      (Paragraph
+        'bar'))))

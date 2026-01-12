@@ -1,0 +1,11 @@
+[not a `link](/foo`)
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'not a '
+    TextRegion(content='link](/foo', color='code', no_wrap=True, url=None)
+    ')'))

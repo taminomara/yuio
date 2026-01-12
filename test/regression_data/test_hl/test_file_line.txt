@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "test.py", line 10, in foo
+
+----------
+
+<Color fore=<RED>>Traceback (most recent call last):
+<Color>  <Color fore=<WHITE>>File <Color fore=<CYAN>>"test.py"<Color fore=<WHITE>>, line <Color fore=<YELLOW>>10<Color fore=<WHITE>>, in <Color fore=<MAGENTA>>foo<Color fore=<WHITE>>
+

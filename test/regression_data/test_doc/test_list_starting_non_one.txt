@@ -1,0 +1,12 @@
+(List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+  (ListItem 5
+    (Paragraph
+      'A'))
+  (ListItem 6
+    (Paragraph
+      'B')))
+
+----------
+
+5.  A
+6.  B

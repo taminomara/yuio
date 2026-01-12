@@ -1,0 +1,20 @@
+# Heading
+    foo
+Heading
+------
+    foo
+----
+
+
+----------
+
+(Document
+  (Heading 1
+    'Heading')
+  (Code ''
+    'foo')
+  (Heading 2
+    'Heading')
+  (Code ''
+    'foo')
+  (ThematicBreak))

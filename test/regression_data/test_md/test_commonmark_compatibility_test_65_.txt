@@ -1,0 +1,18 @@
+---
+Foo
+---
+Bar
+---
+Baz
+
+
+----------
+
+(Document
+  (ThematicBreak)
+  (Heading 2
+    'Foo')
+  (Heading 2
+    'Bar')
+  (Paragraph
+    'Baz'))

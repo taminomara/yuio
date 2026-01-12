@@ -1,0 +1,5 @@
+cat file.txt
+
+----------
+
+<Color fore=<CYAN>>cat<Color> file.txt

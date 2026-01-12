@@ -1,0 +1,20 @@
+- a
+- b
+
+  [ref]: /url
+- d
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Paragraph
+        'a'))
+    (ListItem None
+      (Paragraph
+        'b'))
+    (ListItem None
+      (Paragraph
+        'd'))))

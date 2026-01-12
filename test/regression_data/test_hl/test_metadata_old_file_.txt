@@ -1,0 +1,5 @@
+--- a/file.py
+
+----------
+
+<Color fore=<CYAN>>--- a/file.py

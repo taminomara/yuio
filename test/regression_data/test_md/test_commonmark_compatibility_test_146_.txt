@@ -1,0 +1,13 @@
+> # Foo
+> bar
+> baz
+
+
+----------
+
+(Document
+  (Quote
+    (Heading 1
+      'Foo')
+    (Paragraph
+      'bar\nbaz')))

@@ -1,9 +1,13 @@
 import yuio.hl
+import yuio.string
 from yuio.color import Color
 
-from .conftest import serialize_colorized_string
-
 import pytest
+
+
+def serialize_colorized_string(code: str, s: yuio.string.ColorizedString):
+    result = "".join(map(str, s))
+    return f"{code}\n\n----------\n\n{result}\n"
 
 
 @pytest.fixture(autouse=True)
@@ -163,10 +167,10 @@ class TestPythonHighlighter:
             pytest.param("with open() as f:", id="keyword_with_as"),
         ],
     )
-    def test_keywords(self, theme, code, data_regression):
+    def test_keywords(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -181,10 +185,10 @@ class TestPythonHighlighter:
             pytest.param('u"unicode"', id="unicode_string"),
         ],
     )
-    def test_strings(self, theme, code, data_regression):
+    def test_strings(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -201,10 +205,10 @@ class TestPythonHighlighter:
             pytest.param(r'"%s"', id="percent_format"),
         ],
     )
-    def test_string_escapes(self, theme, code, data_regression):
+    def test_string_escapes(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -219,10 +223,10 @@ class TestPythonHighlighter:
             pytest.param(".5", id="leading_dot"),
         ],
     )
-    def test_numbers(self, theme, code, data_regression):
+    def test_numbers(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -232,10 +236,10 @@ class TestPythonHighlighter:
             pytest.param("False", id="false"),
         ],
     )
-    def test_builtins(self, theme, code, data_regression):
+    def test_builtins(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -248,10 +252,10 @@ class TestPythonHighlighter:
             pytest.param("bool", id="bool"),
         ],
     )
-    def test_builtin_types(self, theme, code, data_regression):
+    def test_builtin_types(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -261,10 +265,10 @@ class TestPythonHighlighter:
             pytest.param("URLParser", id="all_caps_start"),
         ],
     )
-    def test_user_types(self, theme, code, data_regression):
+    def test_user_types(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -273,18 +277,18 @@ class TestPythonHighlighter:
             pytest.param("x = 1  # inline comment", id="inline"),
         ],
     )
-    def test_comments(self, theme, code, data_regression):
+    def test_comments(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_complex_code(self, theme, data_regression):
+    def test_complex_code(self, theme, file_regression):
         code = (
             'def foo(x: int) -> str:\n    """Docstring."""\n    return f"result: {x}"'
         )
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
 
 class TestBashHighlighter:
@@ -298,10 +302,10 @@ class TestBashHighlighter:
             pytest.param("[[ -f file ]]", id="double_brackets"),
         ],
     )
-    def test_keywords(self, theme, code, data_regression):
+    def test_keywords(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("bash")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -312,10 +316,10 @@ class TestBashHighlighter:
             pytest.param("echo hello", id="echo"),
         ],
     )
-    def test_programs(self, theme, code, data_regression):
+    def test_programs(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("bash")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -324,10 +328,10 @@ class TestBashHighlighter:
             pytest.param("'single quotes'", id="single_quotes"),
         ],
     )
-    def test_strings(self, theme, code, data_regression):
+    def test_strings(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("bash")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -337,16 +341,16 @@ class TestBashHighlighter:
             pytest.param("cmd1 || cmd2", id="or"),
         ],
     )
-    def test_operators(self, theme, code, data_regression):
+    def test_operators(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("bash")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_comment(self, theme, data_regression):
+    def test_comment(self, theme, file_regression):
         code = "# This is a comment"
         highlighter, syntax = yuio.hl.get_highlighter("bash")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
 
 class TestJsonHighlighter:
@@ -358,10 +362,10 @@ class TestJsonHighlighter:
             pytest.param("null", id="null"),
         ],
     )
-    def test_keywords(self, theme, code, data_regression):
+    def test_keywords(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("json")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -373,10 +377,10 @@ class TestJsonHighlighter:
             pytest.param("0", id="zero"),
         ],
     )
-    def test_numbers(self, theme, code, data_regression):
+    def test_numbers(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("json")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -389,16 +393,16 @@ class TestJsonHighlighter:
             pytest.param(r'"backslash\\"', id="escape_backslash"),
         ],
     )
-    def test_strings_and_escapes(self, theme, code, data_regression):
+    def test_strings_and_escapes(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("json")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_complex_json(self, theme, data_regression):
+    def test_complex_json(self, theme, file_regression):
         code = '{"key": [1, 2, 3], "nested": {"value": true}}'
         highlighter, syntax = yuio.hl.get_highlighter("json")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
 
 class TestDiffHighlighter:
@@ -410,10 +414,10 @@ class TestDiffHighlighter:
             pytest.param("@@ -1,3 +1,3 @@", id="hunk_header"),
         ],
     )
-    def test_metadata(self, theme, code, data_regression):
+    def test_metadata(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("diff")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
     @pytest.mark.parametrize(
         "code",
@@ -423,38 +427,38 @@ class TestDiffHighlighter:
             pytest.param(" context line", id="context"),
         ],
     )
-    def test_lines(self, theme, code, data_regression):
+    def test_lines(self, theme, code, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("diff")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
 
 class TestTracebackHighlighter:
-    def test_heading(self, theme, data_regression):
+    def test_heading(self, theme, file_regression):
         code = "Traceback (most recent call last):"
         highlighter, syntax = yuio.hl.get_highlighter("traceback")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_exception_group_heading(self, theme, data_regression):
+    def test_exception_group_heading(self, theme, file_regression):
         code = "Exception Group Traceback (most recent call last):"
         highlighter, syntax = yuio.hl.get_highlighter("traceback")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_file_line(self, theme, data_regression):
+    def test_file_line(self, theme, file_regression):
         code = 'Traceback (most recent call last):\n  File "test.py", line 10, in foo'
         highlighter, syntax = yuio.hl.get_highlighter("traceback")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_error_message(self, theme, data_regression):
+    def test_error_message(self, theme, file_regression):
         code = "ValueError: invalid value"
         highlighter, syntax = yuio.hl.get_highlighter("traceback")
         result = highlighter.highlight(code, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_full_traceback(self, theme, data_regression):
+    def test_full_traceback(self, theme, file_regression):
         tb = """Traceback (most recent call last):
   File "test.py", line 10, in foo
     x = 1 / 0
@@ -462,27 +466,27 @@ class TestTracebackHighlighter:
 ZeroDivisionError: division by zero"""
         highlighter, syntax = yuio.hl.get_highlighter("traceback")
         result = highlighter.highlight(tb, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(tb, result))
+        file_regression.check(serialize_colorized_string(tb, result))
 
-    def test_library_frames(self, theme, data_regression):
+    def test_library_frames(self, theme, file_regression):
         tb = """Traceback (most recent call last):
   File "/lib/site-packages/module.py", line 10, in foo
     x = 1
 ValueError: error"""
         highlighter, syntax = yuio.hl.get_highlighter("traceback")
         result = highlighter.highlight(tb, theme=theme, syntax=syntax)
-        data_regression.check(serialize_colorized_string(tb, result))
+        file_regression.check(serialize_colorized_string(tb, result))
 
 
 class TestReSyntaxHighlighter:
-    def test_basic_pattern(self, theme, data_regression):
+    def test_basic_pattern(self, theme, file_regression):
         highlighter = yuio.hl.ReSyntaxHighlighter([(r"\d+", "number")])
         theme.set_color("hl/number:test", Color.FORE_YELLOW)
         code = "The answer is 42"
         result = highlighter.highlight(code, theme=theme, syntax="test")
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_multiple_patterns(self, theme, data_regression):
+    def test_multiple_patterns(self, theme, file_regression):
         highlighter = yuio.hl.ReSyntaxHighlighter(
             [(r"\d+", "number"), (r"[a-z]+", "word")]
         )
@@ -490,9 +494,9 @@ class TestReSyntaxHighlighter:
         theme.set_color("hl/word:test", Color.FORE_CYAN)
         code = "abc 123 def 456"
         result = highlighter.highlight(code, theme=theme, syntax="test")
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_base_color(self, theme, data_regression):
+    def test_base_color(self, theme, file_regression):
         highlighter = yuio.hl.ReSyntaxHighlighter(
             [(r"\d+", "number")], base_color="base"
         )
@@ -500,9 +504,9 @@ class TestReSyntaxHighlighter:
         theme.set_color("hl/number:test", Color.FORE_YELLOW)
         code = "text 42 more"
         result = highlighter.highlight(code, theme=theme, syntax="test")
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_capturing_groups(self, theme, data_regression):
+    def test_capturing_groups(self, theme, file_regression):
         highlighter = yuio.hl.ReSyntaxHighlighter(
             [(r'(")(.*?)(")', ("quote", "content", "quote"))]
         )
@@ -510,30 +514,30 @@ class TestReSyntaxHighlighter:
         theme.set_color("hl/content:test", Color.FORE_GREEN)
         code = '"hello world"'
         result = highlighter.highlight(code, theme=theme, syntax="test")
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
-    def test_nested_highlighter(self, theme, data_regression):
+    def test_nested_highlighter(self, theme, file_regression):
         inner = yuio.hl.ReSyntaxHighlighter([(r"x", "x")], base_color="inner")
         outer = yuio.hl.ReSyntaxHighlighter([(r"(\[)(.*?)(\])", (None, inner, None))])
         theme.set_color("hl/inner:test", Color.FORE_GREEN)
         theme.set_color("hl/x:test", Color.FORE_RED)
         code = "[x and x]"
         result = outer.highlight(code, theme=theme, syntax="test")
-        data_regression.check(serialize_colorized_string(code, result))
+        file_regression.check(serialize_colorized_string(code, result))
 
 
 class TestDefaultColor:
-    def test_default_color_as_color(self, theme, data_regression):
+    def test_default_color_as_color(self, theme, file_regression):
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(
             "test", theme=theme, syntax=syntax, default_color=Color.FORE_RED
         )
-        data_regression.check(serialize_colorized_string("test", result))
+        file_regression.check(serialize_colorized_string("test", result))
 
-    def test_default_color_as_string(self, theme, data_regression):
+    def test_default_color_as_string(self, theme, file_regression):
         theme.set_color("custom/color", Color.FORE_BLUE)
         highlighter, syntax = yuio.hl.get_highlighter("python")
         result = highlighter.highlight(
             "test", theme=theme, syntax=syntax, default_color="custom/color"
         )
-        data_regression.check(serialize_colorized_string("test", result))
+        file_regression.check(serialize_colorized_string("test", result))

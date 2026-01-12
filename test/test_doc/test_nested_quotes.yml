@@ -1,3 +1,0 @@
-ast: "(Quote\n  (Quote\n    (Paragraph\n      'Inner quote')))"
-lines:
-- '>   >   Inner quote'

@@ -1,0 +1,11 @@
+[link](foo(and(bar))
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'link'
+    ']'
+    '(foo(and(bar))'))

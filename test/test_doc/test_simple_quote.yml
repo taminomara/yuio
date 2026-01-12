@@ -1,3 +1,0 @@
-ast: "(Quote\n  (Paragraph\n    'Quoted text'))"
-lines:
-- '>   Quoted text'

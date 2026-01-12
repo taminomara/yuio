@@ -1,0 +1,8 @@
+Foo χρῆν
+
+
+----------
+
+(Document
+  (Paragraph
+    'Foo χρῆν'))

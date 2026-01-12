@@ -1,0 +1,11 @@
+foo\
+baz
+
+
+----------
+
+(Document
+  (Paragraph
+    'foo'
+    '\x0b\n'
+    'baz'))

@@ -1,0 +1,5 @@
+{"key": [1, 2, 3], "nested": {"value": true}}
+
+----------
+
+<Color fore=<WHITE>>{<Color fore=<GREEN>>"key"<Color fore=<WHITE>>:<Color> <Color fore=<WHITE>>[<Color fore=<YELLOW>>1<Color fore=<WHITE>>,<Color> <Color fore=<YELLOW>>2<Color fore=<WHITE>>,<Color> <Color fore=<YELLOW>>3<Color fore=<WHITE>>],<Color> <Color fore=<GREEN>>"nested"<Color fore=<WHITE>>:<Color> <Color fore=<WHITE>>{<Color fore=<GREEN>>"value"<Color fore=<WHITE>>:<Color> <Color fore=<CYAN>>true<Color fore=<WHITE>>}}

@@ -1,8 +1,0 @@
-code: '"%s"'
-highlighted:
-- color: <Color fore=<GREEN>>
-- '"'
-- color: <Color fore=<BLUE>>
-- '%s'
-- color: <Color fore=<GREEN>>
-- '"'

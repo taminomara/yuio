@@ -1,0 +1,5 @@
+"\101"
+
+----------
+
+<Color fore=<GREEN>>"<Color fore=<BLUE>>\101<Color fore=<GREEN>>"

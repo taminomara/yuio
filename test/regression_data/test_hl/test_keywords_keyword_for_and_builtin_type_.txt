@@ -1,0 +1,5 @@
+for x in range(10):
+
+----------
+
+<Color fore=<RED>>for<Color> x <Color fore=<RED>>in<Color> <Color fore=<MAGENTA>>range<Color fore=<WHITE>>(<Color fore=<YELLOW>>10<Color fore=<WHITE>>)<Color>:

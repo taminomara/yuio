@@ -1,0 +1,5 @@
+"with\ttab"
+
+----------
+
+<Color fore=<GREEN>>"with<Color fore=<BLUE>>\t<Color fore=<GREEN>>tab"

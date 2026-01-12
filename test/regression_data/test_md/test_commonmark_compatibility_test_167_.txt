@@ -1,0 +1,13 @@
+> bar
+>
+baz
+
+
+----------
+
+(Document
+  (Quote
+    (Paragraph
+      'bar'))
+  (Paragraph
+    'baz'))

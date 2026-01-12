@@ -1,0 +1,5 @@
+for x in *; do echo $x; done
+
+----------
+
+<Color fore=<RED>>for<Color> x <Color fore=<RED>>in<Color> *<Color fore=<WHITE>>;<Color> <Color fore=<RED>>do<Color> echo $x<Color fore=<WHITE>>;<Color> <Color fore=<RED>>done

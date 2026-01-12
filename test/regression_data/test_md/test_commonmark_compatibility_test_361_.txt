@@ -1,0 +1,8 @@
+[link](\(foo\))
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='link', color=None, no_wrap=False, url='(foo)')))

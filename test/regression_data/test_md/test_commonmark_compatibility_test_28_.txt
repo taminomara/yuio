@@ -1,0 +1,12 @@
+Foo
+---
+bar
+
+
+----------
+
+(Document
+  (Heading 2
+    'Foo')
+  (Paragraph
+    'bar'))

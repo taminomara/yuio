@@ -1,0 +1,16 @@
+1. foo
+2.
+3. bar
+
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+    (ListItem 1
+      (Paragraph
+        'foo'))
+    (ListItem 2)
+    (ListItem 3
+      (Paragraph
+        'bar'))))

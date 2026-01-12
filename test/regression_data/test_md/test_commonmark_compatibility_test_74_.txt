@@ -1,0 +1,14 @@
+Foo
+bar
+* * *
+baz
+
+
+----------
+
+(Document
+  (Paragraph
+    'Foo\nbar')
+  (ThematicBreak)
+  (Paragraph
+    'baz'))

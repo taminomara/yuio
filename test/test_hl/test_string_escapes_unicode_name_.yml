@@ -1,8 +1,0 @@
-code: '"\N{LATIN CAPITAL LETTER A}"'
-highlighted:
-- color: <Color fore=<GREEN>>
-- '"'
-- color: <Color fore=<BLUE>>
-- \N{LATIN CAPITAL LETTER A}
-- color: <Color fore=<GREEN>>
-- '"'

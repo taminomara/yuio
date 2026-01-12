@@ -1,0 +1,16 @@
+[bar][foo\!]
+
+[foo!]: /url
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'bar'
+    ']'
+    '['
+    'foo'
+    '!'
+    ']'))

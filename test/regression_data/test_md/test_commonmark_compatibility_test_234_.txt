@@ -1,0 +1,24 @@
+- a
+- ```
+  b
+
+
+  ```
+- c
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Paragraph
+        'a'))
+    (ListItem None
+      (Code ''
+        'b'
+        ''
+        ''))
+    (ListItem None
+      (Paragraph
+        'c'))))

@@ -1,0 +1,12 @@
+#5 bolt
+
+#hashtag
+
+
+----------
+
+(Document
+  (Paragraph
+    '#5 bolt')
+  (Paragraph
+    '#hashtag'))

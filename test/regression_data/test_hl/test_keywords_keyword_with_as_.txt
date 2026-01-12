@@ -1,0 +1,5 @@
+with open() as f:
+
+----------
+
+<Color fore=<RED>>with<Color> open<Color fore=<WHITE>>()<Color> <Color fore=<RED>>as<Color> f:

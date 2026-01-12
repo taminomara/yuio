@@ -1,0 +1,19 @@
+Foo
+[bar]: /baz
+
+[bar]
+
+
+----------
+
+(Document
+  (Paragraph
+    'Foo\n'
+    '['
+    'bar'
+    ']'
+    ': /baz')
+  (Paragraph
+    '['
+    'bar'
+    ']'))

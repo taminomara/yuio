@@ -1,0 +1,20 @@
+(List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+  (ListItem 98
+    (Paragraph
+      'Item 98'))
+  (ListItem 99
+    (Paragraph
+      'Item 99'))
+  (ListItem 100
+    (Paragraph
+      'Item 100'))
+  (ListItem 101
+    (Paragraph
+      'Item 101')))
+
+----------
+
+98.  Item 98
+99.  Item 99
+100. Item 100
+101. Item 101

@@ -1,0 +1,7 @@
+(NoHeadings
+  (Heading 1
+    'Title'))
+
+----------
+
+Title

@@ -1,0 +1,8 @@
+Multiple     spaces
+
+
+----------
+
+(Document
+  (Paragraph
+    'Multiple     spaces'))

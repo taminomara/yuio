@@ -1,0 +1,11 @@
+_foo [bar_](/url)
+
+
+----------
+
+(Document
+  (Paragraph
+    '_'
+    'foo '
+    TextRegion(content='bar', color=None, no_wrap=False, url='/url')
+    TextRegion(content='_', color=None, no_wrap=False, url='/url')))

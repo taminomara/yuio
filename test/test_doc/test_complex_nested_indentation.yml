@@ -1,4 +1,0 @@
-ast: "(Quote\n  (List None None\n    (ListItem None\n      (Quote\n        (Paragraph\n\
-  \          'Text')))))"
-lines:
-- '>   •   >   Text'

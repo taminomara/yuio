@@ -1,0 +1,15 @@
+foo
+*
+
+foo
+1.
+
+
+----------
+
+(Document
+  (Paragraph
+    'foo\n'
+    '*')
+  (Paragraph
+    'foo\n1.'))

@@ -1,0 +1,5 @@
+"\x41"
+
+----------
+
+<Color fore=<GREEN>>"<Color fore=<BLUE>>\x41<Color fore=<GREEN>>"

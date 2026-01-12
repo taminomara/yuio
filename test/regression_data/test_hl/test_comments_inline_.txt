@@ -1,0 +1,5 @@
+x = 1  # inline comment
+
+----------
+
+<Color>x = <Color fore=<YELLOW>>1<Color>  <Color fore=<BLACK>># inline comment

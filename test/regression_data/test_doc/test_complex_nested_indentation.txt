@@ -1,0 +1,10 @@
+(Quote
+  (List None None
+    (ListItem None
+      (Quote
+        (Paragraph
+          'Text')))))
+
+----------
+
+>   •   >   Text

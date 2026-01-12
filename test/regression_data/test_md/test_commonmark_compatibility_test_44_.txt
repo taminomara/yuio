@@ -1,0 +1,8 @@
+# foo#
+
+
+----------
+
+(Document
+  (Heading 1
+    'foo#'))

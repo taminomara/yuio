@@ -1,0 +1,11 @@
+> foo
+---
+
+
+----------
+
+(Document
+  (Quote
+    (Paragraph
+      'foo'))
+  (ThematicBreak))

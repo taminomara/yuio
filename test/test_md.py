@@ -1,386 +1,459 @@
-# import re
+import yuio.md
 
-# import yuio.md
+import pytest
 
-# import pytest
+COMMONMARK_TEST_CASES = [
+    "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\n",
+    "\\\t\\A\\a\\ \\3\\φ\\«\n",
+    '\\*not emphasized*\n\\<br/> not a tag\n\\[not a link](/foo)\n\\`not code`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo]: /url "not a reference"\n\\&ouml; not a character entity\n',
+    "\\\\*emphasis*\n",
+    "foo\\\nbar\n",
+    "`` \\[\\` ``\n",
+    "    \\[\\]\n",
+    "~~~\n\\[\\]\n~~~\n",
+    '[foo](/bar\\* "ti\\*tle")\n',
+    '[foo]\n\n[foo]: /bar\\* "ti\\*tle"\n',
+    "``` foo\\+bar\nfoo\n```\n",
+    "- `one\n- two`\n",
+    "***\n---\n___\n",
+    "+++\n",
+    "===\n",
+    "--\n**\n__\n",
+    " ***\n  ***\n   ***\n",
+    "    ***\n",
+    "Foo\n    ***\n",
+    "_____________________________________\n",
+    " - - -\n",
+    " **  * ** * ** * **\n",
+    "-     -      -      -\n",
+    "- - - -    \n",
+    "_ _ _ _ a\n\na------\n\n---a---\n",
+    " *-*\n",
+    "- foo\n***\n- bar\n",
+    "Foo\n***\nbar\n",
+    "Foo\n---\nbar\n",
+    "* Foo\n* * *\n* Bar\n",
+    "- Foo\n- * * *\n",
+    "# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo\n",
+    "####### foo\n",
+    "#5 bolt\n\n#hashtag\n",
+    "\\## foo\n",
+    "# foo *bar* \\*baz\\*\n",
+    "#                  foo                     \n",
+    " ### foo\n  ## foo\n   # foo\n",
+    "    # foo\n",
+    "foo\n    # bar\n",
+    "## foo ##\n  ###   bar    ###\n",
+    "# foo ##################################\n##### foo ##\n",
+    "### foo ###     \n",
+    "### foo ### b\n",
+    "# foo#\n",
+    "### foo \\###\n## foo #\\##\n# foo \\#\n",
+    "****\n## foo\n****\n",
+    "Foo bar\n# baz\nBar foo\n",
+    "## \n#\n### ###\n",
+    "Foo *bar*\n=========\n\nFoo *bar*\n---------\n",
+    "Foo *bar\nbaz*\n====\n",
+    "  Foo *bar\nbaz*\t\n====\n",
+    "Foo\n-------------------------\n\nFoo\n=\n",
+    "   Foo\n---\n\n  Foo\n-----\n\n  Foo\n  ===\n",
+    "    Foo\n    ---\n\n    Foo\n---\n",
+    "Foo\n   ----      \n",
+    "Foo\n    ---\n",
+    "Foo\n= =\n\nFoo\n--- -\n",
+    "Foo  \n-----\n",
+    "Foo\\\n----\n",
+    '`Foo\n----\n`\n\n<a title="a lot\n---\nof dashes"/>\n',
+    "> Foo\n---\n",
+    "> foo\nbar\n===\n",
+    "- Foo\n---\n",
+    "Foo\nBar\n---\n",
+    "---\nFoo\n---\nBar\n---\nBaz\n",
+    "\n====\n",
+    "---\n---\n",
+    "- foo\n-----\n",
+    "    foo\n---\n",
+    "> foo\n-----\n",
+    "\\> foo\n------\n",
+    "Foo\n\nbar\n---\nbaz\n",
+    "Foo\nbar\n\n---\n\nbaz\n",
+    "Foo\nbar\n* * *\nbaz\n",
+    "Foo\nbar\n\\---\nbaz\n",
+    "    a simple\n      indented code block\n",
+    "  - foo\n\n    bar\n",
+    "1.  foo\n\n    - bar\n",
+    "    <a/>\n    *hi*\n\n    - one\n",
+    "    chunk1\n\n    chunk2\n  \n \n \n    chunk3\n",
+    "    chunk1\n      \n      chunk2\n",
+    "Foo\n    bar\n\n",
+    "    foo\nbar\n",
+    "# Heading\n    foo\nHeading\n------\n    foo\n----\n",
+    "        foo\n    bar\n",
+    "\n    \n    foo\n    \n\n",
+    "    foo  \n",
+    "```\n<\n >\n```\n",
+    "~~~\n<\n >\n~~~\n",
+    "```\naaa\n~~~\n```\n",
+    "~~~\naaa\n```\n~~~\n",
+    "````\naaa\n```\n``````\n",
+    "~~~~\naaa\n~~~\n~~~~\n",
+    "```\n",
+    "`````\n\n```\naaa\n",
+    "> ```\n> aaa\n\nbbb\n",
+    "```\n\n  \n```\n",
+    "```\n```\n",
+    " ```\n aaa\naaa\n```\n",
+    "  ```\naaa\n  aaa\naaa\n  ```\n",
+    "   ```\n   aaa\n    aaa\n  aaa\n   ```\n",
+    "    ```\n    aaa\n    ```\n",
+    "```\naaa\n  ```\n",
+    "   ```\naaa\n  ```\n",
+    "```\naaa\n    ```\n",
+    "``` ```\naaa\n",
+    "~~~~~~\naaa\n~~~ ~~\n",
+    "foo\n```\nbar\n```\nbaz\n",
+    "foo\n---\n~~~\nbar\n~~~\n# baz\n",
+    "```ruby\ndef foo(x)\n  return 3\nend\n```\n",
+    "~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~\n",
+    "````;\n````\n",
+    "``` aa ```\nfoo\n",
+    "~~~ aa ``` ~~~\nfoo\n~~~\n",
+    "```\n``` aaa\n```\n",
+    '[foo]: /url "title"\n\n[foo]\n',
+    "[Foo*bar\\]]:my_(url) 'title (with parens)'\n\n[Foo*bar\\]]\n",
+    "[foo]: /url 'title\n\nwith blank line'\n\n[foo]\n",
+    "[foo]:\n/url\n\n[foo]\n",
+    "[foo]:\n\n[foo]\n",
+    "[foo]: <>\n\n[foo]\n",
+    "[foo]: <bar>(baz)\n\n[foo]\n",
+    '[foo]: /url\\bar\\*baz "foo\\"bar\\baz"\n\n[foo]\n',
+    "[foo]\n\n[foo]: url\n",
+    "[foo]\n\n[foo]: first\n[foo]: second\n",
+    "[FOO]: /url\n\n[Foo]\n",
+    "[ΑΓΩ]: /φου\n\n[αγω]\n",
+    "[foo]: /url\n",
+    '[foo]: /url "title" ok\n',
+    '[foo]: /url\n"title" ok\n',
+    '    [foo]: /url "title"\n\n[foo]\n',
+    "```\n[foo]: /url\n```\n\n[foo]\n",
+    "Foo\n[bar]: /baz\n\n[bar]\n",
+    "# [Foo]\n[foo]: /url\n> bar\n",
+    "[foo]: /url\nbar\n===\n[foo]\n",
+    "[foo]: /url\n===\n[foo]\n",
+    "[foo]\n\n> [foo]: /url\n",
+    "aaa\n\nbbb\n",
+    "aaa\nbbb\n\nccc\nddd\n",
+    "aaa\n\n\nbbb\n",
+    "  aaa\n bbb\n",
+    "aaa\n             bbb\n                                       ccc\n",
+    "   aaa\nbbb\n",
+    "    aaa\nbbb\n",
+    "  \n\naaa\n  \n\n# aaa\n\n  \n",
+    "> # Foo\n> bar\n> baz\n",
+    "># Foo\n>bar\n> baz\n",
+    "   > # Foo\n   > bar\n > baz\n",
+    "    > # Foo\n    > bar\n    > baz\n",
+    "> # Foo\n> bar\nbaz\n",
+    "> bar\nbaz\n> foo\n",
+    "> foo\n---\n",
+    "> - foo\n- bar\n",
+    ">     foo\n    bar\n",
+    "> ```\nfoo\n```\n",
+    "> foo\n    - bar\n",
+    ">\n",
+    ">\n>  \n> \n",
+    ">\n> foo\n>  \n",
+    "> foo\n\n> bar\n",
+    "> foo\n> bar\n",
+    "> foo\n>\n> bar\n",
+    "foo\n> bar\n",
+    "> aaa\n***\n> bbb\n",
+    "> bar\nbaz\n",
+    "> bar\n\nbaz\n",
+    "> bar\n>\nbaz\n",
+    "> > > foo\nbar\n",
+    ">>> foo\n> bar\n>>baz\n",
+    ">     code\n\n>    not code\n",
+    "A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.\n",
+    "1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.\n",
+    "- one\n\n two\n",
+    "- one\n\n  two\n",
+    " -    one\n\n     two\n",
+    " -    one\n\n      two\n",
+    "   > > 1.  one\n>>\n>>     two\n",
+    ">>- one\n>>\n  >  > two\n",
+    "-one\n\n2.two\n",
+    "- foo\n\n\n  bar\n",
+    "1.  foo\n\n    ```\n    bar\n    ```\n\n    baz\n\n    > bam\n",
+    "- Foo\n\n      bar\n\n\n      baz\n",
+    "123456789. ok\n",
+    "1234567890. not ok\n",
+    "0. ok\n",
+    "003. ok\n",
+    "-1. not ok\n",
+    "- foo\n\n      bar\n",
+    "  10.  foo\n\n           bar\n",
+    "    indented code\n\nparagraph\n\n    more code\n",
+    "1.     indented code\n\n   paragraph\n\n       more code\n",
+    "1.      indented code\n\n   paragraph\n\n       more code\n",
+    "   foo\n\nbar\n",
+    "-    foo\n\n  bar\n",
+    "-  foo\n\n   bar\n",
+    "-\n  foo\n-\n  ```\n  bar\n  ```\n-\n      baz\n",
+    "-   \n  foo\n",
+    "-\n\n  foo\n",
+    "- foo\n-\n- bar\n",
+    "- foo\n-   \n- bar\n",
+    "1. foo\n2.\n3. bar\n",
+    "*\n",
+    "foo\n*\n\nfoo\n1.\n",
+    " 1.  A paragraph\n     with two lines.\n\n         indented code\n\n     > A block quote.\n",
+    "  1.  A paragraph\n      with two lines.\n\n          indented code\n\n      > A block quote.\n",
+    "   1.  A paragraph\n       with two lines.\n\n           indented code\n\n       > A block quote.\n",
+    "    1.  A paragraph\n        with two lines.\n\n            indented code\n\n        > A block quote.\n",
+    "  1.  A paragraph\nwith two lines.\n\n          indented code\n\n      > A block quote.\n",
+    "  1.  A paragraph\n    with two lines.\n",
+    "> 1. > Blockquote\ncontinued here.\n",
+    "> 1. > Blockquote\n> continued here.\n",
+    "- foo\n  - bar\n    - baz\n      - boo\n",
+    "- foo\n - bar\n  - baz\n   - boo\n",
+    "10) foo\n    - bar\n",
+    "10) foo\n   - bar\n",
+    "- - foo\n",
+    "1. - 2. foo\n",
+    "- # Foo\n- Bar\n  ---\n  baz\n",
+    "- foo\n- bar\n+ baz\n",
+    "1. foo\n2. bar\n3) baz\n",
+    "Foo\n- bar\n- baz\n",
+    "The number of windows in my house is\n14.  The number of doors is 6.\n",
+    "The number of windows in my house is\n1.  The number of doors is 6.\n",
+    "- foo\n\n- bar\n\n\n- baz\n",
+    "- foo\n  - bar\n    - baz\n\n\n      bim\n",
+    "- a\n - b\n  - c\n   - d\n  - e\n - f\n- g\n",
+    "1. a\n\n  2. b\n\n   3. c\n",
+    "- a\n - b\n  - c\n   - d\n    - e\n",
+    "1. a\n\n  2. b\n\n    3. c\n",
+    "- a\n- b\n\n- c\n",
+    "* a\n*\n\n* c\n",
+    "- a\n- b\n\n  c\n- d\n",
+    "- a\n- b\n\n  [ref]: /url\n- d\n",
+    "- a\n- ```\n  b\n\n\n  ```\n- c\n",
+    "- a\n  - b\n\n    c\n- d\n",
+    "* a\n  > b\n  >\n* c\n",
+    "- a\n  > b\n  ```\n  c\n  ```\n- d\n",
+    "- a\n",
+    "- a\n  - b\n",
+    "1. ```\n   foo\n   ```\n\n   bar\n",
+    "* foo\n  * bar\n\n  baz\n",
+    "- a\n  - b\n  - c\n\n- d\n  - e\n  - f\n",
+    "`hi`lo`\n",
+    "`foo`\n",
+    "`` foo ` bar ``\n",
+    "` `` `\n",
+    "`  ``  `\n",
+    "` a`\n",
+    "`\xa0b\xa0`\n",
+    "`\xa0`\n`  `\n",
+    "``\nfoo\nbar  \nbaz\n``\n",
+    "``\nfoo \n``\n",
+    "`foo   bar \nbaz`\n",
+    "`foo\\`bar`\n",
+    "``foo`bar``\n",
+    "` foo `` bar `\n",
+    "*foo`*`\n",
+    "[not a `link](/foo`)\n",
+    '`<a href="`">`\n',
+    "`<https://foo.bar.`baz>`\n",
+    "```foo``\n",
+    "`foo\n",
+    "`foo``bar``\n",
+    "*foo bar*\n",
+    "a * foo bar*\n",
+    'a*"foo"*\n',
+    "foo*bar*\n",
+    "5*6*78\n",
+    "_foo bar_\n",
+    "_ foo bar_\n",
+    'a_"foo"_\n',
+    "foo_bar_\n",
+    "5_6_78\n",
+    "пристаням_стремятся_\n",
+    'aa_"bb"_cc\n',
+    "foo-_(bar)_\n",
+    "_foo*\n",
+    "*foo bar *\n",
+    "*foo bar\n*\n",
+    "*(*foo)\n",
+    "*foo*bar\n",
+    "_foo bar _\n",
+    "_(_foo)\n",
+    "_foo_bar\n",
+    "_пристаням_стремятся\n",
+    "_foo_bar_baz_\n",
+    "_(bar)_.\n",
+    "**foo bar**\n",
+    "** foo bar**\n",
+    'a**"foo"**\n',
+    "foo**bar**\n",
+    "__foo bar__\n",
+    "__ foo bar__\n",
+    "__\nfoo bar__\n",
+    'a__"foo"__\n',
+    "foo__bar__\n",
+    "5__6__78\n",
+    "пристаням__стремятся__\n",
+    "foo-__(bar)__\n",
+    "**foo bar **\n",
+    "**(**foo)\n",
+    "*(**foo**)*\n",
+    "**foo**bar\n",
+    "__foo bar __\n",
+    "__(__foo)\n",
+    "_(__foo__)_\n",
+    "__foo__bar\n",
+    "__пристаням__стремятся\n",
+    "__foo__bar__baz__\n",
+    "__(bar)__.\n",
+    "*foo\nbar*\n",
+    "_foo __bar__ baz_\n",
+    "*foo **bar** baz*\n",
+    "*foo**bar**baz*\n",
+    "*foo**bar*\n",
+    "***foo** bar*\n",
+    "*foo **bar***\n",
+    "*foo**bar***\n",
+    "foo***bar***baz\n",
+    "** is not an empty emphasis\n",
+    "**** is not an empty strong emphasis\n",
+    "**foo\nbar**\n",
+    "__ is not an empty emphasis\n",
+    "____ is not an empty strong emphasis\n",
+    "foo ***\n",
+    "foo *\\**\n",
+    "foo *_*\n",
+    "foo *****\n",
+    "foo **\\***\n",
+    "foo **_**\n",
+    "*foo**\n",
+    "**foo***\n",
+    "*foo****\n",
+    "foo ___\n",
+    "foo _\\__\n",
+    "foo _*_\n",
+    "foo _____\n",
+    "foo __\\___\n",
+    "foo __*__\n",
+    "_foo__\n",
+    "__foo___\n",
+    "_foo____\n",
+    "**foo**\n",
+    "__foo__\n",
+    "***foo***\n",
+    "*foo _bar* baz_\n",
+    "*foo __bar *baz bim__ bam*\n",
+    "**foo **bar baz**\n",
+    "*foo *bar baz*\n",
+    "*[bar*](/url)\n",
+    "_foo [bar_](/url)\n",
+    "*a `*`*\n",
+    "_a `_`_\n",
+    '[link](/uri "title")\n',
+    "[link](/uri)\n",
+    "[link](<>)\n",
+    "[link](/my uri)\n",
+    "[link](foo\nbar)\n",
+    "[a](<b)c>)\n",
+    "[link](<foo\\>)\n",
+    "[link](\\(foo\\))\n",
+    "[link](foo(and(bar)))\n",
+    "[link](foo(and(bar))\n",
+    "[link](foo\\(and\\(bar\\))\n",
+    "[link](<foo(and(bar)>)\n",
+    "[link](foo\\)\\:)\n",
+    "[link](#fragment)\n\n[link](https://example.com#fragment)\n\n[link](https://example.com?foo=3#frag)\n",
+    "[link](/url \"title\")\n[link](/url 'title')\n[link](/url (title))\n",
+    '[link](/url "title \\"&quot;")\n',
+    '[link](/url "title "and" title")\n',
+    "[link](/url 'title \"and\" title')\n",
+    "[link] (/uri)\n",
+    "[link] bar](/uri)\n",
+    "[link [bar](/uri)\n",
+    "[link \\[bar](/uri)\n",
+    "[link *foo **bar** `#`*](/uri)\n",
+    "[foo [bar](/uri)](/uri)\n",
+    "*[foo*](/uri)\n",
+    "[foo *bar](baz*)\n",
+    "*foo [bar* baz]\n",
+    "[foo`](/uri)`\n",
+    '[foo][bar]\n\n[bar]: /url "title"\n',
+    "[link \\[bar][ref]\n\n[ref]: /uri\n",
+    "[link *foo **bar** `#`*][ref]\n\n[ref]: /uri\n",
+    "[foo [bar](/uri)][ref]\n\n[ref]: /uri\n",
+    "*[foo*][ref]\n\n[ref]: /uri\n",
+    "[foo`][ref]`\n\n[ref]: /uri\n",
+    '[foo][BaR]\n\n[bar]: /url "title"\n',
+    "[ẞ]\n\n[SS]: /url\n",
+    '[foo] [bar]\n\n[bar]: /url "title"\n',
+    '[foo]\n[bar]\n\n[bar]: /url "title"\n',
+    "[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]\n",
+    "[bar][foo\\!]\n\n[foo!]: /url\n",
+    "[foo][ref[]\n\n[ref[]: /uri\n",
+    "[foo][ref[bar]]\n\n[ref[bar]]: /uri\n",
+    "[[[foo]]]\n\n[[[foo]]]: /url\n",
+    "[foo][ref\\[]\n\n[ref\\[]: /uri\n",
+    "[bar\\\\]: /uri\n\n[bar\\\\]\n",
+    "[]\n\n[]: /uri\n",
+    "[\n ]\n\n[\n ]: /uri\n",
+    '[foo] \n[]\n\n[foo]: /url "title"\n',
+    '[foo]\n\n[foo]: /url "title"\n',
+    '[*foo* bar]\n\n[*foo* bar]: /url "title"\n',
+    '[[*foo* bar]]\n\n[*foo* bar]: /url "title"\n',
+    "[[bar [foo]\n\n[foo]: /url\n",
+    '[Foo]\n\n[foo]: /url "title"\n',
+    "[foo] bar\n\n[foo]: /url\n",
+    '\\[foo]\n\n[foo]: /url "title"\n',
+    "[foo*]: /url\n\n*[foo*]\n",
+    "[foo][bar]\n\n[foo]: /url1\n[bar]: /url2\n",
+    "[foo][bar][baz]\n\n[baz]: /url\n",
+    "[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /url2\n",
+    "[foo][bar][baz]\n\n[baz]: /url1\n[foo]: /url2\n",
+    "<https://foo.bar/baz bim>\n",
+    "<foo\\+@bar.example.com>\n",
+    "<>\n",
+    "< https://foo.bar >\n",
+    "<m:abc>\n",
+    "<foo.bar.baz>\n",
+    "https://example.com\n",
+    "foo@bar.example.com\n",
+    "<33> <__>\n",
+    '<a h*#ref="hi">\n',
+    "<a href=\"hi'> <a href=hi'>\n",
+    "< a><\nfoo><bar/ >\n<foo bar=baz\nbim!bop />\n",
+    "<a href='bar'title=title>\n",
+    '</a href="foo">\n',
+    '<a href="\\"">\n',
+    "<a\n> quoted text\n",
+    "foo\\\nbaz\n",
+    "*foo\\\nbar*\n",
+    "`code  \nspan`\n",
+    "`code\\\nspan`\n",
+    "foo\\\n",
+    "foo  \n",
+    "### foo\\\n",
+    "### foo  \n",
+    "foo\nbaz\n",
+    "foo \n baz\n",
+    "hello $.;'there\n",
+    "Foo χρῆν\n",
+    "Multiple     spaces\n",
+]
 
 
-# class TestParser:
-#     @staticmethod
-#     def d16(s: str) -> str:
-#         return "".join(l[16:] + "\n" for l in s.splitlines())
-
-#     @staticmethod
-#     def normalize(s: str) -> str:
-#         return re.sub(r"\s+", " ", s.strip())
-
-#     @pytest.fixture
-#     def parser(self) -> yuio.md._MdParser:
-#         return yuio.md._MdParser()
-
-#     @pytest.mark.parametrize(
-#         ("md", "expected"),
-#         [
-#             (
-#                 """
-#                 \tfoo\tbar
-#                 """,
-#                 """
-#                 (Code '' 'foo bar')
-#                 """,
-#             ),
-#             (
-#                 """
-#                   \tfoo\tbar
-#                 """,
-#                 """
-#                 (Code '' 'foo bar')
-#                 """,
-#             ),
-#             (
-#                 """
-#                   - foo
-#                 \tbar
-#                 """,
-#                 """
-#                 (List
-#                   (ListItem None
-#                     (Paragraph 'foo' 'bar')))
-#                 """,
-#             ),
-#             (
-#                 """
-#                   - foo
-
-#                 \t\tbar
-#                 """,
-#                 """
-#                 (List
-#                   (ListItem None
-#                     (Paragraph 'foo')
-#                     (Code '' 'bar')))
-#                 """,
-#             ),
-#             (
-#                 """
-#                 >\t\tfoo
-#                 """,
-#                 """
-#                 (Quote
-#                   (Code '' '  foo'))
-#                 """,
-#             ),
-#             (
-#                 """
-#                 -\t\tfoo
-#                 """,
-#                 """
-#                 (List
-#                   (ListItem None
-#                     (Code '' '  foo')))
-#                 """,
-#             ),
-#             (
-#                 """
-#                     foo
-#                 \tbar
-#                 """,
-#                 """
-#                 (Code '' 'foo' 'bar')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 - foo
-#                    - bar
-#                 \t - baz
-#                 """,
-#                 """
-#                 (List
-#                   (ListItem None
-#                     (Paragraph 'foo')
-#                     (List
-#                       (ListItem None
-#                         (Paragraph 'bar')
-#                         (List
-#                           (ListItem None
-#                             (Paragraph 'baz')))))))
-#                 """,
-#             ),
-#             (
-#                 """
-#                 1\\. not a list
-#                 \\* not a list
-#                 \\# not a heading
-#                 """,
-#                 """
-#                 (Paragraph
-#                   '1\\\\. not a list'
-#                   '\\\\* not a list'
-#                   '\\\\# not a heading')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 1. Item one.
-#                 1. Item two.
-#                 """,
-#                 """
-#                 (List
-#                   (ListItem 1
-#                     (Paragraph 'Item one.'))
-#                   (ListItem 2
-#                     (Paragraph 'Item two.')))
-#                 """,
-#             ),
-#             (
-#                 """
-#                 2. Item two.
-#                 1. Item three.
-#                 """,
-#                 """
-#                 (List
-#                   (ListItem 2
-#                     (Paragraph 'Item two.'))
-#                   (ListItem 3
-#                     (Paragraph 'Item three.')))
-#                 """,
-#             ),
-#             (
-#                 """
-#                 ---
-#                 ***
-#                 ___
-#                 """,
-#                 """
-#                 (ThematicBreak)
-#                 (ThematicBreak)
-#                 (ThematicBreak)
-#                 """,
-#             ),
-#             (
-#                 """
-#                 +++
-
-#                 ===
-
-#                 --
-
-#                 **
-
-#                 __
-#                 """,
-#                 """
-#                   (Paragraph '+++')
-#                   (Paragraph '===')
-#                   (Paragraph '--')
-#                   (Paragraph '**')
-#                   (Paragraph '__')
-#                 """,
-#             ),
-#             (
-#                 """
-#                  ***
-#                   ***
-#                    ***
-#                     ***
-#                 """,
-#                 """
-#                 (ThematicBreak)
-#                 (ThematicBreak)
-#                 (ThematicBreak)
-#                 (Code '' '***')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 Foo
-#                     ***
-#                 """,
-#                 """
-#                 (Paragraph 'Foo' ' ***')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 _____
-#                 - - -
-#                 _ _ _
-#                 """,
-#                 """
-#                 (ThematicBreak)
-#                 (ThematicBreak)
-#                 (ThematicBreak)
-#                 """,
-#             ),
-#             (
-#                 """
-#                 _ _ _ _ a
-
-#                 a------
-
-#                 ---a---
-#                 """,
-#                 """
-#                 (Paragraph '_ _ _ _ a')
-#                 (Paragraph 'a------')
-#                 (Paragraph '---a---')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 - foo
-#                 ***
-#                 - bar
-#                 """,
-#                 """
-#                 (List
-#                   (ListItem None
-#                     (Paragraph 'foo')))
-#                 (ThematicBreak)
-#                 (List
-#                   (ListItem None
-#                     (Paragraph 'bar')))
-#                 """,
-#             ),
-#             (
-#                 """
-#                 foo
-#                 ***
-#                 bar
-#                 """,
-#                 """
-#                 (Paragraph 'foo')
-#                 (ThematicBreak)
-#                 (Paragraph 'bar')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 foo
-#                 ---
-#                 bar
-#                 """,
-#                 """
-#                 (Heading 2 'foo')
-#                 (Paragraph 'bar')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 - foo
-#                 - ---
-#                 - bar
-#                 """,
-#                 """
-#                 (List
-#                   (ListItem None
-#                     (Paragraph 'foo'))
-#                   (ListItem None
-#                     (ThematicBreak))
-#                   (ListItem None
-#                     (Paragraph 'bar')))
-#                 """,
-#             ),
-#             (
-#                 """
-#                 # foo
-#                 ## foo
-#                 ### foo
-#                 #### foo
-#                 ##### foo
-#                 ###### foo
-#                 """,
-#                 """
-#                 (Heading 1 'foo')
-#                 (Heading 2 'foo')
-#                 (Heading 3 'foo')
-#                 (Heading 4 'foo')
-#                 (Heading 5 'foo')
-#                 (Heading 6 'foo')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 ####### foo
-
-#                 #5 bolt
-
-#                 #hashtag
-#                 """,
-#                 """
-#                 (Paragraph '####### foo')
-#                 (Paragraph '#5 bolt')
-#                 (Paragraph '#hashtag')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 #                  foo
-#                 """,
-#                 """
-#                 (Heading 1 'foo')
-#                 """,
-#             ),
-#             (
-#                 """
-#                  # foo
-#                   # foo
-#                    # foo
-#                     # foo
-#                 """,
-#                 """
-#                 (Heading 1 'foo')
-#                 (Heading 1 'foo')
-#                 (Heading 1 'foo')
-#                 (Code '' '# foo')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 ## foo ##
-#                 ###   bar    ###
-#                 # foo ##################################
-#                 ##### foo ##
-#                 """,
-#                 """
-#                 (Heading 2 'foo')
-#                 (Heading 3 'bar')
-#                 (Heading 1 'foo')
-#                 (Heading 5 'foo')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 ### foo ### b
-#                 """,
-#                 """
-#                 (Heading 3 'foo ### b')
-#                 """,
-#             ),
-#             (
-#                 """
-#                 ****
-#                 ## foo
-#                 ****
-#                 """,
-#                 """
-#                 (ThematicBreak)
-#                 (Heading 2 'foo')
-#                 (ThematicBreak)
-#                 """,
-#             ),
-#             # TODO: this is where I left off:
-#             #       https://spec.commonmark.org/0.31.2/#example-80
-#         ],
-#     )
-#     def test_ast(self, parser: yuio.md._MdParser, md: str, expected: str):
-#         md = self.d16(md)
-#         assert (
-#             self.normalize(parser.parse(md).dump())
-#             == f"(Document {self.normalize(expected)})"
-#         )
-
-
-# # I'm pretty sure MD works as expected, barring some rare edge cases.
-# # Coverage for yuio.md is low priority rn.
+@pytest.mark.parametrize(
+    "src",
+    COMMONMARK_TEST_CASES,
+    ids=[f"test-{i}" for i in range(len(COMMONMARK_TEST_CASES))],
+)
+def test_commonmark_compatibility(src, file_regression):
+    ast = yuio.md.MdParser().parse(src)
+    file_regression.check(f"{src}\n\n----------\n\n{ast.dump()}\n")

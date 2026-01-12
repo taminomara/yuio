@@ -1,0 +1,11 @@
+foo\
+bar
+
+
+----------
+
+(Document
+  (Paragraph
+    'foo'
+    '\x0b\n'
+    'bar'))

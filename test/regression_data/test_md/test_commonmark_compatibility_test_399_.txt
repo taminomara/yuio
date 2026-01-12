@@ -1,0 +1,15 @@
+[]
+
+[]: /uri
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    ']')
+  (Paragraph
+    '['
+    ']'
+    ': /uri'))

@@ -1,0 +1,10 @@
+Foo
+Bar
+---
+
+
+----------
+
+(Document
+  (Heading 2
+    'Foo\nBar'))

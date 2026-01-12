@@ -1,0 +1,5 @@
+if [ -f file ]; then echo ok; fi
+
+----------
+
+<Color fore=<RED>>if<Color> <Color fore=<WHITE>>[<Color> <Color fore=<YELLOW>>-f<Color> file <Color fore=<WHITE>>];<Color> <Color fore=<RED>>then<Color> echo ok<Color fore=<WHITE>>;<Color> <Color fore=<RED>>fi

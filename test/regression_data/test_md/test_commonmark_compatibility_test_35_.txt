@@ -1,0 +1,13 @@
+# foo *bar* \*baz\*
+
+
+----------
+
+(Document
+  (Heading 1
+    'foo '
+    TextRegion(content='bar', color='em', no_wrap=True, url=None)
+    ' '
+    '*'
+    'baz'
+    '*'))

@@ -1,0 +1,5 @@
+cmd1 && cmd2
+
+----------
+
+<Color fore=<CYAN>>cmd1<Color> <Color fore=<RED>>&&<Color> <Color fore=<CYAN>>cmd2

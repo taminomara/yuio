@@ -1,0 +1,19 @@
+   Foo
+---
+
+  Foo
+-----
+
+  Foo
+  ===
+
+
+----------
+
+(Document
+  (Heading 2
+    '   Foo')
+  (Heading 2
+    '  Foo')
+  (Heading 1
+    '  Foo'))

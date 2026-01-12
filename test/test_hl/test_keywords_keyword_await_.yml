@@ -1,9 +1,0 @@
-code: await func()
-highlighted:
-- color: <Color fore=<RED>>
-- await
-- color: <Color>
-- ' func'
-- color: <Color fore=<WHITE>>
-- (
-- )

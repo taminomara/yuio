@@ -1,0 +1,13 @@
+Foo
+bar
+\---
+baz
+
+
+----------
+
+(Document
+  (Paragraph
+    'Foo\nbar\n'
+    '-'
+    '--\nbaz'))

@@ -1,0 +1,13 @@
+> 1. > Blockquote
+> continued here.
+
+
+----------
+
+(Document
+  (Quote
+    (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+      (ListItem 1
+        (Quote
+          (Paragraph
+            'Blockquote\ncontinued here.'))))))

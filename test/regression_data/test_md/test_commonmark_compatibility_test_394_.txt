@@ -1,0 +1,22 @@
+[foo][ref[]
+
+[ref[]: /uri
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'foo'
+    ']'
+    '['
+    'ref'
+    '['
+    ']')
+  (Paragraph
+    '['
+    'ref'
+    '['
+    ']'
+    ': /uri'))

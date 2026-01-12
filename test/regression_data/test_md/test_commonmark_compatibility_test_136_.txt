@@ -1,0 +1,11 @@
+[foo]: /url
+===
+[foo]
+
+
+----------
+
+(Document
+  (Paragraph
+    '===\n'
+    TextRegion(content='foo', color=None, no_wrap=False, url='/url')))

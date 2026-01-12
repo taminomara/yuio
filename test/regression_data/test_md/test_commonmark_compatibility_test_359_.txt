@@ -1,0 +1,8 @@
+[a](<b)c>)
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='a', color=None, no_wrap=False, url='b)c')))

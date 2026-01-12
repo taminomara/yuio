@@ -1,0 +1,8 @@
+<a href='bar'title=title>
+
+
+----------
+
+(Document
+  (Paragraph
+    "<a href='bar'title=title>"))

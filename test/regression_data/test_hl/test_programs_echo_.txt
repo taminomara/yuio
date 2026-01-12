@@ -1,0 +1,5 @@
+echo hello
+
+----------
+
+<Color fore=<CYAN>>echo<Color> hello

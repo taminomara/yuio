@@ -1,0 +1,14 @@
+(List None None
+  (ListItem 1
+    (List <ListEnumeratorKind.SMALL_LETTER: 'SMALL_LETTER'> None
+      (ListItem 1
+        (Paragraph
+          'First'))
+      (ListItem 2
+        (Paragraph
+          'Second')))))
+
+----------
+
+•   a.  First
+    b.  Second

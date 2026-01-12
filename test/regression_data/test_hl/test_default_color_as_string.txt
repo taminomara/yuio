@@ -1,0 +1,5 @@
+test
+
+----------
+
+<Color fore=<BLUE>>test

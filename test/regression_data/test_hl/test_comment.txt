@@ -1,0 +1,5 @@
+# This is a comment
+
+----------
+
+<Color fore=<BLACK>># This is a comment

@@ -1,0 +1,10 @@
+Foo
+    bar
+
+
+
+----------
+
+(Document
+  (Paragraph
+    'Foo\n    bar'))

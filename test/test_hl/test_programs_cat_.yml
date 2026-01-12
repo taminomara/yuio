@@ -1,6 +1,0 @@
-code: cat file.txt
-highlighted:
-- color: <Color fore=<CYAN>>
-- cat
-- color: <Color>
-- ' file.txt'

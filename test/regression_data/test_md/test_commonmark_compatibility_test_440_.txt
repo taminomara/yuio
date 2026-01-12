@@ -1,0 +1,10 @@
+hello $.;'there
+
+
+----------
+
+(Document
+  (Paragraph
+    'hello '
+    '$'
+    ".;'there"))

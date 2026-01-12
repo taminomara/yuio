@@ -1,0 +1,5 @@
+f"format"
+
+----------
+
+<Color fore=<GREEN>>f"format"

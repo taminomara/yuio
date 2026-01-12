@@ -1,0 +1,7 @@
+(Heading 1
+  TextRegion(content='Bold Title', color='strong', no_wrap=False, url=None))
+
+----------
+
+⣿ Bold Title
+

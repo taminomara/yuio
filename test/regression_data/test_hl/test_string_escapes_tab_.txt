@@ -1,0 +1,5 @@
+"tab\there"
+
+----------
+
+<Color fore=<GREEN>>"tab<Color fore=<BLUE>>\t<Color fore=<GREEN>>here"

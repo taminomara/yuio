@@ -1,3 +1,0 @@
-ast: "(Code 'python'\n  'def foo():'\n  '    pass')"
-lines:
-- "    def foo():\n        pass"

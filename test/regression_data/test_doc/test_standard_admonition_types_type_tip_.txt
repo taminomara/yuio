@@ -1,0 +1,8 @@
+(Admonition 'tip'
+  (Paragraph
+    'Content'))
+
+----------
+
+Title
+    Content

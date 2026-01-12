@@ -1,0 +1,9 @@
+*a `*`*
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='a ', color='em', no_wrap=True, url=None)
+    TextRegion(content='*', color='em code', no_wrap=True, url=None)))

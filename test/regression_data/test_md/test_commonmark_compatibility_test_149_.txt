@@ -1,0 +1,12 @@
+    > # Foo
+    > bar
+    > baz
+
+
+----------
+
+(Document
+  (Code ''
+    '> # Foo'
+    '> bar'
+    '> baz'))

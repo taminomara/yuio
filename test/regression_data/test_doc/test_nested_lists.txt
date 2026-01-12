@@ -1,0 +1,14 @@
+(List None None
+  (ListItem None
+    (Paragraph
+      'Outer')
+    (List None None
+      (ListItem None
+        (Paragraph
+          'Inner')))))
+
+----------
+
+•   Outer
+    
+    •   Inner

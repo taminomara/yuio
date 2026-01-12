@@ -1,0 +1,9 @@
+____ is not an empty strong emphasis
+
+
+----------
+
+(Document
+  (Paragraph
+    '____'
+    ' is not an empty strong emphasis'))

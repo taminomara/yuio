@@ -1,0 +1,5 @@
+grep pattern
+
+----------
+
+<Color fore=<CYAN>>grep<Color> pattern

@@ -1,0 +1,8 @@
+``foo`bar``
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='foo`bar', color='code', no_wrap=True, url=None)))

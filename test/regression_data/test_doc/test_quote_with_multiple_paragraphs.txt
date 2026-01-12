@@ -1,0 +1,11 @@
+(Quote
+  (Paragraph
+    'P1')
+  (Paragraph
+    'P2'))
+
+----------
+
+>   P1
+>   
+>   P2

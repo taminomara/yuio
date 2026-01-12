@@ -1,0 +1,5 @@
+"\N{LATIN CAPITAL LETTER A}"
+
+----------
+
+<Color fore=<GREEN>>"<Color fore=<BLUE>>\N{LATIN CAPITAL LETTER A}<Color fore=<GREEN>>"

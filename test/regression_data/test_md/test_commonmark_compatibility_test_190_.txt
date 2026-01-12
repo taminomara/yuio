@@ -1,0 +1,16 @@
+    indented code
+
+paragraph
+
+    more code
+
+
+----------
+
+(Document
+  (Code ''
+    'indented code')
+  (Paragraph
+    'paragraph')
+  (Code ''
+    'more code'))

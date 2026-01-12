@@ -1,0 +1,5 @@
+if True:
+
+----------
+
+<Color fore=<RED>>if<Color> <Color fore=<CYAN>>True<Color>:

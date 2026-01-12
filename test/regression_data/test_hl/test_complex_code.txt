@@ -1,0 +1,9 @@
+def foo(x: int) -> str:
+    """Docstring."""
+    return f"result: {x}"
+
+----------
+
+<Color fore=<RED>>def<Color> foo<Color fore=<WHITE>>(<Color>x: <Color fore=<MAGENTA>>int<Color fore=<WHITE>>)<Color> -> <Color fore=<MAGENTA>>str<Color>:
+    <Color fore=<GREEN>>"""Docstring."""<Color>
+    <Color fore=<RED>>return<Color> <Color fore=<GREEN>>f"result: <Color fore=<BLUE>>{x}<Color fore=<GREEN>>"

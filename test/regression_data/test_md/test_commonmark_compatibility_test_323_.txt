@@ -1,0 +1,9 @@
+__ is not an empty emphasis
+
+
+----------
+
+(Document
+  (Paragraph
+    '__'
+    ' is not an empty emphasis'))

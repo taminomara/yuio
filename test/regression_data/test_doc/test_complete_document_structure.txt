@@ -1,0 +1,58 @@
+(Document
+  (Heading 1
+    'Document Title')
+  (Paragraph
+    'Introduction paragraph.')
+  (Heading 2
+    'Section 1')
+  (Paragraph
+    'Section content.')
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+    (ListItem 1
+      (Paragraph
+        'Item 1'))
+    (ListItem 2
+      (Paragraph
+        'Item 2')))
+  (Quote
+    (Paragraph
+      'A quote.'))
+  (Admonition 'note'
+    (Paragraph
+      'Important!'))
+  (Code 'python'
+    'def example():'
+    '    return True')
+  (ThematicBreak)
+  (FootnoteContainer
+    (Footnote '1'
+      (Paragraph
+        'Footnote 1'))))
+
+----------
+
+⣿ Document Title
+
+Introduction
+paragraph.
+
+
+Section 1
+
+Section content.
+
+1.  Item 1
+2.  Item 2
+
+>   A quote.
+
+Note
+    Important!
+
+    def example():
+        return True
+
+╌╌╌╌╌╌╌╌
+
+╌╌╌╌╌╌╌╌
+1   Footnote 1

@@ -1,8 +1,0 @@
-code: '"\x41"'
-highlighted:
-- color: <Color fore=<GREEN>>
-- '"'
-- color: <Color fore=<BLUE>>
-- \x41
-- color: <Color fore=<GREEN>>
-- '"'

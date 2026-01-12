@@ -1,0 +1,10 @@
+[link [bar](/uri)
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'link '
+    TextRegion(content='bar', color=None, no_wrap=False, url='/uri')))

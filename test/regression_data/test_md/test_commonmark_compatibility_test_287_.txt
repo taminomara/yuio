@@ -1,0 +1,9 @@
+_(bar)_.
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='(bar)', color='em', no_wrap=True, url=None)
+    '.'))

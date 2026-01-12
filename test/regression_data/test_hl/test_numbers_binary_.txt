@@ -1,0 +1,5 @@
+0b101
+
+----------
+
+<Color fore=<YELLOW>>0<Color>b101

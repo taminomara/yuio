@@ -1,6 +1,0 @@
-ast: "(FootnoteContainer\n  (Footnote '1'\n    (Paragraph\n      'A'))\n  (Footnote\
-  \ '2'\n    (Paragraph\n      'B')))"
-lines:
-- ╌╌╌╌╌╌╌╌
-- 1   A
-- 2   B

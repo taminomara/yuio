@@ -1,0 +1,16 @@
+1. ```
+   foo
+   ```
+
+   bar
+
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+    (ListItem 1
+      (Code ''
+        'foo')
+      (Paragraph
+        'bar'))))

@@ -1,0 +1,17 @@
+* a
+*
+
+* c
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Paragraph
+        'a'))
+    (ListItem None)
+    (ListItem None
+      (Paragraph
+        'c'))))

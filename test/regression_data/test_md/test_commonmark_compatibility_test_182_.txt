@@ -1,0 +1,20 @@
+- Foo
+
+      bar
+
+
+      baz
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Paragraph
+        'Foo')
+      (Code ''
+        'bar'
+        ''
+        ''
+        'baz'))))

@@ -1,0 +1,16 @@
+Foo *bar*
+=========
+
+Foo *bar*
+---------
+
+
+----------
+
+(Document
+  (Heading 1
+    'Foo '
+    TextRegion(content='bar', color='em', no_wrap=True, url=None))
+  (Heading 2
+    'Foo '
+    TextRegion(content='bar', color='em', no_wrap=True, url=None)))

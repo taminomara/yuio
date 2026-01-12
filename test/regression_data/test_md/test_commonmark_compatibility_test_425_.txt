@@ -1,0 +1,13 @@
+< a><
+foo><bar/ >
+<foo bar=baz
+bim!bop />
+
+
+----------
+
+(Document
+  (Paragraph
+    '< a><\nfoo><bar/ >\n<foo bar=baz\nbim'
+    '!'
+    'bop />'))

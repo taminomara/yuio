@@ -1,0 +1,13 @@
+[link](<foo\>)
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'link'
+    ']'
+    '(<foo'
+    '>'
+    ')'))

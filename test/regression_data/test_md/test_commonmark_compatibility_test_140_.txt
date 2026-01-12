@@ -1,0 +1,13 @@
+aaa
+
+
+bbb
+
+
+----------
+
+(Document
+  (Paragraph
+    'aaa')
+  (Paragraph
+    'bbb'))

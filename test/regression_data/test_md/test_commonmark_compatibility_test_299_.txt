@@ -1,0 +1,9 @@
+foo-__(bar)__
+
+
+----------
+
+(Document
+  (Paragraph
+    'foo-'
+    TextRegion(content='(bar)', color='strong', no_wrap=True, url=None)))

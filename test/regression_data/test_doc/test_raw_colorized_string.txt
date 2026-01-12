@@ -1,0 +1,5 @@
+(Raw ColorizedString([<Color>, 'pre-formatted text']))
+
+----------
+
+pre-formatted text

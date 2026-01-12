@@ -1,0 +1,8 @@
+(List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+  (ListItem 1
+    (Paragraph
+      'Item')))
+
+----------
+
+1.  Item

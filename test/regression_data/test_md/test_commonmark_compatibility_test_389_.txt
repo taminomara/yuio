@@ -1,0 +1,10 @@
+[ẞ]
+
+[SS]: /url
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='ẞ', color=None, no_wrap=False, url='/url')))

@@ -1,0 +1,17 @@
+foo
+---
+~~~
+bar
+~~~
+# baz
+
+
+----------
+
+(Document
+  (Heading 2
+    'foo')
+  (Code ''
+    'bar')
+  (Heading 1
+    'baz'))

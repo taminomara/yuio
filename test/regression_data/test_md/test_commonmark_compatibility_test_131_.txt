@@ -1,0 +1,14 @@
+    [foo]: /url "title"
+
+[foo]
+
+
+----------
+
+(Document
+  (Code ''
+    '[foo]: /url "title"')
+  (Paragraph
+    '['
+    'foo'
+    ']'))

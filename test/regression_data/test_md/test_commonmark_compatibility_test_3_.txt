@@ -1,0 +1,9 @@
+\\*emphasis*
+
+
+----------
+
+(Document
+  (Paragraph
+    '\\'
+    TextRegion(content='emphasis', color='em', no_wrap=True, url=None)))

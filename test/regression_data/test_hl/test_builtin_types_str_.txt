@@ -1,0 +1,5 @@
+str
+
+----------
+
+<Color fore=<MAGENTA>>str

@@ -1,0 +1,10 @@
+[foo][ref\[]
+
+[ref\[]: /uri
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='foo', color=None, no_wrap=False, url='/uri')))

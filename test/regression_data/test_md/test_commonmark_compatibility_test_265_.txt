@@ -1,0 +1,11 @@
+a * foo bar*
+
+
+----------
+
+(Document
+  (Paragraph
+    'a '
+    '*'
+    ' foo bar'
+    '*'))

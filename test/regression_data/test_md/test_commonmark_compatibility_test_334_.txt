@@ -1,0 +1,9 @@
+foo ___
+
+
+----------
+
+(Document
+  (Paragraph
+    'foo '
+    '___'))

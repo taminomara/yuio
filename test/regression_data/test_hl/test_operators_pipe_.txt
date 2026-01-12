@@ -1,0 +1,5 @@
+cat file | grep pattern
+
+----------
+
+<Color fore=<CYAN>>cat<Color> file <Color fore=<RED>>|<Color> <Color fore=<CYAN>>grep<Color> pattern

@@ -1,0 +1,8 @@
+### foo ### b
+
+
+----------
+
+(Document
+  (Heading 3
+    'foo ### b'))

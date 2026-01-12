@@ -1,0 +1,5 @@
+lambda x: x + 1
+
+----------
+
+<Color fore=<RED>>lambda<Color> x: x + <Color fore=<YELLOW>>1

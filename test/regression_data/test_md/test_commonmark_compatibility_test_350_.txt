@@ -1,0 +1,10 @@
+*[bar*](/url)
+
+
+----------
+
+(Document
+  (Paragraph
+    '*'
+    TextRegion(content='bar', color=None, no_wrap=False, url='/url')
+    TextRegion(content='*', color=None, no_wrap=False, url='/url')))

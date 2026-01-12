@@ -1,0 +1,7 @@
+(Footnote '1'
+  (Paragraph
+    'Note text'))
+
+----------
+
+1   Note text

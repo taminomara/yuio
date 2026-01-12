@@ -1,0 +1,8 @@
+<a href="hi'> <a href=hi'>
+
+
+----------
+
+(Document
+  (Paragraph
+    '<a href="hi\'> <a href=hi\'>'))

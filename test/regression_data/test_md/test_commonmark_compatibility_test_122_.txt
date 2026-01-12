@@ -1,0 +1,17 @@
+[foo]: <bar>(baz)
+
+[foo]
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'foo'
+    ']'
+    ': <bar>(baz)')
+  (Paragraph
+    '['
+    'foo'
+    ']'))

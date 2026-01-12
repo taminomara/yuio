@@ -1,0 +1,5 @@
+while true; do sleep 1; done
+
+----------
+
+<Color fore=<RED>>while<Color> true<Color fore=<WHITE>>;<Color> <Color fore=<RED>>do<Color> sleep 1<Color fore=<WHITE>>;<Color> <Color fore=<RED>>done

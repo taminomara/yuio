@@ -1,0 +1,5 @@
+0xFF
+
+----------
+
+<Color fore=<YELLOW>>0<Color>xFF

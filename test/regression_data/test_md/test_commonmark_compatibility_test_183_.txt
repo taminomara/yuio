@@ -1,0 +1,10 @@
+123456789. ok
+
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+    (ListItem 123456789
+      (Paragraph
+        'ok'))))

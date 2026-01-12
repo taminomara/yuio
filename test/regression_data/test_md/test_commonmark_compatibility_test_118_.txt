@@ -1,0 +1,21 @@
+[foo]: /url 'title
+
+with blank line'
+
+[foo]
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'foo'
+    ']'
+    ": /url 'title")
+  (Paragraph
+    "with blank line'")
+  (Paragraph
+    '['
+    'foo'
+    ']'))

@@ -1,0 +1,5 @@
+case $x in esac
+
+----------
+
+<Color fore=<RED>>case<Color> $x <Color fore=<RED>>in<Color> <Color fore=<RED>>esac

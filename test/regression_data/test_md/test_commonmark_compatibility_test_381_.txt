@@ -1,0 +1,10 @@
+[foo`](/uri)`
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'foo'
+    TextRegion(content='](/uri)', color='code', no_wrap=True, url=None)))

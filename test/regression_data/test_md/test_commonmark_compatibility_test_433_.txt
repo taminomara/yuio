@@ -1,0 +1,9 @@
+`code\
+span`
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='code\\\nspan', color='code', no_wrap=True, url=None)))

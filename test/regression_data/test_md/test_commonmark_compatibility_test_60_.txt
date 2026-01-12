@@ -1,0 +1,21 @@
+`Foo
+----
+`
+
+<a title="a lot
+---
+of dashes"/>
+
+
+----------
+
+(Document
+  (Heading 2
+    '`'
+    'Foo')
+  (Paragraph
+    '`')
+  (Heading 2
+    '<a title="a lot')
+  (Paragraph
+    'of dashes"/>'))

@@ -1,0 +1,7 @@
+(Heading 6
+  'Heading')
+
+----------
+
+Heading
+

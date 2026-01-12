@@ -1,8 +1,0 @@
-code: 'lambda x: x + 1'
-highlighted:
-- color: <Color fore=<RED>>
-- lambda
-- color: <Color>
-- ' x: x + '
-- color: <Color fore=<YELLOW>>
-- '1'

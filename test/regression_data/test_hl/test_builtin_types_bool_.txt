@@ -1,0 +1,5 @@
+bool
+
+----------
+
+<Color fore=<MAGENTA>>bool

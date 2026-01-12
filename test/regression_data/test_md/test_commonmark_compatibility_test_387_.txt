@@ -1,0 +1,12 @@
+[foo`][ref]`
+
+[ref]: /uri
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'foo'
+    TextRegion(content='][ref]', color='code', no_wrap=True, url=None)))

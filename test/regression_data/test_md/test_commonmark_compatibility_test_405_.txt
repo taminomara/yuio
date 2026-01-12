@@ -1,0 +1,13 @@
+[[bar [foo]
+
+[foo]: /url
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    '['
+    'bar '
+    TextRegion(content='foo', color=None, no_wrap=False, url='/url')))

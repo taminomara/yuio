@@ -1,0 +1,10 @@
+<foo\+@bar.example.com>
+
+
+----------
+
+(Document
+  (Paragraph
+    '<foo'
+    '+'
+    '@bar.example.com>'))

@@ -1,0 +1,5 @@
+"%s"
+
+----------
+
+<Color fore=<GREEN>>"<Color fore=<BLUE>>%s<Color fore=<GREEN>>"

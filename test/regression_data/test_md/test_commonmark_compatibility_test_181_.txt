@@ -1,0 +1,25 @@
+1.  foo
+
+    ```
+    bar
+    ```
+
+    baz
+
+    > bam
+
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+    (ListItem 1
+      (Paragraph
+        'foo')
+      (Code ''
+        'bar')
+      (Paragraph
+        'baz')
+      (Quote
+        (Paragraph
+          'bam')))))

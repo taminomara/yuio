@@ -1,0 +1,14 @@
+>     code
+
+>    not code
+
+
+----------
+
+(Document
+  (Quote
+    (Code ''
+      'code'))
+  (Quote
+    (Paragraph
+      '   not code')))

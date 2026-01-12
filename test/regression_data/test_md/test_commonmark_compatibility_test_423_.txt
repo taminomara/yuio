@@ -1,0 +1,10 @@
+<a h*#ref="hi">
+
+
+----------
+
+(Document
+  (Paragraph
+    '<a h'
+    '*'
+    '#ref="hi">'))

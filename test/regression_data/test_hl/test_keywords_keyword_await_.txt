@@ -1,0 +1,5 @@
+await func()
+
+----------
+
+<Color fore=<RED>>await<Color> func<Color fore=<WHITE>>()

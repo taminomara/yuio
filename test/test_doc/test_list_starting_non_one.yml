@@ -1,5 +1,0 @@
-ast: "(List <ListEnumeratorKind.NUMBER: 'NUMBER'> None\n  (ListItem 5\n    (Paragraph\n\
-  \      'A'))\n  (ListItem 6\n    (Paragraph\n      'B')))"
-lines:
-- 5.  A
-- 6.  B

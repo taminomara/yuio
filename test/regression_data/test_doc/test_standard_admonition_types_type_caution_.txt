@@ -1,0 +1,8 @@
+(Admonition 'caution'
+  (Paragraph
+    'Content'))
+
+----------
+
+Title
+    Content

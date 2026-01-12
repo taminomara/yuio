@@ -1,0 +1,5 @@
+The answer is 42
+
+----------
+
+<Color>The answer is <Color fore=<YELLOW>>42

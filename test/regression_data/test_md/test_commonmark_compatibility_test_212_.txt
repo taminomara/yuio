@@ -1,0 +1,25 @@
+- foo
+  - bar
+    - baz
+      - boo
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Paragraph
+        'foo')
+      (List None None
+        (ListItem None
+          (Paragraph
+            'bar')
+          (List None None
+            (ListItem None
+              (Paragraph
+                'baz')
+              (List None None
+                (ListItem None
+                  (Paragraph
+                    'boo'))))))))))

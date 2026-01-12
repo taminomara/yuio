@@ -1,0 +1,14 @@
+Foo bar
+# baz
+Bar foo
+
+
+----------
+
+(Document
+  (Paragraph
+    'Foo bar')
+  (Heading 1
+    'baz')
+  (Paragraph
+    'Bar foo'))

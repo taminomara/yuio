@@ -1,0 +1,5 @@
+"backslash\\"
+
+----------
+
+<Color fore=<GREEN>>"backslash<Color fore=<BLUE>>\\<Color fore=<GREEN>>"

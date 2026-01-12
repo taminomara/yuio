@@ -1,0 +1,5 @@
+def foo():
+
+----------
+
+<Color fore=<RED>>def<Color> foo<Color fore=<WHITE>>()<Color>:

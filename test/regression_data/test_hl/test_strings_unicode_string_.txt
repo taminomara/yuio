@@ -1,0 +1,5 @@
+u"unicode"
+
+----------
+
+<Color fore=<GREEN>>u"unicode"

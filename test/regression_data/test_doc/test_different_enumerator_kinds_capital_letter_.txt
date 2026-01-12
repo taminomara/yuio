@@ -1,0 +1,16 @@
+(List <ListEnumeratorKind.CAPITAL_LETTER: 'CAPITAL_LETTER'> None
+  (ListItem 1
+    (Paragraph
+      'A'))
+  (ListItem 2
+    (Paragraph
+      'B'))
+  (ListItem 3
+    (Paragraph
+      'C')))
+
+----------
+
+A.  A
+B.  B
+C.  C

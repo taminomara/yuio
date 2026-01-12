@@ -1,0 +1,12 @@
+[link](foo
+bar)
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'link'
+    ']'
+    '(foo\nbar)'))

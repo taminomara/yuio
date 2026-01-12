@@ -1,0 +1,5 @@
+"\U00000041"
+
+----------
+
+<Color fore=<GREEN>>"<Color fore=<BLUE>>\U00000041<Color fore=<GREEN>>"

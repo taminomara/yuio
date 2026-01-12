@@ -1,0 +1,12 @@
+****
+## foo
+****
+
+
+----------
+
+(Document
+  (ThematicBreak)
+  (Heading 2
+    'foo')
+  (ThematicBreak))

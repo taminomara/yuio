@@ -1,0 +1,13 @@
+[Foo*bar\]]:my_(url) 'title (with parens)'
+
+[Foo*bar\]]
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='Foo', color=None, no_wrap=False, url='my_(url)')
+    TextRegion(content='*', color=None, no_wrap=False, url='my_(url)')
+    TextRegion(content='bar', color=None, no_wrap=False, url='my_(url)')
+    TextRegion(content=']', color=None, no_wrap=False, url='my_(url)')))

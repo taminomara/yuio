@@ -1,0 +1,5 @@
+"hello"
+
+----------
+
+<Color fore=<GREEN>>"hello"

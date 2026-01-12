@@ -1,0 +1,5 @@
+ls -la
+
+----------
+
+<Color fore=<CYAN>>ls<Color> <Color fore=<YELLOW>>-la

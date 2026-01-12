@@ -1,0 +1,12 @@
+aa_"bb"_cc
+
+
+----------
+
+(Document
+  (Paragraph
+    'aa'
+    '_'
+    '"bb"'
+    '_'
+    'cc'))

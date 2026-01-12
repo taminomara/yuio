@@ -1,0 +1,12 @@
+> > > foo
+bar
+
+
+----------
+
+(Document
+  (Quote
+    (Quote
+      (Quote
+        (Paragraph
+          'foo\nbar')))))

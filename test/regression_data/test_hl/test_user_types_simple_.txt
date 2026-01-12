@@ -1,0 +1,5 @@
+MyClass
+
+----------
+
+<Color fore=<MAGENTA>>MyClass

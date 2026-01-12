@@ -1,6 +1,0 @@
-ast: "(Document\n  (Heading 1\n    'First')\n  (Heading 2\n    'Second'))"
-lines:
-- ⣿ First
-- ''
-- Second
-- ''

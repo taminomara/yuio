@@ -1,0 +1,5 @@
+"with\u0041unicode"
+
+----------
+
+<Color fore=<GREEN>>"with<Color fore=<BLUE>>\u0041<Color fore=<GREEN>>unicode"

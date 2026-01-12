@@ -1,0 +1,14 @@
+> foo
+
+> bar
+
+
+----------
+
+(Document
+  (Quote
+    (Paragraph
+      'foo'))
+  (Quote
+    (Paragraph
+      'bar')))

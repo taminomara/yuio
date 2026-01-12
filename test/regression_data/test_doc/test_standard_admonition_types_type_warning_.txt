@@ -1,0 +1,8 @@
+(Admonition 'warning'
+  (Paragraph
+    'Content'))
+
+----------
+
+Title
+    Content

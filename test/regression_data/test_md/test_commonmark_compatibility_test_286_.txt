@@ -1,0 +1,12 @@
+_foo_bar_baz_
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='foo', color='em', no_wrap=True, url=None)
+    TextRegion(content='_', color='em', no_wrap=True, url=None)
+    TextRegion(content='bar', color='em', no_wrap=True, url=None)
+    TextRegion(content='_', color='em', no_wrap=True, url=None)
+    TextRegion(content='baz', color='em', no_wrap=True, url=None)))

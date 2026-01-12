@@ -1,0 +1,5 @@
+async def bar():
+
+----------
+
+<Color fore=<RED>>async<Color> <Color fore=<RED>>def<Color> bar<Color fore=<WHITE>>()<Color>:

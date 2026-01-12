@@ -1,0 +1,14 @@
+aaa
+bbb
+
+ccc
+ddd
+
+
+----------
+
+(Document
+  (Paragraph
+    'aaa\nbbb')
+  (Paragraph
+    'ccc\nddd'))

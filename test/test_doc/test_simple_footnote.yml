@@ -1,3 +1,0 @@
-ast: "(Footnote '1'\n  (Paragraph\n    'Note text'))"
-lines:
-- 1   Note text

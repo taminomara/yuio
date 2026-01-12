@@ -1,0 +1,11 @@
+  1.  A paragraph
+    with two lines.
+
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+    (ListItem 1
+      (Paragraph
+        'A paragraph\n    with two lines.'))))

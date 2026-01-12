@@ -1,0 +1,18 @@
+- # Foo
+- Bar
+  ---
+  baz
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Heading 1
+        'Foo'))
+    (ListItem None
+      (Heading 2
+        'Bar')
+      (Paragraph
+        'baz'))))

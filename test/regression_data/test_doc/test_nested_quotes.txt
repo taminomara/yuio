@@ -1,0 +1,8 @@
+(Quote
+  (Quote
+    (Paragraph
+      'Inner quote')))
+
+----------
+
+>   >   Inner quote

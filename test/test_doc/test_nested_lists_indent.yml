@@ -1,6 +1,0 @@
-ast: "(List None None\n  (ListItem 1\n    (List <ListEnumeratorKind.SMALL_LETTER:\
-  \ 'SMALL_LETTER'> None\n      (ListItem 1\n        (Paragraph\n          'First'))\n\
-  \      (ListItem 2\n        (Paragraph\n          'Second')))))"
-lines:
-- •   a.  First
-- '    b.  Second'

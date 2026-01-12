@@ -1,0 +1,10 @@
+_ foo bar_
+
+
+----------
+
+(Document
+  (Paragraph
+    '_'
+    ' foo bar'
+    '_'))

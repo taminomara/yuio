@@ -1,0 +1,10 @@
+    a simple
+      indented code block
+
+
+----------
+
+(Document
+  (Code ''
+    'a simple'
+    '  indented code block'))

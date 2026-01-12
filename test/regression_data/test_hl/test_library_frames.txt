@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/lib/site-packages/module.py", line 10, in foo
+    x = 1
+ValueError: error
+
+----------
+
+<Color fore=<RED>>Traceback (most recent call last):
+<Color>  <Color fore=<BLACK>>File "/lib/site-packages/module.py", line 10, in foo
+<Color>  <Color fore=<BLACK>>  x = <Color fore=<YELLOW>>1<Color fore=<BLACK>>
+<Color fore=<RED>>ValueError: error

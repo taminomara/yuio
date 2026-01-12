@@ -1,0 +1,5 @@
+list
+
+----------
+
+<Color fore=<MAGENTA>>list

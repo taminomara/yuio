@@ -1,5 +1,0 @@
-ast: "(Document\n  (Paragraph\n    'First paragraph')\n  (Paragraph\n    'Second paragraph'))"
-lines:
-- First paragraph
-- ''
-- Second paragraph

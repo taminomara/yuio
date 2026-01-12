@@ -1,0 +1,18 @@
+1.      indented code
+
+   paragraph
+
+       more code
+
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+    (ListItem 1
+      (Code ''
+        ' indented code')
+      (Paragraph
+        'paragraph')
+      (Code ''
+        'more code'))))

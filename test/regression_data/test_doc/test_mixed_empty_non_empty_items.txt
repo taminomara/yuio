@@ -1,0 +1,13 @@
+(Document
+  (Paragraph)
+  (Paragraph
+    'Text')
+  (Paragraph))
+
+----------
+
+
+
+Text
+
+

@@ -1,0 +1,17 @@
+(List <ListEnumeratorKind.NUMBER: 'NUMBER'> None
+  (ListItem 1
+    (Paragraph
+      'First')
+    (Paragraph
+      'Second'))
+  (ListItem 2
+    (Paragraph
+      'Third')))
+
+----------
+
+1.  First
+    
+    Second
+
+2.  Third

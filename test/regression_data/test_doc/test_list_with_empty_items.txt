@@ -1,0 +1,7 @@
+(List None None
+  (ListItem None
+    (Paragraph)))
+
+----------
+
+•   

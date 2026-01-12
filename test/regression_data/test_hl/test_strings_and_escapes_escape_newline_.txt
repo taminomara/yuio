@@ -1,0 +1,5 @@
+"with\nnewline"
+
+----------
+
+<Color fore=<GREEN>>"with<Color fore=<BLUE>>\n<Color fore=<GREEN>>newline"

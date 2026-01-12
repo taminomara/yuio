@@ -1,0 +1,5 @@
+"{}"
+
+----------
+
+<Color fore=<GREEN>>"<Color fore=<BLUE>>{}<Color fore=<GREEN>>"

@@ -1,0 +1,23 @@
+- a
+  > b
+  ```
+  c
+  ```
+- d
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Paragraph
+        'a')
+      (Quote
+        (Paragraph
+          'b'))
+      (Code ''
+        'c'))
+    (ListItem None
+      (Paragraph
+        'd'))))

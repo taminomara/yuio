@@ -1,0 +1,8 @@
+(List None None
+  (ListItem None
+    (Paragraph
+      'Item 1')))
+
+----------
+
+•   Item 1

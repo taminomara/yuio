@@ -1,0 +1,5 @@
+dict
+
+----------
+
+<Color fore=<MAGENTA>>dict

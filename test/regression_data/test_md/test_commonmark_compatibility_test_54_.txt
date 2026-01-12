@@ -1,0 +1,16 @@
+    Foo
+    ---
+
+    Foo
+---
+
+
+----------
+
+(Document
+  (Code ''
+    'Foo'
+    '---'
+    ''
+    'Foo')
+  (ThematicBreak))

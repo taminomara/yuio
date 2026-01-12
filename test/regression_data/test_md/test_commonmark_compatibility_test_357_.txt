@@ -1,0 +1,11 @@
+[link](/my uri)
+
+
+----------
+
+(Document
+  (Paragraph
+    '['
+    'link'
+    ']'
+    '(/my uri)'))

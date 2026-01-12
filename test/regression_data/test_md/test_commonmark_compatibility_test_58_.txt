@@ -1,0 +1,9 @@
+Foo  
+-----
+
+
+----------
+
+(Document
+  (Heading 2
+    'Foo  '))

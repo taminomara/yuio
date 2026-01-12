@@ -1,0 +1,16 @@
+(List <ListEnumeratorKind.CAPITAL_ROMAN: 'CAPITAL_ROMAN'> None
+  (ListItem 1
+    (Paragraph
+      'A'))
+  (ListItem 2
+    (Paragraph
+      'B'))
+  (ListItem 3
+    (Paragraph
+      'C')))
+
+----------
+
+I.   A
+II.  B
+III. C

@@ -1,0 +1,15 @@
+- a
+  - b
+
+
+----------
+
+(Document
+  (List None None
+    (ListItem None
+      (Paragraph
+        'a')
+      (List None None
+        (ListItem None
+          (Paragraph
+            'b'))))))

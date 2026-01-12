@@ -1,0 +1,9 @@
+foo _*_
+
+
+----------
+
+(Document
+  (Paragraph
+    'foo '
+    TextRegion(content='*', color='em', no_wrap=True, url=None)))

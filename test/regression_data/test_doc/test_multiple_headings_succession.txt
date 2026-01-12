@@ -1,0 +1,12 @@
+(Document
+  (Heading 1
+    'First')
+  (Heading 2
+    'Second'))
+
+----------
+
+⣿ First
+
+Second
+

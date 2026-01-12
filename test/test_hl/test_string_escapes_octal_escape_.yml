@@ -1,8 +1,0 @@
-code: '"\101"'
-highlighted:
-- color: <Color fore=<GREEN>>
-- '"'
-- color: <Color fore=<BLUE>>
-- \101
-- color: <Color fore=<GREEN>>
-- '"'

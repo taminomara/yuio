@@ -1,0 +1,11 @@
+__
+foo bar__
+
+
+----------
+
+(Document
+  (Paragraph
+    '__'
+    '\nfoo bar'
+    '__'))

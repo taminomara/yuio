@@ -1,0 +1,5 @@
+ context line
+
+----------
+
+<Color> context line

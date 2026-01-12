@@ -1,0 +1,10 @@
+[FOO]: /url
+
+[Foo]
+
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='Foo', color=None, no_wrap=False, url='/url')))

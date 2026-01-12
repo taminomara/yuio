@@ -1,0 +1,11 @@
+    foo
+bar
+
+
+----------
+
+(Document
+  (Code ''
+    'foo')
+  (Paragraph
+    'bar'))

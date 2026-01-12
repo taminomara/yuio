@@ -1,0 +1,8 @@
+(Footnote '[note-123]'
+  (Paragraph
+    'Text'))
+
+----------
+
+[note-123]
+    Text

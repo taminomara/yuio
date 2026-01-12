@@ -1,0 +1,5 @@
+'single quotes'
+
+----------
+
+<Color fore=<GREEN>>'single quotes'

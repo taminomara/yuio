@@ -1,0 +1,9 @@
+foo 
+ baz
+
+
+----------
+
+(Document
+  (Paragraph
+    'foo \n baz'))

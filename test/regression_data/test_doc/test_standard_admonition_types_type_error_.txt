@@ -1,0 +1,8 @@
+(Admonition 'error'
+  (Paragraph
+    'Content'))
+
+----------
+
+Title
+    Content

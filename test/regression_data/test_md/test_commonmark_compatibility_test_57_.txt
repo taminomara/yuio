@@ -1,0 +1,15 @@
+Foo
+= =
+
+Foo
+--- -
+
+
+----------
+
+(Document
+  (Paragraph
+    'Foo\n= =')
+  (Paragraph
+    'Foo')
+  (ThematicBreak))
