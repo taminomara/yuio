@@ -1,0 +1,9 @@
+`Foo <https://example.com>`_ and Foo_
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='Foo', color=None, no_wrap=False, url='https://example.com')
+    ' and '
+    TextRegion(content='Foo', color=None, no_wrap=False, url='https://example.com')))

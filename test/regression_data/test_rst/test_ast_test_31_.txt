@@ -1,0 +1,17 @@
+I. First
+II. Second
+III. Third
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.CAPITAL_ROMAN: 'CAPITAL_ROMAN'> <ListMarkerKind.DOT: 'DOT'>
+    (ListItem 1
+      (Paragraph
+        'First'))
+    (ListItem 2
+      (Paragraph
+        'Second'))
+    (ListItem 3
+      (Paragraph
+        'Third'))))

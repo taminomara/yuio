@@ -1,0 +1,7 @@
+empty interpreted text: :role:``
+
+----------
+
+(Document
+  (Paragraph
+    'empty interpreted text: :role:``'))

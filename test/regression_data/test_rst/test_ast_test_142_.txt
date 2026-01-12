@@ -1,0 +1,7 @@
+Text with trailing spaces   
+
+----------
+
+(Document
+  (Paragraph
+    'Text with trailing spaces   '))

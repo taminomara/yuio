@@ -1,0 +1,6 @@
+.. caution:: Be cautious
+
+----------
+
+(Document
+  (Admonition 'caution'))

@@ -1,0 +1,9 @@
+Internal hyperlink: _`foo bar`. Broken _`foo bar
+
+----------
+
+(Document
+  (Paragraph
+    'Internal hyperlink: '
+    'foo bar'
+    '. Broken _`foo bar'))

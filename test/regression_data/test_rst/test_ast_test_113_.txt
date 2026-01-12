@@ -1,0 +1,11 @@
+.. code-block:: python
+
+   def foo():
+       pass
+
+----------
+
+(Document
+  (Code 'python'
+    'def foo():'
+    '    pass'))

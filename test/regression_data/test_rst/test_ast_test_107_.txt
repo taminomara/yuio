@@ -1,0 +1,13 @@
+Hyperlink: `foo bar`_, `foo bar`__, `foo <bar>`_.
+
+----------
+
+(Document
+  (Paragraph
+    'Hyperlink: '
+    'foo bar'
+    ', '
+    'foo bar'
+    ', '
+    TextRegion(content='foo', color=None, no_wrap=False, url='bar')
+    '.'))

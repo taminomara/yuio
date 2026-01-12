@@ -1,0 +1,6 @@
+.. important:: Important info
+
+----------
+
+(Document
+  (Admonition 'important'))

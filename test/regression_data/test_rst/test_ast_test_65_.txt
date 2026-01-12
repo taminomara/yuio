@@ -1,0 +1,9 @@
+This is **strong** text
+
+----------
+
+(Document
+  (Paragraph
+    'This is '
+    TextRegion(content='strong', color='strong', no_wrap=False, url=None)
+    ' text'))

@@ -1,0 +1,10 @@
+.. versionchanged:: 2.0
+
+   Changed behavior
+
+----------
+
+(Document
+  (Admonition 'versionchanged'
+    (Paragraph
+      'Changed behavior')))

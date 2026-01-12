@@ -1,0 +1,7 @@
+Escaped \*not emphasized\*
+
+----------
+
+(Document
+  (Paragraph
+    'Escaped *not emphasized*'))

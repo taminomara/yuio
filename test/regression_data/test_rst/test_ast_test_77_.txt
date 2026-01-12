@@ -1,0 +1,7 @@
+:py:class:`Custom title <module.MyClass>`
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='Custom title', color='code', no_wrap=True, url=None)))

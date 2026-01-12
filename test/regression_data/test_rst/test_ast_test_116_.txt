@@ -1,0 +1,10 @@
+.. warning::
+
+   Be careful!
+
+----------
+
+(Document
+  (Admonition 'warning'
+    (Paragraph
+      'Be careful!')))

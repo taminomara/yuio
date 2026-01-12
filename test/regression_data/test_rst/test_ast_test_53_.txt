@@ -1,0 +1,9 @@
+| Line 1
+  continues
+ continues 2
+
+----------
+
+(Document
+  (Paragraph
+    'Line 1  continues continues 2'))

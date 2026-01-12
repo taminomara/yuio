@@ -1,0 +1,8 @@
+Subsection
+~~~~~~~~~~
+
+----------
+
+(Document
+  (Heading 1
+    'Subsection'))

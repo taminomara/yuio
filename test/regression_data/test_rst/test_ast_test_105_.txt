@@ -1,0 +1,11 @@
+Explicit hyperlinks: `target`_, `anonymous`__.
+
+----------
+
+(Document
+  (Paragraph
+    'Explicit hyperlinks: '
+    'target'
+    ', '
+    'anonymous'
+    '.'))

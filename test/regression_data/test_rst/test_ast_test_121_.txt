@@ -1,0 +1,6 @@
+.. error:: An error occurred
+
+----------
+
+(Document
+  (Admonition 'error'))

@@ -1,0 +1,11 @@
+Code block: ``code``, ``code `backticks```,
+
+----------
+
+(Document
+  (Paragraph
+    'Code block: '
+    TextRegion(content='code', color='code', no_wrap=True, url=None)
+    ', '
+    TextRegion(content='code `backticks`', color='code', no_wrap=True, url=None)
+    ','))

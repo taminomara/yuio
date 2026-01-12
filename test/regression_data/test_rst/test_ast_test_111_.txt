@@ -1,0 +1,7 @@
+*2 * x  *a **b *.rst*
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='2 * x  *a **b *.rst', color='em', no_wrap=False, url=None)))

@@ -1,0 +1,6 @@
+.. hint:: A helpful hint
+
+----------
+
+(Document
+  (Admonition 'hint'))

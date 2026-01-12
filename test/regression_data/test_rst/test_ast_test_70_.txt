@@ -1,0 +1,8 @@
+Reference `something`
+
+----------
+
+(Document
+  (Paragraph
+    'Reference '
+    TextRegion(content='something', color='em', no_wrap=True, url=None)))

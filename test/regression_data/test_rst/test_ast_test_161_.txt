@@ -1,0 +1,7 @@
+`explicit role with punct`:a+b:
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='explicit role with punct', color='code', no_wrap=True, url=None)))

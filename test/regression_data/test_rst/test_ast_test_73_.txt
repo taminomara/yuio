@@ -1,0 +1,7 @@
+:flag:`--verbose`
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='--verbose', color='flag', no_wrap=True, url=None)))

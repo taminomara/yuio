@@ -1,0 +1,14 @@
+-  List 2
+   Continuation
+  Not a continuation
+
+----------
+
+(Document
+  (List '-' None
+    (ListItem None
+      (Paragraph
+        'List 2\nContinuation')))
+  (Quote
+    (Paragraph
+      'Not a continuation')))

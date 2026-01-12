@@ -1,0 +1,12 @@
+.. code-block:: python
+   :linenos:
+
+   def foo():
+       pass
+
+----------
+
+(Document
+  (Code 'python'
+    'def foo():'
+    '    pass'))

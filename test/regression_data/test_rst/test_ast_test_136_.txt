@@ -1,0 +1,14 @@
+Before
+
+----
+
+After
+
+----------
+
+(Document
+  (Paragraph
+    'Before')
+  (ThematicBreak)
+  (Paragraph
+    'After'))

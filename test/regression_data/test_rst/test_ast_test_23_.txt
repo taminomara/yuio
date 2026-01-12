@@ -1,0 +1,13 @@
+1) This is a list...
+2) because list style doesn't change.
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> <ListMarkerKind.PAREN: 'PAREN'>
+    (ListItem 1
+      (Paragraph
+        'This is a list...'))
+    (ListItem 2
+      (Paragraph
+        "because list style doesn't change."))))

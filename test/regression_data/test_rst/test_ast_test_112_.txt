@@ -1,0 +1,7 @@
+*2*x a**b O(N**2) e**(x*y) f(x)*f(y) a*(1+2)*
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='2*x a**b O(N**2) e**(x*y) f(x)*f(y) a*(1+2)', color='em', no_wrap=False, url=None)))

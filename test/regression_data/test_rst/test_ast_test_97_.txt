@@ -1,0 +1,15 @@
+Style: *em*, **strong**, ***strong, with stars***, *broken `em`.
+
+----------
+
+(Document
+  (Paragraph
+    'Style: '
+    TextRegion(content='em', color='em', no_wrap=False, url=None)
+    ', '
+    TextRegion(content='strong', color='strong', no_wrap=False, url=None)
+    ', '
+    TextRegion(content='*strong, with stars*', color='strong', no_wrap=False, url=None)
+    ', *broken '
+    TextRegion(content='em', color='em', no_wrap=True, url=None)
+    '.'))

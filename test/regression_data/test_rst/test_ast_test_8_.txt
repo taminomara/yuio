@@ -1,0 +1,13 @@
+Title
+=====
+
+Section
+-------
+
+----------
+
+(Document
+  (Heading 1
+    'Title')
+  (Heading 2
+    'Section'))

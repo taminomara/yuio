@@ -1,0 +1,9 @@
+V. Recognized as a single letter
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.CAPITAL_LETTER: 'CAPITAL_LETTER'> <ListMarkerKind.DOT: 'DOT'>
+    (ListItem 22
+      (Paragraph
+        'Recognized as a single letter'))))

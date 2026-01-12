@@ -1,0 +1,9 @@
+:Not a field :code:`foo-bar`: Content
+
+----------
+
+(Document
+  (Paragraph
+    ':Not a field '
+    TextRegion(content='foo-bar', color='code', no_wrap=True, url=None)
+    ': Content'))

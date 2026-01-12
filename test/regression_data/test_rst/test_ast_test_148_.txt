@@ -1,0 +1,23 @@
+* Bullet
+* Items
+
+1. Numbered
+2. Items
+
+----------
+
+(Document
+  (List '*' None
+    (ListItem None
+      (Paragraph
+        'Bullet'))
+    (ListItem None
+      (Paragraph
+        'Items')))
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> <ListMarkerKind.DOT: 'DOT'>
+    (ListItem 1
+      (Paragraph
+        'Numbered'))
+    (ListItem 2
+      (Paragraph
+        'Items'))))

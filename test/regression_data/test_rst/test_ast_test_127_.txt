@@ -1,0 +1,10 @@
+.. deprecated:: 3.0
+
+   Use something else
+
+----------
+
+(Document
+  (Admonition 'deprecated'
+    (Paragraph
+      'Use something else')))

@@ -1,0 +1,8 @@
+::`empty explicit role`
+
+----------
+
+(Document
+  (Paragraph
+    '::'
+    TextRegion(content='empty explicit role', color='em', no_wrap=True, url=None)))

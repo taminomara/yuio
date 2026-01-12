@@ -1,0 +1,8 @@
+:field: value
+
+----------
+
+(Document
+  (Admonition 'field'
+    (Paragraph
+      'value')))

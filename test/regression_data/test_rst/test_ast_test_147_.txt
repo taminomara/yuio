@@ -1,0 +1,18 @@
+Text [1]_
+
+.. [1] First para
+
+   Second para
+
+----------
+
+(Document
+  (Paragraph
+    'Text '
+    TextRegion(content='[1]', color='footnote', no_wrap=True, url=None))
+  (FootnoteContainer
+    (Footnote '1'
+      (Paragraph
+        'First para')
+      (Paragraph
+        'Second para'))))

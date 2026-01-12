@@ -1,0 +1,9 @@
+.. code:: javascript
+
+   console.log('hello');
+
+----------
+
+(Document
+  (Code 'javascript'
+    "console.log('hello');"))

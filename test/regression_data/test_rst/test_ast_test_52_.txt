@@ -1,0 +1,10 @@
+| Line 1
+|     Indented
+|         More indented
+| Back to normal
+
+----------
+
+(Document
+  (Paragraph
+    'Line 1\x0bIndented\x0bMore indented\x0bBack to normal'))

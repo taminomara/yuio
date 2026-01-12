@@ -1,0 +1,7 @@
+(1. not a list
+
+----------
+
+(Document
+  (Paragraph
+    '(1. not a list'))

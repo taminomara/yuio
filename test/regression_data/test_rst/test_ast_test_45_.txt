@@ -1,0 +1,8 @@
+:Field `foo-bar`:code:: Content
+
+----------
+
+(Document
+  (Admonition 'field'
+    (Paragraph
+      'Content')))

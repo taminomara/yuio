@@ -1,0 +1,9 @@
+:field name: field value
+    continued
+
+----------
+
+(Document
+  (Admonition 'field'
+    (Paragraph
+      'field value\ncontinued')))

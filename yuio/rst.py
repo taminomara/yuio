@@ -139,8 +139,8 @@ _NUM_LIST_START_RE = re.compile(
             (?P<enumerator>
                   (?P<enumerator_num>\d+)
                 | (?P<enumerator_auto>\#)
-                | (?P<enumerator_lowercase>[a-z])
-                | (?P<enumerator_uppercase>[A-Z])
+                | (?P<enumerator_lowercase>[a-z]+)
+                | (?P<enumerator_uppercase>[A-Z]+)
             )
             (?P<close_marker>[).])
             (?P<space>\s+|$)
@@ -366,7 +366,7 @@ class RstParser(yuio.doc.DocParser):
         end: int,
         prev_line_ending: _LineEnding,
     ) -> tuple[int, _LineEnding]:
-        if start >= end:
+        if start >= end:  # pragma: no cover
             return start, prev_line_ending
 
         line = self._lines[start]
@@ -437,7 +437,7 @@ class RstParser(yuio.doc.DocParser):
             end = self._gather_indented_lines(start, end, True)
         elif ch in _PUNCT:
             end = self._gather_prefixed_lines(start, end, ch)
-        else:
+        else:  # pragma: no cover
             return None
 
         node = yuio.doc.Code(lines=[], syntax="text")
@@ -552,7 +552,7 @@ class RstParser(yuio.doc.DocParser):
         )
 
         if list_data is None:
-            return None
+            return None  # TODO: this is not covered, I don't know why
 
         enumerator_kind, marker_kind, num = list_data
 
@@ -1084,6 +1084,8 @@ def _detect_num_list_type(
             (num := yuio.doc.from_roman(enumerator)) is not None
         ):
             return yuio.doc.ListEnumeratorKind.SMALL_ROMAN, marker_kind, num
+        elif len(enumerator) > 1:
+            return None
         elif (num := yuio.doc.from_letters(enumerator)) is not None:
             return yuio.doc.ListEnumeratorKind.SMALL_LETTER, marker_kind, num
         else:
@@ -1093,6 +1095,8 @@ def _detect_num_list_type(
             num := yuio.doc.from_roman(enumerator)
         ) is not None:
             return yuio.doc.ListEnumeratorKind.CAPITAL_ROMAN, marker_kind, num
+        elif len(enumerator) > 1:
+            return None
         elif (num := yuio.doc.from_letters(enumerator)) is not None:
             return yuio.doc.ListEnumeratorKind.CAPITAL_LETTER, marker_kind, num
         else:
@@ -1308,7 +1312,7 @@ class _InlineParser:
 
         """
 
-        if not self._ch_eq(self._pos, ":"):
+        if not self._ch_eq(self._pos, ":"):  # pragma: no cover
             return None
 
         token_start = self._pos
@@ -1478,14 +1482,9 @@ class _InlineParser:
                     target, title = yuio.doc._split_link(
                         self._text[content_start:content_end],
                     )
-                    if target:
-                        link = self._link_resolver.find_link(
-                            title, target, is_anonymous=n_underscores == 2
-                        )
-                    else:
-                        link = self._link_resolver.find_link(
-                            title, title, is_anonymous=n_underscores == 2
-                        )
+                    link = self._link_resolver.find_link(
+                        title, target, is_anonymous=n_underscores == 2
+                    )
                     if link and link.type == "link":
                         target = link.content
                     else:

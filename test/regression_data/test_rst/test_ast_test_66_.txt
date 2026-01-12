@@ -1,0 +1,8 @@
+**strong** at start
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='strong', color='strong', no_wrap=False, url=None)
+    ' at start'))

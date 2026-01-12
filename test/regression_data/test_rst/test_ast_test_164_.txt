@@ -1,0 +1,7 @@
+`interpreted text`___
+
+----------
+
+(Document
+  (Paragraph
+    '`interpreted text`___'))

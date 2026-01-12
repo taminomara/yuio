@@ -1,0 +1,10 @@
+.. _target1: target2_
+.. _target2: target1_
+
+target1_
+
+----------
+
+(Document
+  (Paragraph
+    'target1'))

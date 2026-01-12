@@ -1,0 +1,13 @@
+A. First
+B. Second
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.CAPITAL_LETTER: 'CAPITAL_LETTER'> <ListMarkerKind.DOT: 'DOT'>
+    (ListItem 1
+      (Paragraph
+        'First'))
+    (ListItem 2
+      (Paragraph
+        'Second'))))

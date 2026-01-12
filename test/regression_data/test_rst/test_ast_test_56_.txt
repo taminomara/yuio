@@ -1,0 +1,13 @@
+Example::
+
+> Line 1
+> Line 2
+
+----------
+
+(Document
+  (Paragraph
+    'Example:')
+  (Code 'text'
+    '> Line 1'
+    '> Line 2'))

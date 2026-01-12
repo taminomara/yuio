@@ -1,0 +1,10 @@
+Undefined footnotes: [#]_, [*]_
+
+----------
+
+(Document
+  (Paragraph
+    'Undefined footnotes: '
+    TextRegion(content='[#]', color='footnote', no_wrap=True, url=None)
+    ', '
+    TextRegion(content='[*]', color='footnote', no_wrap=True, url=None)))

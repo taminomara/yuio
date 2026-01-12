@@ -1,0 +1,8 @@
+1) This is not a list...
+2. because list style changes without a blank line.
+
+----------
+
+(Document
+  (Paragraph
+    '1) This is not a list...\n2. because list style changes without a blank line.'))

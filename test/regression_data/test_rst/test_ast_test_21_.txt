@@ -1,0 +1,8 @@
+A) This is not
+a list
+
+----------
+
+(Document
+  (Paragraph
+    'A) This is not\na list'))

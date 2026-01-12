@@ -1,0 +1,17 @@
+* Item 1
+* Item 2
+* Item 3
+
+----------
+
+(Document
+  (List '*' None
+    (ListItem None
+      (Paragraph
+        'Item 1'))
+    (ListItem None
+      (Paragraph
+        'Item 2'))
+    (ListItem None
+      (Paragraph
+        'Item 3'))))

@@ -1,0 +1,15 @@
+Term 1
+    Definition 1
+
+Term 2
+    Definition 2
+
+----------
+
+(Document
+  (Admonition 'definition'
+    (Paragraph
+      'Definition 1'))
+  (Admonition 'definition'
+    (Paragraph
+      'Definition 2')))

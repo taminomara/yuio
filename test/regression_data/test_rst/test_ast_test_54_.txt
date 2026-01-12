@@ -1,0 +1,13 @@
+Example::
+
+    def foo():
+        pass
+
+----------
+
+(Document
+  (Paragraph
+    'Example:')
+  (Code 'text'
+    'def foo():'
+    '    pass'))

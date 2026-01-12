@@ -1,0 +1,24 @@
+1. First
+
+   a. Sub-item
+   b. Sub-item
+
+2. Second
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> <ListMarkerKind.DOT: 'DOT'>
+    (ListItem 1
+      (Paragraph
+        'First')
+      (List <ListEnumeratorKind.SMALL_LETTER: 'SMALL_LETTER'> <ListMarkerKind.DOT: 'DOT'>
+        (ListItem 1
+          (Paragraph
+            'Sub-item'))
+        (ListItem 2
+          (Paragraph
+            'Sub-item'))))
+    (ListItem 2
+      (Paragraph
+        'Second'))))

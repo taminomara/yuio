@@ -1,0 +1,6 @@
+.. danger:: Dangerous!
+
+----------
+
+(Document
+  (Admonition 'danger'))

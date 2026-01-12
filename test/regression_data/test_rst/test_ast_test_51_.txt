@@ -1,0 +1,8 @@
+| Verse line 1
+|     Indented line 2
+
+----------
+
+(Document
+  (Paragraph
+    'Verse line 1\x0bIndented line 2'))

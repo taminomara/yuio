@@ -1,0 +1,11 @@
+Implicit ref: `something`, `a\` b`. Broken: `something
+
+----------
+
+(Document
+  (Paragraph
+    'Implicit ref: '
+    TextRegion(content='something', color='em', no_wrap=True, url=None)
+    ', '
+    TextRegion(content='a` b', color='em', no_wrap=True, url=None)
+    '. Broken: `something'))

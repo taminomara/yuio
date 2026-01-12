@@ -1,0 +1,12 @@
+:field 1: value 1
+:field 2: value 2
+
+----------
+
+(Document
+  (Admonition 'field'
+    (Paragraph
+      'value 1'))
+  (Admonition 'field'
+    (Paragraph
+      'value 2')))

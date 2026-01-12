@@ -1,0 +1,14 @@
+__ https://example.com/1
+
+`Link 1`__
+`Link 2`__
+
+__ https://example.com/2
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='Link 1', color=None, no_wrap=False, url='https://example.com/1')
+    '\n'
+    TextRegion(content='Link 2', color=None, no_wrap=False, url='https://example.com/2')))

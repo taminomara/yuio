@@ -1,0 +1,10 @@
+*
+  Item 1
+
+----------
+
+(Document
+  (List '*' None
+    (ListItem None
+      (Paragraph
+        'Item 1'))))

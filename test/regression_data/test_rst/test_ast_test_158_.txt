@@ -1,0 +1,8 @@
+`empty explicit role`:: continues
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='empty explicit role', color='em', no_wrap=True, url=None)
+    ':: continues'))

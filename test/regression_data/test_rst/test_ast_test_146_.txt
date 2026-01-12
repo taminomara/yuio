@@ -1,0 +1,13 @@
+Term
+    First paragraph
+
+    Second paragraph
+
+----------
+
+(Document
+  (Admonition 'definition'
+    (Paragraph
+      'First paragraph')
+    (Paragraph
+      'Second paragraph')))

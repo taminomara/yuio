@@ -1,0 +1,29 @@
+Title
+=====
+
+* List item
+
+  Paragraph in list
+
+  * Nested item
+
+* Back to top level
+
+----------
+
+(Document
+  (Heading 1
+    'Title')
+  (List '*' None
+    (ListItem None
+      (Paragraph
+        'List item')
+      (Paragraph
+        'Paragraph in list')
+      (List '*' None
+        (ListItem None
+          (Paragraph
+            'Nested item'))))
+    (ListItem None
+      (Paragraph
+        'Back to top level'))))

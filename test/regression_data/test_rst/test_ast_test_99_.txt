@@ -1,0 +1,9 @@
+Explicit ref: :role:`ref`. Broken: :role:`ref
+
+----------
+
+(Document
+  (Paragraph
+    'Explicit ref: '
+    TextRegion(content='ref', color='code', no_wrap=True, url=None)
+    '. Broken: :role:`ref'))

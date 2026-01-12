@@ -1,0 +1,9 @@
+Text with |substitution| reference
+
+----------
+
+(Document
+  (Paragraph
+    'Text with '
+    'substitution'
+    ' reference'))

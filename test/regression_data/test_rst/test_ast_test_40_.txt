@@ -1,0 +1,8 @@
+:field name: field value
+
+----------
+
+(Document
+  (Admonition 'field'
+    (Paragraph
+      'field value')))

@@ -1,0 +1,15 @@
+* List item.
+..
+    Block quote.| Line 1
+| Line 2
+| Line 3
+
+----------
+
+(Document
+  (List '*' None
+    (ListItem None
+      (Paragraph
+        'List item.')))
+  (Paragraph
+    'Line 2\x0bLine 3'))

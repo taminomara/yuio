@@ -1,0 +1,15 @@
+Text [*]_ with symbol.
+
+.. [*] Symbol footnote
+
+----------
+
+(Document
+  (Paragraph
+    'Text '
+    TextRegion(content='[*]', color='footnote', no_wrap=True, url=None)
+    ' with symbol.')
+  (FootnoteContainer
+    (Footnote '*'
+      (Paragraph
+        'Symbol footnote'))))

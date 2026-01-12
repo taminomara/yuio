@@ -1,0 +1,9 @@
+Use ``code`` for literals
+
+----------
+
+(Document
+  (Paragraph
+    'Use '
+    TextRegion(content='code', color='code', no_wrap=True, url=None)
+    ' for literals'))

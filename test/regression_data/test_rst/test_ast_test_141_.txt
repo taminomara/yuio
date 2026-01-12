@@ -1,0 +1,8 @@
+   Text with leading spaces
+
+----------
+
+(Document
+  (Quote
+    (Paragraph
+      'Text with leading spaces')))

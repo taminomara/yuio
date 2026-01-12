@@ -1,0 +1,7 @@
+|| (breaks rule 3)
+
+----------
+
+(Document
+  (Paragraph
+    '|| (breaks rule 3)'))

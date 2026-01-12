@@ -1,0 +1,11 @@
+Two paragraphs
+
+Second paragraph
+
+----------
+
+(Document
+  (Paragraph
+    'Two paragraphs')
+  (Paragraph
+    'Second paragraph'))

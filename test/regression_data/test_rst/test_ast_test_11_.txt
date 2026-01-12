@@ -1,0 +1,13 @@
++ Item 1
++ Item 2
+
+----------
+
+(Document
+  (List '+' None
+    (ListItem None
+      (Paragraph
+        'Item 1'))
+    (ListItem None
+      (Paragraph
+        'Item 2'))))

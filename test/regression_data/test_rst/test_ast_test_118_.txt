@@ -1,0 +1,6 @@
+.. attention:: Pay attention
+
+----------
+
+(Document
+  (Admonition 'attention'))

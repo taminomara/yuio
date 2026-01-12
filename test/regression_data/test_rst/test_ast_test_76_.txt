@@ -1,0 +1,7 @@
+:py:class:`~module.MyClass`
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='MyClass', color='code', no_wrap=True, url=None)))

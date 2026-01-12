@@ -1,0 +1,10 @@
+.. admonition:: Custom Title
+
+   Note content here
+
+----------
+
+(Document
+  (Admonition 'admonition'
+    (Paragraph
+      'Note content here')))

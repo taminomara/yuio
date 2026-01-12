@@ -1,0 +1,10 @@
+.. versionadded:: 1.0
+
+   Added this feature
+
+----------
+
+(Document
+  (Admonition 'versionadded'
+    (Paragraph
+      'Added this feature')))

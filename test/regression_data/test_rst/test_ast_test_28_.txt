@@ -1,0 +1,17 @@
+a. First
+#. Second
+#. Third
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.SMALL_LETTER: 'SMALL_LETTER'> <ListMarkerKind.DOT: 'DOT'>
+    (ListItem 1
+      (Paragraph
+        'First'))
+    (ListItem 2
+      (Paragraph
+        'Second'))
+    (ListItem 3
+      (Paragraph
+        'Third'))))

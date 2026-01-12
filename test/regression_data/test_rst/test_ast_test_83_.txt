@@ -1,0 +1,9 @@
+`Custom title <target_>`_
+
+.. _target: https://example.com
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='Custom title', color=None, no_wrap=False, url='https://example.com')))

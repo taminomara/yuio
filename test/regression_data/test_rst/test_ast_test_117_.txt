@@ -1,0 +1,10 @@
+.. tip:: Quick tip
+
+   Tip content
+
+----------
+
+(Document
+  (Admonition 'tip'
+    (Paragraph
+      'Tip content')))

@@ -1,0 +1,7 @@
+2 * x a ** b (* BOM32_* ` `` _ __ | (breaks rule 1)
+
+----------
+
+(Document
+  (Paragraph
+    '2 * x a ** b (* BOM32_* ` `` _ __ | (breaks rule 1)'))

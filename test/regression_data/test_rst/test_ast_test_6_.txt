@@ -1,0 +1,9 @@
+-------
+Section
+-------
+
+----------
+
+(Document
+  (Heading 1
+    'Section'))

@@ -1,0 +1,10 @@
+.. _target1: target2_
+.. _target2: https://example.com
+
+target1_
+
+----------
+
+(Document
+  (Paragraph
+    TextRegion(content='target1', color=None, no_wrap=False, url='https://example.com')))

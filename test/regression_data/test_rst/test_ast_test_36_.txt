@@ -1,0 +1,9 @@
+Term
+    Definition of the term
+
+----------
+
+(Document
+  (Admonition 'definition'
+    (Paragraph
+      'Definition of the term')))

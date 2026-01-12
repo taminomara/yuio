@@ -1,0 +1,11 @@
+Implicit hyperlinks: target_, anonymous__, not a link___.
+
+----------
+
+(Document
+  (Paragraph
+    'Implicit hyperlinks: '
+    'target'
+    ', '
+    'anonymous'
+    ', not a link___.'))

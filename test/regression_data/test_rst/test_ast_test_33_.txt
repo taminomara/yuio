@@ -1,0 +1,9 @@
+IV. Recognized as a roman numeral
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.CAPITAL_ROMAN: 'CAPITAL_ROMAN'> <ListMarkerKind.DOT: 'DOT'>
+    (ListItem 4
+      (Paragraph
+        'Recognized as a roman numeral'))))

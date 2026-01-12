@@ -1,0 +1,7 @@
+Malformed ref: :lua:obj:`~a.b.c`__ (still parsed as ref).
+
+----------
+
+(Document
+  (Paragraph
+    'Malformed ref: :lua:obj:`~a.b.c`__ (still parsed as ref).'))

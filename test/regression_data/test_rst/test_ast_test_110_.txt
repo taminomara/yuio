@@ -1,0 +1,9 @@
+Replacement: |foo|, |bar|_, |baz|__.
+
+----------
+
+(Document
+  (Paragraph
+    'Replacement: '
+    'foo'
+    ', |bar|_, |baz|__.'))

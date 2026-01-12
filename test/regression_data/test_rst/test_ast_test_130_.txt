@@ -1,0 +1,7 @@
+..
+   Multi-line
+   comment
+
+----------
+
+(Document)

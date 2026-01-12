@@ -1,0 +1,10 @@
+* Item 1
+  continued
+
+----------
+
+(Document
+  (List '*' None
+    (ListItem None
+      (Paragraph
+        'Item 1\ncontinued'))))

@@ -1,0 +1,11 @@
+::
+
+> Line 1
+> Line 2
+
+----------
+
+(Document
+  (Code 'text'
+    '> Line 1'
+    '> Line 2'))

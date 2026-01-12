@@ -1,0 +1,7 @@
+Simple paragraph
+
+----------
+
+(Document
+  (Paragraph
+    'Simple paragraph'))

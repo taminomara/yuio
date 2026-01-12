@@ -1,0 +1,9 @@
+   Block quote line 1
+   Block quote line 2
+
+----------
+
+(Document
+  (Quote
+    (Paragraph
+      'Block quote line 1\nBlock quote line 2')))

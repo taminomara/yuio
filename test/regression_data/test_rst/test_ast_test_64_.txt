@@ -1,0 +1,10 @@
+Multiple *emphasis* and *more*
+
+----------
+
+(Document
+  (Paragraph
+    'Multiple '
+    TextRegion(content='emphasis', color='em', no_wrap=False, url=None)
+    ' and '
+    TextRegion(content='more', color='em', no_wrap=False, url=None)))

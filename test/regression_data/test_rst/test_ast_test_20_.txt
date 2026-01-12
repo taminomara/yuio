@@ -1,0 +1,13 @@
+(1) First
+(2) Second
+
+----------
+
+(Document
+  (List <ListEnumeratorKind.NUMBER: 'NUMBER'> <ListMarkerKind.ENCLOSED: 'ENCLOSED'>
+    (ListItem 1
+      (Paragraph
+        'First'))
+    (ListItem 2
+      (Paragraph
+        'Second'))))
