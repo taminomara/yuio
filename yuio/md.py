@@ -911,7 +911,11 @@ class _InlineParser:
             self._pos = start + n_backticks
         else:
             code = self._text[start + n_backticks : end - n_backticks]
-            if code.startswith((" ", "\n")) and code.endswith((" ", "\n")) and len(code) > 2:
+            if (
+                code.startswith((" ", "\n"))
+                and code.endswith((" ", "\n"))
+                and len(code) > 2
+            ):
                 code = code[1:-1]
                 start += 1
                 end -= 1

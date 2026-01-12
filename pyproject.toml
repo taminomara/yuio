@@ -249,6 +249,7 @@ include = ["yuio/**/*.py"]
 omit = [
     "yuio/_version.py",
     "yuio/_typing.py",
+    "yuio/_typing_ext.py",
     "yuio/_vendor/**/*.py",
     "test/**/*.py",
 ]

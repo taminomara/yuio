@@ -8,7 +8,7 @@ import pytest
 def serialize_formatter_output(
     ast: yuio.doc.AstBase, lines: list[yuio.string.ColorizedString]
 ):
-    result = '\n'.join(map(str, lines))
+    result = "\n".join(map(str, lines))
     return f"{ast.dump()}\n\n----------\n\n{result}\n"
 
 
