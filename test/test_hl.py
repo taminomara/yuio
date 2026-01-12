@@ -649,7 +649,6 @@ class TestReSyntaxHighlighter:
             serialize_colorized_string(code, result), encoding="utf-8"
         )
 
-
     def test_nested_highlighter_for_group(self, theme, file_regression):
         inner = yuio.hl.ReSyntaxHighlighter([(r"x", "x")], base_color="inner")
         outer = yuio.hl.ReSyntaxHighlighter([(r"(\[)(.*?)(\])", (None, inner, None))])
