@@ -103,7 +103,7 @@ _HEADING_RE = re.compile(
     ^
     \s{0,3}                     # - Initial indent.
     (?P<marker>\#{1,6})         # - Heading marker.
-    (?P<text>\s.*?)?            # - Heading text. Unless empty, text must be separated
+    (?P<text>(?:\s.*?)?)        # - Heading text. Unless empty, text must be separated
                                 #   from the heading marker by a space.
     (?:(?<=\s)\#+)?             # - Optional closing hashes. Must be separated from
                                 #   the previous content by a space. We use lookbehind
@@ -296,6 +296,7 @@ class _List:
     list: yuio.doc.List
     parser: MdParser
     number: int | None = None
+    starts_with_empty_line: bool = False
 
 
 @dataclass(kw_only=True, slots=True)
@@ -345,7 +346,9 @@ class MdParser(yuio.doc.DocParser):
         self._anchors: dict[str, tuple[str, str]] = {}
 
     def _parser(self) -> MdParser:
-        return MdParser()
+        parser = MdParser()
+        parser._anchors = self._anchors
+        return parser
 
     @staticmethod
     def _is_blank(s: str) -> bool:
@@ -391,17 +394,29 @@ class MdParser(yuio.doc.DocParser):
 
     def _handle_line_List(self, line: str):
         assert type(self._state) is _List
-        if not line or line[: self._state.marker_len].isspace():
+        if self._is_blank(line) and self._state.starts_with_empty_line:
+            self._flush_List()
+            self._handle_line_Default(line)
+        elif self._is_blank(line) or line[: self._state.marker_len].isspace():
             self._state.parser._handle_line(line[self._state.marker_len :])
         elif (
-            (match := _LIST_RE.match(line)) or (match := _NUMBERED_LIST_RE.match(line))
-        ) and match.group("type") == self._state.type:
+            (
+                (match := _LIST_RE.match(line))
+                or (match := _NUMBERED_LIST_RE.match(line))
+            )
+            and match.group("type") == self._state.type
+            and not _THEMATIC_BREAK_RE.match(line)
+        ):
             item = yuio.doc.ListItem(
                 items=self._state.parser._finalize(),
                 number=self._state.number,
             )
             self._state.list.items.append(item)
-            self._state.marker_len = len(match.group("marker"))
+            marker = match.group("marker")
+            indent = len(marker)
+            if not marker.endswith(" "):
+                indent += 1
+            self._state.marker_len = indent
             self._state.parser._handle_line(match.group("text"))
             if self._state.number is not None:
                 self._state.number += 1
@@ -475,7 +490,7 @@ class MdParser(yuio.doc.DocParser):
         if (
             (match := _CODE_FENCE_END_RE.match(line))
             and match.group("fence")[0] == self._state.fence_symbol
-            and len(match.group("fence")) == self._state.fence_length
+            and len(match.group("fence")) >= self._state.fence_length
         ):
             self._flush_FencedCode()
         else:
@@ -554,8 +569,15 @@ class MdParser(yuio.doc.DocParser):
             or _HEADING_RE.match(line)
             or _CODE_BACKTICK_RE.match(line)
             or _CODE_TILDE_RE.match(line)
-            or _LIST_RE.match(line)
-            or _NUMBERED_LIST_RE.match(line)
+            or (
+                (match := _LIST_RE.match(line))
+                and not self._is_blank(match.group("text"))
+            )
+            or (
+                (match := _NUMBERED_LIST_RE.match(line))
+                and not self._is_blank(match.group("text"))
+                and match.group("number") == "1"
+            )
             or _QUOTE_RE.match(line)
         ):
             self._flush_Paragraph()
@@ -597,14 +619,23 @@ class MdParser(yuio.doc.DocParser):
             url, _ = _InlineParser.parse_link(line)
             if url:
                 self._anchors.setdefault(self._state.anchor, (line, ""))
-                self._state = _Default()
-                return
-        self._state = _Paragraph(lines=[f"[{self._state.anchor}]:", line])
+        else:
+            self._nodes.append(yuio.doc.Paragraph(items=[f"[{self._state.anchor}]:"]))
+        self._state = _Default()
 
     def _handle_lazy_line_Anchor(self, line: str):
         assert type(self._state) is _Anchor
-        self._state = _Default()
-        return False
+        line = line.strip()
+        if line:
+            url, _ = _InlineParser.parse_link(line)
+            if url:
+                self._anchors.setdefault(self._state.anchor, (line, ""))
+            self._state = _Default()
+            return True
+        else:
+            self._nodes.append(yuio.doc.Paragraph(items=[f"[{self._state.anchor}]:"]))
+            self._state = _Default()
+            return False
 
     def _flush_Anchor(self):
         assert type(self._state) is _Anchor
@@ -621,7 +652,7 @@ class MdParser(yuio.doc.DocParser):
                 self._state = _Paragraph(lines=[line])
             elif href:
                 url, _ = _InlineParser.parse_link(href)
-                if url:
+                if url is not None:
                     anchor = _InlineParser.norm_anchor(anchor)
                     self._anchors.setdefault(anchor, (url, ""))
                 else:
@@ -658,16 +689,28 @@ class MdParser(yuio.doc.DocParser):
         elif (match := _LIST_RE.match(line)) or (
             match := _NUMBERED_LIST_RE.match(line)
         ):
-            indent = len(match.group("marker"))
+            marker = match.group("marker")
+            indent = len(marker)
+            if not marker.endswith(" "):
+                indent += 1
             list_type = match.group("type")
             number_str = match.groupdict().get("number", None)
             number = int(number_str) if number_str else None
+            starts_with_empty_line = self._is_blank(match.group("text"))
             self._state = _List(
                 type=list_type,
                 marker_len=indent,
-                list=yuio.doc.List(items=[]),
+                list=yuio.doc.List(
+                    items=[],
+                    enumerator_kind=(
+                        yuio.doc.ListEnumeratorKind.NUMBER
+                        if number is not None
+                        else None
+                    ),
+                ),
                 parser=self._parser(),
                 number=number,
+                starts_with_empty_line=starts_with_empty_line,
             )
             self._state.parser._handle_line(match.group("text"))
         elif match := _QUOTE_RE.match(line):
@@ -711,7 +754,7 @@ class _InlineParser:
 
     @staticmethod
     def unescape(text: str) -> str:
-        return _UNESCAPE_RE.sub("\1", text)
+        return _UNESCAPE_RE.sub(r"\1", text)
 
     def run(self) -> list[str | yuio.doc.TextRegion]:
         while self._fits(self._pos):
@@ -731,8 +774,11 @@ class _InlineParser:
             elif token.kind == "link_end":
                 url = None
             text = self._text[token.start : token.start + token.len]
-            if token.kind == "escape" and text == "\n":
-                text = "\v\n"  # Vertical tab forces wrapper to make a line break.
+            if token.kind == "escape":
+                if text == "\n":
+                    text = "\v\n"  # Vertical tab forces wrapper to make a line break.
+                elif not text or text not in string.punctuation:
+                    text = "\\" + text
             if text:
                 if em or strong or token.kind == "code":
                     colors = []
@@ -753,7 +799,7 @@ class _InlineParser:
                             content=text, color=color, no_wrap=True, url=url
                         )
                     )
-                elif url:
+                elif url is not None:
                     res.append(yuio.doc.TextRegion(content=text, url=url))
                 else:
                     res.append(text)
@@ -762,7 +808,7 @@ class _InlineParser:
 
     @classmethod
     def parse_link(cls, link: str):
-        return cls(link, {})._parse_link()
+        return cls(link + ")", {})._parse_link()
 
     def _fits(self, i):
         return i < len(self._text)
@@ -865,7 +911,7 @@ class _InlineParser:
             self._pos = start + n_backticks
         else:
             code = self._text[start + n_backticks : end - n_backticks]
-            if code.startswith(" ") and code.endswith(" ") and len(code) > 2:
+            if code.startswith((" ", "\n")) and code.endswith((" ", "\n")) and len(code) > 2:
                 code = code[1:-1]
                 start += 1
                 end -= 1
@@ -1031,9 +1077,9 @@ class _InlineParser:
         elif self._ch_eq(self._pos, "'"):
             self._pos += 1
             end_char = "'"
-        elif self._ch_eq(self._pos, "'"):
+        elif self._ch_eq(self._pos, '"'):
             self._pos += 1
-            end_char = "'"
+            end_char = '"'
         elif self._ch_eq(self._pos, "("):
             self._pos += 1
             end_char = ")"
