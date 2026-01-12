@@ -155,7 +155,6 @@ from __future__ import annotations
 
 import abc
 import functools
-import os
 import re
 
 import yuio.color
@@ -849,8 +848,8 @@ class _TbHighlighter(SyntaxHighlighter):
         r'^[ |+]*File (?P<file>"[^"]*"), line (?P<line>\d+)(?:, in (?P<loc>.*))?$'
     )
     _TB_LINE_HIGHLIGHT = re.compile(r"^[ |+^~-]*$")
-    _SITE_PACKAGES = os.sep + "lib" + os.sep + "site-packages" + os.sep
-    _LIB_PYTHON = os.sep + "lib" + os.sep + "python"
+    _SITE_PACKAGES = re.compile(r"[/\\]lib[/\\]site-packages[/\\]")
+    _LIB_PYTHON = re.compile(r"[/\\]lib[/\\]python")
 
     def highlight(
         self,
@@ -886,7 +885,9 @@ class _TbHighlighter(SyntaxHighlighter):
                     if match := self._TB_LINE_FILE.match(line):
                         file, line, loc = match.group("file", "line", "loc")
 
-                        if self._SITE_PACKAGES in file or self._LIB_PYTHON in file:
+                        if self._SITE_PACKAGES.search(file) or self._LIB_PYTHON.search(
+                            file
+                        ):
                             stack_colors = stack_lib_colors
                         else:
                             stack_colors = stack_normal_colors
