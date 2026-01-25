@@ -1,3 +1,10 @@
+# Yuio project, MIT license.
+#
+# https://github.com/taminomara/yuio/
+#
+# You're free to copy this file to your project and edit it for your needs,
+# just keep this copyright line please :3
+
 from __future__ import annotations
 
 import dataclasses
@@ -1055,7 +1062,7 @@ class CliDomain(Domain):
         candidates: list[CliDomain.IndexEntry] = []
         if refspecific:
             for path, entry in self.cfg_ns.items():
-                if path[-len(target_path):] == target_path:
+                if path[-len(target_path) :] == target_path:
                     candidates.append(entry)
         return candidates
 
@@ -1093,7 +1100,7 @@ class CliDomain(Domain):
         candidates: list[CliDomain.IndexEntry] = []
         if refspecific:
             for path, entry in self.cmd_ns.items():
-                if path[-len(target_path):] == target_path:
+                if path[-len(target_path) :] == target_path:
                     candidates.append(entry)
         return candidates
 

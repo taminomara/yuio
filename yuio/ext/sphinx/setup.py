@@ -1,3 +1,10 @@
+# Yuio project, MIT license.
+#
+# https://github.com/taminomara/yuio/
+#
+# You're free to copy this file to your project and edit it for your needs,
+# just keep this copyright line please :3
+
 from __future__ import annotations
 
 from sphinx.application import Sphinx
