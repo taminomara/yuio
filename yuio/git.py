@@ -545,6 +545,12 @@ class Repo:
             )
         except GitError:
             pass
+        try:
+            status.bisect_start = (
+                self.git("rev-parse", "--verify", "BISECT_START").decode().strip()
+            )
+        except GitError:
+            pass
 
         return status
 
@@ -1175,6 +1181,14 @@ class Status:
 
     """
 
+    bisect_start: str | None = None
+    """
+    Position of the ``BISECT_START``.
+
+    If this field is not :data:`None`, bisect is in progress.
+
+    """
+
     def has_staged_changes(self) -> bool:
         """
         Return :data:`True` if there are unstaged changes in this repository.
@@ -1184,6 +1198,11 @@ class Status:
         return next(self.get_staged_changes(), None) is not None
 
     def get_staged_changes(self) -> _t.Iterator[PathStatus]:
+        """
+        Return iterator over all unstaged changes in this repository.
+
+        """
+
         return (
             change
             for change in self.changes
@@ -1205,6 +1224,11 @@ class Status:
         return next(self.get_unstaged_changes(), None) is not None
 
     def get_unstaged_changes(self) -> _t.Iterator[PathStatus]:
+        """
+        Return iterator over all staged changes in this repository.
+
+        """
+
         return (
             change
             for change in self.changes
@@ -1217,6 +1241,20 @@ class Status:
                     Modification.IGNORED,
                 ]
             )
+        )
+
+    def has_ongoing_operation(self) -> bool:
+        """
+        Return :data:`True` if there is an ongoing operation such as merge or rebase.
+
+        """
+
+        return (
+            self.cherry_pick_head is not None
+            or self.merge_head is not None
+            or self.rebase_head is not None
+            or self.revert_head is not None
+            or self.bisect_start is not None
         )
 
 
