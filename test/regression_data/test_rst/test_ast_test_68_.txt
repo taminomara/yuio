@@ -5,5 +5,5 @@ Use ``code`` for literals
 (Document
   (Paragraph
     'Use '
-    TextRegion(content='code', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['code'], color='role/code')])
     ' for literals'))

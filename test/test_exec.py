@@ -2,9 +2,9 @@ import logging
 import os
 import pathlib
 
-import yuio.exec
-
 import pytest
+
+import yuio.exec
 
 
 def make_script(exitcode=0, as_shell=False):

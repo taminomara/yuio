@@ -37,12 +37,12 @@ except ImportError:
     )
 
 __all__ = [
+    "COLLAPSE",
     "DISABLED",
-    "GROUP",
     "MISSING",
     "POSITIONAL",
+    "Collapse",
     "Disabled",
-    "Group",
     "Missing",
     "Positional",
     "PrettyException",
@@ -55,7 +55,7 @@ class _Placeholders(_enum.Enum):
     DISABLED = "<disabled>"
     MISSING = "<missing>"
     POSITIONAL = "<positional>"
-    GROUP = "<group>"
+    COLLAPSE = "<group>"
 
     def __bool__(self) -> _t.Literal[False]:
         return False  # pragma: no cover
@@ -106,15 +106,16 @@ Used with :func:`yuio.app.field` to enable positional arguments.
 """
 
 
-Group: _t.TypeAlias = _t.Literal[_Placeholders.GROUP]
+Collapse: _t.TypeAlias = _t.Literal[_Placeholders.COLLAPSE]
 """
-Type of the :data:`GROUP` placeholder.
+Type of the :data:`COLLAPSE` placeholder.
 
 """
 
-GROUP: Group = _Placeholders.GROUP
+COLLAPSE: Collapse = _Placeholders.COLLAPSE
 """
-Used with :func:`yuio.app.field` to omit arguments from CLI usage.
+Used with :func:`yuio.app.field` to omit arguments from CLI usage
+and to collapse argument groups.
 
 """
 

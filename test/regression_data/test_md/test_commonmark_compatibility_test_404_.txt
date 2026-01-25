@@ -8,6 +8,5 @@
 (Document
   (Paragraph
     '['
-    TextRegion(content='foo', color='em', no_wrap=True, url='/url')
-    TextRegion(content=' bar', color=None, no_wrap=False, url='/url')
+    LinkRegion(content=[HighlightedRegion(content=['foo'], color='em'), ' bar'], url='/url')
     ']'))

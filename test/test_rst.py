@@ -1,6 +1,6 @@
-import yuio.rst
-
 import pytest
+
+import yuio.rst
 
 TEST_CASES = [
     "Simple paragraph",

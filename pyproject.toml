@@ -159,7 +159,7 @@ include = ["yuio", "examples"]
 exclude = [
     "**/__pycache__",
     "yuio/_version.py",
-    "yuio/ext/sphinx.py",
+    "yuio/ext/sphinx/*.py",
     "yuio/_vendor/*",
 ]
 typeCheckingMode = "strict"
@@ -228,9 +228,9 @@ required-imports = ["from __future__ import annotations"]
 section-order = [
     "future",
     "standard-library",
+    "third-party",
     "first-party",
     "local-folder",
-    "third-party",
     "typing",
 ]
 

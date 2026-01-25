@@ -5,7 +5,7 @@ Implicit ref: `something`, `a\` b`. Broken: `something
 (Document
   (Paragraph
     'Implicit ref: '
-    TextRegion(content='something', color='em', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['something'], color='role/literal')])
     ', '
-    TextRegion(content='a` b', color='em', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['a\\` b'], color='role/literal')])
     '. Broken: `something'))

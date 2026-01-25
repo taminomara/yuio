@@ -4,5 +4,5 @@
 
 (Document
   (Paragraph
-    TextRegion(content='empty explicit role', color='em', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['empty explicit role'], color='role/literal')])
     ':: continues'))

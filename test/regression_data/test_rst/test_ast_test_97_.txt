@@ -5,11 +5,11 @@ Style: *em*, **strong**, ***strong, with stars***, *broken `em`.
 (Document
   (Paragraph
     'Style: '
-    TextRegion(content='em', color='em', no_wrap=False, url=None)
+    HighlightedRegion(content=['em'], color='em')
     ', '
-    TextRegion(content='strong', color='strong', no_wrap=False, url=None)
+    HighlightedRegion(content=['strong'], color='strong')
     ', '
-    TextRegion(content='*strong, with stars*', color='strong', no_wrap=False, url=None)
+    HighlightedRegion(content=['*strong, with stars*'], color='strong')
     ', *broken '
-    TextRegion(content='em', color='em', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['em'], color='role/literal')])
     '.'))

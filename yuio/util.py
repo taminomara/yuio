@@ -112,6 +112,7 @@ def dedent(msg: str, /):
 
 
 _COMMENT_RE = _re.compile(r"^\s*#:(.*)\r?\n?$")
+_DOCS_CACHE: dict[_t.Any, dict[str, str]] = {}
 
 
 def _find_docs(obj: _t.Any, /) -> dict[str, str]:
@@ -128,21 +129,30 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
     # Based on code from Sphinx, two clause BSD license.
     # See https://github.com/sphinx-doc/sphinx/blob/master/LICENSE.rst.
 
+    try:
+        if obj in _DOCS_CACHE:
+            return _DOCS_CACHE[obj]
+    except TypeError:
+        return {}
+
     import ast
     import inspect
     import itertools
 
     if (qualname := getattr(obj, "__qualname__", None)) is None:
         # Not a known object.
+        _DOCS_CACHE[obj] = {}
         return {}
 
     if "<locals>" in qualname:
         # This will not work as expected!
+        _DOCS_CACHE[obj] = {}
         return {}
 
     try:
         sourcelines, _ = inspect.getsourcelines(obj)
     except TypeError:
+        _DOCS_CACHE[obj] = {}
         return {}
 
     docs: dict[str, str] = {}
@@ -179,9 +189,13 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
             for field in itertools.chain(cdef.args.args, cdef.args.kwonlyargs)
         ]
     else:  # pragma: no cover
+        _DOCS_CACHE[obj] = {}
         return {}
 
     for pos, name in fields:
+        if name in docs:
+            continue
+
         comment_lines: list[str] = []
         for before_line in sourcelines[pos - 2 :: -1]:
             if match := _COMMENT_RE.match(before_line):
@@ -192,7 +206,19 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
         if comment_lines:
             docs[name] = dedent("\n".join(reversed(comment_lines))).removesuffix("\n")
 
+    _DOCS_CACHE[obj] = docs
     return docs
+
+
+def _commonprefix(m: _t.Collection[str]) -> str:
+    if not m:
+        return ""
+    s1 = min(m)
+    s2 = max(m)
+    for i, c in enumerate(s1):
+        if c != s2[i]:
+            return s1[:i]
+    return s1
 
 
 if TYPE_CHECKING:

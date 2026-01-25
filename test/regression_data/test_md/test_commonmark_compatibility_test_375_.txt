@@ -5,6 +5,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='link ', color=None, no_wrap=False, url='/uri')
-    TextRegion(content='[', color=None, no_wrap=False, url='/uri')
-    TextRegion(content='bar', color=None, no_wrap=False, url='/uri')))
+    LinkRegion(content=['link ', '[', 'bar'], url='/uri')))

@@ -32,6 +32,7 @@ extensions = [
     "code_annotations",
     "api_ref",
     "yuio_objects",
+    "myst_parser",
 ]
 
 intersphinx_mapping = {
@@ -56,7 +57,7 @@ autodoc_type_aliases = {
     "DISABLED": "~yuio.DISABLED",
     "MISSING": "~yuio.MISSING",
     "POSITIONAL": "~yuio.POSITIONAL",
-    "GROUP": "~yuio.GROUP",
+    "COLLAPSE": "~yuio.COLLAPSE",
     **{
         name: path
         for path in [
@@ -137,7 +138,7 @@ from sphinx.domains.python._annotations import parse_reftarget as _parse_reftarg
 
 def parse_reftarget(*args, **kwargs):
     _, reftarget, title, refspecific = _parse_reftarget(*args, **kwargs)
-    if reftarget in ["yuio.Positional", "yuio.Group", "yuio.Disabled", "yuio.Missing"]:
+    if reftarget in ["yuio.Positional", "yuio.Collapse", "yuio.Disabled", "yuio.Missing"]:
         reftarget = "yuio." + reftarget.removeprefix("yuio.").upper()
     elif reftarget.startswith("_t."):
         reftarget = "typing." + reftarget.removeprefix("_t.")

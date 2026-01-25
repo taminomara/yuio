@@ -85,6 +85,7 @@ from dataclasses import dataclass
 
 import yuio
 import yuio.string
+from yuio.util import _commonprefix
 
 import typing
 import yuio._typing_ext as _tx
@@ -738,17 +739,6 @@ def _corrections(a: str, b: str) -> float:
             )
 
     return d[-1][-1]
-
-
-def _commonprefix(m: list[str]) -> str:
-    if not m:
-        return ""
-    s1 = min(m)
-    s2 = max(m)
-    for i, c in enumerate(s1):
-        if c != s2[i]:
-            return s1[:i]
-    return s1
 
 
 class Completer(abc.ABC):

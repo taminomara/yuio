@@ -5,6 +5,6 @@ Use `this` and `that`
 (Document
   (Paragraph
     'Use '
-    TextRegion(content='this', color='em', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['this'], color='role/literal')])
     ' and '
-    TextRegion(content='that', color='em', no_wrap=True, url=None)))
+    NoWrapRegion(content=[HighlightedRegion(content=['that'], color='role/literal')])))

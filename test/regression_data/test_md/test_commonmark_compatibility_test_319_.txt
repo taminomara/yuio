@@ -6,5 +6,5 @@ foo***bar***baz
 (Document
   (Paragraph
     'foo'
-    TextRegion(content='bar', color='em strong', no_wrap=True, url=None)
+    HighlightedRegion(content=['bar'], color='em strong')
     'baz'))

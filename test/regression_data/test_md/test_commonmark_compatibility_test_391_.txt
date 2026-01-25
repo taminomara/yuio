@@ -12,4 +12,4 @@
     'foo'
     ']'
     '\n'
-    TextRegion(content='bar', color=None, no_wrap=False, url='/url')))
+    LinkRegion(content=['bar'], url='/url')))

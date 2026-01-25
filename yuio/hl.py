@@ -652,7 +652,7 @@ register_highlighter(
 
 
 register_highlighter(
-    ["sh", "bash"],
+    ["sh", "bash", "console"],
     ReSyntaxHighlighter(
         [
             (
@@ -671,6 +671,10 @@ register_highlighter(
             (
                 r"(^|\|\|?|&&|\$\()(?:\s*)([\w./~]([\w.@/-]|\\.)+)",
                 ("kwd", "prog"),
+            ),
+            (
+                r"(^\$)(?:\s*)([\w./~]([\w.@/-]|\\.)+)",
+                ("punct", "prog"),
             ),
             (
                 r"\|\|?|&&",
@@ -718,20 +722,8 @@ register_highlighter(
                 "kwd",
             ),
             (
-                r"\[\[",
-                "kwd",
-            ),
-            (
-                r"\]\]",
-                "kwd",
-            ),
-            (
                 r"%\(prog\)s",
                 "prog",
-            ),
-            (
-                r"\|\||&&",
-                "kwd",
             ),
             (
                 r"'[^']*'",
@@ -760,6 +752,14 @@ register_highlighter(
             (
                 r"[{}()\[\]\\;!&|]",
                 "punct",
+            ),
+            (
+                r"^\$",
+                "punct",
+            ),
+            (
+                r"(?<=[{(\[|])(?!\s)([^})\]|\n\r\t\v\b]*?)(?<!\s)(?=[})\]|])",
+                "metavar",
             ),
         ],
     ),

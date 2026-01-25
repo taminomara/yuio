@@ -1,8 +1,8 @@
+import pytest
+
 import yuio.hl
 import yuio.string
 from yuio.color import Color
-
-import pytest
 
 
 def serialize_colorized_string(code: str, s: yuio.string.ColorizedString):

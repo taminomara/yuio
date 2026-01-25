@@ -6,4 +6,4 @@ baz`
 
 (Document
   (Paragraph
-    TextRegion(content='foo   bar \nbaz', color='code', no_wrap=True, url=None)))
+    NoWrapRegion(content=[HighlightedRegion(content=['foo   bar \nbaz'], color='role/code')])))

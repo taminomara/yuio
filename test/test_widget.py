@@ -1,6 +1,8 @@
 import io
 import string
 
+import pytest
+
 import yuio.color
 import yuio.complete
 import yuio.string
@@ -9,8 +11,6 @@ import yuio.theme
 import yuio.widget
 
 from .conftest import RcCompare, WidgetChecker
-
-import pytest
 
 from typing import TYPE_CHECKING
 

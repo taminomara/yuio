@@ -7,4 +7,4 @@
   (Paragraph
     '['
     'foo'
-    TextRegion(content='](/uri)', color='code', no_wrap=True, url=None)))
+    NoWrapRegion(content=[HighlightedRegion(content=['](/uri)'], color='role/code')])))

@@ -2,13 +2,13 @@ import collections
 import dataclasses
 from dataclasses import dataclass
 
+import pytest
+
 import yuio.string
 import yuio.term
 import yuio.theme
 from yuio.color import Color
 from yuio.string import NO_WRAP_END, NO_WRAP_START, Esc, LinkMarker, ReprContext
-
-import pytest
 
 from typing import TYPE_CHECKING
 

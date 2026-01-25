@@ -5,9 +5,9 @@ Hyperlink: `foo bar`_, `foo bar`__, `foo <bar>`_.
 (Document
   (Paragraph
     'Hyperlink: '
-    'foo bar'
+    LinkRegion(content=['foo bar'], url=None)
     ', '
-    'foo bar'
+    LinkRegion(content=['foo bar'], url=None)
     ', '
-    TextRegion(content='foo', color=None, no_wrap=False, url='bar')
+    LinkRegion(content=['foo'], url='bar')
     '.'))

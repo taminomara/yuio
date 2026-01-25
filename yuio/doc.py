@@ -75,6 +75,9 @@ AST
 .. autoclass:: NoHeadings
     :members:
 
+.. autoclass:: Cut
+    :members:
+
 
 Helpers
 -------
@@ -114,17 +117,22 @@ __all__ = [
     "AstBase",
     "Code",
     "Container",
+    "Cut",
+    "DecorationRegion",
     "DocParser",
     "Document",
     "Footnote",
     "FootnoteContainer",
     "Formatter",
     "Heading",
+    "HighlightedRegion",
+    "LinkRegion",
     "List",
     "ListEnumeratorKind",
     "ListItem",
     "ListMarkerKind",
     "NoHeadings",
+    "NoWrapRegion",
     "Paragraph",
     "Quote",
     "Raw",
@@ -198,6 +206,7 @@ class Formatter:
         self._out: list[yuio.string.ColorizedString]
         self._indent: yuio.string.ColorizedString
         self._continuation_indent: yuio.string.ColorizedString
+        self._colors: list[yuio.color.Color]
 
     @property
     def ctx(self):
@@ -224,10 +233,28 @@ class Formatter:
         self._out = []
         self._indent = yuio.string.ColorizedString()
         self._continuation_indent = yuio.string.ColorizedString()
+        self._colors = []
 
         self._format(node)
 
         return self._out
+
+    @contextlib.contextmanager
+    def _with_color(self, color: yuio.color.Color | str | None):
+        color = self.ctx.to_color(color)
+        if self._colors:
+            color = self._colors[-1] | color
+        self._colors.append(color)
+        try:
+            yield
+        finally:
+            self._colors.pop()
+
+    def _text_color(self) -> yuio.color.Color:
+        if self._colors:
+            return self._colors[-1]
+        else:
+            return yuio.color.Color.NONE
 
     @contextlib.contextmanager
     def _with_indent(
@@ -272,7 +299,7 @@ class Formatter:
         getattr(self, f"_format_{node.__class__.__name__.lstrip('_')}")(node)
 
     def _format_Raw(self, node: Raw, /):
-        for line in node.raw.wrap(
+        for line in node.raw.with_base_color(self._text_color()).wrap(
             self.width,
             indent=self._indent,
             continuation_indent=self._continuation_indent,
@@ -280,35 +307,9 @@ class Formatter:
         ):
             self._line(line)
 
-    def _format_inline(
-        self, items: list[str | TextRegion], /, *, default_color: yuio.color.Color
-    ):
-        s = yuio.string.ColorizedString()
-
-        for item in items:
-            if isinstance(item, str):
-                s.append_color(default_color)
-                s.append_str(item)
-            else:
-                color = default_color
-                if item.color:
-                    color |= self.ctx.get_color(item.color)
-                s.append_color(color)
-                if item.no_wrap:
-                    s.start_no_wrap()
-                if item.url:
-                    s.start_link(item.url)
-                s.append_str(item.content)
-                if item.url:
-                    s.end_link()
-                if item.no_wrap:
-                    s.end_no_wrap()
-                if item.url and not self.ctx.term.supports_colors:
-                    s.append_str(" [")
-                    s.append_str(item.url)
-                    s.append_str("]")
-
-        for line in s.wrap(
+    def _format_Text(self, node: Text, /):
+        text = self._format_inline(node.items, default_color=self._text_color())
+        for line in text.wrap(
             self.width,
             indent=self._indent,
             continuation_indent=self._continuation_indent,
@@ -316,9 +317,6 @@ class Formatter:
             break_long_nowrap_words=True,
         ):
             self._line(line)
-
-    def _format_Text(self, node: Text, /, *, default_color: yuio.color.Color):
-        self._format_inline(node.items, default_color=default_color)
 
     def _format_Container(self, node: Container[TAst], /, *, allow_empty: bool = False):
         self._is_first_line = True
@@ -340,9 +338,8 @@ class Formatter:
 
     def _format_Heading(self, node: Heading, /):
         if not self._allow_headings:
-            self._format_Text(
-                node, default_color=self.ctx.get_color("msg/text:paragraph")
-            )
+            with self._with_color("msg/text:paragraph"):
+                self._format_Text(node)
             return
 
         if not self._is_first_line:
@@ -350,17 +347,18 @@ class Formatter:
 
         level = node.level
         decoration = self.ctx.get_msg_decoration(f"heading/{level}")
-        with self._with_indent(f"msg/decoration:heading/{level}", decoration):
-            self._format_Text(
-                node,
-                default_color=self.ctx.get_color(f"msg/text:heading/{level}"),
-            )
+        with (
+            self._with_indent(f"msg/decoration:heading/{level}", decoration),
+            self._with_color(f"msg/text:heading/{level}"),
+        ):
+            self._format_Text(node)
 
         self._line(self._indent)
         self._is_first_line = True
 
     def _format_Paragraph(self, node: Paragraph, /):
-        self._format_Text(node, default_color=self.ctx.get_color("msg/text:paragraph"))
+        with self._with_color("msg/text:paragraph"):
+            self._format_Text(node)
 
     def _format_ListItem(
         self,
@@ -376,13 +374,19 @@ class Formatter:
             decoration = f"{marker:<{max_marker_width}}"
         if not node.items:
             node.items = [Paragraph(items=[])]
-        with self._with_indent("msg/decoration:list", decoration):
+        with (
+            self._with_indent("msg/decoration:list", decoration),
+            self._with_color("msg/text:list"),
+        ):
             self._format_Container(node)
 
     def _format_Quote(self, node: Quote, /):
         decoration = self.ctx.get_msg_decoration("quote")
-        with self._with_indent(
-            "msg/decoration:quote", decoration, continue_with_spaces=False
+        with (
+            self._with_indent(
+                "msg/decoration:quote", decoration, continue_with_spaces=False
+            ),
+            self._with_color("msg/text:quote"),
         ):
             self._format_Container(node)
 
@@ -390,30 +394,46 @@ class Formatter:
         if node.title:
             decoration = self.ctx.get_msg_decoration("admonition/title")
             with self._with_indent(
-                f"admonition/decoration/title:{node.type}",
+                f"msg/decoration:admonition/title/{node.type}",
                 decoration,
                 continue_with_spaces=False,
             ):
-                self._format_inline(
+                title = self._format_inline(
                     node.title,
-                    default_color=self.ctx.get_color(f"admonition/title:{node.type}"),
+                    default_color=self.ctx.get_color(
+                        f"msg/text:admonition/title/{node.type}"
+                    ),
                 )
+                for line in title.wrap(
+                    self.width,
+                    indent=self._indent,
+                    continuation_indent=self._continuation_indent,
+                    preserve_newlines=False,
+                    break_long_nowrap_words=True,
+                ):
+                    self._line(line)
         if node.items:
             decoration = self.ctx.get_msg_decoration("admonition/body")
-            with self._with_indent(
-                f"admonition/decoration/body:{node.type}",
-                decoration,
-                continue_with_spaces=False,
+            with (
+                self._with_indent(
+                    f"msg/decoration:admonition/body/{node.type}",
+                    decoration,
+                    continue_with_spaces=False,
+                ),
+                self._with_color(f"msg/text:admonition/body/{node.type}"),
             ):
                 self._format_Container(node)
 
     def _format_Footnote(self, node: Footnote, /):
         if yuio.string.line_width(node.marker) > 2:
             indent = "    "
-            self._line(self._indent + self.ctx.get_color("footnote") + node.marker)
+            self._line(self._indent + self.ctx.get_color("role/footnote") + node.marker)
         else:
             indent = f"{node.marker!s:4}"
-        with self._with_indent("footnote", indent):
+        with (
+            self._with_indent("msg/decoration:footnote", indent),
+            self._with_color("msg/text:footnote"),
+        ):
             self._format_Container(node)
 
     def _format_FootnoteContainer(self, node: FootnoteContainer, /):
@@ -437,6 +457,7 @@ class Formatter:
             "\n".join(node.lines),
             theme=self.ctx.theme,
             syntax=syntax_name,
+            default_color=self._text_color(),
         )
 
         decoration = self.ctx.get_msg_decoration("code")
@@ -500,12 +521,74 @@ class Formatter:
         finally:
             self._allow_headings = prev_allow_headings
 
+    def _format_inline(
+        self,
+        items: _t.Sequence[str | TextRegion],
+        /,
+        *,
+        default_color: yuio.color.Color,
+    ):
+        s = yuio.string.ColorizedString()
+
+        for item in items:
+            if isinstance(item, str):
+                s.append_color(default_color)
+                s.append_str(item)
+            else:
+                s += getattr(
+                    self, f"_format_inline_{item.__class__.__name__.lstrip('_')}"
+                )(item, default_color=default_color)
+
+        return s
+
+    def _format_inline_TextRegion(
+        self, node: TextRegion, /, *, default_color: yuio.color.Color
+    ):
+        return self._format_inline(node.content, default_color=default_color)
+
+    def _format_inline_HighlightedRegion(
+        self, node: HighlightedRegion, /, *, default_color: yuio.color.Color
+    ):
+        if node.color:
+            default_color |= self.ctx.get_color(node.color)
+        return self._format_inline(node.content, default_color=default_color)
+
+    def _format_inline_NoWrapRegion(
+        self, node: NoWrapRegion, /, *, default_color: yuio.color.Color
+    ):
+        s = yuio.string.ColorizedString()
+        s.start_no_wrap()
+        s += self._format_inline(node.content, default_color=default_color)
+        s.end_no_wrap()
+        return s
+
+    def _format_inline_LinkRegion(
+        self, node: LinkRegion, /, *, default_color: yuio.color.Color
+    ):
+        s = yuio.string.ColorizedString()
+        if node.url:
+            s.start_link(node.url)
+        s += self._format_inline(node.content, default_color=default_color)
+        if node.url:
+            if not self.ctx.term.supports_colors:
+                s.append_color(default_color)
+                s.append_str(f" [{node.url}]")
+            s.end_link()
+        return s
+
+    def _format_inline_DecorationRegion(
+        self, node: DecorationRegion, /, *, default_color: yuio.color.Color
+    ):
+        return yuio.string.ColorizedString(
+            default_color, self.ctx.get_msg_decoration(node.decoration_path)
+        )
+
 
 TAst = _t.TypeVar("TAst", bound="AstBase")
 
 
 @dataclass(kw_only=True, slots=True)
-class AstBase(abc.ABC):
+class AstBase:
     """
     Base class for all AST nodes that represent parsed Markdown and RST documents.
 
@@ -567,36 +650,98 @@ class Text(AstBase):
 @dataclass(kw_only=True, slots=True)
 class TextRegion:
     """
+    Text region with special formatting.
+
+    """
+
+    content: list[str | TextRegion]
+    """
+    Region contents.
+
+    """
+
+    def __init__(self, *args: str | TextRegion):
+        self.content = list(args)
+
+    def __str__(self):
+        return "".join(map(str, self.content))
+
+
+@dataclass(kw_only=True, slots=True)
+class HighlightedRegion(TextRegion):
+    """
     Highlighted text region.
 
     """
 
-    content: str
+    color: str
     """
-    Highlighted text.
+    Color path to be applied to the region's contents.
 
     """
 
-    color: str | None = None
+    def __init__(self, *args: str | TextRegion, color: str):
+        self.content = list(args)
+        self.color = color
+
+    def __str__(self):
+        return f"<c {self.color}>{super().__str__()}</c>"
+
+
+@dataclass(kw_only=True, slots=True)
+class DecorationRegion(TextRegion):
     """
-    Color path to be applied to the string.
+    Inserts a single decoration from current theme.
 
     """
 
-    no_wrap: bool = False
+    decoration_path: str
     """
-    Whether to wrap contents.
+    Decoration path.
 
     """
 
-    url: str | None = None
+    def __init__(self, decoration_path: str):
+        super().__init__()
+        self.decoration_path = decoration_path
+
+    def __str__(self):
+        return f"<decoration {self.decoration_path!r}/>"
+
+
+@dataclass(kw_only=True, slots=True)
+class NoWrapRegion(TextRegion):
+    """
+    Text region with disabled line wrapping.
+
+    """
+
+    def __init__(self, *args: str | TextRegion):
+        self.content = list(args)
+
+    def __str__(self):
+        return f"<no-wrap>{super().__str__()}</no-wrap>"
+
+
+@dataclass(kw_only=True, slots=True)
+class LinkRegion(TextRegion):
+    """
+    Text region with a link.
+
+    """
+
+    url: str
     """
     Makes this region into a hyperlink.
 
     """
 
+    def __init__(self, *args: str | TextRegion, url: str):
+        self.content = list(args)
+        self.url = url
+
     def __str__(self):
-        return self.content
+        return f"<a href={self.url!r}>{super().__str__()}</a>"
 
 
 @dataclass(kw_only=True, slots=True)
@@ -841,6 +986,14 @@ class NoHeadings(Container[AstBase]):
     """
 
 
+@dataclass(kw_only=True, slots=True)
+class Cut(AstBase):
+    """
+    Stops rendering of the container.
+
+    """
+
+
 _ROMAN_VALUES = {
     "m": 1000,
     "cm": 900,
@@ -930,15 +1083,46 @@ def from_letters(s: str, /):
     return result
 
 
-def _make_directive(
+_DirectiveHandler: _t.TypeAlias = _t.Callable[
+    [str, str, _t.Callable[[], list[str]], _t.Callable[[], list[AstBase]]],
+    _t.Sequence[AstBase],
+]
+
+_KNOWN_DIRECTIVES: dict[str, _DirectiveHandler] = {}
+
+
+def _process_directive(
     name: str,
     arg: str,
     get_lines: _t.Callable[[], list[str]],
     get_parsed: _t.Callable[[], list[AstBase]],
-):
-    if name in ["code-block", "sourcecode", "code"]:
-        syntax = arg
-    elif name in [
+) -> _t.Sequence[AstBase]:
+    if name in _KNOWN_DIRECTIVES:
+        return _KNOWN_DIRECTIVES[name](name, arg, get_lines, get_parsed)
+    else:
+        return [
+            Admonition(
+                items=get_parsed(), title=[f".. {name}:: {arg}"], type="unknown-dir"
+            )
+        ]
+
+
+def _directive(names: list[str]) -> _t.Callable[[_DirectiveHandler], _DirectiveHandler]:
+    def _registrar(fn):
+        for name in names:
+            _KNOWN_DIRECTIVES[name] = fn
+        return fn
+
+    return _registrar
+
+
+@_directive(["code-block", "sourcecode", "code"])
+def _process_code_directive(name, arg, get_lines, get_parsed):
+    return [Code(lines=get_lines(), syntax=arg)]
+
+
+@_directive(
+    [
         "attention",
         "caution",
         "danger",
@@ -949,24 +1133,27 @@ def _make_directive(
         "seealso",
         "tip",
         "warning",
-    ]:
-        return Admonition(
-            title=[name.title()],
-            items=get_parsed(),
-            type=name,
-        )
-    elif name == "admonition":
-        return Admonition(
-            title=[arg],
-            items=get_parsed(),
-            type=name,
-        )
-    elif name in [
+    ]
+)
+def _process_admonition_directive(name, arg, get_lines, get_parsed):
+    return [Admonition(title=[name.title()], items=get_parsed(), type=name)]
+
+
+@_directive(["admonition"])
+def _process_custom_admonition_directive(name, arg, get_lines, get_parsed):
+    return [Admonition(title=[arg], items=get_parsed(), type=name)]
+
+
+@_directive(
+    [
         "versionadded",
         "versionchanged",
         "deprecated",
-    ]:
-        return Admonition(
+    ]
+)
+def _process_version_directive(name, arg, get_lines, get_parsed):
+    return [
+        Admonition(
             title=[
                 name.removeprefix("version").title(),
                 " in version ",
@@ -975,40 +1162,388 @@ def _make_directive(
             items=get_parsed(),
             type=name,
         )
-    else:
-        syntax = "text"
-    return Code(lines=get_lines(), syntax=syntax)
+    ]
+
+
+@_directive(["if-not-sphinx", "if-opt-doc"])
+def _process_id_directive(name, arg, get_lines, get_parsed):
+    return get_parsed()
+
+
+@_directive(["if-sphinx", "if-not-opt-doc"])
+def _process_nop_directive(name, arg, get_lines, get_parsed):
+    return []
+
+
+@_directive(["cut-if-not-sphinx"])
+def _process_cut_directive(name, arg, get_lines, get_parsed):
+    return [Cut()]
 
 
 _CROSSREF_RE = re.compile(
     r"""
         ^
         (?P<title>(?:[^\\]|\\.)*?)
-        (?:\s*<(?P<target>.*)>)?
+        (?:(?<!^)\s*<(?P<target>.*)>)?
         $
     """,
     re.VERBOSE,
 )
 
 
-def _split_crossref(text: str):
+_RoleHandler: _t.TypeAlias = _t.Callable[[str, str], TextRegion]
+
+_KNOWN_ROLES: dict[str, _RoleHandler] = {}
+
+
+def _role(names: list[str]) -> _t.Callable[[_RoleHandler], _RoleHandler]:
+    def _registrar(fn):
+        for name in names:
+            _KNOWN_ROLES[name] = fn
+        return fn
+
+    return _registrar
+
+
+def _process_role(text: str, role: str) -> TextRegion:
+    if not role:
+        role = "default"
+
+    if role in _KNOWN_ROLES:
+        return _KNOWN_ROLES[role](role, text)
+    else:
+        # Assume generic reference role by default.
+        role = role.replace(":", "/")
+        return NoWrapRegion(
+            HighlightedRegion(_process_ref(text), color=f"role/unknown/{role}")
+        )
+
+
+def _process_ref(text: str, parse_path=None, join_path=None):
+    if parse_path is None:
+        parse_path = lambda s: s.split(".")
+    if join_path is None:
+        join_path = lambda p: ".".join(p)
+
+    if text.startswith("!"):
+        text = text[1:]
+
     match = _CROSSREF_RE.match(text)
     if not match:
-        return text, text
+        return text
+
     title = match.group("title")
     target = match.group("target")
+
     if not target:
+        # Implicit title.
         target = title
         if title.startswith("~"):
             target = target[1:]
-            title = title[1:].rsplit(".", maxsplit=1)[-1]
+            title = parse_path(title[1:])[-1]
+        else:
+            title = join_path(parse_path(title))
     else:
         title = title.rstrip()
-    return target, title
+
+    return title
 
 
-def _split_link(text: str):
+@_role(
+    [
+        "flag",
+        "code",
+        "literal",
+        "math",
+        "abbr",
+        "command",
+        "dfn",
+        "mailheader",
+        "makevar",
+        "mimetype",
+        "newsgroup",
+        "program",
+        "regexp",
+        "cve",
+        "cwe",
+        "pep",
+        "rfc",
+        "manpage",
+    ]
+)
+def _process_simple_role(name: str, text: str):
+    return NoWrapRegion(HighlightedRegion(text, color=f"role/{name}"))
+
+
+@_role(
+    [
+        "any",
+        "doc",
+        "download",
+        "envvar",
+        "keyword",
+        "numref",
+        "option",
+        "cmdoption",
+        "ref",
+        "term",
+        "token",
+        "eq",
+        "kbd",
+    ]
+)
+def _process_ref_role(name: str, text: str):
+    return NoWrapRegion(HighlightedRegion(_process_ref(text), color=f"role/{name}"))
+
+
+@_role(
+    [
+        "cli:cfg",
+        "cli:field",
+        "cli:obj",
+        "cli:env",
+        "cli:any",
+    ]
+)
+def _process_cli_cfg_role(name: str, text: str):
+    name = name.replace(":", "/")
+    return NoWrapRegion(
+        HighlightedRegion(
+            _process_ref(text, _parse_cfg_path, ".".join), color=f"role/{name}"
+        )
+    )
+
+
+@_role(
+    [
+        "cli:cmd",
+        "cli:flag",
+        "cli:arg",
+        "cli:opt",
+        "cli:cli",
+    ]
+)
+def _process_cli_cmd_role(name: str, text: str):
+    name = name.replace(":", "/")
+    return NoWrapRegion(
+        HighlightedRegion(
+            _process_ref(text, _parse_cmd_path, " ".join), color=f"role/{name}"
+        )
+    )
+
+
+@_role(["guilabel"])
+def _process_gui_label_role(name: str, text: str):
+    spans = re.split(r"(?<!&)&(?![&\s])", text)
+
+    res = NoWrapRegion()
+    res.content.append(HighlightedRegion(spans.pop(0), color=f"role/{name}"))
+
+    for span in spans:
+        span = span.replace("&&", "&")
+        res.content.append(HighlightedRegion(span[0], color=f"role/{name}/accelerator"))
+        res.content.append(HighlightedRegion(span[1:], color=f"role/{name}"))
+
+    return res
+
+
+@_role(["menuselection"])
+def _process_menuselection_role(name: str, text: str):
+    res = NoWrapRegion()
+
+    for region in _process_gui_label_role(name, text).content:
+        if not isinstance(region, HighlightedRegion):
+            res.content.append(region)
+            continue
+        if len(region.content) != 1:
+            res.content.append(region)
+            continue
+        if not isinstance(region.content[0], str):
+            res.content.append(region)
+            continue
+        if "-->" not in region.content[0]:
+            res.content.append(region)
+            continue
+
+        for part in re.split(r"\s*(-->)\s*", region.content[0]):
+            if part == "-->":
+                res.content.append(
+                    HighlightedRegion(
+                        DecorationRegion("menuselection_separator"),
+                        color=f"role/{name}/separator",
+                    )
+                )
+            elif part:
+                res.content.append(HighlightedRegion(part, color=region.color))
+    return res
+
+
+@_role(["file", "samp"])
+def _process_samp_role(name: str, text: str):
+    res = NoWrapRegion()
+
+    stack = [""]
+    for part in re.split(r"(\\\\|\\{|\\}|{|})", text):
+        if part == "\\\\":  # escaped backslash
+            stack[-1] += "\\"
+        elif part == "{":
+            if len(stack) >= 2 and stack[-2] == "{":  # nested
+                stack[-1] += "{"
+            else:
+                # start emphasis
+                stack.extend(("{", ""))
+        elif part == "}":
+            if len(stack) == 3 and stack[1] == "{" and len(stack[2]) > 0:
+                # emphasized word found
+                if stack[0]:
+                    res.content.append(
+                        HighlightedRegion(stack[0], color=f"role/{name}")
+                    )
+                res.content.append(
+                    HighlightedRegion(f"{{{stack[2]}}}", color=f"role/{name}/variable")
+                )
+                stack = [""]
+            else:
+                # emphasized word not found; the rparen is not a special symbol
+                stack.append("}")
+                stack = ["".join(stack)]
+        elif part == "\\{":  # escaped left-brace
+            stack[-1] += "{"
+        elif part == "\\}":  # escaped right-brace
+            stack[-1] += "}"
+        else:  # others (containing escaped braces)
+            stack[-1] += part
+
+    if "".join(stack):
+        # remaining is treated as Text
+        res.content.append(HighlightedRegion("".join(stack), color=f"role/{name}"))
+
+    return res
+
+
+def _process_link(text: str):
     match = _CROSSREF_RE.match(text)
     if not match:
         return None, text
     return match.group("target"), match.group("title")
+
+
+def _read_parenthesized_until(s: str, end_cond: _t.Callable[[str], bool]):
+    paren_stack = []
+    i = 0
+    res_start = 0
+    res: list[str] = []
+
+    def push_res():
+        nonlocal res_start
+        res.append(s[res_start:i])
+        res_start = i
+
+    while i < len(s):
+        c = s[i]
+        match s[i]:
+            case c if not paren_stack and end_cond(c):
+                push_res()
+                return "".join(res), s[i:]
+            case c if paren_stack and c == paren_stack[-1]:
+                paren_stack.pop()
+                i += 1
+            case "\\":
+                push_res()
+                i += 2
+                res_start += 1
+                push_res()
+            case "(":
+                paren_stack.append(")")
+                i += 1
+            case "[":
+                paren_stack.append("]")
+                i += 1
+            case "{":
+                paren_stack.append("}")
+                i += 1
+            case "<":
+                paren_stack.append(">")
+                i += 1
+            case "'" | '"':
+                end_char = s[i]
+                i += 1
+                while i < len(s):
+                    match s[i]:
+                        case "\\":
+                            i += 1
+                        case c if c == end_char:
+                            i += 1
+                            break
+                        case _:
+                            i += 1
+            case _:
+                i += 1
+
+    push_res()
+    return "".join(res), ""
+
+
+def _parse_cfg_path(path: str) -> tuple[str, ...]:
+    path = re.sub(r"\s+", " ", path.strip())
+    return tuple(path.split("."))
+
+
+def _parse_cmd_path(path: str) -> tuple[str, ...]:
+    path = re.sub(r"\s+", " ", path.strip())
+    res: list[str] = []
+    while path:
+        part, path = _read_parenthesized_until(path, lambda c: c.isspace())
+        path = path.lstrip()
+        res.append(part)
+    return tuple(res)
+
+
+def _cmd2cfg(cmd: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(map(_cmd2cfg_part, cmd))
+
+
+def _cmd2cfg_part(cmd: str) -> str:
+    cmd = cmd.lstrip("-")
+    cmd = re.sub(r"[\s-]+", r"_", cmd)
+    cmd = re.sub(r"[^\w]", "", cmd)
+    return cmd  # noqa: RET504
+
+
+def _clean_tree(node: AstBase):
+    if isinstance(node, List):
+        if not node.items:
+            # Empty list is left as-is.
+            return node
+
+        new_nodes = []
+        for subnode in node.items:
+            # List was cut at this point.
+            if len(subnode.items) == 1 and isinstance(subnode.items[0], Cut):
+                break
+            if (new_subnode := _clean_tree(subnode)) is not None:
+                new_nodes.append(new_subnode)
+
+        if new_nodes:
+            node.items = new_nodes
+        else:
+            # List became empty because of our cutting, don't render it.
+            return None
+    elif isinstance(node, Container):
+        if not node.items:
+            # Empty container is left as-is.
+            return node
+
+        new_nodes = []
+        for subnode in node.items:
+            if isinstance(subnode, Cut):
+                break
+            if (new_subnode := _clean_tree(subnode)) is not None:
+                new_nodes.append(new_subnode)
+
+        if new_nodes:
+            node.items = new_nodes
+        else:
+            # Container became empty because of our cutting, don't render it.
+            return None
+    return node

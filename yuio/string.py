@@ -2247,6 +2247,18 @@ class ReprContext:
         self._hl, _ = yuio.hl.get_highlighter("repr")
         self._base_color = theme.get_color("msg/text:code/repr")
 
+    @staticmethod
+    def make_dummy(is_unicode: bool = True) -> ReprContext:
+        """
+        Make a dummy repr context with default settings.
+
+        """
+
+        return ReprContext(
+            term=yuio.term.Term.make_dummy(is_unicode=is_unicode),
+            theme=yuio.theme.Theme(),
+        )
+
     def get_color(self, paths: str, /) -> yuio.color.Color:
         """
         Lookup a color by path.

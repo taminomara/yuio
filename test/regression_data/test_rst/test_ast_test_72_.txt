@@ -4,4 +4,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='x = 1', color='code', no_wrap=True, url=None)))
+    NoWrapRegion(content=[HighlightedRegion(content=['x = 1'], color='role/code')])))

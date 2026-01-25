@@ -1,10 +1,10 @@
+import pytest
+
 import yuio
 import yuio.cli
 import yuio.config
 import yuio.parse
 import yuio.rst
-
-import pytest
 
 from typing import TYPE_CHECKING
 

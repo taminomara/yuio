@@ -8,13 +8,13 @@ from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
 
+import jsonschema
+import pytest
+
 import yuio.json_schema
 import yuio.parse
 import yuio.secret
 import yuio.widget
-
-import jsonschema
-import pytest
 
 from typing import TYPE_CHECKING
 
@@ -729,14 +729,6 @@ class TestEnum:
         assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
             "#/$defs/test.test_parse.TestEnum.Cuteness",
             "test.test_parse.TestEnum.Cuteness",
-        )
-
-    def test_json_schema_inline(self):
-        parser = yuio.parse.Enum(self.Cuteness, doc_inline=True)
-        assert parser.to_json_schema(
-            yuio.json_schema.JsonSchemaContext()
-        ) == yuio.json_schema.Enum(
-            ["Cats", "Dogs", ":3"], ["Cats!", "Dogs!", "Sharkie!"]
         )
 
     def test_by_value(self):

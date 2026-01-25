@@ -3,11 +3,11 @@ import pathlib
 import textwrap
 import warnings
 
+import pytest
+
 import yuio.color
 import yuio.term
 import yuio.theme
-
-import pytest
 
 
 class TestColors:

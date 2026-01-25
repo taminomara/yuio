@@ -4,5 +4,5 @@
 
 (Document
   (Paragraph
-    TextRegion(content='emphasis', color='em', no_wrap=False, url=None)
+    HighlightedRegion(content=['emphasis'], color='em')
     ' at start'))

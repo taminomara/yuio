@@ -10,7 +10,7 @@ Foo *bar*
 (Document
   (Heading 1
     'Foo '
-    TextRegion(content='bar', color='em', no_wrap=True, url=None))
+    HighlightedRegion(content=['bar'], color='em'))
   (Heading 2
     'Foo '
-    TextRegion(content='bar', color='em', no_wrap=True, url=None)))
+    HighlightedRegion(content=['bar'], color='em')))

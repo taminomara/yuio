@@ -5,5 +5,5 @@ This is *emphasized* text
 (Document
   (Paragraph
     'This is '
-    TextRegion(content='emphasized', color='em', no_wrap=False, url=None)
+    HighlightedRegion(content=['emphasized'], color='em')
     ' text'))

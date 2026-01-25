@@ -5,5 +5,5 @@
 
 (Document
   (Paragraph
-    TextRegion(content='foo', color='em strong', no_wrap=True, url=None)
-    TextRegion(content=' bar', color='em', no_wrap=True, url=None)))
+    HighlightedRegion(content=['foo'], color='em strong')
+    HighlightedRegion(content=[' bar'], color='em')))

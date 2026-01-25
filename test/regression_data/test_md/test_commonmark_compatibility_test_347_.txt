@@ -5,8 +5,8 @@
 
 (Document
   (Paragraph
-    TextRegion(content='foo ', color='em', no_wrap=True, url=None)
-    TextRegion(content='bar ', color='em strong', no_wrap=True, url=None)
-    TextRegion(content='*', color='em strong', no_wrap=True, url=None)
-    TextRegion(content='baz bim', color='em strong', no_wrap=True, url=None)
-    TextRegion(content=' bam', color='em', no_wrap=True, url=None)))
+    HighlightedRegion(content=['foo '], color='em')
+    HighlightedRegion(content=['bar '], color='em strong')
+    HighlightedRegion(content=['*'], color='em strong')
+    HighlightedRegion(content=['baz bim'], color='em strong')
+    HighlightedRegion(content=[' bam'], color='em')))

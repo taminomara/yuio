@@ -9,8 +9,8 @@
 
 (Document
   (Paragraph
-    TextRegion(content='link', color=None, no_wrap=False, url='#fragment'))
+    LinkRegion(content=['link'], url='#fragment'))
   (Paragraph
-    TextRegion(content='link', color=None, no_wrap=False, url='https://example.com#fragment'))
+    LinkRegion(content=['link'], url='https://example.com#fragment'))
   (Paragraph
-    TextRegion(content='link', color=None, no_wrap=False, url='https://example.com?foo=3#frag')))
+    LinkRegion(content=['link'], url='https://example.com?foo=3#frag')))

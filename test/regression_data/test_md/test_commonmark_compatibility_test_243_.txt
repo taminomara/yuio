@@ -5,6 +5,6 @@
 
 (Document
   (Paragraph
-    TextRegion(content='hi', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['hi'], color='role/code')])
     'lo'
     '`'))

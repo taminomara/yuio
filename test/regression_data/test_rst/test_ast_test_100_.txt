@@ -5,9 +5,9 @@ Lua ref: :lua:obj:`a.b.c`, :lua:obj:`~a.b.c`, :lua:obj:`title <a.b.c>`.
 (Document
   (Paragraph
     'Lua ref: '
-    TextRegion(content='a.b.c', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['a.b.c'], color='role/unknown/lua/obj')])
     ', '
-    TextRegion(content='c', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['c'], color='role/unknown/lua/obj')])
     ', '
-    TextRegion(content='title', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['title'], color='role/unknown/lua/obj')])
     '.'))

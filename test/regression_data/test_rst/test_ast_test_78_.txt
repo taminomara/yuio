@@ -4,4 +4,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='Link text', color=None, no_wrap=False, url='https://example.com')))
+    LinkRegion(content=['Link text'], url='https://example.com')))

@@ -7,7 +7,7 @@
 
 (Document
   (Heading 1
-    TextRegion(content='Foo', color=None, no_wrap=False, url='/url'))
+    LinkRegion(content=['Foo'], url='/url'))
   (Quote
     (Paragraph
       'bar')))

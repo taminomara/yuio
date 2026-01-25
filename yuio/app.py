@@ -87,8 +87,8 @@ arguments. You can use the :func:`field` function to override them:
 .. autofunction:: positional
 
 
-Creating argument groups
-------------------------
+Using configs in CLI
+--------------------
 
 You can use :class:`~yuio.config.Config` as a type of an app function's parameter.
 This will make all of config fields into flags as well. By default, Yuio will use
@@ -98,22 +98,22 @@ with :func:`field` or :func:`inline`:
 .. code-block:: python
 
     class KillCmdConfig(yuio.config.Config):
-        # Will be loaded from `--signal`.
         signal: int
-
-        # Will be loaded from `-p` or `--pid`.
         pid: int = field(flags=["-p", "--pid"])
 
 
     @app
     def main(
-        # `kill_cmd.signal` will be loaded from `--kill-cmd-signal`.
-        kill_cmd: KillCmdConfig,
-        # `copy_cmd_2.signal` will be loaded from `--kill-signal`.
-        kill_cmd_2: KillCmdConfig = field(flags="--kill"),
-        # `kill_cmd_3.signal` will be loaded from `--signal`.
-        kill_cmd_3: KillCmdConfig = field(flags=""),
+        kill_cmd: KillCmdConfig,  # [1]_
+        kill_cmd_2: KillCmdConfig = field(flags="--kill"),  # [2]_
+        kill_cmd_3: KillCmdConfig = field(flags=""),  # [3]_
     ): ...
+
+.. code-annotations::
+
+    1.  ``kill_cmd.signal`` will be loaded from :flag:`--kill-cmd-signal`.
+    2.  ``copy_cmd_2.signal`` will be loaded from :flag:`--kill-signal`.
+    3.  ``kill_cmd_3.signal`` will be loaded from :flag:`--signal`.
 
 .. note::
 
@@ -334,7 +334,7 @@ Here's how Yuio handles this dilemma:
     This is done to enable grouping short flags: :flag:`ls -laH` should be parsed
     as :flag:`ls -l -a -H`, not as :flag:`ls -l=aH`.
 
-4.  On lower levels of API, Yuio allows precise control over these behavior
+4.  On lower levels of API, Yuio allows precise control over this behavior
     by setting :attr:`Option.nargs <yuio.cli.Option.nargs>`,
     :attr:`Option.allow_no_args <yuio.cli.Option.allow_no_args>`,
     :attr:`Option.allow_inline_arg <yuio.cli.Option.allow_inline_arg>`,
@@ -441,6 +441,7 @@ from yuio.config import (
     OptionCtor,
     OptionSettings,
     bool_option,
+    collect_option,
     count_option,
     field,
     inline,
@@ -474,6 +475,7 @@ __all__ = [
     "OptionSettings",
     "app",
     "bool_option",
+    "collect_option",
     "count_option",
     "field",
     "inline",
@@ -679,13 +681,6 @@ class App(_t.Generic[C]):
 
     """
 
-    @dataclass(frozen=True, eq=False, match_args=False, slots=True)
-    class _SubApp:
-        app: App[_t.Any]
-        name: str
-        aliases: list[str] | None = None
-        is_primary: bool = False
-
     def __init__(
         self,
         command: C,
@@ -741,15 +736,14 @@ class App(_t.Generic[C]):
 
         By default, usage is generated from CLI flags.
 
-        See `usage <https://docs.python.org/3/library/argparse.html#usage>`_
-        in :mod:`argparse`.
-
         """
 
-        if not description and command.__doc__:
+        if description is None and command.__doc__:
             description = yuio.util.dedent(command.__doc__).removesuffix("\n")
+        if description is None:
+            description = ""
 
-        self.description: str | None = description
+        self.description: str = description
         """
         Text that is shown before CLI flags help, usually contains
         short description of the program or subcommand.
@@ -789,8 +783,10 @@ class App(_t.Generic[C]):
             help = description
             if (index := help.find("\n\n")) != -1:
                 help = help[:index]
+        elif help is None:
+            help = ""
 
-        self.help: str | yuio.Disabled | None = help
+        self.help: str | yuio.Disabled = help
         """
         Short help message that is shown when listing subcommands.
 
@@ -884,10 +880,13 @@ class App(_t.Generic[C]):
 
         """
 
-        self.__sub_apps: dict[str, App._SubApp] = {}
+        self._ordered_subcommands: list[App[_t.Any]] = []
+        self._subcommands: dict[str, App[_t.Any]] = {}
+        self._parent: App[_t.Any] | None = None
+        self._aliases: list[str] | None = None
 
         if callable(command):
-            self.__config_type = _command_from_callable(command)
+            self._config_type = _command_from_callable(command)
         else:
             raise TypeError(f"expected a function, got {command}")
 
@@ -903,7 +902,7 @@ class App(_t.Generic[C]):
         @functools.wraps(command)
         def wrapped_command(*args, **kwargs):
             if args:
-                names = self.__config_type.__annotations__
+                names = self._config_type.__annotations__
                 if len(args) > len(names):
                     s = "" if len(names) == 1 else "s"
                     raise TypeError(
@@ -913,7 +912,7 @@ class App(_t.Generic[C]):
                     if name in kwargs:
                         raise TypeError(f"argument {name} was given twice")
                     kwargs[name] = arg
-            return CommandInfo("__raw__", self.__config_type(**kwargs), False)()
+            return CommandInfo("__raw__", self._config_type(**kwargs), False)()
 
         self.wrapped: C = wrapped_command  # type: ignore
         """
@@ -998,13 +997,13 @@ class App(_t.Generic[C]):
                 epilog=epilog,
                 subcommand_required=subcommand_required,
             )
+            app._parent = self
+            app._aliases = aliases
 
-            self.__sub_apps[main_name] = App._SubApp(
-                app, main_name, aliases, is_primary=True
-            )
+            self._ordered_subcommands.append(app)
+            self._subcommands[main_name] = app
             if aliases:
-                alias_app = App._SubApp(app, main_name)
-                self.__sub_apps.update({alias: alias_app for alias in aliases})
+                self._subcommands.update({alias: app for alias in aliases})
 
             return app
 
@@ -1032,7 +1031,7 @@ class App(_t.Generic[C]):
         if "--yuio-custom-completer--" in args:
             index = args.index("--yuio-custom-completer--")
             _run_custom_completer(
-                self.__make_cli_command(root=True), args[index + 1], args[index + 2]
+                self._make_cli_command(root=True), args[index + 1], args[index + 2]
             )
             sys.exit(0)
 
@@ -1052,17 +1051,9 @@ class App(_t.Generic[C]):
             if self.is_dev_mode:
                 yuio.enable_internal_logging(add_handler=True)
 
-            help_parser = self.doc_format
-            if help_parser == "md":
-                from yuio.md import MdParser
+            help_parser = self._make_help_parser()
 
-                help_parser = MdParser()
-            elif help_parser == "rst":
-                from yuio.rst import RstParser
-
-                help_parser = RstParser()
-
-            cli_command = self.__make_cli_command(root=True)
+            cli_command = self._make_cli_command(root=True)
             namespace = yuio.cli.CliParser(
                 cli_command, help_parser=help_parser, allow_abbrev=self.allow_abbrev
             ).parse(args)
@@ -1072,7 +1063,7 @@ class App(_t.Generic[C]):
                     0: logging.WARNING,
                     1: logging.INFO,
                     2: logging.DEBUG,
-                }.get(namespace["_verbosity"], logging.DEBUG)
+                }.get(namespace["_verbose"], logging.DEBUG)
                 logging.basicConfig(handlers=[yuio.io.Handler()], level=logging_level)
 
             command = CommandInfo("__main__", _config=namespace.config)
@@ -1093,8 +1084,20 @@ class App(_t.Generic[C]):
         finally:
             yuio.io.restore_streams()
 
-    def __make_cli_command(self, root: bool = False):
-        options = self.__config_type._build_options()
+    def _make_help_parser(self):
+        if self.doc_format == "md":
+            from yuio.md import MdParser
+
+            return MdParser()
+        elif self.doc_format == "rst":
+            from yuio.rst import RstParser
+
+            return RstParser()
+        else:
+            return self.doc_format
+
+    def _make_cli_command(self, root: bool = False):
+        options = self._config_type._build_options()
 
         if root:
             options.append(yuio.cli.HelpOption())
@@ -1104,11 +1107,11 @@ class App(_t.Generic[C]):
                 options.append(
                     yuio.cli.CountOption(
                         flags=["-v", "--verbose"],
-                        usage=yuio.GROUP,
+                        usage=yuio.COLLAPSE,
                         help="Increase output verbosity.",
                         help_group=yuio.cli.MISC_GROUP,
                         show_if_inherited=False,
-                        dest="_verbosity",
+                        dest="_verbose",
                     )
                 )
             if self.bug_report:
@@ -1117,24 +1120,22 @@ class App(_t.Generic[C]):
             options.append(_ColorOption())
 
         subcommands = {}
-        for sub_app in self.__sub_apps.values():
-            if not sub_app.is_primary:
-                continue
-            aubcommand = sub_app.app.__make_cli_command()
-            subcommands[sub_app.name] = aubcommand
-            for alias in sub_app.aliases or []:
-                subcommands[alias] = aubcommand
+        subcommand_for_app = {}
+        for name, sub_app in self._subcommands.items():
+            if sub_app not in subcommand_for_app:
+                subcommand_for_app[sub_app] = sub_app._make_cli_command()
+            subcommands[name] = subcommand_for_app[sub_app]
 
         return yuio.cli.Command(
             name=self.prog or pathlib.Path(sys.argv[0]).stem,
             desc=self.description or "",
-            help=self.help if self.help is not None else "",
+            help=self.help,
             epilog=self.epilog or "",
-            usage=self.usage,
+            usage=yuio.util.dedent(self.usage or ""),
             options=options,
             subcommands=subcommands,
             subcommand_required=self.subcommand_required,
-            ns_ctor=lambda: yuio.cli.ConfigNamespace(self.__config_type()),
+            ns_ctor=lambda: yuio.cli.ConfigNamespace(self._config_type()),
             dest="_subcommand",
             ns_dest="_subcommand_ns",
         )
@@ -1179,8 +1180,6 @@ def _command_from_callable(
             field = _t.cast(
                 yuio.config._FieldSettings, yuio.config.field(default=field)
             )
-        if name in docs:
-            field = dataclasses.replace(field, help=docs[name])
 
         if param.annotation is param.empty:
             raise TypeError(f"param {name} requires type annotation")
@@ -1192,12 +1191,13 @@ def _command_from_callable(
         cb, list(annotations.keys()), accepts_command_info
     )
     dct["_color"] = None
-    dct["_verbosity"] = 0
+    dct["_verbose"] = 0
     dct["_subcommand"] = None
     dct["_subcommand_ns"] = None
     dct["__annotations__"] = annotations
     dct["__module__"] = getattr(cb, "__module__", None)
     dct["__doc__"] = getattr(cb, "__doc__", None)
+    dct["__yuio_pre_parsed_docs__"] = docs
 
     return types.new_class(
         cb.__name__,
@@ -1286,11 +1286,13 @@ class _ColorOption(yuio.cli.Option[_t.Never]):
             required=False,
             metavar=(),
             mutex_group=None,
-            usage=yuio.GROUP,
+            usage=yuio.COLLAPSE,
             help="Enable or disable ANSI colors.",
             help_group=yuio.cli.MISC_GROUP,
             show_if_inherited=False,
             allow_abbrev=False,
+            dest="_color",
+            default_desc=None,
         )
 
     def process(
@@ -1328,7 +1330,10 @@ class _ColorOption(yuio.cli.Option[_t.Never]):
         /,
         *,
         all: bool = False,
-    ) -> list[yuio.string.ColorizedString] | None:
+    ) -> (
+        list[yuio.string.ColorizedString | tuple[yuio.string.ColorizedString, str]]
+        | None
+    ):
         if self.flags is yuio.POSITIONAL:
             return None
 
@@ -1336,7 +1341,9 @@ class _ColorOption(yuio.cli.Option[_t.Never]):
         if self.primary_short_flag:
             primary_flags.add(self.primary_short_flag)
 
-        aliases: list[yuio.string.ColorizedString] = []
+        aliases: list[
+            yuio.string.ColorizedString | tuple[yuio.string.ColorizedString, str]
+        ] = []
         flag_color = ctx.get_color("hl/flag:sh-usage")
         punct_color = ctx.get_color("hl/punct:sh-usage")
         metavar_color = ctx.get_color("hl/metavar:sh-usage")

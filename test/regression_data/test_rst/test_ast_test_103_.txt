@@ -5,4 +5,4 @@ Broken code block: ``foo *bar*
 (Document
   (Paragraph
     'Broken code block: ``foo '
-    TextRegion(content='bar', color='em', no_wrap=False, url=None)))
+    HighlightedRegion(content=['bar'], color='em')))

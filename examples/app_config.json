@@ -1,3 +1,7 @@
 {
-  "threads": 16
+  "registry": "https://custom-registry.example.com",
+  "default_container_config": {
+    "cpu": 2.0,
+    "memory": 10.0
+  }
 }

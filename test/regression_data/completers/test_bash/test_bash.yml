@@ -62,9 +62,7 @@
 - cmd: args --bool=|
   results:
   - --bool=false
-  - --bool=no
   - --bool=true
-  - --bool=yes
 - cmd: args --bool |
   results: []
 - cmd: args --no-b|

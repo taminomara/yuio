@@ -6,4 +6,4 @@ span`
 
 (Document
   (Paragraph
-    TextRegion(content='code\\\nspan', color='code', no_wrap=True, url=None)))
+    NoWrapRegion(content=[HighlightedRegion(content=['code\\\nspan'], color='role/code')])))

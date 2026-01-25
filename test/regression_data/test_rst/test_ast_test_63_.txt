@@ -5,4 +5,4 @@ end with *emphasis*
 (Document
   (Paragraph
     'end with '
-    TextRegion(content='emphasis', color='em', no_wrap=False, url=None)))
+    HighlightedRegion(content=['emphasis'], color='em')))

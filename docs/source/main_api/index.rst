@@ -5,14 +5,17 @@ The primary interface.
 
 .. nice-toc::
 
-   const
-      Constants used throughout Yuio.
+   global
+      Constants and global variables used throughout Yuio.
 
    io
       Interacting with users.
 
    parse
       Parsing user input.
+
+   ty
+      Annotated types for easier parser construction.
 
    app
       Building CLI applications.

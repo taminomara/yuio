@@ -8,5 +8,5 @@ baz*
 (Document
   (Heading 1
     '  Foo '
-    TextRegion(content='bar\nbaz', color='em', no_wrap=True, url=None)
+    HighlightedRegion(content=['bar\nbaz'], color='em')
     '    '))

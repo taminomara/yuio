@@ -6,6 +6,6 @@ bar*
 
 (Document
   (Paragraph
-    TextRegion(content='foo', color='em', no_wrap=True, url=None)
-    TextRegion(content='\x0b\n', color='em', no_wrap=True, url=None)
-    TextRegion(content='bar', color='em', no_wrap=True, url=None)))
+    HighlightedRegion(content=['foo'], color='em')
+    HighlightedRegion(content=['\x0b\n'], color='em')
+    HighlightedRegion(content=['bar'], color='em')))

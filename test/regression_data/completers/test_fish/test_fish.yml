@@ -6,7 +6,7 @@
   results:
   - "--bug-report\tprint environment data for bug report and exit"
   - "--color\tenable or disable ANSI colors"
-  - "--completions\tinstall or update autocompletion scripts and exit."
+  - "--completions\tinstall or update autocompletion scripts and exit"
   - "--help\tprint this message and exit"
   - "--no-color\tenable or disable ANSI colors"
   - "--verbose\tincrease output verbosity"
@@ -19,7 +19,7 @@
   results:
   - "--bug-report\tprint environment data for bug report and exit"
   - "--color\tenable or disable ANSI colors"
-  - "--completions\tinstall or update autocompletion scripts and exit."
+  - "--completions\tinstall or update autocompletion scripts and exit"
   - "--help\tprint this message and exit"
   - "--no-color\tenable or disable ANSI colors"
   - "--verbose\tincrease output verbosity"
@@ -93,9 +93,7 @@
 - cmd: args --bool=|
   results:
   - --bool=false
-  - --bool=no
   - --bool=true
-  - --bool=yes
 - cmd: args --bool |
   results: []
 - cmd: args --no-b|

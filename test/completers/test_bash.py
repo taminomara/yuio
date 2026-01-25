@@ -1,9 +1,9 @@
 import shlex
 import subprocess
 
-from .conftest import extract_results
-
 import pytest
+
+from .conftest import extract_results
 
 SCRIPT = """
 COMP_CWORD={cword}

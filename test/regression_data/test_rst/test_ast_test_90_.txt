@@ -7,7 +7,7 @@ Text [#label]_ with label.
 (Document
   (Paragraph
     'Text '
-    TextRegion(content='[1]', color='footnote', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['[1]'], color='role/footnote')])
     ' with label.')
   (FootnoteContainer
     (Footnote '1'

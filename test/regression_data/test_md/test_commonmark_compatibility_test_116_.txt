@@ -7,4 +7,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='foo', color=None, no_wrap=False, url='/url')))
+    LinkRegion(content=['foo'], url='/url')))

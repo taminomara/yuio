@@ -5,6 +5,6 @@ _(__foo__)_
 
 (Document
   (Paragraph
-    TextRegion(content='(', color='em', no_wrap=True, url=None)
-    TextRegion(content='foo', color='em strong', no_wrap=True, url=None)
-    TextRegion(content=')', color='em', no_wrap=True, url=None)))
+    HighlightedRegion(content=['('], color='em')
+    HighlightedRegion(content=['foo'], color='em strong')
+    HighlightedRegion(content=[')'], color='em')))

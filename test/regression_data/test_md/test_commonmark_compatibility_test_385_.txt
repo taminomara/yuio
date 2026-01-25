@@ -9,6 +9,6 @@
   (Paragraph
     '['
     'foo '
-    TextRegion(content='bar', color=None, no_wrap=False, url='/uri')
+    LinkRegion(content=['bar'], url='/uri')
     ']'
-    TextRegion(content='ref', color=None, no_wrap=False, url='/uri')))
+    LinkRegion(content=['ref'], url='/uri')))

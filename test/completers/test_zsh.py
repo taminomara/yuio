@@ -1,8 +1,8 @@
 import subprocess
 
-from .conftest import extract_results
-
 import pytest
+
+from .conftest import extract_results
 
 
 @pytest.mark.full

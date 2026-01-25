@@ -7,5 +7,5 @@
   (Paragraph
     '['
     'not a '
-    TextRegion(content='link](/foo', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['link](/foo'], color='role/code')])
     ')'))

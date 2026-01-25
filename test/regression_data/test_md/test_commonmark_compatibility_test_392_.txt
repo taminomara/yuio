@@ -9,4 +9,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='bar', color=None, no_wrap=False, url='/url1')))
+    LinkRegion(content=['bar'], url='/url1')))

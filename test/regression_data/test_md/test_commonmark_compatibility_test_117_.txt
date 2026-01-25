@@ -7,7 +7,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='Foo', color=None, no_wrap=False, url='my_(url)')
-    TextRegion(content='*', color=None, no_wrap=False, url='my_(url)')
-    TextRegion(content='bar', color=None, no_wrap=False, url='my_(url)')
-    TextRegion(content=']', color=None, no_wrap=False, url='my_(url)')))
+    LinkRegion(content=['Foo', '*', 'bar', ']'], url='my_(url)')))

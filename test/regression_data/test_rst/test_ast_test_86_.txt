@@ -8,8 +8,8 @@ target1_ target2_ target3_
 
 (Document
   (Paragraph
-    TextRegion(content='target1', color=None, no_wrap=False, url='https://example.com')
+    LinkRegion(content=['target1'], url='https://example.com')
     ' '
-    TextRegion(content='target2', color=None, no_wrap=False, url='https://example.com')
+    LinkRegion(content=['target2'], url='https://example.com')
     ' '
-    TextRegion(content='target3', color=None, no_wrap=False, url='https://example.com')))
+    LinkRegion(content=['target3'], url='https://example.com')))

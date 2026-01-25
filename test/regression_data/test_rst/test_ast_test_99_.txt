@@ -5,5 +5,5 @@ Explicit ref: :role:`ref`. Broken: :role:`ref
 (Document
   (Paragraph
     'Explicit ref: '
-    TextRegion(content='ref', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['ref'], color='role/unknown/role')])
     '. Broken: :role:`ref'))

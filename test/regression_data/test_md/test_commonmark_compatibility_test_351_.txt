@@ -7,5 +7,4 @@ _foo [bar_](/url)
   (Paragraph
     '_'
     'foo '
-    TextRegion(content='bar', color=None, no_wrap=False, url='/url')
-    TextRegion(content='_', color=None, no_wrap=False, url='/url')))
+    LinkRegion(content=['bar', '_'], url='/url')))

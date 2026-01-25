@@ -10,6 +10,8 @@ import sys
 import traceback
 from dataclasses import dataclass
 
+import pytest
+
 import yuio
 import yuio.color
 import yuio.io
@@ -17,8 +19,6 @@ import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
-
-import pytest
 
 from typing import TYPE_CHECKING
 
@@ -698,7 +698,7 @@ class IOMocker:
         wrap_streams: bool | None = None,
     ):
         """
-        Bind :func:`yuio.widget._event_stream` and all mocked inout streams
+        Bind :func:`yuio.widget._event_stream` and all mocked input streams
         to events from this mocker.
 
         """

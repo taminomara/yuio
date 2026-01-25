@@ -13,8 +13,8 @@ Configuration
 
 Yuio configures itself upon import using environment variables:
 
-- ``FORCE_NO_COLOR``: disable colored output,
-- ``FORCE_COLOR``: enable colored output.
+- :cli:env:`FORCE_NO_COLOR`: disable colored output,
+- :cli:env:`FORCE_COLOR`: enable colored output.
 
 The only thing it doesn't do automatically is wrapping :data:`sys.stdout`
 and :data:`sys.stderr` into safe proxies. The :mod:`yuio.app` CLI builder

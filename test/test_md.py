@@ -1,6 +1,6 @@
-import yuio.md
-
 import pytest
+
+import yuio.md
 
 # Tests from https://github.com/commonmark/commonmark-spec
 COMMONMARK_TEST_CASES = [

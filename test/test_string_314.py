@@ -1,8 +1,8 @@
+import pytest
+
 import yuio.string
 from yuio.color import Color
 from yuio.string import NO_WRAP_END, NO_WRAP_START
-
-import pytest
 
 
 @pytest.fixture(autouse=True)

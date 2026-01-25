@@ -1,8 +1,8 @@
+import pytest
+
 import yuio.doc
 import yuio.string
 import yuio.term
-
-import pytest
 
 
 def serialize_formatter_output(
@@ -73,7 +73,7 @@ class TestFormatterBasicText:
 class TestFormatterTextRegions:
     def test_text_with_emphasis(self, formatter, file_regression):
         node = yuio.doc.Paragraph(
-            items=[yuio.doc.TextRegion(content="emphasized", color="em")]
+            items=[yuio.doc.HighlightedRegion("emphasized", color="em")]
         )
         result = formatter.format(node)
         file_regression.check(
@@ -84,7 +84,7 @@ class TestFormatterTextRegions:
         node = yuio.doc.Paragraph(
             items=[
                 "normal ",
-                yuio.doc.TextRegion(content="code", color="code", no_wrap=True),
+                yuio.doc.NoWrapRegion(yuio.doc.HighlightedRegion("code", color="code")),
                 " text",
             ]
         )
@@ -96,7 +96,7 @@ class TestFormatterTextRegions:
     def test_text_with_url_colors_supported(self, ctx, file_regression):
         formatter = yuio.doc.Formatter(ctx)
         node = yuio.doc.Paragraph(
-            items=[yuio.doc.TextRegion(content="link", url="https://example.com")]
+            items=[yuio.doc.LinkRegion("link", url="https://example.com")]
         )
         result = formatter.format(node)
         file_regression.check(
@@ -114,7 +114,7 @@ class TestFormatterTextRegions:
         ctx = yuio.string.ReprContext(term=term_no_colors, theme=theme, width=20)
         formatter = yuio.doc.Formatter(ctx)
         node = yuio.doc.Paragraph(
-            items=[yuio.doc.TextRegion(content="link", url="https://example.com")]
+            items=[yuio.doc.LinkRegion("link", url="https://example.com")]
         )
         result = formatter.format(node)
         file_regression.check(
@@ -122,7 +122,7 @@ class TestFormatterTextRegions:
         )
 
     def test_empty_text_region(self, formatter, file_regression):
-        node = yuio.doc.Paragraph(items=[yuio.doc.TextRegion(content="", color="em")])
+        node = yuio.doc.Paragraph(items=[yuio.doc.HighlightedRegion("", color="em")])
         result = formatter.format(node)
         file_regression.check(
             serialize_formatter_output(node, result), encoding="utf-8"
@@ -156,7 +156,8 @@ class TestFormatterHeadings:
 
     def test_heading_with_inline_formatting(self, formatter, file_regression):
         node = yuio.doc.Heading(
-            items=[yuio.doc.TextRegion(content="Bold Title", color="strong")], level=1
+            items=[yuio.doc.HighlightedRegion("Bold Title", color="strong")],
+            level=1,
         )
         result = formatter.format(node)
         file_regression.check(
@@ -579,9 +580,7 @@ class TestFormatterIndentationAndWidth:
         )
 
     def test_long_nowrap_text(self, formatter, file_regression):
-        node = yuio.doc.Paragraph(
-            items=[yuio.doc.TextRegion(content="x" * 200, no_wrap=True)]
-        )
+        node = yuio.doc.Paragraph(items=[yuio.doc.NoWrapRegion("x" * 200)])
         result = formatter.format(node)
         file_regression.check(
             serialize_formatter_output(node, result), encoding="utf-8"

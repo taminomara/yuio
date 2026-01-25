@@ -124,17 +124,15 @@ nested :class:`~yuio.config.Config`\ s:
 
 .. literalinclude:: /../../examples/docs/cli_config_help.py
     :language: python
-    :lines: 4-24
+    :lines: 4-19
 
 .. code-annotations::
 
     1.  First paragraph becomes group's title.
     2.  All consequent paragraphs are shown in group's help section.
-    3.  This documentation comment will override config's docstring.
 
-CLI options are not grouped when no docstring and no documentation comment
-is available. Additionally, you can disable grouping
-by setting `help_group` to :data:`None`:
+CLI options are not grouped when no documentation comment is available.
+Additionally, you can disable grouping by setting `help_group` to :data:`None`:
 
 .. literalinclude:: /../../examples/docs/cli_config_no_group.py
     :language: python
@@ -143,25 +141,6 @@ by setting `help_group` to :data:`None`:
 .. code-annotations::
 
     1.  This moves config's fields to the main group.
-
-For nested configs, though, it can be useful to set `help` to an empty string
-to force default group inference:
-
-.. literalinclude:: /../../examples/docs/cli_config_nested_group.py
-    :language: python
-    :lines: 4-35
-
-.. code-annotations::
-
-    1.  Sometimes we want to add docstring to a config, but don't want it
-        to affect CLI help. We'll have to override it down below.
-    2.  This comment doesn't do anything: setting `help` overrides it.
-    3.  Setting help to an empty string will prevent Yuio from creating
-        separate group for ``GpuConfig``, so its options will end up
-        in the group for ``ExecutorConfig``.
-    4.  Setting `help_group` to :data:`None` will put options
-        from ``GpuConfig`` to the main group
-        (*not* the ``ExecutorConfig`` group).
 
 You can also assign groups for individual fields by passing
 :class:`~yuio.cli.HelpGroup` to :func:`yuio.app.field`:

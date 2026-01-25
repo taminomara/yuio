@@ -5,7 +5,7 @@ Code block: ``code``, ``code `backticks```,
 (Document
   (Paragraph
     'Code block: '
-    TextRegion(content='code', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['code'], color='role/code')])
     ', '
-    TextRegion(content='code `backticks`', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['code `backticks`'], color='role/code')])
     ','))

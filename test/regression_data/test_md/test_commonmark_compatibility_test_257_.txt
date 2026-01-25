@@ -7,4 +7,4 @@
   (Paragraph
     '*'
     'foo'
-    TextRegion(content='*', color='code', no_wrap=True, url=None)))
+    NoWrapRegion(content=[HighlightedRegion(content=['*'], color='role/code')])))

@@ -6,4 +6,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='Custom title', color=None, no_wrap=False, url='target')))
+    LinkRegion(content=['Custom title'], url='target')))

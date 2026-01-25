@@ -4,7 +4,7 @@
 
 (Document
   (Paragraph
-    TextRegion(content="escapes don't work here\\", color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=["escapes don't work here\\"], color='role/code')])
     ', '
-    TextRegion(content='{ 1, 2, nil, 4 }', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['{ 1, 2, nil, 4 }'], color='role/code')])
     '.'))

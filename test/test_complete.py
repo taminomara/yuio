@@ -1,9 +1,9 @@
 import os.path
 import pathlib
 
-import yuio.complete
-
 import pytest
+
+import yuio.complete
 
 
 @pytest.mark.parametrize(

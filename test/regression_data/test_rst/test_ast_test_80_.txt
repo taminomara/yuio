@@ -7,4 +7,4 @@ See `section`_
 (Document
   (Paragraph
     'See '
-    TextRegion(content='section', color=None, no_wrap=False, url='https://example.com')))
+    LinkRegion(content=['section'], url='https://example.com')))

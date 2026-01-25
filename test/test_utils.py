@@ -1,8 +1,8 @@
+import pytest
+
 import yuio
 import yuio.color
 import yuio.util
-
-import pytest
 
 
 @pytest.mark.parametrize(
@@ -74,9 +74,9 @@ class DocsCls:
 
     """
 
-    #: Merged 1.
+    #: Ignored.
     merged = None
-    """Ignored."""
+    """Merged 1."""
 
     #: Split 1 ignored.
 

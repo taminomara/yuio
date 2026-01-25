@@ -8,9 +8,9 @@ Text [*]_ with [*]_ symbol.
 (Document
   (Paragraph
     'Text '
-    TextRegion(content='[*]', color='footnote', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['[*]'], color='role/footnote')])
     ' with '
-    TextRegion(content='[†]', color='footnote', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['[†]'], color='role/footnote')])
     ' symbol.')
   (FootnoteContainer
     (Footnote '*'

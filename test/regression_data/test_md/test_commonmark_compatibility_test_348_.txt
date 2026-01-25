@@ -7,4 +7,4 @@
   (Paragraph
     '**'
     'foo '
-    TextRegion(content='bar baz', color='strong', no_wrap=True, url=None)))
+    HighlightedRegion(content=['bar baz'], color='strong')))

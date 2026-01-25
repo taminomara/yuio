@@ -4,4 +4,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='--verbose', color='flag', no_wrap=True, url=None)))
+    NoWrapRegion(content=[HighlightedRegion(content=['--verbose'], color='role/flag')])))

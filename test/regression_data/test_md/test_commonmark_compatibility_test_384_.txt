@@ -7,8 +7,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='link ', color=None, no_wrap=False, url='/uri')
-    TextRegion(content='foo ', color='em', no_wrap=True, url='/uri')
-    TextRegion(content='bar', color='em strong', no_wrap=True, url='/uri')
-    TextRegion(content=' ', color='em', no_wrap=True, url='/uri')
-    TextRegion(content='#', color='em code', no_wrap=True, url='/uri')))
+    LinkRegion(content=['link ', HighlightedRegion(content=['foo '], color='em'), HighlightedRegion(content=['bar'], color='em strong'), HighlightedRegion(content=[' '], color='em'), HighlightedRegion(content=[NoWrapRegion(content=[HighlightedRegion(content=['#'], color='role/code')])], color='em')], url='/uri')))

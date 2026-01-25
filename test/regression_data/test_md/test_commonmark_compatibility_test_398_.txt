@@ -7,5 +7,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='bar', color=None, no_wrap=False, url='/uri')
-    TextRegion(content='\\', color=None, no_wrap=False, url='/uri')))
+    LinkRegion(content=['bar', '\\'], url='/uri')))

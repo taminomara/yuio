@@ -12,12 +12,26 @@
 }
 
 body {
-  --font-stack--monospace: "Cascadia Mono", "SFMono-Regular", Menlo, Consolas,
-    Monaco, "Liberation Mono", "Lucida Console", monospace;
+  --font-stack--monospace:
+    "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, Monaco,
+    "Liberation Mono", "Lucida Console", monospace;
 }
 
 .sig:not(.sig-inline) {
   font-weight: 700;
+}
+
+.yuio-sig * {
+  font-weight: 400;
+}
+
+p.rubric.cli-section-1 {
+  margin-top: 1.5em;
+}
+
+p.rubric.cli-section-2 {
+  font-weight: 700;
+  text-transform: none;
 }
 
 code,
@@ -100,12 +114,12 @@ pre.ascii-graphics {
 
 /* Plus icon (default state) */
 .annotation-trigger::before {
-  content: '+';
+  content: "+";
 }
 
 /* Cross icon (expanded state) */
 .annotation-trigger[aria-expanded="true"]::before {
-  content: '×';
+  content: "×";
 }
 
 .annotation-trigger:hover {

@@ -5,7 +5,7 @@ Explicit hyperlinks: `target`_, `anonymous`__.
 (Document
   (Paragraph
     'Explicit hyperlinks: '
-    'target'
+    LinkRegion(content=['target'], url=None)
     ', '
-    'anonymous'
+    LinkRegion(content=['anonymous'], url=None)
     '.'))

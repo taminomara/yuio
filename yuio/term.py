@@ -374,6 +374,21 @@ class Term:
 
         return self.color_support >= ColorSupport.ANSI and self.is_tty
 
+    @staticmethod
+    def make_dummy(is_unicode: bool = True) -> Term:
+        """
+        Make a dummy terminal with closed streams and no capabilities.
+
+        """
+
+        stream = io.StringIO()
+        stream.close()
+        return Term(
+            istream=stream,
+            ostream=stream,
+            is_unicode=is_unicode,
+        )
+
 
 _CI_ENV_VARS = [
     "TRAVIS",

@@ -1,0 +1,4 @@
+Ty
+==
+
+.. automodule:: yuio.ty

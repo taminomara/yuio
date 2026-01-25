@@ -342,7 +342,6 @@ from yuio.cli import (
     MutuallyExclusiveGroup,
 )
 from yuio.util import _find_docs
-from yuio.util import dedent as _dedent
 
 import yuio._typing_ext as _tx
 from typing import TYPE_CHECKING
@@ -362,6 +361,7 @@ __all__ = [
     "OptionCtor",
     "OptionSettings",
     "bool_option",
+    "collect_option",
     "count_option",
     "field",
     "inline",
@@ -381,18 +381,19 @@ Cfg = _t.TypeVar("Cfg", bound="Config")
 class _FieldSettings:
     default: _t.Any
     parser: yuio.parse.Parser[_t.Any] | None = None
-    help: str | yuio.Disabled | None = None
     env: str | yuio.Disabled | None = None
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING
-    metavar: str | None = None
     required: bool | None = None
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None
     mutex_group: MutuallyExclusiveGroup | None = None
-    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING
-    usage: yuio.Group | bool | None = None
+    option_ctor: _t.Callable[[OptionSettings], yuio.cli.Option[_t.Any]] | None = None
+    help: str | yuio.Disabled | None = None
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING
+    metavar: str | None = None
+    usage: yuio.Collapse | bool | None = None
+    default_desc: str | None = None
     show_if_inherited: bool | None = None
-    option_ctor: _t.Callable[[OptionSettings], _t.Any] | None = None
 
     def _update_defaults(
         self,
@@ -401,21 +402,12 @@ class _FieldSettings:
         ty_with_extras: _t.Any,
         parsed_help: str | None,
         allow_positionals: bool,
+        cut_help: bool,
     ) -> _Field:
         ty = ty_with_extras
         while _t.get_origin(ty) is _t.Annotated:
             ty = _t.get_args(ty)[0]
         is_subconfig = isinstance(ty, type) and issubclass(ty, Config)
-
-        help: str | yuio.Disabled
-        if self.help is not None:
-            help = self.help
-        elif parsed_help is not None:
-            help = parsed_help
-        elif is_subconfig and ty.__doc__:
-            help = _dedent(ty.__doc__).strip()
-        else:
-            help = ""
 
         env: str | yuio.Disabled
         if self.env is not None:
@@ -442,7 +434,16 @@ class _FieldSettings:
             flags = ["--" + name.replace("_", "-")]
         else:
             if isinstance(self.flags, str):
-                flags = self.flags.split() or [""]
+                if "," in self.flags:
+                    flags = [
+                        norm_flag
+                        for flag in self.flags.split(",")
+                        if (norm_flag := flag.strip())
+                    ]
+                else:
+                    flags = self.flags.split()
+                if not flags:
+                    flags = [""]
             else:
                 flags = self.flags
 
@@ -532,41 +533,63 @@ class _FieldSettings:
                 f"error in {qualname}: positional arguments can't appear in mutually exclusive groups"
             )
 
-        usage = self.usage
-
-        show_if_inherited = self.show_if_inherited
-
-        help_group = self.help_group
-
         option_ctor = self.option_ctor
         if option_ctor is not None and is_subconfig:
             raise TypeError(
                 f"error in {qualname}: nested configs can't have option constructors"
             )
 
+        help: str | yuio.Disabled
+        if self.help is not None:
+            help = self.help
+            full_help = help or ""
+        elif parsed_help is not None:
+            help = full_help = parsed_help
+            if cut_help and (index := help.find("\n\n")) != -1:
+                help = help[:index]
+        else:
+            help = full_help = ""
+
+        help_group = self.help_group
+        if help_group is yuio.COLLAPSE and not is_subconfig:
+            raise TypeError(
+                f"error in {qualname}: help_group=yuio.COLLAPSE only allowed for nested configs"
+            )
+
+        usage = self.usage
+
+        default_desc = self.default_desc
+
+        show_if_inherited = self.show_if_inherited
+
         return _Field(
-            default,
-            parser,
-            help,
-            env,
-            flags,
-            is_subconfig,
-            ty,
-            required,
-            merge,
-            mutex_group,
-            help_group,
-            usage,
-            show_if_inherited,
-            option_ctor,
+            name=name,
+            qualname=qualname,
+            default=default,
+            parser=parser,
+            env=env,
+            flags=flags,
+            is_subconfig=is_subconfig,
+            ty=ty,
+            required=required,
+            merge=merge,
+            mutex_group=mutex_group,
+            option_ctor=option_ctor,
+            help=help,
+            full_help=full_help,
+            help_group=help_group,
+            usage=usage,
+            default_desc=default_desc,
+            show_if_inherited=show_if_inherited,
         )
 
 
 @dataclass(frozen=True, slots=True)
 class _Field:
+    name: str
+    qualname: str
     default: _t.Any
     parser: yuio.parse.Parser[_t.Any] | None
-    help: str | yuio.Disabled
     env: str | yuio.Disabled
     flags: list[str] | yuio.Positional | yuio.Disabled
     is_subconfig: bool
@@ -574,78 +597,85 @@ class _Field:
     required: bool
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
     mutex_group: MutuallyExclusiveGroup | None
-    help_group: HelpGroup | None | yuio.Missing
-    usage: yuio.Group | bool | None
-    show_if_inherited: bool | None = None
-    option_ctor: _t.Callable[[OptionSettings], _t.Any] | None = None
+    option_ctor: _t.Callable[[OptionSettings], yuio.cli.Option[_t.Any]] | None
+    help: str | yuio.Disabled
+    full_help: str
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing
+    usage: yuio.Collapse | bool | None
+    default_desc: str | None
+    show_if_inherited: bool | None
 
 
 @_t.overload
 def field(
     *,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
-    metavar: str | None = None,
-    help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     required: bool | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
-    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
+    help: str | yuio.Disabled | None = None,
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING,
+    metavar: str | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
     show_if_inherited: bool | None = None,
-    usage: yuio.Group | bool | None = None,
 ) -> _t.Any: ...
 @_t.overload
 def field(
     *,
     default: None,
     parser: yuio.parse.Parser[T] | None = None,
-    help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     required: bool | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
-    metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
-    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
-    usage: yuio.Group | bool | None = None,
-    show_if_inherited: bool | None = None,
     option_ctor: OptionCtor[T] | None = None,
+    help: str | yuio.Disabled | None = None,
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING,
+    metavar: str | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
+    show_if_inherited: bool | None = None,
 ) -> T | None: ...
 @_t.overload
 def field(
     *,
     default: T | yuio.Missing = yuio.MISSING,
     parser: yuio.parse.Parser[T] | None = None,
-    help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     required: bool | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
-    metavar: str | None = None,
     merge: _t.Callable[[T, T], T] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
-    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
-    usage: yuio.Group | bool | None = None,
-    show_if_inherited: bool | None = None,
     option_ctor: OptionCtor[T] | None = None,
+    help: str | yuio.Disabled | None = None,
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING,
+    metavar: str | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
+    show_if_inherited: bool | None = None,
 ) -> T: ...
 def field(
     *,
     default: _t.Any = yuio.MISSING,
     parser: yuio.parse.Parser[_t.Any] | None = None,
-    help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
     required: bool | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
-    metavar: str | None = None,
     merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
-    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
-    usage: yuio.Group | bool | None = None,
-    show_if_inherited: bool | None = None,
     option_ctor: _t.Callable[..., _t.Any] | None = None,
+    help: str | yuio.Disabled | None = None,
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING,
+    metavar: str | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
+    show_if_inherited: bool | None = None,
 ) -> _t.Any:
     """
     Field descriptor, used for additional configuration of CLI options
@@ -655,12 +685,6 @@ def field(
         default value for the field or CLI option.
     :param parser:
         parser that will be used to parse config values and CLI options.
-    :param help:
-        help message that will be used in CLI option description,
-        formatted using RST or Markdown
-        (see :attr:`App.doc_format <yuio.app.App.doc_format>`).
-
-        Pass :data:`yuio.DISABLED` to remove this field from CLI help.
     :param env:
         specifies name of environment variable that will be used if loading config
         from environment.
@@ -681,26 +705,10 @@ def field(
     :param completer:
         completer that will be used for autocompletion in CLI. Using this option
         is equivalent to overriding `completer` with :class:`yuio.parse.WithMeta`.
-    :param metavar:
-        value description that will be used for CLI help messages. Using this option
-        is equivalent to overriding `desc` with :class:`yuio.parse.WithMeta`.
     :param merge:
         defines how values of this field are merged when configs are updated.
     :param mutex_group:
         defines mutually exclusive group for this field.
-    :param help_group:
-        overrides group in which this field will be placed when generating CLI help
-        message.
-    :param usage:
-        controls how this field renders in CLI usage section.
-
-        Pass :data:`False` to remove this field from usage.
-
-        Pass :class:`yuio.GROUP` to omit this field and add a single string
-        ``<options>`` instead.
-
-        Setting `usage` on sub-config fields overrides default `usage` for all
-        fields within this sub-config.
     :param option_ctor:
         this parameter is similar to :mod:`argparse`\\ 's ``action``: it allows
         overriding logic for handling CLI arguments by providing a custom
@@ -709,6 +717,37 @@ def field(
         `option_ctor` should be a callable which takes a single positional argument
         of type :class:`~yuio.app.OptionSettings`, and returns an instance
         of :class:`yuio.cli.Option`.
+    :param help:
+        help message that will be used in CLI option description,
+        formatted using RST or Markdown
+        (see :attr:`App.doc_format <yuio.app.App.doc_format>`).
+
+        Pass :data:`yuio.DISABLED` to remove this field from CLI help.
+    :param help_group:
+        overrides group in which this field will be placed when generating CLI help
+        message.
+
+        Pass :class:`yuio.COLLAPSE` to create a collapsed group.
+    :param metavar:
+        value description that will be used for CLI help messages. Using this option
+        is equivalent to overriding `desc` with :class:`yuio.parse.WithMeta`.
+    :param usage:
+        controls how this field renders in CLI usage section.
+
+        Pass :data:`False` to remove this field from usage.
+
+        Pass :class:`yuio.COLLAPSE` to omit this field and add a single string
+        ``<options>`` instead.
+
+        Setting `usage` on sub-config fields overrides default `usage` for all
+        fields within this sub-config.
+    :param default_desc:
+        overrides description for default value in CLI help message.
+
+        Pass an empty string to hide default value.
+    :param show_if_inherited:
+        for fields with flags, enables showing this field in CLI help message
+        for subcommands.
     :returns:
         a magic object that will be replaced with field's default value once a new
         config class is created.
@@ -726,7 +765,9 @@ def field(
                 # Will be loaded from `--input`.
                 input: pathlib.Path | None = None,
                 # Will be loaded from `-o` or `--output`.
-                output: pathlib.Path | None = field(default=None, flags="-o --output"),
+                output: pathlib.Path | None = field(
+                    default=None, flags=["-o", "--output"]
+                ),
             ): ...
 
         In configs:
@@ -744,26 +785,27 @@ def field(
     return _FieldSettings(
         default=default,
         parser=parser,
-        help=help,
         env=env,
         flags=flags,
         completer=completer,
-        metavar=metavar,
         required=required,
         merge=merge,
         mutex_group=mutex_group,
-        help_group=help_group,
-        usage=usage,
-        show_if_inherited=show_if_inherited,
         option_ctor=option_ctor,
+        help=help,
+        help_group=help_group,
+        metavar=metavar,
+        usage=usage,
+        default_desc=default_desc,
+        show_if_inherited=show_if_inherited,
     )
 
 
 def inline(
     help: str | yuio.Disabled | None = None,
-    usage: yuio.Group | bool | None = None,
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING,
+    usage: yuio.Collapse | bool | None = None,
     show_if_inherited: bool | None = None,
-    help_group: HelpGroup | None | yuio.Missing = yuio.MISSING,
 ) -> _t.Any:
     """
     A shortcut for inlining nested configs.
@@ -774,55 +816,59 @@ def inline(
     """
 
     return field(
-        help=help,
         env="",
         flags="",
+        help=help,
+        help_group=help_group,
         usage=usage,
         show_if_inherited=show_if_inherited,
-        help_group=help_group,
     )
 
 
 @_t.overload
 def positional(
     *,
-    help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
+    help: str | yuio.Disabled | None = None,
     metavar: str | None = None,
-    usage: yuio.Group | bool | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
 ) -> _t.Any: ...
 @_t.overload
 def positional(
     *,
     default: None,
     parser: yuio.parse.Parser[T] | None = None,
-    help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
+    help: str | yuio.Disabled | None = None,
     metavar: str | None = None,
-    usage: yuio.Group | bool | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
 ) -> T | None: ...
 @_t.overload
 def positional(
     *,
     default: T | yuio.Missing = yuio.MISSING,
     parser: yuio.parse.Parser[T] | None = None,
-    help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
+    help: str | yuio.Disabled | None = None,
     metavar: str | None = None,
-    usage: yuio.Group | bool | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
 ) -> T: ...
 def positional(
     *,
     default: _t.Any = yuio.MISSING,
     parser: yuio.parse.Parser[_t.Any] | None = None,
-    help: str | yuio.Disabled | None = None,
     env: str | yuio.Disabled | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
+    help: str | yuio.Disabled | None = None,
     metavar: str | None = None,
-    usage: yuio.Group | bool | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
 ) -> _t.Any:
     """
     A shortcut for adding a positional argument.
@@ -834,12 +880,13 @@ def positional(
     return field(
         default=default,
         parser=parser,
-        help=help,
         env=env,
         flags=yuio.POSITIONAL,
         completer=completer,
+        help=help,
         metavar=metavar,
         usage=usage,
+        default_desc=default_desc,
     )
 
 
@@ -891,9 +938,8 @@ class Config:
         if cls.__fields is not None:
             return cls.__fields
 
-        if cls.__allow_positionals:
-            docs = {}
-        else:
+        docs = getattr(cls, "__yuio_pre_parsed_docs__", None)
+        if docs is None:
             try:
                 docs = _find_docs(cls)
             except Exception:
@@ -921,6 +967,8 @@ class Config:
                 ) from None
             raise  # pragma: no cover
 
+        cut_help = getattr(cls, "__yuio_short_help__", False)
+
         for name, field in cls.__gathered_fields.items():
             if not isinstance(field, _FieldSettings):
                 field = _FieldSettings(default=field)
@@ -931,6 +979,7 @@ class Config:
                 types[name],
                 docs.get(name),
                 cls.__allow_positionals,
+                cut_help,
             )
         cls.__fields = fields
 
@@ -1064,7 +1113,7 @@ class Config:
         prefix: str,
         dest_prefix: str,
         help_group: yuio.cli.HelpGroup | None,
-        usage: yuio.Group | bool,
+        usage: yuio.Collapse | bool,
         show_if_inherited: bool,
     ) -> list[yuio.cli.Option[_t.Any]]:
         options: list[yuio.cli.Option[_t.Any]] = []
@@ -1098,13 +1147,23 @@ class Config:
                 if field.help is yuio.DISABLED:
                     subgroup = yuio.cli.HelpGroup("", help=yuio.DISABLED)
                 elif field.help_group is yuio.MISSING:
-                    if field.help:
-                        lines = field.help.split("\n\n", 1)
+                    if field.full_help:
+                        lines = field.full_help.split("\n\n", 1)
                         title = lines[0].replace("\n", " ").rstrip(".").strip() or name
                         help = lines[1] if len(lines) > 1 else ""
                         subgroup = yuio.cli.HelpGroup(title=title, help=help)
                     else:
                         subgroup = help_group
+                elif field.help_group is yuio.COLLAPSE:
+                    if field.full_help:
+                        lines = field.full_help.split("\n\n", 1)
+                        title = lines[0].replace("\n", " ").rstrip(".").strip() or name
+                        help = lines[1] if len(lines) > 1 else ""
+                        subgroup = yuio.cli.HelpGroup(title=title, help=help)
+                    else:
+                        subgroup = yuio.cli.HelpGroup(title=field.name)
+                    subgroup.collapse = True
+                    subgroup._slug = field.name
                 else:
                     subgroup = field.help_group
                 options.extend(
@@ -1124,21 +1183,19 @@ class Config:
             option = option_ctor(
                 OptionSettings(
                     name=name,
+                    qualname=field.qualname,
                     parser=field.parser,
                     flags=flags,
                     required=field.required,
                     mutex_group=field.mutex_group,
                     usage=field_usage,
                     help=field.help,
-                    help_group=(
-                        field.help_group
-                        if field.help_group is not yuio.MISSING
-                        else help_group
-                    ),
+                    help_group=field.help_group if field.help_group else help_group,
                     show_if_inherited=field_show_if_inherited,
                     merge=field.merge,
                     dest=dest,
                     default=field.default,
+                    default_desc=field.default_desc,
                     long_flag_prefix=prefix or "--",
                 )
             )
@@ -1504,6 +1561,19 @@ class OptionSettings:
 
     """
 
+    qualname: str | None
+    """
+    Fully qualified name of config field or app parameter that caused creation
+    of this option. Useful for reporting errors.
+
+    """
+
+    default: _t.Any | yuio.Missing
+    """
+    See :attr:`yuio.cli.ValueOption.default`.
+
+    """
+
     parser: yuio.parse.Parser[_t.Any]
     """
     Parser associated with this option.
@@ -1522,15 +1592,22 @@ class OptionSettings:
 
     """
 
+    merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
+    """
+    See :attr:`yuio.cli.ValueOption.merge`.
+
+    """
+
     mutex_group: None | MutuallyExclusiveGroup
     """
     See :attr:`yuio.cli.Option.mutex_group`.
 
     """
 
-    usage: yuio.Group | bool
+    dest: str
     """
-    See :attr:`yuio.cli.Option.usage`.
+    See :attr:`yuio.cli.Option.dest`. We don't provide any guarantees about `dest`\\ 's
+    contents and recommend treating it as an opaque value.
 
     """
 
@@ -1546,35 +1623,28 @@ class OptionSettings:
 
     """
 
+    usage: yuio.Collapse | bool
+    """
+    See :attr:`yuio.cli.Option.usage`.
+
+    """
+
+    default_desc: str | None
+    """
+    See :attr:`yuio.cli.Option.default_desc`.
+
+    """
+
     show_if_inherited: bool
     """
     See :attr:`yuio.cli.Option.show_if_inherited`.
 
     """
 
-    merge: _t.Callable[[_t.Any, _t.Any], _t.Any] | None
-    """
-    See :attr:`yuio.cli.ValueOption.merge`.
-
-    """
-
-    dest: str
-    """
-    See :attr:`yuio.cli.ValueOption.dest`. We don't provide any guarantees about `dest`\\ 's
-    contents and recommend treating it as an opaque value.
-
-    """
-
-    default: _t.Any | yuio.Missing
-    """
-    See :attr:`yuio.cli.ValueOption.default`.
-
-    """
-
     long_flag_prefix: str
     """
     This argument will contain prefix that was added to all :attr:`~OptionSettings.flags`.
-    For apps and top level configs if will be ``"--"``, for nested configs it will
+    For apps and top level configs it will be ``"--"``, for nested configs it will
     include additional prefixes, for example ``"--nested-"``.
 
     """
@@ -1634,7 +1704,7 @@ def bool_option(*, neg_flags: list[str] | None = None) -> OptionCtor[bool]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(f"error in {s.name}: BoolOption can't be positional")
+            raise TypeError(f"error in {s.qualname}: BoolOption can't be positional")
         if neg_flags is None:
             _neg_flags = []
             for flag in s.flags:
@@ -1664,6 +1734,7 @@ def bool_option(*, neg_flags: list[str] | None = None) -> OptionCtor[bool]:
             parser=s.parser,
             merge=s.merge,
             default=s.default,
+            default_desc=s.default_desc,
         )
 
     return ctor
@@ -1714,6 +1785,7 @@ def parse_one_option() -> OptionCtor[_t.Any]:
             parser=s.parser,
             merge=s.merge,
             default=s.default,
+            default_desc=s.default_desc,
         )
 
     return ctor
@@ -1741,6 +1813,60 @@ def parse_many_option() -> OptionCtor[_t.Any]:
             parser=s.parser,
             merge=s.merge,
             default=s.default,
+            default_desc=s.default_desc,
+        )
+
+    return ctor
+
+
+def collect_option() -> OptionCtor[_t.Any]:
+    """
+    Factory for :class:`yuio.cli.ParseManyOption`.
+
+    This option takes single argument; it collects all arguments across all uses
+    of this option, and passes them
+    to :meth:`Parser.parse_many() <yuio.parse.Parser.parse_many>`.
+
+    :example:
+        Forcing a field which can use :func:`parse_many_option`
+        to collect arguments one-by-one.
+
+        .. code-block:: python
+            :emphasize-lines: 5
+
+            @yuio.app.app
+            def main(
+                files: list[str] = yuio.app.field(
+                    default=[],
+                    option_ctor=yuio.app.collect_option(),
+                    flags="--file",
+                ),
+            ): ...
+
+        This will disable multi-argument syntax, but allow giving option multiple
+        times without overriding previous value:
+
+        .. code-block:: console
+
+            $ prog --file a.txt --file b.txt  # Ok
+            $ prog --files a.txt b.txt  # Error: `--file` takes one argument.
+
+    """
+
+    def ctor(s: OptionSettings, /):
+        return yuio.cli.CollectOption(
+            flags=s.flags,
+            required=s.required,
+            mutex_group=s.mutex_group,
+            usage=s.usage,
+            help=s.help,
+            help_group=s.help_group,
+            show_if_inherited=s.show_if_inherited,
+            dest=s.dest,
+            parser=s.parser,
+            merge=s.merge,
+            default=s.default,
+            default_desc=s.default_desc,
         )
 
     return ctor
@@ -1757,7 +1883,9 @@ def store_const_option(const: T) -> OptionCtor[T]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(f"error in {s.name}: StoreConstOption can't be positional")
+            raise TypeError(
+                f"error in {s.qualname}: StoreConstOption can't be positional"
+            )
 
         return yuio.cli.StoreConstOption(
             flags=s.flags,
@@ -1770,6 +1898,7 @@ def store_const_option(const: T) -> OptionCtor[T]:
             dest=s.dest,
             merge=s.merge,
             default=s.default,
+            default_desc=s.default_desc,
             const=const,
         )
 
@@ -1806,7 +1935,7 @@ def count_option() -> OptionCtor[int]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(f"error in {s.name}: CountOption can't be positional")
+            raise TypeError(f"error in {s.qualname}: CountOption can't be positional")
 
         return yuio.cli.CountOption(
             flags=s.flags,
@@ -1818,6 +1947,7 @@ def count_option() -> OptionCtor[int]:
             show_if_inherited=s.show_if_inherited,
             dest=s.dest,
             default=s.default,
+            default_desc=s.default_desc,
         )
 
     return ctor
@@ -1833,7 +1963,9 @@ def store_true_option() -> OptionCtor[bool]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(f"error in {s.name}: StoreTrueOption can't be positional")
+            raise TypeError(
+                f"error in {s.qualname}: StoreTrueOption can't be positional"
+            )
 
         return yuio.cli.StoreTrueOption(
             flags=s.flags,
@@ -1845,6 +1977,7 @@ def store_true_option() -> OptionCtor[bool]:
             show_if_inherited=s.show_if_inherited,
             dest=s.dest,
             default=s.default,
+            default_desc=s.default_desc,
         )
 
     return ctor
@@ -1860,7 +1993,9 @@ def store_false_option() -> OptionCtor[bool]:
 
     def ctor(s: OptionSettings, /):
         if s.flags is yuio.POSITIONAL:
-            raise TypeError(f"error in {s.name}: StoreFalseOption can't be positional")
+            raise TypeError(
+                f"error in {s.qualname}: StoreFalseOption can't be positional"
+            )
 
         return yuio.cli.StoreFalseOption(
             flags=s.flags,
@@ -1872,6 +2007,7 @@ def store_false_option() -> OptionCtor[bool]:
             show_if_inherited=s.show_if_inherited,
             dest=s.dest,
             default=s.default,
+            default_desc=s.default_desc,
         )
 
     return ctor

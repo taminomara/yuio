@@ -68,6 +68,16 @@ Value parsers
 
 .. autoclass:: Fraction
 
+.. autoclass:: DateTime
+
+.. autoclass:: Date
+
+.. autoclass:: Time
+
+.. autoclass:: TimeDelta
+
+.. autoclass:: Seconds
+
 .. autoclass:: Json
 
 .. autoclass:: List
@@ -461,7 +471,7 @@ import pathlib
 import re
 import threading
 import traceback
-import types
+from copy import copy as _copy
 
 import yuio
 import yuio.color
@@ -526,6 +536,7 @@ __all__ = [
     "PartialParser",
     "Path",
     "Regex",
+    "Seconds",
     "Secret",
     "SecretString",
     "SecretValue",
@@ -827,14 +838,14 @@ class PartialParser(abc.ABC):
             and previous annotations.
         :returns:
             a result of upgrading this parser from partial to full. This method
-            usually returns `self`.
+            usually returns copy of `self`.
         :raises:
             :class:`TypeError` if this parser can't be wrapped. Specifically, this
             method should raise a :class:`TypeError` for any non-partial parser.
 
         """
 
-        raise NotImplementedError()
+        return _copy(self)  # pyright: ignore[reportReturnType]
 
 
 class Parser(PartialParser, _t.Generic[T_co]):
@@ -1311,7 +1322,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
 
     """
 
-    def __init__(self, ty: type[T], /, *args, **kwargs) -> types.NoneType:
+    def __init__(self, ty: type[T], /, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._value_type = ty
@@ -1351,7 +1362,7 @@ class ValueParser(Parser[T], PartialParser, _t.Generic[T]):
                     "    field: typing.Annotated[pathlib.Path, Path(extensions=[...])]\n"
                     "                                          ^^^^^^^^^^^^^^^^^^^^^^"
                 )
-        return self
+        return super().wrap(parser)  # pyright: ignore[reportReturnType]
 
     def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> T:
         raise RuntimeError("unable to parse multiple values")
@@ -1528,8 +1539,9 @@ class MappingParser(WrappingParser[T, Parser[U]], _t.Generic[T, U]):
         super().__init__(inner)
 
     def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
-        self._inner = parser
-        return self
+        result = super().wrap(parser)
+        result._inner = parser  # pyright: ignore[reportAttributeAccessIssue]
+        return result
 
     def supports_parse_many(self) -> bool:
         return self._inner.supports_parse_many()
@@ -2154,8 +2166,6 @@ class Bool(ValueParser[bool]):
     def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Choice(
             [
-                yuio.complete.Option("no"),
-                yuio.complete.Option("yes"),
                 yuio.complete.Option("true"),
                 yuio.complete.Option("false"),
             ]
@@ -2196,7 +2206,7 @@ class Bool(ValueParser[bool]):
 
 
 class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
-    """Enum(enum_type: typing.Type[E], /, *, by_name: bool = False, to_dash_case: bool = False, doc_inline: bool = False)
+    """Enum(enum_type: typing.Type[E], /, *, by_name: bool | None = None, to_dash_case: bool | None = None, doc_inline: bool = False)
 
     Parser for enums, as defined in the standard :mod:`enum` module.
 
@@ -2205,10 +2215,14 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
     :param by_name:
         if :data:`True`, the parser will use enumerator names, instead of
         their values, to match the input.
+
+        If not given, Yuio will search for :data:`__yuio_by_name__` attribute on the
+        given enum class to infer value for this option.
     :param to_dash_case:
         convert enum names/values to dash case.
-    :param doc_inline:
-        inline this enum in json schema and in documentation.
+
+        If not given, Yuio will search for :data:`__yuio_to_dash_case__` attribute on the
+        given enum class to infer value for this option.
 
     """
 
@@ -2220,9 +2234,8 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
             inner: type[E],
             /,
             *,
-            by_name: bool = False,
-            to_dash_case: bool = False,
-            doc_inline: bool = False,
+            by_name: bool | None = None,
+            to_dash_case: bool | None = None,
         ) -> Enum[E]: ...
 
         @_t.overload
@@ -2230,9 +2243,8 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
             cls,
             /,
             *,
-            by_name: bool = False,
-            to_dash_case: bool = False,
-            doc_inline: bool = False,
+            by_name: bool | None = None,
+            to_dash_case: bool | None = None,
         ) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
@@ -2242,13 +2254,11 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         enum_type: type[E] | None = None,
         /,
         *,
-        by_name: bool = False,
-        to_dash_case: bool = False,
-        doc_inline: bool = False,
+        by_name: bool | None = None,
+        to_dash_case: bool | None = None,
     ):
         self._by_name = by_name
         self._to_dash_case = to_dash_case
-        self._doc_inline = doc_inline
         super().__init__(enum_type, enum_type)
 
     def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
@@ -2259,19 +2269,27 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
     @functools.cached_property
     def _getter(self) -> _t.Callable[[E], str]:
+        by_name = self._by_name
+        if by_name is None:
+            by_name = getattr(self._inner, "__yuio_by_name__", False)
+        to_dash_case = self._to_dash_case
+        if to_dash_case is None:
+            to_dash_case = getattr(self._inner, "__yuio_to_dash_case__", False)
+
         items = {}
         for e in self._inner:
-            if self._by_name:
+            if by_name:
                 name = e.name
             else:
                 name = str(e.value)
-            if self._to_dash_case:
+            if to_dash_case:
                 name = _to_dash_case(name)
             items[e] = name
         return lambda e: items[e]
 
     @functools.cached_property
     def _docs(self) -> dict[str, str]:
+        # TODO: trim docs!
         return _find_docs(self._inner)
 
     def parse_with_ctx(self, ctx: StrParsingContext, /) -> E:
@@ -2388,21 +2406,27 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
     ) -> yuio.json_schema.JsonSchemaType:
         items = [self._getter(e) for e in self._inner]
         docs = self._docs
+
         descriptions = [docs.get(e.name) for e in self._inner]
         if not any(descriptions):
             descriptions = None
-        if self._doc_inline:
-            return yuio.json_schema.Enum(items, descriptions)
-        else:
-            return ctx.add_type(
-                Enum._TyWrapper(self._inner, self._by_name, self._to_dash_case),
-                _tx.type_repr(self._inner),
-                lambda: yuio.json_schema.Meta(
-                    yuio.json_schema.Enum(items, descriptions),
-                    title=self._inner.__name__,
-                    description=self._inner.__doc__,
-                ),
-            )
+
+        by_name = self._by_name
+        if by_name is None:
+            by_name = getattr(self._inner, "__yuio_by_name__", False)
+        to_dash_case = self._to_dash_case
+        if to_dash_case is None:
+            to_dash_case = getattr(self._inner, "__yuio_to_dash_case__", False)
+
+        return ctx.add_type(
+            Enum._TyWrapper(self._inner, by_name, to_dash_case),
+            _tx.type_repr(self._inner),
+            lambda: yuio.json_schema.Meta(
+                yuio.json_schema.Enum(items, descriptions),
+                title=self._inner.__name__,
+                description=self._inner.__doc__,
+            ),
+        )
 
     def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
         assert self.assert_type(value)
@@ -2615,8 +2639,9 @@ class Json(WrappingParser[T, Parser[T]], ValueParser[T], _t.Generic[T]):
         super().__init__(inner, object)
 
     def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
-        self._inner = parser
-        return self
+        result = _copy(self)
+        result._inner = parser
+        return result
 
     def parse_with_ctx(self, ctx: StrParsingContext, /) -> T:
         ctx = ctx.strip_if_non_space()
@@ -2930,14 +2955,14 @@ class TimeDelta(ValueParser[datetime.timedelta]):
             raise ParsingError("Got an empty `timedelta`", ctx=ctx)
         if value.endswith(","):
             raise ParsingError(
-                "Can't parse `%r` as `timedelta`, trailing coma is not allowed",
+                "Can't parse `%r` as `timedelta`, trailing comma is not allowed",
                 value,
                 ctx=ctx,
                 fallback_msg="Can't parse value as `timedelta`",
             )
         if value.startswith(","):
             raise ParsingError(
-                "Can't parse `%r` as `timedelta`, leading coma is not allowed",
+                "Can't parse `%r` as `timedelta`, leading comma is not allowed",
                 value,
                 ctx=ctx,
                 fallback_msg="Can't parse value as `timedelta`",
@@ -2999,7 +3024,7 @@ class TimeDelta(ValueParser[datetime.timedelta]):
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
         return ctx.add_type(
-            datetime.date,
+            datetime.timedelta,
             "TimeDelta",
             lambda: yuio.json_schema.Meta(
                 yuio.json_schema.String(
@@ -3025,6 +3050,48 @@ class TimeDelta(ValueParser[datetime.timedelta]):
     def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
         assert self.assert_type(value)
         return str(value)
+
+
+class Seconds(TimeDelta):
+    """
+    Parse a float and convert it to a time delta as a number of seconds.
+
+    """
+
+    @staticmethod
+    def _parse(value: str, ctx: ConfigParsingContext | StrParsingContext):
+        try:
+            seconds = float(value)
+        except ValueError:
+            raise ParsingError(
+                "Can't parse `%r` as `<seconds>`",
+                ctx.value,
+                ctx=ctx,
+                fallback_msg="Can't parse value as `<seconds>`",
+            ) from None
+        return datetime.timedelta(seconds=seconds)
+
+    def describe(self) -> str | None:
+        return "<seconds>"
+
+    def describe_or_def(self) -> str:
+        return "<seconds>"
+
+    def describe_many(self) -> str | tuple[str, ...]:
+        return "<seconds>"
+
+    def describe_value(self, value: object) -> str:
+        assert self.assert_type(value)
+        return str(value.total_seconds())
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return yuio.json_schema.Meta(yuio.json_schema.Number(), description="seconds")
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return value.total_seconds()
 
 
 class Path(ValueParser[pathlib.Path]):
@@ -3679,7 +3746,7 @@ class Dict(CollectionParser[dict[K, V], tuple[K, V]], _t.Generic[K, V]):
 
     def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
         result = super().wrap(parser)
-        setattr(result._inner, "_delimiter", self._pair_delimiter)
+        result._inner._delimiter = self._pair_delimiter  # pyright: ignore[reportAttributeAccessIssue]
         return result
 
     @staticmethod

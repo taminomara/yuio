@@ -6,7 +6,7 @@
 (Document
   (Heading 1
     'foo '
-    TextRegion(content='bar', color='em', no_wrap=True, url=None)
+    HighlightedRegion(content=['bar'], color='em')
     ' '
     '*'
     'baz'

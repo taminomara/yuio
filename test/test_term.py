@@ -3,10 +3,10 @@ import io
 import os
 import sys
 
+import pytest
+
 import yuio.color
 import yuio.term
-
-import pytest
 
 
 class WindowsConsoleIO(io.BytesIO):

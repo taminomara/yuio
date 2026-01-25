@@ -8,9 +8,9 @@ Multiple [1]_ and [2]_ footnotes.
 (Document
   (Paragraph
     'Multiple '
-    TextRegion(content='[1]', color='footnote', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['[1]'], color='role/footnote')])
     ' and '
-    TextRegion(content='[2]', color='footnote', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['[2]'], color='role/footnote')])
     ' footnotes.')
   (FootnoteContainer
     (Footnote '1'

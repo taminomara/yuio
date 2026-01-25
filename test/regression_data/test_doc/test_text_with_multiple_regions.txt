@@ -1,6 +1,6 @@
 (Paragraph
   'normal '
-  TextRegion(content='code', color='code', no_wrap=True, url=None)
+  NoWrapRegion(content=[HighlightedRegion(content=['code'], color='code')])
   ' text')
 
 ----------

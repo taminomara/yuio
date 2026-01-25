@@ -12,6 +12,6 @@ target1_ target2_
   (Paragraph
     'Paragraph')
   (Paragraph
-    'target1'
+    LinkRegion(content=['target1'], url=None)
     ' '
-    TextRegion(content='target2', color=None, no_wrap=False, url='https://example.com')))
+    LinkRegion(content=['target2'], url='https://example.com')))

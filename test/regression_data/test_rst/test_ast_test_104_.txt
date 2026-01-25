@@ -5,7 +5,7 @@ Implicit hyperlinks: target_, anonymous__, not a link___.
 (Document
   (Paragraph
     'Implicit hyperlinks: '
-    'target'
+    LinkRegion(content=['target'], url=None)
     ', '
-    'anonymous'
+    LinkRegion(content=['anonymous'], url=None)
     ', not a link___.'))

@@ -4,4 +4,4 @@
 
 (Document
   (Paragraph
-    TextRegion(content='MyClass', color='code', no_wrap=True, url=None)))
+    NoWrapRegion(content=[HighlightedRegion(content=['MyClass'], color='role/unknown/py/class')])))

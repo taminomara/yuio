@@ -5,6 +5,6 @@ Multiple *emphasis* and *more*
 (Document
   (Paragraph
     'Multiple '
-    TextRegion(content='emphasis', color='em', no_wrap=False, url=None)
+    HighlightedRegion(content=['emphasis'], color='em')
     ' and '
-    TextRegion(content='more', color='em', no_wrap=False, url=None)))
+    HighlightedRegion(content=['more'], color='em')))

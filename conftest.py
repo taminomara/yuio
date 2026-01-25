@@ -4,14 +4,14 @@ import io
 import platform
 import sys
 
-import yuio.io
-import yuio.term
-
 import pytest
 from sybil import Sybil
 from sybil.parsers.codeblock import PythonCodeBlockParser
 from sybil.parsers.doctest import DocTestParser
 from sybil.parsers.rest import SkipParser
+
+import yuio.io
+import yuio.term
 
 if sys.version_info >= (3, 14):
 
@@ -43,7 +43,7 @@ if sys.version_info >= (3, 14):
             SkipParser(),
         ],
         patterns=["*.rst", "*.py"],
-        excludes=["yuio/_vendor/*", "yuio/ext/sphinx.py"],
+        excludes=["yuio/_vendor/*", "yuio/ext/sphinx/*"],
         setup=_setup,
         teardown=_teardown,
     ).pytest()

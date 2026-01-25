@@ -357,6 +357,7 @@ class MdParser(yuio.doc.DocParser):
     def parse(self, s: str) -> yuio.doc.Document:
         s = s.expandtabs(tabsize=4)
         root = self._do_parse(_LINE_FEED_RE.split(s))
+        yuio.doc._clean_tree(root)
         self._process_inline_text(root)
         return root
 
@@ -542,8 +543,8 @@ class MdParser(yuio.doc.DocParser):
             name = "code-block"
             arg = self._state.syntax
 
-        self._nodes.append(
-            yuio.doc._make_directive(
+        self._nodes.extend(
+            yuio.doc._process_directive(
                 name,
                 arg,
                 lambda: self._state.lines,  # type: ignore
@@ -761,50 +762,59 @@ class _InlineParser:
             self._run()
         self._process_delims()
 
-        res: list[str | yuio.doc.TextRegion] = []
-        url: str | None = None
+        res = yuio.doc.TextRegion()
+        stack = [res]
+
         em = 0
         strong = 0
-        for token in self._tokens:
-            if token.kind in "*_":
-                em += token.data.get("em", 0)
-                strong += token.data.get("strong", 0)
-            elif token.kind == "link_start":
-                url = token.data.get("url")
-            elif token.kind == "link_end":
-                url = None
-            text = self._text[token.start : token.start + token.len]
-            if token.kind == "escape":
-                if text == "\n":
-                    text = "\v\n"  # Vertical tab forces wrapper to make a line break.
-                elif not text or text not in string.punctuation:
-                    text = "\\" + text
-            if text:
-                if em or strong or token.kind == "code":
-                    colors = []
-                    if em:
-                        colors.append("em")
-                    if strong:
-                        colors.append("strong")
-                    if token.kind == "code":
-                        if token.data["role"] == "flag":
-                            colors.append("flag")
-                        else:
-                            colors.append("code")
-                    if content := token.data.get("content"):
-                        text = content
-                    color = " ".join(colors)
-                    res.append(
-                        yuio.doc.TextRegion(
-                            content=text, color=color, no_wrap=True, url=url
-                        )
-                    )
-                elif url is not None:
-                    res.append(yuio.doc.TextRegion(content=text, url=url))
-                else:
-                    res.append(text)
 
-        return res
+        def add_text(text: str | yuio.doc.TextRegion):
+            if not text:
+                return
+            colors = []
+            if em:
+                colors.append("em")
+            if strong:
+                colors.append("strong")
+            if colors:
+                text = yuio.doc.HighlightedRegion(text, color=" ".join(colors))
+            stack[-1].content.append(text)
+
+        for token in self._tokens:
+            match token.kind:
+                case "text":
+                    text = self._text[token.start : token.start + token.len]
+                    add_text(text)
+                case "*" | "_":
+                    em += token.data.get("em", 0)
+                    strong += token.data.get("strong", 0)
+                    text = self._text[token.start : token.start + token.len]
+                    add_text(text)
+                case "link_start":
+                    if (url := token.data.get("url")) is not None:
+                        stack.append(yuio.doc.LinkRegion(url=url))
+                    else:
+                        text = self._text[token.start : token.start + token.len]
+                        add_text(text)
+                case "link_end":
+                    assert len(stack) > 1
+                    top = stack.pop()
+                    stack[-1].content.append(top)
+                case "escape":
+                    text = self._text[token.start : token.start + token.len]
+                    if text == "\n":
+                        text = (
+                            "\v\n"  # Vertical tab forces wrapper to make a line break.
+                        )
+                    elif not text or text not in string.punctuation:
+                        text = "\\" + text
+                    add_text(text)
+                case "formatted":
+                    add_text(token.data["content"])
+                case kind:
+                    assert False, kind
+
+        return res.content
 
     @classmethod
     def parse_link(cls, link: str):
@@ -919,11 +929,8 @@ class _InlineParser:
                 code = code[1:-1]
                 start += 1
                 end -= 1
-            if role is not None:
-                _, code = yuio.doc._split_crossref(code)
-            token = _Token(start + n_backticks, end - n_backticks, "code")
-            token.data["role"] = role or "code"
-            token.data["content"] = code
+            token = _Token(start + n_backticks, end - n_backticks, "formatted")
+            token.data["content"] = yuio.doc._process_role(code, role or "code")
             self._tokens.append(token)
 
     def _parse_math(self):
@@ -947,8 +954,9 @@ class _InlineParser:
             self._tokens.append(_Token(start, start + n_markers, "text"))
             self._pos = start + n_markers
         else:
-            token = _Token(start + n_markers, end - n_markers, "code")
-            token.data["role"] = "math"
+            code = self._text[start + n_markers : end - n_markers]
+            token = _Token(start + n_markers, end - n_markers, "formatted")
+            token.data["content"] = yuio.doc._process_role(code, "math")
             self._tokens.append(token)
 
     def _push_link_start(self, kind, length):

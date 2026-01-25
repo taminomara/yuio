@@ -6,4 +6,4 @@ foo _\__
 (Document
   (Paragraph
     'foo '
-    TextRegion(content='_', color='em', no_wrap=True, url=None)))
+    HighlightedRegion(content=['_'], color='em')))

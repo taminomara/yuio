@@ -6,5 +6,5 @@
 (Document
   (Paragraph
     '5'
-    TextRegion(content='6', color='em', no_wrap=True, url=None)
+    HighlightedRegion(content=['6'], color='em')
     '78'))

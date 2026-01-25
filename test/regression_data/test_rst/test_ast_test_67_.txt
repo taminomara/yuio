@@ -5,6 +5,6 @@ Multiple **strong** and **more**
 (Document
   (Paragraph
     'Multiple '
-    TextRegion(content='strong', color='strong', no_wrap=False, url=None)
+    HighlightedRegion(content=['strong'], color='strong')
     ' and '
-    TextRegion(content='more', color='strong', no_wrap=False, url=None)))
+    HighlightedRegion(content=['more'], color='strong')))

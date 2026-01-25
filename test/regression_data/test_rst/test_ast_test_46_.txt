@@ -5,5 +5,5 @@
 (Document
   (Paragraph
     ':Not a field '
-    TextRegion(content='foo-bar', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['foo-bar'], color='role/code')])
     ': Content'))

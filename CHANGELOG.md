@@ -16,6 +16,16 @@ and run `pre-commit run clk` to replace:
 
 - 💥 Add RST parser and make syntax for docstrings configurable; split `yuio.md`
   into `yuio.doc`, `yuio.md`, and `yuio.rst`.
+- 💥 Updated Sphinx extension to add its own domain instead of relying on
+  autodoc, added new cross-references and a directive to document commands.
+- 💥 Renamed `yuio.GROUP` to `yuio.COLLAPSE`.
+- 💥 Option groups no longer inspect config docstrings to infer help messages;
+  now, config docstrings are not displayed outside of Sphinx.
+- ✨ Added flag to collapse option groups when displaying CLI help message.
+- ✨ CLI help now shows default flag values.
+- ✨ Added magic attributes (`Enum.__yuio_by_name__`,
+  `Enum.__yuio_to_dash_case__`, `Config.__yuio_short_help__`) that would help
+  with parser specification and help generation.
 - 🔧 `preserve_spaces=False` no longer collapses all consecutive spaces when
   wrapping a paragraph. Spaces are collapsed only when line break occurs.
 - 🔧 Refactor code highlighters and move them into a separate module.

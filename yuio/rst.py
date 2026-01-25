@@ -331,6 +331,7 @@ class RstParser(yuio.doc.DocParser):
             self._auto_numbered_footnotes,
             self._auto_character_footnotes,
         )
+        yuio.doc._clean_tree(root)
         self._process_inline_text(root, link_resolver)
         return root
 
@@ -746,13 +747,14 @@ class RstParser(yuio.doc.DocParser):
             if _is_blank(arg_line):
                 break
 
-        node = yuio.doc._make_directive(
-            name,
-            arg,
-            lambda: self._lines[i:end],
-            lambda: self._process_block(yuio.doc.Document(items=[]), i, end).items,
+        parent.items.extend(
+            yuio.doc._process_directive(
+                name,
+                arg,
+                lambda: self._lines[i:end],
+                lambda: self._process_block(yuio.doc.Document(items=[]), i, end).items,
+            )
         )
-        parent.items.append(node)
 
         return end
 
@@ -1179,47 +1181,31 @@ class _InlineParser:
 
         res: list[str | yuio.doc.TextRegion] = []
         for token in self._tokens:
-            text = self._text[token.start : token.end]
-            color = None
-            no_wrap = False
-            url = None
+            text = _unescape(self._text[token.start : token.end])
             match token.kind:
+                case "text":
+                    res.append(text)
                 case "em":
-                    color = "em"
+                    res.append(yuio.doc.HighlightedRegion(text, color="em"))
                 case "strong":
-                    color = "strong"
-                case "code":
-                    role = token.data.get("role", "code")
-                    if role == "flag":
-                        color = "flag"
-                    elif role == "default":
-                        color = "em"
-                    else:
-                        color = "code"
-                    if title := token.data.get("title"):
-                        text = title
-                    no_wrap = True
+                    res.append(yuio.doc.HighlightedRegion(text, color="strong"))
+                case "formatted":
+                    res.append(token.data["content"])
                 case "link":
                     if title := token.data.get("title"):
-                        text = title
-                    url = token.data.get("url")
+                        text = _unescape(title)
+                    res.append(yuio.doc.LinkRegion(text, url=token.data.get("url", "")))
                 case "footnote":
                     if content := token.data.get("content"):
-                        text = content
+                        text = _unescape(content)
                     text = f"[{text}]"
-                    color = "footnote"
-                    no_wrap = True
-                case _:
-                    pass
-            text = _unescape(text)
-            if color or no_wrap or url:
-                res.append(
-                    yuio.doc.TextRegion(
-                        content=text, color=color, no_wrap=no_wrap, url=url
+                    res.append(
+                        yuio.doc.NoWrapRegion(
+                            yuio.doc.HighlightedRegion(text, color="role/footnote")
+                        )
                     )
-                )
-            else:
-                res.append(text)
+                case kind:
+                    assert False, kind
         return res
 
     def _fits(self, i):
@@ -1391,8 +1377,11 @@ class _InlineParser:
                         # Empty content is not allowed.
                         break
 
-                    self._emit(
-                        token_start, content_start, content_end, token_end, "code"
+                    token = self._emit(
+                        token_start, content_start, content_end, token_end, "formatted"
+                    )
+                    token.data["content"] = yuio.doc._process_role(
+                        self._text[content_start:content_end], "code"
                     )
                     return
                 case _:
@@ -1479,7 +1468,7 @@ class _InlineParser:
                     return
 
                 if n_underscores:
-                    target, title = yuio.doc._split_link(
+                    target, title = yuio.doc._process_link(
                         self._text[content_start:content_end],
                     )
                     link = self._link_resolver.find_link(
@@ -1495,14 +1484,13 @@ class _InlineParser:
                     token.data["url"] = target
                     token.data["title"] = title
                 else:
-                    _, title = yuio.doc._split_crossref(
-                        self._text[content_start:content_end],
-                    )
                     token = self._emit(
-                        token_start, content_start, content_end, token_end, "code"
+                        token_start, content_start, content_end, token_end, "formatted"
                     )
-                    token.data["role"] = prefix_role or suffix_role or "default"
-                    token.data["title"] = title
+                    token.data["content"] = yuio.doc._process_role(
+                        self._text[content_start:content_end],
+                        prefix_role or suffix_role or "literal",
+                    )
                 return
             elif self._ch_eq(self._pos, "\\"):
                 self._pos += 2

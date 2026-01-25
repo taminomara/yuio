@@ -2,12 +2,12 @@
 
 import enum
 
+import jsonschema
+import pytest
+
 import yuio.config
 import yuio.json_schema
 import yuio.parse
-
-import jsonschema
-import pytest
 
 import typing
 

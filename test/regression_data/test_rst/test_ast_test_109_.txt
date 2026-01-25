@@ -5,5 +5,5 @@ Footnote: [1]_, [2], [3
 (Document
   (Paragraph
     'Footnote: '
-    TextRegion(content='[1]', color='footnote', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['[1]'], color='role/footnote')])
     ', [2], [3'))

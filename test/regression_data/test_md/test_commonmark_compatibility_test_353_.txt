@@ -5,5 +5,5 @@ _a `_`_
 
 (Document
   (Paragraph
-    TextRegion(content='a ', color='em', no_wrap=True, url=None)
-    TextRegion(content='_', color='em code', no_wrap=True, url=None)))
+    HighlightedRegion(content=['a '], color='em')
+    HighlightedRegion(content=[NoWrapRegion(content=[HighlightedRegion(content=['_'], color='role/code')])], color='em')))

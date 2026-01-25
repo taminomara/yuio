@@ -5,8 +5,8 @@ __foo__bar__baz__
 
 (Document
   (Paragraph
-    TextRegion(content='foo', color='strong', no_wrap=True, url=None)
-    TextRegion(content='__', color='strong', no_wrap=True, url=None)
-    TextRegion(content='bar', color='strong', no_wrap=True, url=None)
-    TextRegion(content='__', color='strong', no_wrap=True, url=None)
-    TextRegion(content='baz', color='strong', no_wrap=True, url=None)))
+    HighlightedRegion(content=['foo'], color='strong')
+    HighlightedRegion(content=['__'], color='strong')
+    HighlightedRegion(content=['bar'], color='strong')
+    HighlightedRegion(content=['__'], color='strong')
+    HighlightedRegion(content=['baz'], color='strong')))

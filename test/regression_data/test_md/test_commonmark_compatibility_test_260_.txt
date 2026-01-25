@@ -5,6 +5,6 @@
 
 (Document
   (Paragraph
-    TextRegion(content='<https://foo.bar.', color='code', no_wrap=True, url=None)
+    NoWrapRegion(content=[HighlightedRegion(content=['<https://foo.bar.'], color='role/code')])
     'baz>'
     '`'))
