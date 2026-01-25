@@ -32,7 +32,6 @@ extensions = [
     "code_annotations",
     "api_ref",
     "yuio_objects",
-    "myst_parser",
 ]
 
 intersphinx_mapping = {

@@ -7,8 +7,23 @@
 
 from __future__ import annotations
 
+import sphinx.application
+import sphinx.domains
 from docutils import nodes
+from sphinx import addnodes
 from sphinx.util.docutils import SphinxRole
+
+
+def suppress_auto_ref_warnings(
+    app: sphinx.application.Sphinx,
+    domain: sphinx.domains.Domain,
+    node: addnodes.pending_xref,
+):
+    if node["refdomain"] == "cli" and node["reftype"] == "_auto":
+        return True
+    else:
+        return None
+
 
 FLAG_CLASSES = ["flag"]
 

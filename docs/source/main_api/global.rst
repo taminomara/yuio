@@ -39,7 +39,7 @@ Magic variables
 .. data:: __yuio_short_help__
     :type: bool
 
-    Can be set on :class:`~config.Config` classes to automatically truncate
+    Can be set on :class:`~yuio.config.Config` classes to automatically truncate
     parsed field help to the first paragraph. This is handy when config can be loaded
     from CLI, but you don't want to show full help for every config field in CLI help
     message.

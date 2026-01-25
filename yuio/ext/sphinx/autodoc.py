@@ -43,7 +43,7 @@ from yuio.ext.sphinx.domain import (
     OptObject,
     parse_cfg_path,
 )
-from yuio.ext.sphinx.utils import patch_document_title_ids
+from yuio.ext.sphinx.utils import patch_document_title_ids, type_to_nodes
 
 from typing import TYPE_CHECKING
 
@@ -988,7 +988,7 @@ class AutodocOptObject(AutodocBaseFieldObject, OptObject):
                 for name in self._primary_flags
                 if name != self._primary_flag
             ]
-            signode["cfg:suffix"] = str(
+            signode["cli:suffix"] = str(
                 self._option.format_metavar(self.make_repr_ctx())
             )
         else:
@@ -1075,10 +1075,10 @@ class AutodocFieldObject(AutodocBaseFieldObject, FieldObject):
             if self.obj.default is not yuio.MISSING:
                 default = self.obj.parser.to_json_value(self.obj.default)
                 post_annotation += " = " + json.dumps(default, ensure_ascii=False)
-            if post_annotation:
-                signode += [
-                    addnodes.desc_sig_keyword(post_annotation, post_annotation),
-                ]
+
+            signode += type_to_nodes(
+                post_annotation, self.state.inliner, xref_role="cli:_auto"
+            )
 
     def transform_content(self, content_node: addnodes.desc_content):
         if help := self.obj.full_help:

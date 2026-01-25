@@ -107,6 +107,9 @@ Contents
     internals/index
         For advanced use-cases.
 
+    ext/index
+        Integrations with other tools and libraries.
+
     cookbook/index
         Recipes for common tasks.
 

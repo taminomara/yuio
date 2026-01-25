@@ -209,6 +209,8 @@ Helpers
     Any string (i.e. a :class:`str`, a raw colorized string,
     or a normal colorized string).
 
+.. autoclass:: LinkMarker
+
 .. autodata:: NO_WRAP_START
 
 .. autodata:: NO_WRAP_END

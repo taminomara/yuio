@@ -35,6 +35,7 @@ from yuio.ext.sphinx.utils import (
     parse_cfg_path,
     parse_cmd_path,
     read_parenthesized_until,
+    type_to_nodes,
 )
 
 from typing import TYPE_CHECKING
@@ -332,8 +333,7 @@ class CliObject(
     def signature_add_post_annotations(
         self, sig: str, signode: sphinx.addnodes.desc_signature
     ):
-        suffix = signode.get("cfg:suffix")
-        if suffix:
+        if suffix := signode.get("cli:suffix"):
             signode += [
                 addnodes.desc_sig_keyword(suffix, suffix),
             ]
@@ -378,7 +378,12 @@ class CliObject(
             )
 
             if python_name := self.options.get("python-name"):
-                self.cli_domain.note_python_obj(python_name, cfg_path)
+                self.cli_domain.note_python_obj(
+                    self.get_source_info(),
+                    self.env.docname,
+                    cfg_path,
+                    python_name,
+                )
 
         if "no-index-entry" not in self.options:
             indextext = self.get_index_text(cfg_path, cmd_path)
@@ -433,9 +438,15 @@ class FieldObject(CliObject):
         sig = sig.strip()
         if sig.startswith("="):
             sig = " " + sig
-        signode["cfg:suffix"] = sig
+        signode["cli:suffix"] = sig
 
         return parse_cfg_path(name), None
+
+    def signature_add_post_annotations(
+        self, sig: str, signode: sphinx.addnodes.desc_signature
+    ):
+        if suffix := signode.get("cli:suffix"):
+            signode += type_to_nodes(suffix, self.state.inliner)
 
 
 class OptObject(CliObject):
@@ -509,7 +520,7 @@ class FlagObject(OptObject):
         signode["cli:cmd_aliases"] = [
             self.cmd_path + (name,) for name in names if name != main_name
         ]
-        signode["cfg:suffix"] = sig
+        signode["cli:suffix"] = sig
 
         return cfg_path, cmd_path
 
@@ -611,7 +622,7 @@ class EnvVarObject(CliObject):
         sig = sig.strip()
         if sig.startswith("="):
             sig = " " + sig
-        signode["cfg:suffix"] = sig
+        signode["cli:suffix"] = sig
 
         return parse_cfg_path(name), None
 
@@ -733,12 +744,16 @@ class CliDomain(Domain):
     label = "cli"
 
     object_types = {
-        "command": ObjType(_("command"), "cmd", "cli", "any", cli_priority=6),
-        "flag": ObjType(_("flag"), "flag", "opt", "cli", "any", cli_priority=5),
-        "argument": ObjType(_("argument"), "arg", "opt", "cli", "any", cli_priority=4),
-        "config": ObjType(_("config"), "cfg", "obj", "any", cli_priority=3),
-        "field": ObjType(_("field"), "field", "obj", "any", cli_priority=2),
-        "envvar": ObjType(_("environment variable"), "env", "any"),
+        "command": ObjType(_("command"), "cmd", "cli", "any", "_auto", cli_priority=6),
+        "flag": ObjType(
+            _("flag"), "flag", "opt", "cli", "any", "_auto", cli_priority=5
+        ),
+        "argument": ObjType(
+            _("argument"), "arg", "opt", "cli", "any", "_auto", cli_priority=4
+        ),
+        "config": ObjType(_("config"), "cfg", "obj", "any", "_auto", cli_priority=3),
+        "field": ObjType(_("field"), "field", "obj", "any", "_auto", cli_priority=2),
+        "envvar": ObjType(_("environment variable"), "env", "any", "_auto"),
     }
 
     directives = {
@@ -765,12 +780,14 @@ class CliDomain(Domain):
         "env": EnvXRefRole(),  # envvar
         # any ns
         "any": CliXRefRole(),  # any object
+        "_auto": CliXRefRole(),  # any object
     }
 
     initial_data = {
         "cmd_ns": {},
         "cfg_ns": {},
         "env_ns": {},
+        "py_ns": {},
     }
 
     @property
@@ -784,6 +801,10 @@ class CliDomain(Domain):
     @property
     def env_ns(self) -> dict[str, EnvIndexEntry]:
         return self.data["env_ns"]
+
+    @property
+    def py_ns(self) -> dict[str, IndexEntry]:
+        return self.data["py_ns"]
 
     def default_priority(self, objtype) -> int:
         return self.object_types[objtype].attrs.get("cli_priority", 0)
@@ -891,8 +912,23 @@ class CliDomain(Domain):
         else:
             self.cmd_ns[alias] = entry
 
-    def note_python_obj(self, python_name: str, cfg_path: CfgPath):
-        pass
+    def note_python_obj(
+        self,
+        location: tuple[str, int],
+        docname: str,
+        cfg_path: CfgPath,
+        python_name: str,
+    ):
+        entry = self.cfg_ns.get(cfg_path)
+        if not entry:
+            return
+        entry = dataclasses.replace(
+            entry, location=f"{location[0]}:{location[1]}", docname=docname
+        )
+        if python_name in self.py_ns:
+            self._report_duplicate(python_name, entry, self.py_ns[python_name])
+        else:
+            self.py_ns[python_name] = entry
 
     def _report_duplicate(
         self, path: str, l: IndexEntry | EnvIndexEntry, r: IndexEntry | EnvIndexEntry
@@ -919,6 +955,10 @@ class CliDomain(Domain):
         for fullname, entry in list(self.env_ns.items()):
             if entry.docname == docname:
                 self.env_ns.pop(fullname)
+
+        for fullname, entry in list(self.py_ns.items()):
+            if entry.docname == docname:
+                self.py_ns.pop(fullname)
 
     def merge_domaindata(self, docnames, otherdata):
         cfg_ns: dict[CfgPath, CliDomain.IndexEntry] = otherdata["cfg_ns"]
@@ -947,6 +987,15 @@ class CliDomain(Domain):
                 )
                 if should_override:
                     self.env_ns[fullname] = entry
+
+        py_ns: dict[str, CliDomain.IndexEntry] = otherdata["py_ns"]
+        for fullname, entry in py_ns.items():
+            if entry.docname in docnames:
+                should_override = self._check_duplicates(
+                    fullname, self.py_ns, py_ns, lambda p: p
+                )
+                if should_override:
+                    self.py_ns[fullname] = entry
 
     def _check_duplicates(
         self,
@@ -1018,7 +1067,12 @@ class CliDomain(Domain):
         if typ is not None:
             typ_cls = self.roles.get(typ)
             allowed_objects = self.objtypes_for_role(typ)
-            if isinstance(typ_cls, CfgXRefRole):
+            if typ == "_auto":
+                if py_res := self._search_in_py(node, target, allowed_objects):
+                    return py_res
+                else:
+                    return self._search_in_cfg(node, target, allowed_objects)
+            elif isinstance(typ_cls, CfgXRefRole):
                 return self._search_in_cfg(node, target, allowed_objects)
             elif isinstance(typ_cls, CmdXRefRole):
                 return self._search_in_cmd(node, target, allowed_objects)
@@ -1121,6 +1175,19 @@ class CliDomain(Domain):
         allowed_objects: list[str] | None,
     ):
         if (entry := self.env_ns.get(target)) and (
+            not allowed_objects or entry.objtype in allowed_objects
+        ):
+            return [entry]
+        else:
+            return []
+
+    def _search_in_py(
+        self,
+        node: addnodes.pending_xref,
+        target: str,
+        allowed_objects: list[str] | None,
+    ):
+        if (entry := self.py_ns.get(target)) and (
             not allowed_objects or entry.objtype in allowed_objects
         ):
             return [entry]

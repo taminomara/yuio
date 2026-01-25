@@ -6,7 +6,7 @@
 # just keep this copyright line please :3
 
 """
-A Sphinx_ extension for documenting yuio configs.
+A Sphinx_ extension for documenting Yuio apps and configs.
 
 .. _Sphinx: https://www.sphinx-doc.org/
 
@@ -222,15 +222,14 @@ All directives that document Yuio objects accept the standard parameters:
     Overrides object name that's shown on the pace, in table of contents, and
     in cross-references.
 
-..
-    .. rst:directive:option:: python-name: <python-path>
+.. rst:directive:option:: python-name: <python-path>
 
-        Explicitly links a manually documented object with a Python object. This can help
-        with linking objects in auto-generated field type signatures.
+    Explicitly links a manually documented object with a Python object. This can help
+    with linking objects in auto-generated field type signatures.
 
-        .. note::
+    .. note::
 
-            This will not make an object referenceable via Python domain.
+        This will not make an object referenceable via Python domain.
 
 .. rst:directive:option:: parent-command: <cmd-path>
 

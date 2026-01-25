@@ -204,7 +204,7 @@ CLI help, but you can print messages with it as well:
 Highlighting code
 -----------------
 
-Yuio supports simple :ref:`code highlighting <highlighting-code>`:
+Yuio supports simple :doc:`code highlighting <../../internals/hl>`:
 
 .. literalinclude:: /../../examples/docs/io_hl.py
     :language: python

@@ -1,5 +1,5 @@
 function initAnnotationTooltips() {
-  const containers = document.querySelectorAll("div.highlight");
+  const containers = document.querySelectorAll("div.annotate.highlight");
 
   containers.forEach((container) => {
     const codeBlock = container.querySelector("pre");

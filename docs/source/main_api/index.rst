@@ -34,6 +34,3 @@ The primary interface.
 
    dbg
       Automated environment collection for bug reports.
-
-   sphinx_ext
-      Documenting configs in Sphinx.

@@ -19,7 +19,7 @@ from yuio.ext.sphinx.directives import (
     IfSphinx,
 )
 from yuio.ext.sphinx.domain import CliDomain
-from yuio.ext.sphinx.roles import Flag
+from yuio.ext.sphinx.roles import Flag, suppress_auto_ref_warnings
 
 
 def setup(app: Sphinx):
@@ -32,6 +32,7 @@ def setup(app: Sphinx):
     app.add_directive("if-opt-doc", IfOptDoc)
     app.add_directive("if-not-opt-doc", IfNotOptDoc)
     app.add_role("flag", Flag())
+    app.connect("warn-missing-reference", suppress_auto_ref_warnings)
 
     return {
         "version": yuio.__version__,
