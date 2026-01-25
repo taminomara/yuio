@@ -119,6 +119,8 @@ and to collapse argument groups.
 
 """
 
+GROUP = COLLAPSE  # Deprecated.
+
 
 class YuioWarning(RuntimeWarning):
     """

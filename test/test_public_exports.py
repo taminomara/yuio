@@ -20,7 +20,7 @@ files = [
     for file in root.glob("*.py")
     if (file.name == "__init__.py" or not file.name.startswith("_"))
 ]
-allowlist = ["commit_id", "version_tuple", "version", "TYPE_CHECKING"]
+allowlist = ["commit_id", "version_tuple", "version", "TYPE_CHECKING", "GROUP"]
 
 
 @pytest.mark.parametrize("file", files, ids=[file.name for file in files])

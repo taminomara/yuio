@@ -36,6 +36,14 @@ Magic variables
     When ``__yuio_to_dash_case__`` is :data:`True`, parsers convert enumerator
     names/values to dash case before look up.
 
+.. data:: __yuio_doc_inline__
+    :type: bool
+
+    Can be set on :class:`~enum.Enum` classes to inline their Json schemas and
+    documentation.
+
+    Useful for small enums that don't warrant a separate section in documentation.
+
 .. data:: __yuio_short_help__
     :type: bool
 

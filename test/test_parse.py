@@ -731,6 +731,14 @@ class TestEnum:
             "test.test_parse.TestEnum.Cuteness",
         )
 
+    def test_json_schema_inline(self):
+        parser = yuio.parse.Enum(self.Cuteness, doc_inline=True)
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.Enum(
+            ["Cats", "Dogs", ":3"], ["Cats!", "Dogs!", "Sharkie!"]
+        )
+
     def test_by_value(self):
         parser = yuio.parse.Enum(self.Cuteness)
         assert parser.parse("CATS") is self.Cuteness.CATS

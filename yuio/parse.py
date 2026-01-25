@@ -2223,6 +2223,13 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
         If not given, Yuio will search for :data:`__yuio_to_dash_case__` attribute on the
         given enum class to infer value for this option.
+    :param doc_inline:
+        inline this enum in json schema and in documentation.
+
+        Useful for small enums that don't warrant a separate section in documentation.
+
+        If not given, Yuio will search for :data:`__yuio_doc_inline__` attribute on the
+        given enum class to infer value for this option.
 
     """
 
@@ -2236,6 +2243,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
             *,
             by_name: bool | None = None,
             to_dash_case: bool | None = None,
+            doc_inline: bool | None = None,
         ) -> Enum[E]: ...
 
         @_t.overload
@@ -2245,6 +2253,7 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
             *,
             by_name: bool | None = None,
             to_dash_case: bool | None = None,
+            doc_inline: bool | None = None,
         ) -> PartialParser: ...
 
         def __new__(cls, *args, **kwargs) -> _t.Any: ...
@@ -2256,9 +2265,11 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         *,
         by_name: bool | None = None,
         to_dash_case: bool | None = None,
+        doc_inline: bool | None = None,
     ):
         self._by_name = by_name
         self._to_dash_case = to_dash_case
+        self._doc_inline = doc_inline
         super().__init__(enum_type, enum_type)
 
     def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
@@ -2417,16 +2428,22 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         to_dash_case = self._to_dash_case
         if to_dash_case is None:
             to_dash_case = getattr(self._inner, "__yuio_to_dash_case__", False)
+        doc_inline = self._doc_inline
+        if doc_inline is None:
+            doc_inline = getattr(self._inner, "__yuio_doc_inline__", False)
 
-        return ctx.add_type(
-            Enum._TyWrapper(self._inner, by_name, to_dash_case),
-            _tx.type_repr(self._inner),
-            lambda: yuio.json_schema.Meta(
-                yuio.json_schema.Enum(items, descriptions),
-                title=self._inner.__name__,
-                description=self._inner.__doc__,
-            ),
-        )
+        if doc_inline:
+            return yuio.json_schema.Enum(items, descriptions)
+        else:
+            return ctx.add_type(
+                Enum._TyWrapper(self._inner, by_name, to_dash_case),
+                _tx.type_repr(self._inner),
+                lambda: yuio.json_schema.Meta(
+                    yuio.json_schema.Enum(items, descriptions),
+                    title=self._inner.__name__,
+                    description=self._inner.__doc__,
+                ),
+            )
 
     def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
         assert self.assert_type(value)

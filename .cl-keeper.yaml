@@ -2,22 +2,6 @@
 version_format: python-semver
 format_wrapping: 80
 ignore_missing_releases_before: "2.0.0"
-change_categories:
-  breaking: "Breaking changes"
-  security: "Security"
-  io: "Io"
-  parse: "Parse"
-  app: "App"
-  config: "Config"
-  exec: "Exec"
-  git: "Git"
-  sphinx_extension: "Sphinx extension"
-  complete: "Complete"
-  json_schema: "Json Schema"
-  md: "Md"
-  term: "Term"
-  theme: "Theme"
-  widget: "Widget"
 use_default_item_categories: true
 item_categories:
   breaking: "💥 "
