@@ -14,6 +14,8 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+## [2.0.0-rc3] - 2026-01-26
+
 - 💥 Add RST parser and make syntax for docstrings configurable; split `yuio.md`
   into `yuio.doc`, `yuio.md`, and `yuio.rst`.
 
@@ -203,5 +205,6 @@ Release candidate for version 2.
 [2.0.0-rc0]: https://github.com/taminomara/yuio/releases/tag/v2.0.0-rc0
 [2.0.0-rc1]: https://github.com/taminomara/yuio/compare/v2.0.0-rc0...v2.0.0-rc1
 [2.0.0-rc2]: https://github.com/taminomara/yuio/compare/v2.0.0-rc1...v2.0.0-rc2
+[2.0.0-rc3]: https://github.com/taminomara/yuio/compare/v2.0.0-rc2...v2.0.0-rc3
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-rc2...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-rc3...HEAD
