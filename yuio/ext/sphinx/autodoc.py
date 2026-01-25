@@ -455,7 +455,7 @@ class AutodocObject(AutodocUtilsMixin, CliObject, _t.Generic[T]):
         ):
             container += nested_parse_to_nodes(self.state, content)
 
-        container.walk(DocstringTitleConverter(self.state.document))
+        container.walkabout(DocstringTitleConverter(self.state.document))
 
         return container.children
 
@@ -543,7 +543,7 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
                 self._prog, self._command, self._inherited_options, prefix=""
             )
         )
-        usage = "$ " + "\n$ ".join(map(str, usage_lines))
+        usage = "$ " + "\n".join(map(str, usage_lines)).replace("\n", "\n$ ")
 
         return nodes.literal_block("", usage, language="console")
 
@@ -810,6 +810,8 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
 
 
 class AutodocBaseFieldObject(AutodocObject[yuio.config._Field]):
+    all_flags = False
+
     def _make_option(self):
         option: yuio.cli.Option[_t.Any] | None = self.options.get("__option")
 
@@ -900,7 +902,7 @@ class AutodocBaseFieldObject(AutodocObject[yuio.config._Field]):
         if not option:
             return
 
-        aliases = option.format_alias_flags(self.make_repr_ctx(), all=True)
+        aliases = option.format_alias_flags(self.make_repr_ctx(), all=self.all_flags)
 
         for alias in aliases or []:
             if isinstance(alias, tuple):
@@ -938,7 +940,7 @@ class AutodocBaseFieldObject(AutodocObject[yuio.config._Field]):
         if not option:
             return
 
-        default = option.format_default(self.make_repr_ctx(), all=True)
+        default = option.format_default(self.make_repr_ctx(), all=self.all_flags)
         if not default:
             return
 
@@ -975,7 +977,7 @@ class AutodocOptObject(AutodocBaseFieldObject, OptObject):
         if not self._option:
             cmd_path = None
         elif self._option.flags is yuio.POSITIONAL:
-            metavar = str(self._option.format_metavar(self.make_repr_ctx()))
+            metavar = self._option.nth_metavar(0)
             cmd_path = CmdPath((metavar,))
             signode["cli:page_name"] = metavar
             signode["cli:toc_name"] = metavar
@@ -1015,7 +1017,7 @@ class AutodocOptObject(AutodocBaseFieldObject, OptObject):
         if not self._option:
             return []
 
-        default = self._option.format_default(self.make_repr_ctx(), all=True)
+        default = self._option.format_default(self.make_repr_ctx(), all=self.all_flags)
         if not default:
             return []
 
@@ -1059,6 +1061,8 @@ class AutodocConfigObject(
 
 
 class AutodocFieldObject(AutodocBaseFieldObject, FieldObject):
+    all_flags = True
+
     def get_signatures(self) -> list[str]:
         return [self.options["name"]]
 
@@ -1198,6 +1202,8 @@ class AutodocDirective(AutodocUtilsMixin):
 
         if isapp(obj) and "subcommands" in self.options:
             for subcommand in obj._ordered_subcommands:
+                if subcommand.help is yuio.DISABLED:
+                    continue
                 directive = AutodocDirective(
                     self.name,
                     self.arguments,

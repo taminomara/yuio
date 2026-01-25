@@ -1242,7 +1242,7 @@ def _process_ref(text: str, parse_path=None, join_path=None):
             target = target[1:]
             title = parse_path(title[1:])[-1]
         else:
-            title = join_path(parse_path(title))
+            title = join_path(parse_path(title.lstrip(".")))
     else:
         title = title.rstrip()
 

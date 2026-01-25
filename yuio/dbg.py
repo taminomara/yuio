@@ -195,6 +195,8 @@ def _versions(
         report.items.append(("__app__", str(app.version)))
     if app and package is None:
         package = app._command.__module__
+        if package and (index := package.find(".")) != -1:
+            package = package[:index]
 
     dependencies: set[str]
     if package is None:
