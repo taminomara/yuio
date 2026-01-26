@@ -124,10 +124,9 @@ def main():
         license = "# " + (
             (archive_dir.joinpath("LICENSE"))
             .read_text()
-            .replace("\n", "\n# ")
-            .rstrip("\n# ")
-            .replace("# \n", "#\n")
             .rstrip()
+            .replace("\n", "\n# ")
+            .replace("# \n", "#\n")
         )
         dist = TEMPLATE.format(version=found_version, src=src, license=license)
 
