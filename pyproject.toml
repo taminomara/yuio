@@ -35,9 +35,9 @@ dev = [
 test = [
     "jsonschema==4.25.1",
     "libtmux==0.53.0",
-    "pyright==1.1.407",
+    "pyright==1.1.408",
     "pytest-cov==7.0.0",
-    "pytest-regressions==2.8.3",
+    "pytest-regressions==2.9.1",
     "pytest==9.0.2",
     "PyYaml==6.0.3",
     "sybil==9.3.0",
@@ -53,7 +53,7 @@ doc = [
 lint = ["ruff==0.14.10", "pre-commit==4.5.1"]
 ci = [
     "PyGithub==2.8.1",
-    "tox==4.33.0",
+    "tox==4.34.1",
     "virtualenv-pyenv==0.6.0",
     "pytest-cov==7.0.0",
     "genbadge[coverage]==1.1.3",
