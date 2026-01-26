@@ -612,10 +612,37 @@ class TestEnum:
         #: Sharkie!
         BLAHAJ = ":3"
 
+    class CutenessInline(enum.Enum):
+        __yuio_doc_inline__ = True
+
+        #: Cats!
+        CATS = "Cats"
+        #: Dogs!
+        DOGS = "Dogs"
+        #: Sharkie!
+        BLAHAJ = ":3"
+
     class Colors(enum.IntEnum):
         RED = 31
         GREEN = 32
         BLUE = 34
+
+    class ColorsByName(enum.IntEnum):
+        __yuio_by_name__ = True
+
+        RED = 31
+        GREEN = 32
+        BLUE = 34
+
+    class LongComments(enum.IntEnum):
+        #: Long comment
+        #: that spans multiple lines.
+        LONG = 1
+        #: Longer comment
+        #: that spans multiple lines...
+        #:
+        #: And has a second paragraph.
+        LONGER = 2
 
     def test_basics_by_value(self):
         parser = yuio.parse.Enum(self.Cuteness)
@@ -739,6 +766,26 @@ class TestEnum:
             ["Cats", "Dogs", ":3"], ["Cats!", "Dogs!", "Sharkie!"]
         )
 
+    def test_json_schema_inline_magic(self):
+        parser = yuio.parse.Enum(self.CutenessInline)
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.Enum(
+            ["Cats", "Dogs", ":3"], ["Cats!", "Dogs!", "Sharkie!"]
+        )
+
+    def test_json_schema_trim_comments(self):
+        parser = yuio.parse.Enum(self.LongComments, by_name=True, doc_inline=True)
+        assert parser.to_json_schema(
+            yuio.json_schema.JsonSchemaContext()
+        ) == yuio.json_schema.Enum(
+            ["LONG", "LONGER"],
+            [
+                "Long comment\nthat spans multiple lines.",
+                "Longer comment\nthat spans multiple lines...",
+            ],
+        )
+
     def test_by_value(self):
         parser = yuio.parse.Enum(self.Cuteness)
         assert parser.parse("CATS") is self.Cuteness.CATS
@@ -771,6 +818,23 @@ class TestEnum:
         assert parser.describe_or_def() == "{RED|GREEN|BLUE}"
         assert parser.describe_value(self.Colors.RED) == "RED"
 
+    def test_by_name_magic(self):
+        parser = yuio.parse.Enum(self.ColorsByName)
+        assert parser.parse("RED") is self.ColorsByName.RED
+        assert parser.parse("RED") is self.ColorsByName.RED
+        assert parser.parse_config("RED") is self.ColorsByName.RED
+        assert parser.parse_config(self.ColorsByName.RED) is self.ColorsByName.RED
+        assert parser.parse("green") is self.ColorsByName.GREEN
+        assert parser.parse("Blue") is self.ColorsByName.BLUE
+        with pytest.raises(yuio.parse.ParsingError):
+            parser.parse("Color of a beautiful sunset")
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
+            parser.parse_config(10)
+
+        assert parser.describe() == "{RED|GREEN|BLUE}"
+        assert parser.describe_or_def() == "{RED|GREEN|BLUE}"
+        assert parser.describe_value(self.ColorsByName.RED) == "RED"
+
     def test_to_dash_case(self):
         class Colors(enum.Enum):
             RED = "RED"
@@ -778,6 +842,17 @@ class TestEnum:
             GREEN_BACK = "GREEN_BACK"
 
         parser = yuio.parse.Enum(Colors, to_dash_case=True)
+        assert parser.parse("green-fore") is Colors.GREEN_FORE
+
+    def test_to_dash_case_magic(self):
+        class Colors(enum.Enum):
+            __yuio_to_dash_case__ = True
+
+            RED = "RED"
+            GREEN_FORE = "GREEN_FORE"
+            GREEN_BACK = "GREEN_BACK"
+
+        parser = yuio.parse.Enum(Colors)
         assert parser.parse("green-fore") is Colors.GREEN_FORE
 
     def test_short(self):
@@ -845,6 +920,22 @@ class TestEnum:
             yuio.parse.from_type_hint(
                 _t.Annotated[self.Colors, yuio.parse.Enum(self.Colors)]
             )
+
+    def test_options(self):
+        parser = yuio.parse.Enum(self.LongComments, by_name=True)
+        options = list(parser.options())
+        assert options == [
+            yuio.widget.Option(
+                value=self.LongComments.LONG,
+                display_text="LONG",
+                comment="Long comment...",
+            ),
+            yuio.widget.Option(
+                value=self.LongComments.LONGER,
+                display_text="LONGER",
+                comment="Longer comment...",
+            ),
+        ]
 
 
 class TestDecimal:

@@ -2300,8 +2300,11 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
     @functools.cached_property
     def _docs(self) -> dict[str, str]:
-        # TODO: trim docs!
-        return _find_docs(self._inner)
+        docs = _find_docs(self._inner).copy()
+        for key, text in docs.items():
+            if (index := text.find("\n\n")) != -1:
+                docs[key] = text[:index]
+        return docs
 
     def parse_with_ctx(self, ctx: StrParsingContext, /) -> E:
         ctx = ctx.strip_if_non_space()
@@ -2375,19 +2378,27 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
 
     def options(self) -> _t.Collection[yuio.widget.Option[E]]:
         docs = self._docs
-        return [
-            yuio.widget.Option(
-                e, display_text=self._getter(e), comment=docs.get(e.name)
+        options = []
+        for e in self._inner:
+            comment = docs.get(e.name)
+            if comment:
+                lines = comment.splitlines()
+                if not lines:
+                    comment = None
+                elif len(lines) == 1:
+                    comment = str(lines[0])
+                else:
+                    comment = str(lines[0]) + ("..." if lines[1] else "")
+            options.append(
+                yuio.widget.Option(e, display_text=self._getter(e), comment=comment)
             )
-            for e in self._inner
-        ]
+        return options
 
     def completer(self) -> yuio.complete.Completer | None:
-        docs = self._docs
         return yuio.complete.Choice(
             [
-                yuio.complete.Option(self._getter(e), comment=docs.get(e.name))
-                for e in self._inner
+                yuio.complete.Option(option.display_text, comment=option.comment)
+                for option in self.options()
             ]
         )
 
