@@ -321,6 +321,7 @@ Re-imports
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import pathlib
@@ -1203,6 +1204,33 @@ class Config:
 
         return options
 
+    def __getattribute(self, item):
+        value = super().__getattribute__(item)
+        if value is yuio.MISSING:
+            raise AttributeError(f"{item} is not configured")
+        else:
+            return value
+
+    # A dirty hack to hide `__getattribute__` from type checkers.
+    locals()["__getattribute__"] = __getattribute
+
+    def __repr__(self):
+        field_reprs = ", ".join(
+            f"{name}={getattr(self, name, yuio.MISSING)!r}"
+            for name in self.__get_fields()
+        )
+        return f"{self.__class__.__name__}({field_reprs})"
+
+    def __rich_repr__(self):
+        for name in self.__get_fields():
+            yield name, getattr(self, name, yuio.MISSING)
+
+    def __copy__(self):
+        return type(self)(self)
+
+    def __deepcopy__(self, memo: dict[int, _t.Any] | None = None):
+        return type(self)(copy.deepcopy(self.__dict__, memo))
+
     @classmethod
     def load_from_json_file(
         cls,
@@ -1432,27 +1460,6 @@ class Config:
                     )
 
         return cls(**fields)
-
-    def __getattribute(self, item):
-        value = super().__getattribute__(item)
-        if value is yuio.MISSING:
-            raise AttributeError(f"{item} is not configured")
-        else:
-            return value
-
-    # A dirty hack to hide `__getattribute__` from type checkers.
-    locals()["__getattribute__"] = __getattribute
-
-    def __repr__(self):
-        field_reprs = ", ".join(
-            f"{name}={getattr(self, name, yuio.MISSING)!r}"
-            for name in self.__get_fields()
-        )
-        return f"{self.__class__.__name__}({field_reprs})"
-
-    def __rich_repr__(self):
-        for name in self.__get_fields():
-            yield name, getattr(self, name, yuio.MISSING)
 
     @classmethod
     def to_json_schema(

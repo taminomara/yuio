@@ -1,5 +1,6 @@
 # pyright: reportCallIssue=false, reportGeneralTypeIssues=false, reportArgumentType=false
 
+import copy
 import enum
 
 import jsonschema
@@ -863,7 +864,6 @@ class TestMerge:
 class TestJsonSchema:
     class MyConfig(yuio.config.Config):
         """Help for MyConfig."""
-
         x: int = 5
         #: Help for y.
         y: list[int]
@@ -945,3 +945,143 @@ class TestJsonSchema:
         config = TestJsonSchema.MyConfig2(x=TestJsonSchema.MyConfig(x=5))
         assert config.to_json_value() == {"x": {"x": 5}, "y": 5}
         assert config.to_json_value(include_defaults=False) == {"x": {"x": 5}}
+
+class TestCopy:
+    def test_shallow_copy_basic(self):
+        class MyConfig(yuio.config.Config):
+            x: int = 1
+            y: str = "test"
+
+        original = MyConfig(x=10, y="hello")
+        copied = copy.copy(original)
+
+        assert copied is not original
+        assert copied.x == 10
+        assert copied.y == "hello"
+
+        copied.x = 15
+        assert original.x == 10
+        assert copied.x == 15
+
+    def test_shallow_copy_with_mutable_values(self):
+        class MyConfig(yuio.config.Config):
+            items: list[int] = []
+
+        original = MyConfig(items=[1, 2, 3])
+        copied = copy.copy(original)
+
+        assert copied is not original
+        assert copied.items is original.items
+        original.items.append(4)
+        assert copied.items == [1, 2, 3, 4]
+
+    def test_shallow_copy_nested_configs(self):
+        class SubConfig(yuio.config.Config):
+            value: int = 0
+
+        class MyConfig(yuio.config.Config):
+            sub: SubConfig
+
+        original = MyConfig(sub=SubConfig(value=42))
+        copied = copy.copy(original)
+
+        assert copied is not original
+        assert copied.sub is not original.sub
+        assert copied.sub.value == 42
+
+        copied.sub.value = 24
+        assert original.sub.value == 42
+        assert copied.sub.value == 24
+
+    def test_shallow_copy_with_missing_fields(self):
+        class MyConfig(yuio.config.Config):
+            x: int
+            y: str = "default"
+
+        original = MyConfig(y="custom")
+        copied = copy.copy(original)
+
+        with pytest.raises(AttributeError, match=r"x is not configured"):
+            _ = copied.x
+        assert copied.y == "custom"
+
+    def test_deepcopy_basic(self):
+        class MyConfig(yuio.config.Config):
+            x: int = 1
+            y: str = "test"
+
+        original = MyConfig(x=10, y="hello")
+        copied = copy.deepcopy(original)
+
+        assert copied is not original
+        assert copied.x == 10
+        assert copied.y == "hello"
+
+        copied.x = 15
+        assert original.x == 10
+        assert copied.x == 15
+
+    def test_deepcopy_with_mutable_values(self):
+        class MyConfig(yuio.config.Config):
+            items: list[int] = []
+
+        original = MyConfig(items=[1, 2, 3])
+        copied = copy.deepcopy(original)
+
+        assert copied is not original
+        assert copied.items is not original.items
+        assert copied.items == [1, 2, 3]
+        original.items.append(4)
+        assert copied.items == [1, 2, 3]
+
+    def test_deepcopy_nested_configs(self):
+        class SubConfig(yuio.config.Config):
+            items: list[int] = []
+            value: int = 0
+
+        class MyConfig(yuio.config.Config):
+            sub: SubConfig
+
+        original = MyConfig(sub=SubConfig(value=42, items=[1, 2, 3]))
+        copied = copy.deepcopy(original)
+
+        assert copied is not original
+        assert copied.sub is not original.sub
+        assert copied.sub.value == 42
+        assert copied.sub.items == [1, 2, 3]
+        assert copied.sub.items is not original.sub.items
+        original.sub.items.append(4)
+        assert copied.sub.items == [1, 2, 3]
+
+    def test_deepcopy_deeply_nested_configs(self):
+        class Level3(yuio.config.Config):
+            data: dict[str, int] = {}
+
+        class Level2(yuio.config.Config):
+            level3: Level3
+
+        class Level1(yuio.config.Config):
+            level2: Level2
+
+        original = Level1(level2=Level2(level3=Level3(data={"a": 1, "b": 2})))
+        copied = copy.deepcopy(original)
+
+        assert copied is not original
+        assert copied.level2 is not original.level2
+        assert copied.level2.level3 is not original.level2.level3
+        assert copied.level2.level3.data is not original.level2.level3.data
+        assert copied.level2.level3.data == {"a": 1, "b": 2}
+        original.level2.level3.data["c"] = 3
+        assert copied.level2.level3.data == {"a": 1, "b": 2}
+
+    def test_deepcopy_with_missing_fields(self):
+        class MyConfig(yuio.config.Config):
+            x: int
+            y: str = "default"
+
+        original = MyConfig(y="custom")
+        copied = copy.deepcopy(original)
+
+        with pytest.raises(AttributeError, match=r"x is not configured"):
+            _ = copied.x
+        assert copied.y == "custom"
