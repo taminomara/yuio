@@ -160,7 +160,7 @@ exclude = [
     "**/__pycache__",
     "yuio/_version.py",
     "yuio/ext/sphinx/*.py",
-    "yuio/_vendor/*",
+    "yuio/_dist/*",
 ]
 typeCheckingMode = "strict"
 pythonVersion = "3.14"
@@ -182,7 +182,7 @@ reportDeprecated = "none"
 deprecateTypingAliases = true
 
 [tool.ruff]
-exclude = ["examples/docs/*", "yuio/_vendor/*"]
+exclude = ["examples/docs/*", "yuio/_dist/*"]
 target-version = "py310"
 
 [tool.ruff.lint]
@@ -250,7 +250,7 @@ omit = [
     "yuio/_version.py",
     "yuio/_typing.py",
     "yuio/_typing_ext.py",
-    "yuio/_vendor/**/*.py",
+    "yuio/_dist/**/*.py",
     "test/**/*.py",
 ]
 exclude_also = [

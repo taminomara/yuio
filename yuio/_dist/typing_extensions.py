@@ -294,7 +294,7 @@ except ImportError:
     pass
 else:
     raise ImportError(
-        "typing_extensions is available as a non-vendored module"
+        "typing_extensions is available as a non-dist module"
     )
 
 import abc

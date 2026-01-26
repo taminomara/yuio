@@ -19,7 +19,7 @@ repos:
         entry: scripts/check_file_headers
         types: [python]
         files: 'yuio/.*'
-        exclude: '^(yuio/_vendor/.*|yuio/_version.py)'
+        exclude: '^(yuio/_dist/.*|yuio/_version.py)'
       - id: clk
         name: changelog keeper
         language: system

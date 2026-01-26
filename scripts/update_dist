@@ -35,7 +35,7 @@ except ImportError:
     pass
 else:
     raise ImportError(
-        "typing_extensions is available as a non-vendored module"
+        "typing_extensions is available as a non-dist module"
     )
 
 {src}
@@ -129,11 +129,11 @@ def main():
             .replace("# \n", "#\n")
             .rstrip()
         )
-        vendored = TEMPLATE.format(version=found_version, src=src, license=license)
+        dist = TEMPLATE.format(version=found_version, src=src, license=license)
 
         pathlib.Path(__file__).parent.joinpath(
-            "../yuio/_vendor/typing_extensions.py"
-        ).write_text(vendored.rstrip() + "\n")
+            "../yuio/_dist/typing_extensions.py"
+        ).write_text(dist.rstrip() + "\n")
 
     yuio.io.success("Done")
 

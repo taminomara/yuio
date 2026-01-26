@@ -43,7 +43,7 @@ if sys.version_info >= (3, 14):
             SkipParser(),
         ],
         patterns=["*.rst", "*.py"],
-        excludes=["yuio/_vendor/*", "yuio/ext/sphinx/*"],
+        excludes=["yuio/_dist/*", "yuio/ext/sphinx/*"],
         setup=_setup,
         teardown=_teardown,
     ).pytest()

@@ -8,8 +8,6 @@
 # pyright: reportDeprecated=false
 # ruff: noqa: F403, F405, I002
 
-import sys as _sys
-
 import typing as _typing
 from typing import *  # type: ignore
 
@@ -17,16 +15,9 @@ try:
     import typing_extensions as _typing_extensions
     from typing_extensions import *  # type: ignore
 except ImportError:
-    import yuio._vendor.typing_extensions as _typing_extensions_v
+    import yuio._dist.typing_extensions as _typing_extensions
 
-    # This is an evil hack to make type checkers behave. Otherwise,
-    # they don't recognize `yuio._vendor.typing_extensions` as something special.
-    _sys.modules["typing_extensions"] = _typing_extensions_v
-
-    import typing_extensions as _typing_extensions
-    from typing_extensions import *  # type: ignore
-
-assert _typing.Union is _typing_extensions.Union
+assert _typing.Union is _typing_extensions.Union  # type: ignore
 assert _typing.Annotated is _typing_extensions.Annotated
 
 # Note: dataclass doesn't always recognize class vars
