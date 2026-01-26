@@ -1,0 +1,3 @@
+Role: any
+Text: ~.Class
+Result: NoWrapRegion(content=[HighlightedRegion(content=['Class'], color='role/any')])

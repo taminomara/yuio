@@ -1,0 +1,3 @@
+Role: cli:cmd
+Text: ~command 5 'sub \\' subcommand'
+Result: NoWrapRegion(content=[HighlightedRegion(content=["'sub \\' subcommand'"], color='role/cli/cmd')])

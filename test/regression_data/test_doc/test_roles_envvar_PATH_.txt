@@ -1,0 +1,3 @@
+Role: envvar
+Text: PATH
+Result: NoWrapRegion(content=[HighlightedRegion(content=['PATH'], color='role/envvar')])

@@ -1,0 +1,3 @@
+Role: option
+Text: --verbose
+Result: NoWrapRegion(content=[HighlightedRegion(content=['--verbose'], color='role/option')])

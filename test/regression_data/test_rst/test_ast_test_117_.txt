@@ -6,5 +6,7 @@
 
 (Document
   (Admonition 'tip'
+    (title
+      'Tip')
     (Paragraph
       'Tip content')))

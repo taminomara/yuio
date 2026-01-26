@@ -1,0 +1,3 @@
+Role: numref
+Text: fig:example
+Result: NoWrapRegion(content=[HighlightedRegion(content=['fig:example'], color='role/numref')])

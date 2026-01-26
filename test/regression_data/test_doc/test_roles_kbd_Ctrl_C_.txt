@@ -1,0 +1,3 @@
+Role: kbd
+Text: Ctrl+C
+Result: NoWrapRegion(content=[HighlightedRegion(content=['Ctrl+C'], color='role/kbd')])

@@ -1,0 +1,3 @@
+Role: cli:cli
+Text: tool command
+Result: NoWrapRegion(content=[HighlightedRegion(content=['tool command'], color='role/cli/cli')])

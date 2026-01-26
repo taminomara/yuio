@@ -1,0 +1,3 @@
+Role: keyword
+Text: async
+Result: NoWrapRegion(content=[HighlightedRegion(content=['async'], color='role/keyword')])

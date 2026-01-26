@@ -6,5 +6,7 @@
 
 (Document
   (Admonition 'versionchanged'
+    (title
+      'Changed\n in version \n2.0')
     (Paragraph
       'Changed behavior')))

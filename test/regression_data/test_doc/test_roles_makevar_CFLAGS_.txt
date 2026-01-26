@@ -1,0 +1,3 @@
+Role: makevar
+Text: CFLAGS
+Result: NoWrapRegion(content=[HighlightedRegion(content=['CFLAGS'], color='role/makevar')])

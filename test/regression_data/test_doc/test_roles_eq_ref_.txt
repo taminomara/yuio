@@ -1,0 +1,3 @@
+Role: eq
+Text: ref
+Result: NoWrapRegion(content=[HighlightedRegion(content=['ref'], color='role/eq')])

@@ -1,0 +1,3 @@
+Role: cwe
+Text: CWE-89
+Result: NoWrapRegion(content=[HighlightedRegion(content=['CWE-89'], color='role/cwe')])

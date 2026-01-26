@@ -1,0 +1,3 @@
+Role: cli:any
+Text: any.thing
+Result: NoWrapRegion(content=[HighlightedRegion(content=['any.thing'], color='role/cli/any')])

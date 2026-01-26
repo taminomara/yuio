@@ -1,0 +1,3 @@
+Role: file
+Text: {
+Result: NoWrapRegion(content=[HighlightedRegion(content=['{'], color='role/file')])

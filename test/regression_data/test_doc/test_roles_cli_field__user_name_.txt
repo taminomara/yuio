@@ -1,0 +1,3 @@
+Role: cli:field
+Text: ~user.name
+Result: NoWrapRegion(content=[HighlightedRegion(content=['name'], color='role/cli/field')])

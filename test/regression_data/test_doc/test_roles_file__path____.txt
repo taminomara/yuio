@@ -1,0 +1,3 @@
+Role: file
+Text: /path/{}
+Result: NoWrapRegion(content=[HighlightedRegion(content=['/path/{}'], color='role/file')])

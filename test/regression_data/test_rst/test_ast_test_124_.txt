@@ -3,4 +3,6 @@
 ----------
 
 (Document
-  (Admonition 'seealso'))
+  (Admonition 'seealso'
+    (title
+      'Seealso')))

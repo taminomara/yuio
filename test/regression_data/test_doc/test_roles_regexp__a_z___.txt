@@ -1,0 +1,3 @@
+Role: regexp
+Text: [a-z]+
+Result: NoWrapRegion(content=[HighlightedRegion(content=['[a-z]+'], color='role/regexp')])

@@ -1,0 +1,3 @@
+Role: cli:arg
+Text: <filename>
+Result: NoWrapRegion(content=[HighlightedRegion(content=['<filename>'], color='role/cli/arg')])

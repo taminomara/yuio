@@ -1,0 +1,3 @@
+Role: command
+Text: ls -la
+Result: NoWrapRegion(content=[HighlightedRegion(content=['ls -la'], color='role/command')])

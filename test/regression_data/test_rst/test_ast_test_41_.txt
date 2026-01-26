@@ -5,5 +5,7 @@
 
 (Document
   (Admonition 'field'
+    (title
+      'field name:')
     (Paragraph
       'field value\ncontinued')))

@@ -1,0 +1,3 @@
+Role: math
+Text: x^2
+Result: NoWrapRegion(content=[HighlightedRegion(content=['x^2'], color='role/math')])

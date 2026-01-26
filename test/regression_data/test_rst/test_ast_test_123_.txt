@@ -3,4 +3,6 @@
 ----------
 
 (Document
-  (Admonition 'important'))
+  (Admonition 'important'
+    (title
+      'Important')))

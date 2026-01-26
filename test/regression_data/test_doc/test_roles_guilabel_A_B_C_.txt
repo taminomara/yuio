@@ -1,0 +1,3 @@
+Role: guilabel
+Text: A&B&C
+Result: NoWrapRegion(content=[HighlightedRegion(content=['A'], color='role/guilabel'), HighlightedRegion(content=['B'], color='role/guilabel/accelerator'), HighlightedRegion(content=['C'], color='role/guilabel/accelerator')])

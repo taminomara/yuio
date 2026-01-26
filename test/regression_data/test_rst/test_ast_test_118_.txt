@@ -3,4 +3,6 @@
 ----------
 
 (Document
-  (Admonition 'attention'))
+  (Admonition 'attention'
+    (title
+      'Attention')))

@@ -1,0 +1,3 @@
+Role: cli:env
+Text: HOME.path
+Result: NoWrapRegion(content=[HighlightedRegion(content=['HOME.path'], color='role/cli/env')])

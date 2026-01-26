@@ -1,0 +1,3 @@
+Role: cli:cfg
+Text: server.host
+Result: NoWrapRegion(content=[HighlightedRegion(content=['server.host'], color='role/cli/cfg')])

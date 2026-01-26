@@ -1,0 +1,3 @@
+Role: abbr
+Text: ABBR (Description)
+Result: NoWrapRegion(content=[HighlightedRegion(content=['ABBR (Description)'], color='role/abbr')])

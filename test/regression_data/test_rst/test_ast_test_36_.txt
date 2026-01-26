@@ -5,5 +5,7 @@ Term
 
 (Document
   (Admonition 'definition'
+    (title
+      'Term')
     (Paragraph
       'Definition of the term')))

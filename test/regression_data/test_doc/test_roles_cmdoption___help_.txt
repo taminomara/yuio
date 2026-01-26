@@ -1,0 +1,3 @@
+Role: cmdoption
+Text: --help
+Result: NoWrapRegion(content=[HighlightedRegion(content=['--help'], color='role/cmdoption')])

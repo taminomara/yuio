@@ -1,0 +1,3 @@
+Role: flag
+Text: value
+Result: NoWrapRegion(content=[HighlightedRegion(content=['value'], color='role/flag')])

@@ -1,4 +1,6 @@
-(Admonition 'note')
+(Admonition 'note'
+  (title
+    'Title'))
 
 ----------
 

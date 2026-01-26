@@ -8,8 +8,12 @@ Term 2
 
 (Document
   (Admonition 'definition'
+    (title
+      'Term 1')
     (Paragraph
       'Definition 1'))
   (Admonition 'definition'
+    (title
+      'Term 2')
     (Paragraph
       'Definition 2')))

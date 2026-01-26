@@ -1,0 +1,3 @@
+Role: guilabel
+Text: File
+Result: NoWrapRegion(content=[HighlightedRegion(content=['File'], color='role/guilabel')])

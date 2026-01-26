@@ -1,0 +1,3 @@
+Role: unknown_role
+Text: text
+Result: NoWrapRegion(content=[HighlightedRegion(content=['text'], color='role/unknown/unknown_role')])

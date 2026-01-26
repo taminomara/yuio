@@ -663,9 +663,6 @@ class TextRegion:
     def __init__(self, *args: str | TextRegion):
         self.content = list(args)
 
-    def __str__(self):
-        return "".join(map(str, self.content))
-
 
 @dataclass(kw_only=True, slots=True)
 class HighlightedRegion(TextRegion):
@@ -684,9 +681,6 @@ class HighlightedRegion(TextRegion):
         self.content = list(args)
         self.color = color
 
-    def __str__(self):
-        return f"<c {self.color}>{super().__str__()}</c>"
-
 
 @dataclass(kw_only=True, slots=True)
 class DecorationRegion(TextRegion):
@@ -702,11 +696,8 @@ class DecorationRegion(TextRegion):
     """
 
     def __init__(self, decoration_path: str):
-        super().__init__()
+        self.content = []
         self.decoration_path = decoration_path
-
-    def __str__(self):
-        return f"<decoration {self.decoration_path!r}/>"
 
 
 @dataclass(kw_only=True, slots=True)
@@ -718,9 +709,6 @@ class NoWrapRegion(TextRegion):
 
     def __init__(self, *args: str | TextRegion):
         self.content = list(args)
-
-    def __str__(self):
-        return f"<no-wrap>{super().__str__()}</no-wrap>"
 
 
 @dataclass(kw_only=True, slots=True)
@@ -739,9 +727,6 @@ class LinkRegion(TextRegion):
     def __init__(self, *args: str | TextRegion, url: str):
         self.content = list(args)
         self.url = url
-
-    def __str__(self):
-        return f"<a href={self.url!r}>{super().__str__()}</a>"
 
 
 @dataclass(kw_only=True, slots=True)
@@ -834,6 +819,19 @@ class Admonition(Container[AstBase]):
     Admonition type.
 
     """
+
+    def dump(self, indent: str = "") -> str:
+        s = f"{indent}({self._dump_params()}\n{indent}  (title"
+        indent += "  "
+        for line in self.title:
+            s += "\n  " + indent
+            s += repr(line)
+        s += ")"
+        for items in self.items:
+            s += "\n"
+            s += items.dump(indent)
+        s += ")"
+        return s
 
 
 @dataclass(kw_only=True, slots=True)
@@ -1219,7 +1217,9 @@ def _process_role(text: str, role: str) -> TextRegion:
         )
 
 
-def _process_ref(text: str, parse_path=None, join_path=None):
+def _process_ref(
+    text: str, parse_path=None, join_path=None, refspecific_marker: str = "."
+):
     if parse_path is None:
         parse_path = lambda s: s.split(".")
     if join_path is None:
@@ -1229,20 +1229,21 @@ def _process_ref(text: str, parse_path=None, join_path=None):
         text = text[1:]
 
     match = _CROSSREF_RE.match(text)
-    if not match:
+    if not match:  # pragma: no cover
         return text
 
     title = match.group("title")
     target = match.group("target")
 
+    # Sphinx unescapes role contents.
+    title = re.sub(r"\\(?:\s|(.))", r"\1", title)
+
     if not target:
-        # Implicit title.
-        target = title
+        # Implicit title.def _unescape(text: str) -> str:
         if title.startswith("~"):
-            target = target[1:]
             title = parse_path(title[1:])[-1]
         else:
-            title = join_path(parse_path(title.lstrip(".")))
+            title = join_path(parse_path(title.removeprefix(refspecific_marker)))
     else:
         title = title.rstrip()
 
@@ -1269,6 +1270,7 @@ def _process_ref(text: str, parse_path=None, join_path=None):
         "pep",
         "rfc",
         "manpage",
+        "kbd",
     ]
 )
 def _process_simple_role(name: str, text: str):
@@ -1289,7 +1291,6 @@ def _process_simple_role(name: str, text: str):
         "term",
         "token",
         "eq",
-        "kbd",
     ]
 )
 def _process_ref_role(name: str, text: str):
@@ -1327,7 +1328,8 @@ def _process_cli_cmd_role(name: str, text: str):
     name = name.replace(":", "/")
     return NoWrapRegion(
         HighlightedRegion(
-            _process_ref(text, _parse_cmd_path, " ".join), color=f"role/{name}"
+            _process_ref(text, _parse_cmd_path, " ".join, refspecific_marker=". "),
+            color=f"role/{name}",
         )
     )
 
@@ -1337,12 +1339,17 @@ def _process_gui_label_role(name: str, text: str):
     spans = re.split(r"(?<!&)&(?![&\s])", text)
 
     res = NoWrapRegion()
-    res.content.append(HighlightedRegion(spans.pop(0), color=f"role/{name}"))
+    if start := spans.pop(0):
+        res.content.append(HighlightedRegion(start, color=f"role/{name}"))
 
     for span in spans:
         span = span.replace("&&", "&")
-        res.content.append(HighlightedRegion(span[0], color=f"role/{name}/accelerator"))
-        res.content.append(HighlightedRegion(span[1:], color=f"role/{name}"))
+        if span[0]:
+            res.content.append(
+                HighlightedRegion(span[0], color=f"role/{name}/accelerator")
+            )
+        if span[1:]:
+            res.content.append(HighlightedRegion(span[1:], color=f"role/{name}"))
 
     return res
 
@@ -1352,13 +1359,13 @@ def _process_menuselection_role(name: str, text: str):
     res = NoWrapRegion()
 
     for region in _process_gui_label_role(name, text).content:
-        if not isinstance(region, HighlightedRegion):
+        if not isinstance(region, HighlightedRegion):  # pragma: no cover
             res.content.append(region)
             continue
-        if len(region.content) != 1:
+        if len(region.content) != 1:  # pragma: no cover
             res.content.append(region)
             continue
-        if not isinstance(region.content[0], str):
+        if not isinstance(region.content[0], str):  # pragma: no cover
             res.content.append(region)
             continue
         if "-->" not in region.content[0]:
@@ -1440,7 +1447,6 @@ def _read_parenthesized_until(s: str, end_cond: _t.Callable[[str], bool]):
         res_start = i
 
     while i < len(s):
-        c = s[i]
         match s[i]:
             case c if not paren_stack and end_cond(c):
                 push_res()
@@ -1452,7 +1458,6 @@ def _read_parenthesized_until(s: str, end_cond: _t.Callable[[str], bool]):
                 push_res()
                 i += 2
                 res_start += 1
-                push_res()
             case "(":
                 paren_stack.append(")")
                 i += 1
@@ -1471,7 +1476,7 @@ def _read_parenthesized_until(s: str, end_cond: _t.Callable[[str], bool]):
                 while i < len(s):
                     match s[i]:
                         case "\\":
-                            i += 1
+                            i += 2
                         case c if c == end_char:
                             i += 1
                             break

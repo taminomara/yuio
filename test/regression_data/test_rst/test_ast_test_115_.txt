@@ -6,5 +6,7 @@
 
 (Document
   (Admonition 'note'
+    (title
+      'Note')
     (Paragraph
       'This is a note')))

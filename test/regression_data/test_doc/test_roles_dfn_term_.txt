@@ -1,0 +1,3 @@
+Role: dfn
+Text: term
+Result: NoWrapRegion(content=[HighlightedRegion(content=['term'], color='role/dfn')])

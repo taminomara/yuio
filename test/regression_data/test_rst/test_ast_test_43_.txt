@@ -5,8 +5,12 @@
 
 (Document
   (Admonition 'field'
+    (title
+      'field 1:')
     (Paragraph
       'value 1'))
   (Admonition 'field'
+    (title
+      'field 2:')
     (Paragraph
       'value 2')))

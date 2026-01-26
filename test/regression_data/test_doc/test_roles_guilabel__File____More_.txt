@@ -1,0 +1,3 @@
+Role: guilabel
+Text: &File && More
+Result: NoWrapRegion(content=[HighlightedRegion(content=['F'], color='role/guilabel/accelerator'), HighlightedRegion(content=['ile & More'], color='role/guilabel')])

@@ -1,0 +1,3 @@
+Role: cve
+Text: CVE-2021-1234
+Result: NoWrapRegion(content=[HighlightedRegion(content=['CVE-2021-1234'], color='role/cve')])

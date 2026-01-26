@@ -18,6 +18,8 @@
     (Paragraph
       'A quote.'))
   (Admonition 'note'
+    (title
+      'Note')
     (Paragraph
       'Important!'))
   (Code 'python'

@@ -4,5 +4,9 @@
 
 (Document
   (Admonition 'field'
+    (title
+      'Field '
+      NoWrapRegion(content=[HighlightedRegion(content=['foo-bar'], color='role/code')])
+      ':')
     (Paragraph
       'Content')))

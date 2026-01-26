@@ -1,0 +1,3 @@
+Role: newsgroup
+Text: comp.lang.python
+Result: NoWrapRegion(content=[HighlightedRegion(content=['comp.lang.python'], color='role/newsgroup')])

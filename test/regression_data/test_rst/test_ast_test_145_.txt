@@ -6,5 +6,7 @@
 
 (Document
   (Admonition 'admonition'
+    (title
+      'Custom Title')
     (Paragraph
       'Note content here')))

@@ -1,0 +1,3 @@
+Role: download
+Text: file.zip
+Result: NoWrapRegion(content=[HighlightedRegion(content=['file.zip'], color='role/download')])

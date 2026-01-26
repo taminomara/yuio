@@ -1,0 +1,3 @@
+Role: cli:opt
+Text: --option=value
+Result: NoWrapRegion(content=[HighlightedRegion(content=['--option=value'], color='role/cli/opt')])

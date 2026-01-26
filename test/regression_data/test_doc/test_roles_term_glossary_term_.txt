@@ -1,0 +1,3 @@
+Role: term
+Text: glossary_term
+Result: NoWrapRegion(content=[HighlightedRegion(content=['glossary_term'], color='role/term')])

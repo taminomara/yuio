@@ -1,4 +1,5 @@
 (Admonition 'note'
+  (title)
   (Paragraph
     'Content'))
 

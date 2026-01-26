@@ -1,0 +1,3 @@
+Role: cli:flag
+Text: --verbose
+Result: NoWrapRegion(content=[HighlightedRegion(content=['--verbose'], color='role/cli/flag')])

@@ -1,0 +1,3 @@
+Role: menuselection
+Text: File --> Edit --> Copy
+Result: NoWrapRegion(content=[HighlightedRegion(content=['File'], color='role/menuselection'), HighlightedRegion(content=[DecorationRegion(content=[], decoration_path='menuselection_separator')], color='role/menuselection/separator'), HighlightedRegion(content=['Edit'], color='role/menuselection'), HighlightedRegion(content=[DecorationRegion(content=[], decoration_path='menuselection_separator')], color='role/menuselection/separator'), HighlightedRegion(content=['Copy'], color='role/menuselection')])

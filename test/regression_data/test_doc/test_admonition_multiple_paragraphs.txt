@@ -1,4 +1,6 @@
 (Admonition 'note'
+  (title
+    'Note')
   (Paragraph
     'P1')
   (Paragraph

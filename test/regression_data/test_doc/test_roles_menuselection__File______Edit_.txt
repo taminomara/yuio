@@ -1,0 +1,3 @@
+Role: menuselection
+Text: &File --> &Edit
+Result: NoWrapRegion(content=[HighlightedRegion(content=['F'], color='role/menuselection/accelerator'), HighlightedRegion(content=['ile'], color='role/menuselection'), HighlightedRegion(content=[DecorationRegion(content=[], decoration_path='menuselection_separator')], color='role/menuselection/separator'), HighlightedRegion(content=['E'], color='role/menuselection/accelerator'), HighlightedRegion(content=['dit'], color='role/menuselection')])

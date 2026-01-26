@@ -1,0 +1,3 @@
+Role: mailheader
+Text: Content-Type
+Result: NoWrapRegion(content=[HighlightedRegion(content=['Content-Type'], color='role/mailheader')])

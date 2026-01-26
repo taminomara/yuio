@@ -1,4 +1,6 @@
 (Admonition 'tip'
+  (title
+    'Title')
   (Paragraph
     'Content'))
 

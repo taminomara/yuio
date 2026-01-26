@@ -1,0 +1,3 @@
+Role: cli:obj
+Text: obj.attr
+Result: NoWrapRegion(content=[HighlightedRegion(content=['obj.attr'], color='role/cli/obj')])

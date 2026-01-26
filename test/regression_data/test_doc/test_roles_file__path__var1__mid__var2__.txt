@@ -1,0 +1,3 @@
+Role: file
+Text: /path/{var1}/mid/{var2}
+Result: NoWrapRegion(content=[HighlightedRegion(content=['/path/'], color='role/file'), HighlightedRegion(content=['{var1}'], color='role/file/variable'), HighlightedRegion(content=['/mid/'], color='role/file'), HighlightedRegion(content=['{var2}'], color='role/file/variable')])

@@ -1,0 +1,3 @@
+Role: manpage
+Text: ls(1)
+Result: NoWrapRegion(content=[HighlightedRegion(content=['ls(1)'], color='role/manpage')])

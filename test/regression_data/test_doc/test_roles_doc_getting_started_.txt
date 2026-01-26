@@ -1,0 +1,3 @@
+Role: doc
+Text: getting_started
+Result: NoWrapRegion(content=[HighlightedRegion(content=['getting_started'], color='role/doc')])

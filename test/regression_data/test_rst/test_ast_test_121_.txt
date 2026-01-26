@@ -3,4 +3,6 @@
 ----------
 
 (Document
-  (Admonition 'error'))
+  (Admonition 'error'
+    (title
+      'Error')))

@@ -864,6 +864,7 @@ class TestMerge:
 class TestJsonSchema:
     class MyConfig(yuio.config.Config):
         """Help for MyConfig."""
+
         x: int = 5
         #: Help for y.
         y: list[int]
@@ -945,6 +946,7 @@ class TestJsonSchema:
         config = TestJsonSchema.MyConfig2(x=TestJsonSchema.MyConfig(x=5))
         assert config.to_json_value() == {"x": {"x": 5}, "y": 5}
         assert config.to_json_value(include_defaults=False) == {"x": {"x": 5}}
+
 
 class TestCopy:
     def test_shallow_copy_basic(self):
