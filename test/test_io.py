@@ -143,7 +143,140 @@ class TestSetup:
         assert yuio.io.orig_stderr() is ostream
 
 
+MESSAGE_CASES = [
+    (
+        "info",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "warning",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "success",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "failure",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "failure_with_tb",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "error",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "error_with_tb",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "heading",
+        ("Bar.",),
+        {},
+        [
+            "                    ",
+            "⣿ Bar.              ",
+            "                    ",
+        ],
+    ),
+    (
+        "md",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "rst",
+        ("Bar.",),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+    (
+        "hl",
+        ('{"foo": 10}',),
+        {"syntax": "json"},
+        [
+            '{"foo": 10}         ',
+        ],
+    ),
+    (
+        "br",
+        (),
+        {},
+        [
+            "                    ",
+        ],
+    ),
+    (
+        "hr",
+        (),
+        {},
+        [
+            "────────────────────",
+        ],
+    ),
+    (
+        "raw",
+        (yuio.string.ColorizedString("Bar."),),
+        {},
+        [
+            "Bar.                ",
+        ],
+    ),
+]
+
+
 class TestMessage:
+    @pytest.mark.parametrize(
+        ("meth", "args", "kwargs", "expected"), MESSAGE_CASES
+    )
+    def test_simple(self, io_mocker: IOMocker, meth, args, kwargs, expected):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                *expected,
+            ]
+        )
+
+        with io_mocker.mock():
+            yuio.io.info("Foo.")
+            getattr(yuio.io, meth)(*args, **kwargs)
+
     def test_info(self, ostream: io.StringIO):
         yuio.io.info("foo bar!")
         assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
@@ -441,11 +574,11 @@ class TestMessage:
             ],
         )
 
-    def test_raw_err(self):
+    def test_raw_err(self, term):
         with pytest.raises(
-            TypeError, match=r"term, to_stdout, to_stderr can't be given together"
+            TypeError, match=r"term, to_stdout, and to_stderr can't be given together"
         ):
-            yuio.io.raw("asd", to_stdout=True, to_stderr=True)
+            yuio.io.raw("asd", term=term, to_stdout=True, to_stderr=True)
 
         with pytest.raises(ValueError, match=r"invalid exc_info"):
             yuio.io.raw("asd", exc_info=(1, 2, 3, 4))  # type: ignore
@@ -2664,78 +2797,60 @@ class TestTaskBackground:
                 self.is_foreground = False
 
 
+class TestMessageChannel:
+    @pytest.mark.parametrize("enabled", [True, False])
+    @pytest.mark.parametrize(
+        ("meth", "args", "kwargs", "expected"), MESSAGE_CASES
+    )
+    def test_enable_disable(
+        self, io_mocker: IOMocker, meth, args, kwargs, enabled, expected
+    ):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+                *(expected if enabled else []),
+            ]
+        )
+
+        with io_mocker.mock():
+            yuio.io.info("Foo.")
+            ch = yuio.io.MessageChannel()
+            ch.enabled = enabled
+            io_mocker.mark()
+            getattr(ch, meth)(*args, **kwargs)
+
+    @pytest.mark.parametrize(
+        ("meth", "args", "kwargs", "expected"), MESSAGE_CASES
+    )
+    def test_redirect(self, io_mocker: IOMocker, meth, args, kwargs, expected, width):
+        io_mocker.expect_screen(
+            [
+                "Foo.                ",
+            ]
+        )
+
+        ostream = io.StringIO()
+        new_term = yuio.term.Term(ostream, ostream, is_unicode=True)
+
+        with io_mocker.mock():
+            yuio.io.info("Foo.")
+            ch = yuio.io.MessageChannel(term=new_term, width=width)
+            getattr(ch, meth)(*args, **kwargs)
+
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(expected)
+
+
 class TestSuspendOutput:
     @pytest.mark.parametrize(
-        ("meth", "args", "expected"),
-        [
-            (
-                "info",
-                ("Bar.",),
-                [
-                    "Bar.                ",
-                ],
-            ),
-            (
-                "warning",
-                ("Bar.",),
-                [
-                    "Bar.                ",
-                ],
-            ),
-            (
-                "success",
-                ("Bar.",),
-                [
-                    "Bar.                ",
-                ],
-            ),
-            (
-                "error",
-                ("Bar.",),
-                [
-                    "Bar.                ",
-                ],
-            ),
-            (
-                "error_with_tb",
-                ("Bar.",),
-                [
-                    "Bar.                ",
-                ],
-            ),
-            (
-                "heading",
-                ("Bar.",),
-                [
-                    "                    ",
-                    "⣿ Bar.              ",
-                    "                    ",
-                ],
-            ),
-            (
-                "md",
-                ("Bar.",),
-                [
-                    "Bar.                ",
-                ],
-            ),
-            (
-                "br",
-                (),
-                [
-                    "                    ",
-                ],
-            ),
-            (
-                "raw",
-                (yuio.string.ColorizedString("Bar."),),
-                [
-                    "Bar.                ",
-                ],
-            ),
-        ],
+        ("meth", "args", "kwargs", "expected"), MESSAGE_CASES
     )
-    def test_simple(self, io_mocker: IOMocker, meth, args, expected):
+    def test_simple(self, io_mocker: IOMocker, meth, args, kwargs, expected):
         io_mocker.expect_screen(
             [
                 "Foo.                ",
@@ -2759,7 +2874,7 @@ class TestSuspendOutput:
             yuio.io.info("Foo.")
             with yuio.io.SuspendOutput():
                 io_mocker.mark()
-                getattr(yuio.io, meth)(*args)
+                getattr(yuio.io, meth)(*args, **kwargs)
                 io_mocker.mark()
 
     @pytest.mark.parametrize(

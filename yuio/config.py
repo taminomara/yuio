@@ -342,7 +342,7 @@ from yuio.cli import (
     HelpGroup,
     MutuallyExclusiveGroup,
 )
-from yuio.util import _find_docs
+from yuio.util import find_docs as _find_docs
 
 import yuio._typing_ext as _tx
 from typing import TYPE_CHECKING

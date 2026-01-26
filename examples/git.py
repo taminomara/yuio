@@ -14,8 +14,19 @@ if __name__ == "__main__":
     for k, v in dataclasses.asdict(status).items():
         if k != "changes":
             yuio.io.info("%s: <c note>%s</c>", k, v)
-        else:
-            pass
+
+    if not status.branch:
+        yuio.io.warning("Detached head.")
+    if status.cherry_pick_head:
+        yuio.io.warning("Cherry pick is in progress.")
+    if status.merge_head:
+        yuio.io.warning("Merge is in progress.")
+    if status.rebase_head:
+        yuio.io.warning("Rebase is in progress.")
+    if status.revert_head:
+        yuio.io.warning("Revert is in progress.")
+    if status.bisect_start:
+        yuio.io.warning("Bisect is in progress.")
 
     yuio.io.heading("Changes")
 

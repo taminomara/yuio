@@ -1,5 +1,5 @@
-Globals
-=======
+Utils
+=====
 
 Constants
 ---------
@@ -13,6 +13,18 @@ These constants are used throughout Yuio whenever :data:`None` is too ambiguous.
 .. autodata:: yuio.POSITIONAL
 
 .. autodata:: yuio.COLLAPSE
+
+
+Errors and debugging
+--------------------
+
+.. autofunction:: yuio.enable_internal_logging
+
+.. autoclass:: yuio.PrettyException
+    :members:
+
+.. autoclass:: yuio.YuioWarning
+    :members:
 
 
 Magic variables
@@ -73,3 +85,9 @@ Environment variables
             FORCE_NO_COLOR
 
     When present, disables color output.
+
+
+Utility functions and types
+---------------------------
+
+.. automodule:: yuio.util

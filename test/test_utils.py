@@ -139,7 +139,7 @@ def local_cls():
     ],
 )
 def test_find_docs(obj, expected):
-    assert yuio.util._find_docs(obj) == expected
+    assert yuio.util.find_docs(obj) == expected
 
 
 @pytest.mark.parametrize(
@@ -486,3 +486,15 @@ class TestUserStringWithState:
         assert left._tag == "test"
         assert sep._tag == "test"
         assert right._tag == "test"
+
+
+@pytest.mark.parametrize(
+    ("strings", "expected"),
+    [
+        (["ax", "bx"], ""),
+        (["abc", "aby"], "ab"),
+        (["foobar", "foobity", "foobaz"], "foob"),
+    ],
+)
+def test_commonprefix(strings, expected):
+    assert yuio.util.commonprefix(strings) == expected

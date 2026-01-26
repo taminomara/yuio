@@ -7,18 +7,6 @@ import yuio.complete
 
 
 @pytest.mark.parametrize(
-    ("strings", "expected"),
-    [
-        (["ax", "bx"], ""),
-        (["abc", "aby"], "ab"),
-        (["foobar", "foobity", "foobaz"], "foob"),
-    ],
-)
-def test_commonprefix(strings, expected):
-    assert yuio.complete._commonprefix(strings) == expected
-
-
-@pytest.mark.parametrize(
     ("a", "b", "expected"),
     [
         ("", "", 0),

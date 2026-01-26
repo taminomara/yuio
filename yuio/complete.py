@@ -85,7 +85,7 @@ from dataclasses import dataclass
 
 import yuio
 import yuio.string
-from yuio.util import _commonprefix
+from yuio.util import commonprefix as _commonprefix
 
 import typing
 import yuio._typing_ext as _tx

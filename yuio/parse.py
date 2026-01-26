@@ -481,7 +481,7 @@ import yuio.string
 import yuio.widget
 from yuio.json_schema import JsonValue
 from yuio.secret import SecretString, SecretValue
-from yuio.util import _find_docs
+from yuio.util import find_docs as _find_docs
 from yuio.util import to_dash_case as _to_dash_case
 
 import typing

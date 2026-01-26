@@ -131,31 +131,32 @@ class YuioWarning(RuntimeWarning):
 
 class PrettyException(Exception):
     """PrettyException(msg: typing.LiteralString, /, *args: typing.Any)
+    PrettyException(msg: ~string.templatelib.Template, /)
     PrettyException(msg: str, /)
 
     Base class for pretty-printable exceptions.
 
     :param msg:
-        message to format. Can be a literal string or any other colorable object.
-
-        If it's given as a literal string, additional arguments for ``%``-formatting
-        may be given. Otherwise, giving additional arguments will cause
-        a :class:`TypeError`.
+        message to format.
     :param args:
         arguments for ``%``-formatting the message.
     :example:
+        .. invisible-code-block: python
+
+            import yuio
+
         .. code-block:: python
 
-        class MyError(yuio.PrettyException):
-            pass
+            class MyError(yuio.PrettyException):
+                pass
 
 
-        try:
-            ...
-            raise MyError("A formatted <c b>error message</c>")
-            ...
-        except MyError as e:
-            yuio.io.error_with_tb(e)
+            try:
+                ...
+                raise MyError("A formatted <c b>error message</c>")
+                ...
+            except MyError as e:
+                yuio.io.error_with_tb(e)
 
     """
 

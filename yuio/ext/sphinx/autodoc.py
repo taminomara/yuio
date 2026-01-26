@@ -671,7 +671,7 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
             if len(all_flags) == 1:
                 prefix = all_flags.pop()
             else:
-                prefix = yuio.util._commonprefix(all_flags)
+                prefix = yuio.util.commonprefix(all_flags)
             if not prefix:
                 prefix = "--*"
             elif prefix.endswith("-"):
@@ -1123,7 +1123,7 @@ class AutodocEnumeratorObject(AutodocObject[enum.Enum], FieldObject):
         return [self.options["name"]]
 
     def transform_content(self, content_node: addnodes.desc_content):
-        docs = yuio.util._find_docs(type(self.obj))
+        docs = yuio.util.find_docs(type(self.obj))
         if help := docs.get(self.obj.name):
             content_node += self.nested_parse_docstring(help, self.obj, "docstring")
         return super().transform_content(content_node)

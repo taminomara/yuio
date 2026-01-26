@@ -2168,6 +2168,11 @@ class ReprContext:
     Context object that tracks repr settings and ensures that recursive objects
     are handled properly.
 
+    .. warning::
+
+        :class:`~yuio.string.ReprContext`\\ s are not thread safe. As such,
+        you shouldn't create them for long term use.
+
     :param term:
         terminal that will be used to print formatted messages.
     :param theme:

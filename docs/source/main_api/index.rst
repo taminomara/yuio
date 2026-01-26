@@ -5,9 +5,6 @@ The primary interface.
 
 .. nice-toc::
 
-   global
-      Constants and global variables used throughout Yuio.
-
    io
       Interacting with users.
 
@@ -34,3 +31,6 @@ The primary interface.
 
    dbg
       Automated environment collection for bug reports.
+
+   util
+      Constants and utilities used throughout Yuio.

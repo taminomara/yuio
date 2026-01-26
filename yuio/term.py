@@ -77,6 +77,7 @@ from dataclasses import dataclass
 import yuio
 import yuio.color
 from yuio.color import ColorSupport
+from yuio.util import ClosedIO as _ClosedIO
 
 from typing import TYPE_CHECKING
 
@@ -384,8 +385,8 @@ class Term:
         stream = io.StringIO()
         stream.close()
         return Term(
-            istream=stream,
-            ostream=stream,
+            istream=_ClosedIO(),
+            ostream=_ClosedIO(),
             is_unicode=is_unicode,
         )
 
@@ -500,13 +501,15 @@ def get_tty() -> Term:
     istream = _TTY_INPUT or __stdin
     assert ostream is not None
     assert istream is not None
-    return get_term_from_stream(ostream, istream)
+    return get_term_from_stream(ostream, istream, allow_env_overrides=True)
 
 
 def get_term_from_stream(
     ostream: _t.TextIO,
-    istream: _t.TextIO,
+    istream: _t.TextIO | None = None,
     /,
+    *,
+    allow_env_overrides: bool = False,
 ) -> Term:
     """
     Query info about a terminal attached to the given stream.
@@ -514,7 +517,10 @@ def get_term_from_stream(
     :param ostream:
         output stream.
     :param istream:
-        input stream.
+        input stream. If not given, widgets will not work with this terminal.
+    :param allow_env_overrides:
+        honor environment variables and CLI flags when determining capabilities
+        of streams.
 
     """
 
@@ -522,7 +528,7 @@ def get_term_from_stream(
 
     if (
         # For building docs in github.
-        "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ
+        "YUIO_FORCE_FULL_TERM_SUPPORT" in os.environ and istream is not None
     ):  # pragma: no cover
         return Term(
             ostream=ostream,
@@ -540,10 +546,13 @@ def get_term_from_stream(
     in_ci = detect_ci()
 
     # Detect colors.
-    if output_is_tty or _EXPLICIT_COLOR_SUPPORT is not None:
+    if output_is_tty or (_EXPLICIT_COLOR_SUPPORT is not None and allow_env_overrides):
         color_support = _COLOR_SUPPORT
     else:
         color_support = ColorSupport.NONE
+
+    if istream is None:
+        istream = _ClosedIO()
 
     return Term(
         ostream=ostream,

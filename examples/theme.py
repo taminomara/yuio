@@ -8,7 +8,7 @@ class BlockProgressTheme(yuio.theme.DefaultTheme):
     # Make spinner faster.
     spinner_update_rate_ms = 100
 
-    msg_decorations = {
+    msg_decorations_unicode = {
         # Custom progress bar symbols.
         "progress_bar/start_symbol": "|",
         "progress_bar/end_symbol": "|",
@@ -28,8 +28,8 @@ class BlockProgressTheme(yuio.theme.DefaultTheme):
         "msg/text:heading/1": "heading_color",
         # Decoration and progress bar for tasks.
         "msg/decoration:task": "accent_color",
-        "task/progressbar/done/start": "accent_color",
-        "task/progressbar/done/end": "accent_color",
+        "task/progressbar/done/start": "term/bright_yellow",
+        "task/progressbar/done/end": "term/bright_red",
     }
 
 

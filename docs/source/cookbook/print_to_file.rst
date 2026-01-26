@@ -1,3 +1,5 @@
+.. _cookbook-print-to-file:
+
 Print formatted text to file
 ============================
 
@@ -93,41 +95,9 @@ Case 4: dedicated option for output file
 ----------------------------------------
 
 If our program has a distinct option for specifying output, we need to set up
-:class:`~yuio.string.ReprContext` in order to format output.
+:class:`~yuio.io.MessageChannel` in order to format output.
 
 Here's how we can do this:
 
-.. code-block:: python
-
-    import pathlib
-
-    import yuio.app
-    import yuio.io
-
-
-    @yuio.app.app
-    def main(output: pathlib.Path | None = None):
-        if output is None:
-            # If output file is not given, print to stdout.
-            ctx = yuio.io.make_repr_context(to_stdout=True)
-        else:
-            # Otherwise, print to output.
-            output_stream = open(output, "w", encoding="utf-8")
-            ctx = yuio.io.make_repr_context(
-                # We can create `repr_context` for a file. Color support will be disabled.
-                file=output_stream,
-                # We can also override formatting width.
-                width=120,
-            )
-
-        result = ...
-
-        # Print user-facing message to `stderr`.
-        yuio.io.success("Result is ready!")
-
-        # Print program result to file or to `stdout`.
-        yuio.io.info(result, ctx=ctx)
-
-
-    if __name__ == "__main__":
-        main.run()
+.. literalinclude:: /../../examples/cookbook/print_to_file.py
+    :language: python

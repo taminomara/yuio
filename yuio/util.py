@@ -6,14 +6,28 @@
 # just keep this copyright line please :3
 
 """
-Utility functions and types.
+.. autofunction:: to_dash_case
+
+.. autofunction:: dedent
+
+.. autofunction:: find_docs
+
+.. autofunction:: commonprefix
+
+.. autoclass:: UserString
+
+    .. automethod:: _wrap
+
+.. autoclass:: ClosedIO
 
 """
 
 from __future__ import annotations
 
+import io as _io
 import re as _re
 import textwrap as _textwrap
+import weakref
 
 from typing import TYPE_CHECKING
 
@@ -23,8 +37,11 @@ else:
     from yuio import _typing as _t
 
 __all__ = [
+    "ClosedIO",
     "UserString",
+    "commonprefix",
     "dedent",
+    "find_docs",
     "to_dash_case",
 ]
 
@@ -112,17 +129,18 @@ def dedent(msg: str, /):
 
 
 _COMMENT_RE = _re.compile(r"^\s*#:(.*)\r?\n?$")
-_DOCS_CACHE: dict[_t.Any, dict[str, str]] = {}
+_DOCS_CACHE: weakref.WeakKeyDictionary[_t.Any, dict[str, str]] = (
+    weakref.WeakKeyDictionary()
+)
 
 
-def _find_docs(obj: _t.Any, /) -> dict[str, str]:
+def find_docs(obj: _t.Any, /) -> dict[str, str]:
     """
     Find documentation for fields of a class.
 
     Inspects source code of a class and finds docstrings and doc comments (``#:``)
     for variables in its body. Doesn't inspect ``__init__``, doesn't return documentation
-    for class methods. Returns first paragraph from each docstring, formatted for use
-    in CLI help messages.
+    for class methods.
 
     """
 
@@ -130,8 +148,9 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
     # See https://github.com/sphinx-doc/sphinx/blob/master/LICENSE.rst.
 
     try:
-        if obj in _DOCS_CACHE:
-            return _DOCS_CACHE[obj]
+        return _DOCS_CACHE[obj]
+    except KeyError:
+        pass
     except TypeError:
         return {}
 
@@ -210,7 +229,7 @@ def _find_docs(obj: _t.Any, /) -> dict[str, str]:
     return docs
 
 
-def _commonprefix(m: _t.Collection[str]) -> str:
+def commonprefix(m: _t.Collection[str]) -> str:
     if not m:
         return ""
     s1 = min(m)
@@ -243,11 +262,6 @@ class UserString(str):
 
         When deriving from this class, add ``__slots__`` to avoid making a string
         with a ``__dict__`` property.
-
-    .. seealso::
-
-        See implementation of :class:`yuio.string.Link` for an example of handling user
-        strings with internal state.
 
     """
 
@@ -373,4 +387,12 @@ class UserString(str):
         return self._wrap(super().zfill(width))
 
 
-T = _t.TypeVar("T", covariant=True)
+class ClosedIO(_io.TextIOBase, _t.TextIO):  # type: ignore
+    """
+    Dummy stream that's always closed.
+
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.close()

@@ -210,6 +210,14 @@ Any punctuation symbol can be escaped with backslash:
 See full list of tags in :ref:`yuio.theme <common-tags>`.
 
 
+Message channels
+----------------
+
+.. autoclass:: MessageChannel
+    :members:
+    :private-members:
+
+
 Formatting utilities
 --------------------
 
@@ -226,22 +234,7 @@ You can use the :class:`Task` class to indicate status and progress
 of some task:
 
 .. autoclass:: Task
-
-   .. automethod:: progress
-
-   .. automethod:: progress_size
-
-   .. automethod:: progress_scale
-
-   .. automethod:: iter
-
-   .. automethod:: comment
-
-   .. automethod:: done
-
-   .. automethod:: error
-
-   .. automethod:: subtask
+    :members:
 
 
 Querying user input
@@ -271,36 +264,7 @@ You can temporarily disable printing of tasks and messages
 using the :class:`SuspendOutput` context manager.
 
 .. autoclass:: SuspendOutput
-
-    .. automethod:: resume
-
-    .. automethod:: info
-
-    .. automethod:: warning
-
-    .. automethod:: success
-
-    .. automethod:: failure
-
-    .. automethod:: failure_with_tb
-
-    .. automethod:: error
-
-    .. automethod:: error_with_tb
-
-    .. automethod:: heading
-
-    .. automethod:: md
-
-    .. automethod:: rst
-
-    .. automethod:: hl
-
-    .. automethod:: br
-
-    .. automethod:: hr
-
-    .. automethod:: raw
+    :members:
 
 
 Python's `logging` and yuio
@@ -316,6 +280,8 @@ you can add a :class:`Handler`:
 
 Helpers
 -------
+
+.. autofunction:: make_repr_context
 
 .. type:: ExcInfo
     :canonical: tuple[type[BaseException] | None, BaseException | None, types.TracebackType | None]
@@ -485,6 +451,7 @@ __all__ = [
     "JoinStr",
     "Link",
     "Md",
+    "MessageChannel",
     "Or",
     "Repr",
     "Rst",
@@ -650,7 +617,6 @@ def get_theme() -> yuio.theme.Theme:
 def make_repr_context(
     *,
     term: yuio.term.Term | None = None,
-    file: _t.TextIO | None = None,
     to_stdout: bool = False,
     to_stderr: bool = False,
     theme: yuio.theme.Theme | None = None,
@@ -662,11 +628,14 @@ def make_repr_context(
     """
     Create new :class:`~yuio.string.ReprContext` for the given term and theme.
 
+    .. warning::
+
+        :class:`~yuio.string.ReprContext`\\ s are not thread safe. As such,
+        you shouldn't create them for long term use.
+
     :param term:
         terminal where to print this message. If not given, terminal from
         :func:`get_term` is used.
-    :param file:
-        shortcut for creating non-interactive `term` for a file.
     :param to_stdout:
         shortcut for setting `term` to ``stdout``.
     :param to_stderr:
@@ -696,17 +665,20 @@ def make_repr_context(
     """
 
     if (term is not None) + to_stdout + to_stderr > 1:
-        raise TypeError("term, to_stdout, to_stderr can't be given together")
+        names = []
+        if term is not None:
+            names.append("term")
+        if to_stdout:
+            names.append("to_stdout")
+        if to_stderr:
+            names.append("to_stderr")
+        raise TypeError(f"{And(names)} can't be given together")
 
     manager = _manager()
 
     theme = manager.theme
     if term is None:
-        if file is not None:
-            term = yuio.term.Term(
-                file, sys.stdin, is_unicode=yuio.term.stream_is_unicode(file)
-            )
-        elif to_stdout:
+        if to_stdout:
             term = manager.out_term
         elif to_stderr:
             term = manager.err_term
@@ -1241,8 +1213,9 @@ def raw(
         first message printed so far, adds another newline before the message.
     :param wrap:
         whether to wrap message before printing it.
-
     :param ctx:
+        :class:`~yuio.string.ReprContext` that should be used for formatting
+        and printing the message.
     :param term:
         if `ctx` is not given, sets terminal where to print this message. Default is
         to use :func:`get_term`.
@@ -1274,8 +1247,17 @@ def raw(
 
     """
 
-    if (term is not None) + to_stdout + to_stderr > 1:
-        raise TypeError("term, to_stdout, to_stderr can't be given together")
+    if (ctx is not None) + (term is not None) + to_stdout + to_stderr > 1:
+        names = []
+        if ctx is not None:
+            names.append("ctx")
+        if term is not None:
+            names.append("term")
+        if to_stdout:
+            names.append("to_stdout")
+        if to_stderr:
+            names.append("to_stderr")
+        raise TypeError(f"{And(names)} can't be given together")
 
     manager = _manager()
 
@@ -2058,32 +2040,67 @@ def edit(
     return text
 
 
-class SuspendOutput:
+class MessageChannel:
     """
-    A context manager for pausing output.
+    Message channels are similar to logging adapters: they allow adding additional
+    arguments for calls to :func:`raw` and other message functions.
 
-    This is handy for when you need to take control over the output stream.
-    For example, the :func:`ask` function uses this class internally.
-
-    This context manager also suspends all prints that go to :data:`sys.stdout`
-    and :data:`sys.stderr` if they were wrapped (see :func:`setup`).
-    To print through them, use :func:`orig_stderr` and :func:`orig_stdout`.
+    This is useful when you need to control destination for messages, but don't want
+    to override global settings via :func:`setup`. One example for them is described
+    in :ref:`cookbook-print-to-file`.
 
     """
 
-    def __init__(self):
-        self._resumed = False
-        _manager().suspend()
+    enabled: bool
+    """
+    Message channel can be disabled, in which case messages are not printed.
 
-    def resume(self):
+    """
+
+    _msg_kwargs: dict[str, _t.Any]
+    """
+    Keyword arguments that will be added to every message.
+
+    """
+
+    if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:  # pragma: no cover
+
+        def __init__(
+            self,
+            *,
+            ignore_suspended: bool = False,
+            term: yuio.term.Term | None = None,
+            to_stdout: bool = False,
+            to_stderr: bool = False,
+            theme: yuio.theme.Theme | None = None,
+            multiline: bool | None = None,
+            highlighted: bool | None = None,
+            max_depth: int | None = None,
+            width: int | None = None,
+        ) -> types.NoneType: ...
+    else:
+
+        def __init__(self, **kwargs):
+            self._msg_kwargs: dict[str, _t.Any] = kwargs
+            self.enabled: bool = True
+
+    def _update_kwargs(self, kwargs: dict[str, _t.Any]):
         """
-        Manually resume the logging process.
+        A hook that updates method's `kwargs` before calling its implementation.
 
         """
 
-        if not self._resumed:
-            _manager().resume()
-            self._resumed = True
+        for name, option in self._msg_kwargs.items():
+            kwargs.setdefault(name, option)
+
+    def _is_enabled(self):
+        """
+        A hook that check if the message should be printed. By default, returns value
+        of :attr:`~MessageChannel.enabled`.
+
+        """
+
+        return self.enabled
 
     @_t.overload
     def info(self, msg: _t.LiteralString, /, *args, **kwargs): ...
@@ -2094,11 +2111,14 @@ class SuspendOutput:
         info(msg: ~string.templatelib.Template, /, **kwargs) ->
         info(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
-        Log an :func:`info` message, ignore suspended status.
+        Print an :func:`info` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         info(msg, *args, **kwargs)
 
     @_t.overload
@@ -2110,11 +2130,14 @@ class SuspendOutput:
         warning(msg: ~string.templatelib.Template, /, **kwargs) ->
         warning(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
-        Log a :func:`warning` message, ignore suspended status.
+        Print a :func:`warning` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         warning(msg, *args, **kwargs)
 
     @_t.overload
@@ -2126,11 +2149,14 @@ class SuspendOutput:
         success(msg: ~string.templatelib.Template, /, **kwargs) ->
         success(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
-        Log a :func:`success` message, ignore suspended status.
+        Print a :func:`success` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         success(msg, *args, **kwargs)
 
     @_t.overload
@@ -2142,11 +2168,14 @@ class SuspendOutput:
         error(msg: ~string.templatelib.Template, /, **kwargs) ->
         error(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
-        Log an :func:`error` message, ignore suspended status.
+        Print an :func:`error` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         error(msg, *args, **kwargs)
 
     @_t.overload
@@ -2179,11 +2208,14 @@ class SuspendOutput:
         error_with_tb(msg: ~string.templatelib.Template, /, **kwargs) ->
         error_with_tb(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
-        Log an :func:`error_with_tb` message, ignore suspended status.
+        Print an :func:`error_with_tb` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         error_with_tb(msg, *args, **kwargs)
 
     @_t.overload
@@ -2195,11 +2227,14 @@ class SuspendOutput:
         failure(msg: ~string.templatelib.Template, /, **kwargs) ->
         failure(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
-        Log a :func:`failure` message, ignore suspended status.
+        Print a :func:`failure` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         failure(msg, *args, **kwargs)
 
     @_t.overload
@@ -2232,11 +2267,14 @@ class SuspendOutput:
         failure_with_tb(msg: ~string.templatelib.Template, /, **kwargs) ->
         failure_with_tb(msg: ~yuio.string.ToColorable, /, **kwargs) ->
 
-        Log a :func:`failure_with_tb` message, ignore suspended status.
+        Print a :func:`failure_with_tb` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         failure_with_tb(msg, *args, **kwargs)
 
     @_t.overload
@@ -2248,39 +2286,51 @@ class SuspendOutput:
         heading(msg: ~string.templatelib.Template, /, **kwargs)
         heading(msg: ~yuio.string.ToColorable, /, **kwargs)
 
-        Log a :func:`heading` message, ignore suspended status.
+        Print a :func:`heading` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         heading(msg, *args, **kwargs)
 
     def md(self, msg: str, /, **kwargs):
         """
-        Log an :func:`md` message, ignore suspended status.
+        Print an :func:`md` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         md(msg, **kwargs)
 
     def rst(self, msg: str, /, **kwargs):
         """
-        Log an :func:`rst` message, ignore suspended status.
+        Print an :func:`rst` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         rst(msg, **kwargs)
 
     def br(self, **kwargs):
         """br()
 
-        Log a :func:`br` message, ignore suspended status.
+        Print a :func:`br` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         br(**kwargs)
 
     @_t.overload
@@ -2291,11 +2341,14 @@ class SuspendOutput:
         """hl(msg: typing.LiteralString, /, *args, syntax: str, dedent: bool = True, **kwargs)
         hl(msg: str, /, *, syntax: str, dedent: bool = True, **kwargs)
 
-        Log an :func:`hl` message, ignore suspended status.
+        Print an :func:`hl` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         hl(msg, *args, **kwargs)
 
     @_t.overload
@@ -2307,21 +2360,93 @@ class SuspendOutput:
         hr(msg: ~string.templatelib.Template, /, *, weight: int | str = 1, **kwargs) ->
         hr(msg: ~yuio.string.ToColorable, /, *, weight: int | str = 1, **kwargs) ->
 
-        Log an :func:`hr` message, ignore suspended status.
+        Print an :func:`hr` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         hr(msg, *args, **kwargs)
 
     def raw(self, msg: yuio.string.Colorable, /, **kwargs):
         """
-        Log a :func:`raw` message, ignore suspended status.
+        Print a :func:`raw` message.
 
         """
 
-        kwargs.setdefault("ignore_suspended", True)
+        if not self._is_enabled():
+            return
+
+        self._update_kwargs(kwargs)
         raw(msg, **kwargs)
+
+    def make_repr_context(self) -> yuio.string.ReprContext:
+        """
+        Make a :class:`~yuio.string.ReprContext` using settings
+        from :attr:`~MessageChannel.msg_kwargs`.
+
+        """
+
+        return make_repr_context(
+            term=self._msg_kwargs.get("term"),
+            to_stdout=self._msg_kwargs.get("to_stdout", False),
+            to_stderr=self._msg_kwargs.get("to_stderr", False),
+            theme=self._msg_kwargs.get("theme"),
+            multiline=self._msg_kwargs.get("multiline"),
+            highlighted=self._msg_kwargs.get("highlighted"),
+            max_depth=self._msg_kwargs.get("max_depth"),
+            width=self._msg_kwargs.get("width"),
+        )
+
+
+class SuspendOutput(MessageChannel):
+    """
+    A context manager for pausing output.
+
+    This is handy for when you need to take control over the output stream.
+    For example, the :func:`ask` function uses this class internally.
+
+    This context manager also suspends all prints that go to :data:`sys.stdout`
+    and :data:`sys.stderr` if they were wrapped (see :func:`setup`).
+    To print through them, use :func:`orig_stderr` and :func:`orig_stdout`.
+
+    Each instance of this class is a :class:`MessageChannel`; calls to its printing
+    methods bypass output suppression:
+
+    .. code-block:: python
+
+        with SuspendOutput() as out:
+            print("Suspended")  # [1]_
+            out.info("Not suspended")  # [2]_
+
+    .. code-annotations::
+
+        1. This message is suspended; it will be printed when output is resumed.
+        2. This message bypasses suspension; it will be printed immediately.
+
+    """
+
+    def __init__(self, initial_channel: MessageChannel | None = None, /):
+        super().__init__()
+
+        if initial_channel is not None:
+            self._msg_kwargs.update(initial_channel._msg_kwargs)
+        self._msg_kwargs["ignore_suspended"] = True
+
+        self._resumed = False
+        _manager().suspend()
+
+    def resume(self):
+        """
+        Manually resume the logging process.
+
+        """
+
+        if not self._resumed:
+            _manager().resume()
+            self._resumed = True
 
     def __enter__(self):
         return self
@@ -2353,8 +2478,8 @@ class _IterTask(_t.Generic[T]):
 
 
 class Task:
-    """Task(msg: typing.LiteralString, /, *args, comment: str | None = None)
-    Task(msg: str, /, *, comment: str | None = None)
+    """Task(msg: typing.LiteralString, /, *args, comment: str | None = None, parent: Task | None = None)
+    Task(msg: str, /, *, comment: str | None = None, parent: Task | None = None)
 
     A class for indicating progress of some task.
 
@@ -2365,6 +2490,8 @@ class Task:
     :param comment:
         comment for the task. Can be specified after creation
         via the :meth:`~Task.comment` method.
+    :param parent:
+        parent task.
 
     You can have multiple tasks at the same time,
     create subtasks, set task's progress or add a comment about
@@ -2397,6 +2524,7 @@ class Task:
         /,
         *args,
         comment: str | None = None,
+        parent: Task | None = None,
     ): ...
     @_t.overload
     def __init__(
@@ -2405,14 +2533,15 @@ class Task:
         /,
         *,
         comment: str | None = None,
+        parent: Task | None = None,
     ): ...
     def __init__(
         self,
         msg: str,
         /,
         *args,
-        _parent: Task | None = None,
         comment: str | None = None,
+        parent: Task | None = None,
     ):
         # Task properties should not be written to directly.
         # Instead, task should be sent to a handler for modification.
@@ -2432,10 +2561,10 @@ class Task:
         self._cached_msg: yuio.string.ColorizedString | None = None
         self._cached_comment: yuio.string.ColorizedString | None = None
 
-        if _parent is None:
+        if parent is None:
             _manager().start_task(self)
         else:
-            _manager().start_subtask(_parent, self)
+            _manager().start_subtask(parent, self)
 
     @_t.overload
     def progress(self, progress: float | None, /, *, ndigits: int = 2): ...
@@ -2761,7 +2890,7 @@ class Task:
 
         """
 
-        return Task(msg, *args, comment=comment, **{"_parent": self})
+        return Task(msg, *args, comment=comment, parent=self)
 
     def __enter__(self):
         return self
@@ -2887,8 +3016,12 @@ class _IoManager(abc.ABC):
         ) = None,
         enable_bg_updates: bool = True,
     ):
-        self._out_term = yuio.term.get_term_from_stream(orig_stdout(), sys.stdin)
-        self._err_term = yuio.term.get_term_from_stream(orig_stderr(), sys.stdin)
+        self._out_term = yuio.term.get_term_from_stream(
+            orig_stdout(), sys.stdin, allow_env_overrides=True
+        )
+        self._err_term = yuio.term.get_term_from_stream(
+            orig_stderr(), sys.stdin, allow_env_overrides=True
+        )
 
         self._term = term or self._err_term
 

@@ -452,7 +452,7 @@ from yuio.config import (
     store_false_option,
     store_true_option,
 )
-from yuio.util import _find_docs
+from yuio.util import find_docs as _find_docs
 from yuio.util import to_dash_case as _to_dash_case
 
 from typing import TYPE_CHECKING

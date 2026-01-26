@@ -198,7 +198,8 @@ import yuio.hl
 import yuio.parse
 import yuio.string
 from yuio.string import ColorizedString as _ColorizedString
-from yuio.util import _UNPRINTABLE_TRANS, _commonprefix
+from yuio.util import _UNPRINTABLE_TRANS
+from yuio.util import commonprefix as _commonprefix
 
 from typing import TYPE_CHECKING
 
