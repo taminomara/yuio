@@ -9,6 +9,7 @@ updates:
         patterns:
         - "furo"
         - "genbadge"
+        - "jsonschema"
         - "libtmux"
         - "PyGithub"
         - "pyright"
