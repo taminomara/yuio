@@ -14,6 +14,8 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+## [2.0.0-rc4] - 2026-01-29
+
 - ✨ Refactored `yuio.io.Task` to move its rendering logic to a widget, thus
   allowing tasks with custom widgets.
 
@@ -215,5 +217,6 @@ Release candidate for version 2.
 [2.0.0-rc1]: https://github.com/taminomara/yuio/compare/v2.0.0-rc0...v2.0.0-rc1
 [2.0.0-rc2]: https://github.com/taminomara/yuio/compare/v2.0.0-rc1...v2.0.0-rc2
 [2.0.0-rc3]: https://github.com/taminomara/yuio/compare/v2.0.0-rc2...v2.0.0-rc3
+[2.0.0-rc4]: https://github.com/taminomara/yuio/compare/v2.0.0-rc3...v2.0.0-rc4
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-rc3...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0-rc4...HEAD
