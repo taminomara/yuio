@@ -14,8 +14,14 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
-- 🔧 Refactored `yuio.io.Task` to move its rendering logic to a widget, thus
+- ✨ Refactored `yuio.io.Task` to move its rendering logic to a widget, thus
   allowing tasks with custom widgets.
+
+- ✨ Added `MessageChannel` abstraction.
+
+- ✨ Added copy and deepcopy handlers for configs.
+
+- ✨ Added documentation trimming when exporting JsonSchema for enums.
 
 ## [2.0.0-rc3] - 2026-01-26
 
