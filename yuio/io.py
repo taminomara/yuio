@@ -2079,7 +2079,7 @@ class MessageChannel:
 
     """
 
-    if _t.TYPE_CHECKING or "__YUIO_SPHINX_BUILD" in os.environ:  # pragma: no cover
+    if _t.TYPE_CHECKING:
 
         def __init__(
             self,
@@ -2093,7 +2093,7 @@ class MessageChannel:
             highlighted: bool | None = None,
             max_depth: int | None = None,
             width: int | None = None,
-        ) -> types.NoneType: ...
+        ): ...
     else:
 
         def __init__(self, **kwargs):
