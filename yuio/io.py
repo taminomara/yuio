@@ -267,6 +267,16 @@ using the :class:`SuspendOutput` context manager.
     :members:
 
 
+Implementing custom tasks
+-------------------------
+
+Example of a custom task can be found in :ref:`cookbook <cookbook-custom-tasks>`.
+
+.. autoclass:: TaskBase
+    :members:
+    :private-members:
+
+
 Python's `logging` and yuio
 ---------------------------
 
@@ -384,10 +394,8 @@ from __future__ import annotations
 
 import abc
 import atexit
-import enum
 import functools
 import logging
-import math
 import os
 import re
 import shutil
@@ -408,6 +416,7 @@ import yuio.string
 import yuio.term
 import yuio.theme
 import yuio.widget
+from yuio._dist.dsu import DisjointSet as _DisjointSet
 from yuio.string import (
     And,
     ColorizedString,
@@ -431,6 +440,7 @@ from yuio.util import dedent as _dedent
 
 import yuio._typing_ext as _tx
 from typing import TYPE_CHECKING
+from typing import ClassVar as _ClassVar
 
 if TYPE_CHECKING:
     import typing_extensions as _t
@@ -458,6 +468,7 @@ __all__ = [
     "Stack",
     "SuspendOutput",
     "Task",
+    "TaskBase",
     "TypeRepr",
     "UserIoError",
     "WithBaseColor",
@@ -506,7 +517,7 @@ Exception information as returned by :func:`sys.exc_info`.
 """
 
 
-_IO_LOCK = threading.Lock()
+_IO_LOCK = threading.RLock()
 _IO_MANAGER: _IoManager | None = None
 _STREAMS_WRAPPED: bool = False
 _ORIG_STDERR: _t.TextIO | None = None
@@ -658,7 +669,8 @@ def make_repr_context(
     :param width:
         sets initial value for
         :attr:`ReprContext.width <yuio.string.ReprContext.width>`.
-        If not given, uses current terminal width or :attr:`Theme.fallback_width`
+        If not given, uses current terminal width or
+        :attr:`Theme.fallback_width <yuio.theme.Theme.fallback_width>`
         depending on whether `term` is attached to a TTY device and whether colors
         are supported by the target terminal.
 
@@ -726,9 +738,9 @@ def wrap_streams():
             return
 
         if yuio.term._output_is_tty(sys.stdout):
-            _ORIG_STDOUT, sys.stdout = sys.stdout, _WrappedOutput(sys.stdout)
+            _ORIG_STDOUT, sys.stdout = sys.stdout, _YuioOutputWrapper(sys.stdout)
         if yuio.term._output_is_tty(sys.stderr):
-            _ORIG_STDERR, sys.stderr = sys.stderr, _WrappedOutput(sys.stderr)
+            _ORIG_STDERR, sys.stderr = sys.stderr, _YuioOutputWrapper(sys.stderr)
         _STREAMS_WRAPPED = True
 
         atexit.register(restore_streams)
@@ -1477,6 +1489,10 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
         raises :class:`UserIoError` if we're not in interactive environment, and there
         is no default to return.
     :example:
+        .. invisible-code-block: python
+
+            import enum
+
         .. code-block:: python
 
             class Level(enum.Enum):
@@ -2385,7 +2401,7 @@ class MessageChannel:
     def make_repr_context(self) -> yuio.string.ReprContext:
         """
         Make a :class:`~yuio.string.ReprContext` using settings
-        from :attr:`~MessageChannel.msg_kwargs`.
+        from :attr:`~MessageChannel._msg_kwargs`.
 
         """
 
@@ -2477,7 +2493,167 @@ class _IterTask(_t.Generic[T]):
         return self
 
 
-class Task:
+class TaskBase:
+    """
+    Base class for tasks and other objects that you might show to the user.
+
+    """
+
+    def __init__(self):
+        self.__parent: TaskBase | None = None
+        self.__children: list[TaskBase] = []
+
+    def attach(self, parent: TaskBase | None):
+        """
+        Attach this task and all of its children to the task tree.
+
+        :param parent:
+            parent task in the tree. Pass :data:`None` to attach to root.
+
+        """
+
+        with self._lock:
+            if parent is None:
+                parent = _manager().tasks_root
+            if self.__parent is not None:
+                self.__parent.__children.remove(self)
+            self.__parent = parent
+            parent.__children.append(self)
+            self._request_update()
+
+    def detach(self):
+        """
+        Remove this task and all of its children from the task tree.
+
+        """
+
+        with self._lock:
+            if self.__parent is not None:
+                self.__parent.__children.remove(self)
+                self.__parent = None
+                self._request_update()
+
+    @property
+    def _lock(self):
+        """
+        Global IO lock.
+
+        All protected methods, as well as state mutations, should happen
+        under this lock.
+
+        """
+
+        return _IO_LOCK
+
+    @abc.abstractmethod
+    def _get_widget(self) -> yuio.widget.Widget[_t.Never]:
+        """
+        This method should return widget that renders the task.
+
+        .. warning::
+
+            This method should be called under :attr:`~TaskBase._lock`.
+
+        """
+
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _get_priority(self) -> int:
+        """
+        This method should return priority that will be used to hide non-important
+        tasks when there is not enough space to show all of them.
+
+        Default priority is ``1``, priority for finished tasks is ``0``.
+
+        .. warning::
+
+            This method should be called under :attr:`~TaskBase._lock`.
+
+        """
+
+        raise NotImplementedError()
+
+    def _request_update(self, *, immediate_render: bool = False):
+        """
+        Indicate that task's state has changed, and update is necessary.
+
+        .. warning::
+
+            This method should be called under :attr:`~TaskBase._lock`.
+
+        :param immediate_render:
+            by default, tasks are updated lazily from a background thread; set this
+            parameter to :data:`True` to redraw them immediately from this thread.
+
+        """
+
+        _manager()._update_tasks(immediate_render)
+
+    def _widgets_are_displayed(self) -> bool:
+        """
+        Return :data:`True` if we're in an interactive foreground process which
+        renders tasks.
+
+        If this function returns :data:`False`, you should print log messages about
+        task status instead of relying on task's widget being presented to the user.
+
+        .. warning::
+
+            This method should be called under :attr:`~TaskBase._lock`.
+
+        """
+
+        return _manager()._should_draw_interactive_tasks()
+
+    def _get_parent(self) -> TaskBase | None:
+        """
+        Get parent task.
+
+        .. warning::
+
+            This method should be called under :attr:`~TaskBase._lock`.
+
+        """
+
+        return self.__parent
+
+    def _is_toplevel(self) -> bool:
+        """
+        Check if this task is attached to the first level of the tree.
+
+        .. warning::
+
+            This method should be called under :attr:`~TaskBase._lock`.
+
+        """
+
+        return self._get_parent() is _manager().tasks_root
+
+    def _get_children(self) -> _t.Sequence[TaskBase]:
+        """
+        Get child tasks.
+
+        .. warning::
+
+            This method should be called under :attr:`~TaskBase._lock`.
+
+        """
+
+        return self.__children
+
+
+class _TasksRoot(TaskBase):
+    _widget = yuio.widget.Empty()
+
+    def _get_widget(self) -> yuio.widget.Widget[_t.Never]:
+        return self._widget
+
+    def _get_priority(self) -> int:
+        return 0
+
+
+class Task(TaskBase):
     """Task(msg: typing.LiteralString, /, *args, comment: str | None = None, parent: Task | None = None)
     Task(msg: str, /, *, comment: str | None = None, parent: Task | None = None)
 
@@ -2490,6 +2666,13 @@ class Task:
     :param comment:
         comment for the task. Can be specified after creation
         via the :meth:`~Task.comment` method.
+    :param persistent:
+        whether to keep showing this task after it finishes.
+        Default is :data:`False`.
+
+        To manually hide the task, call :meth:`~TaskBase.detach`.
+    :param initial_status:
+        initial status of the task.
     :param parent:
         parent task.
 
@@ -2512,10 +2695,13 @@ class Task:
 
     """
 
-    class _Status(enum.Enum):
-        DONE = "done"
-        ERROR = "error"
-        RUNNING = "running"
+    Status = yuio.widget.Task.Status
+
+    widget_class: _ClassVar[type[yuio.widget.Task]] = yuio.widget.Task
+    """
+    Class of the widget that will be used to draw this task.
+
+    """
 
     @_t.overload
     def __init__(
@@ -2524,7 +2710,9 @@ class Task:
         /,
         *args,
         comment: str | None = None,
-        parent: Task | None = None,
+        persistent: bool = False,
+        initial_status: Task.Status = yuio.widget.Task.Status.RUNNING,
+        parent: TaskBase | None = None,
     ): ...
     @_t.overload
     def __init__(
@@ -2533,7 +2721,9 @@ class Task:
         /,
         *,
         comment: str | None = None,
-        parent: Task | None = None,
+        persistent: bool = False,
+        initial_status: Task.Status = yuio.widget.Task.Status.RUNNING,
+        parent: TaskBase | None = None,
     ): ...
     def __init__(
         self,
@@ -2541,30 +2731,17 @@ class Task:
         /,
         *args,
         comment: str | None = None,
-        parent: Task | None = None,
+        persistent: bool = False,
+        initial_status: Task.Status = yuio.widget.Task.Status.RUNNING,
+        parent: TaskBase | None = None,
     ):
-        # Task properties should not be written to directly.
-        # Instead, task should be sent to a handler for modification.
-        # This ensures thread safety, because handler has a lock.
-        # See handler's implementation details.
+        super().__init__()
 
-        self._msg: str = msg
-        self._args: tuple[object, ...] = args
-        self._comment: str | None = comment
-        self._comment_args: tuple[object, ...] | None = None
-        self._status: Task._Status = Task._Status.RUNNING
-        self._progress: float | None = None
-        self._progress_done: str | None = None
-        self._progress_total: str | None = None
-        self._subtasks: list[Task] = []
-
-        self._cached_msg: yuio.string.ColorizedString | None = None
-        self._cached_comment: yuio.string.ColorizedString | None = None
-
-        if parent is None:
-            _manager().start_task(self)
-        else:
-            _manager().start_subtask(parent, self)
+        self._widget = self.widget_class(msg, *args, comment=comment)
+        self._persistent = persistent
+        with self._lock:
+            self.set_status(initial_status)
+            self.attach(parent)
 
     @_t.overload
     def progress(self, progress: float | None, /, *, ndigits: int = 2): ...
@@ -2631,40 +2808,9 @@ class Task:
 
         """
 
-        progress = None
-
-        if len(args) == 1:
-            progress = done = args[0]
-            total = None
-            if ndigits is None:
-                ndigits = 2
-        elif len(args) == 2:
-            done, total = args
-            if ndigits is None:
-                ndigits = (
-                    2 if isinstance(done, float) or isinstance(total, float) else 0
-                )
-        else:
-            raise ValueError(
-                f"Task.progress() takes between one and two arguments "
-                f"({len(args)} given)"
-            )
-
-        if done is None:
-            _manager().set_task_progress(self, None, None, None)
-            return
-
-        if len(args) == 1:
-            done *= 100
-            unit = "%"
-
-        done_str = "%.*f" % (ndigits, done)
-        if total is None:
-            _manager().set_task_progress(self, progress, done_str + unit, None)
-        else:
-            total_str = "%.*f" % (ndigits, total)
-            progress = done / total if total else 0
-            _manager().set_task_progress(self, progress, done_str, total_str + unit)
+        with self._lock:
+            self._widget.progress(*args, unit=unit, ndigits=ndigits)  # type: ignore
+            self._request_update()
 
     def progress_size(
         self,
@@ -2697,27 +2843,9 @@ class Task:
 
         """
 
-        progress = done / total
-        done, done_unit = self._size(done)
-        total, total_unit = self._size(total)
-
-        if done_unit == total_unit:
-            done_unit = ""
-
-        _manager().set_task_progress(
-            self,
-            progress,
-            "%.*f%s" % (ndigits, done, done_unit),
-            "%.*f%s" % (ndigits, total, total_unit),
-        )
-
-    @staticmethod
-    def _size(n):
-        for unit in "BKMGT":
-            if n < 1024:
-                return n, unit
-            n /= 1024
-        return n, "P"
+        with self._lock:
+            self._widget.progress_size(done, total, ndigits=ndigits)
+            self._request_update()
 
     def progress_scale(
         self,
@@ -2754,32 +2882,9 @@ class Task:
 
         """
 
-        progress = done / total
-        done, done_unit = self._unit(done)
-        total, total_unit = self._unit(total)
-
-        if unit:
-            done_unit += unit
-            total_unit += unit
-
-        _manager().set_task_progress(
-            self,
-            progress,
-            "%.*f%s" % (ndigits, done, done_unit),
-            "%.*f%s" % (ndigits, total, total_unit),
-        )
-
-    @staticmethod
-    def _unit(n: float) -> tuple[float, str]:
-        if math.fabs(n) < 1e-33:
-            return 0, ""
-        magnitude = max(-8, min(8, int(math.log10(math.fabs(n)) // 3)))
-        if magnitude < 0:
-            return n * 10 ** -(3 * magnitude), "munpfazy"[-magnitude - 1]
-        elif magnitude > 0:
-            return n / 10 ** (3 * magnitude), "KMGTPEZY"[magnitude - 1]
-        else:
-            return n, ""
+        with self._lock:
+            self._widget.progress_scale(done, total, unit=unit, ndigits=ndigits)
+            self._request_update()
 
     def iter(
         self,
@@ -2850,7 +2955,46 @@ class Task:
 
         """
 
-        _manager().set_task_comment(self, comment, args)
+        with self._lock:
+            self._widget.comment(comment, *args)
+            self._request_update()
+
+    def set_status(self, status: Task.Status):
+        """
+        Set task status.
+
+        :param status:
+            New status.
+
+        """
+
+        with self._lock:
+            if self._widget.status == status:
+                return
+
+            self._widget.status = status
+            if status in [Task.Status.DONE, Task.Status.ERROR] and not self._persistent:
+                self.detach()
+            if self._widgets_are_displayed():
+                self._request_update()
+            else:
+                raw(self._widget, add_newline=True)
+
+    def running(self):
+        """
+        Indicate that this task is running.
+
+        """
+
+        self.set_status(Task.Status.RUNNING)
+
+    def pending(self):
+        """
+        Indicate that this task is pending.
+
+        """
+
+        self.set_status(Task.Status.PENDING)
 
     def done(self):
         """
@@ -2858,7 +3002,7 @@ class Task:
 
         """
 
-        _manager().finish_task(self, Task._Status.DONE)
+        self.set_status(Task.Status.DONE)
 
     def error(self):
         """
@@ -2866,15 +3010,37 @@ class Task:
 
         """
 
-        _manager().finish_task(self, Task._Status.ERROR)
+        self.set_status(Task.Status.ERROR)
 
     @_t.overload
     def subtask(
-        self, msg: _t.LiteralString, /, *args, comment: str | None = None
+        self,
+        msg: _t.LiteralString,
+        /,
+        *args,
+        comment: str | None = None,
+        persistent: bool = True,
+        initial_status: Task.Status = yuio.widget.Task.Status.RUNNING,
     ) -> Task: ...
     @_t.overload
-    def subtask(self, msg: str, /, *, comment: str | None = None) -> Task: ...
-    def subtask(self, msg: str, /, *args, comment: str | None = None) -> Task:
+    def subtask(
+        self,
+        msg: str,
+        /,
+        *,
+        comment: str | None = None,
+        persistent: bool = True,
+        initial_status: Task.Status = yuio.widget.Task.Status.RUNNING,
+    ) -> Task: ...
+    def subtask(
+        self,
+        msg: str,
+        /,
+        *args,
+        comment: str | None = None,
+        persistent: bool = True,
+        initial_status: Task.Status = yuio.widget.Task.Status.RUNNING,
+    ) -> Task:
         """
         Create a subtask within this task.
 
@@ -2885,14 +3051,27 @@ class Task:
         :param comment:
             comment for the task. Can be specified after creation
             via the :meth:`~Task.comment` method.
+        :param persistent:
+            whether to keep showing this subtask after it finishes. Default
+            is :data:`True`.
+        :param initial_status:
+            initial status of the task.
         :returns:
             a new :class:`Task` that will be displayed as a sub-task of this task.
 
         """
 
-        return Task(msg, *args, comment=comment, parent=self)
+        return Task(
+            msg,
+            *args,
+            comment=comment,
+            persistent=persistent,
+            initial_status=initial_status,
+            parent=self,
+        )
 
     def __enter__(self):
+        self.running()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -2900,6 +3079,201 @@ class Task:
             self.done()
         else:
             self.error()
+
+    def _get_widget(self) -> yuio.widget.Widget[_t.Never]:
+        return self._widget
+
+    def _get_priority(self) -> int:
+        return 1 if self._widget.status is yuio.widget.Task.Status.RUNNING else 0
+
+
+class _TaskTree(yuio.widget.Widget[_t.Never]):
+    def __init__(self, root: TaskBase):
+        super().__init__()
+
+        self._root = root
+
+    def layout(self, rc: yuio.widget.RenderContext) -> tuple[int, int]:
+        widgets: list[yuio.widget.Widget[_t.Never]] = []  # widget
+        tree: dict[
+            int, tuple[int | None, int, int]
+        ] = {}  # index -> parent, level, priority
+
+        # Build widgets tree.
+        to_visit: list[tuple[TaskBase, int, int | None]] = [(self._root, 0, None)]
+        while to_visit:
+            node, level, parent = to_visit.pop()
+            widget = node._get_widget()
+            tree[len(widgets)] = parent, level, node._get_priority()
+            to_visit.extend(
+                (child, level + 1, len(widgets))
+                for child in reversed(node._get_children())
+            )
+            widgets.append(widget)
+
+        # Prepare layouts.
+        layouts: dict[yuio.widget.Widget[_t.Never], tuple[int, int, int]] = {}
+        self.__layouts = layouts
+        total_min_h = 0
+        total_max_h = 0
+        for index, widget in enumerate(widgets):
+            min_h, max_h = widget.layout(rc)
+            assert min_h <= max_h, "incorrect layout"
+            _, level, _ = tree[index]
+            layouts[widget] = min_h, max_h, level
+            total_min_h += min_h
+            total_max_h += max_h
+
+        if total_min_h <= rc.height:
+            # All widgets fit.
+            self.__min_h = total_min_h
+            self.__max_h = total_max_h
+            self.__widgets = widgets
+            return total_min_h, total_max_h
+
+        # Propagate priority upwards, ensure that parents are at least as important
+        # as children.
+        for index, widget in enumerate(widgets):
+            parent, _, priority = tree[index]
+            while parent is not None:
+                grandparent, parent_level, parent_priority = tree[parent]
+                if parent_priority >= priority:
+                    break
+                tree[parent] = grandparent, parent_level, priority
+                widget = parent
+                parent = grandparent
+
+        # Sort by (-priority, level, -index). Since we've propagated priorities, we can
+        # be sure that parents are always included first. Hence in the loop below,
+        # we will visit children before parents.
+        widgets_sorted = list(enumerate(widgets))
+        widgets_sorted.sort(key=lambda w: (-tree[w[0]][2], tree[w[0]][1], -w[0]))
+
+        # Decide which widgets to hide by introducing "holes" to widgets sequence.
+        total_h = total_min_h
+        holes = _DisjointSet[int]()
+        for index, widget in reversed(widgets_sorted):
+            if total_h <= rc.height:
+                break
+
+            min_h, max_h = widget.layout(rc)
+
+            # We need to hide this widget.
+            _, level, _ = tree[index]
+            holes.add(index)
+            total_h -= min_h
+            total_h += 1  # Size of a message.
+
+            # Join this hole with the next one.
+            if index + 1 < len(widgets) and index + 1 in holes:
+                _, next_level, _ = tree[index + 1]
+                if next_level >= level:
+                    holes.union(index, index + 1)
+                    total_h -= 1
+            # Join this hole with the previous one.
+            if index - 1 >= 0 and index - 1 in holes:
+                _, prev_level, _ = tree[index - 1]
+                if prev_level <= level:
+                    holes.union(index, index - 1)
+                    total_h -= 1
+
+        # Assemble the final sequence of widgets.
+        hole_color = rc.theme.get_color("task/hole")
+        hole_num_color = rc.theme.get_color("task/hole/num")
+        prev_hole_id: int | None = None
+        prev_hole_size = 0
+        prev_hole_level: int | None = None
+        displayed_widgets: list[yuio.widget.Widget[_t.Never]] = []
+        for index, widget in enumerate(widgets):
+            if index in holes:
+                hole_id = holes.find(index)
+                if hole_id == prev_hole_id:
+                    prev_hole_size += 1
+                    if prev_hole_level is None:
+                        prev_hole_level = tree[index][1]
+                    else:
+                        prev_hole_level = min(prev_hole_level, tree[index][1])
+                else:
+                    if prev_hole_id is not None:
+                        hole_widget = yuio.widget.Line(
+                            yuio.string.ColorizedString(
+                                hole_num_color,
+                                "+",
+                                str(prev_hole_size),
+                                hole_color,
+                                " more",
+                            )
+                        )
+                        displayed_widgets.append(hole_widget)
+                        layouts[hole_widget] = 1, 1, prev_hole_level or 1
+                    prev_hole_id = hole_id
+                    prev_hole_size = 1
+                    prev_hole_level = tree[index][1]
+            else:
+                if prev_hole_id is not None:
+                    hole_widget = yuio.widget.Line(
+                        yuio.string.ColorizedString(
+                            hole_num_color,
+                            "+",
+                            str(prev_hole_size),
+                            hole_color,
+                            " more",
+                        )
+                    )
+                    displayed_widgets.append(hole_widget)
+                    layouts[hole_widget] = 1, 1, prev_hole_level or 1
+                prev_hole_id = None
+                prev_hole_size = 0
+                prev_hole_level = None
+                displayed_widgets.append(widget)
+
+        if prev_hole_id is not None:
+            hole_widget = yuio.widget.Line(
+                yuio.string.ColorizedString(
+                    hole_num_color,
+                    "+",
+                    str(prev_hole_size),
+                    hole_color,
+                    " more",
+                )
+            )
+            displayed_widgets.append(hole_widget)
+            layouts[hole_widget] = 1, 1, prev_hole_level or 1
+
+        total_min_h = 0
+        total_max_h = 0
+        for widget in displayed_widgets:
+            min_h, max_h, _ = layouts[widget]
+            total_min_h += min_h
+            total_max_h += max_h
+
+        self.__min_h = total_min_h
+        self.__max_h = total_max_h
+        self.__widgets = displayed_widgets
+        return total_min_h, total_max_h
+
+    def draw(self, rc: yuio.widget.RenderContext):
+        if rc.height <= self.__min_h:
+            scale = 0.0
+        elif rc.height >= self.__max_h:
+            scale = 1.0
+        else:
+            scale = (rc.height - self.__min_h) / (self.__max_h - self.__min_h)
+
+        y1 = 0.0
+        for widget in self.__widgets:
+            min_h, max_h, level = self.__layouts[widget]
+            y2 = y1 + min_h + scale * (max_h - min_h)
+
+            iy1 = round(y1)
+            iy2 = round(y2)
+
+            with rc.frame(max((level - 1) * 2, 0), iy1, height=iy2 - iy1):
+                widget.draw(rc)
+
+            y1 = y2
+
+        rc.set_final_pos(0, round(y1))
 
 
 class Formatter(logging.Formatter):
@@ -3036,14 +3410,12 @@ class _IoManager(abc.ABC):
         self._suspended: int = 0
         self._suspended_lines: list[tuple[list[str], _t.TextIO]] = []
 
-        self._tasks: list[Task] = []
-        self._tasks_printed = 0
-        self._spinner_state = 0
+        self._tasks_root = _TasksRoot()
+        self._tasks_widet = _TaskTree(self._tasks_root)
+        self._printed_tasks: bool = False
         self._needs_update = False
         self._last_update_time_us = 0
         self._printed_some_lines = False
-
-        self._renders = 0
 
         self._stop = False
         self._stop_condition = threading.Condition(_IO_LOCK)
@@ -3082,6 +3454,10 @@ class _IoManager(abc.ABC):
     @property
     def rc(self):
         return self._rc
+
+    @property
+    def tasks_root(self):
+        return self._tasks_root
 
     def setup(
         self,
@@ -3207,38 +3583,6 @@ class _IoManager(abc.ABC):
         with _IO_LOCK:
             self._emit_lines(lines, stream, ignore_suspended=False)
 
-    def start_task(self, task: Task):
-        with _IO_LOCK:
-            self._start_task(task)
-
-    def start_subtask(self, parent: Task, task: Task):
-        with _IO_LOCK:
-            self._start_subtask(parent, task)
-
-    def finish_task(self, task: Task, status: Task._Status):
-        with _IO_LOCK:
-            self._finish_task(task, status)
-
-    def set_task_progress(
-        self,
-        task: Task,
-        progress: float | None,
-        done: str | None,
-        total: str | None,
-    ):
-        with _IO_LOCK:
-            task._progress = progress
-            task._progress_done = done
-            task._progress_total = total
-            self._update_tasks()
-
-    def set_task_comment(self, task: Task, comment: str | None, args):
-        with _IO_LOCK:
-            task._comment = comment
-            task._comment_args = args
-            task._cached_comment = None
-            self._update_tasks()
-
     def suspend(self):
         with _IO_LOCK:
             self._suspend()
@@ -3310,59 +3654,22 @@ class _IoManager(abc.ABC):
         )
 
         if (
-            not should_draw_interactive_tasks and self._tasks_printed
+            not should_draw_interactive_tasks and self._printed_tasks
         ) or self._seen_sigcont:
             # We were moved from foreground to background. There's no point in hiding
             # tasks now (shell printed something when user sent C-z), but we need
             # to make sure that we'll start rendering tasks from scratch whenever
             # user brings us to foreground again.
             self.rc.prepare(reset_term_pos=True)
-            self._tasks_printed = 0
+            self._printed_tasks = False
             self._seen_sigcont = False
 
         return should_draw_interactive_tasks
 
-    def _start_task(self, task: Task):
-        self._tasks.append(task)
-        if self._should_draw_interactive_tasks():
-            self._update_tasks()
-        else:
-            self._emit_lines(self._format_task(task).as_code(self._term.color_support))
-
-    def _start_subtask(self, parent: Task, task: Task):
-        parent._subtasks.append(task)
-        if self._should_draw_interactive_tasks():
-            self._update_tasks()
-        else:
-            self._emit_lines(self._format_task(task).as_code(self._term.color_support))
-
-    def _finish_task(self, task: Task, status: Task._Status):
-        if task._status != Task._Status.RUNNING:
-            yuio._logger.warning("trying to change status of an already stopped task")
-            return
-
-        task._status = status
-        for subtask in task._subtasks:
-            if subtask._status == Task._Status.RUNNING:
-                self._finish_task(subtask, status)
-
-        if self._should_draw_interactive_tasks():
-            if task in self._tasks:
-                self._tasks.remove(task)
-                self._emit_lines(
-                    self._format_task(task).as_code(self._term.color_support)
-                )
-            else:
-                self._update_tasks()
-        else:
-            if task in self._tasks:
-                self._tasks.remove(task)
-            self._emit_lines(self._format_task(task).as_code(self._term.color_support))
-
     def _clear_tasks(self):
-        if self._should_draw_interactive_tasks() and self._tasks_printed:
+        if self._should_draw_interactive_tasks() and self._printed_tasks:
             self._rc.finalize()
-            self._tasks_printed = 0
+            self._printed_tasks = False
 
     def _update_tasks(self, immediate_render: bool = False):
         self._needs_update = True
@@ -3375,7 +3682,7 @@ class _IoManager(abc.ABC):
         if (
             self._should_draw_interactive_tasks()
             and not self._suspended
-            and (self._tasks or self._tasks_printed)
+            and (self._tasks_root._get_children() or self._printed_tasks)
         ):
             start_ns = time.monotonic_ns()
             if deadline_ns is None:
@@ -3397,15 +3704,12 @@ class _IoManager(abc.ABC):
                     return
 
             self._last_update_time_us = now_us
-            self._spinner_state = now_us // self._spinner_update_rate_us
-            self._tasks_printed = 0
+            self._printed_tasks = bool(self._tasks_root._get_children())
             self._needs_update = False
 
-            self._prepare_for_rendering_tasks()
-            for task in self._tasks:
-                self._draw_task(task, 0)
-            self._renders += 1
-            self._rc.set_final_pos(0, self._tasks_printed)
+            self._rc.prepare()
+            self._tasks_widet.layout(self._rc)
+            self._tasks_widet.draw(self._rc)
 
             now_ns = time.monotonic_ns()
             if not self._seen_sigcont and now_ns < deadline_ns:
@@ -3416,210 +3720,8 @@ class _IoManager(abc.ABC):
                 # could've changed, so we need to reset rendering context and re-render.
                 self._seen_sigcont = True
 
-    def _prepare_for_rendering_tasks(self):
-        self._rc.prepare()
 
-        self.n_tasks = dict.fromkeys(Task._Status, 0)
-        self.displayed_tasks = dict.fromkeys(Task._Status, 0)
-
-        stack = self._tasks.copy()
-        while stack:
-            task = stack.pop()
-            self.n_tasks[task._status] += 1
-            stack.extend(task._subtasks)
-
-        self.display_tasks = self.n_tasks.copy()
-        total_tasks = sum(self.display_tasks.values())
-        height = self._rc.height
-        if total_tasks > height:
-            height -= 1  # account for '+x more' message
-            for status in Task._Status:
-                to_hide = min(total_tasks - height, self.display_tasks[status])
-                self.display_tasks[status] -= to_hide
-                total_tasks -= to_hide
-                if total_tasks <= height:
-                    break
-
-    def _format_task(self, task: Task) -> yuio.string.ColorizedString:
-        res = yuio.string.ColorizedString()
-
-        ctx = task._status.value
-
-        if decoration := self._theme.get_msg_decoration(
-            "task", is_unicode=self._term.is_unicode
-        ):
-            res += self._theme.get_color(f"task/decoration:{ctx}")
-            res += decoration
-
-        res += self._format_task_msg(task)
-        res += self._theme.get_color(f"task:{ctx}")
-        res += " - "
-        res += self._theme.get_color(f"task/progress:{ctx}")
-        res += task._status.value
-        res += self._theme.get_color(f"task:{ctx}")
-        res += "\n"
-
-        res += yuio.color.Color.NONE
-
-        return res
-
-    def _format_task_msg(self, task: Task) -> yuio.string.ColorizedString:
-        if task._cached_msg is None:
-            msg = yuio.string.colorize(
-                task._msg,
-                *task._args,
-                default_color=f"task/heading:{task._status.value}",
-                ctx=yuio.string.ReprContext(
-                    term=self._term,
-                    theme=self._theme,
-                    width=self._rc.width,
-                ),
-            )
-            task._cached_msg = msg
-        return task._cached_msg
-
-    def _format_task_comment(self, task: Task) -> yuio.string.ColorizedString | None:
-        if task._status is not Task._Status.RUNNING:
-            return None
-        if task._cached_comment is None and task._comment is not None:
-            comment = yuio.string.colorize(
-                task._comment,
-                *(task._comment_args or ()),
-                default_color=f"task/comment:{task._status.value}",
-                ctx=yuio.string.ReprContext(
-                    term=self._term,
-                    theme=self._theme,
-                    width=self._rc.width,
-                ),
-            )
-            task._cached_comment = comment
-        return task._cached_comment
-
-    def _draw_task(self, task: Task, indent: int):
-        self.displayed_tasks[task._status] += 1
-
-        self._tasks_printed += 1
-        self._rc.move_pos(indent * 2, 0)
-        self._draw_task_progressbar(task)
-        self._rc.write(self._format_task_msg(task))
-        self._draw_task_progress(task)
-        if comment := self._format_task_comment(task):
-            self._rc.set_color_path(f"task:{task._status.value}")
-            self._rc.write(" - ")
-            self._rc.write(comment)
-        self._rc.new_line()
-
-        for subtask in task._subtasks:
-            self._draw_task(subtask, indent + 1)
-
-    def _draw_task_progress(self, task: Task):
-        if task._status in (Task._Status.DONE, Task._Status.ERROR):
-            self._rc.set_color_path(f"task:{task._status.value}")
-            self._rc.write(" - ")
-            self._rc.set_color_path(f"task/progress:{task._status.value}")
-            self._rc.write(task._status.name.lower())
-        elif task._progress_done is not None:
-            self._rc.set_color_path(f"task:{task._status.value}")
-            self._rc.write(" - ")
-            self._rc.set_color_path(f"task/progress:{task._status.value}")
-            self._rc.write(task._progress_done)
-            if task._progress_total is not None:
-                self._rc.set_color_path(f"task:{task._status.value}")
-                self._rc.write("/")
-                self._rc.set_color_path(f"task/progress:{task._status.value}")
-                self._rc.write(task._progress_total)
-
-    def _draw_task_progressbar(self, task: Task):
-        progress_bar_start_symbol = self._theme.get_msg_decoration(
-            "progress_bar/start_symbol", is_unicode=self._term.is_unicode
-        )
-        progress_bar_end_symbol = self._theme.get_msg_decoration(
-            "progress_bar/end_symbol", is_unicode=self._term.is_unicode
-        )
-        total_width = (
-            self._theme.progress_bar_width
-            - yuio.string.line_width(progress_bar_start_symbol)
-            - yuio.string.line_width(progress_bar_end_symbol)
-        )
-        progress_bar_done_symbol = self._theme.get_msg_decoration(
-            "progress_bar/done_symbol", is_unicode=self._term.is_unicode
-        )
-        progress_bar_pending_symbol = self._theme.get_msg_decoration(
-            "progress_bar/pending_symbol", is_unicode=self._term.is_unicode
-        )
-        if task._status != Task._Status.RUNNING:
-            self._rc.set_color_path(f"task/decoration:{task._status.value}")
-            self._rc.write(
-                self._theme.get_msg_decoration(
-                    "spinner/static_symbol", is_unicode=self._term.is_unicode
-                )
-            )
-        elif (
-            task._progress is None
-            or total_width <= 1
-            or not progress_bar_done_symbol
-            or not progress_bar_pending_symbol
-        ):
-            self._rc.set_color_path(f"task/decoration:{task._status.value}")
-            spinner_pattern = self._theme.get_msg_decoration(
-                "spinner/pattern", is_unicode=self._term.is_unicode
-            )
-            if spinner_pattern:
-                self._rc.write(
-                    spinner_pattern[self._spinner_state % len(spinner_pattern)]
-                )
-        else:
-            transition_pattern = self._theme.get_msg_decoration(
-                "progress_bar/transition_pattern", is_unicode=self._term.is_unicode
-            )
-
-            progress = max(0, min(1, task._progress))
-            if transition_pattern:
-                done_width = int(total_width * progress)
-                transition_factor = 1 - (total_width * progress - done_width)
-                transition_width = 1
-            else:
-                done_width = round(total_width * progress)
-                transition_factor = 0
-                transition_width = 0
-
-            self._rc.set_color_path(f"task/progressbar:{task._status.value}")
-            self._rc.write(progress_bar_start_symbol)
-
-            done_color = yuio.color.Color.lerp(
-                self._theme.get_color("task/progressbar/done/start"),
-                self._theme.get_color("task/progressbar/done/end"),
-            )
-
-            for i in range(0, done_width):
-                self._rc.set_color(done_color(i / (total_width - 1)))
-                self._rc.write(progress_bar_done_symbol)
-
-            if transition_pattern and done_width < total_width:
-                self._rc.set_color(done_color(done_width / (total_width - 1)))
-                self._rc.write(
-                    transition_pattern[
-                        int(len(transition_pattern) * transition_factor - 1)
-                    ]
-                )
-
-            pending_color = yuio.color.Color.lerp(
-                self._theme.get_color("task/progressbar/pending/start"),
-                self._theme.get_color("task/progressbar/pending/end"),
-            )
-
-            for i in range(done_width + transition_width, total_width):
-                self._rc.set_color(pending_color(i / (total_width - 1)))
-                self._rc.write(progress_bar_pending_symbol)
-
-            self._rc.set_color_path(f"task/progressbar:{task._status.value}")
-            self._rc.write(progress_bar_end_symbol)
-
-        self._rc.set_color_path(f"task:{task._status.value}")
-        self._rc.write(" ")
-
-
-class _WrappedOutput(_t.TextIO):  # pragma: no cover
+class _YuioOutputWrapper(_t.TextIO):  # pragma: no cover
     def __init__(self, wrapped: _t.TextIO):
         self.__wrapped = wrapped
 
@@ -3706,3 +3808,6 @@ class _WrappedOutput(_t.TextIO):  # pragma: no cover
     @property
     def newlines(self) -> _t.Any:
         return self.__wrapped.newlines
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.__wrapped!r})"

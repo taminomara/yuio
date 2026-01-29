@@ -15,3 +15,6 @@ Recipes for achieving common tasks with Yuio.
     print_to_file
         Printing formatted text to file or terminal while respecting terminal width
         or other settings.
+
+    custom_tasks
+        Implementing tasks with custom widget.

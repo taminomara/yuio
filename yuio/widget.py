@@ -121,6 +121,10 @@ Pre-defined widgets
 
 .. autoclass:: Apply
 
+.. autoclass:: Task
+    :members:
+    :private-members:
+
 """
 
 # ruff: noqa: RET503
@@ -136,6 +140,7 @@ import math
 import re
 import string
 import sys
+import time
 from dataclasses import dataclass
 
 import yuio.color
@@ -164,6 +169,7 @@ __all__ = [
     "ActionKeys",
     "Apply",
     "Choice",
+    "Empty",
     "Grid",
     "Input",
     "InputWithCompletion",
@@ -176,6 +182,7 @@ __all__ = [
     "RenderContext",
     "Result",
     "SecretInput",
+    "Task",
     "Text",
     "VerticalLayout",
     "VerticalLayoutBuilder",
@@ -542,6 +549,7 @@ class RenderContext:
         self._in_alternative_buffer: bool = False
         self._normal_buffer_term_x: int = 0
         self._normal_buffer_term_y: int = 0
+        self._spinner_state: int = 0
 
         # Helpers
         self._none_color: str = _Color.NONE.as_code(term.color_support)
@@ -568,6 +576,16 @@ class RenderContext:
         """
 
         return self._theme
+
+    @property
+    def spinner_state(self) -> int:
+        """
+        A timer that ticks once every
+        :attr:`Theme.spinner_update_rate_ms <yuio.theme.Theme.spinner_update_rate_ms>`.
+
+        """
+
+        return self._spinner_state
 
     @contextlib.contextmanager
     def frame(
@@ -1087,6 +1105,15 @@ class RenderContext:
             width=width,
         )
 
+    @functools.cached_property
+    def _update_rate_us(self) -> int:
+        update_rate_ms = max(self._theme.spinner_update_rate_ms, 1)
+        while update_rate_ms < 50:
+            update_rate_ms *= 2
+        while update_rate_ms > 250:
+            update_rate_ms //= 2
+        return int(update_rate_ms * 1000)
+
     def prepare(
         self,
         *,
@@ -1150,6 +1177,11 @@ class RenderContext:
 
         # Rendering status
         self._full_redraw = full_redraw
+
+        start_ns = time.monotonic_ns()
+        now_us = start_ns // 1000
+        now_us -= now_us % self._update_rate_us
+        self._spinner_state = now_us // self.theme.spinner_update_rate_ms // 1000
 
     def clear_screen(self):
         """
@@ -2445,6 +2477,19 @@ class VerticalLayout(Widget[T], _t.Generic[T]):
             return self._widgets[self._event_receiver].help_data
         else:
             return WidgetHelp()
+
+
+class Empty(Widget[_t.Never]):
+    """
+    An empty widget with no size.
+
+    """
+
+    def layout(self, rc: RenderContext, /) -> tuple[int, int]:
+        return 0, 0
+
+    def draw(self, rc: RenderContext, /):
+        pass
 
 
 class Line(Widget[_t.Never]):
@@ -4454,6 +4499,408 @@ class Apply(Map[T, T], _t.Generic[T]):
             return x
 
         super().__init__(inner, mapper)
+
+
+class Task(Widget[_t.Never]):
+    """
+    Widget that's used to render :class:`~yuio.io.Task`\\ s.
+
+    """
+
+    class Status(enum.Enum):
+        """
+        Task status.
+
+        """
+
+        DONE = "done"
+        """
+        Task has finished successfully.
+
+        """
+
+        ERROR = "error"
+        """
+        Task has finished with an error.
+
+        """
+
+        RUNNING = "running"
+        """
+        Task is running.
+
+        """
+
+        PENDING = "pending"
+        """
+        Task is waiting to start.
+
+        """
+
+    def __init__(
+        self,
+        msg: str,
+        /,
+        *args,
+        comment: str | None = None,
+    ) -> None:
+        super().__init__()
+
+        self._msg: str = msg
+        self._args: tuple[object, ...] = args
+        self._comment: str | None = comment
+        self._comment_args: tuple[object, ...] | None = None
+        self._progress: float | None = None
+        self._progress_done: str | None = None
+        self._progress_total: str | None = None
+
+        self.status: Task.Status = Task.Status.PENDING
+
+        self._cached_msg: yuio.string.ColorizedString | None = None
+        self._cached_comment: yuio.string.ColorizedString | None = None
+
+    @_t.overload
+    def progress(self, progress: float | None, /, *, ndigits: int = 2): ...
+
+    @_t.overload
+    def progress(
+        self,
+        done: float | int,
+        total: float | int,
+        /,
+        *,
+        unit: str = "",
+        ndigits: int = 0,
+    ): ...
+
+    def progress(
+        self,
+        *args: float | int | None,
+        unit: str = "",
+        ndigits: int | None = None,
+    ):
+        """
+        See :meth:`~yuio.io.Task.progress`.
+
+        """
+
+        progress = None
+
+        if len(args) == 1:
+            progress = done = args[0]
+            total = None
+            if ndigits is None:
+                ndigits = 2
+        elif len(args) == 2:
+            done, total = args
+            if ndigits is None:
+                ndigits = (
+                    2 if isinstance(done, float) or isinstance(total, float) else 0
+                )
+        else:
+            raise ValueError(
+                f"Task.progress() takes between one and two arguments "
+                f"({len(args)} given)"
+            )
+
+        if done is None:
+            self._progress = None
+            self._progress_done = None
+            self._progress_total = None
+            return
+
+        if len(args) == 1:
+            done *= 100
+            unit = "%"
+
+        done_str = "%.*f" % (ndigits, done)
+        if total is None:
+            self._progress = progress
+            self._progress_done = done_str + unit
+            self._progress_total = None
+        else:
+            total_str = "%.*f" % (ndigits, total)
+            self._progress = done / total if total else 0
+            self._progress_done = done_str
+            self._progress_total = total_str + unit
+
+    def progress_size(
+        self,
+        done: float | int,
+        total: float | int,
+        /,
+        *,
+        ndigits: int = 2,
+    ):
+        """
+        See :meth:`~yuio.io.Task.progress_size`.
+
+        """
+
+        progress = done / total
+        done, done_unit = self.__size(done)
+        total, total_unit = self.__size(total)
+
+        if done_unit == total_unit:
+            done_unit = ""
+
+        self._progress = progress
+        self._progress_done = "%.*f%s" % (ndigits, done, done_unit)
+        self._progress_total = "%.*f%s" % (ndigits, total, total_unit)
+
+    @staticmethod
+    def __size(n):
+        for unit in "BKMGT":
+            if n < 1024:
+                return n, unit
+            n /= 1024
+        return n, "P"
+
+    def progress_scale(
+        self,
+        done: float | int,
+        total: float | int,
+        /,
+        *,
+        unit: str = "",
+        ndigits: int = 2,
+    ):
+        """
+        See :meth:`~yuio.io.Task.progress_scale`.
+
+        """
+
+        progress = done / total
+        done, done_unit = self.__unit(done)
+        total, total_unit = self.__unit(total)
+
+        if unit:
+            done_unit += unit
+            total_unit += unit
+
+        self._progress = progress
+        self._progress_done = "%.*f%s" % (ndigits, done, done_unit)
+        self._progress_total = "%.*f%s" % (ndigits, total, total_unit)
+
+    @staticmethod
+    def __unit(n: float) -> tuple[float, str]:
+        if math.fabs(n) < 1e-33:
+            return 0, ""
+        magnitude = max(-8, min(8, int(math.log10(math.fabs(n)) // 3)))
+        if magnitude < 0:
+            return n * 10 ** -(3 * magnitude), "munpfazy"[-magnitude - 1]
+        elif magnitude > 0:
+            return n / 10 ** (3 * magnitude), "KMGTPEZY"[magnitude - 1]
+        else:
+            return n, ""
+
+    def comment(self, comment: str | None, /, *args):
+        """
+        See :meth:`~yuio.io.Task.comment`.
+
+        """
+
+        self._comment = comment
+        self._comment_args = args
+        self._cached_comment = None
+
+    def layout(self, rc: RenderContext) -> tuple[int, int]:
+        return 1, 1  # Tasks are always one line high.
+
+    def draw(self, rc: RenderContext):
+        return self._draw_task(rc)
+
+    def _format_task(self, ctx: yuio.string.ReprContext) -> yuio.string.ColorizedString:
+        """
+        Format this task for printing to the log.
+
+        """
+
+        res = yuio.string.ColorizedString()
+
+        status = self.status.value
+
+        if decoration := ctx.get_msg_decoration("task"):
+            res += ctx.get_color(f"task/decoration:{status}")
+            res += decoration
+
+        res += self._format_task_msg(ctx)
+        res += ctx.get_color(f"task:{status}")
+        res += " - "
+        res += ctx.get_color(f"task/progress:{status}")
+        res += self.status.value
+        res += ctx.get_color(f"task:{status}")
+
+        return res
+
+    def _format_task_msg(
+        self, ctx: yuio.string.ReprContext
+    ) -> yuio.string.ColorizedString:
+        """
+        Format task's message.
+
+        """
+
+        if self._cached_msg is None:
+            msg = yuio.string.colorize(
+                self._msg,
+                *self._args,
+                default_color=f"task/heading:{self.status.value}",
+                ctx=ctx,
+            )
+            self._cached_msg = msg
+        return self._cached_msg
+
+    def _format_task_comment(
+        self, rc: RenderContext
+    ) -> yuio.string.ColorizedString | None:
+        """
+        Format task's comment.
+
+        """
+
+        if self.status is not Task.Status.RUNNING:
+            return None
+        if self._cached_comment is None and self._comment is not None:
+            comment = yuio.string.colorize(
+                self._comment,
+                *(self._comment_args or ()),
+                default_color=f"task/comment:{self.status.value}",
+                ctx=rc.make_repr_context(),
+            )
+            self._cached_comment = comment
+        return self._cached_comment
+
+    def _draw_task(self, rc: RenderContext):
+        """
+        Draw task.
+
+        """
+
+        self._draw_task_progressbar(rc)
+        rc.write(self._format_task_msg(rc.make_repr_context()))
+        self._draw_task_progress(rc)
+        if comment := self._format_task_comment(rc):
+            rc.set_color_path(f"task:{self.status.value}")
+            rc.write(" - ")
+            rc.write(comment)
+
+    def _draw_task_progress(self, rc: RenderContext):
+        """
+        Draw number that indicates task's progress.
+
+        """
+
+        if self.status is not Task.Status.RUNNING:
+            rc.set_color_path(f"task:{self.status.value}")
+            rc.write(" - ")
+            rc.set_color_path(f"task/progress:{self.status.value}")
+            rc.write(self.status.value)
+        elif self._progress_done is not None:
+            rc.set_color_path(f"task:{self.status.value}")
+            rc.write(" - ")
+            rc.set_color_path(f"task/progress:{self.status.value}")
+            rc.write(self._progress_done)
+            if self._progress_total is not None:
+                rc.set_color_path(f"task:{self.status.value}")
+                rc.write("/")
+                rc.set_color_path(f"task/progress:{self.status.value}")
+                rc.write(self._progress_total)
+
+    def _draw_task_progressbar(self, rc: RenderContext):
+        """
+        Draw task's progressbar.
+
+        """
+
+        progress_bar_start_symbol = rc.theme.get_msg_decoration(
+            "progress_bar/start_symbol", is_unicode=rc.term.is_unicode
+        )
+        progress_bar_end_symbol = rc.theme.get_msg_decoration(
+            "progress_bar/end_symbol", is_unicode=rc.term.is_unicode
+        )
+        total_width = (
+            rc.theme.progress_bar_width
+            - yuio.string.line_width(progress_bar_start_symbol)
+            - yuio.string.line_width(progress_bar_end_symbol)
+        )
+        progress_bar_done_symbol = rc.theme.get_msg_decoration(
+            "progress_bar/done_symbol", is_unicode=rc.term.is_unicode
+        )
+        progress_bar_pending_symbol = rc.theme.get_msg_decoration(
+            "progress_bar/pending_symbol", is_unicode=rc.term.is_unicode
+        )
+        if self.status != Task.Status.RUNNING:
+            rc.set_color_path(f"task/decoration:{self.status.value}")
+            rc.write(
+                rc.theme.get_msg_decoration(
+                    "spinner/static_symbol", is_unicode=rc.term.is_unicode
+                )
+            )
+        elif (
+            self._progress is None
+            or total_width <= 1
+            or not progress_bar_done_symbol
+            or not progress_bar_pending_symbol
+        ):
+            rc.set_color_path(f"task/decoration:{self.status.value}")
+            spinner_pattern = rc.theme.get_msg_decoration(
+                "spinner/pattern", is_unicode=rc.term.is_unicode
+            )
+            if spinner_pattern:
+                rc.write(spinner_pattern[rc.spinner_state % len(spinner_pattern)])
+        else:
+            transition_pattern = rc.theme.get_msg_decoration(
+                "progress_bar/transition_pattern", is_unicode=rc.term.is_unicode
+            )
+
+            progress = max(0, min(1, self._progress))
+            if transition_pattern:
+                done_width = int(total_width * progress)
+                transition_factor = 1 - (total_width * progress - done_width)
+                transition_width = 1
+            else:
+                done_width = round(total_width * progress)
+                transition_factor = 0
+                transition_width = 0
+
+            rc.set_color_path(f"task/progressbar:{self.status.value}")
+            rc.write(progress_bar_start_symbol)
+
+            done_color = yuio.color.Color.lerp(
+                rc.theme.get_color("task/progressbar/done/start"),
+                rc.theme.get_color("task/progressbar/done/end"),
+            )
+
+            for i in range(0, done_width):
+                rc.set_color(done_color(i / (total_width - 1)))
+                rc.write(progress_bar_done_symbol)
+
+            if transition_pattern and done_width < total_width:
+                rc.set_color(done_color(done_width / (total_width - 1)))
+                rc.write(
+                    transition_pattern[
+                        int(len(transition_pattern) * transition_factor - 1)
+                    ]
+                )
+
+            pending_color = yuio.color.Color.lerp(
+                rc.theme.get_color("task/progressbar/pending/start"),
+                rc.theme.get_color("task/progressbar/pending/end"),
+            )
+
+            for i in range(done_width + transition_width, total_width):
+                rc.set_color(pending_color(i / (total_width - 1)))
+                rc.write(progress_bar_pending_symbol)
+
+            rc.set_color_path(f"task/progressbar:{self.status.value}")
+            rc.write(progress_bar_end_symbol)
+
+        rc.set_color_path(f"task:{self.status.value}")
+        rc.write(" ")
+
+    def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
+        return self._format_task(ctx)
 
 
 @dataclass(slots=True)

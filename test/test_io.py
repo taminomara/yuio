@@ -95,10 +95,10 @@ class TestSetup:
 
         assert yuio.io.streams_wrapped()
         assert sys.stdout is not ostream
-        assert getattr(sys.stdout, "_WrappedOutput__wrapped") is ostream
+        assert getattr(sys.stdout, "_YuioOutputWrapper__wrapped") is ostream
         assert yuio.io.orig_stderr() is ostream
         assert sys.stderr is not ostream
-        assert getattr(sys.stderr, "_WrappedOutput__wrapped") is ostream
+        assert getattr(sys.stderr, "_YuioOutputWrapper__wrapped") is ostream
         assert yuio.io.orig_stdout() is ostream
 
         yuio.io.restore_streams()
@@ -262,9 +262,7 @@ MESSAGE_CASES = [
 
 
 class TestMessage:
-    @pytest.mark.parametrize(
-        ("meth", "args", "kwargs", "expected"), MESSAGE_CASES
-    )
+    @pytest.mark.parametrize(("meth", "args", "kwargs", "expected"), MESSAGE_CASES)
     def test_simple(self, io_mocker: IOMocker, meth, args, kwargs, expected):
         io_mocker.expect_screen(
             [
@@ -1739,11 +1737,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task - done                           ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         with io_mocker.mock():
             with yuio.io.Task("task"):
@@ -1756,11 +1750,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task 1 - done                         ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         with io_mocker.mock():
             with yuio.io.Task("task `%s`", 1):
@@ -1783,7 +1773,6 @@ class TestTask:
         io_mocker.expect_screen(
             [
                 "hello world!                            ",
-                "> task 1 - done                         ",
                 "hello world 2!                          ",
             ]
         )
@@ -1802,11 +1791,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task - error                          ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         with io_mocker.mock():
             with pytest.raises(RuntimeError, match=r"eh..."):
@@ -1821,11 +1806,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task - error                          ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         with io_mocker.mock():
             task = yuio.io.Task("task")
@@ -1839,11 +1820,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task - done                           ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         with io_mocker.mock():
             task = yuio.io.Task("task")
@@ -1863,11 +1840,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task - done                           ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         with io_mocker.mock():
             with yuio.io.Task("task") as task:
@@ -1888,11 +1861,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task - done                           ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         with io_mocker.mock():
             with yuio.io.Task("task") as task:
@@ -1934,11 +1903,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task - done                           ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         with io_mocker.mock():
             with yuio.io.Task("task") as task:
@@ -2357,11 +2322,7 @@ class TestTask:
             ]
         )
         io_mocker.expect_mark()
-        io_mocker.expect_screen(
-            [
-                "> task - done                           ",
-            ]
-        )
+        io_mocker.expect_screen([])
 
         elems = [1, 2, "A", "B", object()]
 
@@ -2399,7 +2360,6 @@ class TestTask:
         io_mocker.expect_screen(
             [
                 "foo                                     ",
-                "> T2 - done                             ",
                 "■■□□□ T1 - 2/5                          ",
             ]
         )
@@ -2407,7 +2367,6 @@ class TestTask:
         io_mocker.expect_screen(
             [
                 "foo                                     ",
-                "> T2 - done                             ",
                 "bar                                     ",
                 "■■□□□ T1 - 2/5                          ",
             ]
@@ -2416,18 +2375,14 @@ class TestTask:
         io_mocker.expect_screen(
             [
                 "foo                                     ",
-                "> T2 - done                             ",
                 "bar                                     ",
-                "> T1 - done                             ",
             ]
         )
         io_mocker.expect_mark()
         io_mocker.expect_screen(
             [
                 "foo                                     ",
-                "> T2 - done                             ",
                 "bar                                     ",
-                "> T1 - done                             ",
                 "baz                                     ",
             ]
         )
@@ -2487,14 +2442,12 @@ class TestTask:
         io_mocker.expect_screen(
             [
                 "foo                                     ",
-                "> T1 - done                             ",
             ]
         )
         io_mocker.expect_mark()
         io_mocker.expect_screen(
             [
                 "foo                                     ",
-                "> T1 - done                             ",
                 "bar                                     ",
             ]
         )
@@ -2606,9 +2559,200 @@ class TestTask:
                 task.progress(0.50)
                 io_mocker.mark()
 
+    @pytest.mark.parametrize(
+        ("tasks", "expected", "height"),
+        [
+            (
+                [
+                    ("T1", 1, None, []),
+                    ("T2", 1, None, []),
+                    ("T3", 1, None, []),
+                    ("T4", 1, None, []),
+                    ("T5", 1, None, []),
+                ],
+                [
+                    "+5 more                                 ",
+                ],
+                1,
+            ),
+            (
+                [
+                    ("T1", 1, None, []),
+                    ("T2", 1, None, []),
+                    ("T3", 1, None, []),
+                    ("T4", 1, None, []),
+                    ("T5", 1, None, []),
+                ],
+                [
+                    "+2 more                                 ",
+                    "⣿ T3                                    ",
+                    "⣿ T4                                    ",
+                    "⣿ T5                                    ",
+                ],
+                4,
+            ),
+            (
+                [
+                    ("T1", None, None, []),
+                    ("T2", None, None, []),
+                    ("T3", None, yuio.io.Task.Status.DONE, []),
+                    ("T4", None, yuio.io.Task.Status.DONE, []),
+                    ("T5", None, None, []),
+                ],
+                [
+                    "⣿ T1                                    ",
+                    "⣿ T2                                    ",
+                    "+2 more                                 ",
+                    "⣿ T5                                    ",
+                ],
+                4,
+            ),
+            (
+                [
+                    ("T1", 2, None, []),
+                    ("T2", 1, None, []),
+                    ("T3", 1, None, []),
+                    ("T4", 1, None, []),
+                    ("T5", 1, None, []),
+                ],
+                [
+                    "⣿ T1                                    ",
+                    "+2 more                                 ",
+                    "⣿ T4                                    ",
+                    "⣿ T5                                    ",
+                ],
+                4,
+            ),
+            (
+                [
+                    ("T1", 2, None, []),
+                    ("T2", 1, None, []),
+                    ("T3", 1, None, []),
+                    ("T4", 2, None, []),
+                    ("T5", 1, None, []),
+                    ("T6", 1, None, []),
+                ],
+                [
+                    "⣿ T1                                    ",
+                    "+2 more                                 ",
+                    "⣿ T4                                    ",
+                    "+2 more                                 ",
+                ],
+                4,
+            ),
+            (
+                [
+                    ("T1", 2, None, []),
+                    ("T2", 1, None, []),
+                    ("T3", 1, None, []),
+                    ("T4", 2, None, []),
+                    ("T5", 1, None, []),
+                    ("T6", 1, None, []),
+                ],
+                [
+                    "+3 more                                 ",
+                    "⣿ T4                                    ",
+                    "+2 more                                 ",
+                ],
+                3,
+            ),
+            (
+                [
+                    (
+                        "T1",
+                        1,
+                        None,
+                        [
+                            (
+                                "T2",
+                                1,
+                                None,
+                                [
+                                    ("T3", 1, None, []),
+                                    ("T4", 1, None, []),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                [
+                    "⣿ T1                                    ",
+                    "  ⣿ T2                                  ",
+                    "    +2 more                             ",
+                ],
+                3,
+            ),
+            (
+                [
+                    (
+                        "T1",
+                        1,
+                        None,
+                        [
+                            (
+                                "T2",
+                                1,
+                                None,
+                                [
+                                    ("T3", 1, None, []),
+                                    ("T4", 1, None, []),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                [
+                    "⣿ T1                                    ",
+                    "  +3 more                               ",
+                ],
+                2,
+            ),
+            (
+                [
+                    (
+                        "T1",
+                        1,
+                        None,
+                        [
+                            (
+                                "T2",
+                                1,
+                                None,
+                                [
+                                    ("T3", 1, None, []),
+                                    ("T4", 1, None, []),
+                                ],
+                            ),
+                            ("T5", 1, None, []),
+                        ],
+                    ),
+                ],
+                [
+                    "⣿ T1                                    ",
+                    "  ⣿ T2                                  ",
+                    "    +2 more                             ",
+                    "  ⣿ T5                                  ",
+                ],
+                4,
+            ),
+        ],
+    )
+    def test_tasks_collapsed(self, tasks, expected, io_mocker):
+        def create_task(msg, priority, status, children, parent=None):
+            task = yuio.io.Task(
+                msg, parent=parent, initial_status=status or yuio.io.Task.Status.RUNNING
+            )
+            if priority is not None:
+                task._get_priority = lambda: priority
+            for msg, priority, status, children in children:
+                create_task(msg, priority, status, children, parent=task)
 
-class TestTaskNonInteractive:
-    pass
+        io_mocker.expect_screen(expected)
+        io_mocker.expect_mark()
+        with io_mocker.mock():
+            for msg, priority, status, children in tasks:
+                create_task(msg, priority, status, children)
+            io_mocker.mark()
 
 
 class TestTaskBackground:
@@ -2799,9 +2943,7 @@ class TestTaskBackground:
 
 class TestMessageChannel:
     @pytest.mark.parametrize("enabled", [True, False])
-    @pytest.mark.parametrize(
-        ("meth", "args", "kwargs", "expected"), MESSAGE_CASES
-    )
+    @pytest.mark.parametrize(("meth", "args", "kwargs", "expected"), MESSAGE_CASES)
     def test_enable_disable(
         self, io_mocker: IOMocker, meth, args, kwargs, enabled, expected
     ):
@@ -2825,9 +2967,7 @@ class TestMessageChannel:
             io_mocker.mark()
             getattr(ch, meth)(*args, **kwargs)
 
-    @pytest.mark.parametrize(
-        ("meth", "args", "kwargs", "expected"), MESSAGE_CASES
-    )
+    @pytest.mark.parametrize(("meth", "args", "kwargs", "expected"), MESSAGE_CASES)
     def test_redirect(self, io_mocker: IOMocker, meth, args, kwargs, expected, width):
         io_mocker.expect_screen(
             [
@@ -2847,9 +2987,7 @@ class TestMessageChannel:
 
 
 class TestSuspendOutput:
-    @pytest.mark.parametrize(
-        ("meth", "args", "kwargs", "expected"), MESSAGE_CASES
-    )
+    @pytest.mark.parametrize(("meth", "args", "kwargs", "expected"), MESSAGE_CASES)
     def test_simple(self, io_mocker: IOMocker, meth, args, kwargs, expected):
         io_mocker.expect_screen(
             [
@@ -3018,7 +3156,6 @@ class TestSuspendOutput:
         io_mocker.expect_screen(
             [
                 "Foo.                ",
-                "> Task - done       ",
             ]
         )
 
@@ -3055,7 +3192,6 @@ class TestSuspendOutput:
         io_mocker.expect_screen(
             [
                 "Foo.                ",
-                "> Task - done       ",
             ]
         )
 
@@ -3091,7 +3227,6 @@ class TestSuspendOutput:
         io_mocker.expect_screen(
             [
                 "Foo.                ",
-                "> Task - done       ",
             ]
         )
 
