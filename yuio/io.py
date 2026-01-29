@@ -215,7 +215,6 @@ Message channels
 
 .. autoclass:: MessageChannel
     :members:
-    :private-members:
 
 
 Formatting utilities
@@ -231,7 +230,10 @@ Indicating progress
 -------------------
 
 You can use the :class:`Task` class to indicate status and progress
-of some task:
+of some task.
+
+.. autoclass:: TaskBase
+    :members:
 
 .. autoclass:: Task
     :members:
@@ -265,16 +267,6 @@ using the :class:`SuspendOutput` context manager.
 
 .. autoclass:: SuspendOutput
     :members:
-
-
-Implementing custom tasks
--------------------------
-
-Example of a custom task can be found in :ref:`cookbook <cookbook-custom-tasks>`.
-
-.. autoclass:: TaskBase
-    :members:
-    :private-members:
 
 
 Python's `logging` and yuio
@@ -2065,6 +2057,14 @@ class MessageChannel:
     to override global settings via :func:`setup`. One example for them is described
     in :ref:`cookbook-print-to-file`.
 
+    .. dropdown:: Protected members
+
+        .. autoattribute:: _msg_kwargs
+
+        .. automethod:: _update_kwargs
+
+        .. automethod:: _is_enabled
+
     """
 
     enabled: bool
@@ -2497,6 +2497,26 @@ class TaskBase:
     """
     Base class for tasks and other objects that you might show to the user.
 
+    Example of a custom task can be found in :ref:`cookbook <cookbook-custom-tasks>`.
+
+    .. dropdown:: Protected members
+
+        .. autoproperty:: _lock
+
+        .. automethod:: _get_widget
+
+        .. automethod:: _get_priority
+
+        .. automethod:: _request_update
+
+        .. automethod:: _widgets_are_displayed
+
+        .. automethod:: _get_parent
+
+        .. automethod:: _is_toplevel
+
+        .. automethod:: _get_children
+
     """
 
     def __init__(self):
@@ -2693,13 +2713,18 @@ class Task(TaskBase):
             t.progress(0.3)
             ...
 
+    .. dropdown:: Protected members
+
+        .. autoattribute:: _widget_class
+
     """
 
     Status = yuio.widget.Task.Status
 
-    widget_class: _ClassVar[type[yuio.widget.Task]] = yuio.widget.Task
+    _widget_class: _ClassVar[type[yuio.widget.Task]] = yuio.widget.Task
     """
-    Class of the widget that will be used to draw this task.
+    Class of the widget that will be used to draw this task, can be overridden
+    in subclasses.
 
     """
 
@@ -2737,7 +2762,7 @@ class Task(TaskBase):
     ):
         super().__init__()
 
-        self._widget = self.widget_class(msg, *args, comment=comment)
+        self._widget = self._widget_class(msg, *args, comment=comment)
         self._persistent = persistent
         with self._lock:
             self.set_status(initial_status)

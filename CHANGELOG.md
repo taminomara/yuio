@@ -14,6 +14,9 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+- 🔧 Refactored `yuio.io.Task` to move its rendering logic to a widget, thus
+  allowing tasks with custom widgets.
+
 ## [2.0.0-rc3] - 2026-01-26
 
 - 💥 Add RST parser and make syntax for docstrings configurable; split `yuio.md`
