@@ -33,7 +33,7 @@ dev = [
     { include-group = "test" },
 ]
 test = [
-    "jsonschema==4.25.1",
+    "jsonschema==4.26.0",
     "libtmux==0.53.0",
     "pyright==1.1.408",
     "pytest-cov==7.0.0",
