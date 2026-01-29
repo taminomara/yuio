@@ -14,7 +14,7 @@ To implement one, you will need to supply these parts.
 
 1.  You can derive a custom widget from :class:`yuio.widget.Task`,
     override some of its protected methods, then derive a custom task
-    from :class:`yuio.io.Task`, and override its :attr:`~yuio.io.Task.widget_class`.
+    from :class:`yuio.io.Task`, and override its :attr:`~yuio.io.Task._widget_class`.
 
 2.  You can build everything from scratch, which we will do in this example.
 
