@@ -1006,7 +1006,7 @@ class Theme(metaclass=_ThemeMeta):
             self.__expected_source,
         )
         self.__color_cache.clear()
-        self.__dict__.pop("_Theme__color_tree", None)
+        self.__dict__.pop("_Theme__color_tree", None)  # type: ignore
 
     def set_color(
         self,
@@ -1026,7 +1026,7 @@ class Theme(metaclass=_ThemeMeta):
             self.__expected_source or type(self),
         )
         self.__color_cache.clear()
-        self.__dict__.pop("_Theme__color_tree", None)
+        self.__dict__.pop("_Theme__color_tree", None)  # type: ignore
 
     @dataclass(kw_only=True, slots=True)
     class __ColorTree:

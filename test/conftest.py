@@ -538,6 +538,7 @@ class IOMocker:
         self,
         screen: list[str] | None = None,
         colors: list[str] | None = None,
+        urls: list[str] | None = None,
         cursor_x: int | None = None,
         cursor_y: int | None = None,
     ) -> _t.Self:
@@ -547,7 +548,7 @@ class IOMocker:
 
         """
         self._events.append(
-            (self._get_stack_summary(), RcCompare(screen, colors, cursor_x, cursor_y))
+            (self._get_stack_summary(), RcCompare(screen, colors, urls, cursor_x, cursor_y))
         )
         return self
 
@@ -1027,17 +1028,28 @@ def pytest_assertrepr_compare(op, left, right):
 class RcCompare:
     screen: list[str] | None = None
     colors: list[str] | None = None
+    urls: list[str] | None = None
     cursor_x: int | None = None
     cursor_y: int | None = None
 
     commands: str = dataclasses.field(default="", compare=False, hash=False)
 
     def __post_init__(self, *args, **kwargs):
-        if self.screen is not None and self.colors is not None:
-            if len(self.screen) != len(self.colors):
+        prev_height, prev_name = None, ""
+        for screen, name in [
+            (self.screen, "screen"),
+            (self.colors, "colors"),
+            (self.colors, "colors"),
+        ]:
+            if screen is None:
+                continue
+            height = len(screen)
+            if prev_height is None:
+                prev_height = height
+            elif height != prev_height:
                 raise RuntimeError(
-                    f"screen height does not match colors height "
-                    f"({len(self.screen)} != {len(self.colors)})"
+                    f"{prev_name} height does not match {name} height "
+                    f"({prev_height} != {height})"
                 )
 
         screen_width = None
@@ -1061,22 +1073,44 @@ class RcCompare:
                         f"({yuio.string.line_width(self.colors[i])} != {colors_width})"
                     )
 
-        if screen_width is not None and colors_width is not None:
-            if screen_width != colors_width:
+        urls_width = None
+        if self.urls:
+            urls_width = yuio.string.line_width(self.urls[0])
+            for i, line in enumerate(self.urls):
+                if yuio.string.line_width(line) != urls_width:
+                    raise RuntimeError(
+                        f"width of urls line {i + 1} is not equal to the width of urls line 1: "
+                        f"({yuio.string.line_width(self.urls[i])} != {urls_width})"
+                    )
+
+        prev_width, prev_name = None, ""
+        for width, name in [
+            (screen_width, "screen"),
+            (colors_width, "colors"),
+            (urls_width, "colors"),
+        ]:
+            if width is None:
+                continue
+            if prev_width is None:
+                prev_width = width
+            elif width != prev_width:
                 raise RuntimeError(
-                    f"screen width does not match colors width "
-                    f"({screen_width} != {colors_width})"
+                    f"{prev_name} width does not match {name} width "
+                    f"({prev_width} != {width})"
                 )
 
-        while self.screen or self.colors:
+        while self.screen or self.colors or self.urls:
             screen_is_space = self.screen is None or self.screen[-1].isspace()
             colors_is_space = self.colors is None or self.colors[-1].isspace()
-            if screen_is_space and colors_is_space:
+            urls_is_space = self.urls is None or self.urls[-1].isspace()
+            if screen_is_space and colors_is_space and urls_is_space:
                 if self.screen:
                     self.screen.pop()
                 if self.colors:
                     self.colors.pop()
-            elif not screen_is_space or not colors_is_space:
+                if self.urls:
+                    self.urls.pop()
+            elif not screen_is_space or not colors_is_space or not colors_is_space:
                 break
 
     @classmethod
@@ -1091,6 +1125,8 @@ class RcCompare:
             return False
         if None not in [self.colors, rhs.colors] and self.colors != rhs.colors:
             return False
+        if None not in [self.urls, rhs.urls] and self.urls != rhs.urls:
+            return False
         if None not in [self.cursor_x, rhs.cursor_x] and self.cursor_x != rhs.cursor_x:
             return False
         if None not in [self.cursor_y, rhs.cursor_y] and self.cursor_y != rhs.cursor_y:
@@ -1102,7 +1138,15 @@ class RcCompare:
         return "<assert rendered screen>"
 
 
-_CSI_RE = re.compile(r"\x1b\[(.*?(?:[umhlJHABCDG]))|\a")
+_CSI_RE = re.compile(
+    r"""
+      \x1b\[
+      (?P<csi>.*?(?:[umhlJHABCDG]))
+    | (?P<bell>\a)
+    | (?:\x1b]8;;(?P<url>.*?)\x1b\\)
+    """,
+    re.VERBOSE,
+)
 _COLOR_NAMES = "krgybmcw"
 
 
@@ -1112,6 +1156,8 @@ def _rc_diff(a: RcCompare, b: RcCompare):
         out += _show_diff(a.screen, b.screen, "Text:")
     if a.colors is not None and b.colors is not None:
         out += _show_diff(a.colors, b.colors, "Colors:")
+    if a.urls is not None and b.urls is not None:
+        out += _show_diff(a.urls, b.urls, "Urls:")
     out.append("")
     if None not in [a.cursor_x, a.cursor_y]:
         out.append(f"Left cursor: ({a.cursor_x}, {a.cursor_y})")
@@ -1191,118 +1237,135 @@ def _show_diff(a_screen: list[str], b_screen: list[str], what: str) -> list[str]
     ]
 
 
-def _render_screen(commands: str, width: int) -> tuple[list[str], list[str], int, int]:
+def _render_screen(
+    commands: str, width: int
+) -> tuple[list[str], list[str], list[str], int, int]:
     height = 0
     x, y = 0, 0
     text = []
     colors = []
+    urls = []
     color = " "
+    url = " "
 
-    for i, part in enumerate(_CSI_RE.split(commands)):
-        if i % 2 == 0:
-            # Render text.
-            for c in part:
-                assert c not in "\r"
-                if c == "\n":
+    def render_text(s: str):
+        nonlocal height, x, y, text, colors, urls
+
+        for c in s:
+            assert c != "\r"
+            if c == "\n":
+                x = 0
+                y += 1
+            else:
+                cw = yuio.string.line_width(c)
+                if cw == 0:
+                    raise RuntimeError("this checker can't handle zero-width chars")
+
+                if x < 0 or y < 0:
+                    raise RuntimeError(f"printing at negative coordinates: ({x}, {y})")
+                if x + cw > width:
                     x = 0
                     y += 1
-                else:
-                    cw = yuio.string.line_width(c)
-                    if cw == 0:
-                        raise RuntimeError("this checker can't handle zero-width chars")
+                if y >= height:
+                    text += [[" "] * width for _ in range(y - height + 1)]
+                    colors += [[" "] * width for _ in range(y - height + 1)]
+                    urls += [[" "] * width for _ in range(y - height + 1)]
+                    height = y + 1
+                for _ in range(cw):
+                    text[y][x] = c
+                    colors[y][x] = color
+                    urls[y][x] = url
+                    c = ""
+                    x += 1
 
-                    if x < 0 or y < 0:
-                        raise RuntimeError(
-                            f"printing at negative coordinates: ({x}, {y})"
-                        )
-                    if x + cw > width:
-                        x = 0
-                        y += 1
-                    if y >= height:
-                        text += [[" "] * width for _ in range(y - height + 1)]
-                        colors += [[" "] * width for _ in range(y - height + 1)]
-                        height = y + 1
-                    for _ in range(cw):
-                        text[y][x] = c
-                        colors[y][x] = color
-                        c = ""
-                        x += 1
-        else:
-            # Render a CSI.
+    i = 0
+    for match in _CSI_RE.finditer(commands):
+        render_text(commands[i : match.start()])
+        i = match.end()
 
-            if not part:
-                continue  # '\a'
+        match match.lastgroup:
+            case "csi":
+                part = match.group("csi")
 
-            fn = part[-1]
-            args = part[:-1].split(";")
+                fn = part[-1]
+                args = part[:-1].split(";")
 
-            if fn == "m":
-                # Color.
-                for code in part[:-1].split(";"):
-                    bold = False
-                    if not code or code in ["0", "39"]:
-                        color = " "
-                    else:
-                        int_code = int(code)
-                        if int_code == 1:
-                            bold = True
-                        elif int_code < 10:
-                            pass  # dim, italic, etc.
-                        elif 30 <= int_code <= 37:
-                            color = _COLOR_NAMES[int_code - 30]
+                if fn == "m":
+                    # Color.
+                    for code in part[:-1].split(";"):
+                        bold = False
+                        if not code or code in ["0", "39"]:
+                            color = " "
                         else:
-                            assert False, (
-                                f"don't use non-standard colors with this assertion: {int_code}"
-                            )
-                    if bold:
-                        color = "#" if color == " " else color.upper()
-            elif fn == "J":
-                # Clear screen.
-                assert len(args) <= 1, f"invalid OSC: {part!r}"
-                if not args or args[0] in ("", "0"):
-                    del text[y:]
-                    del colors[y:]
-                    height = y
-                elif args[0] == "2":
-                    text = []
-                    colors = []
-                    height = 0
-                else:
-                    assert False, f"invalid OSC: {part!r}"
-            elif fn == "H":
-                # Absolute cursor position.
-                if len(args) == 0:
-                    y, x = 0, 0
-                elif len(args) == 1:
-                    y, x = int(args[0] or "1") - 1, 0
-                elif len(args) == 2:
-                    y, x = int(args[0] or "1") - 1, int(args[1] or "1") - 1
-                else:
-                    assert False, f"invalid OSC: {part!r}"
-            elif fn == "A":
-                # Cursor up.
-                assert len(args) <= 1, f"invalid OSC: {part!r}"
-                y -= int(args[0] or "1") if args else 1
-            elif fn == "B":
-                # Cursor down.
-                assert len(args) <= 1, f"invalid OSC: {part!r}"
-                y += int(args[0] or "1") if args else 1
-            elif fn == "C":
-                # Cursor forward.
-                assert len(args) <= 1, f"invalid OSC: {part!r}"
-                x += int(args[0] or "1") if args else 1
-            elif fn == "D":
-                # Cursor back.
-                assert len(args) <= 1, f"invalid OSC: {part!r}"
-                x -= int(args[0] or "1") if args else 1
-            elif fn == "G":
-                # Absolute horizontal cursor position.
-                assert len(args) <= 1, f"invalid OSC: {part!r}"
-                x = int(args[0] or "1") - 1 if args else 1
+                            int_code = int(code)
+                            if int_code == 1:
+                                bold = True
+                            elif int_code < 10:
+                                pass  # dim, italic, etc.
+                            elif 30 <= int_code <= 37:
+                                color = _COLOR_NAMES[int_code - 30]
+                            else:
+                                assert False, (
+                                    f"don't use non-standard colors with this assertion: {int_code}"
+                                )
+                        if bold:
+                            color = "#" if color == " " else color.upper()
+                elif fn == "J":
+                    # Clear screen.
+                    assert len(args) <= 1, f"invalid OSC: {part!r}"
+                    if not args or args[0] in ("", "0"):
+                        del text[y:]
+                        del colors[y:]
+                        height = y
+                    elif args[0] == "2":
+                        text = []
+                        colors = []
+                        height = 0
+                    else:
+                        assert False, f"invalid OSC: {part!r}"
+                elif fn == "H":
+                    # Absolute cursor position.
+                    if len(args) == 0:
+                        y, x = 0, 0
+                    elif len(args) == 1:
+                        y, x = int(args[0] or "1") - 1, 0
+                    elif len(args) == 2:
+                        y, x = int(args[0] or "1") - 1, int(args[1] or "1") - 1
+                    else:
+                        assert False, f"invalid OSC: {part!r}"
+                elif fn == "A":
+                    # Cursor up.
+                    assert len(args) <= 1, f"invalid OSC: {part!r}"
+                    y -= int(args[0] or "1") if args else 1
+                elif fn == "B":
+                    # Cursor down.
+                    assert len(args) <= 1, f"invalid OSC: {part!r}"
+                    y += int(args[0] or "1") if args else 1
+                elif fn == "C":
+                    # Cursor forward.
+                    assert len(args) <= 1, f"invalid OSC: {part!r}"
+                    x += int(args[0] or "1") if args else 1
+                elif fn == "D":
+                    # Cursor back.
+                    assert len(args) <= 1, f"invalid OSC: {part!r}"
+                    x -= int(args[0] or "1") if args else 1
+                elif fn == "G":
+                    # Absolute horizontal cursor position.
+                    assert len(args) <= 1, f"invalid OSC: {part!r}"
+                    x = int(args[0] or "1") - 1 if args else 1
+            case "bell":
+                pass
+            case "url":
+                url = (match.group("url") or " ")[0]
+            case _:
+                assert False
+
+    render_text(commands[i:])
 
     return (
         ["".join(line) for line in text],
         ["".join(line) for line in colors],
+        ["".join(line) for line in urls],
         x,
         y,
     )

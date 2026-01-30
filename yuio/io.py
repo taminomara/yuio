@@ -3508,7 +3508,7 @@ class _IoManager(abc.ABC):
 
             self._rc = yuio.widget.RenderContext(self._term, self._theme)
             self._rc.prepare()
-            self.__dict__.pop("_update_rate_us", None)
+            self.__dict__.pop("_update_rate_us", None)  # type: ignore
             self._update_tasks()
 
     def _setup_sigcont(self):

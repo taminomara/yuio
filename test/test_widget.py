@@ -369,6 +369,32 @@ class TestRenderContext:
             ],
         )
 
+    def test_write_colorized_string_links(
+        self, ostream: io.StringIO, rc: yuio.widget.RenderContext
+    ):
+        rc.write(["a", yuio.string.LinkMarker("A"), "xxx"])
+        rc.new_line()
+        rc.write(["c", yuio.string.LinkMarker("B"), "d e", yuio.string.LinkMarker(""), "f"])
+        rc.render()
+
+        assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(
+            [
+                "axxx                ",
+                "cd ef               ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+            None,
+            [
+                " AAA                ",
+                " BBB                ",
+                "                    ",
+                "                    ",
+                "                    ",
+            ],
+        )
+
     def test_fill_no_frame(self, ostream: io.StringIO, rc: yuio.widget.RenderContext):
         assert rc.width == 20
         assert rc.height == 5

@@ -25,6 +25,8 @@ and run `pre-commit run clk` to replace:
 
 - ✨ Added documentation trimming when exporting JsonSchema for enums.
 
+- ✨ Supported rendering hyperlinks in widgets.
+
 ## [2.0.0-rc3] - 2026-01-26
 
 - 💥 Add RST parser and make syntax for docstrings configurable; split `yuio.md`

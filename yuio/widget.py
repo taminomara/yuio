@@ -537,6 +537,7 @@ class RenderContext:
         self._colors: list[list[str]] = []
         self._prev_lines: list[list[str]] = []
         self._prev_colors: list[list[str]] = []
+        self._prev_urls: list[list[str]] = []
 
         # Rendering status
         self._full_redraw: bool = False
@@ -919,6 +920,9 @@ class RenderContext:
 
         ll = self._lines[y]
         cc = self._colors[y]
+        uu = self._urls[y]
+
+        url = ""
 
         for s in text:
             if isinstance(s, _Color):
@@ -927,6 +931,7 @@ class RenderContext:
             elif s in (yuio.string.NO_WRAP_START, yuio.string.NO_WRAP_END):
                 continue
             elif isinstance(s, yuio.string.LinkMarker):
+                url = s.url or ""
                 continue
 
             s = s.translate(_UNPRINTABLE_TRANS)
@@ -955,8 +960,9 @@ class RenderContext:
                     slice_end = slice_begin + max_x - x
 
                 l = slice_end - slice_begin
-                self._lines[y][x : x + l] = s[slice_begin:slice_end]
-                self._colors[y][x : x + l] = [self._frame_cursor_color] * l
+                ll[x : x + l] = s[slice_begin:slice_end]
+                cc[x : x + l] = [self._frame_cursor_color] * l
+                uu[x : x + l] = [url] * l
                 x += l
                 continue
 
@@ -970,6 +976,7 @@ class RenderContext:
                     # This character was split in half by the terminal border.
                     ll[: x + cw] = [" "] * (x + cw)
                     cc[: x + cw] = [self._none_color] * (x + cw)
+                    uu[: x + cw] = [url] * (x + cw)
                     x += cw
                     continue
                 elif cw > 0 and x >= max_x:
@@ -980,6 +987,7 @@ class RenderContext:
                     # This character was split in half by the terminal border.
                     ll[x:max_x] = " " * (max_x - x)
                     cc[x:max_x] = [self._frame_cursor_color] * (max_x - x)
+                    uu[x:max_x] = [url] * (max_x - x)
                     x += cw
                     break
 
@@ -992,12 +1000,14 @@ class RenderContext:
 
                 ll[x] = c
                 cc[x] = self._frame_cursor_color
+                uu[x] = url
 
                 x += 1
                 cw -= 1
                 if cw:
                     ll[x : x + cw] = [""] * cw
                     cc[x : x + cw] = [self._frame_cursor_color] * cw
+                    uu[x : x + cw] = [url] * cw
                     x += cw
 
     def write_text(
@@ -1170,10 +1180,14 @@ class RenderContext:
         self._final_y = 0
         if full_redraw:
             self._max_term_y = 0
-            self._prev_lines, self._prev_colors = self._make_empty_canvas()
+            self._prev_lines, self._prev_colors, self._prev_urls = (
+                self._make_empty_canvas()
+            )
         else:
-            self._prev_lines, self._prev_colors = self._lines, self._colors
-        self._lines, self._colors = self._make_empty_canvas()
+            self._prev_lines = self._lines
+            self._prev_colors = self._colors
+            self._prev_urls = self._urls
+        self._lines, self._colors, self._urls = self._make_empty_canvas()
 
         # Rendering status
         self._full_redraw = full_redraw
@@ -1195,12 +1209,13 @@ class RenderContext:
 
     def _make_empty_canvas(
         self,
-    ) -> tuple[list[list[str]], list[list[str]]]:
+    ) -> tuple[list[list[str]], list[list[str]], list[list[str]]]:
         lines = [l[:] for l in [[" "] * self._width] * self._height]
         colors = [
             c[:] for c in [[self._frame_cursor_color] * self._width] * self._height
         ]
-        return lines, colors
+        urls = [l[:] for l in [[""] * self._width] * self._height]
+        return lines, colors, urls
 
     def render(self):
         """
@@ -1221,22 +1236,38 @@ class RenderContext:
             self._move_term_cursor(0, 0)
             self._out.append("\x1b[J")
 
+        term_url = ""
+
         for y in range(self._height):
             line = self._lines[y]
 
             for x in range(self._width):
                 prev_color = self._prev_colors[y][x]
                 color = self._colors[y][x]
+                url = self._urls[y][x]
 
-                if color != prev_color or line[x] != self._prev_lines[y][x]:
+                if (
+                    color != prev_color
+                    or line[x] != self._prev_lines[y][x]
+                    or url != self._prev_urls[y][x]
+                ):
                     self._move_term_cursor(x, y)
 
                     if color != self._term_color:
                         self._out.append(color)
                         self._term_color = color
 
+                    if url != term_url:
+                        self._out.append("\x1b]8;;")
+                        self._out.append(url)
+                        self._out.append("\x1b\\")
+                        term_url = url
+
                     self._out.append(line[x])
                     self._term_x += 1
+
+        if term_url:
+            self._out.append("\x1b]8;;\x1b\\")
 
         final_x = max(0, min(self._width - 1, self._final_x))
         final_y = max(0, min(self._height - 1, self._final_y))
@@ -2102,7 +2133,7 @@ ActionKey: _t.TypeAlias = Key | KeyboardEvent | str
 """
 A single key associated with an action.
 Can be either a hotkey or a string with an arbitrary description.
-
+/
 """
 
 
