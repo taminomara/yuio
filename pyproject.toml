@@ -104,7 +104,7 @@ commands = [
         "--color=yes",
         "--cov",
         "--cov-append",
-        "-m",
+        "-m=",
     ],
 ]
 pass_env = ["PYTEST*", "COVERAGE*"]
