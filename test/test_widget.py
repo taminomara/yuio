@@ -374,7 +374,9 @@ class TestRenderContext:
     ):
         rc.write(["a", yuio.string.LinkMarker("A"), "xxx"])
         rc.new_line()
-        rc.write(["c", yuio.string.LinkMarker("B"), "d e", yuio.string.LinkMarker(""), "f"])
+        rc.write(
+            ["c", yuio.string.LinkMarker("B"), "d e", yuio.string.LinkMarker(""), "f"]
+        )
         rc.render()
 
         assert RcCompare.from_commands(ostream.getvalue()) == RcCompare(

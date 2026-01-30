@@ -548,7 +548,10 @@ class IOMocker:
 
         """
         self._events.append(
-            (self._get_stack_summary(), RcCompare(screen, colors, urls, cursor_x, cursor_y))
+            (
+                self._get_stack_summary(),
+                RcCompare(screen, colors, urls, cursor_x, cursor_y),
+            )
         )
         return self
 
