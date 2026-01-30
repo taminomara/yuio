@@ -34,7 +34,6 @@ dev = [
 ]
 test = [
     "jsonschema==4.26.0",
-    "libtmux==0.53.0",
     "pyright==1.1.408",
     "pytest-cov==7.0.0",
     "pytest-regressions==2.9.1",
@@ -105,7 +104,7 @@ commands = [
         "--color=yes",
         "--cov",
         "--cov-append",
-        "-m not flaky",
+        "-m",
     ],
 ]
 pass_env = ["PYTEST*", "COVERAGE*"]
@@ -151,7 +150,6 @@ markers = [
     "linux: test runs only on linux runners",
     "darwin: test runs only on darwin runners",
     "full: long test or test with special requirements, only runs in CI",
-    "flaky: tests with tmux tend to be flaky, so we run them manually",
 ]
 
 [tool.pyright]

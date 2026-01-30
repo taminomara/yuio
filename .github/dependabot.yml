@@ -10,7 +10,6 @@ updates:
         - "furo"
         - "genbadge"
         - "jsonschema"
-        - "libtmux"
         - "PyGithub"
         - "pyright"
         - "pytest-cov"

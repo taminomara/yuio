@@ -47,7 +47,7 @@ filtering by overriding option `-m`):
 pytest -m=
 ```
 
-The full test suite requires `tmux`, `bash`, `zsh`, `fish`, and `pwsh`
+The full test suite requires `bash`, `zsh`, `fish`, and `pwsh`
 installed on your system.
 
 To run full test suite across all supported interpreters, run `tox`:
