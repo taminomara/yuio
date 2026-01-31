@@ -3119,7 +3119,7 @@ class _HelpFormatter:
         self._add_subcommands(cmd)
         self._add_flags(cmd, inherited)
         if cmd.epilog:
-            self.nodes.append(_ResetIndentation())
+            self.nodes.append(_SetIndentation())
             self.nodes.extend(self.parser.parse(cmd.epilog).items)
 
     def __colorized_str__(self, ctx: yuio.string.ReprContext) -> _ColorizedString:
@@ -3345,9 +3345,11 @@ class _CliFormatter(yuio.doc.Formatter):  # type: ignore
 
         self._is_first_line = True
 
-    def _format_ResetIndentation(self, node: _ResetIndentation):
+    def _format_SetIndentation(self, node: _SetIndentation):
         self._heading_indent.close()
         self._is_first_line = True
+        if node.indent:
+            self._heading_indent.enter_context(self._with_indent(None, node.indent))
 
     def _format_Usage(self, node: _Usage):
         if node.prefix:
@@ -3642,8 +3644,8 @@ class _CliFormatter(yuio.doc.Formatter):  # type: ignore
 
 
 @dataclass(eq=False, match_args=False, slots=True)
-class _ResetIndentation(yuio.doc.AstBase):
-    pass
+class _SetIndentation(yuio.doc.AstBase):
+    indent: str = ""
 
 
 @dataclass(eq=False, match_args=False, slots=True)
@@ -3733,10 +3735,9 @@ class _ShortUsageFormatter:
             with ctx.with_settings(width=ctx.width - 2):
                 formatter = _CliFormatter(self.parser, ctx)
                 sep = False
-                for line in formatter.format(_HelpArgGroup(items=[help])):
+                for line in formatter.format(_HelpArgGroup(items=[_SetIndentation("  "), help])):
                     if sep:
                         res.append_str("\n")
-                    res.append_str("  ")
                     res.append_colorized_str(line.with_base_color(note_color))
                     sep = True
 

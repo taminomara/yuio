@@ -1296,7 +1296,6 @@ def raw(
             msg,
             indent=indent,
             continuation_indent=continuation_indent,
-            preserve_spaces=True,
         )
     elif indent or continuation_indent:
         msg = yuio.string.Indent(

@@ -1440,6 +1440,16 @@ def test_format_error(text, args, exc, match, ctx):
             id="multiple-spaces-preserved-when-no-line-boundary-happened",
         ),
         pytest.param(
+            ["hello             world!"],
+            15,
+            {"preserve_spaces": False},
+            [
+                [Color.NONE, "hello"],
+                [Color.NONE, "world!"],
+            ],
+            id="multiple-spaces-collapsed-when-line-boundary-happened",
+        ),
+        pytest.param(
             ["hello     world!"],
             15,
             {"preserve_spaces": True},
@@ -1456,17 +1466,6 @@ def test_format_error(text, args, exc, match, ctx):
             [
                 [Color.NONE, "hello", "          "],
                 [Color.NONE, "          ", "world"],
-            ],
-            id="multiple-spaces-preserved-line-boundary-long",
-        ),
-        pytest.param(
-            ["hello                    longlongworld"],
-            15,
-            {"preserve_spaces": True},
-            [
-                [Color.NONE, "hello", "          "],
-                [Color.NONE, "          "],
-                [Color.NONE, "longlongworld"],
             ],
             id="multiple-spaces-preserved-line-boundary-long",
         ),

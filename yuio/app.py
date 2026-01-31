@@ -1070,7 +1070,7 @@ class App(_t.Generic[C]):
             command()
             sys.exit(0)
         except yuio.cli.ArgumentError as e:
-            yuio.io.raw(e, add_newline=True)
+            yuio.io.raw(e, add_newline=True, wrap=True)
             sys.exit(1)
         except (AppError, yuio.cli.ArgumentError, yuio.parse.ParsingError) as e:
             yuio.io.failure(e)
