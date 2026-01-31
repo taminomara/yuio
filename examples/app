@@ -109,7 +109,7 @@ def main(
     #:
     #:      See `config documentation`__ for details.
     #:
-    #:      __ https://yuio.readthedocs.io/en/latest/main_api/sphinx_ext.html#cli-config
+    #:      __ https://yuio.readthedocs.io/en/stable/main_api/sphinx_ext.html#cli-config
     #:
     config: GlobalConfig = yuio.config.field(
         flags="--cfg", usage=yuio.COLLAPSE, help_group=yuio.COLLAPSE
