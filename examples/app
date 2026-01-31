@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime
-import enum
 import logging
 import pathlib
 
@@ -13,7 +12,7 @@ import yuio.io
 import yuio.parse
 import yuio.ty
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 _logger = logging.getLogger(__name__)
 
@@ -70,19 +69,6 @@ class GlobalConfig(yuio.config.Config):
     default_container_config: ContainerConfig = yuio.app.field(
         default=yuio.MISSING, flags=yuio.DISABLED, env="APP"
     )
-
-
-class ListFormat(enum.Enum):
-    """
-    Format for :cli:cmd:`app list` output.
-
-    """
-
-    #: List containers as text.
-    TEXT = "text"
-
-    #: List containers as JSON.
-    JSON = "json"
 
 
 # Global config instance, will be loaded in `main`.
@@ -213,7 +199,7 @@ def ls(
     #: Filter containers by name pattern.
     filter: Annotated[str, yuio.parse.WithMeta(desc="<regexp>")] | None = None,
     #: Output format (text, json).
-    format: ListFormat = ListFormat.TEXT,
+    format: Literal["text", "json"] = "text",
 ):
     """
     List running containers.

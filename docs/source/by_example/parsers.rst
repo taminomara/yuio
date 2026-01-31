@@ -135,9 +135,8 @@ Enum parser
 -----------
 
 A parser that you will use quite often is :class:`yuio.parse.Enum`.
-It parses string-based enumerations derived from :class:`enum.Enum`.
-We encourage use of enums over plain strings because they provide
-enhanced widgets and autocompletion:
+It parses enumerations derived from :class:`enum.Enum`. We encourage use of enums
+over plain strings because they provide enhanced widgets and autocompletion:
 
 .. vhs:: /_tapes/widget_choice.tape
     :alt: Demonstration of `Choice` widget.
@@ -182,6 +181,36 @@ and it also can convert enumerator names to dash case:
                     yuio.parse.Enum(by_name=True, to_dash_case=True),
                 ]
             ]("Which beverage would you like?")
+
+
+Literal parser
+--------------
+
+When making a separate enum is not practical, you can use :class:`yuio.parse.Literal`:
+
+.. tab-set::
+    :sync-group: parser-usage
+
+    .. tab-item:: Parsers
+        :sync: parsers
+
+        .. code-block::
+
+            yuio.io.ask(
+                "Which beverage would you like?",
+                parser=yuio.parse.Literal("coffee", "tea", "soda", "water"),
+            )
+
+    .. tab-item:: Annotations
+        :sync: annotations
+
+        .. code-block::
+
+            from typing import Literal
+
+            yuio.io.ask[Literal["coffee", "tea", "soda", "water"]](
+                "Which beverage would you like?"
+            )
 
 
 JSON parser

@@ -64,6 +64,8 @@ Value parsers
 
 .. autoclass:: Enum
 
+.. autoclass:: Literal
+
 .. autoclass:: Decimal
 
 .. autoclass:: Fraction
@@ -524,6 +526,7 @@ __all__ = [
     "LenLe",
     "LenLt",
     "List",
+    "Literal",
     "Lower",
     "Lt",
     "Map",
@@ -568,6 +571,7 @@ C2 = _t.TypeVar("C2", bound=_t.Collection[object])
 Sz = _t.TypeVar("Sz", bound=_t.Sized)
 Cmp = _t.TypeVar("Cmp", bound=_tx.SupportsLt[_t.Any])
 E = _t.TypeVar("E", bound=enum.Enum)
+L = _t.TypeVar("L", bound=enum.Enum | int | str | bool | None)
 TU = _t.TypeVar("TU", bound=tuple[object, ...])
 P = _t.TypeVar("P", bound="Parser[_t.Any]")
 Params = _t.ParamSpec("Params")
@@ -2205,7 +2209,181 @@ class Bool(ValueParser[bool]):
         return value
 
 
-class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
+class _EnumBase(WrappingParser[T, U], ValueParser[T], _t.Generic[T, U]):
+    def __init__(self, inner: U | None = None, ty: type[T] | None = None, /):
+        super().__init__(inner, ty)
+
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
+        result = super().wrap(parser)
+        result._inner = parser._inner  # type: ignore
+        result._value_type = parser._value_type  # type: ignore
+        return result
+
+    @abc.abstractmethod
+    def _get_items(self) -> _t.Iterable[T]:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _value_to_str(self, value: T) -> str:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _str_value_matches(self, value: T, given: str) -> bool:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _str_value_matches_prefix(self, value: T, given: str) -> bool:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _config_value_matches(self, value: T, given: object) -> bool:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _value_to_json(self, value: T) -> JsonValue:
+        raise NotImplementedError()
+
+    def _get_docs(self) -> dict[T, str | None]:
+        return {}
+
+    def _get_desc(self) -> str:
+        return repr(self)
+
+    def parse_with_ctx(self, ctx: StrParsingContext, /) -> T:
+        ctx = ctx.strip_if_non_space()
+
+        candidates: list[T] = []
+        for item in self._get_items():
+            if self._str_value_matches(item, ctx.value):
+                return item
+            elif self._str_value_matches_prefix(item, ctx.value):
+                candidates.append(item)
+
+        if len(candidates) == 1:
+            return candidates[0]
+        elif len(candidates) > 1:
+            enum_values = tuple(self._value_to_str(e) for e in candidates)
+            raise ParsingError(
+                "Can't parse `%r` as `%s`, possible candidates are %s",
+                ctx.value,
+                self._get_desc(),
+                yuio.string.Or(enum_values),
+                ctx=ctx,
+            )
+        else:
+            enum_values = tuple(self._value_to_str(e) for e in self._get_items())
+            raise ParsingError(
+                "Can't parse `%r` as `%s`, should be %s",
+                ctx.value,
+                self._get_desc(),
+                yuio.string.Or(enum_values),
+                ctx=ctx,
+            )
+
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> T:
+        value = ctx.value
+
+        for item in self._get_items():
+            if self._config_value_matches(item, value):
+                return item
+
+        enum_values = tuple(self._value_to_str(e) for e in self._get_items())
+        raise ParsingError(
+            "Can't parse `%r` as `%s`, should be %s",
+            value,
+            self._get_desc(),
+            yuio.string.Or(enum_values),
+            ctx=ctx,
+        )
+
+    def describe(self) -> str | None:
+        enum_values = tuple(self._value_to_str(e) for e in self._get_items())
+        desc = "|".join(enum_values)
+        if len(enum_values) > 1:
+            desc = f"{{{desc}}}"
+        return desc
+
+    def describe_many(self) -> str | tuple[str, ...]:
+        return self.describe_or_def()
+
+    def describe_value(self, value: object, /) -> str:
+        assert self.assert_type(value)
+        return self._value_to_str(value)
+
+    def options(self) -> _t.Collection[yuio.widget.Option[T]]:
+        docs = self._get_docs()
+        options = []
+        for value in self._get_items():
+            comment = docs.get(value)
+            if comment:
+                lines = comment.splitlines()
+                if not lines:
+                    comment = None
+                elif len(lines) == 1:
+                    comment = str(lines[0])
+                else:
+                    comment = str(lines[0]) + ("..." if lines[1] else "")
+            options.append(
+                yuio.widget.Option(
+                    value, display_text=self._value_to_str(value), comment=comment
+                )
+            )
+        return options
+
+    def completer(self) -> yuio.complete.Completer | None:
+        return yuio.complete.Choice(
+            [
+                yuio.complete.Option(option.display_text, comment=option.comment)
+                for option in self.options()
+            ]
+        )
+
+    def widget(
+        self,
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
+        /,
+    ) -> yuio.widget.Widget[T | yuio.Missing]:
+        options: list[yuio.widget.Option[T | yuio.Missing]] = list(self.options())
+        items = list(self._get_items())
+
+        if default is yuio.MISSING:
+            default_index = 0
+        elif default in items:
+            default_index = items.index(default)  # type: ignore
+        else:
+            options.insert(
+                0, yuio.widget.Option(yuio.MISSING, default_description or str(default))
+            )
+            default_index = 0
+
+        return yuio.widget.Choice(options, default_index=default_index)
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        items = [self._value_to_json((e)) for e in self._get_items()]
+        docs = self._get_docs()
+
+        descriptions = [docs.get(e) for e in self._get_items()]
+        if not any(descriptions):
+            descriptions = None
+
+        return yuio.json_schema.Enum(items, descriptions)  # type: ignore
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return self._value_to_json(value)
+
+    def __repr__(self):
+        if self._inner_raw is not None:
+            return f"{self.__class__.__name__}({self._inner_raw!r})"
+        else:
+            return self.__class__.__name__
+
+
+class Enum(_EnumBase[E, type[E]], _t.Generic[E]):
     """Enum(enum_type: typing.Type[E], /, *, by_name: bool | None = None, to_dash_case: bool | None = None, doc_inline: bool = False)
 
     Parser for enums, as defined in the standard :mod:`enum` module.
@@ -2267,198 +2445,132 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         to_dash_case: bool | None = None,
         doc_inline: bool | None = None,
     ):
-        self._by_name = by_name
-        self._to_dash_case = to_dash_case
-        self._doc_inline = doc_inline
+        self.__by_name = by_name
+        self.__to_dash_case = to_dash_case
+        self.__doc_inline = doc_inline
+        self.__docs = None
         super().__init__(enum_type, enum_type)
 
-    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
-        result = super().wrap(parser)
-        result._inner = parser._inner  # type: ignore
-        result._value_type = parser._inner  # type: ignore
-        return result
-
     @functools.cached_property
-    def _getter(self) -> _t.Callable[[E], str]:
-        by_name = self._by_name
+    def _by_name(self) -> bool:
+        by_name = self.__by_name
         if by_name is None:
             by_name = getattr(self._inner, "__yuio_by_name__", False)
-        to_dash_case = self._to_dash_case
+        return by_name
+
+    @functools.cached_property
+    def _to_dash_case(self) -> bool:
+        to_dash_case = self.__to_dash_case
         if to_dash_case is None:
             to_dash_case = getattr(self._inner, "__yuio_to_dash_case__", False)
+        return to_dash_case
 
-        items = {}
+    @functools.cached_property
+    def _doc_inline(self) -> bool:
+        doc_inline = self.__doc_inline
+        if doc_inline is None:
+            doc_inline = getattr(self._inner, "__yuio_doc_inline__", False)
+        return doc_inline
+
+    @functools.cached_property
+    def _map_cache(self):
+        items: dict[E, str] = {}
         for e in self._inner:
-            if by_name:
+            if self._by_name:
                 name = e.name
             else:
                 name = str(e.value)
-            if to_dash_case:
+            if self._to_dash_case and isinstance(name, str):
                 name = _to_dash_case(name)
             items[e] = name
-        return lambda e: items[e]
+        return items
 
-    @functools.cached_property
-    def _docs(self) -> dict[str, str]:
-        docs = _find_docs(self._inner).copy()
-        for key, text in docs.items():
-            if (index := text.find("\n\n")) != -1:
-                docs[key] = text[:index]
-        return docs
+    def _get_items(self) -> _t.Iterable[E]:
+        return self._inner
 
-    def parse_with_ctx(self, ctx: StrParsingContext, /) -> E:
-        ctx = ctx.strip_if_non_space()
-        return self._parse(ctx.value, ctx)
+    def _value_to_str(self, value: E) -> str:
+        return self._map_cache[value]
 
-    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> E:
-        value = ctx.value
+    def _str_value_matches(self, value: E, given: str) -> bool:
+        expected = self._map_cache[value]
 
-        if isinstance(value, self._inner):
-            return value
-
-        if not isinstance(value, str):
-            raise ParsingError.type_mismatch(value, str, ctx=ctx)
-
-        result = self._parse(value, ctx)
-
-        if self._getter(result) != value:
-            raise ParsingError(
-                "Can't parse `%r` as `%s`, did you mean `%s`?",
-                value,
-                self._inner.__name__,
-                self._getter(result),
-                ctx=ctx,
-            )
-
-        return result
-
-    def _parse(self, value: str, ctx: ConfigParsingContext | StrParsingContext):
-        cf_value = value.strip().casefold()
-
-        candidates: list[E] = []
-        for item in self._inner:
-            if self._getter(item) == value:
-                return item
-            elif (self._getter(item)).casefold().startswith(cf_value):
-                candidates.append(item)
-
-        if len(candidates) == 1:
-            return candidates[0]
-        elif len(candidates) > 1:
-            enum_values = tuple(self._getter(e) for e in candidates)
-            raise ParsingError(
-                "Can't parse `%r` as `%s`, possible candidates are %s",
-                value,
-                self._inner.__name__,
-                yuio.string.Or(enum_values),
-                ctx=ctx,
-            )
+        if isinstance(expected, str):
+            return expected == given
+        elif isinstance(expected, bool):
+            try:
+                given_parsed = Bool().parse(given)
+            except ParsingError:
+                return False
+            else:
+                return expected == given_parsed
+        elif isinstance(expected, int):
+            try:
+                given_parsed = Int().parse(given)
+            except ParsingError:
+                return False
+            else:
+                return expected == given_parsed
         else:
-            enum_values = tuple(self._getter(e) for e in self._inner)
-            raise ParsingError(
-                "Can't parse `%r` as `%s`, should be %s",
-                value,
-                self._inner.__name__,
-                yuio.string.Or(enum_values),
-                ctx=ctx,
-            )
+            return False
 
-    def describe(self) -> str | None:
-        desc = "|".join(self._getter(e) for e in self._inner)
-        if len(self._inner) > 1:
-            desc = f"{{{desc}}}"
-        return desc
-
-    def describe_many(self) -> str | tuple[str, ...]:
-        return self.describe_or_def()
-
-    def describe_value(self, value: object, /) -> str:
-        assert self.assert_type(value)
-        return str(self._getter(value))
-
-    def options(self) -> _t.Collection[yuio.widget.Option[E]]:
-        docs = self._docs
-        options = []
-        for e in self._inner:
-            comment = docs.get(e.name)
-            if comment:
-                lines = comment.splitlines()
-                if not lines:
-                    comment = None
-                elif len(lines) == 1:
-                    comment = str(lines[0])
-                else:
-                    comment = str(lines[0]) + ("..." if lines[1] else "")
-            options.append(
-                yuio.widget.Option(e, display_text=self._getter(e), comment=comment)
-            )
-        return options
-
-    def completer(self) -> yuio.complete.Completer | None:
-        return yuio.complete.Choice(
-            [
-                yuio.complete.Option(option.display_text, comment=option.comment)
-                for option in self.options()
-            ]
+    def _str_value_matches_prefix(self, value: E, given: str) -> bool:
+        expected = self._map_cache[value]
+        return isinstance(expected, str) and expected.casefold().startswith(
+            given.casefold()
         )
 
-    def widget(
-        self,
-        default: object | yuio.Missing,
-        input_description: str | None,
-        default_description: str | None,
-        /,
-    ) -> yuio.widget.Widget[E | yuio.Missing]:
-        options: list[yuio.widget.Option[E | yuio.Missing]] = list(self.options())
+    def _config_value_matches(self, value: E, given: object) -> bool:
+        if given is value:
+            return True
 
-        if default is yuio.MISSING:
-            default_index = 0
-        elif isinstance(default, self._inner):
-            default_index = list(self._inner).index(default)
+        if self._by_name:
+            expected = self._map_cache[value]
         else:
-            options.insert(
-                0, yuio.widget.Option(yuio.MISSING, default_description or str(default))
-            )
-            default_index = 0
+            expected = value.value
 
-        return yuio.widget.Choice(options, default_index=default_index)
+        return expected == given
+
+    def _value_to_json(self, value: E) -> JsonValue:
+        if self._by_name:
+            return value.name
+        else:
+            return value.value
+
+    def _get_docs(self) -> dict[E, str | None]:
+        if self.__docs is not None:
+            return self.__docs
+        docs = _find_docs(self._inner)
+        res = {}
+        for e in self._inner:
+            text = docs.get(e.name)
+            if not text:
+                continue
+            if (index := text.find("\n\n")) != -1:
+                res[e] = text[:index]
+            else:
+                res[e] = text
+        return res
+
+    def _get_desc(self) -> str:
+        return self._inner.__name__
 
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
-        items = [self._getter(e) for e in self._inner]
-        docs = self._docs
+        schema = super().to_json_schema(ctx)
 
-        descriptions = [docs.get(e.name) for e in self._inner]
-        if not any(descriptions):
-            descriptions = None
-
-        by_name = self._by_name
-        if by_name is None:
-            by_name = getattr(self._inner, "__yuio_by_name__", False)
-        to_dash_case = self._to_dash_case
-        if to_dash_case is None:
-            to_dash_case = getattr(self._inner, "__yuio_to_dash_case__", False)
-        doc_inline = self._doc_inline
-        if doc_inline is None:
-            doc_inline = getattr(self._inner, "__yuio_doc_inline__", False)
-
-        if doc_inline:
-            return yuio.json_schema.Enum(items, descriptions)
+        if self._doc_inline:
+            return schema
         else:
             return ctx.add_type(
-                Enum._TyWrapper(self._inner, by_name, to_dash_case),
+                Enum._TyWrapper(self._inner, self._by_name, self._to_dash_case),
                 _tx.type_repr(self._inner),
                 lambda: yuio.json_schema.Meta(
-                    yuio.json_schema.Enum(items, descriptions),
+                    schema,
                     title=self._inner.__name__,
                     description=self._inner.__doc__,
                 ),
             )
-
-    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
-        assert self.assert_type(value)
-        return self._getter(value)
 
     def __repr__(self):
         if self._inner_raw is not None:
@@ -2471,6 +2583,114 @@ class Enum(WrappingParser[E, type[E]], ValueParser[E], _t.Generic[E]):
         inner: type
         by_name: bool
         to_dash_case: bool
+
+
+class _LiteralType:
+    def __init__(self, allowed_values: tuple[L, ...]) -> None:
+        self._allowed_values = allowed_values
+
+    def __instancecheck__(self, instance: _t.Any) -> bool:
+        return instance in self._allowed_values
+
+
+class Literal(_EnumBase[L, tuple[L, ...]], _t.Generic[L]):
+    """
+    Parser for literal values.
+
+    This parser accepts a set of allowed values, and parses them using semantics of
+    :class:`Enum` parser. It can be used with creating an enum for some value isn't
+    practical, and semantics of :class:`OneOf` is limiting.
+
+    Allowed values should be strings, ints, bools, or instances of :class:`enum.Enum`.
+
+    If instances of :class:`enum.Enum` are passed, :class:`Literal` will rely on
+    enum's :data:`__yuio_by_name__` and :data:`__yuio_to_dash_case__` attributes
+    to parse these values.
+
+    """
+
+    if TYPE_CHECKING:
+
+        def __new__(cls, *args: L) -> Literal[L]: ...
+
+    def __init__(
+        self,
+        *literal_values: L,
+    ):
+        self._converted_values = {}
+
+        for value in literal_values:
+            orig_value = value
+
+            if isinstance(value, enum.Enum):
+                if getattr(type(value), "__yuio_by_name__", False):
+                    value = value.name
+                else:
+                    value = value.value
+                if getattr(type(value), "__yuio_to_dash_case__", False) and isinstance(
+                    value, str
+                ):
+                    value = _to_dash_case(value)
+                self._converted_values[orig_value] = value
+
+            if not isinstance(value, (int, str, bool)):
+                raise TypeError(
+                    f"literal parser doesn't support literals "
+                    f"of type {_t.type_repr(type(value))}: {orig_value!r}"
+                )
+        super().__init__(
+            literal_values,
+            _LiteralType(literal_values),  # type: ignore
+        )
+
+    def wrap(self, parser: Parser[_t.Any]) -> Parser[_t.Any]:
+        with self._patch_stack_summary():
+            raise TypeError(f"annotating a type with {self} is not supported")
+
+    def _get_items(self) -> _t.Iterable[L]:
+        return self._inner
+
+    def _value_to_str(self, value: L) -> str:
+        return str(self._converted_values.get(value, value))
+
+    def _str_value_matches(self, value: L, given: str) -> bool:
+        value = self._converted_values.get(value, value)
+        if isinstance(value, str):
+            return value == given
+        elif isinstance(value, bool):
+            try:
+                given_parsed = Bool().parse(given)
+            except ParsingError:
+                return False
+            else:
+                return value == given_parsed
+        elif isinstance(value, int):
+            try:
+                given_parsed = Int().parse(given)
+            except ParsingError:
+                return False
+            else:
+                return value == given_parsed
+        else:
+            return False
+
+    def _str_value_matches_prefix(self, value: L, given: str) -> bool:
+        value = self._converted_values.get(value, value)
+        return isinstance(value, str) and value.casefold().startswith(given.casefold())
+
+    def _config_value_matches(self, value: L, given: object) -> bool:
+        value = self._converted_values.get(value, value)
+        return value == given
+
+    def _value_to_json(self, value: L) -> JsonValue:
+        return value  # type: ignore
+
+    def __repr__(self):
+        if self._inner_raw is not None:
+            values = map(self._value_to_str, self._inner_raw)
+            return f"{self.__class__.__name__}({yuio.string.JoinRepr(values)})"
+        else:
+            return self.__class__.__name__
 
 
 class Decimal(ValueParser[decimal.Decimal]):
@@ -5081,6 +5301,11 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
 
     Check that the parsed value is one of the given set of values.
 
+    .. note::
+
+        This parser is meant to validate results of other parsers; if you're looking
+        to parse enums or literal values, check out :class:`Enum` or :class:`Literal`.
+
     :param inner:
         parser whose result will be validated.
     :param values:
@@ -6119,6 +6344,11 @@ register_type_hint_conversion(
 )
 register_type_hint_conversion(
     lambda ty, origin, args: TimeDelta() if ty is datetime.timedelta else None
+)
+register_type_hint_conversion(
+    lambda ty, origin, args: (
+        Literal(*_t.cast(tuple[_t.Any, ...], args)) if origin is _t.Literal else None
+    )
 )
 
 

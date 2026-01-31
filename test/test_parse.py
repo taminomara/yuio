@@ -787,7 +787,7 @@ class TestEnum:
     def test_by_value(self):
         parser = yuio.parse.Enum(self.Cuteness)
         assert parser.parse("CATS") is self.Cuteness.CATS
-        assert parser.parse("CATS") is self.Cuteness.CATS
+        assert parser.parse("DOGS") is self.Cuteness.DOGS
         assert parser.parse_config("Cats") is self.Cuteness.CATS
         assert parser.parse_config(self.Cuteness.CATS) is self.Cuteness.CATS
         with pytest.raises(yuio.parse.ParsingError):
@@ -796,20 +796,51 @@ class TestEnum:
         assert parser.parse(":3") is self.Cuteness.BLAHAJ
         with pytest.raises(yuio.parse.ParsingError):
             parser.parse("Unchi")
-        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Can't parse 10 as Cuteness"
+        ):
             parser.parse_config(10)
+
+    def test_by_value_non_strings(self):
+        parser = yuio.parse.Enum(self.Colors)
+        assert parser.parse("31") is self.Colors.RED
+        assert parser.parse("32") is self.Colors.GREEN
+        assert parser.parse_config(31) is self.Colors.RED
+        assert parser.parse_config(32) is self.Colors.GREEN
+        assert parser.parse_config(self.Colors.BLUE) is self.Colors.BLUE
+        with pytest.raises(yuio.parse.ParsingError):
+            parser.parse_config(15)
+        with pytest.raises(yuio.parse.ParsingError):
+            parser.parse_config(False)
+        with pytest.raises(yuio.parse.ParsingError):
+            parser.parse_config("RED")
+
+    def test_by_value_non_strings_to_dash_case(self):
+        # to_dash_case should ignore non-strings.
+        parser = yuio.parse.Enum(self.Colors, to_dash_case=True)
+        assert parser.parse("31") is self.Colors.RED
+        assert parser.parse("32") is self.Colors.GREEN
+        assert parser.parse_config(31) is self.Colors.RED
+        assert parser.parse_config(32) is self.Colors.GREEN
+        assert parser.parse_config(self.Colors.BLUE) is self.Colors.BLUE
+        with pytest.raises(yuio.parse.ParsingError):
+            parser.parse_config(15)
+        with pytest.raises(yuio.parse.ParsingError):
+            parser.parse_config(False)
+        with pytest.raises(yuio.parse.ParsingError):
+            parser.parse_config("RED")
 
     def test_by_name(self):
         parser = yuio.parse.Enum(self.Colors, by_name=True)
         assert parser.parse("RED") is self.Colors.RED
-        assert parser.parse("RED") is self.Colors.RED
+        assert parser.parse("GREEN") is self.Colors.GREEN
         assert parser.parse_config("RED") is self.Colors.RED
         assert parser.parse_config(self.Colors.RED) is self.Colors.RED
         assert parser.parse("green") is self.Colors.GREEN
         assert parser.parse("Blue") is self.Colors.BLUE
         with pytest.raises(yuio.parse.ParsingError):
             parser.parse("Color of a beautiful sunset")
-        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse 10 as Colors"):
             parser.parse_config(10)
 
         assert parser.describe() == "{RED|GREEN|BLUE}"
@@ -826,7 +857,9 @@ class TestEnum:
         assert parser.parse("Blue") is self.ColorsByName.BLUE
         with pytest.raises(yuio.parse.ParsingError):
             parser.parse("Color of a beautiful sunset")
-        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
+        with pytest.raises(
+            yuio.parse.ParsingError, match=r"Can't parse 10 as ColorsByName"
+        ):
             parser.parse_config(10)
 
         assert parser.describe() == "{RED|GREEN|BLUE}"
@@ -868,7 +901,7 @@ class TestEnum:
         ):
             parser.parse("G")
         assert parser.parse("GREEN_F") is Colors.GREEN_FORE
-        with pytest.raises(yuio.parse.ParsingError, match=r"did you mean RED?"):
+        with pytest.raises(yuio.parse.ParsingError, match=r"Can't parse 'r' as Colors"):
             parser.parse_config("r")
 
     def test_from_type_hint(self):
@@ -934,6 +967,103 @@ class TestEnum:
                 comment="Longer comment...",
             ),
         ]
+
+
+class TestLiteral:
+    def test_basics_string(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        assert literal.parse("a") == "a"
+        assert literal.parse("b") == "b"
+        assert literal.parse("c") == "c"
+
+    def test_basics_int(self):
+        literal = yuio.parse.Literal(1, 2, 3)
+        assert literal.parse("1") == 1
+        assert literal.parse("2") == 2
+        assert literal.parse("3") == 3
+
+    def test_basics_mixed_types(self):
+        literal = yuio.parse.Literal("a", 1, True)
+        assert literal.parse("a") == "a"
+        assert literal.parse("1") == 1
+        assert literal.parse("true") is True
+
+    def test_parse_invalid_value(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        with pytest.raises(yuio.parse.ParsingError):
+            literal.parse("d")
+
+    def test_parse_config_valid(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        assert literal.parse_config("a") == "a"
+        assert literal.parse_config("b") == "b"
+        assert literal.parse_config("c") == "c"
+
+    def test_parse_config_invalid(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        with pytest.raises(yuio.parse.ParsingError):
+            literal.parse_config("d")
+
+    def test_json_schema_strings(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        schema = literal.to_json_schema(yuio.json_schema.JsonSchemaContext())
+        assert schema.render() == {"enum": ["a", "b", "c"]}
+
+    def test_json_schema_ints(self):
+        literal = yuio.parse.Literal(1, 2, 3)
+        schema = literal.to_json_schema(yuio.json_schema.JsonSchemaContext())
+        assert schema.render() == {"enum": [1, 2, 3]}
+
+    def test_json_schema_mixed(self):
+        literal = yuio.parse.Literal("a", 1, True)
+        schema = literal.to_json_schema(yuio.json_schema.JsonSchemaContext())
+        assert schema.render() == {"enum": ["a", 1, True]}
+
+    def test_describe(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        assert literal.describe() == "{a|b|c}"
+
+    def test_describe_value(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        assert literal.describe_value("a") == "a"
+        assert literal.describe_value("b") == "b"
+
+    def test_options(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        options = literal.options()
+        assert options is not None
+        assert len(options) == 3
+
+    def test_supports_parse_many(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        assert not literal.supports_parse_many()
+
+    def test_check_type(self):
+        literal = yuio.parse.Literal("a", "b", "c")
+        assert literal.check_type("a")
+        assert literal.check_type("b")
+        assert not literal.check_type(1)
+
+    def test_from_type_hint(self):
+        parser = yuio.parse.from_type_hint(_t.Literal["a", "b", "c"])
+        assert parser.parse("a") == "a"
+        assert parser.parse("b") == "b"
+
+    def test_single_literal(self):
+        literal = yuio.parse.Literal("only")
+        assert literal.parse("only") == "only"
+        with pytest.raises(yuio.parse.ParsingError):
+            literal.parse("other")
+
+    def test_bool_literals(self):
+        literal = yuio.parse.Literal(True, False)
+        assert literal.parse("true") is True
+        assert literal.parse("false") is False
+
+    def test_json_value_conversion(self):
+        literal = yuio.parse.Literal("a", "b")
+        assert literal.to_json_value("a") == "a"
+        assert literal.to_json_value("b") == "b"
 
 
 class TestDecimal:
