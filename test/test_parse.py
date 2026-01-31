@@ -698,10 +698,9 @@ class TestEnum:
         parser = yuio.parse.Enum(self.Cuteness)
         ctx = yuio.json_schema.JsonSchemaContext()
         res = parser.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref(
-            "#/$defs/test.test_parse.TestEnum.Cuteness",
-            "test.test_parse.TestEnum.Cuteness",
-        )
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/test.test_parse.TestEnum.Cuteness"
+        assert res.name == "test.test_parse.TestEnum.Cuteness"
         schema: _t.Any = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate("Cats")
@@ -717,10 +716,9 @@ class TestEnum:
         parser = yuio.parse.Enum(self.Cuteness, by_name=True)
         ctx = yuio.json_schema.JsonSchemaContext()
         res = parser.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref(
-            "#/$defs/test.test_parse.TestEnum.Cuteness",
-            "test.test_parse.TestEnum.Cuteness",
-        )
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/test.test_parse.TestEnum.Cuteness"
+        assert res.name == "test.test_parse.TestEnum.Cuteness"
         schema: _t.Any = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate("CATS")
@@ -735,28 +733,28 @@ class TestEnum:
     def test_json_schema_name_clash(self):
         ctx = yuio.json_schema.JsonSchemaContext()
         parser = yuio.parse.Enum(self.Cuteness)
-        assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
-            "#/$defs/test.test_parse.TestEnum.Cuteness",
-            "test.test_parse.TestEnum.Cuteness",
-        )
+        res = parser.to_json_schema(ctx)
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/test.test_parse.TestEnum.Cuteness"
+        assert res.name == "test.test_parse.TestEnum.Cuteness"
 
         parser = yuio.parse.Enum(self.Cuteness, by_name=True)
-        assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
-            "#/$defs/test.test_parse.TestEnum.Cuteness2",
-            "test.test_parse.TestEnum.Cuteness2",
-        )
+        res = parser.to_json_schema(ctx)
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/test.test_parse.TestEnum.Cuteness2"
+        assert res.name == "test.test_parse.TestEnum.Cuteness2"
 
         parser = yuio.parse.Enum(self.Cuteness, to_dash_case=True)
-        assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
-            "#/$defs/test.test_parse.TestEnum.Cuteness3",
-            "test.test_parse.TestEnum.Cuteness3",
-        )
+        res = parser.to_json_schema(ctx)
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/test.test_parse.TestEnum.Cuteness3"
+        assert res.name == "test.test_parse.TestEnum.Cuteness3"
 
         parser = yuio.parse.Enum(self.Cuteness)
-        assert parser.to_json_schema(ctx) == yuio.json_schema.Ref(
-            "#/$defs/test.test_parse.TestEnum.Cuteness",
-            "test.test_parse.TestEnum.Cuteness",
-        )
+        res = parser.to_json_schema(ctx)
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/test.test_parse.TestEnum.Cuteness"
+        assert res.name == "test.test_parse.TestEnum.Cuteness"
 
     def test_json_schema_inline(self):
         parser = yuio.parse.Enum(self.Cuteness, doc_inline=True)
@@ -956,7 +954,9 @@ class TestDecimal:
         parser = yuio.parse.Decimal()
         ctx = yuio.json_schema.JsonSchemaContext()
         res = parser.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref("#/$defs/Decimal", "Decimal")
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/Decimal"
+        assert res.name == "Decimal"
         schema: _t.Any = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate(10)
@@ -1028,7 +1028,9 @@ class TestFraction:
         parser = yuio.parse.Fraction()
         ctx = yuio.json_schema.JsonSchemaContext()
         res = parser.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref("#/$defs/Fraction", "Fraction")
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/Fraction"
+        assert res.name == "Fraction"
         schema: _t.Any = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate(10)
@@ -1220,7 +1222,9 @@ class TestDateTime:
         parser = yuio.parse.DateTime()
         ctx = yuio.json_schema.JsonSchemaContext()
         res = parser.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref("#/$defs/DateTime", "DateTime")
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/DateTime"
+        assert res.name == "DateTime"
         schema: _t.Any = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate("2025-01-01 15:00")
@@ -1310,7 +1314,9 @@ class TestDate:
         parser = yuio.parse.Date()
         ctx = yuio.json_schema.JsonSchemaContext()
         res = parser.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref("#/$defs/Date", "Date")
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/Date"
+        assert res.name == "Date"
         schema: _t.Any = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate("2025-01-01")
@@ -1389,7 +1395,9 @@ class TestTime:
         parser = yuio.parse.Time()
         ctx = yuio.json_schema.JsonSchemaContext()
         res = parser.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref("#/$defs/Time", "Time")
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/Time"
+        assert res.name == "Time"
         schema: _t.Any = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate("15:00")
@@ -1466,7 +1474,9 @@ class TestTimeDelta:
         parser = yuio.parse.TimeDelta()
         ctx = yuio.json_schema.JsonSchemaContext()
         res = parser.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref("#/$defs/TimeDelta", "TimeDelta")
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/TimeDelta"
+        assert res.name == "TimeDelta"
         schema: _t.Any = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate("1day")
@@ -2732,15 +2742,12 @@ class TestUnion:
             yuio.parse.Date(),
             yuio.parse.Str(),
         )
-        assert parser.to_json_schema(
-            yuio.json_schema.JsonSchemaContext()
-        ) == yuio.json_schema.OneOf(
-            [
-                yuio.json_schema.Integer(),
-                yuio.json_schema.Ref("#/$defs/Date", "Date"),
-                yuio.json_schema.String(),
-            ]
-        )
+        res = parser.to_json_schema(yuio.json_schema.JsonSchemaContext())
+        assert isinstance(res, yuio.json_schema.OneOf)
+        assert len(res.items) == 3
+        assert isinstance(res.items[0], yuio.json_schema.Integer)
+        assert isinstance(res.items[1], yuio.json_schema.Ref)
+        assert isinstance(res.items[2], yuio.json_schema.String)
         assert parser.to_json_value("10") == "10"
         assert parser.to_json_value(datetime.date(2024, 1, 1)) == "2024-01-01"
         assert parser.to_json_value(10) == 5

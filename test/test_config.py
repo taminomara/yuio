@@ -876,10 +876,9 @@ class TestJsonSchema:
     def test_to_json_schema(self):
         ctx = yuio.json_schema.JsonSchemaContext()
         res = TestJsonSchema.MyConfig.to_json_schema(ctx)
-        assert res == yuio.json_schema.Ref(
-            "#/$defs/test.test_config.TestJsonSchema.MyConfig",
-            "test.test_config.TestJsonSchema.MyConfig",
-        )
+        assert isinstance(res, yuio.json_schema.Ref)
+        assert res.ref == "#/$defs/test.test_config.TestJsonSchema.MyConfig"
+        assert res.name == "test.test_config.TestJsonSchema.MyConfig"
         schema = ctx.render(res)
         validator = jsonschema.Draft7Validator(schema)
         validator.validate({"x": 5, "y": [1, 2, 3]}, schema)

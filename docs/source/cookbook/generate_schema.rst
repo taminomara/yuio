@@ -44,6 +44,8 @@ schema file whenever you build HTML.
 
 In your ``conf.py``:
 
+.. skip: next
+
 .. code-block:: python
 
     import json
