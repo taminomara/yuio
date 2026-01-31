@@ -14,6 +14,8 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-01-31
+
 - 🐛 Fixed rendering of Json Schema for dicts with string enum keys.
 
 ## [2.0.0] - 2026-01-31
@@ -230,5 +232,6 @@ Release candidate for version 2.
 [2.0.0-rc3]: https://github.com/taminomara/yuio/compare/v2.0.0-rc2...v2.0.0-rc3
 [2.0.0-rc4]: https://github.com/taminomara/yuio/compare/v2.0.0-rc3...v2.0.0-rc4
 [2.0.0-rc5]: https://github.com/taminomara/yuio/compare/v2.0.0-rc4...v2.0.0-rc5
+[2.0.1]: https://github.com/taminomara/yuio/compare/v2.0.0...v2.0.1
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.0...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.1...HEAD
