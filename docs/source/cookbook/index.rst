@@ -16,5 +16,8 @@ Recipes for achieving common tasks with Yuio.
         Printing formatted text to file or terminal while respecting terminal width
         or other settings.
 
+    generate_schema
+        Generate Json schema for configs when rendering documentation.
+
     custom_tasks
         Implementing tasks with custom widget.
