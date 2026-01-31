@@ -216,7 +216,9 @@ class JsonSchemaContext:
             schema = make_schema()
             self._types[key] = (name, schema)
             self._defs[name] = schema
-        return Ref(f"#/$defs/{self._types[key][0]}", self._types[key][0])
+        else:
+            _, schema = self._types[key]
+        return Ref(f"#/$defs/{self._types[key][0]}", schema, self._types[key][0])
 
     def get_type(self, ref: str) -> JsonSchemaType | None:
         """
@@ -313,6 +315,12 @@ class Ref(JsonSchemaType):
     ref: str
     """
     Referenced type.
+
+    """
+
+    item: JsonSchemaType
+    """
+    Access to the wrapped type.
 
     """
 
@@ -422,10 +430,24 @@ class Dict(JsonSchemaType):
 
     def render(self) -> dict[str, JsonValue]:
         schema: dict[str, JsonValue] = Array(Tuple([self.key, self.value])).render()
-        if isinstance(self.key, String):
+
+        key = self.key
+        while isinstance(key, (Ref, Meta)):
+            key = key.item
+
+        if isinstance(key, String):
             schema["type"] = [schema["type"], "object"]
             schema["propertyNames"] = self.key.render()
             schema["additionalProperties"] = self.value.render()
+        elif isinstance(key, Enum) and all(
+            isinstance(constant, str) for constant in key.constants
+        ):
+            schema["type"] = [schema["type"], "object"]
+            schema["properties"] = properties = {}
+            value_schema = self.value.render()
+            for constant in key.constants:
+                properties[constant] = value_schema
+            schema["additionalProperties"] = False
         return schema
 
     def remove_opaque(self) -> JsonSchemaType | None:
@@ -438,6 +460,14 @@ class Dict(JsonSchemaType):
 
     def pprint(self) -> str:
         return f"{{[{self.key.pprint()}]: {self.value.pprint()}}}"
+
+
+def _is_string_like(schema: JsonSchemaType):
+    return (
+        isinstance(schema, String)
+        or isinstance(schema, Enum)
+        and any(isinstance(constant, str) for constant in schema.constants)
+    )
 
 
 @dataclass(frozen=True, slots=True)

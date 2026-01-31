@@ -14,6 +14,8 @@ and run `pre-commit run clk` to replace:
 
 ## [Unreleased]
 
+- 🐛 Fixed rendering of Json Schema for dicts with string enum keys.
+
 ## [2.0.0] - 2026-01-31
 
 - ✨ Stable release 🎉
