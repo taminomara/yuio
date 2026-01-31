@@ -49,15 +49,15 @@ class TestJsonSchemaContext:
 
 class TestRef:
     def test_render(self):
-        ref = js.Ref("#/$defs/MyType", "MyType")
+        ref = js.Ref("#/$defs/MyType", js.Null(), "MyType")
         assert ref.render() == {"$ref": "#/$defs/MyType"}
 
     def test_pprint_with_name(self):
-        ref = js.Ref("#/$defs/MyType", "MyName")
+        ref = js.Ref("#/$defs/MyType", js.Null(), "MyName")
         assert ref.pprint() == "MyName"
 
     def test_pprint_without_name(self):
-        ref = js.Ref("#/$defs/MyType")
+        ref = js.Ref("#/$defs/MyType", js.Null())
         assert ref.pprint() == "MyType"
 
 
@@ -116,6 +116,16 @@ class TestDict:
         assert result["type"] == ["array", "object"]
         assert result["propertyNames"] == {"type": "string"}
         assert result["additionalProperties"] == {"type": "integer"}
+
+    def test_render_with_string_enum_key(self):
+        d = js.Dict(js.Enum(constants=["foo", "bar"]), js.Integer())
+        result = d.render()
+        assert result["type"] == ["array", "object"]
+        assert "propertyNames" not in result
+        assert result["properties"] == dict.fromkeys(
+            ["foo", "bar"], js.Integer().render()
+        )
+        assert result["additionalProperties"] is False
 
     def test_render_with_non_string_key(self):
         d = js.Dict(js.Integer(), js.String())

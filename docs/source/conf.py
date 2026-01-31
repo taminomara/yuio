@@ -136,13 +136,14 @@ from sphinx.domains.python._annotations import parse_reftarget as _parse_reftarg
 
 
 def parse_reftarget(*args, **kwargs):
-    _, reftarget, title, refspecific = _parse_reftarget(*args, **kwargs)
+    reftype, reftarget, title, refspecific = _parse_reftarget(*args, **kwargs)
     if reftarget in ["yuio.Positional", "yuio.Collapse", "yuio.Disabled", "yuio.Missing"]:
         reftarget = "yuio." + reftarget.removeprefix("yuio.").upper()
     elif reftarget.startswith("_t."):
         reftarget = "typing." + reftarget.removeprefix("_t.")
+        reftype = "obj"
         if title.startswith("_t."):
             title = title.removeprefix("_t.")
-    return "obj", reftarget, title, refspecific
+    return reftype, reftarget, title, refspecific
 sphinx.domains.python._annotations.parse_reftarget = parse_reftarget
 # fmt: on
