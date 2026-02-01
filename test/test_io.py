@@ -1725,6 +1725,61 @@ class TestEditWindows:
             yuio.io.edit("foo", editor="/foo/bar")
 
 
+class TestDetectShell:
+    @pytest.fixture(autouse=True)
+    def setup_env(self, monkeypatch):
+        monkeypatch.delenv("SHELL", raising=False)
+        return
+
+    @pytest.mark.linux
+    @pytest.mark.darwin
+    def test_env(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SHELL", "foobar")
+        assert yuio.io.detect_shell() == "foobar"
+
+    @pytest.mark.windows
+    def test_env_windows(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SHELL", "foobar")
+        monkeypatch.setattr("shutil.which", lambda exc: exc if exc == "pwsh" else None)
+        assert yuio.io.detect_shell() == "pwsh"
+
+    @pytest.mark.parametrize(
+        "shell",
+        [
+            "bash",
+            "sh",
+            "/bin/sh",
+        ],
+    )
+    @pytest.mark.linux
+    @pytest.mark.darwin
+    def test_which_unix(self, shell: str, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda exc: exc if exc == shell else None)
+        assert yuio.io.detect_shell() == shell
+
+    @pytest.mark.parametrize(
+        "shell",
+        [
+            "pwsh",
+            "powershell",
+        ],
+    )
+    @pytest.mark.windows
+    def test_which_windows(self, shell: str, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda exc: exc if exc == shell else None)
+        assert yuio.io.detect_shell() == shell
+
+    def test_fail(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("shutil.which", lambda exc: None)
+        assert yuio.io.detect_shell() is None
+
+    def test_fallbacks(self, monkeypatch: pytest.MonkeyPatch):
+        seen = []
+        monkeypatch.setattr("shutil.which", lambda exc: (seen.append(exc), None)[1])
+        assert yuio.io.detect_shell(fallbacks=["fallback 1", "fallback 2"]) is None
+        assert seen == ["fallback 1", "fallback 2"]
+
+
 class TestTask:
     @pytest.fixture
     def width(self):

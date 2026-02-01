@@ -18,8 +18,7 @@ if __name__ == "__main__":
 
     yuio.io.hr()
     yuio.io.success(
-        "Starting an interactive shell. "
-        "Press <c kbd>Ctrl+D</c> to exit and proceed."
+        "Starting an interactive shell. Press <c kbd>Ctrl+D</c> to exit and proceed."
     )
     result = yuio.io.shell(prompt_marker="(yuio shell example)")
     yuio.io.hr()

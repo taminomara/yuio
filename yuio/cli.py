@@ -3735,7 +3735,9 @@ class _ShortUsageFormatter:
             with ctx.with_settings(width=ctx.width - 2):
                 formatter = _CliFormatter(self.parser, ctx)
                 sep = False
-                for line in formatter.format(_HelpArgGroup(items=[_SetIndentation("  "), help])):
+                for line in formatter.format(
+                    _HelpArgGroup(items=[_SetIndentation("  "), help])
+                ):
                     if sep:
                         res.append_str("\n")
                     res.append_colorized_str(line.with_base_color(note_color))

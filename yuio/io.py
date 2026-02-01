@@ -1914,10 +1914,8 @@ def detect_shell(fallbacks: list[str] | None = None) -> str | None:
 
     """
 
-    if os.name != "nt":
-        shell = os.environ.get("SHELL")
-        if shell and shutil.which(shell):
-            return shell
+    if os.name != "nt" and (shell := os.environ.get("SHELL")):
+        return shell
 
     if fallbacks is None:
         if os.name != "nt":
