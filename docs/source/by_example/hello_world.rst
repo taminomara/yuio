@@ -22,7 +22,8 @@ Let's begin by setting up a very simple CLI app:
 This is it! You now have a CLI app that greets you. Let's run it:
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -52,7 +53,8 @@ We want colors, so it's time to switch from bare :func:`print` to :mod:`yuio.io`
     3.  Backticks work like in Markdown.
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -102,7 +104,8 @@ Yuio parses comments of your python files, so help messages
 can be just RST or Markdown docstrings!
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 20
     Source "docs/source/_tapes/_config.tape"

@@ -38,7 +38,8 @@ Or pass it to other Yuio methods:
     yuio.io.ask("Choose a number", parser=parser)
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -140,7 +141,8 @@ over plain strings because they provide enhanced widgets and autocompletion:
 
 .. vhs:: /_tapes/widget_choice.tape
     :alt: Demonstration of `Choice` widget.
-    :scale: 40%
+    :width: 480
+    :height: 240
 
 Enum parser has a few useful settings. It can load enumerators by name or by value,
 and it also can convert enumerator names to dash case:
@@ -269,7 +271,8 @@ Or with a nested parser:
             [1, 2, 3]
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"

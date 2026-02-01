@@ -14,7 +14,8 @@ print entered text:
 
 .. vhs:: /_tapes/secrets.tape
     :alt: Demonstration of the `ask` function with secret data.
-    :scale: 40%
+    :width: 480
+    :height: 240
 
 .. autoclass:: SecretValue
     :members:

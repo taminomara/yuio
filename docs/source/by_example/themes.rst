@@ -54,7 +54,8 @@ The easiest way to customize default theme is to change main colors:
     :lines: 6-11
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -77,7 +78,8 @@ for use as color tag:
     :emphasize-lines: 3,8
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -107,7 +109,8 @@ color scheme:
     :language: python
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -128,7 +131,8 @@ Message decorations
     :lines: 5-14
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -145,7 +149,8 @@ Progress bars and spinners
     :lines: 6-17
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"

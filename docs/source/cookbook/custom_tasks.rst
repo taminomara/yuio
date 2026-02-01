@@ -74,7 +74,8 @@ Putting it all together
 Finally, we can use out new task:
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"

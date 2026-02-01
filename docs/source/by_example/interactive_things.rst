@@ -25,7 +25,8 @@ Yuio offers a :mod:`logging`-like functions to print messages:
             :language: python
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -100,7 +101,8 @@ __ https://rich.readthedocs.io/en/stable/pretty.html#rich-repr-protocol
             :emphasize-lines: 13
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -146,7 +148,8 @@ You often need to print lists joined by some separator. Yuio provides
                 them with spaces.
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -173,7 +176,8 @@ CLI help, but you can print messages with it as well:
             :dedent:
 
         .. vhs-inline::
-            :scale: 40%
+            :width: 480
+            :height: 240
 
             Source "docs/source/_tapes/_config.tape"
             Type "python examples/docs/io_rst.py 2>&1 | less -R"
@@ -191,7 +195,8 @@ CLI help, but you can print messages with it as well:
             :dedent:
 
         .. vhs-inline::
-            :scale: 40%
+            :width: 480
+            :height: 240
 
             Source "docs/source/_tapes/_config.tape"
             Type "python examples/docs/io_markdown.py 2>&1 | less -R"
@@ -216,7 +221,8 @@ Yuio supports simple :doc:`code highlighting <../../internals/hl>`:
     1.  See full list of supported languages in :mod:`yuio.hl`.
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -254,7 +260,8 @@ on the expected value's type:
     via environment variables, etc.
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -297,7 +304,8 @@ And if the job can report its progress, we can even show a progressbar:
         :meth:`Task.iter() <yuio.io.Task.iter>` instead of :func:`enumerate`.
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 35
     Source "docs/source/_tapes/_config.tape"
@@ -336,7 +344,8 @@ from ``WARNING`` to ``DEBUG``:
 This is how verbose output will look like:
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Source "docs/source/_tapes/_config.tape"
     Type "python examples/docs/io_logging.py -vv"
@@ -384,7 +393,8 @@ Here's a more comprehensive example:
     :emphasize-lines: 13,15
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Source "docs/source/_tapes/_config.tape"
     Type "python examples/docs/io_suspend_complex.py"

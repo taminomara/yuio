@@ -1445,7 +1445,8 @@ class ask(_t.Generic[S], metaclass=_AskMeta):
 
     .. vhs:: /_tapes/questions.tape
         :alt: Demonstration of the `ask` function.
-        :scale: 40%
+        :width: 480
+        :height: 240
 
     :func:`ask` accepts generic parameters, which determine how input is parsed.
     For example, if you're asking for an enum element,
@@ -2892,7 +2893,8 @@ class Task(TaskBase):
 
     .. vhs:: /_tapes/tasks_multithreaded.tape
        :alt: Demonstration of the `Task` class.
-       :scale: 40%
+       :width: 480
+       :height: 240
 
     This class can be used as a context manager:
 

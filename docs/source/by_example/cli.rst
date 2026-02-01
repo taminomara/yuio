@@ -183,7 +183,8 @@ and also an epilog section to our app's help:
 This will result in the following help message:
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Set FontSize 20
     Source "docs/source/_tapes/_config.tape"
@@ -206,7 +207,8 @@ into specific files. Just run your app with :flag:`--completions` flag:
     $ ./app --completions
 
 .. vhs-inline::
-    :scale: 40%
+    :width: 480
+    :height: 240
 
     Source "docs/source/_tapes/_config.tape"
     Hide

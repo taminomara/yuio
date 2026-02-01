@@ -2733,7 +2733,8 @@ class Input(Widget[str]):
 
     .. vhs:: /_tapes/widget_input.tape
        :alt: Demonstration of `Input` widget.
-       :scale: 40%
+       :width: 480
+       :height: 240
 
     .. note::
 
@@ -3902,7 +3903,8 @@ class Choice(Widget[T], _t.Generic[T]):
 
     .. vhs:: /_tapes/widget_choice.tape
        :alt: Demonstration of `Choice` widget.
-       :scale: 40%
+       :width: 480
+       :height: 240
 
     :param options:
         list of choice options.
@@ -4066,7 +4068,8 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
 
     .. vhs:: /_tapes/widget_multiselect.tape
        :alt: Demonstration of `Multiselect` widget.
-       :scale: 40%
+       :width: 480
+       :height: 240
 
     :param options:
         list of choice options.
@@ -4230,7 +4233,8 @@ class InputWithCompletion(Widget[str]):
 
     .. vhs:: /_tapes/widget_completion.tape
        :alt: Demonstration of `InputWithCompletion` widget.
-       :scale: 40%
+       :width: 480
+       :height: 240
 
     """
 
