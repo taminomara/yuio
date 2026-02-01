@@ -53,27 +53,37 @@ autodoc_member_order = "bysource"
 autodoc_inherit_docstrings = False
 maximum_signature_line_length = 60
 autodoc_type_aliases = {
-    name: path
-    for path in [
-        "~yuio.app.OptionCtor",
-        "~yuio.io.ExcInfo",
-        "~yuio.widget.ActionKey",
-        "~yuio.widget.ActionKeys",
-        "~yuio.widget.Action",
-        "~yuio.string.Colorable",
-        "~yuio.string.RawString",
-        "~yuio.string.AnyString",
-        "~yuio.string.NoWrapStart",
-        "~yuio.string.NoWrapEnd",
-        "~yuio.string.NoWrapMarker",
-        "~yuio.json_schema.JsonValue",
-        "~yuio.dbg.EnvCollector",
-        "~yuio.cli.NArgs",
-    ]
-    for name in [
-        path.rsplit(".", maxsplit=1)[-1].removeprefix("~"),
-        path.removeprefix("~"),
-    ]
+    "DISABLED": "~yuio.DISABLED",
+    "yuio.Disabled": "~yuio.Disabled",
+    "MISSING": "~yuio.MISSING",
+    "yuio.Missing": "~yuio.Missing",
+    "POSITIONAL": "~yuio.POSITIONAL",
+    "yuio.Positional": "~yuio.Positional",
+    "COLLAPSE": "~yuio.COLLAPSE",
+    "yuio.Collapse": "~yuio.Collapse",
+    **{
+        name: path
+        for path in [
+            "~yuio.app.OptionCtor",
+            "~yuio.io.ExcInfo",
+            "~yuio.widget.ActionKey",
+            "~yuio.widget.ActionKeys",
+            "~yuio.widget.Action",
+            "~yuio.string.Colorable",
+            "~yuio.string.RawString",
+            "~yuio.string.AnyString",
+            "~yuio.string.NoWrapStart",
+            "~yuio.string.NoWrapEnd",
+            "~yuio.string.NoWrapMarker",
+            "~yuio.json_schema.JsonValue",
+            "~yuio.dbg.EnvCollector",
+            "~yuio.cli.NArgs",
+        ]
+        for name in [
+            path.rsplit(".", maxsplit=1)[-1].removeprefix("~"),
+            path.removeprefix("~"),
+        ]
+    },
 }
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
