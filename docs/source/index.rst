@@ -10,7 +10,8 @@ Yuio got you.
 
 .. vhs:: /_tapes/demo.tape
     :alt: Demonstration of yuio capabilities.
-    :scale: 50%
+    :width: 600
+    :height: 300
 
 
 .. invisible-code-block: python

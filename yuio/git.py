@@ -345,13 +345,10 @@ class Repo:
 
     @_t.overload
     def git(self, *args: str | pathlib.Path) -> bytes: ...
-
     @_t.overload
     def git(self, *args: str | pathlib.Path, capture_io: _t.Literal[False]) -> None: ...
-
     @_t.overload
     def git(self, *args: str | pathlib.Path, capture_io: bool) -> bytes | None: ...
-
     def git(self, *args: str | pathlib.Path, capture_io: bool = True):
         """
         Call git and return its stdout.

@@ -51,42 +51,35 @@ nitpick_ignore_regex = [
 autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"
 autodoc_inherit_docstrings = False
-# autodoc_typehints = "description"  # maybe sphinx 9 fixes this mess?
+maximum_signature_line_length = 60
 autodoc_type_aliases = {
-    "DISABLED": "~yuio.DISABLED",
-    "MISSING": "~yuio.MISSING",
-    "POSITIONAL": "~yuio.POSITIONAL",
-    "COLLAPSE": "~yuio.COLLAPSE",
-    **{
-        name: path
-        for path in [
-            "~yuio.app.OptionCtor",
-            "~yuio.io.ExcInfo",
-            "~yuio.widget.ActionKey",
-            "~yuio.widget.ActionKeys",
-            "~yuio.widget.Action",
-            "~yuio.string.Colorable",
-            "~yuio.string.RawString",
-            "~yuio.string.AnyString",
-            "~yuio.string.NoWrapStart",
-            "~yuio.string.NoWrapEnd",
-            "~yuio.string.NoWrapMarker",
-            "~yuio.json_schema.JsonValue",
-            "~yuio.dbg.EnvCollector",
-            "~yuio.cli.NArgs",
-        ]
-        for name in [
-            path.rsplit(".", maxsplit=1)[-1].removeprefix("~"),
-            path.removeprefix("~"),
-        ]
-    },
+    name: path
+    for path in [
+        "~yuio.app.OptionCtor",
+        "~yuio.io.ExcInfo",
+        "~yuio.widget.ActionKey",
+        "~yuio.widget.ActionKeys",
+        "~yuio.widget.Action",
+        "~yuio.string.Colorable",
+        "~yuio.string.RawString",
+        "~yuio.string.AnyString",
+        "~yuio.string.NoWrapStart",
+        "~yuio.string.NoWrapEnd",
+        "~yuio.string.NoWrapMarker",
+        "~yuio.json_schema.JsonValue",
+        "~yuio.dbg.EnvCollector",
+        "~yuio.cli.NArgs",
+    ]
+    for name in [
+        path.rsplit(".", maxsplit=1)[-1].removeprefix("~"),
+        path.removeprefix("~"),
+    ]
 }
 
 vhs_cwd = pathlib.Path(__file__).parent.parent.parent
 vhs_min_version = "0.7.2"
 vhs_n_jobs_read_the_docs = 4
-# vhs_repo = "agentstation/vhs"
-# vhs_format = "svg"
+vhs_format = "webm"
 
 toc_object_entries_show_parents = "hide"
 
@@ -130,6 +123,7 @@ inspect.TypeAliasForwardRef = TypeAliasForwardRef
 del TypeAliasForwardRef
 del inspect
 
+
 # See https://github.com/sphinx-doc/sphinx/issues/14005
 import sphinx.domains.python._annotations
 from sphinx.domains.python._annotations import parse_reftarget as _parse_reftarget
@@ -146,4 +140,17 @@ def parse_reftarget(*args, **kwargs):
             title = title.removeprefix("_t.")
     return reftype, reftarget, title, refspecific
 sphinx.domains.python._annotations.parse_reftarget = parse_reftarget
+
+
+# See https://github.com/sphinx-doc/sphinx/issues/10359
+from sphinx import pycode
+
+
+class ModuleAnalyzer(pycode.ModuleAnalyzer):
+    def analyze(self):
+        super().analyze()
+        self.overloads = {}
+pycode.ModuleAnalyzer = ModuleAnalyzer
+del ModuleAnalyzer
+del pycode
 # fmt: on

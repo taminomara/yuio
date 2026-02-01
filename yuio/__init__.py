@@ -67,7 +67,7 @@ class _Placeholders(_enum.Enum):
         return self.value  # pragma: no cover
 
 
-Disabled: _t.TypeAlias = _t.Literal[_Placeholders.DISABLED]
+Disabled: _t.TypeAlias = "_t.Literal[_Placeholders.DISABLED]"
 """
 Type of the :data:`DISABLED` placeholder.
 
@@ -80,7 +80,7 @@ Indicates that some functionality is disabled.
 """
 
 
-Missing: _t.TypeAlias = _t.Literal[_Placeholders.MISSING]
+Missing: _t.TypeAlias = "_t.Literal[_Placeholders.MISSING]"
 """
 Type of the :data:`MISSING` placeholder.
 
@@ -93,7 +93,7 @@ Indicates that some value is missing.
 """
 
 
-Positional: _t.TypeAlias = _t.Literal[_Placeholders.POSITIONAL]
+Positional: _t.TypeAlias = "_t.Literal[_Placeholders.POSITIONAL]"
 """
 Type of the :data:`POSITIONAL` placeholder.
 
@@ -106,7 +106,7 @@ Used with :func:`yuio.app.field` to enable positional arguments.
 """
 
 
-Collapse: _t.TypeAlias = _t.Literal[_Placeholders.COLLAPSE]
+Collapse: _t.TypeAlias = "_t.Literal[_Placeholders.COLLAPSE]"
 """
 Type of the :data:`COLLAPSE` placeholder.
 

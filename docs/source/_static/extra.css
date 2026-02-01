@@ -1,5 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Cascadia+Mono:ital,wght@0,200..700;1,200..700&display=swap");
 
+video {
+  max-width: 100%;
+}
+
 .sig + .sig {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
@@ -9,6 +13,11 @@
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   padding-bottom: 0.05rem;
+}
+
+.sig:not(.sig-inline) {
+  padding-left: 0.5em;
+  text-indent: 0;
 }
 
 body {
