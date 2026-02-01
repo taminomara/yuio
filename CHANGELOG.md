@@ -19,6 +19,9 @@ and run `pre-commit run clk` to replace:
 - ✨ `yuio.parse.Union` can use choice widget if all of its nested parsers can
   return options.
 
+- ✨ Added `yuio.io.shell` to spawn an interactive shell with custom prompt
+  prefix.
+
 ## [2.0.1] - 2026-01-31
 
 - 🐛 Fixed rendering of Json Schema for dicts with string enum keys.

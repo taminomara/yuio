@@ -254,6 +254,12 @@ You can also prompt the user to edit something with the :func:`edit` function:
 
 .. autofunction:: detect_editor
 
+If you need to spawn a sub-shell for user to interact with, you can use :func:`shell`:
+
+.. autofunction:: shell
+
+.. autofunction:: detect_shell
+
 All of these functions throw an error if something goes wrong:
 
 .. autoclass:: UserIoError
@@ -395,6 +401,7 @@ import string
 import subprocess
 import sys
 import tempfile
+import textwrap
 import threading
 import time
 import traceback
@@ -1611,7 +1618,9 @@ def _ask(
             prompt.append_color(base_color | ctx.get_color("code"))
             prompt.append_str(result_desc)
 
-            s.info(prompt, tag="question", ctx=ctx)
+            # note: print to default terminal, not to tty
+            s.info(prompt, tag="question")
+
             return result
     else:
         # Use raw input.
@@ -1889,6 +1898,38 @@ def detect_editor(fallbacks: list[str] | None = None) -> str | None:
     return None
 
 
+def detect_shell(fallbacks: list[str] | None = None) -> str | None:
+    """
+    Detect the user's preferred shell.
+
+    This function checks the ``SHELL`` environment variable.
+    If it's not set, it checks if any of the fallback shells are available.
+    If none can be found, it returns :data:`None`.
+
+    :param fallbacks:
+        list of fallback shells to try. By default, we try "pwsh" and "powershell"
+        on Windows, and "bash", "sh", "/bin/sh" on Linux/MacOS.
+    :returns:
+        returns an executable name.
+
+    """
+
+    if os.name != "nt":
+        shell = os.environ.get("SHELL")
+        if shell and shutil.which(shell):
+            return shell
+
+    if fallbacks is None:
+        if os.name != "nt":
+            fallbacks = ["bash", "sh", "/bin/sh"]
+        else:
+            fallbacks = ["pwsh", "powershell"]
+    for fallback in fallbacks:
+        if shutil.which(fallback):
+            return fallback
+    return None
+
+
 def edit(
     text: str,
     /,
@@ -2045,6 +2086,156 @@ def edit(
         )
 
     return text
+
+
+def shell(
+    *,
+    shell: str | None = None,
+    fallbacks: list[str] | None = None,
+    prompt_marker: str = "",
+):
+    """
+    Launch an interactive shell and give user control over it.
+
+    This function is useful in interactive scripts. For example, if the script is
+    creating a release commit, it might be desired to give user a chance to inspect
+    repository status before proceeding.
+
+    :param shell:
+        overrides shell executable.
+    :param fallbacks:
+        list of fallback shells to try, see :func:`detect_shell` for details.
+    :param prompt_marker:
+        if given, Yuio will try to add this marker to the shell's prompt
+        to remind users that this shell is a sub-process of some script.
+
+        This only works with Bash, Zsh, Fish, and PowerShell.
+
+    """
+
+    term = yuio.term.get_tty()
+
+    if not _can_query_user(term):
+        raise UserIoError("Can't run editor in non-interactive environment")
+
+    if shell is None:
+        shell = detect_shell(fallbacks=fallbacks)
+
+    if shell is None:
+        if os.name == "nt":
+            raise UserIoError("Can't find a usable shell")
+        else:
+            raise UserIoError(
+                "Can't find a usable shell. Ensure that `$SHELL`"
+                "environment variable contain correct path to a shell executable"
+            )
+
+    args = [shell]
+    env = os.environ.copy()
+
+    rcpath = None
+    rcpath_is_dir = False
+    if prompt_marker:
+        env["__YUIO_PROMPT_MARKER"] = prompt_marker
+
+        if shell == "bash" or shell.endswith(os.path.sep + "bash"):
+            fd, rcpath = tempfile.mkstemp(text=True)
+
+            rc = textwrap.dedent(
+                """
+                [ -f ~/.bashrc ] && source ~/.bashrc;
+                PS1='\\e[33m$__YUIO_PROMPT_MARKER\\e[m'\" $PS1\"
+                """
+            )
+
+            with open(fd, "w") as file:
+                file.write(rc)
+
+            args += ["--rcfile", rcpath, "-i"]
+        elif shell == "zsh" or shell.endswith(os.path.sep + "zsh"):
+            rcpath = tempfile.mkdtemp()
+            rcpath_is_dir = True
+
+            rc = textwrap.dedent(
+                """
+                ZDOTDIR=$ZDOTDIR_ORIG
+                [ -f $ZDOTDIR/.zprofile ] && source $ZDOTDIR/.zprofile
+                [ -f $ZDOTDIR/.zshrc ] && source $ZDOTDIR/.zshrc
+                autoload -U colors && colors
+                PS1='%F{yellow}$__YUIO_PROMPT_MARKER%f'" $PS1"
+                """
+            )
+
+            with open(os.path.join(rcpath, ".zshrc"), "w") as file:
+                file.write(rc)
+
+            if "ZDOTDIR" in env:
+                zdotdir = env["ZDOTDIR"]
+            else:
+                zdotdir = os.path.expanduser("~")
+
+            env["ZDOTDIR"] = rcpath
+            env["ZDOTDIR_ORIG"] = zdotdir
+
+            args += ["-i"]
+        elif shell == "fish" or shell.endswith(os.path.sep + "fish"):
+            rc = textwrap.dedent(
+                """
+                functions -c fish_prompt _yuio_old_fish_prompt
+                function fish_prompt
+                    set -l old_status $status
+                    printf "%s%s%s " (set_color yellow) $__YUIO_PROMPT_MARKER (set_color normal)
+                    echo "exit $old_status" | .
+                    _yuio_old_fish_prompt
+                end
+                """
+            )
+
+            args += ["--init-command", rc, "-i"]
+        elif shell in ["powershell", "pwsh"] or shell.endswith(
+            (os.path.sep + "powershell", os.path.sep + "pwsh")
+        ):
+            fd, rcpath = tempfile.mkstemp(text=True)
+
+            rc = textwrap.dedent(
+                """
+                function global:_yuio_old_pwsh_prompt { "" }
+                Copy-Item -Path function:prompt -Destination function:_yuio_old_pwsh_prompt
+
+                function global:prompt {
+                    Write-Host -NoNewline -ForegroundColor Yellow "$env:__YUIO_PROMPT_MARKER "
+                    _yuio_old_pwsh_prompt
+                }
+                """
+            )
+
+            with open(fd, "w") as file:
+                file.write(rc)
+
+            args += ["-Interactive", "-NoExit", "-File", rcpath]
+
+    try:
+        with SuspendOutput():
+            subprocess.run(
+                args,
+                env=env,
+                stdin=term.istream.fileno(),
+                stdout=term.ostream.fileno(),
+            )
+    except FileNotFoundError:
+        raise UserIoError(
+            "Can't use shell `%r`: no such file or directory",
+            shell,
+        )
+    finally:
+        if rcpath:
+            try:
+                if rcpath_is_dir:
+                    shutil.rmtree(rcpath)
+                else:
+                    os.remove(rcpath)
+            except OSError:
+                pass
 
 
 class MessageChannel:
