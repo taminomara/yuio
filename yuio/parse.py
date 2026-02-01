@@ -1154,18 +1154,23 @@ class Parser(PartialParser, _t.Generic[T_co]):
     @abc.abstractmethod
     def options(self) -> _t.Collection[yuio.widget.Option[T_co]] | None:
         """
-        Return options for a :class:`~yuio.widget.Multiselect` widget.
+        Return options for a :class:`~yuio.widget.Choice` or
+        a :class:`~yuio.widget.Multiselect` widget.
 
         This function can be implemented for parsers that return a fixed set
-        of pre-defined values, like :class:`Enum` or :class:`OneOf`.
-        Collection parsers may use this data to improve their widgets.
+        of pre-defined values, like :class:`Enum` or :class:`Literal`.
+        Collection and union parsers may use this data to improve their widgets.
         For example, the :class:`Set` parser will use
         a :class:`~yuio.widget.Multiselect` widget.
 
         :returns:
-            a full list of options that will be passed to
-            a :class:`~yuio.widget.Multiselect` widget, or :data:`None`
-            if the set of possible values is not known.
+            a full list of options that will be passed to a choice widget,
+            or :data:`None` if the set of possible values is not known.
+
+            Note that returning :data:`None` is not equivalent to returning an empty
+            array: :data:`None` signals other parsers that they can't use choice
+            widgets, while an empty array signals that there are simply no choices
+            to add.
 
         """
 
@@ -2167,6 +2172,12 @@ class Bool(ValueParser[bool]):
         assert self.assert_type(value)
         return "yes" if value else "no"
 
+    def options(self) -> _t.Collection[yuio.widget.Option[bool]] | None:
+        return [
+            yuio.widget.Option(True, display_text="yes"),
+            yuio.widget.Option(False, display_text="no"),
+        ]
+
     def completer(self) -> yuio.complete.Completer | None:
         return yuio.complete.Choice(
             [
@@ -2346,6 +2357,10 @@ class _EnumBase(WrappingParser[T, U], ValueParser[T], _t.Generic[T, U]):
         /,
     ) -> yuio.widget.Widget[T | yuio.Missing]:
         options: list[yuio.widget.Option[T | yuio.Missing]] = list(self.options())
+
+        if not options:
+            return super().widget(default, input_description, default_description)
+
         items = list(self._get_items())
 
         if default is yuio.MISSING:
@@ -3856,7 +3871,7 @@ class Set(CollectionParser[set[T], T], _t.Generic[T]):
         /,
     ) -> yuio.widget.Widget[set[T] | yuio.Missing]:
         options = self._inner.options()
-        if options is not None and len(options) <= 25:
+        if options and len(options) <= 25:
             return yuio.widget.Map(yuio.widget.Multiselect(list(options)), set)
         else:
             return super().widget(default, input_description, default_description)
@@ -4771,6 +4786,41 @@ class Union(WrappingParser[T, tuple[Parser[T], ...]], ValueParser[T], _t.Generic
         else:
             return yuio.complete.Alternative(completers)
 
+    def widget(
+        self,
+        default: object | yuio.Missing,
+        input_description: str | None,
+        default_description: str | None,
+    ) -> yuio.widget.Widget[T | yuio.Missing]:
+        options = []
+        for parser in self._inner:
+            parser_options = parser.options()
+            if parser_options is None:
+                options = None
+                break
+            options.extend(parser_options)
+
+        if not options:
+            return super().widget(default, input_description, default_description)
+
+        if default is yuio.MISSING:
+            default_index = 0
+        else:
+            for i, option in enumerate(options):
+                if option.value == default:
+                    default_index = i
+                    break
+            else:
+                options.insert(
+                    0,
+                    yuio.widget.Option(
+                        yuio.MISSING, default_description or str(default)
+                    ),
+                )
+                default_index = 0
+
+        return yuio.widget.Choice(options, default_index=default_index)
+
     def to_json_schema(
         self, ctx: yuio.json_schema.JsonSchemaContext, /
     ) -> yuio.json_schema.JsonSchemaType:
@@ -5389,6 +5439,9 @@ class OneOf(ValidatingParser[T], _t.Generic[T]):
         allowed_values = list(self._allowed_values)
 
         options = _t.cast(list[yuio.widget.Option[T | yuio.Missing]], self.options())
+
+        if not options:
+            return super().widget(default, input_description, default_description)
 
         if default is yuio.MISSING:
             default_index = 0
