@@ -475,6 +475,7 @@ __all__ = [
     "ask",
     "br",
     "detect_editor",
+    'detect_shell',
     "edit",
     "error",
     "error_with_tb",
@@ -494,11 +495,12 @@ __all__ = [
     "restore_streams",
     "rst",
     "setup",
+    'shell',
     "streams_wrapped",
     "success",
     "wait_for_user",
     "warning",
-    "wrap_streams",
+    "wrap_streams"
 ]
 
 T = _t.TypeVar("T")

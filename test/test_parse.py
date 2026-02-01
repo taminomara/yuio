@@ -543,7 +543,24 @@ class TestBool:
         parser = yuio.parse.Bool()
         assert not parser.supports_parse_many()
         assert parser.get_nargs() == 1
-        assert parser.options() is None
+        assert parser.options() == [
+            yuio.widget.Option(
+                value=True,
+                display_text="yes",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+            yuio.widget.Option(
+                value=False,
+                display_text="no",
+                display_text_prefix="",
+                display_text_suffix="",
+                comment=None,
+                color_tag="none",
+            ),
+        ]
         assert not parser.is_secret()
         with pytest.raises(RuntimeError):
             assert parser.parse_many(["1", "2", "3"])
