@@ -2139,7 +2139,7 @@ def shell(
         env["__YUIO_PROMPT_MARKER"] = prompt_marker
 
         if shell == "bash" or shell.endswith(os.path.sep + "bash"):
-            fd, rcpath = tempfile.mkstemp(text=True)
+            fd, rcpath = tempfile.mkstemp(text=True, suffix=".bash")
 
             rc = textwrap.dedent(
                 """
@@ -2195,7 +2195,7 @@ def shell(
         elif shell in ["powershell", "pwsh"] or shell.endswith(
             (os.path.sep + "powershell", os.path.sep + "pwsh")
         ):
-            fd, rcpath = tempfile.mkstemp(text=True)
+            fd, rcpath = tempfile.mkstemp(text=True, suffix=".ps1")
 
             rc = textwrap.dedent(
                 """
@@ -2212,7 +2212,7 @@ def shell(
             with open(fd, "w") as file:
                 file.write(rc)
 
-            args += ["-Interactive", "-NoExit", "-File", rcpath]
+            args += ["-NoExit", "-File", rcpath]
 
     try:
         with SuspendOutput():
