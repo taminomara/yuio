@@ -4,10 +4,12 @@ import yuio.io
 
 @yuio.app.app(doc_format="md")  # [1]_
 def main(
-    #: Who do we want to greet?  [2]_
+    #: Output file, defaults to printing to `stdout`.  [2]_
+    output: pathlib.Path | None = None,
+    /,
+    *,
+    #: Who do we want to greet?
     greeting: str = yuio.app.field(default="world", flags=["-g", "--greeting"]),
-    #: Output file, defaults to printing to `stdout`.
-    output: pathlib.Path | None = yuio.app.positional(default=None),
 ):
     """
     This is a program for greeting guests.  [3]_

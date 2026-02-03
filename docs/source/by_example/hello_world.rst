@@ -73,16 +73,17 @@ the greeting to a file:
 
 .. literalinclude:: /../../examples/docs/hw_flags.py
     :language: python
-    :lines: 1-13
+    :lines: 1-15
 
 .. code-annotations::
 
     1.  We use :class:`pathlib.Path` instead of :class:`str`. This tells Yuio
         that you expect a file path, which affects autocompletion.
-    2.  :func:`yuio.app.field` allows customizing settings for app arguments
+    2.  Positional-only arguments become positional CLI options.
+    3.  This syntax separates positional-only arguments from normal arguments.
+        See :pep:`570` for details.
+    4.  :func:`yuio.app.field` allows customizing settings for app arguments
         and config fields.
-    3.  :func:`yuio.app.positional` is a convenience shortcut
-        for :func:`yuio.app.field`.
 
 
 Adding help for CLI arguments
@@ -92,7 +93,7 @@ Finally, let's add some help messages to document our CLI options:
 
 .. literalinclude:: /../../examples/docs/hw_help.py
     :language: python
-    :lines: 5-16
+    :lines: 5-18
 
 .. code-annotations::
 

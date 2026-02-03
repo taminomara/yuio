@@ -51,7 +51,7 @@ nitpick_ignore_regex = [
 autodoc_typehints_format = "short"
 autodoc_member_order = "bysource"
 autodoc_inherit_docstrings = False
-maximum_signature_line_length = 60
+maximum_signature_line_length = 80
 autodoc_type_aliases = {
     "DISABLED": "~yuio.DISABLED",
     "yuio.Disabled": "~yuio.Disabled",

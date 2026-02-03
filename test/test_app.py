@@ -1,3 +1,5 @@
+import textwrap
+
 import pytest
 
 import yuio
@@ -98,11 +100,36 @@ class TestBasicArgumentParsing:
         assert results["count"] == 10
         assert results["quiet"] is True
 
+    def test_keyword_only(self, results):
+        @app
+        def main(*, count: int = 0):
+            results["count"] = count
+
+        with pytest.raises(SystemExit) as exc_info:
+            main.run(["--count", "42"])
+        assert exc_info.value.code == 0
+        assert results["count"] == 42
+
 
 class TestPositionalArguments:
     def test_positional_argument(self, results):
+        with pytest.warns(
+            yuio.YuioPendingDeprecationWarning,
+            match="prefer using positional-only function arguments instead",
+        ):
+
+            @app
+            def main(input_file: str = positional()):
+                results["input_file"] = input_file
+
+        with pytest.raises(SystemExit) as exc_info:
+            main.run(["input.txt"])
+        assert exc_info.value.code == 0
+        assert results["input_file"] == "input.txt"
+
+    def test_implicit_positional_argument(self, results):
         @app
-        def main(input_file: str = positional()):
+        def main(input_file: str, /):
             results["input_file"] = input_file
 
         with pytest.raises(SystemExit) as exc_info:
@@ -111,10 +138,15 @@ class TestPositionalArguments:
         assert results["input_file"] == "input.txt"
 
     def test_positional_with_flag(self, results):
-        @app
-        def main(input_file: str = positional(), output: str = "out.txt"):
-            results["input_file"] = input_file
-            results["output"] = output
+        with pytest.warns(
+            yuio.YuioPendingDeprecationWarning,
+            match="prefer using positional-only function arguments instead",
+        ):
+
+            @app
+            def main(input_file: str = positional(), output: str = "out.txt"):
+                results["input_file"] = input_file
+                results["output"] = output
 
         with pytest.raises(SystemExit) as exc_info:
             main.run(["input.txt", "--output", "result.txt"])
@@ -123,10 +155,15 @@ class TestPositionalArguments:
         assert results["output"] == "result.txt"
 
     def test_flag_before_positional(self, results):
-        @app
-        def main(input_file: str = positional(), output: str = "out.txt"):
-            results["input_file"] = input_file
-            results["output"] = output
+        with pytest.warns(
+            yuio.YuioPendingDeprecationWarning,
+            match="prefer using positional-only function arguments instead",
+        ):
+
+            @app
+            def main(input_file: str = positional(), output: str = "out.txt"):
+                results["input_file"] = input_file
+                results["output"] = output
 
         with pytest.raises(SystemExit) as exc_info:
             main.run(["--output", "result.txt", "input.txt"])
@@ -135,13 +172,28 @@ class TestPositionalArguments:
         assert results["output"] == "result.txt"
 
     def test_missing_required_positional(self):
-        @app
-        def main(input_file: str = positional()):
-            pass
+        with pytest.warns(
+            yuio.YuioPendingDeprecationWarning,
+            match="prefer using positional-only function arguments instead",
+        ):
+
+            @app
+            def main(input_file: str = positional()):
+                pass
 
         with pytest.raises(SystemExit) as exc_info:
             main.run([])
         assert exc_info.value.code == 1
+
+    def test_positional_variadic(self, results):
+        @app
+        def main(*input_files: str):
+            results["input_files"] = input_files
+
+        with pytest.raises(SystemExit) as exc_info:
+            main.run(["input.txt", "input-2.txt"])
+        assert exc_info.value.code == 0
+        assert results["input_files"] == ("input.txt", "input-2.txt")
 
 
 class TestSubcommands:
@@ -499,10 +551,15 @@ class TestEdgeCases:
         assert results["count"] == -5
 
     def test_double_dash_separator(self, results):
-        @app
-        def main(flag: bool = False, files: list[str] = positional(default=[])):
-            results["flag"] = flag
-            results["files"] = files
+        with pytest.warns(
+            yuio.YuioPendingDeprecationWarning,
+            match="prefer using positional-only function arguments instead",
+        ):
+
+            @app
+            def main(flag: bool = False, files: list[str] = positional(default=[])):
+                results["flag"] = flag
+                results["files"] = files
 
         with pytest.raises(SystemExit) as exc_info:
             main.run(["--", "--flag", "-x"])
@@ -871,15 +928,20 @@ class TestOptionCtors:
         assert results["keep_alive"] is False
 
     def test_bool_option_positional_raises(self):
-        @app
-        def main(
-            flag: bool = field(
-                default=False,
-                flags=yuio.POSITIONAL,
-                option_ctor=yuio.app.bool_option(),
-            ),
+        with pytest.warns(
+            yuio.YuioPendingDeprecationWarning,
+            match="prefer using positional-only function arguments instead",
         ):
-            pass
+
+            @app
+            def main(
+                flag: bool = field(
+                    default=False,
+                    flags=yuio.POSITIONAL,
+                    option_ctor=yuio.app.bool_option(),
+                ),
+            ):
+                pass
 
         with pytest.raises(SystemExit) as exc_info:
             main.run([])
@@ -932,41 +994,126 @@ class TestAppDecorator:
 
 
 class TestAppWrapped:
-    def test_wrapped_callable(self, results):
-        @app
-        def main(name: str = "default"):
-            results["name"] = name
+    @pytest.mark.parametrize(
+        ("sig", "args", "kwargs", "expected"),
+        [
+            (
+                "a: int, b: int",
+                (),
+                {},
+                pytest.raises(TypeError, match=r"missing required argument a"),
+            ),
+            (
+                "a: int, b: int",
+                (1,),
+                {"a": 2, "b": 3},
+                pytest.raises(TypeError, match=r"argument a was given twice"),
+            ),
+            ("a: int, b: int", (1, 2), {}, {"a": 1, "b": 2}),
+            ("a: int, b: int", (1,), {"b": 2}, {"a": 1, "b": 2}),
+            ("a: int, b: int", (), {"a": 1, "b": 2}, {"a": 1, "b": 2}),
+            ("a: int = 0", (), {}, {"a": 0}),
+            ("a: int = 0, /", (), {}, {"a": 0}),
+            ("a: int = field(default=0)", (), {}, {"a": 0}),
+            ("a: int = field(default=0), /", (), {}, {"a": 0}),
+            (
+                "a: int, /, b: int, *, c: int",
+                (1, 2, 3),
+                {},
+                pytest.raises(
+                    TypeError, match=r"expected at most 2 positional arguments, got 3"
+                ),
+            ),
+            (
+                "a: int, /, b: int, *, c: int",
+                (1, 2),
+                {"c": 3},
+                {"a": 1, "b": 2, "c": 3},
+            ),
+            (
+                "a: int, /, b: int, *, c: int",
+                (1,),
+                {"b": 2, "c": 3},
+                {"a": 1, "b": 2, "c": 3},
+            ),
+            (
+                "a: int, /, b: int, *, c: int",
+                (),
+                {"a": 1, "b": 2, "c": 3},
+                pytest.raises(
+                    TypeError,
+                    match=r"positional-only argument a was given as keyword argument",
+                ),
+            ),
+            ("a: int, *b: int", (1, 2, 3), {}, {"a": 1, "b": (2, 3)}),
+            ("*a: int", (1, 2, 3), {}, {"a": (1, 2, 3)}),
+            (
+                "*a: int",
+                (1, 2, 3),
+                {"a": (1, 2, 3)},
+                pytest.raises(
+                    TypeError,
+                    match=r"unexpected argument a",
+                ),
+            ),
+        ],
+    )
+    def test_wrapped_callable(self, sig, args, kwargs, expected):
+        ns = {}
 
-        result = main.wrapped(name="test")
-        assert result is False  # Returns False from CommandInfo()
-        assert results["name"] == "test"
+        exec(
+            textwrap.dedent(
+                f"""
+                ns = locals()["ns"]
 
-    def test_wrapped_with_positional_args(self, results):
-        @app
-        def main(a: str = "", b: int = 0):
-            results["a"] = a
-            results["b"] = b
+                @app
+                def main({sig}):
+                    global ns
+                    ns["results"] = locals().copy()
 
-        result = main.wrapped("hello", 42)
-        assert result is False
-        assert results["a"] == "hello"
-        assert results["b"] == 42
+                ns["main"] = main
+                """
+            )
+        )
 
-    def test_wrapped_with_fields(self, results):
-        @app
-        def main(name: str = field(default="default")):
-            results["name"] = name
-
-        result = main.wrapped(name="test")
-        assert result is False  # Returns False from CommandInfo()
-        assert results["name"] == "test"
+        if isinstance(expected, pytest.RaisesExc):
+            with expected:
+                ns["main"].wrapped(*args, **kwargs)
+        else:
+            result = ns["main"].wrapped(*args, **kwargs)
+            assert result is False
+            assert ns["results"] == expected
 
     def test_wrapped_with_command_info(self, results):
         @app
-        def main(_command_info, name: str = field(default="default")):
+        def main(_command_info: CommandInfo, name: str = field(default="default")):
             results["name"] = name
+            assert _command_info.name == "__raw__"
+            assert _command_info.subcommand is None
 
         result = main.wrapped(name="test")  # type: ignore
+        assert result is False  # Returns False from CommandInfo()
+        assert results["name"] == "test"
+
+    def test_wrapped_with_command_info_no_annotation(self, results):
+        @app
+        def main(_command_info, name: str = field(default="default")):
+            results["name"] = name
+            assert _command_info.name == "__raw__"
+            assert _command_info.subcommand is None
+
+        result = main.wrapped(name="test")  # type: ignore
+        assert result is False  # Returns False from CommandInfo()
+        assert results["name"] == "test"
+
+    def test_wrapped_with_command_info_no_override(self, results):
+        @app
+        def main(_command_info, name: str = field(default="default")):
+            results["name"] = name
+            assert _command_info.name == "__raw__"
+            assert _command_info.subcommand is None
+
+        result = main.wrapped(name="test", _command_info=None)
         assert result is False  # Returns False from CommandInfo()
         assert results["name"] == "test"
 

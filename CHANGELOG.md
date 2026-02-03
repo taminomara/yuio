@@ -22,6 +22,13 @@ and run `pre-commit run clk` to replace:
 - ✨ Added `yuio.io.shell` to spawn an interactive shell with custom prompt
   prefix.
 
+- ✨ Supported positional-only arguments in apps; these arguments create
+  positional CLI options.
+
+- ⚠️ `yuio.config.positional` and passing `yuio.POSITIONAL` to
+  `yuio.config.field` is pending deprecation, and will be deprecated unless
+  someone reports a legitimate use-case for it.
+
 ## [2.0.1] - 2026-01-31
 
 - 🐛 Fixed rendering of Json Schema for dicts with string enum keys.

@@ -205,7 +205,7 @@ Any punctuation symbol can be escaped with backslash:
 
 .. code-block:: python
 
-    yuio.io.info("\\`\\<c red> this is normal text \\</c>\\`.")
+    yuio.io.info(r"\\`\\<c red> this is normal text \\</c>\\`.")
 
 See full list of tags in :ref:`yuio.theme <common-tags>`.
 

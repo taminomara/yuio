@@ -152,6 +152,10 @@ markers = [
     "darwin: test runs only on darwin runners",
     "full: long test or test with special requirements, only runs in CI",
 ]
+filterwarnings = [
+    # This comes from within jsonschema...
+    "ignore:Passing a schema to Validator.iter_errors is deprecated:DeprecationWarning",
+]
 
 [tool.pyright]
 include = ["yuio", "examples"]

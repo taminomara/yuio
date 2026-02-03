@@ -231,7 +231,6 @@ will be concatenated.
 Re-imports
 ----------
 
-
 .. function:: field
     :no-index:
 
@@ -241,11 +240,6 @@ Re-imports
     :no-index:
 
     Alias of :obj:`yuio.app.inline`
-
-.. function:: positional
-    :no-index:
-
-    Alias of :obj:`yuio.app.positional`
 
 .. function:: bool_option
     :no-index:
@@ -327,6 +321,7 @@ import os
 import pathlib
 import textwrap
 import types
+import warnings
 from dataclasses import dataclass
 
 import yuio
@@ -612,7 +607,7 @@ def field(
     *,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     env: str | yuio.Disabled | None = None,
-    flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    flags: str | list[str] | yuio.Disabled | None = None,
     required: bool | None = None,
     mutex_group: MutuallyExclusiveGroup | None = None,
     help: str | yuio.Disabled | None = None,
@@ -628,7 +623,7 @@ def field(
     default: None,
     parser: yuio.parse.Parser[T] | None = None,
     env: str | yuio.Disabled | None = None,
-    flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    flags: str | list[str] | yuio.Disabled | None = None,
     required: bool | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     merge: _t.Callable[[T, T], T] | None = None,
@@ -647,7 +642,74 @@ def field(
     default: T | yuio.Missing = yuio.MISSING,
     parser: yuio.parse.Parser[T] | None = None,
     env: str | yuio.Disabled | None = None,
-    flags: str | list[str] | yuio.Positional | yuio.Disabled | None = None,
+    flags: str | list[str] | yuio.Disabled | None = None,
+    required: bool | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
+    merge: _t.Callable[[T, T], T] | None = None,
+    mutex_group: MutuallyExclusiveGroup | None = None,
+    option_ctor: OptionCtor[T] | None = None,
+    help: str | yuio.Disabled | None = None,
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING,
+    metavar: str | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
+    show_if_inherited: bool | None = None,
+) -> T: ...
+@_t.overload
+@_t.deprecated(
+    "prefer using positional-only function arguments instead",
+    category=yuio.YuioPendingDeprecationWarning,
+)
+def field(
+    *,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
+    env: str | yuio.Disabled | None = None,
+    flags: yuio.Positional,
+    required: bool | None = None,
+    mutex_group: MutuallyExclusiveGroup | None = None,
+    help: str | yuio.Disabled | None = None,
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING,
+    metavar: str | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
+    show_if_inherited: bool | None = None,
+) -> _t.Any: ...
+@_t.overload
+@_t.deprecated(
+    "passing flags=yuio.POSITIONAL is discouraged, "
+    "prefer using positional-only function arguments instead",
+    category=yuio.YuioPendingDeprecationWarning,
+)
+def field(
+    *,
+    default: None,
+    parser: yuio.parse.Parser[T] | None = None,
+    env: str | yuio.Disabled | None = None,
+    flags: yuio.Positional,
+    required: bool | None = None,
+    completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
+    merge: _t.Callable[[T, T], T] | None = None,
+    mutex_group: MutuallyExclusiveGroup | None = None,
+    option_ctor: OptionCtor[T] | None = None,
+    help: str | yuio.Disabled | None = None,
+    help_group: HelpGroup | yuio.Collapse | None | yuio.Missing = yuio.MISSING,
+    metavar: str | None = None,
+    usage: yuio.Collapse | bool | None = None,
+    default_desc: str | None = None,
+    show_if_inherited: bool | None = None,
+) -> T | None: ...
+@_t.overload
+@_t.deprecated(
+    "passing flags=yuio.POSITIONAL is discouraged, "
+    "prefer using positional-only function arguments instead",
+    category=yuio.YuioPendingDeprecationWarning,
+)
+def field(
+    *,
+    default: T | yuio.Missing = yuio.MISSING,
+    parser: yuio.parse.Parser[T] | None = None,
+    env: str | yuio.Disabled | None = None,
+    flags: yuio.Positional,
     required: bool | None = None,
     completer: yuio.complete.Completer | None | yuio.Missing = yuio.MISSING,
     merge: _t.Callable[[T, T], T] | None = None,
@@ -697,9 +759,8 @@ def field(
     :param flags:
         list of names (or a single name) of CLI flags that will be used for this field.
 
-        In configs, pass :data:`~yuio.DISABLED` to disable loading this field form CLI arguments.
-
-        In apps, pass :data:`~yuio.POSITIONAL` to make this argument positional.
+        In configs, pass :data:`~yuio.DISABLED` to disable loading this field
+        form CLI arguments.
 
         In sub-config fields, controls prefix for all flags withing this sub-config;
         pass an empty string to disable prefixing.
@@ -783,6 +844,14 @@ def field(
 
     """
 
+    if flags is yuio.POSITIONAL:
+        warnings.warn(
+            "passing flags=yuio.POSITIONAL is discouraged, "
+            "prefer using positional-only function arguments instead",
+            category=yuio.YuioPendingDeprecationWarning,
+            stacklevel=2,
+        )
+
     return _FieldSettings(
         default=default,
         parser=parser,
@@ -860,6 +929,12 @@ def positional(
     usage: yuio.Collapse | bool | None = None,
     default_desc: str | None = None,
 ) -> T: ...
+
+
+@_t.deprecated(
+    "prefer using positional-only function arguments instead",
+    category=yuio.YuioPendingDeprecationWarning,
+)
 def positional(
     *,
     default: _t.Any = yuio.MISSING,
@@ -878,7 +953,7 @@ def positional(
 
     """
 
-    return field(
+    return _FieldSettings(
         default=default,
         parser=parser,
         env=env,

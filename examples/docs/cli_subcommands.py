@@ -7,12 +7,12 @@ def main():
     pass
 
 @main.subcommand
-def backup(file: pathlib.Path = yuio.app.positional()):
+def backup(file: pathlib.Path, /):
     bak = file.parent / (file.name + ".bak")
     shutil.copy(file, bak)
 
 @main.subcommand
-def restore(file: pathlib.Path = yuio.app.positional()):
+def restore(file: pathlib.Path, /):
     bak = file.parent / (file.name + ".bak")
     shutil.rmtree(file, ignore_errors=True)
     shutil.move(str(bak), file)

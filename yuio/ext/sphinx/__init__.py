@@ -45,7 +45,7 @@ This distinction is important. Consider the following application:
     @yuio.app.app(prog="my-app")
     def main(
         quiet: bool,
-        input: pathlib.Path = yuio.app.positional(),
+        input: pathlib.Path,
     ): ...
 
 In *cfg* namespace you would address `quiet` as ``main.quiet``, while in *cmd*

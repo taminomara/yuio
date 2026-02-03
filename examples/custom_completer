@@ -14,7 +14,8 @@ class Completer(yuio.complete.Completer):
 
 @yuio.app.app
 def main(
-    args: list[str] = yuio.app.positional(completer=Completer()),
+    args: list[str] = yuio.app.field(completer=Completer()),
+    /,
 ):
     yuio.io.info("args = `%#r`", args)
 

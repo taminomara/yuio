@@ -26,6 +26,12 @@ Errors and debugging
 .. autoclass:: yuio.YuioWarning
     :members:
 
+.. autoclass:: yuio.YuioDeprecationWarning
+    :members:
+
+.. autoclass:: yuio.YuioPendingDeprecationWarning
+    :members:
+
 
 Magic variables
 ---------------

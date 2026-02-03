@@ -20,9 +20,11 @@ with the :func:`app` decorator, and use :meth:`App.run` method to start it:
     @app
     def main(
         #: help message for `arg`
-        arg: str = positional(),
+        arg: str,  # [1]_
+        /,
+        *,
         #: help message for `--flag`
-        flag: int = 0
+        flag: int = 0  # [2]_
     ):
         \"""this command does a thing\"""
         yuio.io.info("flag=%r, arg=%r", flag, arg)
@@ -32,6 +34,11 @@ with the :func:`app` decorator, and use :meth:`App.run` method to start it:
         # Notice that `run` does not return anything. Instead, it terminates
         # python process with an appropriate exit code.
         main.run("--flag 10 foobar!".split())
+
+.. code-annotations::
+
+    1.  Positional-only arguments become positional CLI options.
+    2.  Other arguments become CLI flags.
 
 Function's arguments will become program's flags and positionals, and function's
 docstring will become app's :attr:`~App.description`.
@@ -83,8 +90,6 @@ arguments. You can use the :func:`field` function to override them:
 .. autofunction:: field
 
 .. autofunction:: inline
-
-.. autofunction:: positional
 
 
 Using configs in CLI
@@ -901,18 +906,50 @@ class App(_t.Generic[C]):
 
         @functools.wraps(command)
         def wrapped_command(*args, **kwargs):
-            if args:
-                names = self._config_type.__annotations__
-                if len(args) > len(names):
-                    s = "" if len(names) == 1 else "s"
+            a_params: list[str] = getattr(self._config_type, "_a_params")
+            a_kw_params: list[str] = getattr(self._config_type, "_a_kw_params")
+            var_a_param: str | None = getattr(self._config_type, "_var_a_param")
+            kw_params: list[str] = getattr(self._config_type, "_kw_params")
+
+            i = 0
+
+            for name in a_params:
+                if name in kwargs:
                     raise TypeError(
-                        f"expected at most {len(names)} positional argument{s}, got {len(args)}"
+                        f"positional-only argument {name} was given as keyword argument"
                     )
-                for arg, name in zip(args, names):
-                    if name in kwargs:
-                        raise TypeError(f"argument {name} was given twice")
-                    kwargs[name] = arg
-            return CommandInfo("__raw__", self._config_type(**kwargs), False)()
+                if i < len(args):
+                    kwargs[name] = args[i]
+                    i += 1
+
+            for name in a_kw_params:
+                if i >= len(args):
+                    break
+                if name in kwargs:
+                    raise TypeError(f"argument {name} was given twice")
+                kwargs[name] = args[i]
+                i += 1
+
+            if var_a_param:
+                if var_a_param in kwargs:
+                    raise TypeError(f"unexpected argument {var_a_param}")
+                kwargs[var_a_param] = args[i:]
+                i = len(args)
+            elif i < len(args):
+                s = "" if i == 1 else "s"
+                raise TypeError(
+                    f"expected at most {i} positional argument{s}, got {len(args)}"
+                )
+
+            kwargs.pop("_command_info", None)
+
+            config = self._config_type(**kwargs)
+
+            for name in a_params + a_kw_params + kw_params:
+                if not hasattr(config, name) and name != "_command_info":
+                    raise TypeError(f"missing required argument {name}")
+
+            return CommandInfo("__raw__", config, False)()
 
         self.wrapped: C = wrapped_command  # type: ignore
         """
@@ -1149,8 +1186,6 @@ def _command_from_callable(
     dct = {}
     annotations = {}
 
-    accepts_command_info = False
-
     try:
         docs = _find_docs(cb)
     except Exception:
@@ -1161,16 +1196,22 @@ def _command_from_callable(
         )
         docs = {}
 
-    for name, param in sig.parameters.items():
-        if param.kind not in (param.POSITIONAL_OR_KEYWORD, param.KEYWORD_ONLY):
-            raise TypeError("positional-only and variadic arguments are not supported")
+    dct["_a_params"] = a_params = []
+    dct["_var_a_param"] = var_a_param = None
+    dct["_a_kw_params"] = a_kw_params = []
+    dct["_kw_params"] = kw_params = []
 
+    for name, param in sig.parameters.items():
+        if param.kind is param.VAR_KEYWORD:
+            raise TypeError("variadic keyword parameters are not supported")
+
+        is_special = False
         if name.startswith("_"):
-            if name == "_command_info":
-                accepts_command_info = True
-                continue
-            else:
-                raise TypeError(f"unknown special param {name}")
+            is_special = True
+            if name != "_command_info":
+                raise TypeError(f"unknown special parameter {name}")
+            if param.kind is param.VAR_POSITIONAL:
+                raise TypeError(f"special parameter {name} can't be variadic")
 
         if param.default is not param.empty:
             field = param.default
@@ -1181,14 +1222,31 @@ def _command_from_callable(
                 yuio.config._FieldSettings, yuio.config.field(default=field)
             )
 
-        if param.annotation is param.empty:
-            raise TypeError(f"param {name} requires type annotation")
+        annotation = param.annotation
+        if annotation is param.empty and not is_special:
+            raise TypeError(f"parameter {name} requires type annotation")
 
-        dct[name] = field
-        annotations[name] = param.annotation
+        match param.kind:
+            case param.POSITIONAL_ONLY:
+                if field.flags is None:
+                    field = dataclasses.replace(field, flags=yuio.POSITIONAL)
+                a_params.append(name)
+            case param.VAR_POSITIONAL:
+                if field.flags is None:
+                    field = dataclasses.replace(field, flags=yuio.POSITIONAL)
+                annotation = list[annotation]
+                dct["_var_a_param"] = var_a_param = name
+            case param.POSITIONAL_OR_KEYWORD:
+                a_kw_params.append(name)
+            case param.KEYWORD_ONLY:
+                kw_params.append(name)
+
+        if not is_special:
+            dct[name] = field
+            annotations[name] = annotation
 
     dct["_run"] = _command_from_callable_run_impl(
-        cb, list(annotations.keys()), accepts_command_info
+        cb, a_params + a_kw_params, var_a_param, kw_params
     )
     dct["_color"] = None
     dct["_verbose"] = 0
@@ -1208,13 +1266,20 @@ def _command_from_callable(
 
 
 def _command_from_callable_run_impl(
-    cb: _t.Callable[..., None | bool], params: list[str], accepts_command_info
+    cb: _t.Callable[..., None | bool],
+    a_params: list[str],
+    var_a_param: str | None,
+    kw_params: list[str],
 ):
     def run(self, command_info):
-        kw = {name: getattr(self, name) for name in params}
-        if accepts_command_info:
-            kw["_command_info"] = command_info
-        return cb(**kw)
+        get = lambda name: (
+            command_info if name == "_command_info" else getattr(self, name)
+        )
+        args = [get(name) for name in a_params]
+        if var_a_param is not None:
+            args.extend(get(var_a_param))
+        kwargs = {name: get(name) for name in kw_params}
+        return cb(*args, **kwargs)
 
     return run
 

@@ -4,9 +4,10 @@ import yuio.io
 
 @yuio.app.app
 def main(
-    param: list[str] = yuio.app.positional(
+    param: list[str] = yuio.app.field(
         parser=yuio.parse.Json(yuio.parse.List(yuio.parse.Str()))
-    )
+    ),
+    /,
 ):
     yuio.io.info("Parsed parameter: `%r`", param)
 

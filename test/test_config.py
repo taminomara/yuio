@@ -262,7 +262,11 @@ class TestBasics:
         ):
 
             class PosConfig(yuio.config.Config):
-                f1: int = yuio.config.positional()
+                with pytest.warns(
+                    yuio.YuioPendingDeprecationWarning,
+                    match="prefer using positional-only function arguments instead",
+                ):
+                    f1: int = yuio.config.positional()
 
             PosConfig()
 
@@ -287,7 +291,11 @@ class TestBasics:
         with pytest.raises(TypeError, match=r"nested configs can't be positional"):
 
             class PosNested(yuio.config.Config, _allow_positionals=True):
-                sub: Sub = yuio.config.positional()
+                with pytest.warns(
+                    yuio.YuioPendingDeprecationWarning,
+                    match="prefer using positional-only function arguments instead",
+                ):
+                    sub: Sub = yuio.config.positional()
 
             PosNested()
 
@@ -363,7 +371,13 @@ class TestBasics:
         ):
 
             class MutexPos(yuio.config.Config, _allow_positionals=True):
-                f1: int = yuio.config.field(flags=yuio.POSITIONAL, mutex_group=mutex)
+                with pytest.warns(
+                    yuio.YuioPendingDeprecationWarning,
+                    match="prefer using positional-only function arguments instead",
+                ):
+                    f1: int = yuio.config.field(
+                        flags=yuio.POSITIONAL, mutex_group=mutex
+                    )
 
             MutexPos()
 

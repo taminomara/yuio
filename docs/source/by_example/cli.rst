@@ -26,8 +26,8 @@ you can configure them the same way as you configure config fields:
     ):
         print(f"Hello, {greeting}!")
 
-Decorated functions should only have named arguments; `*args` and `**kwargs`
-are not supported.
+Positional-only arguments become positional CLI options, while keyword arguments
+become CLI flags. `**kwargs` are not supported.
 
 You can run the app with method :meth:`~yuio.app.App.run`:
 
@@ -54,18 +54,23 @@ You can invoke the original main function using :meth:`~yuio.app.App.wrapped`:
 Positional arguments
 --------------------
 
-By default, all CLI arguments become flags. You can turn them into positionals
-by using :func:`yuio.app.positional`:
+By default, all app arguments become flags. You can use positional-only arguments
+to create positional CLI options:
 
 .. code-block:: python
-    :emphasize-lines: 4
 
     @yuio.app.app
     def main(
         #: Who are we greeting?
-        greeting: str = yuio.app.positional(metavar="<name>")
+        greeting: str,
+        /,  # [1]_
     ):
         print(f"Hello, {greeting}!")
+
+.. code-annotations::
+
+    1.  This syntax separates positional-only arguments from normal arguments.
+        See :pep:`570` for details.
 
 
 Mutually exclusive arguments
@@ -98,8 +103,8 @@ encapsulation and reduce code duplication:
 
 .. literalinclude:: /../../examples/docs/cli_config.py
     :language: python
-    :lines: 1-18
-    :emphasize-lines: 5,14
+    :lines: 1-19
+    :emphasize-lines: 5,17
 
 By default, Yuio will prefix all flags in the nested config with flag of config's
 field. That is, ``ExecutorConfig.threads`` will be loaded from
@@ -110,8 +115,8 @@ or disable prefixing by using :func:`yuio.app.inline`:
 
 .. literalinclude:: /../../examples/docs/cli_config_inline.py
     :language: python
-    :lines: 11-18
-    :emphasize-lines: 4
+    :lines: 11-19
+    :emphasize-lines: 7
 
 
 .. _argument-groups:

@@ -33,10 +33,12 @@ Features
 
     .. code-block:: python
 
-        @yuio.app.app
+        @yuio.app.app(prog="rm")
         def main(
             #: Input files for the program.
-            inputs: list[pathlib.Path] = yuio.app.positional(),
+            *inputs: pathlib.Path,
+            #: Delete directories recursively.
+            recursive: bool = yuio.app.field(default=False, flags=["-R", "--recursive"]),
         ):
             ...
 

@@ -215,7 +215,9 @@ CONTAINER_CONFIG_GROUP = yuio.app.HelpGroup("Container configuration")
 @main.subcommand()
 def start(
     #: Base image for the container.
-    image: str = yuio.config.positional(),
+    image: str,
+    /,
+    *,
     #: Container name.
     name: str | None = yuio.config.field(default=None, flags=["-n", "--name"]),
     #: Override the default command.
@@ -288,7 +290,9 @@ def start(
 @main.subcommand()
 def stop(
     #: Container name or ID to stop.
-    container_id: str = yuio.config.positional(),
+    container_id: str,
+    /,
+    *,
     #: Timeout before force-killing.
     timeout: yuio.ty.NonNegSeconds | yuio.ty.NonNegTimeDelta = yuio.config.field(
         default=datetime.timedelta(seconds=10), flags=["-t", "--timeout"]

@@ -10,10 +10,11 @@ class ExecutorConfig(yuio.config.Config):
 
 @yuio.app.app
 def main(
+    #: File to process.
+    input: pathlib.Path,
+    /,
     #: Executor options.
     executor_config: ExecutorConfig,
-    #: File to process.
-    input: pathlib.Path = yuio.app.positional(),
 ):
     ...
 

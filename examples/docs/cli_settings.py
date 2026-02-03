@@ -31,7 +31,7 @@ Usage examples
 """
 
 @main.subcommand(aliases=["b"])
-def backup(file: pathlib.Path = yuio.app.positional()):
+def backup(file: pathlib.Path, /):
     """
     Move ``file`` to ``file.bak``.
 
@@ -41,7 +41,7 @@ def backup(file: pathlib.Path = yuio.app.positional()):
     shutil.copy(file, bak)
 
 @main.subcommand(aliases=["r"])
-def restore(file: pathlib.Path = yuio.app.positional()):
+def restore(file: pathlib.Path, /):
     """
     Move ``file.bak`` to ``file``.
 

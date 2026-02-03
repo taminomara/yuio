@@ -46,6 +46,8 @@ __all__ = [
     "Missing",
     "Positional",
     "PrettyException",
+    "YuioDeprecationWarning",
+    "YuioPendingDeprecationWarning",
     "YuioWarning",
     "enable_internal_logging",
 ]
@@ -125,6 +127,20 @@ GROUP = COLLAPSE  # Deprecated.
 class YuioWarning(RuntimeWarning):
     """
     Base class for all runtime warnings.
+
+    """
+
+
+class YuioDeprecationWarning(YuioWarning, DeprecationWarning):
+    """
+    Base class for deprecation warnings.
+
+    """
+
+
+class YuioPendingDeprecationWarning(YuioWarning, PendingDeprecationWarning):
+    """
+    Base class for pending deprecation warnings.
 
     """
 
