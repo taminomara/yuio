@@ -5010,6 +5010,158 @@ class TestJoinStr:
                     "duo",
                 ],
             ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 0},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "4",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "5",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 1},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", +4 more",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 2},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", +3 more",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 3},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", +2 more",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 4},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "4",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "5",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 5},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "4",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "5",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 6},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "4",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "5",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 2, "limit_msg": "... {n}"},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    "... 3",
+                ],
+            ),
         ],
     )
     def test_join(self, value, kwargs, expected, ctx):
@@ -5035,6 +5187,12 @@ class TestJoinStr:
             "1, 2, and 3",
         ]
 
+        r = yuio.string.And("12345", color=None, limit=3)
+        assert _join_consecutive_strings(ctx.str(r)) == [
+            Color.NONE,
+            "1, 2, 3, and 2 more",
+        ]
+
     def test_or(self, ctx):
         r = yuio.string.Or("", color=None)
         assert _join_consecutive_strings(ctx.str(r)) == []
@@ -5049,6 +5207,12 @@ class TestJoinStr:
         assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "1, 2, or 3",
+        ]
+
+        r = yuio.string.Or("12345", color=None, limit=3)
+        assert _join_consecutive_strings(ctx.str(r)) == [
+            Color.NONE,
+            "1, 2, 3, or 2 more",
         ]
 
 
@@ -5158,6 +5322,158 @@ class TestJoinRepr:
                     "'duo'",
                 ],
             ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 0},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "4",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "5",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 1},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", +4 more",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 2},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", +3 more",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 3},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", +2 more",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 4},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "4",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "5",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 5},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "4",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "5",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 6},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "3",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "4",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "5",
+                ],
+            ),
+            (
+                (1, 2, 3, 4, 5),
+                {"limit": 2, "limit_msg": "... {n}"},
+                [
+                    Color.FORE_MAGENTA,
+                    "1",
+                    Color.NONE,
+                    ", ",
+                    Color.FORE_MAGENTA,
+                    "2",
+                    Color.NONE,
+                    "... 3",
+                ],
+            ),
         ],
     )
     def test_join(self, value, kwargs, expected, ctx):
@@ -5183,6 +5499,12 @@ class TestJoinRepr:
             "'1', '2', and '3'",
         ]
 
+        r = yuio.string.JoinRepr.and_("12345", color=None, limit=3)
+        assert _join_consecutive_strings(ctx.str(r)) == [
+            Color.NONE,
+            "'1', '2', '3', and 2 more",
+        ]
+
     def test_or(self, ctx):
         r = yuio.string.JoinRepr.or_("", color=None)
         assert _join_consecutive_strings(ctx.str(r)) == []
@@ -5197,6 +5519,12 @@ class TestJoinRepr:
         assert _join_consecutive_strings(ctx.str(r)) == [
             Color.NONE,
             "'1', '2', or '3'",
+        ]
+
+        r = yuio.string.JoinRepr.or_("12345", color=None, limit=3)
+        assert _join_consecutive_strings(ctx.str(r)) == [
+            Color.NONE,
+            "'1', '2', '3', or 2 more",
         ]
 
 
@@ -6122,3 +6450,179 @@ class TestHr:
             [NO_WRAP_START, Color.FORE_MAGENTA, "────────────────────", NO_WRAP_END]
         )
         assert str(r) == "────────────────────"
+
+
+class TestPlural:
+    @pytest.mark.parametrize(
+        ("n", "one", "other", "kwargs", "expected"),
+        [
+            pytest.param(
+                1,
+                "item",
+                None,
+                {},
+                "item",
+                id="one-default-other",
+            ),
+            pytest.param(
+                2,
+                "item",
+                None,
+                {},
+                "items",
+                id="other-default-other",
+            ),
+            pytest.param(
+                0,
+                "item",
+                None,
+                {},
+                "items",
+                id="zero-default-other",
+            ),
+            pytest.param(
+                1,
+                "item",
+                "items",
+                {},
+                "item",
+                id="one-explicit-other",
+            ),
+            pytest.param(
+                2,
+                "item",
+                "items",
+                {},
+                "items",
+                id="other-explicit-other",
+            ),
+            pytest.param(
+                1,
+                "{n} item",
+                "{n} items",
+                {},
+                "1 item",
+                id="one-with-n",
+            ),
+            pytest.param(
+                5,
+                "{n} item",
+                "{n} items",
+                {},
+                "5 items",
+                id="other-with-n",
+            ),
+            pytest.param(
+                -1,
+                "item",
+                "items",
+                {},
+                "item",
+                id="negative-one",
+            ),
+            pytest.param(
+                -5,
+                "item",
+                "items",
+                {},
+                "items",
+                id="negative-other",
+            ),
+            pytest.param(
+                1.0,
+                "item",
+                "items",
+                {},
+                "item",
+                id="float-one",
+            ),
+            pytest.param(
+                1.5,
+                "item",
+                "items",
+                {},
+                "items",
+                id="float-other",
+            ),
+        ],
+    )
+    def test_plural(self, n, one, other, kwargs, expected, ctx):
+        if other is None:
+            r = yuio.string.Plural(n, one, **kwargs)
+        else:
+            r = yuio.string.Plural(n, one, other, **kwargs)
+        assert str(r) == expected
+        assert _join_consecutive_strings(
+            ctx.str(r)._parts
+        ) == _join_consecutive_strings([Color.NONE, expected])
+
+    def test_plural_custom_key(self, ctx):
+        # Lithuanian plural rules (simplified)
+        lt_plural_key = lambda n: (
+            "one"
+            if n % 10 == 1 and not 11 <= n % 100 <= 19
+            else "few"
+            if 2 <= n % 10 <= 9 and not 11 <= n % 100 <= 19
+            else "other"
+        )
+
+        r = yuio.string.Plural(
+            1,
+            one="{n} obuolys",
+            few="{n} obuoliai",
+            other="{n} obuolių",
+            key=lt_plural_key,
+        )
+        assert str(r) == "1 obuolys"
+
+        r = yuio.string.Plural(
+            2,
+            one="{n} obuolys",
+            few="{n} obuoliai",
+            other="{n} obuolių",
+            key=lt_plural_key,
+        )
+        assert str(r) == "2 obuoliai"
+
+        r = yuio.string.Plural(
+            10,
+            one="{n} obuolys",
+            few="{n} obuoliai",
+            other="{n} obuolių",
+            key=lt_plural_key,
+        )
+        assert str(r) == "10 obuolių"
+
+
+class TestOrdinal:
+    @pytest.mark.parametrize(
+        ("n", "expected"),
+        [
+            (1, "1st"),
+            (2, "2nd"),
+            (3, "3rd"),
+            (4, "4th"),
+            (5, "5th"),
+            (10, "10th"),
+            (11, "11th"),
+            (12, "12th"),
+            (13, "13th"),
+            (21, "21st"),
+            (22, "22nd"),
+            (23, "23rd"),
+            (24, "24th"),
+            (100, "100th"),
+            (101, "101st"),
+            (102, "102nd"),
+            (103, "103rd"),
+            (111, "111th"),
+            (112, "112th"),
+            (113, "113th"),
+        ],
+    )
+    def test_ordinal(self, n, expected, ctx):
+        r = yuio.string.Ordinal(n)
+        assert str(r) == expected
+        assert _join_consecutive_strings(
+            ctx.str(r)._parts
+        ) == _join_consecutive_strings([Color.NONE, expected])

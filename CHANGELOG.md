@@ -25,6 +25,10 @@ and run `poe lint` to replace:
 - ✨ Supported positional-only arguments in apps; these arguments create
   positional CLI options.
 
+- ✨ Added `yuio.string.Plural`, `yuio.string.Ordinal`.
+
+- ✨ Added `limit` argument for `yuio.string.Join*`.
+
 - ⚠️ `yuio.config.positional` and passing `yuio.POSITIONAL` to
   `yuio.config.field` is pending deprecation, and will be deprecated unless
   someone reports a legitimate use-case for it.

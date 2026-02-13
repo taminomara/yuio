@@ -305,6 +305,11 @@ Re-imports
 
     Alias of :obj:`yuio.string.And`.
 
+.. type:: Ordinal
+    :no-index:
+
+    Alias of :obj:`yuio.string.Ordinal`.
+
 .. type:: ColorizedString
     :no-index:
 
@@ -359,6 +364,11 @@ Re-imports
     :no-index:
 
     Alias of :obj:`yuio.string.Or`.
+
+.. type:: Plural
+    :no-index:
+
+    Alias of :obj:`yuio.string.Plural`.
 
 .. type:: Repr
     :no-index:
@@ -428,6 +438,8 @@ from yuio.string import (
     Link,
     Md,
     Or,
+    Ordinal,
+    Plural,
     Repr,
     Rst,
     Stack,
@@ -462,6 +474,8 @@ __all__ = [
     "Md",
     "MessageChannel",
     "Or",
+    "Ordinal",
+    "Plural",
     "Repr",
     "Rst",
     "Stack",

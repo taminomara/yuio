@@ -15,7 +15,7 @@ executor = { group = "lint" }
 
 [tasks.test]
 help = "Run tests"
-cmd = "tox -e 3.14 --"
+cmd = "tox -e 3.14,coverage-combine --"
 executor = { group = "ci" }
 
 [tasks.test-all]

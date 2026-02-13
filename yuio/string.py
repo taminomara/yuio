@@ -189,6 +189,12 @@ Formatting utilities
 .. autoclass:: Hr
     :members:
 
+.. autoclass:: Plural
+    :members:
+
+.. autoclass:: Ordinal
+    :members:
+
 
 Parsing color tags
 ------------------
@@ -297,6 +303,8 @@ __all__ = [
     "NoWrapMarker",
     "NoWrapStart",
     "Or",
+    "Ordinal",
+    "Plural",
     "Printable",
     "Repr",
     "ReprContext",
@@ -2973,8 +2981,8 @@ _CONTAINERS = {
     frozenset: lambda c, o: c._print_list("frozenset", "({", "})", o),
     tuple: lambda c, o: c._print_list("", "(", ")", o),
     dict: lambda c, o: c._print_dict("", "{", "}", o.items()),
-    types.MappingProxyType: lambda _: lambda c, o: c._print_dict(
-        "mappingproxy", "({", "})", o.items()
+    types.MappingProxyType: lambda _: (
+        lambda c, o: c._print_dict("mappingproxy", "({", "})", o.items())
     ),
 }
 _CONTAINER_TYPES = tuple(_CONTAINERS)
@@ -3150,6 +3158,8 @@ class _JoinBase(_StrBase):
         sep_last: str | None = None,
         fallback: AnyString = "",
         color: str | _Color | None = "code",
+        limit: int = 0,
+        limit_msg: str | None = None,
     ):
         self.__collection = collection
         self._sep = sep
@@ -3157,6 +3167,8 @@ class _JoinBase(_StrBase):
         self._sep_last = sep_last
         self._fallback: AnyString = fallback
         self._color = color
+        self._limit = limit
+        self._limit_msg = limit_msg if limit_msg is not None else ", +{n} more"
 
     @functools.cached_property
     def _collection(self):
@@ -3170,6 +3182,7 @@ class _JoinBase(_StrBase):
         *,
         fallback: AnyString = "",
         color: str | _Color | None = "code",
+        limit: int = 0,
     ) -> _t.Self:
         """
         Shortcut for joining arguments using word "or" as the last separator.
@@ -3183,7 +3196,13 @@ class _JoinBase(_StrBase):
         """
 
         return cls(
-            collection, sep_last=", or ", sep_two=" or ", fallback=fallback, color=color
+            collection,
+            sep_last=", or ",
+            sep_two=" or ",
+            fallback=fallback,
+            color=color,
+            limit=limit,
+            limit_msg=", or {n} more",
         )
 
     @classmethod
@@ -3194,6 +3213,7 @@ class _JoinBase(_StrBase):
         *,
         fallback: AnyString = "",
         color: str | _Color | None = "code",
+        limit: int = 0,
     ) -> _t.Self:
         """
         Shortcut for joining arguments using word "and" as the last separator.
@@ -3212,6 +3232,8 @@ class _JoinBase(_StrBase):
             sep_two=" and ",
             fallback=fallback,
             color=color,
+            limit=limit,
+            limit_msg=", and {n} more",
         )
 
     def __rich_repr__(self) -> RichReprResult:
@@ -3241,13 +3263,20 @@ class _JoinBase(_StrBase):
             res.append_colorized_str(to_str(self._collection[1]).with_base_color(color))
             return res
 
-        last_i = size - 1
+        if self._limit:
+            limit = last_i = self._limit
+        else:
+            limit = size
+            last_i = size - 1
 
         sep = self._sep
         sep_last = self._sep if self._sep_last is None else self._sep_last
 
         do_sep = False
         for i, value in enumerate(self._collection):
+            if i == last_i and limit + 1 < size:
+                res.append_str(self._limit_msg.format(n=size - limit))
+                break
             if do_sep:
                 if i == last_i:
                     res.append_str(sep_last)
@@ -3278,6 +3307,12 @@ class JoinStr(_JoinBase):
         printed if collection is empty.
     :param color:
         color applied to elements of the collection.
+    :param limit:
+        truncate number of entries to this limit.
+    :param limit_msg:
+        message that replaces truncated part. Will be formatted with a single
+        keyword argument `n` -- number of truncated entries. Default
+        is ``"+{n} more"``.
     :example:
         .. code-block:: python
 
@@ -3310,6 +3345,12 @@ class JoinRepr(_JoinBase):
         printed if collection is empty.
     :param color:
         color applied to elements of the collection.
+    :param limit:
+        truncate number of entries to this limit.
+    :param limit_msg:
+        message that replaces truncated part. Will be ``%``-formatted with a single
+        keyword argument `n` -- number of truncated entries. Default
+        is ``"+{n} more"``.
     :example:
         .. code-block:: python
 
@@ -4108,3 +4149,133 @@ def _make_right(
     w -= middle_times * middle_w
     middle *= middle_times
     return " " * w + start + middle + end
+
+
+def _eng_key_cardinal(n: float):
+    n = abs(n)
+    if n == 1:
+        return "one"
+    else:
+        return "other"
+
+
+def _eng_key_ordinal(n: float):
+    n = abs(n)
+
+    if n % 10 == 1 and n % 100 != 11:
+        return "one"
+    elif n % 10 == 2 and n % 100 != 12:
+        return "two"
+    elif n % 10 == 3 and n % 100 != 13:
+        return "few"
+    else:
+        return "other"
+
+
+@_t.final
+@repr_from_rich
+class Plural(_StrBase):
+    """
+    Lazy wrapper that pluralizes the given string by adding ``s`` to its end.
+
+    :param n:
+        number to be used for pluralization.
+    :param one:
+        singular form of the word, i.e. "one thing".
+    :param other:
+        plural form of the word, i.e. "other number of things";
+        defaults to :samp:`"{one}s"`.
+    :param forms:
+        additional forms of the word, only used with custom `key`.
+    :param key:
+        can be used to provide pluralization for non-english words. This callable
+        should take a number and return a string ``"one"``, ``"other"``, or a key
+        of the `forms` dictionary.
+    :example:
+        .. code-block:: python
+
+            n = 5
+            yuio.io.info("Loaded %s", yuio.string.Plural(n, "a sample", "{n} samples"))
+
+        With custom `key`:
+
+        .. code-block:: python
+
+            lt_plural_key = lambda n: (
+                "one"
+                if n % 10 == 1 and not 11 <= n % 100 <= 19
+                else "few"
+                if 2 <= n % 10 <= 9 and not 11 <= n % 100 <= 19
+                else "many"
+                if n != int(n)
+                else "other"
+            )
+
+            for n in [1, 2, 0.1, 10]:
+                yuio.io.info(
+                    "Rasta %s",
+                    yuio.string.Plural(
+                        n,
+                        one="{n} obuolys",
+                        few="{n} obuoliai",
+                        many="{n} obuolio",
+                        other="{n} obuolių",
+                        key=lt_plural_key,
+                    ),
+                )
+    """
+
+    def __init__(
+        self,
+        n: float,
+        /,
+        one: str = "",
+        other: str | None = None,
+        *,
+        key: _t.Callable[[float], str] = _eng_key_cardinal,
+        **forms,
+    ):
+        if other is None:
+            other = one + "s"
+
+        self._n = n
+        self._forms = forms
+        self._forms["one"] = one
+        self._forms["other"] = other
+        self._key = key
+
+    def __rich_repr__(self) -> RichReprResult:
+        yield None, self._n
+        yield from self._forms.items()
+        yield "key", self._key
+
+    def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
+        key = self._key(self._n)
+        if key in self._forms:
+            return ColorizedString(self._forms[key].format(n=self._n))
+        else:
+            return ColorizedString(self._forms["other"].format(n=self._n))
+
+
+def Ordinal(n: float, /):
+    """
+    Lazy wrapper that formats numbers as English ordinals (i.e. ``1st``, ``2nd``, etc.)
+
+    :param n:
+        number to format.
+    :example:
+        .. code-block:: python
+
+            for n in range(5):
+                print(yuio.string.Ordinal(n + 1))
+
+    """
+
+    return Plural(
+        n,
+        one="{n}st",
+        two="{n}nd",
+        few="{n}rd",
+        other="{n}th",
+        key=_eng_key_ordinal,
+    )
