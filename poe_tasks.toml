@@ -53,6 +53,11 @@ sequence = ["test-all", "_cov-html", "_cov-html-serve"]
 help = "Run tests for all pythons with coverage, including slow tests, and serve HTML report on localhost:8081"
 sequence = ["test-extra", "_cov-html", "_cov-html-serve"]
 
+[tasks.ci]
+help = "For CI job"
+cmd = "tox p --skip-env lint -- -m ''"
+executor = { group = "ci" }
+
 [tasks.doc]
 help = "Build HTML docs"
 cmd = "sphinx-build -b html docs/source docs/build/html -d docs/build/doctrees -j 12 -n"

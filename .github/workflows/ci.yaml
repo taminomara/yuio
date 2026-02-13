@@ -50,7 +50,7 @@ jobs:
       - name: Test package
         if: ${{ matrix.type == 'test' }}
         run: |
-          poe test-cov-extra
+          poe ci
         env:
           COVERAGE_FILE: .coverage.${{ matrix.os }}
       - name: Upload coverage artifact
