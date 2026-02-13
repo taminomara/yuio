@@ -16,14 +16,17 @@ executor = { group = "lint" }
 [tasks.test]
 help = "Run tests"
 cmd = "tox -e 3.14 --"
+executor = { group = "ci" }
 
 [tasks.test-all]
 help = "Run tests for all pythons"
 cmd = "tox p --"
+executor = { group = "ci" }
 
 [tasks.test-extra]
 help = "Run tests for all pythons, including slow tests"
 cmd = "tox p -- -m ''"
+executor = { group = "ci" }
 
 [tasks.cov-clear]
 help = "Erase coverage data (use this if you stop tests mid-flight)"
