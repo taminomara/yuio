@@ -244,31 +244,31 @@ Filepath.
 
 """
 
-NonExistentPath: _t.TypeAlias = _t.Annotated[Path, yuio.parse.NonExistentPath]
+NonExistentPath: _t.TypeAlias = _t.Annotated[Path, yuio.parse.NonExistentPath()]
 """
 Filepath not pointing to an existing file or directory.
 
 """
 
-ExistingPath: _t.TypeAlias = _t.Annotated[Path, yuio.parse.ExistingPath]
+ExistingPath: _t.TypeAlias = _t.Annotated[Path, yuio.parse.ExistingPath()]
 """
 Filepath pointing to an existing file or directory.
 
 """
 
-File: _t.TypeAlias = _t.Annotated[Path, yuio.parse.File]
+File: _t.TypeAlias = _t.Annotated[Path, yuio.parse.File()]
 """
 Filepath pointing to an existing regular file.
 
 """
 
-Dir: _t.TypeAlias = _t.Annotated[Path, yuio.parse.Dir]
+Dir: _t.TypeAlias = _t.Annotated[Path, yuio.parse.Dir()]
 """
 Filepath pointing to an existing directory.
 
 """
 
-GitRepo: _t.TypeAlias = _t.Annotated[Path, yuio.parse.GitRepo]
+GitRepo: _t.TypeAlias = _t.Annotated[Path, yuio.parse.GitRepo()]
 """
 Filepath pointing to an existing directory that has ``.git`` sub-directory.
 

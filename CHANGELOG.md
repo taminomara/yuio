@@ -33,6 +33,8 @@ and run `poe lint` to replace:
   `yuio.config.field` is pending deprecation, and will be deprecated unless
   someone reports a legitimate use-case for it.
 
+- 🐛 Fixed file types in `yuio.ty`.
+
 ## [2.0.1] - 2026-01-31
 
 - 🐛 Fixed rendering of Json Schema for dicts with string enum keys.
