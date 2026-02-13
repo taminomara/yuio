@@ -11,7 +11,7 @@ def test_zsh(test_cases, data_regression):
     subprocess.check_call(["comptest", "--completions", "zsh"])
 
     results = []
-    for _, prefix_len, _, args, orig in test_cases:
+    for cword, prefix_len, _, args, orig in test_cases:
         print(args)
         line = " ".join(args)
         # Repeat left arrow keystroke to get to the desired cursor position.
@@ -30,7 +30,9 @@ def test_zsh(test_cases, data_regression):
             results.append(
                 dict(
                     cmd=orig,
-                    results=extract_results(result, "comptest " + " ".join(args)),
+                    results=extract_results(
+                        result, "comptest " + " ".join(args[:cword])
+                    ),
                 )
             )
     data_regression.check(results)
