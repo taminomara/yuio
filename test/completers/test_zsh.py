@@ -27,5 +27,10 @@ def test_zsh(test_cases, data_regression):
         except subprocess.CalledProcessError as e:
             results.append(dict(cmd=orig, err=str(e)))
         else:
-            results.append(dict(cmd=orig, results=extract_results(result)))
+            results.append(
+                dict(
+                    cmd=orig,
+                    results=extract_results(result, "comptest " + " ".join(args)),
+                )
+            )
     data_regression.check(results)

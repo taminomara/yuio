@@ -57,9 +57,7 @@ def test_fish(test_cases, data_regression):
             results.append(
                 dict(
                     cmd=orig,
-                    results=extract_results(
-                        result, "comptest " + " ".join(args[:cword])
-                    ),
+                    results=extract_results(result),
                 )
             )
 
