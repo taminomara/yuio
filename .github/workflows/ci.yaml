@@ -38,7 +38,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: |
-          uv tool install poe
+          uv tool install poethepoet
       # Tests
       - name: Install Zsh and Fish
         if: ${{ matrix.type == 'test' && matrix.os == 'ubuntu-latest' }}
