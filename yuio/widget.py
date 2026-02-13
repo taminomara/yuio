@@ -3952,8 +3952,9 @@ class Choice(Widget[T], _t.Generic[T]):
         options: list[Option[T]],
         /,
         *,
-        mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
-        or str(x.value),
+        mapper: _t.Callable[[Option[T]], str] = lambda x: (
+            x.display_text or str(x.value)
+        ),
         filter: _t.Callable[[Option[T], str], bool] | None = None,
         default_index: int = 0,
         search_bar_decoration_path: str = "menu/input/decoration_search",
@@ -4092,8 +4093,9 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
         options: list[Option[T]],
         /,
         *,
-        mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
-        or str(x.value),
+        mapper: _t.Callable[[Option[T]], str] = lambda x: (
+            x.display_text or str(x.value)
+        ),
     ): ...
 
     @_t.overload
@@ -4110,8 +4112,9 @@ class Multiselect(Widget[list[T]], _t.Generic[T]):
         options: list[Option[T]],
         /,
         *,
-        mapper: _t.Callable[[Option[T]], str] = lambda x: x.display_text
-        or str(x.value),
+        mapper: _t.Callable[[Option[T]], str] = lambda x: (
+            x.display_text or str(x.value)
+        ),
         filter: _t.Callable[[Option[T], str], bool] | None = None,
         search_bar_decoration_path: str = "menu/input/decoration_search",
         active_item_decoration_path: str = "menu/choice/decoration/active_item",
