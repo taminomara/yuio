@@ -1246,13 +1246,28 @@ class Status:
 
         """
 
-        return (
-            self.cherry_pick_head is not None
-            or self.merge_head is not None
-            or self.rebase_head is not None
-            or self.revert_head is not None
-            or self.bisect_start is not None
-        )
+        return self.get_ongoing_operation() is not None
+
+    def get_ongoing_operation(
+        self,
+    ) -> _t.Literal["cherry_pick", "merge", "rebase", "revert", "bisect"] | None:
+        """
+        Return name of an ongoing operation such as merge or rebase, if there is one.
+
+        """
+
+        if self.cherry_pick_head is not None:
+            return "cherry_pick"
+        elif self.merge_head is not None:
+            return "merge"
+        elif self.rebase_head is not None:
+            return "rebase"
+        elif self.revert_head is not None:
+            return "revert"
+        elif self.bisect_start is not None:
+            return "bisect"
+        else:
+            return None
 
 
 class RefCompleterMode(enum.Enum):

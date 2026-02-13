@@ -29,6 +29,8 @@ and run `poe lint` to replace:
 
 - ✨ Added `limit` argument for `yuio.string.Join*`.
 
+- ✨ Added `yuio.git.Status.get_ongoing_operation`.
+
 - ⚠️ `yuio.config.positional` and passing `yuio.POSITIONAL` to
   `yuio.config.field` is pending deprecation, and will be deprecated unless
   someone reports a legitimate use-case for it.
