@@ -158,10 +158,20 @@ def _prepare_test_case(args_s: str):
     return cword, prefix_len, token_prefix_len, args, args_s
 
 
-def extract_results(output: str):
+def extract_results(output: str, strip_prefix: str = ""):
     lines = output.splitlines()
     i = lines.index("--BEGIN RESULTS--")
     j = lines.index("--END RESULTS--")
-    res = list(set(filter(lambda x: x, (line.rstrip() for line in lines[i + 1 : j]))))
+    res = list(
+        set(
+            filter(
+                lambda x: x,
+                (
+                    line.rstrip().removeprefix(strip_prefix).lstrip()
+                    for line in lines[i + 1 : j]
+                ),
+            )
+        )
+    )
     res.sort()
     return res
