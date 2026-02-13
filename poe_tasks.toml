@@ -55,7 +55,7 @@ sequence = ["test-extra", "_cov-html", "_cov-html-serve"]
 
 [tasks.ci]
 help = "For CI job"
-cmd = "tox p --skip-env lint -- -m ''"
+cmd = "tox --colored yes p --skip-env lint -- -m ''"
 executor = { group = "ci" }
 
 [tasks.doc]

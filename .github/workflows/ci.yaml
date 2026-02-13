@@ -64,7 +64,7 @@ jobs:
       - name: Check code style
         if: ${{ matrix.type == 'code style' }}
         run: |
-          poe lint
+          poe lint --color always
 
   upload_coverage:
     name: Upload coverage report to GitHub Pages
