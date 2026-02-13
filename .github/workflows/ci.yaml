@@ -36,6 +36,9 @@ jobs:
           fetch-depth: 0
       - name: Install UV
         uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: |
+          uv tool install poe
       # Tests
       - name: Install Zsh and Fish
         if: ${{ matrix.type == 'test' && matrix.os == 'ubuntu-latest' }}

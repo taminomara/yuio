@@ -50,7 +50,11 @@ doc = [
     "sphinx==9.1.0",
     "sybil==9.3.0",
 ]
-lint = ["cl-keeper==0.0.0-b6", "pre-commit==4.5.1", "ruff==0.14.14"]
+lint = [
+    "cl-keeper==0.0.0-b6",
+    "prek>=0.3.2",
+    "ruff==0.14.14",
+]
 ci = [
     "cl-keeper==0.0.0-b6",
     "genbadge[coverage]==1.1.3",

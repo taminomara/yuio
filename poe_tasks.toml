@@ -10,7 +10,7 @@ executor = { group = "ci" }
 
 [tasks.lint]
 help = "Run pre-commit linters"
-cmd = "pre-commit run --all"
+cmd = "prek run --all-files"
 executor = { group = "lint" }
 
 [tasks.test]
