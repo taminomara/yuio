@@ -47,7 +47,7 @@ class GithubAuth(yuio.config.Config):
     password: yuio.parse.SecretString | None = None
 
 
-@yuio.app.app
+@yuio.app.app(bug_report=True)
 def main():
     auth_config = GithubAuth.load_from_env("GITHUB")
     if auth_config.login and auth_config.password:

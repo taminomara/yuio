@@ -8,3 +8,6 @@ dependencies = ["yuio", "dbg-dep[opt]"]
 collect_env_ok = "dbg_hooks:collect_env_ok"
 collect_env_err = "dbg_hooks:collect_env_err"
 collect_env_missing = "dbg_hooks:collect_env_missing"
+
+[tool.uv.sources]
+yuio = { workspace = true }

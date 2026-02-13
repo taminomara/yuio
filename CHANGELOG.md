@@ -2,7 +2,7 @@
 
 <!--
 NOTE: if you're unsure which emojis to use, use the following prefixes instead of them
-and run `pre-commit run clk` to replace:
+and run `poe lint` to replace:
 
 - [added] ...
 - [changed] ...
