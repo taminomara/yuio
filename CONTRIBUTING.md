@@ -2,6 +2,13 @@
 
 ## Set up your environment
 
+We use [`uv`] and [`poe`] to run tasks, but it is possible to use pure pip as well.
+
+[`uv`]: https://docs.astral.sh/uv/
+[`poe`]: https://poethepoet.natn.io/index.html
+
+### Using pip
+
 1. Create a virtual environment with python `3.13` or newer
    (some of dev tools don't work with older pythons).
 
@@ -20,43 +27,57 @@
 3. Install pre-commit hooks:
 
    ```shell
-   pre-commit install
+   prek install
+   ```
+
+4. [Install `poe`], either globally or in virtual environment:
+
+   ```shell
+   pip install poethepoet
+   ```
+
+[Install `poe`]: https://poethepoet.natn.io/installation.html
+
+### Using uv
+
+1. Sync your virtual environment:
+
+   ```shell
+   uv sync
+   ```
+
+2. Install pre-commit hooks:
+
+   ```shell
+   uv run prek install
+   ```
+
+3. [Install `poe`] if you don't have it already:
+
+   ```shell
+   uv tool install poethepoet
    ```
 
 
-## Run tests
+## Run commands
 
-To run tests, simply run `pytest`:
-
-```shell
-pytest
-```
-
-To generate HTML coverage report
-(will be available in the `htmlcov` directory):
+We use `poe` for most of the tasks:
 
 ```shell
-pytest --cov --cov-report=html  # Generate coverage.
-open ./htmlcov/index.html  # Open the generated page.
+poe lint  # Lint and fix code style.
+poe test  # Run tests.
+poe test-all  # Run tests for all pythons.
+poe test-extra  # Run tests for all pythons, including slow tests.
 ```
 
-To run full test suite, enable pytest marker `full` (or rather, disable marker
-filtering by overriding option `-m`):
+You can see all commands in `poe`'s help:
 
 ```shell
-pytest -m=
+poe --help
 ```
 
-The full test suite requires `bash`, `zsh`, `fish`, and `pwsh`
+Note: the full test suite requires `bash`, `zsh`, `fish`, and `pwsh`
 installed on your system.
-
-To run full test suite across all supported interpreters, run `tox`:
-
-```shell
-tox p
-```
-
-This will reproduce build that we run in CI.
 
 
 ## Build docs
@@ -74,11 +95,11 @@ sudo apt-get install -y \
     libxkbcommon0 libxdamage1 libgbm1 libpango1.0-0 libasound2
 ```
 
-After that, just run `sphinx` as usual:
+After that, use `poe` commands:
 
 ```shell
-cd docs/
-make watch
+poe doc  # Build HTML.
+poe doc-watch  # Run sphinx-autobuild.
 ```
 
 The first build will take a couple of minutes to record terminal GIFs.
