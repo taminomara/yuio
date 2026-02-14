@@ -3310,8 +3310,8 @@ class JoinStr(_JoinBase):
     :param limit:
         truncate number of entries to this limit.
     :param limit_msg:
-        message that replaces truncated part. Will be formatted with a single
-        keyword argument `n` -- number of truncated entries. Default
+        message that replaces truncated part. Will be :meth:`formatted <str.format>`
+        with a single keyword argument `n` -- number of truncated entries. Default
         is ``"+{n} more"``.
     :example:
         .. code-block:: python
@@ -4182,6 +4182,8 @@ class Plural(_StrBase):
         number to be used for pluralization.
     :param one:
         singular form of the word, i.e. "one thing".
+        Will be :attr:`formatted <str.format>` with a single keyword argument `n` --
+        the given number.
     :param other:
         plural form of the word, i.e. "other number of things";
         defaults to :samp:`"{one}s"`.
@@ -4232,7 +4234,7 @@ class Plural(_StrBase):
         one: str = "",
         other: str | None = None,
         *,
-        key: _t.Callable[[float], str] = _eng_key_cardinal,
+        key: _t.Callable[[float], str] | None = None,
         **forms,
     ):
         if other is None:
@@ -4242,7 +4244,7 @@ class Plural(_StrBase):
         self._forms = forms
         self._forms["one"] = one
         self._forms["other"] = other
-        self._key = key
+        self._key = key or _eng_key_cardinal
 
     def __rich_repr__(self) -> RichReprResult:
         yield None, self._n
