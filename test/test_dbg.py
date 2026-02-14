@@ -48,7 +48,7 @@ def test_app_version():
     try:
         from dbg_hooks import main  # type: ignore
     except ImportError:
-        pytest.skip("test/test_deps/dbg_hooks is not installed")
+        pytest.fail("install test/test_deps/dbg_hooks")
 
     sio = io.StringIO()
     yuio.dbg.print_report(dest=sio, app=main)
@@ -63,7 +63,7 @@ def test_packages():
     try:
         import dbg_hooks  # type: ignore
     except ImportError:
-        pytest.skip("test/test_deps/dbg_hooks is not installed")
+        pytest.fail("install test/test_deps/dbg_hooks")
 
     sio = io.StringIO()
     yuio.dbg.print_report(
@@ -95,7 +95,7 @@ def test_packages():
 
 def test_hooks():
     if not importlib.util.find_spec("dbg_hooks"):
-        pytest.skip("test/test_deps/dbg_hooks is not installed")
+        pytest.fail("install test/test_deps/dbg_hooks")
 
     sio = io.StringIO()
     yuio.dbg.print_report(dest=sio)
