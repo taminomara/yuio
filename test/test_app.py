@@ -1,4 +1,5 @@
 import textwrap
+import types
 
 import pytest
 
@@ -1088,7 +1089,7 @@ class TestAppWrapped:
         @app
         def main(_command_info: CommandInfo, name: str = field(default="default")):
             results["name"] = name
-            assert _command_info.name == "__raw__"
+            assert _command_info.name == "__main__"
             assert _command_info.subcommand is None
 
         result = main.wrapped(name="test")  # type: ignore
@@ -1099,7 +1100,7 @@ class TestAppWrapped:
         @app
         def main(_command_info, name: str = field(default="default")):
             results["name"] = name
-            assert _command_info.name == "__raw__"
+            assert _command_info.name == "__main__"
             assert _command_info.subcommand is None
 
         result = main.wrapped(name="test")  # type: ignore
@@ -1110,7 +1111,7 @@ class TestAppWrapped:
         @app
         def main(_command_info, name: str = field(default="default")):
             results["name"] = name
-            assert _command_info.name == "__raw__"
+            assert _command_info.name == "__main__"
             assert _command_info.subcommand is None
 
         result = main.wrapped(name="test", _command_info=None)
@@ -1136,3 +1137,244 @@ class TestHelpAndVersionFlags:
         with pytest.raises(SystemExit) as exc_info:
             main.run(["--version"])
         assert exc_info.value.code == 0
+
+
+class TestLazySubcommand:
+    @pytest.fixture
+    def mock_importlib(self, monkeypatch):
+        modules = {}
+        import_calls = []
+
+        def mock_import_module(name):
+            import_calls.append(name)
+            if name in modules:
+                return modules[name]
+            raise ImportError(f"no module named {name!r}")
+
+        monkeypatch.setattr("importlib.import_module", mock_import_module)
+
+        return types.SimpleNamespace(
+            modules=modules,
+            import_calls=import_calls,
+        )
+
+    class TestLazyCommandImport:
+        def test_command_imported_on_invocation(self, mock_importlib, results):
+            mock_module = types.ModuleType("fake_module")
+
+            @app
+            def lazy_cmd():
+                results["lazy_called"] = True
+
+            setattr(mock_module, "lazy_cmd", lazy_cmd)
+            mock_importlib.modules["fake_module"] = mock_module
+
+            @app
+            def main():
+                results["main_called"] = True
+
+            main.lazy_subcommand("fake_module:lazy_cmd", "lazy")
+
+            # Just registering should not import
+            assert len(mock_importlib.import_calls) == 0
+
+            with pytest.raises(SystemExit) as exc_info:
+                main.run(["lazy"])
+
+            assert exc_info.value.code == 0
+            assert mock_importlib.import_calls == ["fake_module"]
+            assert results.get("main_called") is True
+            assert results.get("lazy_called") is True
+
+        def test_command_not_imported_until_needed(self, mock_importlib):
+            @app
+            def main():
+                pass
+
+            main.subcommand_required = False
+            main.lazy_subcommand("some.module:command", "lazy", help="Pre-defined help")
+
+            # Just registering should not import
+            assert len(mock_importlib.import_calls) == 0
+
+            # Running without the lazy subcommand should not import it
+            with pytest.raises(SystemExit) as exc_info:
+                main.run([])
+
+            assert exc_info.value.code == 0
+            assert mock_importlib.import_calls == []
+
+        def test_command_not_imported_until_needed_help_generation(
+            self, mock_importlib, stdout
+        ):
+            @app
+            def main():
+                pass
+
+            main.subcommand_required = False
+            main.lazy_subcommand("some.module:command", "lazy", help="Pre-defined help")
+
+            # Just registering should not import
+            assert len(mock_importlib.import_calls) == 0
+
+            # Running without the lazy subcommand should not import it
+            with pytest.raises(SystemExit) as exc_info:
+                main.run(["-h"])
+
+            assert exc_info.value.code == 0
+            assert mock_importlib.import_calls == []
+            assert "Pre-defined help" in stdout.getvalue()
+
+        def test_command_not_imported_until_needed_help_generation_import(
+            self, mock_importlib, stdout
+        ):
+            mock_module = types.ModuleType("some.module")
+
+            @app
+            def lazy_cmd():
+                """Help me!"""
+                assert False
+
+            setattr(mock_module, "lazy_cmd", lazy_cmd)
+            mock_importlib.modules["some.module"] = mock_module
+
+            @app
+            def main():
+                pass
+
+            main.subcommand_required = False
+            main.lazy_subcommand("some.module:lazy_cmd", "lazy")
+
+            # Just registering should not import
+            assert len(mock_importlib.import_calls) == 0
+
+            # Running without the lazy subcommand should not import it
+            with pytest.raises(SystemExit) as exc_info:
+                main.run(["-h"])
+
+            assert exc_info.value.code == 0
+            assert mock_importlib.import_calls == ["some.module"]
+            assert "Help me!" in stdout.getvalue()
+
+    class TestMalformedPath:
+        @pytest.mark.parametrize(
+            ("path", "message", "import_calls"),
+            [
+                # Module doesn't exist (no colon separator)
+                (
+                    "nonexistent.module.command",
+                    "failed to import lazy subcommand nonexistent.module.command",
+                    ["nonexistent.module.command", "nonexistent.module", "nonexistent"],
+                ),
+                # Module doesn't exist (with colon separator)
+                (
+                    "nonexistent.module:command",
+                    "failed to import lazy subcommand nonexistent.module:command",
+                    ["nonexistent.module"],
+                ),
+            ],
+        )
+        def test_malformed_path_raises_import_error(
+            self, mock_importlib, path, message, import_calls, ostream
+        ):
+            @app
+            def main():
+                pass
+
+            main.lazy_subcommand(path, "broken")
+
+            with pytest.raises(SystemExit) as exc_info:
+                main.run(["broken"])
+
+            assert exc_info.value.code == 3
+            assert message in ostream.getvalue()
+            assert mock_importlib.import_calls == import_calls
+
+        def test_nonexistent_attribute_raises_error(self, mock_importlib, ostream):
+            mock_module = types.ModuleType("existing_module")
+            # Module exists but has no 'nonexistent' attribute
+            mock_importlib.modules["existing_module"] = mock_module
+
+            @app
+            def main():
+                pass
+
+            main.lazy_subcommand("existing_module:nonexistent", "broken")
+
+            with pytest.raises(SystemExit) as exc_info:
+                main.run(["broken"])
+
+            assert exc_info.value.code == 3
+            assert (
+                "failed to import lazy subcommand existing_module:nonexistent"
+                in ostream.getvalue()
+            )
+            assert mock_importlib.import_calls == ["existing_module"]
+
+        def test_nested_nonexistent_attribute_raises_error(
+            self, mock_importlib, ostream
+        ):
+            mock_module = types.ModuleType("mymodule")
+            mock_class = type("MyClass", (), {})()
+            setattr(mock_module, "MyClass", mock_class)
+            mock_importlib.modules["mymodule"] = mock_module
+
+            @app
+            def main():
+                pass
+
+            main.lazy_subcommand("mymodule:MyClass.missing_method", "broken")
+
+            with pytest.raises(SystemExit) as exc_info:
+                main.run(["broken"])
+
+            assert exc_info.value.code == 3
+            assert (
+                "failed to import lazy subcommand mymodule:MyClass.missing_method"
+                in ostream.getvalue()
+            )
+            assert mock_importlib.import_calls == ["mymodule"]
+
+    class TestFunctionWrappedAsApp:
+        def test_plain_function_becomes_app(self, mock_importlib, results):
+            mock_module = types.ModuleType("func_module")
+
+            def plain_function():
+                results["plain_called"] = True
+
+            setattr(mock_module, "plain_function", plain_function)
+            mock_importlib.modules["func_module"] = mock_module
+
+            @app
+            def main():
+                pass
+
+            main.lazy_subcommand("func_module:plain_function", "plain")
+
+            with pytest.raises(SystemExit) as exc_info:
+                main.run(["plain"])
+
+            assert exc_info.value.code == 0
+            assert results.get("plain_called") is True
+
+        def test_app_instance_used_directly(self, mock_importlib, results):
+            mock_module = types.ModuleType("app_module")
+
+            @app
+            def existing_app():
+                results["app_called"] = True
+
+            setattr(mock_module, "existing_app", existing_app)
+            mock_importlib.modules["app_module"] = mock_module
+
+            @app
+            def main():
+                pass
+
+            main.lazy_subcommand("app_module:existing_app", "existing")
+
+            with pytest.raises(SystemExit) as exc_info:
+                main.run(["existing"])
+
+            assert exc_info.value.code == 0
+            assert results.get("app_called") is True

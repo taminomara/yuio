@@ -12,7 +12,9 @@ import importlib
 import inspect
 import json
 import re
+import sys
 import types
+from dataclasses import dataclass
 
 import sphinx.util.logging
 from docutils import nodes
@@ -59,8 +61,19 @@ T = _t.TypeVar("T")
 _logger = sphinx.util.logging.getLogger("yuio.ext.sphinx")
 
 
+@dataclass
+class AppWrapper:
+    app: yuio.app.App[_t.Any]
+    names: list[str]
+    parent: AppWrapper | None
+
+
 def isapp(obj) -> _t.TypeGuard[yuio.app.App[_t.Any]]:
     return isinstance(obj, yuio.app.App)
+
+
+def isappwrapper(obj) -> _t.TypeGuard[AppWrapper]:
+    return isinstance(obj, AppWrapper)
 
 
 def isconfigfield(obj) -> _t.TypeGuard[yuio.config._Field]:
@@ -73,7 +86,7 @@ def isconfig(obj) -> _t.TypeGuard[type[yuio.config.Config]]:
 
 def can_document(obj):
     return (
-        isapp(obj)
+        isappwrapper(obj)
         or isconfig(obj)
         or isconfigfield(obj)
         or isenumclass(obj)
@@ -96,9 +109,13 @@ def find_module(path: list[str]) -> tuple[types.ModuleType, list[str]]:
 
 
 def config_getattr(obj: _t.Any, name: str):
+    if isappwrapper(obj):
+        obj = obj.app
+
     obj_kind = "object"
     attr_kind = "attribute"
     orig_obj = obj
+
     if isapp(obj):
         obj_kind = "app"
         attr_kind = "parameter"
@@ -136,19 +153,81 @@ def config_getattr(obj: _t.Any, name: str):
             f"yet its member {name} is not an enum attribute"
         )
 
+    if isapp(res):
+        res = AppWrapper(res, [], None)
+
     return res
 
 
-def resolve(path: list[str]):
-    root, path = find_module(path)
+def move_to_subcommand(obj: _t.Any, name: str):
+    if not isappwrapper(obj):
+        raise AttributeError(
+            f"can't get subcommand {name!r} from object {obj_full_path(obj)}: not an app"
+        ) from None
+
+    app = obj.app
+
+    if name not in app._subcommands:
+        raise AttributeError(
+            f"app {obj_full_path(app)} has no subcommand {name!r}"
+        ) from None
+
+    subcommand_data = app._subcommands[name]
+
+    return AppWrapper(subcommand_data.load(), subcommand_data.names, obj)
+
+
+_PATH_RE = re.compile(
+    r"""
+        ^
+        (?P<module>\w+(\.\w+)*:)?
+        (?P<path>\w+(\.\w+)*)
+        (?:
+            \#
+            (?P<subcmd>\w+(?:\#\w+)*)
+            (?:
+                \.
+                (?P<field>\w+(\.\w+)*)?
+            )?
+        )?
+        $
+    """,
+    re.VERBOSE,
+)
+
+
+def resolve(raw_path: str):
+    match = _PATH_RE.match(raw_path)
+    if not match:
+        raise ImportError(f"invalid python path {raw_path!r}")
+    if module := match.group("module"):
+        root = importlib.import_module(module)
+        path = match.group("path").split(".")
+    else:
+        root, path = find_module(match.group("path").split("."))
+
     objpath: list[object] = [root]
+
     for name in path:
         root = config_getattr(root, name)
         objpath.append(root)
+
+    if subcmd := match.group("subcmd"):
+        for name in subcmd.split("#"):
+            root = move_to_subcommand(root, name)
+            objpath[-1] = root
+
+    if field := match.group("field"):
+        for name in field.split("#"):
+            root = config_getattr(root, name)
+            objpath.append(root)
+
     return objpath
 
 
 def obj_full_path(obj: _t.Any) -> str:
+    if isappwrapper(obj):
+        obj = obj.app
     qualname = (
         getattr(obj, "__qualname__", None) or getattr(obj, "__name__", None) or ""
     )
@@ -156,16 +235,20 @@ def obj_full_path(obj: _t.Any) -> str:
     return ".".join(filter(None, [modname, qualname]))
 
 
-def extract_command_root_and_path(
-    app: yuio.app.App[_t.Any], prog: str | None, location
-):
+def obj_module(obj: _t.Any) -> str | None:
+    if isappwrapper(obj):
+        obj = obj.app
+    return getattr(obj, "__module__", None)
+
+
+def extract_command_root_and_path(appwrapper: AppWrapper, prog: str | None, location):
     subcommand_names: list[str] = []
     while True:
-        subcommand_names.append(app.prog or "")
-        if app._parent is None:
+        subcommand_names.append(appwrapper.names[0] if appwrapper.names else "")
+        if appwrapper.parent is None:
             break
         else:
-            app = app._parent
+            appwrapper = appwrapper.parent
     subcommand_names.reverse()
 
     if prog:
@@ -176,11 +259,11 @@ def extract_command_root_and_path(
             "can't find program name for %s, "
             "please provide it explicitly by giving :prog: option "
             "to the cli:autoobject directive",
-            obj_full_path(app),
+            obj_full_path(appwrapper),
             location=location,
         )
 
-    return app, subcommand_names
+    return appwrapper, subcommand_names
 
 
 def join_cmd_path(path: _t.Iterable[str]) -> str:
@@ -242,7 +325,7 @@ class AutodocUtilsMixin(CliContextManagerMixin):
             options = self._prepare_child_options(name, obj)
         if options_ext:
             options.update(options_ext)
-        if isapp(obj):
+        if isappwrapper(obj):
             directive = self._make_directive(
                 AutodocAppObject, "cli:command", options, obj
             )
@@ -348,8 +431,8 @@ class AutodocUtilsMixin(CliContextManagerMixin):
         return ctx
 
     def make_name(self, obj: object) -> str:
-        if isapp(obj):
-            return obj.wrapped.__name__
+        if isappwrapper(obj):
+            return obj.app.wrapped.__name__
         elif isconfig(obj) or isenumclass(obj):
             return obj.__name__
         elif isenumattribute(obj):
@@ -373,8 +456,8 @@ class AutodocUtilsMixin(CliContextManagerMixin):
             assert False, obj
 
     def make_python_name(self, obj: object) -> str:
-        if isapp(obj):
-            return obj.wrapped.__name__
+        if isappwrapper(obj):
+            return obj.app.wrapped.__name__
         elif isconfig(obj) or isenumclass(obj):
             return obj.__name__
         elif isenumattribute(obj) or isconfigfield(obj):
@@ -430,6 +513,15 @@ class AutodocObject(AutodocUtilsMixin, CliObject, _t.Generic[T]):
 
         self.obj = obj
 
+    def run(self) -> list[nodes.Node]:
+        if (
+            (modname := obj_module(self.obj))
+            and (module := sys.modules.get(modname))
+            and (filename := getattr(module, "__file__", None))
+        ):
+            self.state.document.settings.record_dependencies.add(filename)
+        return super().run()
+
     def patch_document_title_ids(self):
         return patch_document_title_ids(
             self.ids[0] + "--" if self.ids else "", self.state.document
@@ -481,7 +573,7 @@ class AutodocObject(AutodocUtilsMixin, CliObject, _t.Generic[T]):
         self.pop_python_path()
 
 
-class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
+class AutodocAppObject(AutodocObject[AppWrapper], CmdObject):
     def run(self) -> list[nodes.Node]:
         self.options.pop("env", None)
         self.options["flags"] = None
@@ -493,13 +585,13 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
             self.obj, self.options.get("prog"), self.get_source_info()
         )
         self._root = root
-        *self._cmd_prefix, self._cmd_name = cmd_path
+        self._cmd_prefix = cmd_path[:-1]
         self._prog = " ".join(cmd_path)
 
-        root_command = root._make_cli_command(root=True)
+        root_command = root.app._make_cli_command(cmd_path[0], None, is_root=True)
         subcommands: list[yuio.cli.Command[_t.Any]] = [root_command]
         for name in cmd_path[1:]:
-            root_command = root_command.subcommands[name]
+            root_command = root_command.subcommands[name].load()
             subcommands.append(root_command)
         self._command = subcommands[-1]
         inherited_options: list[yuio.cli.Option[_t.Any]] = []
@@ -513,9 +605,10 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
             )
         self._inherited_options = inherited_options
 
-        self.collapsed_paths: set[str] = set()
-
-        return [self._cmd_name] + (self.obj._aliases or [])
+        if self.obj.names:
+            return self.obj.names
+        else:
+            return [cmd_path[0]]
 
     _first_sig_paths = None
 
@@ -536,7 +629,7 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
 
     def _format_usage(self):
         formatter = yuio.cli._CliFormatter(
-            self._root._make_help_parser(), self.make_repr_ctx()
+            self._root.app._make_help_parser(), self.make_repr_ctx()
         )
         usage_lines = formatter.format(
             yuio.cli._Usage(
@@ -569,6 +662,7 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
     def _format_subcommands(self):
         subcommands: dict[yuio.cli.Command[_t.Any], list[str]] = {}
         for name, subcommand in self._command.subcommands.items():
+            subcommand = subcommand.load()
             if subcommand.help is yuio.DISABLED:
                 continue
             if subcommand not in subcommands:
@@ -603,7 +697,7 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
                 term += warn_nodes
                 sep = True
 
-            sub_app = self.obj._subcommands[names[0]]
+            sub_app = self.obj.app._subcommands[names[0]].load()
             body = nodes.definition(
                 "",
                 *self.nested_parse_docstring(subcommand.help, sub_app, what="help"),
@@ -786,14 +880,14 @@ class AutodocAppObject(AutodocObject[yuio.app.App[_t.Any]], CmdObject):
         return self.render_child(path, field, options_ext=options_ext, as_opt=True)
 
     def _format_prolog(self):
-        docs = self.obj.description
+        docs = self.obj.app.description
         if not docs:
             return []
 
         return self.nested_parse_docstring(docs, self.obj, what="doc_description")
 
     def _format_epilog(self):
-        docs = self.obj.epilog
+        docs = self.obj.app.epilog
         if not docs:
             return []
 
@@ -1197,13 +1291,22 @@ class AutodocDirective(AutodocUtilsMixin):
                 "python-name": path,
                 "name": name,
             },
-            as_opt=bool(parents) and isapp(parents[0]),
+            as_opt=bool(parents) and isappwrapper(parents[0]),
         )
 
-        if isapp(obj) and "subcommands" in self.options:
-            for subcommand in obj._ordered_subcommands:
-                if subcommand.help is yuio.DISABLED:
+        if isappwrapper(obj) and "subcommands" in self.options:
+            for name, subcommand_data in obj.app._subcommands.items():
+                if name != subcommand_data.name:
                     continue
+
+                subcommand = subcommand_data.load()
+
+                help = subcommand_data.help
+                if help is None:
+                    help = subcommand.help
+                if help is yuio.DISABLED:
+                    continue
+
                 directive = AutodocDirective(
                     self.name,
                     self.arguments,
@@ -1215,8 +1318,12 @@ class AutodocDirective(AutodocUtilsMixin):
                     self.state,
                     self.state_machine,
                     obj_data=(
-                        parents + [obj],
-                        subcommand,
+                        parents,
+                        AppWrapper(
+                            subcommand,
+                            subcommand_data.names,
+                            obj,
+                        ),
                     ),
                 )
                 res.extend(directive.run())
@@ -1233,7 +1340,7 @@ class AutodocDirective(AutodocUtilsMixin):
             raise self.error("got an empty object path")
 
         try:
-            return path, resolve(path.split("."))
+            return path, resolve(path)
         except (ImportError, AttributeError) as e:
             raise self.error(f"can't find python object {path}: {e}")
 

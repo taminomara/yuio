@@ -183,7 +183,7 @@ class FlagField(CliField):
     def register(
         self,
         env: BuildEnvironment,
-        location: tuple[str, int],
+        location: tuple[str | None, int | None],
         cli_domain: CliDomain,
         name: str,
         id: str,
@@ -219,7 +219,7 @@ class EnvField(FlagField):
     def register(
         self,
         env: BuildEnvironment,
-        location: tuple[str, int],
+        location: tuple[str | None, int | None],
         cli_domain: CliDomain,
         name: str,
         id: str,
@@ -811,7 +811,7 @@ class CliDomain(Domain):
 
     def note_object(
         self,
-        location: tuple[str, int],
+        location: tuple[str | None, int | None],
         docname: str,
         objtype: str,
         cfg_path: CfgPath,
@@ -868,7 +868,7 @@ class CliDomain(Domain):
 
     def note_envvar(
         self,
-        location: tuple[str, int],
+        location: tuple[str | None, int | None],
         docname: str,
         name: str,
         id: str | None,
@@ -896,7 +896,7 @@ class CliDomain(Domain):
 
     def note_cmd_alias(
         self,
-        location: tuple[str, int],
+        location: tuple[str | None, int | None],
         docname: str,
         cfg_path: CfgPath,
         alias: CmdPath,
@@ -914,7 +914,7 @@ class CliDomain(Domain):
 
     def note_python_obj(
         self,
-        location: tuple[str, int],
+        location: tuple[str | None, int | None],
         docname: str,
         cfg_path: CfgPath,
         python_name: str,

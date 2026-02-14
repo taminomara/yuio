@@ -374,6 +374,29 @@ Generating documentation
     :class:`~yuio.config.Config`, an :class:`~enum.Enum`, or a field or enumerator
     within.
 
+    Use dots to traverse to Python properties and app parameters,
+    and use ``#`` to traverse to subcommands:
+
+    .. code-block:: rst
+
+        .. cli:autoobject:: my_module.MyConfig.user[1]_
+
+        .. cli:autoobject:: my_module.app#process.inputs[2]_
+
+    .. code-annotations::
+
+        1. Will document field ``user`` from config ``my_module.MyConfig``.
+
+        2.  Will document field ``inputs`` from subcommand ``process``
+            of app ``my_module.app``.
+
+    As a hint to module resolver, you can use ``:`` to separate module path
+    from object path:
+
+    .. code-block:: rst
+
+        .. cli:autoobject:: my_module:MyConfig.user
+
     .. rst:directive:option:: no-index
                               no-index-entry
                               no-contents-entry
@@ -564,7 +587,7 @@ Autodoc example
     .. tab-item:: Python
 
         .. literalinclude:: /_code/app_example.py
-           :language: python
+            :language: python
 
 
 .. |cmd| replace:: :abbr:`cmd (Namespace with command names, flags and arguments)`

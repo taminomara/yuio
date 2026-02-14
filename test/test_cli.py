@@ -17,7 +17,8 @@ else:
 def make_command(
     name: str = "test",
     options: _t.Collection[yuio.cli.Option[_t.Any]] | None = None,
-    subcommands: dict[str, yuio.cli.Command[_t.Any]] | None = None,
+    subcommands: dict[str, yuio.cli.Command[_t.Any] | yuio.cli.LazyCommand[_t.Any]]
+    | None = None,
     subcommand_required: bool = False,
     dest: str = "",
     ns_dest: str = "",
@@ -26,7 +27,7 @@ def make_command(
         name=name,
         desc="",
         help="",
-        usage=None,
+        usage="",
         epilog="",
         options=list(options or []),
         subcommands=subcommands or {},
@@ -198,7 +199,8 @@ def const_option(
 def parse_args(
     options: _t.Collection[yuio.cli.Option[_t.Any]] | None = None,
     args: list[str] | None = None,
-    subcommands: dict[str, yuio.cli.Command[_t.Any]] | None = None,
+    subcommands: dict[str, yuio.cli.Command[_t.Any] | yuio.cli.LazyCommand[_t.Any]]
+    | None = None,
     subcommand_required: bool = False,
     dest: str = "",
     ns_dest: str = "",

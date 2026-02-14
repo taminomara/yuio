@@ -25,6 +25,8 @@ and run `poe lint` to replace:
 - ✨ Supported positional-only arguments in apps; these arguments create
   positional CLI options.
 
+- ✨ Supported lazy loading of subcommands via `yuio.app.App.lazy_subcommand`.
+
 - ✨ Added `yuio.string.Plural`, `yuio.string.Ordinal`.
 
 - ✨ Added `limit` argument for `yuio.string.Join*`.

@@ -79,6 +79,9 @@ Commands and sub-commands
 .. autoclass:: Command
     :members:
 
+.. autoclass:: LazyCommand
+    :members:
+
 
 Flags and positionals
 ---------------------
@@ -232,6 +235,7 @@ __all__ = [
     "Flag",
     "HelpGroup",
     "HelpOption",
+    "LazyCommand",
     "MutuallyExclusiveGroup",
     "NArgs",
     "Namespace",
@@ -2188,6 +2192,7 @@ class CompletionOption(Option[_t.Never]):
             seen_options.append(option)
 
         for name, subcommand in command.subcommands.items():
+            subcommand = subcommand.load()
             subcommand_serializer = serializer.add_subcommand(
                 name=name, is_alias=name != subcommand.name, help=subcommand.help
             )
@@ -2281,6 +2286,48 @@ class HelpOption(Option[_t.Never]):
 
 
 @dataclass(kw_only=True, eq=False, match_args=False)
+class LazyCommand(_t.Generic[NamespaceT]):
+    """
+    Lazy loader for data about CLI interface of a single command or subcommand.
+
+    """
+
+    help: str | yuio.Disabled | None
+    """
+    Help message for this command, displayed when listing subcommands.
+
+    """
+
+    loader: _t.Callable[[], Command[NamespaceT]]
+    """
+    Callback that loads the rest of the command data.
+
+    """
+
+    __loaded = None
+
+    def load(self):
+        """
+        Load full command data.
+
+        """
+
+        if self.__loaded is None:
+            self.__loaded = self.loader()
+        return self.__loaded
+
+    def get_help(self) -> str | yuio.Disabled:
+        """
+        Get or load command help.
+
+        """
+
+        if self.help is None:
+            self.help = self.load().help
+        return self.help
+
+
+@dataclass(kw_only=True, eq=False, match_args=False)
 class Command(_t.Generic[NamespaceT]):
     """
     Data about CLI interface of a single command or subcommand.
@@ -2323,7 +2370,7 @@ class Command(_t.Generic[NamespaceT]):
 
     """
 
-    subcommands: dict[str, Command[Namespace]]
+    subcommands: dict[str, Command[Namespace] | LazyCommand[Namespace]]
     """
     Last positional option can be a sub-command.
 
@@ -2362,72 +2409,57 @@ class Command(_t.Generic[NamespaceT]):
 
     """
 
+    def load(self):
+        return self
+
+    def get_help(self):
+        return self.help
+
 
 @dataclass(eq=False, kw_only=True)
 class _SubCommandOption(ValueOption[str]):
-    subcommands: dict[str, Command[Namespace]]
+    command: Command[Namespace]
     """
     All subcommands.
-
-    """
-
-    ns_dest: str
-    """
-    Where to save subcommand's namespace.
-
-    """
-
-    ns_ctor: _t.Callable[[], Namespace]
-    """
-    A constructor that will be called to create namespace for subcommand's arguments.
 
     """
 
     def __init__(
         self,
         *,
-        subcommands: dict[str, Command[Namespace]],
-        subcommand_required: bool,
-        ns_dest: str,
-        ns_ctor: _t.Callable[[], Namespace],
+        command: Command[Namespace],
         metavar: str = "<subcommand>",
         help_group: HelpGroup | None = SUBCOMMANDS_GROUP,
         show_if_inherited: bool = False,
-        dest: str,
     ):
-        subcommand_names = [
-            f"``{name}``"
-            for name, subcommand in subcommands.items()
-            if name == subcommand.name and subcommand.help is not yuio.DISABLED
-        ]
-        help = f"Available subcommands: {yuio.string.Or(subcommand_names)}"
+        # subcommand_names = [
+        #     f"``{name}``"
+        #     for name, subcommand in subcommands.items()
+        #     if name == subcommand.name and subcommand.help is not yuio.DISABLED
+        # ]
+        # help = f"Available subcommands: {yuio.string.Or(subcommand_names)}"
+
+        self.command = command
 
         super().__init__(
             flags=yuio.POSITIONAL,
             allow_inline_arg=False,
             allow_implicit_inline_arg=False,
             nargs=1,
-            allow_no_args=not subcommand_required,
+            allow_no_args=not command.subcommand_required,
             required=False,
             metavar=metavar,
             mutex_group=None,
             usage=True,
-            help=help,
+            help="",
             help_group=help_group,
             show_if_inherited=show_if_inherited,
-            dest=dest,
+            dest=self.command.dest,
             merge=None,
             default=yuio.MISSING,
             allow_abbrev=False,
             default_desc=None,
         )
-
-        self.subcommands = subcommands
-        self.ns_dest = ns_dest
-        self.ns_ctor = ns_ctor
-
-        assert self.dest
-        assert self.ns_dest
 
     def process(
         self,
@@ -2439,7 +2471,7 @@ class _SubCommandOption(ValueOption[str]):
         assert isinstance(arguments, list)
         if not arguments:
             return
-        subcommand = self.subcommands.get(arguments[0].value)
+        subcommand = self.command.subcommands.get(arguments[0].value)
         if subcommand is None:
             raise ArgumentError(
                 "Unknown subcommand <c msg/text:code/sh-usage hl/flag:sh-usage>%s</c>, can be %s",
@@ -2447,15 +2479,16 @@ class _SubCommandOption(ValueOption[str]):
                 yuio.string.Or(
                     (
                         name
-                        for name, subcommand in self.subcommands.items()
+                        for name, subcommand in self.command.subcommands.items()
                         if subcommand.help != yuio.DISABLED
                     ),
                     color="msg/text:code/sh-usage hl/flag:sh-usage",
                 ),
                 arguments=arguments,
             )
+        subcommand = subcommand.load()
         ns[self.dest] = subcommand.name
-        ns[self.ns_dest] = new_ns = subcommand.ns_ctor()
+        ns[self.command.ns_dest] = new_ns = subcommand.ns_ctor()
         cli_parser._load_command(subcommand, new_ns)
 
 
@@ -2586,7 +2619,9 @@ class CliParser(_t.Generic[NamespaceT]):
                         self._finalize_unused_flag(flag, dest[flag])
                     dest[flag] = bound_option
         if command.subcommands:
-            self._positionals.append(_BoundOption(_make_subcommand(command), ns))
+            self._positionals.append(
+                _BoundOption(_SubCommandOption(command=command), ns)
+            )
         self._current_command = command
         self._current_positional = 0
 
@@ -3021,17 +3056,6 @@ def _is_short(flag: str):
     return flag.startswith("-") and len(flag) == 2 and flag != "--"
 
 
-def _make_subcommand(command: Command[Namespace]):
-    return _SubCommandOption(
-        metavar=command.metavar,
-        subcommands=command.subcommands,
-        subcommand_required=command.subcommand_required,
-        dest=command.dest,
-        ns_dest=command.ns_dest,
-        ns_ctor=command.ns_ctor,
-    )
-
-
 def _check_nargs(opt: _BoundOption, flag: Flag | None, args: list[Argument]):
     if not args and opt.allow_no_args:
         return
@@ -3174,9 +3198,9 @@ class _HelpFormatter:
             self.nodes.append(arg_group)
 
     def _add_subcommands(self, cmd: Command[Namespace], /):
-        subcommands: dict[Command[Namespace], list[str]] = {}
+        subcommands: dict[Command[Namespace] | LazyCommand[Namespace], list[str]] = {}
         for name, subcommand in cmd.subcommands.items():
-            if subcommand.help is yuio.DISABLED:
+            if subcommand.get_help() is yuio.DISABLED:
                 continue
             if subcommand not in subcommands:
                 subcommands[subcommand] = [name]
@@ -3194,8 +3218,9 @@ class _HelpFormatter:
             )
         arg_group = _HelpArgGroup(items=[])
         for subcommand, names in subcommands.items():
-            assert subcommand.help is not yuio.DISABLED
-            arg_group.items.append(_HelpSubCommand(names, subcommand.help))
+            help = subcommand.get_help()
+            assert help is not yuio.DISABLED
+            arg_group.items.append(_HelpSubCommand(names, help))
         self.nodes.append(arg_group)
 
     def _add_flags(self, cmd: Command[Namespace], inherited: list[Option[_t.Any]], /):

@@ -98,6 +98,16 @@ def ostream() -> io.StringIO:
 
 
 @pytest.fixture
+def stderr() -> io.StringIO:
+    return _MockedOStream()
+
+
+@pytest.fixture
+def stdout() -> io.StringIO:
+    return _MockedOStream()
+
+
+@pytest.fixture
 def istream() -> _t.TextIO:
     return _MockedIStream()
 
@@ -191,6 +201,8 @@ def setup_io(
     enable_bg_updates: bool,
     width: int,
     height: int,
+    stderr: io.StringIO,
+    stdout: io.StringIO,
 ):
     assert yuio.term._TTY_SETUP_PERFORMED is False, "previous test didn't clean up"
     assert not hasattr(yuio.term, "_TTY_OUTPUT"), "previous test didn't clean up"
@@ -220,8 +232,11 @@ def setup_io(
     yuio.term._EXPLICIT_COLOR_SUPPORT = None
     yuio.term._COLOR_SUPPORT = term.color_support
 
+    yuio.io._ORIG_STDERR = stderr
+    yuio.io._ORIG_STDOUT = stdout
     io_manager = yuio.io._IoManager(term, theme, enable_bg_updates=enable_bg_updates)
     monkeypatch.setattr("yuio.io._IO_MANAGER", io_manager)
+    yuio.io._ORIG_STDERR = yuio.io._ORIG_STDOUT = None
 
     yield
 

@@ -145,9 +145,9 @@ help formatting using its arguments:
 
     .. autoattribute:: epilog
 
-    .. autoattribute:: allow_abbrev
-
     .. autoattribute:: subcommand_required
+
+    .. autoattribute:: allow_abbrev
 
     .. autoattribute:: setup_logging
 
@@ -193,6 +193,8 @@ attached to the ``main()`` command. See the `example app`_ for details.
     :noindex:
 
     .. automethod:: subcommand
+
+    .. automethod:: lazy_subcommand
 
 
 .. _sub-commands-more:
@@ -461,6 +463,7 @@ from yuio.util import find_docs as _find_docs
 from yuio.util import to_dash_case as _to_dash_case
 
 from typing import TYPE_CHECKING
+from typing import ClassVar as _ClassVar
 
 if TYPE_CHECKING:
     import typing_extensions as _t
@@ -478,6 +481,7 @@ __all__ = [
     "MutuallyExclusiveGroup",
     "OptionCtor",
     "OptionSettings",
+    "SubcommandRegistrar",
     "app",
     "bool_option",
     "collect_option",
@@ -494,6 +498,7 @@ __all__ = [
 
 C = _t.TypeVar("C", bound=_t.Callable[..., None | bool])
 C2 = _t.TypeVar("C2", bound=_t.Callable[..., None | bool])
+CB = _t.TypeVar("CB", bound="App[_t.Any]")
 
 
 class AppError(yuio.PrettyException, Exception):
@@ -597,8 +602,8 @@ def app(
             usage=usage,
             description=description,
             epilog=epilog,
-            allow_abbrev=allow_abbrev,
             subcommand_required=subcommand_required,
+            allow_abbrev=allow_abbrev,
             setup_logging=setup_logging,
             theme=theme,
             version=version,
@@ -614,30 +619,33 @@ def app(
 
 
 @_t.final
-@dataclass(frozen=True, eq=False, match_args=False, slots=True)
 class CommandInfo:
     """
     Data about the invoked command.
 
     """
 
-    name: str
-    """
-    Name of the current command.
+    def __init__(
+        self,
+        name: str,
+        command: App[_t.Any],
+        namespace: yuio.cli.ConfigNamespace["_CommandConfig"],
+    ):
+        self.name = name
+        """
+        Name of the current command.
 
-    If it was invoked by alias,
-    this will contains the primary command name.
+        If it was invoked by alias,
+        this will contains the primary command name.
 
-    For the main function, the name will be set to ``"__main__"``.
+        For the main function, the name will be set to ``"__main__"``.
 
-    """
+        """
 
-    # Internal, do not use.
-    _config: _t.Any = dataclasses.field(repr=False)
-    _executed: bool = dataclasses.field(default=False, repr=False)
-    _subcommand: CommandInfo | None | yuio.Missing = dataclasses.field(
-        default=yuio.MISSING, repr=False
-    )
+        self.__namespace = namespace
+        self.__command = command
+        self.__subcommand: CommandInfo | None | yuio.Missing = yuio.MISSING
+        self.__executed: bool = False
 
     @property
     def subcommand(self) -> CommandInfo | None:
@@ -646,15 +654,9 @@ class CommandInfo:
 
         """
 
-        if self._subcommand is yuio.MISSING:
-            if self._config._subcommand is None:
-                subcommand = None
-            else:
-                subcommand = CommandInfo(
-                    self._config._subcommand, self._config._subcommand_ns.config
-                )
-            object.__setattr__(self, "_subcommand", subcommand)
-        return self._subcommand  # pyright: ignore[reportReturnType]
+        if self.__subcommand is yuio.MISSING:
+            self.__subcommand = self.__command._get_subcommand(self.__namespace)
+        return self.__subcommand
 
     def __call__(self) -> _t.Literal[False]:
         """
@@ -662,11 +664,11 @@ class CommandInfo:
 
         """
 
-        if self._executed:
+        if self.__executed:
             return False
-        object.__setattr__(self, "_executed", True)
+        self.__executed = True
 
-        should_invoke_subcommand = self._config._run(self)
+        should_invoke_subcommand = self.__command._invoke(self.__namespace, self)
         if should_invoke_subcommand is None:
             should_invoke_subcommand = True
 
@@ -676,6 +678,85 @@ class CommandInfo:
         return False
 
 
+@dataclass(eq=False, match_args=False, slots=True)
+class _SubcommandData:
+    names: list[str]
+    help: str | yuio.Disabled | None
+    command: App[_t.Any] | _Lazy
+
+    def load(self) -> App[_t.Any]:
+        if isinstance(self.command, _Lazy):
+            self.command = self.command.load()
+        return self.command
+
+    def make_cli_command(self):
+        return self.load()._make_cli_command(self.name, self.help)
+
+    @property
+    def name(self):
+        return self.names[0]
+
+
+class SubcommandRegistrar(_t.Protocol):
+    """
+    Type for a callback returned from :meth:`App.subcommand`.
+
+    """
+
+    @_t.overload
+    def __call__(self, cb: C, /) -> App[C]: ...
+    @_t.overload
+    def __call__(self, cb: CB, /) -> CB: ...
+    def __call__(self, cb, /) -> _t.Any: ...
+
+
+@dataclass(frozen=True, eq=False, match_args=False, slots=True)
+class _Lazy:
+    path: str
+
+    def load(self) -> App[_t.Any]:
+        import importlib
+
+        path = self.path
+        if ":" in path:
+            mod, _, path = path.partition(":")
+            path_parts = path.split(".")
+
+            try:
+                root = importlib.import_module(mod)
+            except ImportError as e:
+                raise ImportError(f"failed to import lazy subcommand {self.path}: {e}")
+        else:
+            path_parts = path.split(".")
+
+            i = len(path_parts)
+            while i > 0:
+                try:
+                    root = importlib.import_module(".".join(path_parts[:i]))
+                    path_parts = path_parts[i:]
+                except ImportError:
+                    pass
+                else:
+                    break
+                i -= 1
+            else:
+                raise ImportError(f"failed to import lazy subcommand {self.path}")
+
+        for name in path_parts:
+            try:
+                root = getattr(root, name)
+            except AttributeError as e:
+                raise AttributeError(
+                    f"failed to import lazy subcommand {self.path}: {e}"
+                )
+
+        if not isinstance(root, App):
+            root = App(root)  # type: ignore
+
+        return root
+
+
+@_t.final
 class App(_t.Generic[C]):
     """
     A class that encapsulates app settings and logic for running it.
@@ -696,8 +777,8 @@ class App(_t.Generic[C]):
         help: str | yuio.Disabled | None = None,
         description: str | None = None,
         epilog: str | None = None,
-        allow_abbrev: bool = False,
         subcommand_required: bool = True,
+        allow_abbrev: bool = False,
         setup_logging: bool = True,
         theme: (
             yuio.theme.Theme | _t.Callable[[yuio.term.Term], yuio.theme.Theme] | None
@@ -709,18 +790,18 @@ class App(_t.Generic[C]):
     ):
         self.prog: str | None = prog
         """
-        Program or subcommand's primary name.
+        Program's primary name.
 
-        For main app, this controls its display name and generation of shell completion
-        scripts.
+        For main app, this attribute controls its display name and generation
+        of shell completion scripts.
 
-        For subcommands, this is always equal to subcommand's main name.
+        For subcommands, this attribute is ignored.
 
-        By default, inferred from :data:`sys.argv` and subcommand name.
+        By default, inferred from :data:`sys.argv`.
 
         """
 
-        self.usage: str | None = usage
+        self.usage: str = yuio.util.dedent(usage) if usage else ""
         """
         Program or subcommand synapsis.
 
@@ -799,20 +880,12 @@ class App(_t.Generic[C]):
 
         """
 
-        self.epilog: str | None = epilog
+        self.epilog: str = epilog or ""
         """
         Text that is shown after the main portion of the help message.
 
         The text should be formatted using Markdown or RST,
         depending on :attr:`~App.doc_format`.
-
-        """
-
-        self.allow_abbrev: bool = allow_abbrev
-        """
-        Allow abbreviating CLI flags if that doesn't create ambiguity.
-
-        Disabled by default.
 
         """
 
@@ -826,6 +899,18 @@ class App(_t.Generic[C]):
 
         """
 
+        self.allow_abbrev: bool = allow_abbrev
+        """
+        Allow abbreviating CLI flags if that doesn't create ambiguity.
+
+        Disabled by default.
+
+        .. note::
+
+            This attribute should be set in the root app; it is ignored in subcommands.
+
+        """
+
         self.setup_logging: bool = setup_logging
         """
         If :data:`True`, the app will call :func:`logging.basicConfig` during
@@ -833,6 +918,10 @@ class App(_t.Generic[C]):
         logging initialization.
 
         Disabling this option also removes the :flag:`--verbose` flag form the CLI.
+
+        .. note::
+
+            This attribute should be set in the root app; it is ignored in subcommands.
 
         """
 
@@ -843,11 +932,19 @@ class App(_t.Generic[C]):
         A custom theme that will be passed to :func:`yuio.io.setup`
         on application startup.
 
+        .. note::
+
+            This attribute should be set in the root app; it is ignored in subcommands.
+
         """
 
         self.version: str | None = version
         """
         If not :data:`None`, add :flag:`--version` flag to the CLI.
+
+        .. note::
+
+            This attribute should be set in the root app; it is ignored in subcommands.
 
         """
 
@@ -857,6 +954,10 @@ class App(_t.Generic[C]):
 
         This flag automatically collects data about environment and prints it
         in a format suitable for adding to a bug report.
+
+        .. note::
+
+            This attribute should be set in the root app; it is ignored in subcommands.
 
         """
 
@@ -868,12 +969,16 @@ class App(_t.Generic[C]):
         By default, dev mode is detected by checking if :attr:`~App.version`
         contains substring ``"dev"``.
 
-        .. note::
+        .. tip::
 
             You can always enable full debug logging by setting environment
             variable ``YUIO_DEBUG``.
 
             If enabled, full log will be saved to ``YUIO_DEBUG_FILE``.
+
+        .. note::
+
+            This attribute should be set in the root app; it is ignored in subcommands.
 
         """
 
@@ -883,15 +988,16 @@ class App(_t.Generic[C]):
         """
         Format or parser that will be used to interpret documentation.
 
+        .. note::
+
+            This attribute should be set in the root app; it is ignored in subcommands.
+
         """
 
-        self._ordered_subcommands: list[App[_t.Any]] = []
-        self._subcommands: dict[str, App[_t.Any]] = {}
-        self._parent: App[_t.Any] | None = None
-        self._aliases: list[str] | None = None
+        self._subcommands: dict[str, _SubcommandData] = {}
 
         if callable(command):
-            self._config_type = _command_from_callable(command)
+            self._config_type, self._callback = _command_from_callable(command)
         else:
             raise TypeError(f"expected a function, got {command}")
 
@@ -901,8 +1007,6 @@ class App(_t.Generic[C]):
             assigned=("__module__", "__name__", "__qualname__", "__doc__"),
             updated=(),
         )
-
-        self._command = command
 
         @functools.wraps(command)
         def wrapped_command(*args, **kwargs):
@@ -949,13 +1053,20 @@ class App(_t.Generic[C]):
                 if not hasattr(config, name) and name != "_command_info":
                     raise TypeError(f"missing required argument {name}")
 
-            return CommandInfo("__raw__", config, False)()
+            namespace = yuio.cli.ConfigNamespace(config)
 
-        self.wrapped: C = wrapped_command  # type: ignore
+            return CommandInfo("__main__", self, namespace)()
+
+        self.__wrapped__ = _t.cast(C, wrapped_command)
+
+    @property
+    def wrapped(self) -> C:
         """
         The original callable what was wrapped by :func:`app`.
 
         """
+
+        return self.__wrapped__
 
     @_t.overload
     def subcommand(
@@ -968,8 +1079,7 @@ class App(_t.Generic[C]):
         help: str | yuio.Disabled | None = None,
         description: str | None = None,
         epilog: str | None = None,
-    ) -> _t.Callable[[C2], App[C2]]: ...
-
+    ) -> SubcommandRegistrar: ...
     @_t.overload
     def subcommand(
         self,
@@ -983,10 +1093,19 @@ class App(_t.Generic[C]):
         description: str | None = None,
         epilog: str | None = None,
     ) -> App[C2]: ...
-
+    @_t.overload
     def subcommand(
         self,
-        cb: _t.Callable[..., None | bool] | None = None,
+        cb: CB,
+        /,
+        *,
+        name: str | None = None,
+        aliases: list[str] | None = None,
+        help: str | yuio.Disabled | None = None,
+    ) -> CB: ...
+    def subcommand(
+        self,
+        cb: _t.Callable[..., None | bool] | App[_t.Any] | None = None,
         /,
         *,
         name: str | None = None,
@@ -1023,31 +1142,91 @@ class App(_t.Generic[C]):
 
         """
 
-        def registrar(cb: C2, /) -> App[C2]:
-            main_name = name or _to_dash_case(cb.__name__)
-            app = App(
-                cb,
-                prog=main_name,
-                usage=usage,
-                help=help,
-                description=description,
-                epilog=epilog,
-                subcommand_required=subcommand_required,
-            )
-            app._parent = self
-            app._aliases = aliases
+        def registrar(cb, /) -> App[_t.Any]:
+            if not isinstance(cb, App):
+                cb = App(
+                    cb,
+                    usage=usage,
+                    help=help,
+                    description=description,
+                    epilog=epilog,
+                    subcommand_required=subcommand_required,
+                )
 
-            self._ordered_subcommands.append(app)
-            self._subcommands[main_name] = app
-            if aliases:
-                self._subcommands.update({alias: app for alias in aliases})
+            names = [name or _to_dash_case(cb.wrapped.__name__), *(aliases or [])]
+            subcommand_data = _SubcommandData(names, help, cb)
+            self._add_subcommand(subcommand_data)
 
-            return app
+            return cb
 
         if cb is None:
             return registrar
         else:
             return registrar(cb)
+
+    def lazy_subcommand(
+        self,
+        path: str,
+        name: str,
+        /,
+        *,
+        aliases: list[str] | None = None,
+        help: str | yuio.Disabled | None = None,
+    ):
+        """
+        Add a subcommand for this app that will be imported and loaded on demand.
+
+        :param path:
+            dot-separated path to a command or command's main function.
+
+            As a hint, module can be separated from the rest of the path with
+            a semicolon, i.e. ``"module.submodule:class.method"``.
+        :param name:
+            subcommand's primary name.
+        :param aliases:
+            allows adding alias names for subcommand.
+        :param help:
+            allows specifying subcommand's help. If given, generating CLI help for
+            base command will not require importing subcommand.
+        :example:
+            In module ``my_app.commands.run``:
+
+            .. code-block:: python
+
+                import yuio.app
+
+
+                @yuio.app.app
+                def command(): ...
+
+            In module ``my_app.main``:
+
+            .. code-block:: python
+
+                import yuio.app
+
+
+                @yuio.app.app
+                def main(): ...
+
+
+                main.lazy_subcommand("my_app.commands.run:command", "run")
+
+        """
+
+        subcommand_data = _SubcommandData([name, *(aliases or [])], help, _Lazy(path))
+        self._add_subcommand(subcommand_data)
+
+    def _add_subcommand(self, subcommand_data: _SubcommandData):
+        for nam in subcommand_data.names:
+            if nam in self._subcommands:
+                subcommand = self._subcommands[nam].load()
+                raise ValueError(
+                    f"{self.__class__.__module__}.{self.__class__.__name__}: "
+                    f"subcommand {nam!r} already registered in "
+                    f"{subcommand.__class__.__module__}.{subcommand.__class__.__name__}"
+                )
+        self._subcommands.update(dict.fromkeys(subcommand_data.names, subcommand_data))
 
     def run(self, args: list[str] | None = None) -> _t.NoReturn:
         """
@@ -1065,10 +1244,14 @@ class App(_t.Generic[C]):
         if args is None:
             args = sys.argv[1:]
 
+        prog = self.prog or pathlib.Path(sys.argv[0]).stem
+
         if "--yuio-custom-completer--" in args:
             index = args.index("--yuio-custom-completer--")
             _run_custom_completer(
-                self._make_cli_command(root=True), args[index + 1], args[index + 2]
+                self._make_cli_command(prog, is_root=True),
+                args[index + 1],
+                args[index + 2],
             )
             sys.exit(0)
 
@@ -1090,7 +1273,7 @@ class App(_t.Generic[C]):
 
             help_parser = self._make_help_parser()
 
-            cli_command = self._make_cli_command(root=True)
+            cli_command = self._make_cli_command(prog, is_root=True)
             namespace = yuio.cli.CliParser(
                 cli_command, help_parser=help_parser, allow_abbrev=self.allow_abbrev
             ).parse(args)
@@ -1103,8 +1286,7 @@ class App(_t.Generic[C]):
                 }.get(namespace["_verbose"], logging.DEBUG)
                 logging.basicConfig(handlers=[yuio.io.Handler()], level=logging_level)
 
-            command = CommandInfo("__main__", _config=namespace.config)
-            command()
+            CommandInfo("__main__", self, namespace)()
             sys.exit(0)
         except yuio.cli.ArgumentError as e:
             yuio.io.raw(e, add_newline=True, wrap=True)
@@ -1133,10 +1315,12 @@ class App(_t.Generic[C]):
         else:
             return self.doc_format
 
-    def _make_cli_command(self, root: bool = False):
-        options = self._config_type._build_options()
+    def _make_cli_command(
+        self, name: str, help: str | yuio.Disabled | None = None, is_root: bool = False
+    ):
+        options: list[yuio.cli.Option[_t.Any]] = self._config_type._build_options()
 
-        if root:
+        if is_root:
             options.append(yuio.cli.HelpOption())
             if self.version:
                 options.append(yuio.cli.VersionOption(version=self.version))
@@ -1156,31 +1340,76 @@ class App(_t.Generic[C]):
             options.append(yuio.cli.CompletionOption())
             options.append(_ColorOption())
 
-        subcommands = {}
-        subcommand_for_app = {}
-        for name, sub_app in self._subcommands.items():
-            if sub_app not in subcommand_for_app:
-                subcommand_for_app[sub_app] = sub_app._make_cli_command()
-            subcommands[name] = subcommand_for_app[sub_app]
+        subcommands: dict[
+            str, yuio.cli.Command[_t.Any] | yuio.cli.LazyCommand[_t.Any]
+        ] = {}
+        for subcommand_name, subcommand_data in self._subcommands.items():
+            if subcommand_data.name not in subcommands:
+                subcommands[subcommand_data.name] = yuio.cli.LazyCommand(
+                    help=subcommand_data.help,
+                    loader=subcommand_data.make_cli_command,
+                )
+            subcommands[subcommand_name] = subcommands[subcommand_data.name]
+
+        if help is None:
+            help = self.help
 
         return yuio.cli.Command(
-            name=self.prog or pathlib.Path(sys.argv[0]).stem,
-            desc=self.description or "",
-            help=self.help,
-            epilog=self.epilog or "",
-            usage=yuio.util.dedent(self.usage or ""),
+            name=name,
+            desc=self.description,
+            help=help,
+            epilog=self.epilog,
+            usage=self.usage,
             options=options,
             subcommands=subcommands,
             subcommand_required=self.subcommand_required,
-            ns_ctor=lambda: yuio.cli.ConfigNamespace(self._config_type()),
+            ns_ctor=self._create_ns,
             dest="_subcommand",
             ns_dest="_subcommand_ns",
         )
 
+    def _create_ns(self):
+        return yuio.cli.ConfigNamespace(self._config_type())
+
+    def _invoke(
+        self,
+        namespace: yuio.cli.ConfigNamespace["_CommandConfig"],
+        command_info: CommandInfo,
+    ) -> bool | None:
+        return self._callback(namespace.config, command_info)
+
+    def _get_subcommand(
+        self, namespace: yuio.cli.ConfigNamespace["_CommandConfig"]
+    ) -> CommandInfo | None:
+        config = namespace.config
+        if config._subcommand is None:
+            return None
+        else:
+            subcommand_ns = config._subcommand_ns
+            subcommand_data = self._subcommands[config._subcommand]
+
+            assert subcommand_ns is not None
+
+            return CommandInfo(
+                subcommand_data.name, subcommand_data.load(), subcommand_ns
+            )
+
+
+class _CommandConfig(yuio.config.Config):
+    _a_params: _ClassVar[list[str]]
+    _var_a_param: _ClassVar[str | None]
+    _a_kw_params: _ClassVar[list[str]]
+    _kw_params: _ClassVar[list[str]]
+    _subcommand: str | None = None
+    _subcommand_ns: yuio.cli.ConfigNamespace[_CommandConfig] | None = None
+
 
 def _command_from_callable(
     cb: _t.Callable[..., None | bool],
-) -> type[yuio.config.Config]:
+) -> tuple[
+    type[_CommandConfig],
+    _t.Callable[[_CommandConfig, CommandInfo], bool | None],
+]:
     sig = inspect.signature(cb)
 
     dct = {}
@@ -1245,9 +1474,6 @@ def _command_from_callable(
             dct[name] = field
             annotations[name] = annotation
 
-    dct["_run"] = _command_from_callable_run_impl(
-        cb, a_params + a_kw_params, var_a_param, kw_params
-    )
     dct["_color"] = None
     dct["_verbose"] = 0
     dct["_subcommand"] = None
@@ -1257,12 +1483,17 @@ def _command_from_callable(
     dct["__doc__"] = getattr(cb, "__doc__", None)
     dct["__yuio_pre_parsed_docs__"] = docs
 
-    return types.new_class(
+    config = types.new_class(
         cb.__name__,
-        (yuio.config.Config,),
+        (_CommandConfig,),
         {"_allow_positionals": True},
         exec_body=lambda ns: ns.update(dct),
     )
+    callback = _command_from_callable_run_impl(
+        cb, a_params + a_kw_params, var_a_param, kw_params
+    )
+
+    return config, callback
 
 
 def _command_from_callable_run_impl(
@@ -1271,10 +1502,10 @@ def _command_from_callable_run_impl(
     var_a_param: str | None,
     kw_params: list[str],
 ):
-    def run(self, command_info):
-        get = lambda name: (
-            command_info if name == "_command_info" else getattr(self, name)
-        )
+    def run(config: _CommandConfig, command_info: CommandInfo):
+        def get(name: str) -> _t.Any:
+            return command_info if name == "_command_info" else getattr(config, name)
+
         args = [get(name) for name in a_params]
         if var_a_param is not None:
             args.extend(get(var_a_param))
@@ -1296,7 +1527,7 @@ def _run_custom_completer(command: yuio.cli.Command[_t.Any], raw_data: str, word
             continue
         if name not in command.subcommands:
             return
-        root = command.subcommands[name]
+        root = command.subcommands[name].load()
 
     positional_index = 0
     for option in root.options:
