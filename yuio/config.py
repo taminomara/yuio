@@ -1075,9 +1075,12 @@ class Config:
         for name, value in cls.__dict__.items():
             if isinstance(value, _FieldSettings) and name not in cls.__gathered_fields:
                 qualname = f"{cls.__qualname__}.{name}"
-                raise TypeError(
-                    f"error in {qualname}: field without annotations is not allowed"
-                )
+                if name.startswith("_"):
+                    raise TypeError(f"error in {qualname}: fields can't be private")
+                else:
+                    raise TypeError(
+                        f"error in {qualname}: field without annotations is not allowed"
+                    )
         for name, value in cls.__gathered_fields.items():
             if isinstance(value, _FieldSettings):
                 value = value.default
