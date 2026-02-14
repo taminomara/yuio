@@ -1,0 +1,14 @@
+[pytest]
+minversion = "9.0"
+addopts = ["--strict-markers", "-p no:doctest", "-m not full"]
+testpaths = ["examples", "test", "yuio", "docs"]
+markers = [
+    "windows: test runs only on windows runners",
+    "linux: test runs only on linux runners",
+    "darwin: test runs only on darwin runners",
+    "full: long test or test with special requirements, only runs in CI",
+]
+filterwarnings = [
+    # This comes from within jsonschema...
+    "ignore:Passing a schema to Validator.iter_errors is deprecated:DeprecationWarning",
+]

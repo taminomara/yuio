@@ -1,0 +1,68 @@
+requires = ["tox>=4"]
+env_list = [
+    "3.14t",
+    "3.14",
+    "3.13",
+    "3.12",
+    "3.11",
+    "3.10",
+    "type",
+    "lint",
+    "coverage-clean",
+    "coverage-combine",
+]
+depends = []
+
+[env_run_base]
+description = "Run tests under {base_python}"
+dependency_groups = ["test"]
+commands = [
+    [
+        "uv",
+        "run",
+        "--active",
+        "--no-sync",
+        "--with-editable",
+        "./test/test_deps/dbg_hooks,./test/test_deps/dbg_dep",
+        "pytest",
+        "--color=yes",
+        "--cov",
+        "--cov-append",
+        { replace = "posargs", default = [
+        ], extend = true },
+    ],
+]
+pass_env = ["PYTEST*", "COVERAGE*"]
+depends = ["coverage-clean"]
+package = "uv"
+set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}.{envname}" }
+
+[env.type]
+description = "Run type check"
+dependency_groups = ["test"]
+skip_install = true
+commands = [["pyright"]]
+base_python = ["3.14"]
+
+[env.lint]
+description = "Run pre-commit hooks"
+dependency_groups = ["lint"]
+skip_install = true
+commands = [["prek", "run", "--all-files", "--color=always"]]
+depends = []
+
+[env.coverage-clean]
+description = "Delete coverage data"
+dependency_groups = ["test"]
+skip_install = true
+commands = [["coverage", "erase"]]
+depends = []
+set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}" }
+
+[env.coverage-combine]
+description = "Combine coverage data"
+dependency_groups = ["test"]
+skip_install = true
+commands = [["coverage", "combine"]]
+depends = ["3.14", "3.13", "3.12", "3.11", "3.10"]
+set_env = { COVERAGE_FILE = "{env:COVERAGE_FILE:.coverage}" }
