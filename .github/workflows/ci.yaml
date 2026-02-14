@@ -31,7 +31,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Install UV
@@ -55,7 +55,7 @@ jobs:
           COVERAGE_FILE: .coverage.${{ matrix.os }}
       - name: Upload coverage artifact
         if: ${{ matrix.type == 'test' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ matrix.os }}
           path: .coverage.${{ matrix.os }}
@@ -80,7 +80,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Install UV
@@ -89,7 +89,7 @@ jobs:
         run: |
           uv sync --only-group ci
       - name: Download coverage data
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           path: .
           pattern: coverage-*
@@ -104,7 +104,7 @@ jobs:
           echo $'User-agent: *\nDisallow: /' > htmlcov/robots.txt
           touch htmlcov/.nojekyll
       - name: Upload coverage report
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: htmlcov
       - name: Deploy to GitHub Pages
@@ -125,7 +125,7 @@ jobs:
       changelog-text: ${{ steps.changelog.outputs.text }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Generate release metadata
@@ -146,7 +146,7 @@ jobs:
         run: |
           uv build
       - name: Upload the build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: python-package-distributions
           path: dist/
@@ -169,7 +169,7 @@ jobs:
       id-token: write
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
