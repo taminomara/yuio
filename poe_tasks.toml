@@ -2,12 +2,6 @@
 type = "uv"
 no-group = ["dev", "test-extra"]
 
-[tasks.update_dist]
-help = "Update vendored distributions"
-cmd = "./scripts/update_dist"
-use_exec = true
-executor = { group = "ci" }
-
 [tasks.lint]
 help = "Run pre-commit linters"
 cmd = "prek run --all-files"
@@ -67,3 +61,15 @@ executor = { group = "doc" }
 help = "Start documentation server and rebuild HTML docs on every change"
 cmd = "sphinx-autobuild docs/source docs/build/html -d docs/build/doctrees --watch . -j 12 -n"
 executor = { group = "doc" }
+
+[tasks.update_dist]
+help = "Update vendored distributions"
+cmd = "./scripts/update_dist"
+use_exec = true
+executor = { group = "ci" }
+
+[tasks.release]
+help = "Bump version, create release commit and tag"
+cmd = "clk bump --commit"
+use_exec = true
+executor = { group = "ci" }
