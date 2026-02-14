@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-02-14
+
 - ✨ Added `yuio.parse.Literal` and support for `typing.Literal`.
 
 - ✨ `yuio.parse.Union` can use choice widget if all of its nested parsers can
@@ -258,5 +260,6 @@ Release candidate for version 2.
 [2.0.0-rc4]: https://github.com/taminomara/yuio/compare/v2.0.0-rc3...v2.0.0-rc4
 [2.0.0-rc5]: https://github.com/taminomara/yuio/compare/v2.0.0-rc4...v2.0.0-rc5
 [2.0.1]: https://github.com/taminomara/yuio/compare/v2.0.0...v2.0.1
+[2.1.0]: https://github.com/taminomara/yuio/compare/v2.0.1...v2.1.0
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.0.1...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.1.0...HEAD
