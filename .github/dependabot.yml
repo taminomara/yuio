@@ -35,3 +35,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      gh-actions:
+        patterns:
+          - "*"
