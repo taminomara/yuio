@@ -436,7 +436,6 @@ import yuio.parse
 import yuio.string
 import yuio.term
 import yuio.theme
-import yuio.util
 from yuio.cli import (
     MISC_GROUP,
     OPTS_GROUP,
@@ -459,6 +458,7 @@ from yuio.config import (
     store_false_option,
     store_true_option,
 )
+from yuio.util import dedent as _dedent
 from yuio.util import find_docs as _find_docs
 from yuio.util import to_dash_case as _to_dash_case
 
@@ -801,7 +801,7 @@ class App(_t.Generic[C]):
 
         """
 
-        self.usage: str = yuio.util.dedent(usage) if usage else ""
+        self.usage: str = usage or ""
         """
         Program or subcommand synapsis.
 
@@ -825,7 +825,7 @@ class App(_t.Generic[C]):
         """
 
         if description is None and command.__doc__:
-            description = yuio.util.dedent(command.__doc__).removesuffix("\n")
+            description = command.__doc__
         if description is None:
             description = ""
 
@@ -1356,10 +1356,10 @@ class App(_t.Generic[C]):
 
         return yuio.cli.Command(
             name=name,
-            desc=self.description,
-            help=help,
-            epilog=self.epilog,
-            usage=self.usage,
+            desc=_dedent(self.description),
+            help=_dedent(help) if help is not yuio.DISABLED else help,
+            epilog=_dedent(self.epilog),
+            usage=_dedent(self.usage).strip(),
             options=options,
             subcommands=subcommands,
             subcommand_required=self.subcommand_required,

@@ -337,6 +337,7 @@ from yuio.cli import (
     HelpGroup,
     MutuallyExclusiveGroup,
 )
+from yuio.util import dedent as _dedent
 from yuio.util import find_docs as _find_docs
 
 import yuio._typing_ext as _tx
@@ -537,10 +538,10 @@ class _FieldSettings:
 
         help: str | yuio.Disabled
         if self.help is not None:
-            help = self.help
+            help = _dedent(self.help) if self.help is not yuio.DISABLED else self.help
             full_help = help or ""
         elif parsed_help is not None:
-            help = full_help = parsed_help
+            help = full_help = parsed_help  # Already dedented by comment parser
             if cut_help and (index := help.find("\n\n")) != -1:
                 help = help[:index]
         else:
@@ -1624,7 +1625,7 @@ class Config:
         return yuio.json_schema.Meta(
             yuio.json_schema.Object(properties),
             title=cls.__name__,
-            description=cls.__doc__,
+            description=_dedent(cls.__doc__) if cls.__doc__ else None,
             default=defaults,
         )
 
