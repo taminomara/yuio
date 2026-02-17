@@ -14,7 +14,7 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
-## [2.1.2] - 2026-02-17
+## [2.1.1] - 2026-02-17
 
 - 🐛 Fixed help generation for positional-only app arguments.
 
@@ -265,6 +265,6 @@ Release candidate for version 2.
 [2.0.0-rc5]: https://github.com/taminomara/yuio/compare/v2.0.0-rc4...v2.0.0-rc5
 [2.0.1]: https://github.com/taminomara/yuio/compare/v2.0.0...v2.0.1
 [2.1.0]: https://github.com/taminomara/yuio/compare/v2.0.1...v2.1.0
-[2.1.2]: https://github.com/taminomara/yuio/compare/v2.1.0...v2.1.2
+[2.1.1]: https://github.com/taminomara/yuio/compare/v2.1.0...v2.1.1
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.1.2...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.1.1...HEAD
