@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- 🐛 Fixed help generation for positional-only app arguments.
+
 ## [2.1.0] - 2026-02-14
 
 - ✨ Added `yuio.parse.Literal` and support for `typing.Literal`.

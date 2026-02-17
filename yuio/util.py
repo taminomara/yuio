@@ -205,7 +205,12 @@ def find_docs(obj: _t.Any, /) -> dict[str, str]:
     elif isinstance(cdef, ast.FunctionDef):
         fields = [
             (field.lineno, field.arg)
-            for field in itertools.chain(cdef.args.args, cdef.args.kwonlyargs)
+            for field in itertools.chain(
+                cdef.args.posonlyargs,
+                cdef.args.args,
+                [cdef.args.vararg] if cdef.args.vararg else [],
+                cdef.args.kwonlyargs,
+            )
         ]
     else:  # pragma: no cover
         _DOCS_CACHE[obj] = {}
