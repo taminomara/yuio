@@ -55,7 +55,7 @@ jobs:
           COVERAGE_FILE: .coverage.${{ matrix.os }}
       - name: Upload coverage artifact
         if: ${{ matrix.type == 'test' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.os }}
           path: .coverage.${{ matrix.os }}
@@ -89,7 +89,7 @@ jobs:
         run: |
           uv sync --only-group ci
       - name: Download coverage data
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: .
           pattern: coverage-*
@@ -146,7 +146,7 @@ jobs:
         run: |
           uv build
       - name: Upload the build artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
@@ -169,7 +169,7 @@ jobs:
       id-token: write
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: python-package-distributions
           path: dist/
