@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- ✨ Added `yuio.ty.Pair`.
+
 ## [2.1.1] - 2026-02-17
 
 - 🐛 Fixed help generation for positional-only app arguments.

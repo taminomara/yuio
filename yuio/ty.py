@@ -54,6 +54,11 @@ types such as positive ints or non-empty containers.
 
     Non-empty dict.
 
+.. type:: Pair
+    :canonical: typing.Annotated[tuple[K, V], ~yuio.parse.Tuple(delimiter=":")]
+
+    Colon-separated pair of values.
+
 .. type:: Path
     :canonical: pathlib.Path
 
@@ -235,6 +240,12 @@ Non-empty frozenset.
 NonEmptyDict: _t.TypeAlias = _t.Annotated[dict[K, V], yuio.parse.LenGt(0)]
 """
 Non-empty dict.
+
+"""
+
+Pair: _t.TypeAlias = _t.Annotated[tuple[K, V], yuio.parse.Tuple(delimiter=":")]
+"""
+Colon-separated pair of values.
 
 """
 
