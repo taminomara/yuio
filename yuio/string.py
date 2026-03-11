@@ -2489,11 +2489,11 @@ class ReprContext:
             stack:
             - optional:
               - optional:
-                - optional:
-                  - non_terminal: "fill"
-                    href: "#t-string-spec-fill"
-                - non_terminal: "align"
-                  href: "#t-string-spec-align"
+                - non_terminal: "fill"
+                  href: "#t-string-spec-fill"
+              - non_terminal: "align"
+                href: "#t-string-spec-align"
+            - optional:
               - non_terminal: "flags"
                 href: "#t-string-spec-flags"
             - optional:
