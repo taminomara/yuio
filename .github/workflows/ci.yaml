@@ -137,7 +137,7 @@ jobs:
           echo "link=${link}" >> $GITHUB_OUTPUT
       - name: Parse Changelog
         id: changelog
-        uses: taminomara/cl-keeper@v0
+        uses: taminomara/cl-keeper@v1
         with:
           version: ${{ github.ref }}
       - name: Install UV

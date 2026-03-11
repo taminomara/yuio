@@ -51,12 +51,12 @@ doc = [
     "sybil==9.3.0",
 ]
 lint = [
-    "cl-keeper==0.0.0-b6",
-    "prek>=0.3.2",
-    "ruff==0.15.2",
+    "cl-keeper==1.0.0",
+    "prek==0.3.5",
+    "ruff==0.15.5",
 ]
 ci = [
-    "cl-keeper==0.0.0-b6",
+    "cl-keeper==1.0.0",
     "genbadge[coverage]==1.1.3",
     "PyGithub==2.8.1",
     "pytest-cov==7.0.0",
