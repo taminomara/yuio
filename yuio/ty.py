@@ -172,6 +172,7 @@ __all__ = [
     "NonNegInt",
     "NonNegSeconds",
     "NonNegTimeDelta",
+    "Pair",
     "Path",
     "PosFloat",
     "PosInt",
