@@ -53,7 +53,7 @@ doc = [
 lint = [
     "cl-keeper==1.0.0",
     "prek==0.3.5",
-    "ruff==0.15.5",
+    "ruff==0.15.6",
 ]
 ci = [
     "cl-keeper==1.0.0",
