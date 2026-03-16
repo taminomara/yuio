@@ -15,6 +15,7 @@ and run `poe lint` to replace:
 ## [Unreleased]
 
 - 🐛 Fixed issue with using `print` while in task.
+- 🐛 Fixed detecting system stackframes on linux.
 
 ## [2.2.0] - 2026-03-11
 

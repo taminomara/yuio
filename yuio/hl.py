@@ -849,7 +849,7 @@ class _TbHighlighter(SyntaxHighlighter):
     )
     _TB_LINE_HIGHLIGHT = re.compile(r"^[ |+^~-]*$")
     _SITE_PACKAGES = re.compile(r"[/\\]lib[/\\]site-packages[/\\]")
-    _LIB_PYTHON = re.compile(r"[/\\]lib[/\\]python")
+    _LIB_PYTHON = re.compile(r"[/\\]lib(64)?[/\\]python")
 
     def highlight(
         self,
