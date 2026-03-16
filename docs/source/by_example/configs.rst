@@ -69,9 +69,9 @@ and from CLI arguments:
         )
     ):
         config = Config()
-        config.update(Config.load_from_json_file(".greet_cfg.json"))
-        config.update(Config.load_from_env(prefix="GREET"))
-        config.update(cli_config)
+        config |= Config.load_from_json_file(".greet_cfg.json")
+        config |= Config.load_from_env(prefix="GREET")
+        config |= cli_config
 
 .. code-annotations::
 
@@ -85,9 +85,10 @@ and from CLI arguments:
 
 We simply load configs from all available sources and merge them together.
 
-Note that :meth:`~yuio.config.Config.update` will not override fields that have
-defaults, but aren't present in a particular config instance. This makes it safe
-to merge configs in such a way::
+Configs support the ``|`` and ``|=`` operators for merging, similar to
+:class:`dict`. The ``|=`` operator updates a config in-place (like
+:meth:`~yuio.config.Config.update`), while ``|`` creates a new merged config
+without modifying either operand::
 
     >>> class Config(yuio.config.Config):
     ...     a: str = "default a"
@@ -95,17 +96,29 @@ to merge configs in such a way::
 
     >>> config_1 = Config(a="custom a", b="custom b")
 
-    >>> # Here, `config_1.b` is not overridden, even though it has default.
-    >>> config_1.update(Config(a="custom a 2"))
+    >>> # `|=` updates `config_1` in-place:
+    >>> config_1 |= Config(a="custom a 2")
     >>> config_1
     Config(a='custom a 2', b='custom b')
+
+    >>> # `|` creates a new config without modifying the originals:
+    >>> config_2 = Config(a="from 2")
+    >>> config_3 = Config(b="from 3")
+    >>> merged = config_2 | config_3
+    >>> merged
+    Config(a='from 2', b='from 3')
+
+Note that neither operator will override fields that have
+defaults, but aren't present in a particular config instance. This makes it safe
+to merge configs from multiple sources.
 
 
 Complex field merging
 ---------------------
 
-By default, :meth:`~yuio.config.Config.update` overrides fields from the initial config
-with fields present in the new config. Sometimes you need to merge them, though.
+By default, :meth:`~yuio.config.Config.update` (and the ``|`` / ``|=`` operators)
+overrides fields from the initial config with fields present in the new config.
+Sometimes you need to merge them, though.
 
 You can provide a custom merging function to achieve this:
 

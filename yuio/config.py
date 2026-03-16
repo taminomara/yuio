@@ -25,13 +25,13 @@ define config fields using type annotations, just like :mod:`dataclasses`:
         use_gpu: bool = True
 
 Then use config's constructors and the :meth:`~Config.update` method
-to load it from various sources::
+(or the ``|`` / ``|=`` operators) to load it from various sources::
 
     # Load config from a file.
     config = AppConfig.load_from_json_file("~/.my_app_cfg.json")
 
     # Update config with values from env.
-    config.update(AppConfig.load_from_env())
+    config |= AppConfig.load_from_env()
 
 
 Config base class
@@ -994,6 +994,10 @@ class Config:
 
     .. automethod:: update
 
+    .. automethod:: __or__
+
+    .. automethod:: __ior__
+
     .. automethod:: load_from_env
 
     .. automethod:: load_from_json_file
@@ -1309,6 +1313,44 @@ class Config:
 
     def __deepcopy__(self, memo: dict[int, _t.Any] | None = None):
         return type(self)(copy.deepcopy(self.__dict__, memo))
+
+    def __ior__(self, value: _t.Self, /) -> _t.Self:
+        """
+        Update this config in-place using the ``|=`` operator.
+
+        Equivalent to calling :meth:`update`::
+
+            config |= other
+            # same as
+            config.update(other)
+
+        :param value:
+            config to merge from.
+
+        """
+
+        self.update(value)
+        return self
+
+    def __or__(self, value: _t.Self, /) -> _t.Self:
+        """
+        Merge two configs using the ``|`` operator, returning a new config.
+
+        Creates a copy of this config, updates it with *value*,
+        and returns the result. Neither operand is modified::
+
+            merged = config1 | config2
+
+        :param value:
+            config to merge from.
+        :returns:
+            a new config with fields from both operands.
+
+        """
+
+        lhs = self.__class__(self)
+        lhs.update(value)
+        return lhs
 
     @classmethod
     def load_from_json_file(

@@ -1100,3 +1100,221 @@ class TestCopy:
         with pytest.raises(AttributeError, match=r"x is not configured"):
             _ = copied.x
         assert copied.y == "custom"
+
+
+class TestOr:
+    def test_or_basic(self):
+        class MyConfig(yuio.config.Config):
+            f1: str = "1"
+            f2: str = "2"
+
+        a = MyConfig(f1="a")
+        b = MyConfig(f2="b")
+        result = a | b
+
+        assert result is not a
+        assert result is not b
+        assert result.f1 == "a"
+        assert result.f2 == "b"
+
+    def test_or_does_not_mutate_operands(self):
+        class MyConfig(yuio.config.Config):
+            f1: str = "1"
+            f2: str
+
+        a = MyConfig(f1="a")
+        b = MyConfig(f1="x", f2="b")
+        _ = a | b
+
+        assert a.f1 == "a"
+        with pytest.raises(AttributeError, match=r"f2 is not configured"):
+            _ = a.f2
+        assert b.f1 == "x"
+        assert b.f2 == "b"
+
+    def test_or_rhs_overrides_lhs(self):
+        class MyConfig(yuio.config.Config):
+            f1: str = "1"
+            f2: str = "2"
+
+        a = MyConfig(f1="a", f2="a2")
+        b = MyConfig(f1="b")
+        result = a | b
+
+        assert result.f1 == "b"
+        assert result.f2 == "a2"
+
+    def test_or_with_missing_fields(self):
+        class MyConfig(yuio.config.Config):
+            f1: str
+            f2: str
+
+        a = MyConfig(f1="a")
+        b = MyConfig(f2="b")
+        result = a | b
+
+        assert result.f1 == "a"
+        assert result.f2 == "b"
+
+    def test_or_missing_stays_missing(self):
+        class MyConfig(yuio.config.Config):
+            f1: str
+            f2: str
+
+        a = MyConfig(f1="a")
+        b = MyConfig()
+        result = a | b
+
+        assert result.f1 == "a"
+        with pytest.raises(AttributeError, match=r"f2 is not configured"):
+            _ = result.f2
+
+    def test_or_nested_config(self):
+        class SubConfig(yuio.config.Config):
+            a: str = "a"
+            b: str
+
+        class MyConfig(yuio.config.Config):
+            sub: SubConfig
+            x: int
+
+        c1 = MyConfig(sub=SubConfig(b="b1"), x=1)
+        c2 = MyConfig(sub=SubConfig(a="a2"))
+        result = c1 | c2
+
+        assert result is not c1
+        assert result is not c2
+        assert result.x == 1
+        assert result.sub.a == "a2"
+        assert result.sub.b == "b1"
+
+    def test_or_with_mutable_values(self):
+        class MyConfig(yuio.config.Config):
+            items: list[int] = []
+
+        a = MyConfig(items=[1, 2])
+        b = MyConfig(items=[3, 4])
+        result = a | b
+
+        assert result.items == [3, 4]
+        assert a.items == [1, 2]
+
+    def test_or_chaining(self):
+        class MyConfig(yuio.config.Config):
+            f1: str
+            f2: str
+            f3: str
+
+        a = MyConfig(f1="a")
+        b = MyConfig(f2="b")
+        c = MyConfig(f3="c")
+        result = a | b | c
+
+        assert result.f1 == "a"
+        assert result.f2 == "b"
+        assert result.f3 == "c"
+
+    def test_ior_mutates_self(self):
+        class MyConfig(yuio.config.Config):
+            f1: str = "1"
+            f2: str
+
+        a = MyConfig(f1="a")
+        b = MyConfig(f2="b")
+        a |= b
+
+        assert a.f1 == "a"
+        assert a.f2 == "b"
+
+    def test_ior_returns_self(self):
+        class MyConfig(yuio.config.Config):
+            f1: str = "1"
+            f2: str = "2"
+
+        target = MyConfig(f1="target")
+        original_target = target
+        source = MyConfig(f1="source", f2="source2")
+        target |= source
+
+        assert target is original_target
+        assert target.f1 == "source"
+        assert target.f2 == "source2"
+
+    def test_ior_does_not_mutate_rhs(self):
+        class MyConfig(yuio.config.Config):
+            f1: str = "1"
+            f2: str
+
+        a = MyConfig(f1="a")
+        b = MyConfig(f1="b", f2="b2")
+        a |= b
+
+        assert b.f1 == "b"
+        assert b.f2 == "b2"
+
+    def test_ior_with_missing_fields(self):
+        class MyConfig(yuio.config.Config):
+            f1: str
+            f2: str
+
+        a = MyConfig(f1="a")
+        b = MyConfig()
+        a |= b
+
+        assert a.f1 == "a"
+        with pytest.raises(AttributeError, match=r"f2 is not configured"):
+            _ = a.f2
+
+    def test_ior_nested_config(self):
+        class SubConfig(yuio.config.Config):
+            a: str = "a"
+            b: str
+
+        class MyConfig(yuio.config.Config):
+            sub: SubConfig
+            x: int
+
+        a = MyConfig(sub=SubConfig(b="b1"), x=1)
+        a |= MyConfig(sub=SubConfig(a="a2"))
+
+        assert a.x == 1
+        assert a.sub.a == "a2"
+        assert a.sub.b == "b1"
+
+    def test_ior_with_merge_function(self):
+        class MyConfig(yuio.config.Config):
+            x: int = yuio.config.field(default=1, merge=lambda l, r: l + r)
+
+        a = MyConfig(x=10)
+        a |= MyConfig(x=5)
+
+        assert a.x == 15
+
+    def test_or_inheritance(self):
+        class Parent(yuio.config.Config):
+            f1: str = "1"
+            f2: str = "2"
+
+        class Child(Parent):
+            f3: str = "3"
+
+        child1 = Child(f1="a", f3="c")
+        child2 = Child(f2="b")
+        result = child1 | child2
+
+        assert isinstance(result, Child)
+        assert result.f1 == "a"
+        assert result.f2 == "b"
+        assert result.f3 == "c"
+
+    def test_or_with_merge_function(self):
+        class MyConfig(yuio.config.Config):
+            x: int = yuio.config.field(default=1, merge=lambda l, r: l + r)
+
+        a = MyConfig(x=10)
+        b = MyConfig(x=5)
+        result = a | b
+
+        assert result.x == 15
+        assert a.x == 10
+        assert b.x == 5

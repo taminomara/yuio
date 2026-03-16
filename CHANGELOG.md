@@ -14,6 +14,7 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- ✨ Added operators to merge configs: `config1 | config2`.
 - 🐛 Fixed issue with using `print` while in task.
 - 🐛 Fixed detecting system stackframes on linux.
 
