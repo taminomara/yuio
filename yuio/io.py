@@ -2813,7 +2813,7 @@ class TaskBase:
 
         """
 
-        _manager()._update_tasks(immediate_render)
+        _manager()._update_tasks(immediate_render or not streams_wrapped())
 
     def _widgets_are_displayed(self) -> bool:
         """
@@ -3803,12 +3803,14 @@ class _IoManager(abc.ABC):
         msg: str,
         stream: _t.TextIO | None = None,
     ):
+        if not msg:
+            return
         with _IO_LOCK:
             self._emit_lines([msg], stream, ignore_suspended=False)
 
     def print_direct_lines(
         self,
-        lines: _t.Iterable[str],
+        lines: list[str],
         stream: _t.TextIO | None = None,
     ):
         with _IO_LOCK:
@@ -3840,17 +3842,20 @@ class _IoManager(abc.ABC):
 
     def _emit_lines(
         self,
-        lines: _t.Iterable[str],
+        lines: list[str],
         stream: _t.TextIO | None = None,
         ignore_suspended: bool = False,
     ):
+        if not lines or not any(lines):
+            return
         stream = stream or self._term.ostream
         if self._suspended and not ignore_suspended:
             self._suspended_lines.append((list(lines), stream))
         else:
             self._clear_tasks()
             stream.writelines(lines)
-            self._update_tasks(immediate_render=True)
+            if lines and lines[-1].endswith("\n"):
+                self._update_tasks(immediate_render=True)
             stream.flush()
 
         self._printed_some_lines = True
@@ -3988,7 +3993,7 @@ class _YuioOutputWrapper(_t.TextIO):  # pragma: no cover
         return len(s)
 
     def writelines(self, lines: _t.Iterable[str], /):
-        _manager().print_direct_lines(lines, self.__wrapped)
+        _manager().print_direct_lines(list(lines), self.__wrapped)
 
     def readable(self) -> bool:
         return self.__wrapped.readable()

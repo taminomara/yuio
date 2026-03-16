@@ -1811,7 +1811,7 @@ class TestTask:
             with yuio.io.Task("task `%s`", 1):
                 io_mocker.mark()
 
-    def test_print_while_in_task(self, io_mocker: IOMocker):
+    def test_info_while_in_task(self, io_mocker: IOMocker):
         io_mocker.expect_screen(
             [
                 "⣿ task 1                                ",
@@ -1838,6 +1838,34 @@ class TestTask:
                 yuio.io.info("hello world!")
                 io_mocker.mark()
             yuio.io.info("hello world 2!")
+
+    def test_print_while_in_task(self, io_mocker: IOMocker):
+        io_mocker.expect_screen(
+            [
+                "⣿ task 1                                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "hello world!                            ",
+                "⣿ task 1                                ",
+            ]
+        )
+        io_mocker.expect_mark()
+        io_mocker.expect_screen(
+            [
+                "hello world!                            ",
+                "hello world 2!                          ",
+            ]
+        )
+
+        with io_mocker.mock(wrap_streams=True):
+            with yuio.io.Task("task `%s`", 1):
+                io_mocker.mark()
+                print("hello", "world!")
+                io_mocker.mark()
+            print("hello", "world", "2!")
 
     def test_error_in_task(self, io_mocker: IOMocker):
         io_mocker.expect_screen(

@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- 🐛 Fixed issue with using `print` while in task.
+
 ## [2.2.0] - 2026-03-11
 
 - ✨ Added `yuio.ty.Pair`.
