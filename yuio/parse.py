@@ -4297,6 +4297,7 @@ class Tuple(
                 "" if len(self._inner) == 1 else "s",
                 len(value),
                 value,
+                ctx=ctx,
             )
 
         return _t.cast(
@@ -4388,47 +4389,34 @@ class _DictElementParser(Tuple[tuple[K, V]], _t.Generic[K, V]):
     def __init__(self, k: Parser[K], v: Parser[V], delimiter: str | None = None):
         super().__init__(k, v, delimiter=delimiter)
 
-    # def parse_with_ctx(self, ctx: StrParsingContext, /) -> tuple[K, V]:
-    #     items = list(ctx.split(self._delimiter, maxsplit=len(self._inner) - 1))
+    def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> tuple[K, V]:
+        if not isinstance(ctx.value, (list, tuple)):
+            raise ParsingError.type_mismatch(ctx.value, list, tuple, ctx=ctx)
+        elif len(ctx.value) != 2:
+            raise ParsingError(
+                "Expected 2 element, got %s: `%r`",
+                len(ctx.value),
+                ctx.value,
+                ctx=ctx,
+            )
 
-    #     if len(items) != len(self._inner):
-    #         raise ParsingError("Expected key-value pair, got `%r`", ctx.value)
+        key = self._inner[0].parse_config_with_ctx(
+            ConfigParsingContext(
+                ctx.value[0],
+                parent=ctx.parent,
+                key=ctx.key,
+                desc="key of element #%(key)r",
+            )
+        )
+        value = self._inner[1].parse_config_with_ctx(
+            ConfigParsingContext(
+                ctx.value[1],
+                parent=ctx.parent,
+                key=key,
+            )
+        )
 
-    #     return _t.cast(
-    #         tuple[K, V],
-    #         tuple(parser.parse_with_ctx(item) for parser, item in zip(self._inner, items)),
-    #     )
-
-    # def parse_many_with_ctx(self, ctxs: _t.Sequence[StrParsingContext], /) -> tuple[K, V]:
-    #     if len(value) != len(self._inner):
-    #         with describe_context("element #%(key)r"):
-    #             raise ParsingError(
-    #                 "Expected key-value pair, got `%r`",
-    #                 value,
-    #             )
-
-    #     k = describe_context("key of element #%(key)r", self._inner[0].parse, value[0])
-    #     v = replace_context(k, self._inner[1].parse, value[1])
-
-    #     return _t.cast(tuple[K, V], (k, v))
-
-    # def parse_config_with_ctx(self, ctx: ConfigParsingContext, /) -> tuple[K, V]:
-    #     if not isinstance(value, (list, tuple)):
-    #         with describe_context("element #%(key)r"):
-    #             raise ParsingError.type_mismatch(value, list, tuple)
-    #     elif len(value) != len(self._inner):
-    #         with describe_context("element #%(key)r"):
-    #             raise ParsingError(
-    #                 "Expected key-value pair, got `%r`",
-    #                 value,
-    #             )
-
-    #     k = describe_context(
-    #         "key of element #%(key)r", self._inner[0].parse_config_with_ctx, value[0]
-    #     )
-    #     v = replace_context(k, self._inner[1].parse_config_with_ctx, value[1])
-
-    #     return _t.cast(tuple[K, V], (k, v))
+        return _t.cast(tuple[K, V], (key, value))
 
 
 class Optional(MappingParser[T | None, T], _t.Generic[T]):
@@ -5767,7 +5755,7 @@ class StrParsingContext:
             return self.strip()
 
     # If you need more methods, feel free to open an issue or send a PR!
-    # For now, `split` and `split` is enough.
+    # For now, `split` and `strip` is enough.
 
 
 class ConfigParsingContext:

@@ -227,6 +227,19 @@ will be concatenated.
         config = AppConfig(plugins=["markdown", "rst"])
         config.update(...)
 
+.. seealso::
+
+    See :func:`yuio.util.merge_dicts` helper that can medge nested dicts.
+
+
+Collections of configs
+----------------------
+
+When you use configs inside of other collections, the config will be parsed from JSON.
+This is mostly useful when loading configs from files.
+
+.. autoclass:: ConfigParser
+
 
 Re-imports
 ----------
@@ -275,6 +288,12 @@ Re-imports
     :no-index:
 
     Alias of :obj:`yuio.app.store_true_option`
+
+
+.. function:: merge_dicts
+    :no-index:
+
+    Alias of :func:`yuio.util.merge_dicts`
 
 .. type:: HelpGroup
     :no-index:
@@ -339,6 +358,7 @@ from yuio.cli import (
 )
 from yuio.util import dedent as _dedent
 from yuio.util import find_docs as _find_docs
+from yuio.util import merge_dicts
 
 import yuio._typing_ext as _tx
 from typing import TYPE_CHECKING
@@ -353,6 +373,7 @@ __all__ = [
     "OPTS_GROUP",
     "SUBCOMMANDS_GROUP",
     "Config",
+    "ConfigParser",
     "HelpGroup",
     "MutuallyExclusiveGroup",
     "OptionCtor",
@@ -362,6 +383,7 @@ __all__ = [
     "count_option",
     "field",
     "inline",
+    "merge_dicts",
     "parse_many_option",
     "parse_one_option",
     "positional",
@@ -1563,7 +1585,7 @@ class Config:
             for name in value:
                 if name not in cls.__get_fields() and name != "$schema":
                     raise yuio.parse.ParsingError(
-                        "Unknown field `%s`", f"{field_prefix}{name}"
+                        "Unknown field `%s`", f"{field_prefix}{name}", ctx=ctx
                     )
 
         for name, field in cls.__get_fields().items():
@@ -2139,3 +2161,90 @@ def store_false_option() -> OptionCtor[bool]:
         )
 
     return ctor
+
+
+class ConfigParser(
+    yuio.parse.WrappingParser[Cfg, type[Cfg]],
+    yuio.parse.ValueParser[Cfg],
+    _t.Generic[Cfg],
+):
+    """
+    Parser for configs that reads them as JSON strings.
+
+    This parser kicks in when you use configs as collection members, i.e. ``list[Config]``
+    or ``dict[str, Config]``. On top level, the usual logic for nested configs applies.
+
+    """
+
+    if TYPE_CHECKING:
+
+        @_t.overload
+        def __new__(cls, inner: type[Cfg], /) -> ConfigParser[Cfg]: ...
+
+        @_t.overload
+        def __new__(cls, /) -> yuio.parse.PartialParser: ...
+
+        def __new__(cls, inner: type[Cfg] | None = None, /) -> _t.Any: ...
+
+    def __init__(
+        self,
+        inner: type[Cfg] | None = None,
+        /,
+    ):
+        super().__init__(inner, inner)
+
+    def parse_with_ctx(self, ctx: yuio.parse.StrParsingContext, /) -> Cfg:
+        ctx = ctx.strip_if_non_space()
+        try:
+            config_value: yuio.parse.JsonValue = json.loads(ctx.value)
+        except json.JSONDecodeError as e:
+            raise yuio.parse.ParsingError(
+                "Can't parse `%r` as `JsonValue`:\n%s",
+                ctx.value,
+                yuio.string.Indent(e),
+                ctx=ctx,
+                fallback_msg="Can't parse value as `JsonValue`",
+            ) from None
+        try:
+            return self.parse_config_with_ctx(
+                yuio.parse.ConfigParsingContext(config_value)
+            )
+        except yuio.parse.ParsingError as e:
+            raise yuio.parse.ParsingError(
+                "Error in parsed json value:\n%s",
+                yuio.string.Indent(e),
+                ctx=ctx,
+                fallback_msg="Error in parsed json value",
+            ) from None
+
+    def parse_config_with_ctx(self, ctx: yuio.parse.ConfigParsingContext, /) -> Cfg:
+        if not isinstance(ctx.value, dict):
+            raise yuio.parse.ParsingError.type_mismatch(ctx.value, dict, ctx=ctx)
+        for key, value in ctx.value.items():
+            if not isinstance(key, str):
+                raise yuio.parse.ParsingError.type_mismatch(
+                    key, str, ctx=ctx.descend(value, key)
+                )
+        return self._inner._Config__load_from_parsed_file(ctx)  # pyright: ignore[reportAttributeAccessIssue]
+
+    def to_json_schema(
+        self, ctx: yuio.json_schema.JsonSchemaContext, /
+    ) -> yuio.json_schema.JsonSchemaType:
+        return self._inner.to_json_schema(ctx)
+
+    def to_json_value(self, value: object, /) -> yuio.json_schema.JsonValue:
+        assert self.assert_type(value)
+        return value.to_json_value()
+
+    def __repr__(self):
+        if self._inner_raw is not None:
+            return f"{self.__class__.__name__}({self._inner_raw.__name__!r})"
+        else:
+            return super().__repr__()
+
+
+yuio.parse.register_type_hint_conversion(
+    lambda ty, origin, args: (
+        ConfigParser(ty) if isinstance(ty, type) and issubclass(ty, Config) else None
+    )
+)

@@ -14,6 +14,8 @@
 
 .. autofunction:: commonprefix
 
+.. autofunction:: merge_dicts
+
 .. autoclass:: UserString
 
     .. automethod:: _wrap
@@ -42,6 +44,7 @@ __all__ = [
     "commonprefix",
     "dedent",
     "find_docs",
+    "merge_dicts",
     "to_dash_case",
 ]
 
@@ -243,6 +246,42 @@ def commonprefix(m: _t.Collection[str]) -> str:
         if c != s2[i]:
             return s1[:i]
     return s1
+
+
+K = _t.TypeVar("K")
+V = _t.TypeVar("V")
+
+
+def merge_dicts(
+    merge_values: _t.Callable[[V, V], V], /
+) -> _t.Callable[[dict[K, V], dict[K, V]], dict[K, V]]:
+    """
+    Create a function that merges two :class:`dict`\\ s, using the given
+    callable to merge values that appear in both dicts.
+
+    :param merge_values:
+        function that will be used to merge values that appear in both dicts.
+    :returns:
+        function that merges dicts.
+    :example:
+        This is useful for merging dicts of configs, other dicts, and so on:
+
+        .. code-block:: python
+
+            merge_dicts_of_configs = merge_dicts(lambda l, r: l | r)
+
+    """
+
+    def merge(lhs: dict[K, V], rhs: dict[K, V]) -> dict[K, V]:
+        res = lhs.copy()
+        for k, v in rhs.items():
+            if k in res:
+                res[k] = merge_values(res[k], v)
+            else:
+                res[k] = v
+        return res
+
+    return merge
 
 
 if TYPE_CHECKING:

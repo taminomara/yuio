@@ -498,3 +498,61 @@ class TestUserStringWithState:
 )
 def test_commonprefix(strings, expected):
     assert yuio.util.commonprefix(strings) == expected
+
+
+class TestMergeDicts:
+    @pytest.mark.parametrize(
+        ("lhs", "rhs", "expected"),
+        [
+            ({}, {}, {}),
+            ({}, {"a": 1}, {"a": 1}),
+            ({"a": 1}, {}, {"a": 1}),
+            ({"a": 1}, {"b": 2}, {"a": 1, "b": 2}),
+            ({"a": 1, "b": 2}, {"b": 3, "c": 4}, {"a": 1, "b": 5, "c": 4}),
+            ({"x": 2, "y": 3}, {"x": 10, "y": 7}, {"x": 12, "y": 10}),
+        ],
+    )
+    def test_merge_with_add(self, lhs, rhs, expected):
+        merge = yuio.util.merge_dicts(lambda l, r: l + r)
+        assert merge(lhs, rhs) == expected
+
+    @pytest.mark.parametrize(
+        ("merge_fn", "lhs", "rhs", "expected"),
+        [
+            (lambda l, r: r, {"a": 1}, {"a": 2}, {"a": 2}),
+            (lambda l, r: l, {"a": 1}, {"a": 2}, {"a": 1}),
+            (lambda l, r: l * r, {"x": 2, "y": 3}, {"x": 5, "y": 7}, {"x": 10, "y": 21}),
+        ],
+    )
+    def test_different_merge_functions(self, merge_fn, lhs, rhs, expected):
+        merge = yuio.util.merge_dicts(merge_fn)
+        assert merge(lhs, rhs) == expected
+
+    def test_does_not_mutate_inputs(self):
+        merge = yuio.util.merge_dicts(lambda l, r: l + r)
+        lhs = {"a": 1, "b": 2}
+        rhs = {"b": 3, "c": 4}
+        lhs_copy = lhs.copy()
+        rhs_copy = rhs.copy()
+        merge(lhs, rhs)
+        assert lhs == lhs_copy
+        assert rhs == rhs_copy
+
+    def test_with_string_values(self):
+        merge = yuio.util.merge_dicts(lambda l, r: f"{l},{r}")
+        assert merge({"a": "x"}, {"a": "y", "b": "z"}) == {"a": "x,y", "b": "z"}
+
+    def test_with_list_values(self):
+        merge = yuio.util.merge_dicts(lambda l, r: l + r)
+        assert merge({"a": [1, 2]}, {"a": [3], "b": [4]}) == {
+            "a": [1, 2, 3],
+            "b": [4],
+        }
+
+    def test_nested_dicts(self):
+        merge = yuio.util.merge_dicts(lambda l, r: {**l, **r})
+        result = merge(
+            {"a": {"x": 1}, "b": {"y": 2}},
+            {"a": {"z": 3}, "c": {"w": 4}},
+        )
+        assert result == {"a": {"x": 1, "z": 3}, "b": {"y": 2}, "c": {"w": 4}}

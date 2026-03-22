@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- ✨ Supported parsing collections of configs.
+
 ## [2.3.0] - 2026-03-17
 
 - ✨ Added operators to merge configs: `config1 | config2`.

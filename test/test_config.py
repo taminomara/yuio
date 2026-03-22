@@ -1318,3 +1318,306 @@ class TestOr:
         assert result.x == 15
         assert a.x == 10
         assert b.x == 5
+
+
+class TestConfigParser:
+    class SubConfig(yuio.config.Config):
+        a: str
+        b: int = 10
+
+    class ParentConfig(yuio.config.Config):
+        items: "list[TestConfigParser.SubConfig]"
+
+    class ParentDictConfig(yuio.config.Config):
+        items: "dict[str, TestConfigParser.SubConfig]"
+
+    def test_parse_json_string(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        result = parser.parse('{"a": "hello", "b": 42}')
+        assert result.a == "hello"
+        assert result.b == 42
+
+    def test_parse_json_string_with_defaults(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        result = parser.parse('{"a": "hello"}')
+        assert result.a == "hello"
+        assert result.b == 10
+
+    def test_parse_json_string_invalid_json(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        with pytest.raises(yuio.parse.ParsingError, match=r"JsonValue"):
+            parser.parse("{invalid")
+
+    def test_parse_json_string_wrong_type(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected dict"):
+            parser.parse("[1, 2, 3]")
+
+    def test_parse_config_dict(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        result = parser.parse_config({"a": "x", "b": 1})
+        assert result.a == "x"
+        assert result.b == 1
+
+    def test_parse_config_dict_with_defaults(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        result = parser.parse_config({"a": "x"})
+        assert result.a == "x"
+        assert result.b == 10
+
+    def test_parse_config_dict_type_mismatch(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected dict"):
+            parser.parse_config(123)
+
+    def test_parse_config_unknown_fields(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        with pytest.raises(yuio.parse.ParsingError, match=r"Unknown field"):
+            parser.parse_config({"a": "x", "z": 99})
+
+    def test_to_json_schema(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        ctx = yuio.json_schema.JsonSchemaContext()
+        schema = parser.to_json_schema(ctx)
+        expected = self.SubConfig.to_json_schema(ctx)
+        assert schema == expected
+
+    def test_to_json_value(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        instance = self.SubConfig(a="v", b=7)
+        assert parser.to_json_value(instance) == instance.to_json_value()
+        assert parser.to_json_value(instance) == {"a": "v", "b": 7}
+
+    def test_repr(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        r = repr(parser)
+        assert r.startswith("ConfigParser(")
+        assert "SubConfig" in r
+
+    def test_basics(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        assert not parser.supports_parse_many()
+        assert parser.get_nargs() == 1
+        assert parser.options() is None
+        assert not parser.is_secret()
+        assert parser.describe() is None
+        assert parser.describe_or_def() == "<config-parser>"
+        assert parser.describe_many() == "<config-parser>"
+        with pytest.raises(RuntimeError, match=r"unable to parse multiple values"):
+            parser.parse_many([])
+
+    def test_check_type(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        assert parser.check_type(self.SubConfig(a="x"))
+        assert not parser.check_type("not a config")
+        assert not parser.check_type(42)
+
+    def test_describe_value(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        instance = self.SubConfig(a="v", b=7)
+        desc = parser.describe_value(instance)
+        assert isinstance(desc, str)
+        assert len(desc) > 0
+
+    def test_from_type_hint(self):
+        parser = yuio.parse.from_type_hint(self.SubConfig)
+        assert isinstance(parser, yuio.config.ConfigParser)
+        result = parser.parse('{"a": "x", "b": 5}')
+        assert result.a == "x"
+        assert result.b == 5
+
+    def test_to_json_schema_validates(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate({"a": "hello", "b": 42}, schema)
+        validator.validate({"a": "hello"}, schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate("not a dict", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate({"a": 123}, schema)
+
+    def test_to_json_value_with_defaults(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        instance = self.SubConfig(a="x")
+        jv = parser.to_json_value(instance)
+        assert jv == {"a": "x", "b": 10}
+
+    def test_to_json_value_round_trip(self):
+        parser = yuio.config.ConfigParser(self.SubConfig)
+        original = self.SubConfig(a="round", b=99)
+        jv = parser.to_json_value(original)
+        restored = parser.parse_config(jv)
+        assert restored.a == original.a
+        assert restored.b == original.b
+
+    # -- Collection-of-configs tests --
+
+    def test_list_of_configs_from_type_hint(self):
+        parser = yuio.parse.from_type_hint(list[self.SubConfig])
+        result = parser.parse_config([{"a": "x", "b": 1}, {"a": "y"}])
+        assert len(result) == 2
+        assert result[0].a == "x"
+        assert result[0].b == 1
+        assert result[1].a == "y"
+        assert result[1].b == 10
+
+    def test_list_of_configs_parse_json_strings(self):
+        parser = yuio.parse.from_type_hint(list[self.SubConfig])
+        result = parser.parse('{"a":"x","b":1} {"a":"y"}')
+        assert len(result) == 2
+        assert result[0].a == "x"
+        assert result[0].b == 1
+        assert result[1].a == "y"
+        assert result[1].b == 10
+
+    def test_dict_of_configs_from_type_hint(self):
+        parser = yuio.parse.from_type_hint(dict[str, self.SubConfig])
+        result = parser.parse_config({"k1": {"a": "x", "b": 1}, "k2": {"a": "y"}})
+        assert len(result) == 2
+        assert result["k1"].a == "x"
+        assert result["k1"].b == 1
+        assert result["k2"].a == "y"
+        assert result["k2"].b == 10
+
+    def test_list_of_configs_in_config_load_from_parsed_file(self):
+        c = self.ParentConfig.load_from_parsed_file(
+            {"items": [{"a": "x", "b": 1}, {"a": "y"}]}
+        )
+        assert len(c.items) == 2
+        assert c.items[0].a == "x"
+        assert c.items[0].b == 1
+        assert c.items[1].a == "y"
+        assert c.items[1].b == 10
+
+    def test_dict_of_configs_in_config_load_from_parsed_file(self):
+        c = self.ParentDictConfig.load_from_parsed_file(
+            {"items": {"k1": {"a": "x", "b": 1}, "k2": {"a": "y"}}}
+        )
+        assert len(c.items) == 2
+        assert c.items["k1"].a == "x"
+        assert c.items["k1"].b == 1
+        assert c.items["k2"].a == "y"
+        assert c.items["k2"].b == 10
+
+    def test_list_of_configs_in_config_load_from_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setenv("ITEMS", '{"a":"x","b":1} {"a":"y"}')
+        c = self.ParentConfig.load_from_env()
+        assert len(c.items) == 2
+        assert c.items[0].a == "x"
+        assert c.items[0].b == 1
+        assert c.items[1].a == "y"
+        assert c.items[1].b == 10
+
+    def test_dict_of_configs_in_config_load_from_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setenv("ITEMS", 'k1:{"a":"x","b":1} k2:{"a":"y"}')
+        c = self.ParentDictConfig.load_from_env()
+        assert len(c.items) == 2
+        assert c.items["k1"].a == "x"
+        assert c.items["k1"].b == 1
+        assert c.items["k2"].a == "y"
+        assert c.items["k2"].b == 10
+
+    def test_list_of_configs_to_json_value(self):
+        c = self.ParentConfig(items=[self.SubConfig(a="x", b=1), self.SubConfig(a="y")])
+        jv = c.to_json_value()
+        assert jv == {"items": [{"a": "x", "b": 1}, {"a": "y", "b": 10}]}
+
+    def test_dict_of_configs_to_json_value(self):
+        c = self.ParentDictConfig(
+            items={"k1": self.SubConfig(a="x", b=1), "k2": self.SubConfig(a="y")}
+        )
+        jv = c.to_json_value()
+        assert jv == {"items": {"k1": {"a": "x", "b": 1}, "k2": {"a": "y", "b": 10}}}
+
+    def test_list_of_configs_json_schema(self):
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = self.ParentConfig.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate({"items": [{"a": "x", "b": 1}, {"a": "y"}]}, schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate({"items": "not a list"}, schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate({"items": [{"b": "not_int"}]}, schema)
+
+    def test_list_of_configs_collection_parser_basics(self):
+        parser = yuio.parse.from_type_hint(list[self.SubConfig])
+        assert parser.supports_parse_many()
+        assert parser.get_nargs() == "*"
+        assert parser.options() is None
+        assert not parser.is_secret()
+
+    def test_list_of_configs_to_json_value_via_parser(self):
+        parser = yuio.parse.from_type_hint(list[self.SubConfig])
+        items = [self.SubConfig(a="x", b=1), self.SubConfig(a="y")]
+        jv = parser.to_json_value(items)
+        assert jv == [{"a": "x", "b": 1}, {"a": "y", "b": 10}]
+
+    def test_list_of_configs_to_json_schema_via_parser(self):
+        parser = yuio.parse.from_type_hint(list[self.SubConfig])
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate([{"a": "x", "b": 1}, {"a": "y"}], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate("not a list", schema)
+
+    def test_list_of_configs_round_trip(self):
+        parser = yuio.parse.from_type_hint(list[self.SubConfig])
+        original = [self.SubConfig(a="x", b=1), self.SubConfig(a="y", b=2)]
+        jv = parser.to_json_value(original)
+        restored = parser.parse_config(jv)
+        assert len(restored) == 2
+        assert restored[0].a == "x"
+        assert restored[0].b == 1
+        assert restored[1].a == "y"
+        assert restored[1].b == 2
+
+    def test_dict_of_configs_to_json_value_via_parser(self):
+        parser = yuio.parse.from_type_hint(dict[str, self.SubConfig])
+        items = {"k1": self.SubConfig(a="x", b=1), "k2": self.SubConfig(a="y")}
+        jv = parser.to_json_value(items)
+        assert jv == {"k1": {"a": "x", "b": 1}, "k2": {"a": "y", "b": 10}}
+
+    def test_dict_of_configs_to_json_schema_via_parser(self):
+        parser = yuio.parse.from_type_hint(dict[str, self.SubConfig])
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate({"k1": {"a": "x"}, "k2": {"a": "y", "b": 5}}, schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate("not a dict", schema)
+
+    def test_dict_of_configs_round_trip(self):
+        parser = yuio.parse.from_type_hint(dict[str, self.SubConfig])
+        original = {"k1": self.SubConfig(a="x", b=1), "k2": self.SubConfig(a="y", b=2)}
+        jv = parser.to_json_value(original)
+        restored = parser.parse_config(jv)
+        assert len(restored) == 2
+        assert restored["k1"].a == "x"
+        assert restored["k1"].b == 1
+        assert restored["k2"].a == "y"
+        assert restored["k2"].b == 2
+
+    def test_nested_config_in_list_error_propagation(self):
+        parser = yuio.parse.from_type_hint(list[self.SubConfig])
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected dict"):
+            parser.parse_config([123])
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
+            parser.parse_config([{"a": 999, "b": 1}])
+
+    def test_nested_config_in_dict_error_propagation(self):
+        parser = yuio.parse.from_type_hint(dict[str, self.SubConfig])
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected dict"):
+            parser.parse_config({"k1": 123})
+        with pytest.raises(yuio.parse.ParsingError, match=r"Expected str"):
+            parser.parse_config({"k1": {"a": 999}})
