@@ -521,7 +521,12 @@ class TestMergeDicts:
         [
             (lambda l, r: r, {"a": 1}, {"a": 2}, {"a": 2}),
             (lambda l, r: l, {"a": 1}, {"a": 2}, {"a": 1}),
-            (lambda l, r: l * r, {"x": 2, "y": 3}, {"x": 5, "y": 7}, {"x": 10, "y": 21}),
+            (
+                lambda l, r: l * r,
+                {"x": 2, "y": 3},
+                {"x": 5, "y": 7},
+                {"x": 10, "y": 21},
+            ),
         ],
     )
     def test_different_merge_functions(self, merge_fn, lhs, rhs, expected):
