@@ -432,8 +432,17 @@ class Dict(JsonSchemaType):
         schema: dict[str, JsonValue] = Array(Tuple([self.key, self.value])).render()
 
         key = self.key
-        while isinstance(key, (Ref, Meta)):
-            key = key.item
+        while True:
+            if isinstance(key, (Ref, Meta)):
+                key = key.item
+            elif isinstance(key, AllOf):
+                cleared = key.remove_opaque()
+                if cleared is not None:
+                    key = cleared
+                else:
+                    break
+            else:
+                break
 
         if isinstance(key, String):
             schema["type"] = [schema["type"], "object"]

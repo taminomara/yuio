@@ -2631,6 +2631,21 @@ class TestDict:
         )
         assert parser.to_json_value({1: "x"}) == [[1, "x"]]
 
+    def test_json_schema_len_bound_str_key(self):
+        parser = yuio.parse.Dict(
+            yuio.parse.LenBound(yuio.parse.Str(), lower=0),
+            yuio.parse.Int(),
+        )
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate({"a": 1, "b": 2}, schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate({"": 1}, schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate("not a dict", schema)
+
     def test_secret(self):
         parser = yuio.parse.Dict(
             yuio.parse.Secret(yuio.parse.Str()),
