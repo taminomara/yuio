@@ -14,6 +14,7 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- 🔧 Now `Link` will print URL next to link text in CI.
 - 🐛 Fixed Json schema generation for `LenBound` parser.
 
 ## [2.4.0] - 2026-03-22
