@@ -2132,6 +2132,114 @@ class TestBound:
                 _t.Annotated[int, yuio.parse.Le(yuio.parse.Int(), 10, 0)]  # type: ignore
             )
 
+    def test_len_bound_json_schema_inclusive(self):
+        parser = yuio.parse.LenBound(
+            yuio.parse.List(yuio.parse.Int()),
+            lower_inclusive=2,
+            upper_inclusive=5,
+        )
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate([1, 2], schema)
+        validator.validate([1, 2, 3, 4, 5], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate([1], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate([1, 2, 3, 4, 5, 6], schema)
+
+    def test_len_bound_json_schema_exclusive(self):
+        parser = yuio.parse.LenBound(
+            yuio.parse.List(yuio.parse.Int()),
+            lower=1,
+            upper=5,
+        )
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate([1, 2], schema)
+        validator.validate([1, 2, 3, 4], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate([1], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate([1, 2, 3, 4, 5], schema)
+
+    def test_len_bound_json_schema_lower_only(self):
+        parser = yuio.parse.LenBound(
+            yuio.parse.List(yuio.parse.Int()),
+            lower_inclusive=1,
+        )
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate([1], schema)
+        validator.validate([1, 2, 3, 4, 5], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate([], schema)
+
+    def test_len_bound_json_schema_upper_only(self):
+        parser = yuio.parse.LenBound(
+            yuio.parse.List(yuio.parse.Int()),
+            upper_inclusive=3,
+        )
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate([], schema)
+        validator.validate([1, 2, 3], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate([1, 2, 3, 4], schema)
+
+    def test_len_bound_json_schema_no_bounds(self):
+        parser = yuio.parse.LenBound(yuio.parse.List(yuio.parse.Int()))
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate([], schema)
+        validator.validate([1, 2, 3], schema)
+
+    def test_len_bound_json_schema_string(self):
+        parser = yuio.parse.LenBound(
+            yuio.parse.Str(),
+            lower_inclusive=2,
+            upper_inclusive=5,
+        )
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate("ab", schema)
+        validator.validate("abcde", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate("a", schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate("abcdef", schema)
+
+    def test_len_gt_json_schema(self):
+        parser = yuio.parse.LenGt(yuio.parse.List(yuio.parse.Int()), 2)
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate([1, 2, 3], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate([1, 2], schema)
+
+    def test_len_lt_json_schema(self):
+        parser = yuio.parse.LenLt(yuio.parse.List(yuio.parse.Int()), 3)
+        ctx = yuio.json_schema.JsonSchemaContext()
+        res = parser.to_json_schema(ctx)
+        schema = ctx.render(res)
+        validator = jsonschema.Draft7Validator(schema)
+        validator.validate([1, 2], schema)
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate([1, 2, 3], schema)
+
 
 class TestOneOf:
     def test_parse(self):

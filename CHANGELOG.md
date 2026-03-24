@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- 🐛 Fixed Json schema generation for `LenBound` parser.
+
 ## [2.4.0] - 2026-03-22
 
 - ✨ Supported parsing collections of configs.

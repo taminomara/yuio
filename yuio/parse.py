@@ -5222,12 +5222,12 @@ class LenBound(_BoundImpl[Sz, int], _t.Generic[Sz]):
         bound = {}
         min_bound = self._lower_bound
         if not self._lower_bound_is_inclusive and min_bound is not None:
-            min_bound -= 1
+            min_bound += 1
         if min_bound is not None:
             bound["minLength"] = bound["minItems"] = bound["minProperties"] = min_bound
         max_bound = self._upper_bound
         if not self._upper_bound_is_inclusive and max_bound is not None:
-            max_bound += 1
+            max_bound -= 1
         if max_bound is not None:
             bound["maxLength"] = bound["maxItems"] = bound["maxProperties"] = max_bound
         if bound:
