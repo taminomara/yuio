@@ -450,13 +450,21 @@ def get_tty_size(fallback: tuple[int, int] = (80, 24)):
     return os.terminal_size((columns, lines))
 
 
+_IN_CI = None
+
+
 def detect_ci() -> bool:
     """
     Scan environment variables to detect if we're in a known CI environment.
 
     """
 
-    return "CI" in os.environ or any(ci in os.environ for ci in _CI_ENV_VARS)
+    global _IN_CI
+
+    if _IN_CI is None:
+        _IN_CI = "CI" in os.environ or any(ci in os.environ for ci in _CI_ENV_VARS)
+
+    return _IN_CI
 
 
 def detect_ci_color_support() -> ColorSupport:

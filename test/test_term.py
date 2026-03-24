@@ -311,6 +311,8 @@ def test_detect_explicit_color_settings(monkeypatch, env, argv, expected):
 class TestFindTty:
     @pytest.fixture(autouse=True)
     def setup_io(self):
+        yuio.term._IN_CI = None
+
         yield
 
         yuio.term._TTY_SETUP_PERFORMED = False

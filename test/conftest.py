@@ -238,6 +238,8 @@ def setup_io(
     monkeypatch.setattr("yuio.io._IO_MANAGER", io_manager)
     yuio.io._ORIG_STDERR = yuio.io._ORIG_STDOUT = None
 
+    yuio.term._IN_CI = None
+
     yield
 
     io_manager.stop()
