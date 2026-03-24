@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-03-25
+
 - ✨ Added `yuio.util.merge_dicts_opt`.
 - 🔧 Now `Link` will print URL next to link text in CI.
 - 🐛 Fixed JSON schema generation for dicts with annotated string keys.
@@ -288,5 +290,6 @@ Release candidate for version 2.
 [2.2.0]: https://github.com/taminomara/yuio/compare/v2.1.1...v2.2.0
 [2.3.0]: https://github.com/taminomara/yuio/compare/v2.2.0...v2.3.0
 [2.4.0]: https://github.com/taminomara/yuio/compare/v2.3.0...v2.4.0
+[2.5.0]: https://github.com/taminomara/yuio/compare/v2.4.0...v2.5.0
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.4.0...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.5.0...HEAD
