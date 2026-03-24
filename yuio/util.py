@@ -16,6 +16,8 @@
 
 .. autofunction:: merge_dicts
 
+.. autofunction:: merge_dicts_opt
+
 .. autoclass:: UserString
 
     .. automethod:: _wrap
@@ -45,6 +47,7 @@ __all__ = [
     "dedent",
     "find_docs",
     "merge_dicts",
+    "merge_dicts_opt",
     "to_dash_case",
 ]
 
@@ -273,6 +276,14 @@ def merge_dicts(
     """
 
     def merge(lhs: dict[K, V], rhs: dict[K, V]) -> dict[K, V]:
+        # Handle `None` in case we're joining `dict[K, V] | None`.
+        if lhs is None and rhs is None:  # pyright: ignore[reportUnnecessaryComparison]
+            return None
+        elif lhs is None:  # pyright: ignore[reportUnnecessaryComparison]
+            return rhs.copy()
+        elif rhs is None:  # pyright: ignore[reportUnnecessaryComparison]
+            return lhs.copy()
+
         res = lhs.copy()
         for k, v in rhs.items():
             if k in res:
@@ -282,6 +293,19 @@ def merge_dicts(
         return res
 
     return merge
+
+
+def merge_dicts_opt(
+    merge_values: _t.Callable[[V, V], V], /
+) -> _t.Callable[[dict[K, V] | None, dict[K, V] | None], dict[K, V] | None]:
+    """
+    Like :func:`merge_dicts`, but also handles :data:`None`\\ s.
+
+    """
+
+    # `merge_dicts` actually handles `None`, we need `merge_dicts_opt`
+    # only for correct type hints.
+    return merge_dicts(merge_values)  # pyright: ignore[reportReturnType]
 
 
 if TYPE_CHECKING:

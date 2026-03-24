@@ -295,6 +295,12 @@ Re-imports
 
     Alias of :func:`yuio.util.merge_dicts`
 
+
+.. function:: merge_dicts_opt
+    :no-index:
+
+    Alias of :func:`yuio.util.merge_dicts_opt`
+
 .. type:: HelpGroup
     :no-index:
 
@@ -358,7 +364,7 @@ from yuio.cli import (
 )
 from yuio.util import dedent as _dedent
 from yuio.util import find_docs as _find_docs
-from yuio.util import merge_dicts
+from yuio.util import merge_dicts, merge_dicts_opt
 
 import yuio._typing_ext as _tx
 from typing import TYPE_CHECKING
@@ -384,6 +390,7 @@ __all__ = [
     "field",
     "inline",
     "merge_dicts",
+    "merge_dicts_opt",
     "parse_many_option",
     "parse_one_option",
     "positional",

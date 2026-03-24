@@ -14,6 +14,7 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- [add] Added `yuio.util.merge_dicts_opt`.
 - 🔧 Now `Link` will print URL next to link text in CI.
 - 🐛 Fixed Json schema generation for `LenBound` parser.
 
