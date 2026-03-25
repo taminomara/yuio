@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-03-25
+
 - 🐛 Further fixes to how links are displayed in CI: since GitLab (and probably
   others) have somewhat broken ANSI escape code parser, `yuio.string.Link` will
   not use hyperlink protocol at all when in CI. Instead, it will print URL after
@@ -296,5 +298,6 @@ Release candidate for version 2.
 [2.3.0]: https://github.com/taminomara/yuio/compare/v2.2.0...v2.3.0
 [2.4.0]: https://github.com/taminomara/yuio/compare/v2.3.0...v2.4.0
 [2.5.0]: https://github.com/taminomara/yuio/compare/v2.4.0...v2.5.0
+[2.5.1]: https://github.com/taminomara/yuio/compare/v2.5.0...v2.5.1
 [github uses pipes instead of tty emulation]: https://github.com/actions/runner/issues/241
-[unreleased]: https://github.com/taminomara/yuio/compare/v2.5.0...HEAD
+[unreleased]: https://github.com/taminomara/yuio/compare/v2.5.1...HEAD
