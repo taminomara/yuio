@@ -3470,15 +3470,18 @@ class Link(_StrBase):
 
     def __colorized_str__(self, ctx: ReprContext) -> ColorizedString:
         res = ColorizedString()
-        res.start_link(self._url)
-        res.append_colorized_str(ctx.str(self._msg))
         if not ctx.term.supports_colors or yuio.term.detect_ci():
+            res.append_colorized_str(ctx.str(self._msg))
+            res.append_str(" ")
             res.start_no_wrap()
-            res.append_str(" [")
+            res.append_str("[")
             res.append_str(self._url)
             res.append_str("]")
             res.end_no_wrap()
-        res.end_link()
+        else:
+            res.start_link(self._url)
+            res.append_colorized_str(ctx.str(self._msg))
+            res.end_link()
         return res
 
 

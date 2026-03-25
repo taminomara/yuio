@@ -14,6 +14,11 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- 🐛 Further fixes to how links are displayed in CI: since GitLab (and probably
+  others) have somewhat broken ANSI escape code parser, `yuio.string.Link` will
+  not use hyperlink protocol at all when in CI. Instead, it will print URL after
+  the link text.
+
 ## [2.5.0] - 2026-03-25
 
 - ✨ Added `yuio.util.merge_dicts_opt`.

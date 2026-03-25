@@ -6054,11 +6054,10 @@ class TestWithBaseColor:
             r = yuio.string.Link("foo", url="https://a.com")
             # When colors/links are not supported, Link appends the URL in brackets.
             expected = [
-                LinkMarker("https://a.com"),
                 Color.NONE,
-                "foo",
+                "foo ",
                 NO_WRAP_START,
-                " [https://a.com]",
+                "[https://a.com]",
                 NO_WRAP_END,
             ]
             assert _join_consecutive_strings(ctx.str(r)) == _join_consecutive_strings(
