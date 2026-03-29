@@ -14,6 +14,8 @@ and run `poe lint` to replace:
 
 ## [Unreleased]
 
+- 🐛 Fixed JsonSchema for enums when `to_dash_case` is enabled.
+
 ## [2.5.1] - 2026-03-25
 
 - 🐛 Further fixes to how links are displayed in CI: since GitLab (and probably

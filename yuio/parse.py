@@ -2547,9 +2547,12 @@ class Enum(_EnumBase[E, type[E]], _t.Generic[E]):
 
     def _value_to_json(self, value: E) -> JsonValue:
         if self._by_name:
-            return value.name
+            res = value.name
         else:
-            return value.value
+            res = value.value
+        if self._to_dash_case and isinstance(res, str):
+            res = _to_dash_case(res)
+        return res
 
     def _get_docs(self) -> dict[E, str | None]:
         if self.__docs is not None:
