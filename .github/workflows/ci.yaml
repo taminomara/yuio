@@ -104,12 +104,12 @@ jobs:
           echo $'User-agent: *\nDisallow: /' > htmlcov/robots.txt
           touch htmlcov/.nojekyll
       - name: Upload coverage report
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: htmlcov
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # Builds python packages.
   #
@@ -178,7 +178,7 @@ jobs:
         with:
           attestations: false
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           prerelease: ${{ fromJSON(needs.build.outputs.is-pre-release) }}
           draft: ${{ fromJSON(needs.build.outputs.is-unreleased) }}
