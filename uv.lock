@@ -310,27 +310,6 @@ wheels = [
 ]
 
 [[package]]
-name = "cl-keeper"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "giturlparse", marker = "python_full_version >= '3.14'" },
-    { name = "markdown-it-py", marker = "python_full_version >= '3.14'" },
-    { name = "mdformat", marker = "python_full_version >= '3.14'" },
-    { name = "mdformat-footnote", marker = "python_full_version >= '3.14'" },
-    { name = "mdformat-gfm", marker = "python_full_version >= '3.14'" },
-    { name = "mdformat-gfm-alerts", marker = "python_full_version >= '3.14'" },
-    { name = "packaging", marker = "python_full_version >= '3.14'" },
-    { name = "pyyaml", marker = "python_full_version >= '3.14'" },
-    { name = "semver", marker = "python_full_version >= '3.14'" },
-    { name = "yuio", marker = "python_full_version >= '3.14'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/93/8e/f989a54f178d9a8575b610fdc4964a768cd7f14bc651e8167d157ead6349/cl_keeper-1.0.0.tar.gz", hash = "sha256:7f98151b15ccd05fdc9a30565562476605625dd66f506969f23b4869c7de9557", size = 115367, upload-time = "2026-03-11T17:59:58.884Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/20/767816208a164b5279cd593d599699b99096af7b32fece033d2bd9eac824/cl_keeper-1.0.0-py3-none-any.whl", hash = "sha256:6034030e6ffb0f246bd27fd4ccf07cb0d517491f7865eefc25589f522887e590", size = 42208, upload-time = "2026-03-11T17:59:57.792Z" },
-]
-
-[[package]]
 name = "click"
 version = "8.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -648,15 +627,6 @@ coverage = [
 ]
 
 [[package]]
-name = "giturlparse"
-version = "0.13.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/48/1c/21a28489887463d1aed96257d233e98de2de2e912c1ff66067be43a0161e/giturlparse-0.13.0.tar.gz", hash = "sha256:f624251a2129595da32b282533802eb8db4a822f9ec64bb6c38bdf14ac1ff0e1", size = 15297, upload-time = "2025-10-22T08:36:47.587Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/fc/4cd75a11cbb59c3f171c07eb3ce96c69f457094a76f4249cac455e5b30cd/giturlparse-0.13.0-py2.py3-none-any.whl", hash = "sha256:a916bf43d50e6ab6aa0c6e21477be9065583ebcddd002f578162f7ad5224b9ba", size = 16007, upload-time = "2025-10-22T08:36:46.4Z" },
-]
-
-[[package]]
 name = "grapheme"
 version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -735,18 +705,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/19/74/a633ee74eb36c44aa6d1095e7cc5569bebf04342ee146178e2d36600708b/jsonschema_specifications-2025.9.1.tar.gz", hash = "sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d", size = 32855, upload-time = "2025-09-08T01:34:59.186Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl", hash = "sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe", size = 18437, upload-time = "2025-09-08T01:34:57.871Z" },
-]
-
-[[package]]
-name = "markdown-it-py"
-version = "4.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "mdurl", marker = "python_full_version >= '3.14'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/5b/f5/4ec618ed16cc4f8fb3b701563655a69816155e79e24a17b651541804721d/markdown_it_py-4.0.0.tar.gz", hash = "sha256:cb0a2b4aa34f932c007117b194e945bd74e0ec24133ceb5bac59009cda1cb9f3", size = 73070, upload-time = "2025-08-11T12:57:52.854Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl", hash = "sha256:87327c59b172c5011896038353a81343b6754500a08cd7a4973bb48c6d578147", size = 87321, upload-time = "2025-08-11T12:57:51.923Z" },
 ]
 
 [[package]]
@@ -832,80 +790,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/df/5bd7a48c256faecd1d36edc13133e51397e41b73bb77e1a69deab746ebac/markupsafe-3.0.3-cp314-cp314t-win32.whl", hash = "sha256:915c04ba3851909ce68ccc2b8e2cd691618c4dc4c4232fb7982bca3f41fd8c3d", size = 14819, upload-time = "2025-09-27T18:37:26.285Z" },
     { url = "https://files.pythonhosted.org/packages/1a/8a/0402ba61a2f16038b48b39bccca271134be00c5c9f0f623208399333c448/markupsafe-3.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4faffd047e07c38848ce017e8725090413cd80cbc23d86e55c587bf979e579c9", size = 15426, upload-time = "2025-09-27T18:37:27.316Z" },
     { url = "https://files.pythonhosted.org/packages/70/bc/6f1c2f612465f5fa89b95bead1f44dcb607670fd42891d8fdcd5d039f4f4/markupsafe-3.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:32001d6a8fc98c8cb5c947787c5d08b0a50663d139f1305bac5885d98d9b40fa", size = 14146, upload-time = "2025-09-27T18:37:28.327Z" },
-]
-
-[[package]]
-name = "mdformat"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "markdown-it-py", marker = "python_full_version >= '3.14'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/05/32b5e14b192b0a8a309f32232c580aefedd9d06017cb8fe8fce34bec654c/mdformat-1.0.0.tar.gz", hash = "sha256:4954045fcae797c29f86d4ad879e43bb151fa55dbaf74ac6eaeacf1d45bb3928", size = 56953, upload-time = "2025-10-16T12:05:03.695Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/54/9a/8fe71b95985ca7a4001effbcc58e5a07a1f2a2884203f74dcf48a3b08315/mdformat-1.0.0-py3-none-any.whl", hash = "sha256:bca015d65a1d063a02e885a91daee303057bc7829c2cd37b2075a50dbb65944b", size = 53288, upload-time = "2025-10-16T12:05:02.607Z" },
-]
-
-[[package]]
-name = "mdformat-footnote"
-version = "0.1.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "mdformat", marker = "python_full_version >= '3.14'" },
-    { name = "mdit-py-plugins", marker = "python_full_version >= '3.14'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/27/25/08e1feac080165330278f31f605f28a963ef51864aee8306dd2039b55a61/mdformat_footnote-0.1.2.tar.gz", hash = "sha256:d8e6a7fece0f902f0c7dfbd009c093182b9b523527ae48f57f57506d79ccb4ec", size = 3358, upload-time = "2025-10-19T09:36:34.381Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/47/07544df46d55284cc1862acd49dc30f984e4e5cb1630becbf216692f30b6/mdformat_footnote-0.1.2-py3-none-any.whl", hash = "sha256:fe23888fc8ddb68c080bae9787a65bb1e51253f5de2bea2633feffdb095e59cd", size = 4139, upload-time = "2025-10-19T09:36:33.362Z" },
-]
-
-[[package]]
-name = "mdformat-gfm"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "markdown-it-py", marker = "python_full_version >= '3.14'" },
-    { name = "mdformat", marker = "python_full_version >= '3.14'" },
-    { name = "mdit-py-plugins", marker = "python_full_version >= '3.14'" },
-    { name = "wcwidth", marker = "python_full_version >= '3.14'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/56/6f/a626ebb142a290474401b67e2d61e73ce096bf7798ee22dfe6270f924b3f/mdformat_gfm-1.0.0.tar.gz", hash = "sha256:d1d49a409a6acb774ce7635c72d69178df7dce1dc8cdd10e19f78e8e57b72623", size = 10112, upload-time = "2025-10-16T09:12:22.402Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/18/6bc2189b744dd383cad03764f41f30352b1278d2205096f77a29c0b327ad/mdformat_gfm-1.0.0-py3-none-any.whl", hash = "sha256:7305a50efd2a140d7c83505b58e3ac5df2b09e293f9bbe72f6c7bee8c678b005", size = 10970, upload-time = "2025-10-16T09:12:21.276Z" },
-]
-
-[[package]]
-name = "mdformat-gfm-alerts"
-version = "2.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "mdformat", marker = "python_full_version >= '3.14'" },
-    { name = "mdit-py-plugins", marker = "python_full_version >= '3.14'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/33/70619cf9e2b9e35857ebcf7e947e8f5370df2ff2a4ab666895783f8fab6c/mdformat_gfm_alerts-2.0.0.tar.gz", hash = "sha256:eb2b3189ad44ae28a6b6b714609dd3a30d6e3b898f02b1e6473d7b08df8bb3c0", size = 9687, upload-time = "2025-06-05T20:49:46.414Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/ea/22e093bb2ef3e25dc3ccc9d8392c14b069a007ae394a12e058d9e1f51c00/mdformat_gfm_alerts-2.0.0-py3-none-any.whl", hash = "sha256:e003422cc003bc6e936d0797553f23201095a1d1e8602c5062296d223f2ae516", size = 6752, upload-time = "2025-06-05T20:49:45.539Z" },
-]
-
-[[package]]
-name = "mdit-py-plugins"
-version = "0.5.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "markdown-it-py", marker = "python_full_version >= '3.14'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/fd/a756d36c0bfba5f6e39a1cdbdbfdd448dc02692467d83816dff4592a1ebc/mdit_py_plugins-0.5.0.tar.gz", hash = "sha256:f4918cb50119f50446560513a8e311d574ff6aaed72606ddae6d35716fe809c6", size = 44655, upload-time = "2025-08-11T07:25:49.083Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/86/dd6e5db36df29e76c7a7699123569a4a18c1623ce68d826ed96c62643cae/mdit_py_plugins-0.5.0-py3-none-any.whl", hash = "sha256:07a08422fc1936a5d26d146759e9155ea466e842f5ab2f7d2266dd084c8dab1f", size = 57205, upload-time = "2025-08-11T07:25:47.597Z" },
-]
-
-[[package]]
-name = "mdurl"
-version = "0.1.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
 ]
 
 [[package]]
@@ -1495,15 +1379,6 @@ wheels = [
 ]
 
 [[package]]
-name = "semver"
-version = "3.0.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/72/d1/d3159231aec234a59dd7d601e9dd9fe96f3afff15efd33c1070019b26132/semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602", size = 269730, upload-time = "2025-01-24T13:19:27.617Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746", size = 17912, upload-time = "2025-01-24T13:19:24.949Z" },
-]
-
-[[package]]
 name = "setuptools"
 version = "82.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2085,7 +1960,6 @@ dependencies = [
 
 [package.dev-dependencies]
 ci = [
-    { name = "cl-keeper", marker = "python_full_version >= '3.14'" },
     { name = "genbadge", extra = ["coverage"], marker = "python_full_version >= '3.14'" },
     { name = "pygithub", marker = "python_full_version >= '3.14'" },
     { name = "pytest-cov", marker = "python_full_version >= '3.14'" },
@@ -2093,7 +1967,6 @@ ci = [
     { name = "tox-uv", marker = "python_full_version >= '3.14'" },
 ]
 dev = [
-    { name = "cl-keeper", marker = "python_full_version >= '3.14'" },
     { name = "furo", marker = "python_full_version >= '3.14'" },
     { name = "genbadge", extra = ["coverage"], marker = "python_full_version >= '3.14'" },
     { name = "jsonschema", marker = "python_full_version >= '3.14'" },
@@ -2125,7 +1998,6 @@ doc = [
     { name = "sybil", marker = "python_full_version >= '3.14'" },
 ]
 lint = [
-    { name = "cl-keeper", marker = "python_full_version >= '3.14'" },
     { name = "prek", marker = "python_full_version >= '3.14'" },
     { name = "ruff", marker = "python_full_version >= '3.14'" },
 ]
@@ -2149,7 +2021,6 @@ requires-dist = [{ name = "typing-extensions", specifier = ">=4.13,<5" }]
 
 [package.metadata.requires-dev]
 ci = [
-    { name = "cl-keeper", marker = "python_full_version >= '3.14'", specifier = "==1.0.0" },
     { name = "genbadge", extras = ["coverage"], marker = "python_full_version >= '3.14'", specifier = "==1.1.3" },
     { name = "pygithub", marker = "python_full_version >= '3.14'", specifier = "==2.8.1" },
     { name = "pytest-cov", marker = "python_full_version >= '3.14'", specifier = "==7.0.0" },
@@ -2157,7 +2028,6 @@ ci = [
     { name = "tox-uv", marker = "python_full_version >= '3.14'", specifier = "==1.29.0" },
 ]
 dev = [
-    { name = "cl-keeper", marker = "python_full_version >= '3.14'", specifier = "==1.0.0" },
     { name = "furo", marker = "python_full_version >= '3.14'", specifier = "==2025.12.19" },
     { name = "genbadge", extras = ["coverage"], marker = "python_full_version >= '3.14'", specifier = "==1.1.3" },
     { name = "jsonschema", marker = "python_full_version >= '3.14'", specifier = "==4.26.0" },
@@ -2189,7 +2059,6 @@ doc = [
     { name = "sybil", marker = "python_full_version >= '3.14'", specifier = "==9.3.0" },
 ]
 lint = [
-    { name = "cl-keeper", marker = "python_full_version >= '3.14'", specifier = "==1.0.0" },
     { name = "prek", marker = "python_full_version >= '3.14'", specifier = "==0.3.6" },
     { name = "ruff", marker = "python_full_version >= '3.14'", specifier = "==0.15.7" },
 ]

@@ -28,9 +28,16 @@ updates:
           - "virtualenv-pyenv"
       style:
         patterns:
-          - "cl-keeper"
           - "prek"
           - "ruff"
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      pre-commit:
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

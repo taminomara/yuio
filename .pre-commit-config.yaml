@@ -20,12 +20,10 @@ repos:
         types: [python]
         files: 'yuio/.*'
         exclude: '^(yuio/_dist/.*|yuio/_version.py)'
+  - repo: https://github.com/taminomara/cl-keeper
+    rev: v1.0.0
+    hooks:
       - id: clk
-        name: changelog keeper
-        language: system
-        entry: scripts/resolve_venv.sh clk pre-commit-check
-        require_serial: true
-        types_or: [toml, yaml, markdown]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

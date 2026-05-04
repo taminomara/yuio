@@ -70,6 +70,6 @@ executor = { group = "ci" }
 
 [tasks.release]
 help = "Bump version, create release commit and tag"
-cmd = "clk bump --commit"
+cmd = "uvx --from cl-keeper clk bump --commit"
 use_exec = true
-executor = { group = "ci" }
+executor = { type = "simple" }
