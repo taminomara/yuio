@@ -36,7 +36,7 @@ test = [
     "pyright==1.1.408",
     "pytest-cov==7.0.0",
     "pytest-regressions==2.9.1",
-    "pytest==9.0.2",
+    "pytest==9.0.3",
     "PyYaml==6.0.3",
     "sybil==9.3.0",
     "toml==0.10.2",
