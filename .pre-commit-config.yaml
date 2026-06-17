@@ -21,7 +21,7 @@ repos:
         files: 'yuio/.*'
         exclude: '^(yuio/_dist/.*|yuio/_version.py)'
   - repo: https://github.com/taminomara/cl-keeper
-    rev: v1.0.0
+    rev: v1.0.1
     hooks:
       - id: clk
   - repo: https://github.com/pre-commit/pre-commit-hooks
